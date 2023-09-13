@@ -4,9 +4,9 @@ use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::Space;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, RpcBuilder};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -50,11 +50,10 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
 
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
     let controller_route = &CloudOpts::route();
 
     // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     let space: Space = rpc.ask(api::space::show(&id, controller_route)).await?;
     opts.println(&space)?;
     opts.state

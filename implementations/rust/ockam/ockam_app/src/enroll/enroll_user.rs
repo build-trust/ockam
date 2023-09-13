@@ -1,7 +1,7 @@
 use miette::{miette, IntoDiagnostic, WrapErr};
 
 use ockam_api::address::controller_route;
-use tauri::{AppHandle, Manager, State, Wry};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_notification::NotificationExt;
 use tracing::{debug, error, info};
 
@@ -22,23 +22,35 @@ use crate::{shared_service, Result};
 ///  - creates a default node, with a default identity if it doesn't exist
 ///  - connects to the OIDC service to authenticate the user of the Ockam application to retrieve a token
 ///  - connects to the Orchestrator with the retrieved token to create a project
-pub async fn enroll_user(app: &AppHandle<Wry>) -> Result<()> {
+pub async fn enroll_user<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
     enroll_with_token(app, &app_state)
         .await
         .unwrap_or_else(|e| error!(?e, "Failed to enroll user"));
-    system_tray_on_update(app);
     // Reset the node manager to include the project's setup, needed to create the relay.
     // This is necessary because the project data is used in the worker initialization,
     // which can't be rerun manually once the worker is started.
     app_state.reset_node_manager().await?;
+    system_tray_on_update(app);
+
+    // Refresh the projects and invitations now that the node has access to the project
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    shared_service::relay::create_relay(&app_state).await?;
+
+    // Create the relay
+    shared_service::relay::create_relay(
+        app_state.context(),
+        app_state.state().await,
+        app_state.node_manager_worker().await,
+    )
+    .await;
+    system_tray_on_update(app);
+
+    info!("User enrolled successfully");
     Ok(())
 }
 
-async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result<()> {
+async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState) -> Result<()> {
     if app_state.is_enrolled().await.unwrap_or_default() {
         debug!("User is already enrolled");
         return Ok(());
@@ -57,7 +69,7 @@ async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result
 
     // retrieve the user information
     let user_info = oidc_service.get_user_info(&token).await?;
-    info!(?user_info, "Email verification succeeded");
+    info!(?user_info, "User info retrieved successfully");
     let cli_state = app_state.state().await;
     cli_state
         .users_info
@@ -75,7 +87,7 @@ async fn enroll_with_token(app: &AppHandle<Wry>, app_state: &AppState) -> Result
     system_tray_on_update_with_enroll_status(app, "Retrieving space...")?;
     let space = retrieve_space(app_state).await?;
     system_tray_on_update_with_enroll_status(app, "Retrieving project...")?;
-    let _ = retrieve_project(app, app_state, &space).await?;
+    retrieve_project(app, app_state, &space).await?;
     let identifier = update_enrolled_identity(&cli_state, NODE_NAME)
         .await
         .into_diagnostic()?;
@@ -132,31 +144,29 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     Ok(space)
 }
 
-async fn retrieve_project(
-    app: &AppHandle<Wry>,
+async fn retrieve_project<R: Runtime>(
+    app: &AppHandle<R>,
     app_state: &AppState,
     space: &Space,
 ) -> Result<Project> {
     info!("retrieving the user project");
-    let node_manager_worker = app_state.node_manager_worker().await;
-    let node_manager = node_manager_worker.inner().read().await;
-    let projects = {
-        node_manager
-            .list_projects(&app_state.context(), &controller_route())
-            .await
-            .map_err(|e| miette!(e))?
-    };
-
     let email = app_state
         .user_email()
         .await
         .wrap_err("User info is not valid")?;
 
-    let project = match projects
+    let node_manager_worker = app_state.node_manager_worker().await;
+    let node_manager = node_manager_worker.inner().read().await;
+    let projects = node_manager
+        .list_projects(&app_state.context(), &controller_route())
+        .await
+        .map_err(|e| miette!(e))?;
+    let admin_project = projects
         .iter()
         .filter(|p| p.has_admin_with_email(&email))
-        .find(|p| p.name == *PROJECT_NAME)
-    {
+        .find(|p| p.name == *PROJECT_NAME);
+
+    let project = match admin_project {
         Some(project) => project.clone(),
         None => {
             app.notification()

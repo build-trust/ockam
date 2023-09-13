@@ -11,6 +11,10 @@ impl ModelState {
         self.tcp_outlets.push(status);
     }
 
+    pub fn delete_tcp_outlet(&mut self, alias: &str) {
+        self.tcp_outlets.retain(|x| x.alias != alias);
+    }
+
     pub fn get_tcp_outlets(&self) -> &[OutletStatus] {
         &self.tcp_outlets
     }

@@ -13,7 +13,6 @@ use crate::cli_state::traits::StateDirTrait;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
-use crate::nodes::service::map_multiaddr_err;
 
 use super::NodeManagerWorker;
 
@@ -66,7 +65,12 @@ impl NodeManagerWorker {
         let request: PresentCredentialRequest = dec.decode()?;
 
         // TODO: Replace with self.connect?
-        let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
+        let route = MultiAddr::from_str(&request.route).map_err(|_| {
+            ApiError::core(format!(
+                "Couldn't convert String to MultiAddr: {}",
+                &request.route
+            ))
+        })?;
         let route = match local_multiaddr_to_route(&route) {
             Some(route) => route,
             None => return Err(ApiError::core("Invalid credentials service route").into()),

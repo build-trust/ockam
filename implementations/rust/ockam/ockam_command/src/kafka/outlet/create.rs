@@ -1,15 +1,16 @@
+use std::net::SocketAddr;
+
 use clap::{command, Args};
 use colorful::Colorful;
-use miette::IntoDiagnostic;
-use ockam::{Context, TcpTransport};
+use tokio::{sync::Mutex, try_join};
+
+use ockam::Context;
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_core::api::Request;
-use std::net::SocketAddr;
-
-use tokio::{sync::Mutex, try_join};
 
 use crate::node::get_node_name;
+use crate::util::Rpc;
 use crate::{
     fmt_log, fmt_ok,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
@@ -49,14 +50,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     } = cmd;
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-
         let payload = StartKafkaOutletRequest::new(bootstrap_server);
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_outlet").body(payload);
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
 
-        start_service_impl(&ctx, &opts, &node_name, "KafkaOutlet", req, Some(&tcp)).await?;
+        start_service_impl(&mut rpc, "KafkaOutlet", req).await?;
         *is_finished.lock().await = true;
 
         Ok::<_, crate::Error>(())

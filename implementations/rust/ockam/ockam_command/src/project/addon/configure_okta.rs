@@ -137,13 +137,13 @@ async fn run_impl(
     let response: CreateOperationResponse = rpc.ask(req).await?;
     let operation_id = response.operation_id;
 
-    check_for_completion(&ctx, &opts, rpc.node_name(), &operation_id).await?;
+    check_for_completion(&opts, &rpc, &operation_id).await?;
 
     let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
     let project: Project = rpc
         .ask(api::project::show(&project_id, controller_route))
         .await?;
-    check_project_readiness(&ctx, &opts, rpc.node_name(), None, project).await?;
+    check_project_readiness(&opts, &rpc, project).await?;
 
     opts.terminal
         .write_line(&fmt_ok!("Okta addon configured successfully"))?;

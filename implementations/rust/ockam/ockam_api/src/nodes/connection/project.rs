@@ -69,7 +69,11 @@ impl Instantiator for ProjectInstantiator {
         debug!(addr = %project_multiaddr, "creating secure channel");
         let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)
             .await
-            .ok_or_else(|| ApiError::core("invalid multiaddr"))?;
+            .ok_or_else(|| {
+                ApiError::core(format!(
+                    "Couldn't convert MultiAddr to route: project_multiaddr={project_multiaddr}"
+                ))
+            })?;
 
         let sc = node_manager
             .create_secure_channel_impl(

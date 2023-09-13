@@ -46,4 +46,4 @@ impl AcceptedInvitations {
     }
 }
 
-pub(crate) type SyncState = Arc<RwLock<InvitationState>>;
+pub(crate) type SyncInvitationsState = Arc<RwLock<InvitationState>>;

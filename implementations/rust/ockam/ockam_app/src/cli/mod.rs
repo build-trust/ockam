@@ -35,6 +35,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
 
     // Check that the executable can be found on the path
     match duct::cmd!("which", ockam_path.clone())
+        .stderr_null()
         .stdout_capture()
         .run()
     {
@@ -54,7 +55,11 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
     };
 
     // Get the command line version
-    match duct::cmd!(ockam_path, "--version").stdout_capture().run() {
+    match duct::cmd!(ockam_path, "--version")
+        .stderr_null()
+        .stdout_capture()
+        .run()
+    {
         Err(e) => {
             let message = format!("The ockam command could not be executed correctly: {e}. Please execute $OCKAM --version or ockam --version");
             error!(message);

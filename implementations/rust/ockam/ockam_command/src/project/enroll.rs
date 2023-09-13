@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::authenticator::direct::TokenAcceptorClient;
@@ -20,10 +21,10 @@ use ockam_node::RpcClient;
 
 use crate::enroll::{enroll_with_node, OidcServiceExt};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::node_rpc;
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
@@ -77,26 +78,28 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, EnrollCommand),
 ) -> miette::Result<()> {
-    let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.trust_opts)).await?;
-    let result = project_enroll(&ctx, (opts.clone(), cmd), &node_name).await;
-    delete_embedded_node(&opts, &node_name).await;
+    let mut rpc = Rpc::embedded_with_trust_options(&ctx, &opts, &cmd.trust_opts).await?;
+    let result = project_enroll(&ctx, &opts, &mut rpc, cmd).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     result.map(|_| ())
 }
 
-pub async fn project_enroll(
+pub async fn project_enroll<'a>(
     ctx: &Context,
-    (opts, cmd): (CommandGlobalOpts, EnrollCommand),
-    node_name: &str,
+    opts: &CommandGlobalOpts,
+    rpc: &mut Rpc,
+    cmd: EnrollCommand,
 ) -> miette::Result<String> {
     let project_as_string: String;
 
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
     let proj: ProjectConfigCompact = if let Some(ticket) = &cmd.enroll_ticket {
-        let proj = ticket
-            .project()
-            .expect("Enrollment ticket is invalid. Ticket does not contain a project.");
-
-        proj.clone().try_into()?
+        ticket
+            .project
+            .as_ref()
+            .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
+            .clone()
+            .try_into()?
     } else {
         // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
         // currently okta auth does not use an enrollment token
@@ -156,9 +159,7 @@ pub async fn project_enroll(
                 .ok_or_else(|| miette!("Authority details not configured"))?;
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
         create_secure_channel_to_authority(
-            ctx,
-            &opts,
-            node_name,
+            rpc,
             authority.identity_id().clone(),
             authority.address(),
             Some(identity),
@@ -185,11 +186,11 @@ pub async fn project_enroll(
                 .into_diagnostic()?,
         );
         client
-            .present_token(tkn.one_time_code())
+            .present_token(&tkn.one_time_code)
             .await
             .into_diagnostic()?
     } else if cmd.okta {
-        authenticate_through_okta(ctx, &opts, node_name, proj, secure_channel_addr.clone()).await?
+        authenticate_through_okta(opts, rpc, proj, secure_channel_addr.clone()).await?
     }
 
     let credential_issuer_route = {
@@ -209,14 +210,17 @@ pub async fn project_enroll(
     .into_diagnostic()?;
 
     let credential = client2.credential().await.into_diagnostic()?;
-    opts.terminal.stdout().plain(credential).write_line()?;
+    opts.terminal
+        .clone()
+        .stdout()
+        .plain(credential)
+        .write_line()?;
     Ok(project.name)
 }
 
-async fn authenticate_through_okta(
-    ctx: &Context,
+async fn authenticate_through_okta<'a>(
     opts: &CommandGlobalOpts,
-    node_name: &str,
+    rpc: &mut Rpc,
     p: ProjectConfigCompact,
     secure_channel_addr: MultiAddr,
 ) -> miette::Result<()> {
@@ -243,7 +247,7 @@ async fn authenticate_through_okta(
         addr
     };
 
-    enroll_with_node(ctx, opts, &okta_authenticator_addr, node_name, token)
+    enroll_with_node(rpc, &okta_authenticator_addr, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")
 }

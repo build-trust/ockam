@@ -18,6 +18,7 @@ use ockam_identity::CredentialsIssuerClient;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::util::delete_embedded_node;
 use crate::{
     node::util::{delete_node, start_embedded_node_with_vault_and_identity},
     project::util::{create_secure_channel_to_authority, create_secure_channel_to_project},
@@ -25,7 +26,7 @@ use crate::{
     CommandGlobalOpts, Result,
 };
 
-use super::{api::TrustContextOpts, RpcBuilder};
+use super::api::TrustContextOpts;
 
 pub enum OrchestratorEndpoint {
     Authenticator,
@@ -168,7 +169,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     /// Sends the request and returns  the response
-    pub async fn build(&mut self, service_address: &MultiAddr) -> Result<OrchestratorApi<'a>> {
+    pub async fn build(&mut self, service_address: &MultiAddr) -> Result<OrchestratorApi> {
         self.retrieve_project_info().await?;
         // Authenticate with the project authority node
         let _ = self.authenticate().await?;
@@ -185,10 +186,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
         to.push_front(Service::new(DefaultAddress::RPC_PROXY))?;
 
         let node_name = self.node_name.as_ref().ok_or(miette!("Node is required"))?;
-        let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)
-            .to(&to)?
-            .build();
-
+        let mut rpc = Rpc::background(self.ctx, self.opts, node_name).await?;
+        rpc.set_to(&to)?;
         Ok(OrchestratorApi { rpc })
     }
 
@@ -222,6 +221,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             .project_lookup
             .as_ref()
             .ok_or(miette!("Project is required"))?;
+        let mut rpc = Rpc::background(self.ctx, self.opts, node_name).await?;
 
         let sc_addr = match endpoint {
             OrchestratorEndpoint::Authenticator => {
@@ -232,9 +232,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 // TODO: When we --project-path is fully deprecated
                 // use the trust context authority here
                 create_secure_channel_to_authority(
-                    self.ctx,
-                    self.opts,
-                    node_name,
+                    &mut rpc,
                     authority.identity_id().clone(),
                     authority.address(),
                     self.identity.clone(),
@@ -252,10 +250,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     .ok_or(miette!("Invalid project node route"))?;
 
                 create_secure_channel_to_project(
-                    self.ctx,
-                    self.opts,
-                    node_name,
-                    None,
+                    &mut rpc,
                     project_route,
                     &project_identity.to_string(),
                     self.credential_exchange_mode,
@@ -264,17 +259,17 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 .await?
             }
         };
-
+        delete_embedded_node(self.opts, rpc.node_name()).await;
         Ok(sc_addr)
     }
 }
 
-pub struct OrchestratorApi<'a> {
-    rpc: Rpc<'a>,
+pub struct OrchestratorApi {
+    rpc: Rpc,
 }
 
-impl<'a> OrchestratorApi<'a> {
-    pub async fn ask<T, R>(&'a mut self, req: RequestBuilder<T>) -> Result<R>
+impl OrchestratorApi {
+    pub async fn ask<T, R>(&mut self, req: RequestBuilder<T>) -> Result<R>
     where
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,

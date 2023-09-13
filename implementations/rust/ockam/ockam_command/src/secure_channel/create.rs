@@ -1,3 +1,23 @@
+use clap::Args;
+use colorful::Colorful;
+use miette::{miette, IntoDiagnostic, WrapErr};
+use serde_json::json;
+use tokio::{sync::Mutex, try_join};
+
+use ockam::{identity::IdentityIdentifier, route, Context};
+use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models;
+use ockam_api::nodes::models::secure_channel::{
+    CreateSecureChannelResponse, CredentialExchangeMode,
+};
+use ockam_api::route_to_multiaddr;
+use ockam_core::api::Request;
+use ockam_multiaddr::MultiAddr;
+
+use crate::docs;
+use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::util::api::CloudOpts;
+use crate::util::{clean_nodes_multiaddr, Rpc};
 use crate::{
     error::Error,
     fmt_log, fmt_ok,
@@ -5,26 +25,6 @@ use crate::{
     util::{exitcode, node_rpc},
     CommandGlobalOpts,
 };
-
-use clap::Args;
-use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
-use ockam_core::api::Request;
-use serde_json::json;
-use tokio::{sync::Mutex, try_join};
-
-use crate::docs;
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::util::api::CloudOpts;
-use crate::util::{clean_nodes_multiaddr, RpcBuilder};
-use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
-use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models;
-use ockam_api::nodes::models::secure_channel::{
-    CreateSecureChannelResponse, CredentialExchangeMode,
-};
-use ockam_api::route_to_multiaddr;
-use ockam_multiaddr::MultiAddr;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -66,23 +66,19 @@ impl CreateCommand {
 
     // Read the `to` argument and return a MultiAddr
     // or exit with and error if `to` can't be parsed.
-    async fn parse_to_route(
+    async fn parse_to_route<'a>(
         &self,
-        ctx: &Context,
         opts: &CommandGlobalOpts,
-        api_node: &str,
-        tcp: &TcpTransport,
+        rpc: &mut Rpc,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
 
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            ctx,
             opts,
+            rpc,
             &meta,
-            api_node,
-            Some(tcp),
             CredentialExchangeMode::Oneway,
         )
         .await?;
@@ -101,15 +97,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     opts.terminal
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-
     let from = &cmd.parse_from_node();
-    let to = &cmd.parse_to_route(&ctx, &opts, from, &tcp).await?;
+    let mut rpc = Rpc::background(&ctx, &opts, from).await?;
+    let to = &cmd.parse_to_route(&opts, &mut rpc).await?;
 
     let authorized_identifiers = cmd.authorized.clone();
 
     // Delegate the request to create a secure channel to the from node.
-    let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let create_secure_channel = async {

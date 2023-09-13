@@ -1,12 +1,14 @@
 mod model;
 mod repository;
 
+#[cfg(debug_assertions)]
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use miette::IntoDiagnostic;
 use ockam_multiaddr::MultiAddr;
 use tauri::async_runtime::{block_on, spawn, RwLock};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub(crate) use crate::app::state::model::ModelState;
 pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
@@ -44,6 +46,9 @@ pub struct AppState {
     node_manager_worker: Arc<RwLock<NodeManagerWorker>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
+
+    #[cfg(debug_assertions)]
+    browser_dev_tools: AtomicBool,
 }
 
 impl Default for AppState {
@@ -83,6 +88,9 @@ impl AppState {
             node_manager_worker: Arc::new(RwLock::new(node_manager_worker)),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
+
+            #[cfg(debug_assertions)]
+            browser_dev_tools: Default::default(),
         }
     }
 
@@ -91,8 +99,10 @@ impl AppState {
         self.reset_node_manager().await?;
 
         // recreate the model state repository since the cli state has changed
-        let mut writer = self.model_state.write().await;
-        *writer = ModelState::default();
+        {
+            let mut writer = self.model_state.write().await;
+            *writer = ModelState::default();
+        }
         let identity_path = self
             .state()
             .await
@@ -100,8 +110,10 @@ impl AppState {
             .identities_repository_path()
             .unwrap();
         let new_state_repository = LmdbModelStateRepository::new(identity_path).await?;
-        let mut model_state_repository = self.model_state_repository.write().await;
-        *model_state_repository = Arc::new(new_state_repository);
+        {
+            let mut writer = self.model_state_repository.write().await;
+            *writer = Arc::new(new_state_repository);
+        }
 
         Ok(())
     }
@@ -162,7 +174,10 @@ impl AppState {
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
-        self.state().await.is_enrolled().map_err(|e| e.into())
+        self.state().await.is_enrolled().map_err(|e| {
+            warn!(%e, "Failed to check if user is enrolled");
+            e.into()
+        })
     }
 
     /// Return the list of currently running outlets
@@ -200,6 +215,19 @@ impl AppState {
     pub async fn model<T>(&self, f: impl FnOnce(&ModelState) -> T) -> T {
         let mut model_state = self.model_state.read().await;
         f(&mut model_state)
+    }
+}
+
+#[cfg(debug_assertions)]
+impl AppState {
+    pub fn browser_dev_tools(&self) -> bool {
+        self.browser_dev_tools
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn set_browser_dev_tools(&self, value: bool) {
+        self.browser_dev_tools
+            .store(value, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

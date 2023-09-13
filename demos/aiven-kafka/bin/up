@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+
+set -e
+
+mkdir -p volumes/producer
+mkdir -p volumes/consumer
+
+ockam project ticket > volumes/producer/ticket
+ockam project ticket > volumes/consumer/ticket
+docker compose up -d
+
+
+echo "In a new window tail the consumer logs to see the messages it receives:"
+echo "  docker compose logs -f consumer"
+echo ""
+echo "In another new window run the producer and start entering messages:"
+echo "  docker compose run producer /producer.sh"
+echo ""
+echo "Then open https://localhost:8080/topics/demo in your browser."
+echo "Notice how the consumer is able to read the messages you send from the"
+echo "producer, but in the browser you can see those messages are now encrypted"
+echo "within your topic."

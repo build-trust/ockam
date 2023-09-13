@@ -1,19 +1,22 @@
-use crate::node::get_node_name;
-use crate::output::Output;
-use crate::terminal::OckamColor;
-use crate::util::{node_rpc, parse_node_name, Rpc};
-use crate::{CommandGlobalOpts, Result};
+use std::fmt::Write;
+
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::policy::{Expression, PolicyList};
 use ockam_core::api::Request;
-use std::fmt::Write;
-use tokio::sync::Mutex;
-use tokio::try_join;
+
+use crate::node::get_node_name;
+use crate::output::Output;
+use crate::terminal::OckamColor;
+use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::{CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -51,7 +54,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", &node_name));
     }
 
-    let mut rpc = Rpc::background(ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_policies = async {

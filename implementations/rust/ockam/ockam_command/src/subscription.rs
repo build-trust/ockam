@@ -64,9 +64,7 @@ async fn run_impl(
             space_id,
         } => {
             let subscription_id = utils::subscription_id_from_cmd_args(
-                &ctx,
-                &opts,
-                rpc.node_name(),
+                &mut rpc,
                 controller_route,
                 subscription_id,
                 space_id,
@@ -87,36 +85,28 @@ pub mod utils {
 
     use ockam_multiaddr::MultiAddr;
 
-    use crate::util::RpcBuilder;
-
     use super::*;
 
-    pub async fn subscription_id_from_cmd_args(
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        api_node: &str,
+    pub async fn subscription_id_from_cmd_args<'a>(
+        rpc: &mut Rpc,
         controller_route: &MultiAddr,
         subscription_id: Option<String>,
         space_id: Option<String>,
     ) -> crate::Result<String> {
         match (subscription_id, space_id) {
             (_, Some(space_id)) => {
-                subscription_id_from_space_id(ctx, opts, api_node, controller_route, &space_id)
-                    .await
+                subscription_id_from_space_id(rpc, controller_route, &space_id).await
             }
             (Some(subscription_id), _) => Ok(subscription_id),
             _ => unreachable!(),
         }
     }
 
-    async fn subscription_id_from_space_id(
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        api_node: &str,
+    async fn subscription_id_from_space_id<'a>(
+        rpc: &mut Rpc,
         controller_route: &MultiAddr,
         space_id: &str,
     ) -> crate::Result<String> {
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
         let req = Request::get("subscription").body(CloudRequestWrapper::bare(controller_route));
         let subscriptions: Vec<Subscription> = rpc.ask(req).await?;
         let subscription = subscriptions

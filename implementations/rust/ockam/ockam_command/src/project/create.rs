@@ -5,11 +5,11 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc, RpcBuilder};
+use crate::util::{api, node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -54,8 +54,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-    let node_name = start_embedded_node(ctx, &opts, None).await?;
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     let project: Project = rpc
         .ask(api::project::create(
             &cmd.project_name,
@@ -64,8 +63,8 @@ async fn run_impl(
         ))
         .await?;
     let operation_id = project.operation_id.clone().unwrap();
-    check_for_completion(ctx, &opts, rpc.node_name(), &operation_id).await?;
-    let project = check_project_readiness(ctx, &opts, &node_name, None, project).await?;
+    check_for_completion(&opts, &rpc, &operation_id).await?;
+    let project = check_project_readiness(&opts, &rpc, project).await?;
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;

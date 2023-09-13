@@ -87,7 +87,7 @@ jobs:
         run: bash -ex ./tools/scripts/release/changelog.sh
 
       - name: Update Readme
-        run: cd implementations/rust && ../../gradlew update_readmes
+        run: make -f implementations/rust/Makefile update_readmes
 
       - name: Push Update
         run: |

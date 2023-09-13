@@ -1,13 +1,12 @@
 use clap::Args;
-use miette::IntoDiagnostic;
 
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::{get_node_name, NodeOpts};
-use crate::util::{api, node_rpc, RpcBuilder};
+use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -43,9 +42,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
-    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
     rpc.tell(api::add_consumer(cmd.flow_control_id, cmd.address))
         .await?;
 

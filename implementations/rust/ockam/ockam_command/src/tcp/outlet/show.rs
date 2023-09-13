@@ -1,16 +1,17 @@
+use clap::Args;
+use miette::miette;
+
+use ockam::{route, Context};
+use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::route_to_multiaddr;
+use ockam_core::api::{Request, RequestBuilder};
+
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
 use crate::util::{node_rpc, Rpc};
 use crate::Result;
 use crate::{docs, CommandGlobalOpts};
-use clap::Args;
-use miette::miette;
-use ockam::{route, Context};
-use ockam_api::address::extract_address_value;
-
-use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::route_to_multiaddr;
-use ockam_core::api::{Request, RequestBuilder};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -43,7 +44,7 @@ pub async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let outlet_status: OutletStatus = rpc.ask(make_api_request(cmd)?).await?;
 
     println!("Outlet:");

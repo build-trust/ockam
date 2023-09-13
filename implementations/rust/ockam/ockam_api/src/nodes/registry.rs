@@ -173,7 +173,7 @@ impl InletInfo {
 }
 
 #[derive(Clone)]
-pub(crate) struct OutletInfo {
+pub struct OutletInfo {
     pub(crate) socket_addr: SocketAddr,
     pub(crate) worker_addr: Address,
 }

@@ -1,14 +1,12 @@
 use clap::Args;
-
 use colorful::Colorful;
-use miette::IntoDiagnostic;
-use ockam::TcpTransport;
+
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, RpcBuilder};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, fmt_err, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
@@ -78,8 +76,7 @@ async fn run_impl(
     )?;
 
     // Print node status
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
 

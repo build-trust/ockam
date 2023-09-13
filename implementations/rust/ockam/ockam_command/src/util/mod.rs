@@ -1,4 +1,5 @@
 use core::time::Duration;
+use std::sync::Arc;
 use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
@@ -18,6 +19,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Reply, RequestBuilder, Response, Status};
+use ockam_core::AsyncTryClone;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{
@@ -25,7 +27,8 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
-use crate::node::util::start_embedded_node;
+use crate::node::util::{start_embedded_node, start_embedded_node_with_vault_and_identity};
+use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
@@ -35,78 +38,79 @@ pub mod orchestrator_api;
 pub mod parsers;
 
 #[derive(Clone)]
-pub enum RpcMode<'a> {
+pub enum RpcMode {
     Embedded,
-    Background { tcp: Option<&'a TcpTransport> },
+    Background(Arc<TcpTransport>),
 }
 
-pub struct RpcBuilder<'a> {
-    ctx: &'a Context,
-    opts: &'a CommandGlobalOpts,
-    node_name: String,
-    to: Route,
-    mode: RpcMode<'a>,
-}
-
-impl<'a> RpcBuilder<'a> {
-    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node_name: &str) -> Self {
-        RpcBuilder {
-            ctx,
-            opts,
-            node_name: node_name.to_string(),
-            to: NODEMANAGER_ADDR.into(),
-            mode: RpcMode::Embedded,
-        }
-    }
-
-    pub fn to(mut self, to: &MultiAddr) -> Result<Self> {
-        self.to = ockam_api::local_multiaddr_to_route(to)
-            .ok_or_else(|| miette!("failed to convert {} to route", to))?;
-        Ok(self)
-    }
-
-    /// When running multiple RPC's from a single command to a background node,
-    /// a single TcpTransport must be shared amongst them, as we can only have one
-    /// TcpTransport per Context.
-    pub fn tcp<T: Into<Option<&'a TcpTransport>>>(mut self, tcp: T) -> Result<Self> {
-        if let Some(tcp) = tcp.into() {
-            self.mode = RpcMode::Background { tcp: Some(tcp) };
-        }
-        Ok(self)
-    }
-
-    pub fn build(self) -> Rpc<'a> {
-        Rpc {
-            ctx: self.ctx,
-            buf: Vec::new(),
-            opts: self.opts,
-            node_name: self.node_name,
-            to: self.to,
-            timeout: None,
-            mode: self.mode,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct Rpc<'a> {
-    ctx: &'a Context,
+#[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
+pub struct Rpc {
+    ctx: Context,
     buf: Vec<u8>,
-    pub opts: &'a CommandGlobalOpts,
+    pub opts: CommandGlobalOpts,
     node_name: String,
     to: Route,
     pub timeout: Option<Duration>,
-    mode: RpcMode<'a>,
+    mode: RpcMode,
 }
 
-impl<'a> Rpc<'a> {
+impl Rpc {
     /// Creates a new RPC to send a request to an embedded node.
-    pub async fn embedded(ctx: &'a Context, opts: &'a CommandGlobalOpts) -> Result<Rpc<'a>> {
+    pub async fn embedded(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Rpc> {
         let node_name = start_embedded_node(ctx, opts, None).await?;
+        let ctx_clone = ctx.async_try_clone().await?;
         Ok(Rpc {
-            ctx,
+            ctx: ctx_clone,
             buf: Vec::new(),
-            opts,
+            opts: opts.clone(),
+            node_name,
+            to: NODEMANAGER_ADDR.into(),
+            timeout: None,
+            mode: RpcMode::Embedded,
+        })
+    }
+
+    /// Creates a new RPC to send a request to an embedded node.
+    pub async fn embedded_with_trust_options(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        trust_context_opts: &TrustContextOpts,
+    ) -> Result<Rpc> {
+        let node_name = start_embedded_node(ctx, opts, Some(trust_context_opts)).await?;
+        let ctx_clone = ctx.async_try_clone().await?;
+        Ok(Rpc {
+            ctx: ctx_clone,
+            buf: Vec::new(),
+            opts: opts.clone(),
+            node_name,
+            to: NODEMANAGER_ADDR.into(),
+            timeout: None,
+            mode: RpcMode::Embedded,
+        })
+    }
+
+    /// Creates a new RPC to send a request to an embedded node.
+    pub async fn embedded_with_vault_and_identity(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        identity: String,
+        trust_context_opts: &TrustContextOpts,
+    ) -> Result<Rpc> {
+        let node_name = start_embedded_node_with_vault_and_identity(
+            ctx,
+            &opts.state,
+            None,
+            Some(identity),
+            Some(trust_context_opts),
+        )
+        .await?;
+
+        let ctx_clone = ctx.async_try_clone().await?;
+        Ok(Rpc {
+            ctx: ctx_clone,
+            buf: Vec::new(),
+            opts: opts.clone(),
             node_name,
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
@@ -115,19 +119,21 @@ impl<'a> Rpc<'a> {
     }
 
     /// Creates a new RPC to send a request to a running background node.
-    pub fn background(
-        ctx: &'a Context,
-        opts: &'a CommandGlobalOpts,
+    pub async fn background(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
         node_name: &str,
-    ) -> Result<Rpc<'a>> {
+    ) -> Result<Rpc> {
+        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let ctx_clone = ctx.async_try_clone().await?;
         Ok(Rpc {
-            ctx,
+            ctx: ctx_clone,
             buf: Vec::new(),
-            opts,
+            opts: opts.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
-            mode: RpcMode::Background { tcp: None },
+            mode: RpcMode::Background(Arc::new(tcp)),
         })
     }
 
@@ -135,10 +141,21 @@ impl<'a> Rpc<'a> {
         &self.node_name
     }
 
+    pub fn set_node_name(&mut self, node_name: &str) -> &Self {
+        self.node_name = node_name.to_string();
+        self
+    }
+
     /// Use a timeout for making requests
     pub fn set_timeout(&mut self, timeout: Duration) -> &mut Self {
         self.timeout = Some(timeout);
         self
+    }
+
+    pub fn set_to(&mut self, to: &MultiAddr) -> Result<&Self> {
+        self.to = ockam_api::local_multiaddr_to_route(to)
+            .ok_or_else(|| miette!("failed to convert {} to route", to))?;
+        Ok(self)
     }
 
     /// Send a request
@@ -195,7 +212,7 @@ impl<'a> Rpc<'a> {
     where
         T: Encode<()>,
     {
-        let route = self.route_impl(self.ctx).await?;
+        let route = self.route_impl().await?;
         let options = self
             .timeout
             .map(|t| MessageSendReceiveOptions::new().with_timeout(t))
@@ -211,30 +228,19 @@ impl<'a> Rpc<'a> {
         Ok(())
     }
 
-    async fn route_impl(&self, ctx: &Context) -> Result<Route> {
+    async fn route_impl(&self) -> Result<Route> {
         let mut to = self.to.clone();
-        let route = match self.mode {
+        let route = match &self.mode {
             RpcMode::Embedded => to,
-            RpcMode::Background { ref tcp } => {
+            RpcMode::Background(tcp) => {
                 let node_state = self.opts.state.nodes.get(&self.node_name)?;
                 let port = node_state.config().setup().api_transport()?.addr.port();
                 let addr_str = format!("localhost:{port}");
-                let addr = match tcp {
-                    None => {
-                        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-                        tcp.connect(addr_str, TcpConnectionOptions::new())
-                            .await?
-                            .sender_address()
-                            .clone()
-                    }
-                    Some(tcp) => {
-                        // Create a new connection anyway
-                        tcp.connect(addr_str, TcpConnectionOptions::new())
-                            .await?
-                            .sender_address()
-                            .clone()
-                    }
-                };
+                let addr = tcp
+                    .connect(addr_str, TcpConnectionOptions::new())
+                    .await?
+                    .sender_address()
+                    .clone();
                 to.modify().prepend(addr);
                 to
             }

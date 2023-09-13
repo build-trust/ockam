@@ -17,7 +17,6 @@ use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
 use ockam_api::nodes::authority_node;
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
-
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -34,7 +33,7 @@ use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::TrustContextOpts;
-use crate::util::{api, parse_node_name, RpcBuilder};
+use crate::util::{api, parse_node_name, Rpc};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, identity, shutdown, CommandGlobalOpts, Result};
@@ -201,8 +200,7 @@ pub(crate) async fn background_mode(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-        let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+        let mut rpc = Rpc::background(&ctx, &opts, node_name).await?;
         spawn_background_node(&opts, cmd.clone()).await?;
         let is_node_up = is_node_up(&mut rpc, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;
@@ -353,7 +351,14 @@ async fn run_foreground_node(
 
     // Create a channel for communicating back to the main thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(2);
-    shutdown::wait(opts.terminal.clone(), cmd.exit_on_eof, false, tx, &mut rx).await?;
+    shutdown::wait(
+        opts.terminal.clone(),
+        cmd.exit_on_eof,
+        opts.global_args.quiet,
+        tx,
+        &mut rx,
+    )
+    .await?;
 
     // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
     if let Ok(state) = opts.state.nodes.get(&node_name) {

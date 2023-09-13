@@ -7,6 +7,9 @@ use tauri::{
 
 pub(crate) fn init() -> TauriPlugin<Wry> {
     Builder::new("shared_service")
-        .invoke_handler(tauri::generate_handler![tcp_outlet_create])
+        .invoke_handler(tauri::generate_handler![
+            tcp_outlet_create,
+            tcp_outlet_delete
+        ])
         .build()
 }

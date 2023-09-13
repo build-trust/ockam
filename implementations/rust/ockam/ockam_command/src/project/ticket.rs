@@ -18,10 +18,10 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::RpcClient;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::node_rpc;
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -88,8 +88,8 @@ impl Runner {
     }
 
     async fn run(self) -> miette::Result<()> {
-        let node_name =
-            start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
+        let mut rpc =
+            Rpc::embedded_with_trust_options(&self.ctx, &self.opts, &self.cmd.trust_opts).await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
@@ -114,9 +114,7 @@ impl Runner {
             };
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
             create_secure_channel_to_authority(
-                &self.ctx,
-                &self.opts,
-                &node_name,
+                &mut rpc,
                 tc.authority()
                     .into_diagnostic()?
                     .identity()
@@ -131,9 +129,7 @@ impl Runner {
         } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
             let sc_addr = create_secure_channel_to_authority(
-                &self.ctx,
-                &self.opts,
-                &node_name,
+                &mut rpc,
                 a.identity_id().clone(),
                 a.address(),
                 Some(identity),
@@ -202,7 +198,7 @@ impl Runner {
                 .into_diagnostic()?;
 
             let ticket = EnrollmentTicket::new(token, project, trust_context);
-            let ticket_serialized = hex::encode(serde_json::to_vec(&ticket).into_diagnostic()?);
+            let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
             self.opts
                 .terminal
                 .clone()
@@ -211,7 +207,7 @@ impl Runner {
                 .write_line()?;
         }
 
-        delete_embedded_node(&self.opts, &node_name).await;
+        delete_embedded_node(&self.opts, rpc.node_name()).await;
         Ok(())
     }
 }

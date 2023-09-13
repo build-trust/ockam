@@ -1,10 +1,10 @@
-use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc, RpcBuilder};
-use crate::CommandGlobalOpts;
-use crate::Result;
+use std::io::Write;
+use std::time::Duration;
+
 use clap::Args;
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use minicbor::{Decode, Decoder, Encode};
+
 use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
@@ -15,8 +15,11 @@ use ockam_core::api::{Request, Response, Status};
 use ockam_core::route;
 use ockam_identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
 use ockam_node::MessageSendReceiveOptions;
-use std::io::Write;
-use std::time::Duration;
+
+use crate::util::api::CloudOpts;
+use crate::util::{api, node_rpc, Rpc};
+use crate::CommandGlobalOpts;
+use crate::Result;
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
@@ -41,9 +44,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> m
 }
 
 async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> miette::Result<()> {
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let identities_details = get_identities_details(&opts, cmd.all)?;
-    let nodes_details = get_nodes_details(&ctx, &opts, &tcp).await?;
+    let nodes_details = get_nodes_details(&ctx, &opts).await?;
     let orchestrator_version =
         get_orchestrator_version(ctx, &opts, Duration::from_secs(cmd.timeout)).await;
     print_output(
@@ -55,23 +57,21 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> 
     Ok(())
 }
 
-async fn get_nodes_details(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
-) -> Result<Vec<NodeDetails>> {
+async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Vec<NodeDetails>> {
     let mut node_details: Vec<NodeDetails> = vec![];
 
     let node_states = opts.state.nodes.list()?;
     if node_states.is_empty() {
         return Ok(node_details);
     }
+    let mut rpc = Rpc::background(ctx, opts, "default").await?;
 
     for node_state in &node_states {
+        rpc.set_node_name(node_state.name());
         let node_infos = NodeDetails {
             identifier: node_state.config().identifier()?,
             state: node_state.clone(),
-            status: get_node_status(ctx, opts, node_state, tcp).await?,
+            status: get_node_status(&mut rpc).await?,
         };
         node_details.push(node_infos);
     }
@@ -79,15 +79,7 @@ async fn get_nodes_details(
     Ok(node_details)
 }
 
-async fn get_node_status(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    node_state: &NodeState,
-    tcp: &TcpTransport,
-) -> Result<String> {
-    let mut rpc = RpcBuilder::new(ctx, opts, node_state.name())
-        .tcp(tcp)?
-        .build();
+async fn get_node_status<'a>(rpc: &mut Rpc) -> Result<String> {
     let node_status_model: Result<NodeStatusModel> = rpc
         .set_timeout(Duration::from_millis(200))
         .ask(api::query_status())

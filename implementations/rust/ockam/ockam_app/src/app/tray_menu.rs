@@ -1,51 +1,45 @@
-use tauri::{AppHandle, Manager, State, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Wry};
+use tauri::menu::{Menu, MenuBuilder, MenuEvent};
+use tauri::{AppHandle, Runtime};
 use tracing::error;
 
+#[cfg(debug_assertions)]
+use crate::app::dev_tools;
 use crate::app::events::SystemTrayOnUpdatePayload;
-use crate::app::AppState;
 use crate::enroll::{build_enroll_section, build_user_info_section};
 use crate::invitations::{self, build_invitations_section};
 use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
+use crate::shared_service::relay::build_relay_section;
 use crate::{enroll, options, shared_service};
 
-pub async fn build_tray_menu(
-    app_handle: &AppHandle,
+pub async fn build_tray_menu<R: Runtime>(
+    app_handle: &AppHandle<R>,
     payload: Option<SystemTrayOnUpdatePayload>,
-) -> SystemTrayMenu {
-    let app_state: State<'_, AppState> = app_handle.state();
-    let mut tray_menu = SystemTrayMenu::new();
-    tray_menu = build_user_info_section(&app_state, tray_menu).await;
-    tray_menu = build_enroll_section(&app_state, tray_menu, &payload).await;
-    tray_menu = build_shared_services_section(&app_state, tray_menu).await;
-    tray_menu = build_invitations_section(app_handle, tray_menu).await;
-    tray_menu = tray_menu.add_native_item(SystemTrayMenuItem::Separator);
-    tray_menu = build_options_section(&app_state, tray_menu).await;
-    tray_menu
-}
+) -> Menu<R> {
+    let mut builder = MenuBuilder::new(app_handle);
 
-/// This is the function dispatching events for the SystemTray
-pub fn process_system_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
-    if let SystemTrayEvent::MenuItemClick { id, .. } = event {
-        let result = match id.as_str() {
-            enroll::ENROLL_MENU_ID => enroll::on_enroll(app),
-            shared_service::SHARED_SERVICE_CREATE_MENU_ID => shared_service::on_create(app),
-            #[cfg(debug_assertions)]
-            options::REFRESH_MENU_ID => options::on_refresh(app),
-            options::RESET_MENU_ID => options::on_reset(app),
-            options::QUIT_MENU_ID => options::on_quit(),
-            id => fallback_for_id(app, id),
-        };
-        if let Err(e) = result {
-            error!("{:?}", e)
-        }
+    builder = build_relay_section(app_handle, builder).await;
+    builder = build_enroll_section(app_handle, builder, payload.as_ref()).await;
+    builder = build_user_info_section(app_handle, builder).await;
+    builder = build_shared_services_section(app_handle, builder).await;
+    builder = build_invitations_section(app_handle, builder).await;
+    builder = build_options_section(app_handle, builder).await;
+    #[cfg(debug_assertions)]
+    {
+        builder = dev_tools::build_developer_tools_section(app_handle, builder).await;
     }
+
+    builder.build().expect("tray menu build failed")
 }
 
-fn fallback_for_id(app: &AppHandle<Wry>, s: &str) -> tauri::Result<()> {
-    if s.starts_with("invitation-") {
-        invitations::dispatch_click_event(app, s)
-    } else {
-        Ok(())
+/// This is the function dispatching events for the SystemTray Menu
+pub fn process_system_tray_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
+    let _ = enroll::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    let _ = shared_service::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    let _ = invitations::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    let _ = options::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
+    #[cfg(debug_assertions)]
+    {
+        let _ = dev_tools::process_tray_menu_event(app, &event).map_err(|e| error!("{:?}", e));
     }
 }

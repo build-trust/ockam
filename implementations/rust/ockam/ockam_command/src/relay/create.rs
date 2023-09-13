@@ -4,22 +4,22 @@ use clap::Args;
 use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
-use ockam::identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Project;
+use tokio::sync::Mutex;
+use tokio::try_join;
 
-use ockam::{Context, TcpTransport};
+use ockam::identity::IdentityIdentifier;
+use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
+use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, process_nodes_multiaddr, RpcBuilder};
+use crate::util::{node_rpc, process_nodes_multiaddr, Rpc};
 use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, Result};
 
@@ -76,7 +76,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     display_parse_logs(&opts);
 
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let to = get_node_name(&opts.state, &cmd.to);
     let api_node = extract_address_value(&to)?;
     let at_rust_node = is_local_node(&cmd.at).wrap_err("Argument --at is not valid")?;
@@ -88,7 +87,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         cmd.relay_name.clone()
     };
 
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &api_node).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(&ctx, &opts, &api_node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relay_info = async {

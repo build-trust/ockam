@@ -25,6 +25,5 @@ CMakeLists.txt linguist-vendored=true
 *.html linguist-vendored=true
 *.html.eex linguist-vendored=true
 *.py linguist-vendored=true
-*.gradle linguist-vendored=true
 *.js linguist-vendored=true
 tools/** linguist-vendored=true

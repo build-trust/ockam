@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace, warn};
 
 use ockam_api::address::controller_route;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
@@ -11,19 +11,18 @@ use super::State as ProjectState;
 use crate::app::AppState;
 use crate::cli::cli_bin;
 
-type SyncState = Arc<RwLock<ProjectState>>;
+// Store the user's admin projects
+pub type SyncAdminProjectsState = Arc<RwLock<ProjectState>>;
 
 // Matches backend default of 14 days
 const DEFAULT_ENROLLMENT_TICKET_EXPIRY: &str = "14d";
 
-// At time of writing, tauri::command requires pub not pub(crate)
-
-#[tauri::command]
-pub async fn create_enrollment_ticket<R: Runtime>(
+pub(crate) async fn create_enrollment_ticket<R: Runtime>(
     project_id: String,
     app: AppHandle<R>,
 ) -> Result<EnrollmentTicket> {
-    let projects = list_projects_with_admin(app).await?;
+    let state: State<'_, SyncAdminProjectsState> = app.state();
+    let projects = state.read().await;
     let project = projects
         .iter()
         .find(|p| p.id == project_id)
@@ -60,41 +59,30 @@ pub async fn create_enrollment_ticket<R: Runtime>(
     })
 }
 
-pub(crate) async fn list_projects_with_admin<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Vec<Project>> {
-    let app_state: State<'_, AppState> = app.state();
-    let user_email = app_state.user_email().await.unwrap_or_default();
-    let state: State<'_, SyncState> = app.state();
-    let reader = state.read().await;
-    Ok(reader
-        .iter()
-        .filter(|project| project.has_admin_with_email(&user_email))
-        .cloned()
-        .collect())
-}
-
-#[tauri::command]
-pub async fn list_projects<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Project>> {
-    let state: State<'_, SyncState> = app.state();
-    let reader = state.read().await;
-    debug!(projects = ?reader);
-    Ok((*reader).clone())
-}
-
-#[tauri::command]
-pub async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()> {
-    info!("refreshing projects");
+pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()> {
+    info!("Refreshing projects");
     let state: State<'_, AppState> = app.state();
     if !state.is_enrolled().await.unwrap_or(false) {
         return Ok(());
     }
+    let email = match state.user_email().await {
+        Ok(email) => email,
+        Err(_) => {
+            warn!("User info is not available");
+            return Ok(());
+        }
+    };
+
     let node_manager_worker = state.node_manager_worker().await;
     let projects = node_manager_worker
         .list_projects(&state.context(), &controller_route())
         .await
-        .map_err(Error::ListingFailed)?;
-    debug!(?projects);
+        .map_err(Error::ListingFailed)?
+        .into_iter()
+        .filter(|p| p.has_admin_with_email(&email))
+        .collect::<Vec<Project>>();
+    debug!("Projects fetched");
+    trace!(?projects);
 
     let cli_projects = state.state().await.projects;
     for project in &projects {
@@ -103,7 +91,7 @@ pub async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()> {
             .map_err(|_| Error::StateSaveFailed)?;
     }
 
-    let project_state: State<'_, SyncState> = app.state();
+    let project_state: State<'_, SyncAdminProjectsState> = app.state();
     let mut writer = project_state.write().await;
     *writer = projects;
 

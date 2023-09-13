@@ -1,19 +1,17 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::policy::{add_default_project_policy, has_policy};
-use crate::tcp::util::alias_parser;
-use crate::terminal::OckamColor;
-use crate::util::duration::duration_parser;
-use crate::util::parsers::socket_addr_parser;
-use crate::util::{
-    find_available_port, node_rpc, parse_node_name, port_is_free_guard, process_nodes_multiaddr,
-    RpcBuilder,
-};
-use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
+use std::thread::sleep;
+use std::time::Duration;
+
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use tokio::sync::Mutex;
+use tokio::try_join;
+use tracing::log::trace;
+
 use ockam::identity::IdentityIdentifier;
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
@@ -23,13 +21,18 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::str::FromStr;
-use std::thread::sleep;
-use std::time::Duration;
-use tokio::sync::Mutex;
-use tokio::try_join;
-use tracing::log::trace;
+
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::policy::{add_default_project_policy, has_policy};
+use crate::tcp::util::alias_parser;
+use crate::terminal::OckamColor;
+use crate::util::duration::duration_parser;
+use crate::util::parsers::socket_addr_parser;
+use crate::util::{
+    find_available_port, node_rpc, parse_node_name, port_is_free_guard, process_nodes_multiaddr,
+    Rpc,
+};
+use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -100,8 +103,7 @@ async fn rpc(
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node = parse_node_name(&node_name)?;
 
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
+    let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {

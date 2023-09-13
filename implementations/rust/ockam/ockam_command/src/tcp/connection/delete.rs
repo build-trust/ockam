@@ -1,12 +1,12 @@
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, Rpc};
-use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 use clap::Args;
-
 use colorful::Colorful;
 
 use ockam_api::nodes::models;
 use ockam_core::api::Request;
+
+use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::{node_rpc, Rpc};
+use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -42,7 +42,7 @@ async fn run_impl(
     )? {
         let address = cmd.address;
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(address.clone()));
         rpc.tell(req).await?;

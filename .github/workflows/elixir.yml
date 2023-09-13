@@ -17,10 +17,8 @@ on:
       - "**.rs"
       - "**.toml"
       - "**/Cargo.lock"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "**/Makefile"
+      - "tools/nix/**"
   push:
     paths:
       - ".github/workflows/elixir.yml"
@@ -33,10 +31,8 @@ on:
       - "**.rs"
       - "**.toml"
       - "**/Cargo.lock"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "**/Makefile"
+      - "tools/nix/**"
     branches:
       - develop
   schedule:

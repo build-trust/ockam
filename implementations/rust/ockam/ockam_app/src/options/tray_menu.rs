@@ -1,78 +1,80 @@
-#[cfg(debug_assertions)]
-use tauri::SystemTraySubmenu;
-use tauri::{AppHandle, CustomMenuItem, SystemTrayMenu, Wry};
-#[cfg(target_os = "macos")]
-use tauri_runtime::menu::NativeImage;
+use tauri::menu::{IconMenuItemBuilder, MenuBuilder, MenuEvent, NativeIcon};
+use tauri::{AppHandle, Icon, Manager, Runtime, State};
 use tracing::error;
 
 use crate::app::AppState;
 use crate::options::reset;
 
-#[cfg(debug_assertions)]
-pub const DEV_MENU_ID: &str = "developer";
-#[cfg(debug_assertions)]
-pub const REFRESH_MENU_ID: &str = "refresh";
-pub const RESET_MENU_ID: &str = "reset";
-pub const QUIT_MENU_ID: &str = "quit";
-pub const ERROR_MENU_ID: &str = "error";
+const DOCS_MENU_ID: &str = "options_docs";
+const RESET_MENU_ID: &str = "options_reset";
+const QUIT_MENU_ID: &str = "options_quit";
+const ERROR_MENU_ID: &str = "options_error";
 
-pub(crate) async fn build_options_section(
-    app_state: &AppState,
-    tray_menu: SystemTrayMenu,
-) -> SystemTrayMenu {
-    #[cfg(debug_assertions)]
-    let tray_menu = build_developer_submenu(app_state, tray_menu);
-    let tray_menu = tray_menu
-        .add_item(CustomMenuItem::new(RESET_MENU_ID, "Reset").accelerator("cmd+r"))
-        .add_item(CustomMenuItem::new(QUIT_MENU_ID, "Quit Ockam").accelerator("cmd+q"));
+pub(crate) async fn build_options_section<'a, R: Runtime, M: Manager<R>>(
+    app_handle: &AppHandle<R>,
+    mut builder: MenuBuilder<'a, R, M>,
+) -> MenuBuilder<'a, R, M> {
+    let app_state: State<AppState> = app_handle.state();
+
+    builder = builder.items(&[
+        &IconMenuItemBuilder::with_id(DOCS_MENU_ID, "Documentation")
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/file-earmark-text.png").to_vec(),
+            ))
+            .accelerator("cmd+/")
+            .build(app_handle),
+        &IconMenuItemBuilder::with_id(RESET_MENU_ID, "Reset")
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/arrow-repeat.png").to_vec(),
+            ))
+            .accelerator("cmd+r")
+            .build(app_handle),
+        &IconMenuItemBuilder::with_id(QUIT_MENU_ID, "Quit Ockam")
+            .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
+            .accelerator("cmd+q")
+            .build(app_handle),
+    ]);
 
     match app_state.is_enrolled().await {
-        Ok(_) => tray_menu,
+        Ok(_) => {}
         Err(e) => {
             error!("{}", e);
-            let error_item = CustomMenuItem::new(
-                ERROR_MENU_ID,
-                "The application state is corrupted, please re-enroll, reset or quit the application",
-            ).disabled();
-            #[cfg(target_os = "macos")]
-            let error_item = error_item.native_image(NativeImage::Caution);
-            tray_menu.add_item(error_item)
+            builder = builder.item(
+                &IconMenuItemBuilder::with_id(
+                    ERROR_MENU_ID,
+                    "The application state is corrupted, please re-enroll, reset or quit the application",
+                )
+                    .native_icon(NativeIcon::Caution).build(app_handle)
+            )
         }
+    }
+
+    builder
+}
+
+pub fn process_tray_menu_event<R: Runtime>(
+    app: &AppHandle<R>,
+    event: &MenuEvent,
+) -> tauri::Result<()> {
+    match event.id.as_ref() {
+        DOCS_MENU_ID => on_docs(),
+        RESET_MENU_ID => on_reset(app),
+        QUIT_MENU_ID => on_quit(),
+        _ => Ok(()),
     }
 }
 
-#[cfg(debug_assertions)]
-fn build_developer_submenu(app_state: &AppState, tray_menu: SystemTrayMenu) -> SystemTrayMenu {
-    let submenu = SystemTrayMenu::new()
-        .add_item(CustomMenuItem::new(REFRESH_MENU_ID, "Refresh Data"))
-        .add_item(
-            CustomMenuItem::new(
-                DEV_MENU_ID,
-                format!("Controller Address: {}", app_state.controller_address()),
-            )
-            .disabled(),
-        )
-        .add_item(
-            CustomMenuItem::new(DEV_MENU_ID, "Last Successful Poll: Not Implemented").disabled(),
-        )
-        .add_item(CustomMenuItem::new(DEV_MENU_ID, "Last Failed Poll: Not Implemented").disabled());
-
-    tray_menu.add_submenu(SystemTraySubmenu::new("Developer Tools", submenu))
-}
-
-#[cfg(debug_assertions)]
-pub fn on_refresh(app: &AppHandle<Wry>) -> tauri::Result<()> {
-    use tauri::Manager;
-    app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
-    app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    use crate::app::events::system_tray_on_update;
-    system_tray_on_update(app);
+/// Event listener for the "Documentation" menu item
+/// Open the documentation in the browser
+fn on_docs() -> tauri::Result<()> {
+    let _ = open::that("https://docs.ockam.io/")
+        .map_err(|e| error!(%e, "Failed to open the documentation in the browser"));
     Ok(())
 }
 
 /// Event listener for the "Reset" menu item
 /// Reset the persistent state
-pub fn on_reset(app: &AppHandle<Wry>) -> tauri::Result<()> {
+fn on_reset<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         reset(&app)
@@ -84,6 +86,6 @@ pub fn on_reset(app: &AppHandle<Wry>) -> tauri::Result<()> {
 
 /// Event listener for the "Quit" menu item
 /// Quit the application when the user wants to
-pub fn on_quit() -> tauri::Result<()> {
+fn on_quit() -> tauri::Result<()> {
     std::process::exit(0);
 }

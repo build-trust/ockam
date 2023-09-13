@@ -4,10 +4,10 @@ use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
+use crate::node::util::delete_embedded_node;
 
 use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, RpcBuilder};
+use crate::util::{node_rpc, Rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -56,8 +56,7 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this space?")?
     {
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
-        let node_name = start_embedded_node(ctx, &opts, None).await?;
-        let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
+        let mut rpc = Rpc::embedded(ctx, &opts).await?;
         rpc.tell(api::space::delete(&space_id, &CloudOpts::route()))
             .await?;
 
