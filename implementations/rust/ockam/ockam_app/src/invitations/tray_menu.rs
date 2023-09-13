@@ -86,13 +86,6 @@ pub(crate) fn pending_invitation_menu<R: Runtime>(
             &MenuItemBuilder::with_id(id.clone(), &invitation.recipient_email)
                 .enabled(false)
                 .build(app_handle),
-            // TODO: not supported yet
-            // &MenuItemBuilder::with_id(
-            //     format!("invitation-sent-cancel-{}", invitation.id),
-            //     "Cancel",
-            // )
-            // .enabled(false)
-            // .build(app_handle),
         ])
         .build()
         .expect("cannot build single invitation submenu")
@@ -142,13 +135,6 @@ fn received_invite_menu<R: Runtime>(
                 include_bytes!("../../icons/check-lg.png").to_vec(),
             ))
             .build(app_handle),
-            // TODO: not supported yet
-            // &IconMenuItemBuilder::with_id(
-            //     format!("invitation-received_decline_{}", invitation.id),
-            //     "Decline invite",
-            // )
-            // .icon(Icon::Raw(include_bytes!("../../icons/x-lg.png").to_vec()))
-            // .build(app_handle),
         ])
         .build()
         .expect("cannot build received invitation submenu")
@@ -228,15 +214,6 @@ fn accepted_invite_menu<R: Runtime>(
                 .build(app_handle),
         ),
     };
-    // TODO: not supported yet
-    // submenu_builder.item(
-    //     &MenuItemBuilder::with_id(
-    //         format!("invitation-accepted–leave-{invitation_id}"),
-    //         "Leave",
-    //     )
-    //     .enabled(false)
-    //     .build(app_handle),
-    // );
     submenu_builder
         .build()
         .expect("cannot build accepted invitation submenu")
