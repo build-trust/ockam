@@ -123,7 +123,7 @@ impl Subscriptions for SecureClient {
         let req_body = ActivateSubscription::existing(space_id, subscription_data);
         trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
         let req = Request::post("/v0/activate").body(req_body);
-        self.ask_controller(ctx, API_SERVICE, req).await
+        self.ask(ctx, API_SERVICE, req).await
     }
 
     async fn unsubscribe(
@@ -133,7 +133,7 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
         let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-        self.ask_controller(ctx, API_SERVICE, req).await
+        self.ask(ctx, API_SERVICE, req).await
     }
 
     async fn update_subscription_contact_info(
@@ -144,7 +144,7 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
         let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
-        self.ask_controller(ctx, API_SERVICE, req).await
+        self.ask(ctx, API_SERVICE, req).await
     }
 
     async fn update_subscription_space(
@@ -155,13 +155,13 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
         let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
-        self.ask_controller(ctx, API_SERVICE, req).await
+        self.ask(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<Subscription>>> {
         trace!(target: TARGET, "listing subscriptions");
         let req = Request::get("/v0/");
-        self.ask_controller(ctx, API_SERVICE, req).await
+        self.ask(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscription(
@@ -171,7 +171,7 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
         let req = Request::get(format!("/v0/{subscription_id}"));
-        self.ask_controller(ctx, API_SERVICE, req).await
+        self.ask(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscription_by_space_id(

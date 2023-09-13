@@ -23,71 +23,85 @@ impl SecureClient {
         server_route: Route,
         server_identifier: IdentityIdentifier,
         client_identifier: IdentityIdentifier,
+        timeout: Duration,
     ) -> SecureClient {
         Self {
             secure_channels,
             server_route,
             server_identifier,
             client_identifier,
+            timeout
         }
     }
 }
 
 impl SecureClient {
-    pub async fn request_controller<T>(
-        &self,
-        ctx: &Context,
-        api_service: &str,
-        req: Request<T>,
-    ) -> Result<Vec<u8>>
-    where
-        T: Encode<()>,
-    {
-        self.request_controller_with_timeout(
-            ctx,
-            api_service,
-            req,
-            Duration::from_secs(DEFAULT_TIMEOUT),
-        )
-        .await
-    }
-
-    pub async fn ask_controller<T, R>(
+    pub async fn ask<T, R>(
         &self,
         ctx: &Context,
         api_service: &str,
         req: Request<T>,
     ) -> Result<Reply<R>>
-    where
-        T: Encode<()>,
-        R: for<'a> Decode<'a, ()>,
+        where
+            T: Encode<()>,
+            R: for<'a> Decode<'a, ()>,
     {
         let bytes = self
-            .request_controller_with_timeout(
+            .request_with_timeout(
                 ctx,
                 api_service,
                 req,
-                Duration::from_secs(DEFAULT_TIMEOUT),
+                self.timeout,
             )
             .await?;
         Response::parse_response_reply::<R>(&bytes)
     }
 
-    pub(crate) async fn request_controller_with_timeout<T>(
+    pub async fn tell<T>(
         &self,
         ctx: &Context,
         api_service: &str,
         req: Request<T>,
-        timeout: Duration,
+    ) -> Result<Reply<()>>
+        where
+            T: Encode<()>,
+    {
+        let request_header = req.header().clone();
+        let bytes = self
+            .request_with_timeout(
+                ctx,
+                api_service,
+                req,
+                self.timeout,
+            )
+            .await?;
+        let (response, decoder) = Response::parse_response_header(bytes.as_slice())?;
+        if !response.is_ok() {
+            Ok(Reply::Failed(Error::from_failed_request(&request_header, &response.parse_err_msg(decoder)), response.status()))
+        } else {
+            Ok(Successful(()))
+        }
+    }
+
+    pub async fn request<T>(
+        &self,
+        ctx: &Context,
+        api_service: &str,
+        req: Request<T>,
     ) -> Result<Vec<u8>>
     where
         T: Encode<()>,
     {
-        self.request_node(ctx, api_service, req, timeout).await
+        self.request_with_timeout(
+            ctx,
+            api_service,
+            req,
+            self.timeout,
+        )
+        .await
     }
 
-    /// Send a request to a node referenced via its multiaddr
-    pub(crate) async fn request_node<T>(
+    pub async fn request_with_timeout<T>(
         &self,
         ctx: &Context,
         api_service: &str,
