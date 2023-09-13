@@ -31,7 +31,10 @@ mod node {
         ) -> Result<Vec<u8>> {
             trace!(?invitation_id, "showing invitation");
             let req = Request::get(format!("/v0/invites/{invitation_id}"));
-            self.make_controller_client().await?.request(ctx, API_SERVICE, req).await
+            self.make_controller_client()
+                .await?
+                .request(ctx, API_SERVICE, req)
+                .await
         }
     }
 

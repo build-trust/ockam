@@ -84,6 +84,25 @@ impl NodeManager {
         Ok(sc)
     }
 
+    pub async fn create_secure_channel_to(
+        &mut self,
+        ctx: &Context,
+        route: Route,
+        to: IdentityIdentifier,
+        from: Option<String>,
+    ) -> Result<SecureChannel> {
+        self.create_secure_channel_impl(
+            route,
+            Some(vec![to]),
+            CredentialExchangeMode::Oneway,
+            None,
+            from,
+            ctx,
+            None,
+        )
+        .await
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_secure_channel_impl(
         &mut self,

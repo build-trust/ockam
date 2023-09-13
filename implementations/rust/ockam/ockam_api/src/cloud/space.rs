@@ -55,7 +55,10 @@ mod node {
             let req_body = req_wrapper.req;
             trace!(target: TARGET, space = %req_body.name, "creating space");
             let req = Request::post("/v0/").body(req_body);
-            self.make_controller_client().await?.request(ctx, "spaces", req).await
+            self.make_controller_client()
+                .await?
+                .request(ctx, "spaces", req)
+                .await
         }
 
         pub async fn list_spaces(&self, ctx: &Context) -> Result<Vec<Space>> {
@@ -66,7 +69,10 @@ mod node {
             trace!(target: TARGET, "listing spaces");
             let req = Request::get("/v0/");
 
-            self.make_controller_client().await?.request(ctx, "spaces", req).await
+            self.make_controller_client()
+                .await?
+                .request(ctx, "spaces", req)
+                .await
         }
 
         pub async fn get_space(&self, ctx: &Context, id: &str) -> Result<Space> {
@@ -76,7 +82,10 @@ mod node {
         pub(crate) async fn get_space_response(&self, ctx: &Context, id: &str) -> Result<Vec<u8>> {
             trace!(target: TARGET, space = %id, space = %id, "getting space");
             let req = Request::get(format!("/v0/{id}"));
-            self.make_controller_client().await?.request(ctx, "spaces", req).await
+            self.make_controller_client()
+                .await?
+                .request(ctx, "spaces", req)
+                .await
         }
     }
 

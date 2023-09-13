@@ -9,7 +9,7 @@ use ockam::AsyncTryClone;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
-use ockam_api::config::lookup::{LookupMeta, ProjectAuthority};
+use ockam_api::config::lookup::LookupMeta;
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_core::api::Request;
@@ -112,7 +112,7 @@ pub async fn create_secure_channel_to_project<'a>(
     Ok(sc.multiaddr()?)
 }
 
-pub async fn create_secure_channel_to_authority<'a>(
+pub async fn create_secure_channel_to_authority(
     rpc: &mut Rpc,
     authority: Identifier,
     addr: &MultiAddr,
@@ -233,12 +233,10 @@ pub async fn check_project_readiness<'a>(
             spinner.set_message("Establishing secure channel to project authority...");
         }
 
-        let authority = ProjectAuthority::from_raw(
-            &project.authority_access_route,
-            &project.authority_identity,
-        )
-        .await?
-        .ok_or(miette!("Project does not have an authority defined."))?;
+        let authority = project
+            .authority()
+            .await?
+            .ok_or(miette!("Project does not have an authority defined."))?;
 
         Retry::spawn(retry_strategy.clone(), || async {
             let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;

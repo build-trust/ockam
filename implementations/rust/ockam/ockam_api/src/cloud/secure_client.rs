@@ -3,11 +3,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
-use ockam_core::api::{Reply, Request, Response};
+use ockam_core::api::Reply::Successful;
+use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::{self, route, Result, Route};
 use ockam_identity::SecureChannels;
 use ockam_node::api::request_with_options;
-use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
+use ockam_node::{Context, MessageSendReceiveOptions};
 
 #[derive(Clone)]
 pub struct SecureClient {
@@ -15,6 +16,7 @@ pub struct SecureClient {
     server_route: Route,
     server_identifier: IdentityIdentifier,
     client_identifier: IdentityIdentifier,
+    timeout: Duration,
 }
 
 impl SecureClient {
@@ -30,7 +32,7 @@ impl SecureClient {
             server_route,
             server_identifier,
             client_identifier,
-            timeout
+            timeout,
         }
     }
 }
@@ -42,17 +44,12 @@ impl SecureClient {
         api_service: &str,
         req: Request<T>,
     ) -> Result<Reply<R>>
-        where
-            T: Encode<()>,
-            R: for<'a> Decode<'a, ()>,
+    where
+        T: Encode<()>,
+        R: for<'a> Decode<'a, ()>,
     {
         let bytes = self
-            .request_with_timeout(
-                ctx,
-                api_service,
-                req,
-                self.timeout,
-            )
+            .request_with_timeout(ctx, api_service, req, self.timeout)
             .await?;
         Response::parse_response_reply::<R>(&bytes)
     }
@@ -63,21 +60,19 @@ impl SecureClient {
         api_service: &str,
         req: Request<T>,
     ) -> Result<Reply<()>>
-        where
-            T: Encode<()>,
+    where
+        T: Encode<()>,
     {
         let request_header = req.header().clone();
         let bytes = self
-            .request_with_timeout(
-                ctx,
-                api_service,
-                req,
-                self.timeout,
-            )
+            .request_with_timeout(ctx, api_service, req, self.timeout)
             .await?;
         let (response, decoder) = Response::parse_response_header(bytes.as_slice())?;
         if !response.is_ok() {
-            Ok(Reply::Failed(Error::from_failed_request(&request_header, &response.parse_err_msg(decoder)), response.status()))
+            Ok(Reply::Failed(
+                Error::from_failed_request(&request_header, &response.parse_err_msg(decoder)),
+                response.status(),
+            ))
         } else {
             Ok(Successful(()))
         }
@@ -92,13 +87,8 @@ impl SecureClient {
     where
         T: Encode<()>,
     {
-        self.request_with_timeout(
-            ctx,
-            api_service,
-            req,
-            self.timeout,
-        )
-        .await
+        self.request_with_timeout(ctx, api_service, req, self.timeout)
+            .await
     }
 
     pub async fn request_with_timeout<T>(

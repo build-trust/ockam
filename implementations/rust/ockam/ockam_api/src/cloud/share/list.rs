@@ -62,7 +62,10 @@ mod node {
             let req_body = req_wrapper.req;
             debug!(req = ?req_body, "Sending request to list shares");
             let req = Request::get("/v0/invites").body(req_body);
-            self.make_controller_client().await?.request(ctx, API_SERVICE, req).await
+            self.make_controller_client()
+                .await?
+                .request(ctx, API_SERVICE, req)
+                .await
         }
     }
 

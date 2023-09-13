@@ -142,7 +142,10 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
     let node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let controller_client = node_manager.make_controller_client().await.into_diagnostic()?;
+    let controller_client = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,
@@ -169,8 +172,13 @@ async fn run_impl(
             subscription_id,
             space_id,
         } => {
-            match get_subscription_by_id_or_space_id(&controller_client, &ctx, subscription_id, space_id)
-                .await?
+            match get_subscription_by_id_or_space_id(
+                &controller_client,
+                &ctx,
+                subscription_id,
+                space_id,
+            )
+            .await?
             {
                 Some(subscription) => {
                     let response = controller_client
