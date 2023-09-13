@@ -1,11 +1,13 @@
 use minicbor::{Decode, Encode};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
 use ockam_identity::{Identifier, SecureChannels};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::DEFAULT_TIMEOUT;
 use ockam_transport_tcp::TcpTransport;
 
 use crate::cloud::secure_client::SecureClient;
@@ -48,7 +50,7 @@ impl SecureClient {
         secure_channels: Arc<SecureChannels>,
         caller_identifier: Identifier,
     ) -> Result<SecureClient> {
-        let controller_route = Self::controller_route(&tcp_transport).await?;
+        let controller_route = Self::controller_route(tcp_transport).await?;
         let controller_identifier = Self::load_controller_identifier()?;
 
         Ok(SecureClient::new(
@@ -56,6 +58,25 @@ impl SecureClient {
             controller_route,
             controller_identifier,
             caller_identifier,
+            Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
+        ))
+    }
+
+    pub async fn authority(
+        tcp_transport: &TcpTransport,
+        secure_channels: Arc<SecureChannels>,
+        authority_identifier: IdentityIdentifier,
+        authority_multiaddr: MultiAddr,
+        caller_identifier: IdentityIdentifier,
+    ) -> Result<SecureClient> {
+        let authority_route = Self::authority_route(tcp_transport, authority_multiaddr).await?;
+
+        Ok(SecureClient::new(
+            secure_channels,
+            authority_route,
+            authority_identifier,
+            caller_identifier,
+            Duration::from_secs(DEFAULT_TIMEOUT),
         ))
     }
 
@@ -78,7 +99,7 @@ impl SecureClient {
 
     async fn controller_route(tcp_transport: &TcpTransport) -> Result<Route> {
         let controller_multiaddr = Self::controller_multiaddr();
-        Ok(multiaddr_to_route(&controller_multiaddr, &tcp_transport)
+        Ok(multiaddr_to_route(&controller_multiaddr, tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
@@ -87,4 +108,17 @@ impl SecureClient {
             })?.route)
     }
 
+    async fn authority_route(
+        tcp_transport: &TcpTransport,
+        authority_multiaddr: MultiAddr,
+    ) -> Result<Route> {
+        Ok(multiaddr_to_route(&authority_multiaddr, tcp_transport)
+            .await
+            .ok_or_else(|| {
+                ApiError::core(format!(
+                    "Couldn't convert MultiAddr to route: authority_multiaddr={authority_multiaddr}"
+                ))
+            })?
+            .route)
+    }
 }

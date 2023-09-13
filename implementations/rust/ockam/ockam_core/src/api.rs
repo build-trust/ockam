@@ -322,6 +322,14 @@ impl Error {
         }
     }
 
+    pub fn from_failed_request(req: &RequestHeader, message: &str) -> Error {
+        let mut e = Error::new(req.path()).with_message(message);
+        if let Some(m) = req.method() {
+            e = e.with_method(m)
+        };
+        e
+    }
+
     pub fn with_method(mut self, m: Method) -> Self {
         self.method = Some(m);
         self
@@ -552,11 +560,8 @@ impl Response {
         }
     }
 
-    fn error(r: &RequestHeader, msg: &str, status: Status) -> Response<Error> {
-        let mut e = Error::new(r.path()).with_message(msg);
-        if let Some(m) = r.method() {
-            e = e.with_method(m)
-        }
+    pub fn error(r: &RequestHeader, msg: &str, status: Status) -> Response<Error> {
+        let e = Error::from_failed_request(r, msg);
         Response::builder(r.id(), status).body(e)
     }
 

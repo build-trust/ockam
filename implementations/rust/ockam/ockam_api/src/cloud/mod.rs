@@ -6,7 +6,7 @@ pub mod enroll;
 pub mod lease_manager;
 pub mod operation;
 pub mod project;
+pub mod secure_client;
 pub mod share;
 pub mod space;
 pub mod subscription;
-pub mod secure_client;
