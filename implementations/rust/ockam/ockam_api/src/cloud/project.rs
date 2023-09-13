@@ -281,8 +281,7 @@ mod node {
             let req_body = req_wrapper.req;
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
             let req = Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
-
-            self.request_controller(ctx, "projects", req).await
+            self.make_controller_client().await?.request_controller(ctx, "projects", req).await
         }
 
         pub async fn list_projects(&self, ctx: &Context) -> Result<Vec<Project>> {
@@ -293,8 +292,7 @@ mod node {
         pub(crate) async fn list_projects_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "listing projects");
             let req = Request::get("/v0");
-
-            self.request_controller(ctx, "projects", req).await
+            self.make_controller_client().await?.request_controller(ctx, "projects", req).await
         }
 
         pub async fn get_project(&self, ctx: &Context, project_id: &str) -> Result<Project> {
@@ -346,8 +344,7 @@ mod node {
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, %project_id, "getting project");
             let req = Request::get(format!("/v0/{project_id}"));
-
-            self.request_controller(ctx, "projects", req).await
+            self.make_controller_client().await?.request_controller(ctx, "projects", req).await
         }
 
         pub async fn get_project_version(&self, ctx: &Context) -> Result<ProjectVersion> {
@@ -357,8 +354,7 @@ mod node {
         pub(crate) async fn get_project_version_response(&self, ctx: &Context) -> Result<Vec<u8>> {
             trace!(target: TARGET, "getting project version");
             let req = Request::get("");
-
-            self.request_controller(ctx, "version_info", req).await
+            self.make_controller_client().await?.request_controller(ctx, "version_info", req).await
         }
 
         pub async fn delete_project(
@@ -381,8 +377,7 @@ mod node {
         ) -> Result<Vec<u8>> {
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
             let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
-
-            self.request_controller(ctx, "projects", req).await
+            self.make_controller_client().await?.request_controller(ctx, "projects", req).await
         }
     }
 `

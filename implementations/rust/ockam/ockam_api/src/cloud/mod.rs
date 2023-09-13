@@ -9,3 +9,4 @@ pub mod project;
 pub mod share;
 pub mod space;
 pub mod subscription;
+pub mod secure_client;

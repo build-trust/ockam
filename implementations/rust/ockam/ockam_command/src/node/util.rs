@@ -48,7 +48,7 @@ pub async fn start_node_manager_worker_with_vault_and_identity(
         start_node_manager_with_vault_and_identity(ctx, cli_state, vault, identity, trust_opts)
             .await?;
     let node_name = node_manager.node_name();
-    let node_manager_worker = NodeManagerWorker::new(node_manager);
+    let node_manager_worker = NodeManagerWorker::new(node_manager).await?;
     let _ = ctx
         .start_worker(NODEMANAGER_ADDR, node_manager_worker.clone())
         .await
