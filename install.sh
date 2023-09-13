@@ -85,7 +85,7 @@ heading() {
     # shellcheck disable=SC2059
     printf "${_orange}   $1${_no_color}\n"
   else
-    echo "${_orange}   $1${_no_color}"
+    echo "   $1"
   fi
 }
 
