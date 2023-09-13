@@ -11,14 +11,16 @@ use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
+use ockam_api::cloud::secure_client::SecureClient;
 use ockam_api::cloud::space::Space;
+use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
-use ockam_core::api::Status;
+use ockam_core::api::{Reply, Status};
 use ockam_identity::Identifier;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
@@ -80,8 +82,13 @@ async fn run_impl(
         .overwrite(&user_info.email, user_info.clone())?;
 
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let node_manager = start_node_manager(ctx, &opts, None).await?;
+    let controller_client = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
-    enroll_with_node(&mut rpc, token)
+    enroll_with_node(controller_client, ctx, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -132,27 +139,29 @@ pub async fn retrieve_user_project<'a>(
 
 /// Enroll a user with a token, using a specific node to contact the controller
 pub async fn enroll_with_node(
-    rpc: &mut Rpc,
+    controller_client: SecureClient,
+    ctx: &Context,
     token: OidcToken,
 ) -> miette::Result<()> {
-    let status = rpc
-        .tell_and_get_status(api::enroll::auth0(token))
-        .await?;
-    match status {
-        Some(Status::Ok) => {
+    let reply = controller_client
+        .enroll_with_oidc_token(ctx, token)
+        .await
+        .into_diagnostic()?;
+    match reply {
+        Reply::Successful(_) => {
             info!("Enrolled successfully");
             Ok(())
         }
-        Some(Status::BadRequest) => {
+        Reply::Failed(_, Some(Status::BadRequest)) => {
             info!("Already enrolled");
             Ok(())
         }
-        Some(s) => {
-            warn!("Unexpected status {s}");
+        Reply::Failed(e, Some(s)) => {
+            warn!("Unexpected status {s}. The error is: {e}");
             Ok(())
         }
-        None => {
-            warn!("A status was expected in the response to an enrollment request, got none");
+        Reply::Failed(e, _) => {
+            warn!("A status was expected in the response to an enrollment request, got none. The error is: {e}");
             Ok(())
         }
     }

@@ -233,11 +233,7 @@ impl ProjectLookup {
             .identity
             .as_ref()
             .ok_or_else(|| ApiError::message("Project should have identity set"))?;
-        let authority = ProjectAuthority::from_raw(
-            &project.authority_access_route,
-            &project.authority_identity,
-        )
-        .await?;
+        let authority = project.authority().await?;
         let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
             tenant_base_url: o.tenant_base_url.clone(),
             client_id: o.client_id.to_string(),
@@ -280,6 +276,10 @@ impl ProjectAuthority {
             address: addr,
             identity: identity.into(),
         }
+    }
+
+    pub async fn from_project(project: &Project) -> ockam_core::Result<Option<Self>, ApiError> {
+        Self::from_raw(&project.authority_access_route, &project.authority_identity).await
     }
 
     pub async fn from_raw<S: ToString>(

@@ -26,50 +26,13 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
-    use crate::nodes::{NodeManager, NodeManagerWorker};
+    use crate::nodes::NodeManagerWorker;
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
-    impl NodeManager {
-        /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-        pub async fn enroll_auth0(&self, ctx: &Context, token: OidcToken) -> Result<()> {
-            let request = CloudRequestWrapper::new(AuthenticateOidcToken::new(token));
-            self.enroll_auth0_response(ctx, request).await?;
-            Ok(())
-        }
-
-        /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-        pub(crate) async fn enroll_auth0_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: CloudRequestWrapper<AuthenticateOidcToken>,
-        ) -> Result<Vec<u8>> {
-            let req = Request::post("v0/enroll").body(req_wrapper.req);
-            trace!(target: TARGET, "executing auth0 flow");
-            self.make_authority_client().await?.request_controller_with_timeout(
-                ctx,
-                "auth0_authenticator",
-                req,
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-            )
-            .await
-        }
-    }
-
     impl NodeManagerWorker {
-        /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-        pub async fn enroll_auth0_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: CloudRequestWrapper<AuthenticateOidcToken>,
-        ) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.enroll_auth0_response(ctx, req_wrapper).await
-        }
-
         /// Generates a token that will be associated to the passed attributes.
         pub(crate) async fn generate_enrollment_token(
             &mut self,
@@ -92,13 +55,14 @@ mod node {
             let req = Request::post("v0/enroll").body(req_wrapper.req);
             trace!(target: TARGET, "authenticating token");
 
-            self.controller_client.request_with_timeout(
-                ctx,
-                "enrollment_token_authenticator",
-                req,
-                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-            )
-            .await
+            self.controller_client
+                .request_with_timeout(
+                    ctx,
+                    "enrollment_token_authenticator",
+                    req,
+                    Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
+                )
+                .await
         }
     }
 }

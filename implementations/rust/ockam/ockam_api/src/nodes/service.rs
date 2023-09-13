@@ -133,6 +133,10 @@ impl NodeManager {
         self.secure_channels.identities().vault()
     }
 
+    pub fn tcp_transport(&self) -> &TcpTransport {
+        &self.tcp_transport
+    }
+
     pub(super) fn list_outlets(&self) -> OutletList {
         let outlets = self.registry.outlets.clone();
         OutletList::new(
@@ -148,28 +152,35 @@ impl NodeManager {
 
 impl NodeManager {
     pub async fn make_controller_client(&self) -> Result<SecureClient> {
-        Ok(SecureClient::controller(
+        SecureClient::controller(
             &self.tcp_transport,
             self.secure_channels.clone(),
             self.get_identifier(None).await?,
         )
-            .await?)
+        .await
     }
 
-    pub async fn make_authority_client(&self) -> Result<SecureClient> {
-        Ok(SecureClient::controller(
+    pub async fn make_authority_client(
+        &self,
+        authority_identifier: IdentityIdentifier,
+        authority_multiaddr: MultiAddr,
+        caller_identifier: IdentityIdentifier,
+    ) -> Result<SecureClient> {
+        SecureClient::authority(
             &self.tcp_transport,
             self.secure_channels.clone(),
-            self.get_identifier(None).await?,
+            authority_identifier,
+            authority_multiaddr,
+            caller_identifier,
         )
-            .await?)
+        .await
     }
 }
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
     node_manager: Arc<RwLock<NodeManager>>,
-    pub(crate) controller_client: SecureClient,
+    pub controller_client: SecureClient,
 }
 
 impl NodeManagerWorker {
@@ -779,9 +790,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Enroll ==*==
-            (Post, ["v0", "enroll", "auth0"]) => {
-                self.enroll_auth0_response(ctx, dec.decode()?).await?
-            }
             (Get, ["v0", "enroll", "token"]) => self.generate_enrollment_token(ctx, dec).await?,
             (Put, ["v0", "enroll", "token"]) => {
                 self.authenticate_enrollment_token(ctx, dec).await?

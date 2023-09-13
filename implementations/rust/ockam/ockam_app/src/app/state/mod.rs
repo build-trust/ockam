@@ -318,7 +318,9 @@ pub(crate) async fn make_node_manager_worker(
     .await
     .into_diagnostic()?;
 
-    let node_manager_worker = NodeManagerWorker::new(node_manager).await.into_diagnostic()?;
+    let node_manager_worker = NodeManagerWorker::new(node_manager)
+        .await
+        .into_diagnostic()?;
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     let _ = ctx

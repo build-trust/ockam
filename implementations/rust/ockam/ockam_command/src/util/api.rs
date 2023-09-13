@@ -214,9 +214,7 @@ pub mod enroll {
 
     use super::*;
 
-    pub fn auth0(
-        token: OidcToken,
-    ) -> Request<CloudRequestWrapper<AuthenticateOidcToken>> {
+    pub fn auth0(token: OidcToken) -> Request<CloudRequestWrapper<AuthenticateOidcToken>> {
         let token = AuthenticateOidcToken::new(token);
         Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token))
     }

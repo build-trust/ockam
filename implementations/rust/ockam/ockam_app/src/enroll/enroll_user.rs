@@ -8,6 +8,7 @@ use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::{CreateSpace, Space};
+use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 
 use crate::app::events::{system_tray_on_update, system_tray_on_update_with_enroll_status};
@@ -78,9 +79,9 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
     // enroll the current user using that token on the controller
     {
         let node_manager_worker = app_state.node_manager_worker().await;
-        let node_manager = node_manager_worker.inner().read().await;
-        node_manager
-            .enroll_auth0(&app_state.context(), token)
+        node_manager_worker
+            .controller_client
+            .enroll_with_oidc_token(&app_state.context(), token)
             .await
             .into_diagnostic()?;
     }
