@@ -1,19 +1,22 @@
+use arboard::Clipboard;
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
+use std::collections::HashMap;
 use std::net::SocketAddr;
-use tauri::menu::{MenuBuilder, MenuEvent, MenuItemBuilder, Submenu, SubmenuBuilder};
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::async_runtime::spawn;
+use tauri::menu::{
+    IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, NativeIcon, Submenu,
+    SubmenuBuilder,
+};
+use tauri::{AppHandle, Icon, Manager, Runtime, State};
 use tauri_plugin_positioner::{Position, WindowExt};
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, trace, warn};
 
-use ockam_api::cloud::share::{InvitationWithAccess, ReceivedInvitation, SentInvitation};
+use ockam_api::cloud::share::{ReceivedInvitation, SentInvitation, ServiceAccessDetails};
 
 use super::state::SyncInvitationsState;
 use crate::app::AppState;
 use crate::invitations::state::AcceptedInvitations;
 
-pub const INVITATIONS_PENDING_HEADER_MENU_ID: &str = "sent_invitations_header";
-pub const INVITATIONS_RECEIVED_HEADER_MENU_ID: &str = "received_invitations_header";
-pub const INVITATIONS_ACCEPTED_HEADER_MENU_ID: &str = "accepted_invitations_header";
 pub const INVITATIONS_WINDOW_ID: &str = "invitations_creation";
 
 // https://url.spec.whatwg.org/#path-percent-encode-set
@@ -40,53 +43,36 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
 
     let state: State<'_, SyncInvitationsState> = app_handle.state();
     let reader = state.read().await;
-    builder = builder.item(&add_received_menu(app_handle, &reader.received));
 
-    builder.item(&add_manage_submenu(
-        app_handle,
-        &reader.accepted,
-        &reader.sent,
-    ))
-}
+    let mut menu_items = vec![];
+    if !reader.received.is_empty() {
+        menu_items.push(add_received_menu(app_handle, &reader.received));
+    }
+    if !reader.accepted.invitations.is_empty() {
+        add_accepted_menus(app_handle, &reader.accepted)
+            .into_iter()
+            .for_each(|s| menu_items.push(s));
+    }
 
-fn add_manage_submenu<R: Runtime>(
-    app_handle: &AppHandle<R>,
-    accepted: &AcceptedInvitations,
-    sent: &[SentInvitation],
-) -> Submenu<R> {
-    SubmenuBuilder::new(app_handle, "Manage Invitations...")
-        .items(&[
-            &add_pending_menu(app_handle, sent),
-            &add_accepted_menu(app_handle, accepted),
-        ])
-        .build()
-        .expect("manage invitation menu build failed")
-}
-
-fn add_pending_menu<R: Runtime>(app_handle: &AppHandle<R>, sent: &[SentInvitation]) -> Submenu<R> {
-    trace!(?sent, "adding pending invitations menu");
-    let header_text = if sent.is_empty() {
-        "No Pending Invitations"
+    builder = builder.item(
+        &MenuItemBuilder::new("Shared services with you")
+            .enabled(false)
+            .build(app_handle),
+    );
+    if menu_items.is_empty() {
+        builder.item(
+            &MenuItemBuilder::new("When they share a service with you they will appear here")
+                .enabled(false)
+                .build(app_handle),
+        )
     } else {
-        "Pending Invitations"
-    };
-
-    let mut submenu_builder =
-        SubmenuBuilder::with_id(app_handle, INVITATIONS_PENDING_HEADER_MENU_ID, header_text);
-
-    submenu_builder = sent
-        .iter()
-        .map(|invitation| pending_invitation_menu(app_handle, invitation))
-        .fold(submenu_builder, |submenu_builder, submenu| {
-            submenu_builder.item(&submenu)
-        });
-
-    submenu_builder
-        .build()
-        .expect("cannot build pending submenu")
+        menu_items
+            .into_iter()
+            .fold(builder, |builder, submenu| builder.item(&submenu))
+    }
 }
 
-fn pending_invitation_menu<R: Runtime>(
+pub(crate) fn pending_invitation_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     invitation: &SentInvitation,
 ) -> Submenu<R> {
@@ -100,12 +86,13 @@ fn pending_invitation_menu<R: Runtime>(
             &MenuItemBuilder::with_id(id.clone(), &invitation.recipient_email)
                 .enabled(false)
                 .build(app_handle),
-            &MenuItemBuilder::with_id(
-                format!("invitation-sent-cancel-{}", invitation.id),
-                "Cancel",
-            )
-            .enabled(false)
-            .build(app_handle),
+            // TODO: not supported yet
+            // &MenuItemBuilder::with_id(
+            //     format!("invitation-sent-cancel-{}", invitation.id),
+            //     "Cancel",
+            // )
+            // .enabled(false)
+            // .build(app_handle),
         ])
         .build()
         .expect("cannot build single invitation submenu")
@@ -115,24 +102,24 @@ fn add_received_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     received: &[ReceivedInvitation],
 ) -> Submenu<R> {
-    debug!(count = received.len(), "Received invitations");
+    debug!(
+        count = received.len(),
+        "Building menu for received invitations"
+    );
 
-    let header_text = if received.is_empty() {
-        "No Received Invitations"
-    } else {
-        "Received Invitations"
-    };
+    let header_text = format!(
+        "{} pending invite{}",
+        received.len(),
+        if received.len() == 1 { "" } else { "s" }
+    );
 
-    let mut submenu_builder =
-        SubmenuBuilder::with_id(app_handle, INVITATIONS_RECEIVED_HEADER_MENU_ID, header_text);
-
+    let mut submenu_builder = SubmenuBuilder::new(app_handle, header_text);
     submenu_builder = received
         .iter()
         .map(|invitation| received_invite_menu(app_handle, invitation))
         .fold(submenu_builder, |submenu_builder, submenu| {
             submenu_builder.item(&submenu)
         });
-
     submenu_builder
         .build()
         .expect("cannot build received submenu")
@@ -142,122 +129,115 @@ fn received_invite_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     invitation: &ReceivedInvitation,
 ) -> Submenu<R> {
-    let id = invitation.id.to_owned();
-
-    SubmenuBuilder::with_id(app_handle, id.clone(), &id)
+    SubmenuBuilder::new(app_handle, &invitation.owner_email)
         .items(&[
-            &MenuItemBuilder::with_id(id.clone(), id.clone())
+            &MenuItemBuilder::new(&invitation.target_id)
                 .enabled(false)
                 .build(app_handle),
-            &MenuItemBuilder::with_id(id.clone(), format!("Sent by: {}", invitation.owner_email))
-                .enabled(false)
-                .build(app_handle),
-            &MenuItemBuilder::with_id(
-                id.clone(),
-                format!("Grants role: {}", invitation.grant_role),
-            )
-            .enabled(false)
-            .build(app_handle),
-            &MenuItemBuilder::with_id(
-                id.clone(),
-                format!("Target: {} {}", invitation.scope, invitation.target_id),
-            )
-            .enabled(false)
-            .build(app_handle),
-            &MenuItemBuilder::with_id(
+            &IconMenuItemBuilder::with_id(
                 format!("invitation-received-accept-{}", invitation.id),
-                "Accept",
+                "Accept invite",
             )
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/check-lg.png").to_vec(),
+            ))
             .build(app_handle),
-            &MenuItemBuilder::with_id(
-                format!("invitation-received-decline-{}", invitation.id),
-                "Decline",
-            )
-            .enabled(false)
-            .build(app_handle),
+            // TODO: not supported yet
+            // &IconMenuItemBuilder::with_id(
+            //     format!("invitation-received_decline_{}", invitation.id),
+            //     "Decline invite",
+            // )
+            // .icon(Icon::Raw(include_bytes!("../../icons/x-lg.png").to_vec()))
+            // .build(app_handle),
         ])
         .build()
         .expect("cannot build received invitation submenu")
 }
 
-fn add_accepted_menu<R: Runtime>(
+fn add_accepted_menus<R: Runtime>(
     app_handle: &AppHandle<R>,
     accepted: &AcceptedInvitations,
-) -> Submenu<R> {
-    debug!(count = accepted.invitations.len(), "Accepted invitations");
+) -> Vec<Submenu<R>> {
+    debug!(
+        count = accepted.invitations.len(),
+        "Building menu for accepted invitations"
+    );
 
-    let header_text = if accepted.invitations.is_empty() {
-        "No Accepted Invitations"
-    } else {
-        "Accepted Invitations"
-    };
+    // Group invitations by owner email and get the attached inlet for each invitation
+    let mut invitations_by_owner = HashMap::new();
+    for invitation in &accepted.invitations {
+        if let Some(access_details) = &invitation.service_access_details {
+            let invitations = invitations_by_owner
+                .entry(invitation.invitation.owner_email.clone())
+                .or_insert_with(Vec::new);
+            invitations.push((
+                &invitation.invitation.id,
+                access_details,
+                accepted.inlets.get(&invitation.invitation.id),
+            ));
+        }
+    }
 
-    let mut submenu_builder =
-        SubmenuBuilder::with_id(app_handle, INVITATIONS_ACCEPTED_HEADER_MENU_ID, header_text);
-
-    submenu_builder = accepted
-        .zip()
-        .iter()
-        .map(|(invitation, inlet_socket_addr)| {
-            accepted_invite_menu(app_handle, invitation, inlet_socket_addr)
-        })
-        .fold(submenu_builder, |menu, submenu| menu.item(&submenu));
-
-    submenu_builder
-        .build()
-        .expect("cannot build accepted submenu")
+    // Build a submenu for each owner
+    let mut submenus = Vec::new();
+    for (owner_email, invitations) in invitations_by_owner {
+        let mut submenu_builder = SubmenuBuilder::new(app_handle, owner_email);
+        submenu_builder = invitations
+            .into_iter()
+            .map(|(invitation_id, access_details, inlet_socket_addr)| {
+                accepted_invite_menu(app_handle, invitation_id, access_details, inlet_socket_addr)
+            })
+            .fold(submenu_builder, |menu, submenu| menu.item(&submenu));
+        submenus.push(
+            submenu_builder
+                .build()
+                .expect("cannot build accepted submenu"),
+        );
+    }
+    submenus
 }
 
 fn accepted_invite_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
-    invitation: &InvitationWithAccess,
-    inlet_socket_addr: &Option<&SocketAddr>,
+    _invitation_id: &str,
+    access_details: &ServiceAccessDetails,
+    inlet_socket_addr: Option<&SocketAddr>,
 ) -> Submenu<R> {
-    let id = invitation.invitation.id.to_owned();
-    let inlet_title = match inlet_socket_addr {
-        Some(s) => format!("Listening at: {}", s),
-        None => "Not connected".to_string(),
-    };
-
-    SubmenuBuilder::with_id(app_handle, id.clone(), &id)
-        .items(&[
-            &MenuItemBuilder::with_id(id.clone(), id.clone())
+    let service_name = access_details
+        .service_name()
+        .unwrap_or_else(|_| "Unknown service name".to_string());
+    let mut submenu_builder = SubmenuBuilder::new(app_handle, &service_name);
+    submenu_builder = match inlet_socket_addr {
+        Some(s) => submenu_builder.items(&[
+            &IconMenuItemBuilder::new(format!("Available at: {s}"))
                 .enabled(false)
+                .native_icon(NativeIcon::StatusAvailable)
                 .build(app_handle),
-            &MenuItemBuilder::with_id(
-                id.clone(),
-                format!("Sent by: {}", invitation.invitation.owner_email),
+            &IconMenuItemBuilder::with_id(
+                format!("invitation-accepted-copy-{s}"),
+                format!("Copy {s}"),
             )
-            .enabled(false)
+            .icon(Icon::Raw(
+                include_bytes!("../../icons/clipboard2.png").to_vec(),
+            ))
             .build(app_handle),
-            &MenuItemBuilder::with_id(
-                id.clone(),
-                format!("Grants role: {}", invitation.invitation.grant_role),
-            )
-            .enabled(false)
-            .build(app_handle),
-            &MenuItemBuilder::with_id(
-                id.clone(),
-                format!(
-                    "Target: {} {}",
-                    invitation.invitation.scope, invitation.invitation.target_id
-                ),
-            )
-            .enabled(false)
-            .build(app_handle),
-            &MenuItemBuilder::with_id(
-                format!("invitation-accepted-connect-{}", invitation.invitation.id),
-                inlet_title,
-            )
-            .enabled(false)
-            .build(app_handle),
-            &MenuItemBuilder::with_id(
-                format!("invitation-accepted-leave-{}", invitation.invitation.id),
-                "Leave",
-            )
-            .enabled(false)
-            .build(app_handle),
-        ])
+        ]),
+        None => submenu_builder.item(
+            &IconMenuItemBuilder::new("Not connected")
+                .native_icon(NativeIcon::StatusUnavailable)
+                .build(app_handle),
+        ),
+    };
+    // TODO: not supported yet
+    // submenu_builder.item(
+    //     &MenuItemBuilder::with_id(
+    //         format!("invitation-accepted–leave-{invitation_id}"),
+    //         "Leave",
+    //     )
+    //     .enabled(false)
+    //     .build(app_handle),
+    // );
+    submenu_builder
         .build()
         .expect("cannot build accepted invitation submenu")
 }
@@ -280,11 +260,9 @@ fn dispatch_click_event<R: Runtime>(app: &AppHandle<R>, id: &str) -> tauri::Resu
         .skip_while(|segment| segment == &"invitation")
         .collect::<Vec<&str>>();
     match segments.as_slice() {
-        ["accepted", "connect", id] => on_connect(app, id),
         ["create", "for", outlet_socket_addr] => on_create(app, outlet_socket_addr),
         ["received", "accept", id] => on_accept(app, id),
-        ["received", "decline", id] => on_decline(app, id),
-        ["sent", "cancel", id] => on_cancel(app, id),
+        ["accepted", "copy", socket_address] => on_copy(app, socket_address),
         other => {
             warn!(?other, "unexpected menu ID");
             Ok(())
@@ -297,16 +275,13 @@ fn on_accept<R: Runtime>(app: &AppHandle<R>, invite_id: &str) -> tauri::Result<(
 
     let app_handle = app.clone();
     let invite_id = invite_id.to_string();
-    tauri::async_runtime::spawn(async move {
-        super::commands::accept_invitation(invite_id, app_handle).await
+    spawn(async move {
+        let _ = super::commands::accept_invitation(invite_id, app_handle)
+            .await
+            .map_err(|e| error!(%e, "Failed to accept invitation"));
     });
 
     Ok(())
-}
-
-fn on_cancel<R: Runtime>(_app: &AppHandle<R>, invite_id: &str) -> tauri::Result<()> {
-    trace!(?invite_id, "canceling invite via spawn");
-    todo!()
 }
 
 fn on_create<R: Runtime>(app: &AppHandle<R>, outlet_socket_addr: &str) -> tauri::Result<()> {
@@ -327,7 +302,7 @@ fn on_create<R: Runtime>(app: &AppHandle<R>, outlet_socket_addr: &str) -> tauri:
             .always_on_top(true)
             .visible(false)
             .title("Invite To Share")
-            .max_inner_size(640.0, 480.0)
+            .max_inner_size(450.0, 350.0)
             .resizable(true)
             .minimizable(false)
             .build()?;
@@ -348,12 +323,10 @@ fn on_create<R: Runtime>(app: &AppHandle<R>, outlet_socket_addr: &str) -> tauri:
     Ok(())
 }
 
-fn on_connect<R: Runtime>(_app: &AppHandle<R>, invite_id: &str) -> tauri::Result<()> {
-    trace!(?invite_id, "connecting to service via spawn");
-    todo!()
-}
-
-fn on_decline<R: Runtime>(_app: &AppHandle<R>, invite_id: &str) -> tauri::Result<()> {
-    trace!(?invite_id, "declining invite via spawn");
-    todo!()
+fn on_copy<R: Runtime>(_app: &AppHandle<R>, socket_address: &str) -> tauri::Result<()> {
+    debug!(?socket_address, "Copying TCP inlet address");
+    if let Ok(mut clipboard) = Clipboard::new() {
+        let _ = clipboard.set_text(socket_address);
+    }
+    Ok(())
 }

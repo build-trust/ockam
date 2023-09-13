@@ -77,9 +77,9 @@ fn on_docs() -> tauri::Result<()> {
 fn on_reset<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        reset(&app)
+        let _ = reset(&app)
             .await
-            .map_err(|e| error!(%e, "Failed to reset app"))
+            .map_err(|e| error!(%e, "Failed to reset app"));
     });
     Ok(())
 }
