@@ -251,7 +251,10 @@ impl NodeManager {
         NodeIdentities::new(self.identities(), self.cli_state.clone())
     }
 
-    pub(crate) async fn get_identifier(&self, identity_name: Option<String>) -> Result<Identifier> {
+    pub async fn get_identifier(
+        &self,
+        identity_name: Option<String>,
+    ) -> Result<Identifier> {
         if let Some(name) = identity_name {
             self.node_identities().get_identifier(name.clone()).await
         } else {

@@ -105,6 +105,7 @@ impl ResponseHeader {
 /// The Reply enum separates two possible cases when interpreting a Response
 ///  1. there is a successfully decodable value of type T
 ///  2. the request failed and there is an API error (the optional status is also provided)
+#[derive(Clone)]
 pub enum Reply<T> {
     Successful(T),
     Failed(Error, Option<Status>),
@@ -124,6 +125,25 @@ impl<T: Serialize> Serialize for Reply<T> {
                 serializer.collect_map(map)
             }
             Reply::Failed(e, None) => serializer.serialize_str(&e.to_string()),
+        }
+    }
+}
+
+impl<T: Display> Display for Reply<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Reply::Successful(t) => f.write_str(t.to_string().as_str()),
+            Reply::Failed(e, status) => {
+                if let Some(m) = e.message() {
+                    f.write_str(format!("Failed request: {m}").as_str())?
+                } else {
+                    f.write_str("Failed request")?
+                };
+                if let Some(status) = status {
+                    f.write_str(format!("status: {status}").as_str())?
+                };
+                Ok(())
+            }
         }
     }
 }
