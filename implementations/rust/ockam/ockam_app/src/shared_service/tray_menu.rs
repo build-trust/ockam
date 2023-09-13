@@ -1,17 +1,21 @@
 use tauri::menu::{
-    IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, Submenu, SubmenuBuilder,
+    IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, NativeIcon, Submenu,
+    SubmenuBuilder,
 };
 use tauri::{AppHandle, Icon, Manager, Runtime, State};
 use tauri_plugin_positioner::{Position, WindowExt};
+use tracing::error;
 
 use ockam_api::nodes::models::portal::OutletStatus;
 
 use crate::app::AppState;
+use crate::invitations::pending_invitation_menu;
+use crate::invitations::state::SyncInvitationsState;
 use crate::shared_service::tcp_outlet::tcp_outlet_delete;
 
-const SHARED_SERVICE_CREATE_MENU_ID: &str = "shared-service_create";
-const SHARED_SERVICE_DELETE_MENU_ID_PREFIX: &str = "shared-service_delete_";
-const SHARED_SERVICE_WINDOW_ID: &str = "shared-service_creation";
+const SHARED_SERVICE_CREATE_MENU_ID: &str = "shared-service-create";
+const SHARED_SERVICE_DELETE_MENU_ID_PREFIX: &str = "shared-service-delete-";
+const SHARED_SERVICE_WINDOW_ID: &str = "shared-service-creation";
 
 pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>(
     app_handle: &AppHandle<R>,
@@ -22,7 +26,7 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
         return builder;
     };
 
-    let builder = builder.items(&[
+    let mut builder = builder.items(&[
         &IconMenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create service")
             .icon(Icon::Raw(
                 include_bytes!("../../icons/plus-circle.png").to_vec(),
@@ -35,7 +39,7 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
     ]);
 
     let outlets = app_state.tcp_outlet_list().await;
-    if outlets.is_empty() {
+    builder = if outlets.is_empty() {
         builder.item(
             &MenuItemBuilder::new("When you create a service it will appear here")
                 .enabled(false)
@@ -46,7 +50,27 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
             .iter()
             .map(|outlet| shared_service_submenu(app_handle, outlet))
             .fold(builder, |builder, submenu| builder.item(&submenu))
-    }
+    };
+
+    let state: State<'_, SyncInvitationsState> = app_handle.state();
+    let reader = state.read().await;
+    builder = if reader.sent.is_empty() {
+        builder
+    } else {
+        let mut submenu = SubmenuBuilder::new(app_handle, "Pending invitations");
+        submenu = reader
+            .sent
+            .iter()
+            .map(|invitation| pending_invitation_menu(app_handle, invitation))
+            .fold(submenu, |builder, submenu| builder.item(&submenu));
+        builder.item(
+            &submenu
+                .build()
+                .expect("cannot build menu for pending invitations"),
+        )
+    };
+
+    builder
 }
 
 fn shared_service_submenu<R: Runtime>(
@@ -62,21 +86,20 @@ fn shared_service_submenu<R: Runtime>(
     // and reached via crate::app::tray_menu::fallback_for_id
     SubmenuBuilder::new(app_handle, outlet_info)
         .items(&[
-            &MenuItemBuilder::new(format!("Serving at: {}", outlet.socket_addr))
+            &IconMenuItemBuilder::new(format!("Serving at: {}", outlet.socket_addr))
                 .enabled(false)
+                .native_icon(NativeIcon::StatusAvailable)
                 .build(app_handle),
             &IconMenuItemBuilder::new("Share")
                 .id(format!("invitation-create-for-{}", outlet.socket_addr))
-                .icon(Icon::Raw(
-                    include_bytes!("../../icons/share-fill.png").to_vec(),
-                ))
+                .native_icon(NativeIcon::Share)
                 .build(app_handle),
             &IconMenuItemBuilder::new("Delete")
                 .id(format!(
                     "{SHARED_SERVICE_DELETE_MENU_ID_PREFIX}{}",
                     outlet.alias
                 ))
-                .icon(Icon::Raw(include_bytes!("../../icons/trash3.png").to_vec()))
+                .icon(Icon::Raw(include_bytes!("../../icons/x-lg.png").to_vec()))
                 .build(app_handle),
         ])
         .build()
@@ -134,6 +157,10 @@ fn on_create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 fn on_delete<R: Runtime>(app: &AppHandle<R>, alias: &str) -> tauri::Result<()> {
     let app_handle = app.clone();
     let alias = alias.to_string();
-    tauri::async_runtime::spawn(async move { tcp_outlet_delete(app_handle, alias).await });
+    tauri::async_runtime::spawn(async move {
+        let _ = tcp_outlet_delete(app_handle, alias)
+            .await
+            .map_err(|e| error!(%e, "Failed to delete TCP outlet"));
+    });
     Ok(())
 }

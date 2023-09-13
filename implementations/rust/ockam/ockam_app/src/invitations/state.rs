@@ -37,13 +37,4 @@ pub struct AcceptedInvitations {
     pub(crate) inlets: HashMap<String, SocketAddr>,
 }
 
-impl AcceptedInvitations {
-    pub fn zip(&self) -> Vec<(&InvitationWithAccess, Option<&SocketAddr>)> {
-        self.invitations
-            .iter()
-            .map(|invitation| (invitation, self.inlets.get(&invitation.invitation.id)))
-            .collect::<Vec<_>>()
-    }
-}
-
 pub(crate) type SyncInvitationsState = Arc<RwLock<InvitationState>>;

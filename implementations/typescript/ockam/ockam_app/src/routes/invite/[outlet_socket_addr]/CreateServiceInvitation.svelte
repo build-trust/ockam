@@ -32,8 +32,7 @@
     <div class="mx-auto max-w-md flex-1">
       <div class="font-bold">Email Address</div>
       <p class="text-sm text-gray-500">
-        Recipient will need to install the Ockam app,<br /> and enroll using this
-        address.
+        Recipient will need to install the Ockam app, and enroll using this address.
       </p>
     </div>
     <div class="flex-1">

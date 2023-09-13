@@ -4,7 +4,7 @@ use std::str::FromStr;
 use tauri::{AppHandle, Manager, Runtime, State};
 use tracing::{debug, info, trace, warn};
 
-use ockam_api::address::{extract_address_value, get_free_address};
+use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, InvitationWithAccess};
@@ -215,7 +215,7 @@ async fn refresh_inlets<R: Runtime>(
                                 .push((invitation.invitation.id.clone(), inlet_socket_addr));
                         }
                         Err(err) => {
-                            warn!(%err, node = %i.local_node_name, "Failed to create tcp-inlet for accepted invitation");
+                            warn!(%err, node = %i.local_node_name, "Failed to create TCP inlet for accepted invitation");
                         }
                     }
                 }
@@ -296,6 +296,8 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
         &service_route,
         "--alias",
         &service_name,
+        "--retry-wait",
+        "0",
     )
     .stderr_null()
     .stdout_capture()
@@ -323,7 +325,7 @@ impl InletDataFromInvitation {
     ) -> crate::Result<Option<Self>> {
         match &invitation.service_access_details {
             Some(d) => {
-                let service_name = extract_address_value(&d.shared_node_route)?;
+                let service_name = d.service_name()?;
                 let mut enrollment_ticket = d.enrollment_ticket()?;
                 // The enrollment ticket contains the project data.
                 // We need to replace the project name on the enrollment ticket with the project id,

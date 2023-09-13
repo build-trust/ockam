@@ -177,9 +177,14 @@ async fn rpc(
                         }
                     };
                     trace!("the inlet creation returned a non-OK status: {s:?}");
+
+                    if cmd.retry_wait.as_millis() == 0 {
+                        return Err(miette!("Failed to create TCP inlet"))?;
+                    }
+
                     if let Some(spinner) = progress_bar.as_ref() {
                         spinner.set_message(format!(
-                            "Waiting for outlet {} to be available... Retrying momentarily",
+                            "Waiting for inlet {} to be available... Retrying momentarily",
                             &cmd.to
                                 .to_string()
                                 .color(OckamColor::PrimaryResource.color())

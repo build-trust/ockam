@@ -48,20 +48,31 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
             let handle = handle.clone();
             spawn(async move {
                 debug!("Building system tray menu");
-                let tray = handle.tray().expect("Couldn't get tray menu handler");
+                let tray = match handle.tray() {
+                    Some(t) => t,
+                    None => {
+                        error!("Couldn't get tray menu handler");
+                        return;
+                    }
+                };
                 let menu = build_tray_menu(&handle, payload).await;
 
-                let old_menu = menu_holder
-                    .lock()
-                    .expect("Couldn't get menu lock")
-                    .replace(menu.clone());
+                let mut lock = match menu_holder.lock() {
+                    Ok(l) => l,
+                    Err(e) => {
+                        error!(?e, "Couldn't get menu lock");
+                        return;
+                    }
+                };
+                if let Some(old_menu) = lock.replace(menu.clone()) {
+                    // HACK: leak the previous menu to avoid a crash on macOS
+                    // TODO: remove me once tauri 2.0 stable is out
+                    forget(old_menu);
+                }
 
-                // HACK: leak the previous menu to avoid a crash on macOS
-                // TODO: remove me once tauri 2.0 stable is out
-                forget(old_menu);
-
-                tray.set_menu(Some(menu.clone()))
-                    .expect("Couldn't update menu");
+                let _ = tray
+                    .set_menu(Some(menu.clone()))
+                    .map_err(|_| error!("Couldn't update menu"));
             });
         });
     }
