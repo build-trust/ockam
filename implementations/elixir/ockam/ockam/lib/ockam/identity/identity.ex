@@ -18,7 +18,7 @@ defmodule Ockam.Identity do
   @type compare_result() :: :none | :equal | :conflict | :newer | :older
 
   @spec create() ::
-          {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
+          {:ok, identity :: t()} | {:error, reason :: any()}
   def create() do
     case Ockly.Native.create_identity() do
       {:error, reason} -> {:error, reason}
@@ -63,6 +63,17 @@ defmodule Ockam.Identity do
   @spec get_identifier(t()) :: String.t()
   def get_identifier(%Identity{identity_id: id}) do
     id
+  end
+
+  ## TODO:  this is messy. There are places that expect identifiers as raw, 20-length bytes, others
+  ##        than expect identifiers in a human readable string representation
+  ##        (lowercased hex encoded, with an uppercase "I" prefix)
+  ##        For now we provide this, but even if we keep both versions around the conversion
+  ##        on the other direction would make more sense (keep in binary format, convert to string
+  ##        on request)
+  def get_identifier_bin(%Identity{identity_id: <<"I", hex::binary-size(40)>>}) do
+    {:ok, identifier_binary} = Base.decode16(hex, case: :lower)
+    identifier_binary
   end
 
   # TODO: rename to attest_secure_channel_key
