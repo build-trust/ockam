@@ -33,4 +33,4 @@ multiaddr = "0.18"
 ockam_multiaddr = { path = ".", features = ["cbor", "std", "serde"] }
 quickcheck = "1.0.3"
 rand = "0.8.5"
-serde_json = "1.0.105"
+serde_json = "1.0.107"
