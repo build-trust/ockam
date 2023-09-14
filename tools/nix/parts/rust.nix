@@ -98,7 +98,7 @@ in {
       in {
         rust = pkgs.mkShell {
           inputsFrom = [config.devShells.tooling];
-          nativeBuildInputs = [pkgs.pkgconfig];
+          nativeBuildInputs = [pkgs.pkg-config];
           packages =
             [
               toolchain
@@ -115,7 +115,7 @@ in {
 
         rust_nightly = pkgs.mkShell {
           inputsFrom = [config.devShells.tooling];
-          nativeBuildInputs = [pkgs.pkgconfig];
+          nativeBuildInputs = [pkgs.pkg-config];
           packages =
             [
               nightlyToolchain
