@@ -288,7 +288,7 @@ jobs:
 
   test_docs_rust_library_examples:
     name: Rust - test_docs_rust_library_examples
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: github.event_name == 'workflow_dispatch'
 
     steps:
@@ -303,7 +303,10 @@ jobs:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
 
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - name: Install Nix
+        uses: ./ockam_library/.github/actions/nix_installer
+
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4
         with:
           workspaces: "ockam_examples -> target"
 
@@ -313,11 +316,12 @@ jobs:
 
       - name: Run Ockam Examples
         working-directory: ockam_examples
+        shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
         run: cargo test -p hello_ockam
 
   lint_docs_ockam_io_rust_examples:
     name: Rust - lint_docs_ockam_io_rust_examples
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Ockam Repository
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
