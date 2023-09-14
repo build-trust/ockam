@@ -75,7 +75,7 @@ is-terminal = "0.4"
 itertools = "0.11"
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.19.0", features = ["derive", "alloc", "half"] }
-nix = "0.26"
+nix = "0.27"
 ockam = { path = "../ockam", version = "^0.92.0", features = ["software_vault"] }
 ockam_abac = { path = "../ockam_abac", version = "0.26.0", features = ["std"] }
 ockam_api = { path = "../ockam_api", version = "0.35.0", features = ["std", "authenticators"] }
