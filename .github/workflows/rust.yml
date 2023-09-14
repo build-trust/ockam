@@ -45,10 +45,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 env:
   CI: true
 
@@ -193,12 +189,10 @@ jobs:
         build: [linux_86]
         include:
         - build: linux_86
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           rust: stable
           target: x86_64-unknown-linux-gnu
-          container: "ghcr.io/build-trust/ockam-builder@sha256:65812150a60a114b1620f63dcf9f2380144985a213d54d3ef7978a0221bd147e"
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
     steps:
       - name: Checkout ockam cli repository
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
@@ -216,18 +210,24 @@ jobs:
         with:
           workspaces: "ockam_cli -> target"
 
+      - name: Install Nix
+        uses: ./ockam_bats/.github/actions/nix_installer
+
       - name: Build Binary
-        shell: bash
         working-directory: ockam_cli
+        shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
         run: |
           rustc --version
           set -x
           cargo build --bin ockam
-          echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV;
+
+      - name: Set Path
+        run: |
+          echo "PATH=$(pwd)/ockam_cli/target/debug:$PATH" >> $GITHUB_ENV;
 
       - name: Run Script On Ubuntu
         working-directory: ockam_bats
-        shell: bash
+        shell: nix develop ./tools/nix#tooling --command bash {0}
         run: |
           ockam --version
           echo $(which ockam)
@@ -289,7 +289,6 @@ jobs:
   test_docs_rust_library_examples:
     name: Rust - test_docs_rust_library_examples
     runs-on: ubuntu-20.04
-    container: ghcr.io/build-trust/ockam-builder@sha256:65812150a60a114b1620f63dcf9f2380144985a213d54d3ef7978a0221bd147e
     if: github.event_name == 'workflow_dispatch'
 
     steps:
@@ -319,9 +318,6 @@ jobs:
   lint_docs_ockam_io_rust_examples:
     name: Rust - lint_docs_ockam_io_rust_examples
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:65812150a60a114b1620f63dcf9f2380144985a213d54d3ef7978a0221bd147e
-
     steps:
       - name: Checkout Ockam Repository
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
@@ -335,6 +331,14 @@ jobs:
           ref: ${{ inputs.ockam_docs_ref == '' && 'develop' || inputs.ockam_docs_ref }}
           repository: build-trust/ockam-documentation
           path: ockam-documentation
+
+      - name: Install Nix
+        uses: ./ockam/.github/actions/nix_installer
+
+      - name: Build Example Blocks
+        working-directory: ockam
+        run:
+          nix develop ./tools/nix#rust --keep CI --ignore-environment --command cargo install --path ./tools/docs/example_blocks
 
       - name: Check Rust Documentation
         run: |
