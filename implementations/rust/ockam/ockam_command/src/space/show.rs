@@ -5,7 +5,7 @@ use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::{Space, Spaces};
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -52,13 +52,8 @@ async fn run_impl(
     let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
 
     // Send request
-    let node_manager = start_node_manager(ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
-
-    let space: Space = controller
+    let node = LocalNode::make(ctx, &opts, None).await?;
+    let space: Space = node
         .get_space(ctx, id)
         .await
         .into_diagnostic()?
@@ -68,6 +63,5 @@ async fn run_impl(
     opts.state
         .spaces
         .overwrite(&cmd.name, SpaceConfig::from(&space))?;
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

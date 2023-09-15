@@ -7,7 +7,7 @@ use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::cloud::project::{Project, Projects};
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -46,16 +46,11 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     _cmd: ListCommand,
 ) -> miette::Result<()> {
-    let node_manager = start_node_manager(ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
-
+    let node = LocalNode::make(ctx, &opts, None).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_projects = async {
-        let projects: Vec<Project> = controller
+        let projects: Vec<Project> = node
             .list_projects(ctx)
             .await
             .into_diagnostic()?
@@ -83,7 +78,6 @@ async fn run_impl(
             .projects
             .overwrite(&project.name, project.clone())?;
     }
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     opts.terminal
         .stdout()

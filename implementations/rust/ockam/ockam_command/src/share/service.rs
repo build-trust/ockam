@@ -9,7 +9,7 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cloud::share::{CreateServiceInvitation, Invitations};
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -93,14 +93,10 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let node_manager = start_node_manager(ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let node = LocalNode::make(ctx, &opts, None).await?;
 
     let get_sent_invitation = async {
-        let invitation = controller
+        let invitation = node
             .create_service_invitation(
                 ctx,
                 cmd.expires_at,
@@ -131,8 +127,6 @@ async fn run_impl(
     let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
 
     debug!(?sent);
-
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     let plain = fmt_ok!(
         "Invitation {} to {} {} created, expiring at {}. {} will be notified via email.",

@@ -6,7 +6,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::get_project_id;
 use crate::util::node_rpc;
@@ -49,24 +49,18 @@ async fn run_impl(
         addon_id,
     } = cmd;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
+    let node = LocalNode::make(&ctx, &opts, None).await?;
 
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
-
-    let response = controller
+    let response = node
         .disable_addon(&ctx, project_id, addon_id)
         .await
         .into_diagnostic()?
         .success()
         .into_diagnostic()?;
     let operation_id = response.operation_id;
-    check_for_completion(&opts, &ctx, &controller, &operation_id).await?;
+    check_for_completion(&opts, &ctx, &node, &operation_id).await?;
 
     opts.terminal
         .write_line(&fmt_ok!("Addon disabled successfully"))?;
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

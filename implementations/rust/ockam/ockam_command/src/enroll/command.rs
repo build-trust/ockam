@@ -15,13 +15,12 @@ use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::Controller;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
-use ockam_api::nodes::NodeManager;
 use ockam_core::api::{Reply, Status};
 use ockam_identity::Identifier;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
@@ -82,18 +81,13 @@ async fn run_impl(
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
-    let node_manager = start_node_manager(ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let node = LocalNode::make(ctx, &opts, None).await?;
 
-    enroll_with_node(&controller, ctx, token)
+    enroll_with_node(&node, ctx, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
-    let identifier = retrieve_user_project(&opts, ctx, &controller, &node_manager).await?;
-    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
+    let identifier = retrieve_user_project(&opts, ctx, &node).await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Enrolled {} as one of the Ockam identities of your Orchestrator account {}.",
@@ -108,15 +102,14 @@ async fn run_impl(
 pub async fn retrieve_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: &Controller,
-    node_manager: &NodeManager,
+    node: &LocalNode,
 ) -> Result<Identifier> {
-    let space = default_space(opts, ctx, controller)
+    let space = default_space(opts, ctx, node)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
 
-    let project = default_project(opts, ctx, controller, node_manager, &space)
+    let project = default_project(opts, ctx, node, &space)
         .await
         .wrap_err(format!(
             "Unable to retrieve and set a project as default with space {}",
@@ -127,7 +120,7 @@ pub async fn retrieve_user_project(
         ))?;
     info!("Retrieved the user default project {:?}", project);
 
-    let identifier = update_enrolled_identity(&opts.state, &node_manager.node_name())
+    let identifier = update_enrolled_identity(&opts.state, node.node_name().as_str())
         .await
         .wrap_err(format!(
             "Unable to set the local identity as enrolled with project {}",
@@ -171,17 +164,13 @@ pub async fn enroll_with_node(
     }
 }
 
-async fn default_space(
-    opts: &CommandGlobalOpts,
-    ctx: &Context,
-    controller: &Controller,
-) -> Result<Space> {
+async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &LocalNode) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
-        let spaces: Vec<Space> = controller
+        let spaces: Vec<Space> = node
             .list_spaces(ctx)
             .await
             .into_diagnostic()?
@@ -215,7 +204,7 @@ async fn default_space(
         let name = crate::util::random_name();
         let space_name = name.clone();
         let create_space = async {
-            let space = controller
+            let space = node
                 .create_space(ctx, space_name, vec![])
                 .await
                 .into_diagnostic()?
@@ -267,8 +256,7 @@ async fn default_space(
 async fn default_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: &Controller,
-    node_manager: &NodeManager,
+    node: &LocalNode,
     space: &Space,
 ) -> Result<Project> {
     // Get available project for the given space
@@ -282,7 +270,7 @@ async fn default_project(
 
     let is_finished = Mutex::new(false);
     let get_projects = async {
-        let projects: Vec<Project> = controller.list_projects(ctx).await?.success()?;
+        let projects: Vec<Project> = node.list_projects(ctx).await?.success()?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
@@ -307,7 +295,7 @@ async fn default_project(
         let is_finished = Mutex::new(false);
         let project_name = "default".to_string();
         let get_project = async {
-            let project = controller
+            let project = node
                 .create_project(ctx, space.id.clone(), project_name.clone(), vec![])
                 .await?
                 .success()?;
@@ -332,7 +320,7 @@ async fn default_project(
         ))?;
 
         let operation_id = project.operation_id.clone().unwrap();
-        check_for_completion(opts, ctx, controller, &operation_id).await?;
+        check_for_completion(opts, ctx, node, &operation_id).await?;
 
         project.to_owned()
     }
@@ -359,7 +347,7 @@ async fn default_project(
         p
     };
 
-    let project = check_project_readiness(opts, ctx, node_manager, default_project).await?;
+    let project = check_project_readiness(opts, ctx, node, default_project).await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this project as your default project, on this machine.\n"

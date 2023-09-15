@@ -7,13 +7,12 @@ use tokio::{sync::Mutex, try_join};
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
-use ockam_api::nodes::NodeManager;
 use ockam_api::route_to_multiaddr;
 use ockam_multiaddr::MultiAddr;
 
 use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::start_node_manager;
+use crate::node::util::LocalNode;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -71,24 +70,20 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
         ctx: &Context,
-        node_manager: &NodeManager,
+        node: &LocalNode,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
 
         let identity_name = get_identity_name(&opts.state, &self.cloud_opts.identity);
-        let identifier = node_manager
-            .get_identifier(Some(identity_name))
-            .await
-            .into_diagnostic()?;
 
         let projects_sc = get_projects_secure_channels_from_config_lookup(
             opts,
             ctx,
-            node_manager,
+            node,
             &meta,
-            identifier,
+            Some(identity_name),
         )
         .await?;
         clean_projects_multiaddr(to, projects_sc)
@@ -107,8 +102,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
     let from = &cmd.parse_from_node();
-    let mut node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let to = cmd.parse_to_route(&opts, &ctx, &node_manager).await?;
+    let mut node = LocalNode::make(&ctx, &opts, None).await?;
+    let to = cmd.parse_to_route(&opts, &ctx, &node).await?;
 
     let authorized_identifiers = cmd.authorized.clone();
 
@@ -118,7 +113,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let create_secure_channel = async {
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
 
-        let sc = node_manager
+        let sc = node
+            .node_manager
             .create_monitored_secure_channel(
                 &ctx,
                 to,

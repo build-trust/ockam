@@ -5,7 +5,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::project::addon::get_project_id;
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
@@ -36,19 +36,14 @@ async fn run_impl(
     let project_name = cmd.project_name;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let node = LocalNode::make(&ctx, &opts, None).await?;
 
-    let addons = controller
+    let addons = node
         .list_addons(&ctx, project_id)
         .await
         .into_diagnostic()?
         .success()
         .into_diagnostic()?;
     opts.println(&addons)?;
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

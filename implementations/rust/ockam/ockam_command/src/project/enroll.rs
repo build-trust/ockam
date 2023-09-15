@@ -15,7 +15,7 @@ use ockam_api::identity::EnrollmentTicket;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -94,19 +94,14 @@ pub async fn project_enroll(
     let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
 
     // Create secure channel to the project's authority node
-    let node_manager = start_node_manager(ctx, opts, Some(&cmd.trust_opts)).await?;
-    let identifier = node_manager
-        .get_identifier(Some(identity_name))
-        .await
-        .into_diagnostic()?;
-    let authority_node: AuthorityNode = node_manager
-        .make_authority_client(
+    let node = LocalNode::make(ctx, opts, Some(&cmd.trust_opts)).await?;
+    let authority_node: AuthorityNode = node
+        .make_authority_node_client(
             project_authority.identity_id().clone(),
             project_authority.address().clone(),
-            identifier,
+            Some(identity_name),
         )
-        .await
-        .into_diagnostic()?;
+        .await?;
 
     if let Some(tkn) = cmd.enroll_ticket.as_ref() {
         authority_node
@@ -140,7 +135,6 @@ pub async fn project_enroll(
         .plain(credential.clone())
         .write_line()?;
 
-    delete_embedded_node(opts, node_manager.node_name().as_str()).await;
     Ok(project.name)
 }
 

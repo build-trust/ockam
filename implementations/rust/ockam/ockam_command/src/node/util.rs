@@ -1,7 +1,9 @@
 use std::env::current_exe;
 use std::fs::OpenOptions;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
@@ -10,24 +12,18 @@ use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait,
 };
+use ockam_api::cloud::{AuthorityNode, Controller, ProjectNode};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::nodes::{NodeManager, NODEMANAGER_ADDR};
 use ockam_core::env::get_env_with_default;
+use ockam_identity::IdentityIdentifier;
+use ockam_multiaddr::MultiAddr;
 
 use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
-
-pub async fn start_node_manager_worker(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    trust_opts: Option<&TrustContextOpts>,
-) -> Result<String> {
-    start_node_manager_worker_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts)
-        .await
-}
 
 pub async fn start_node_manager(
     ctx: &Context,
@@ -35,25 +31,6 @@ pub async fn start_node_manager(
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<NodeManager> {
     start_node_manager_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
-}
-
-pub async fn start_node_manager_worker_with_vault_and_identity(
-    ctx: &Context,
-    cli_state: &CliState,
-    vault: Option<String>,
-    identity: Option<String>,
-    trust_opts: Option<&TrustContextOpts>,
-) -> Result<String> {
-    let node_manager =
-        start_node_manager_with_vault_and_identity(ctx, cli_state, vault, identity, trust_opts)
-            .await?;
-    let node_name = node_manager.node_name();
-    let node_manager_worker = NodeManagerWorker::new(node_manager).await?;
-    let _ = ctx
-        .start_worker(NODEMANAGER_ADDR, node_manager_worker.clone())
-        .await
-        .into_diagnostic();
-    Ok(node_name)
 }
 
 pub async fn start_node_manager_with_vault_and_identity(
@@ -65,16 +42,13 @@ pub async fn start_node_manager_with_vault_and_identity(
 ) -> Result<NodeManager> {
     let cmd = CreateCommand::default();
 
-    // This node was initially created as a foreground node
-    if !cmd.child_process {
-        init_node_state(
-            cli_state,
-            &cmd.node_name,
-            vault.as_deref(),
-            identity.as_deref(),
-        )
-        .await?;
-    }
+    init_node_state(
+        cli_state,
+        &cmd.node_name,
+        vault.as_deref(),
+        identity.as_deref(),
+    )
+    .await?;
 
     if let Some(p) = trust_opts {
         add_project_info_to_node_state(&cmd.node_name, cli_state, p.project_path.as_ref()).await?;
@@ -113,10 +87,6 @@ pub async fn start_node_manager_with_vault_and_identity(
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     Ok(node_manager)
-}
-
-pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
-    let _ = delete_node(opts, name, false);
 }
 
 pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette::Result<()> {
@@ -287,4 +257,89 @@ pub fn run_ockam(
     node_state.set_pid(child.id() as i32)?;
 
     Ok(())
+}
+
+pub struct LocalNode {
+    pub(crate) node_manager: NodeManager,
+    controller: Arc<Controller>,
+    opts: CommandGlobalOpts,
+}
+
+impl LocalNode {
+    pub async fn make(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        trust_opts: Option<&TrustContextOpts>,
+    ) -> miette::Result<LocalNode> {
+        let node_manager = start_node_manager(ctx, opts, trust_opts).await?;
+        let controller = node_manager
+            .make_controller_node_client()
+            .await
+            .into_diagnostic()?;
+        Ok(Self {
+            node_manager,
+            controller: Arc::new(controller),
+            opts: opts.clone(),
+        })
+    }
+
+    pub async fn make_project_node_client(
+        &self,
+        project_identifier: IdentityIdentifier,
+        project_address: MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<ProjectNode> {
+        self.node_manager
+            .make_project_node_client(
+                project_identifier,
+                project_address,
+                self.node_manager
+                    .get_identifier(caller_identity_name)
+                    .await
+                    .into_diagnostic()?,
+            )
+            .await
+            .into_diagnostic()
+    }
+
+    pub async fn make_authority_node_client(
+        &self,
+        authority_identifier: IdentityIdentifier,
+        authority_address: MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<AuthorityNode> {
+        self.node_manager
+            .make_authority_node_client(
+                authority_identifier,
+                authority_address,
+                self.node_manager
+                    .get_identifier(caller_identity_name)
+                    .await
+                    .into_diagnostic()?,
+            )
+            .await
+            .into_diagnostic()
+    }
+
+    pub fn node_name(&self) -> String {
+        self.node_manager.node_name()
+    }
+}
+
+impl Deref for LocalNode {
+    type Target = Arc<Controller>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.controller
+    }
+}
+
+impl Drop for LocalNode {
+    fn drop(&mut self) {
+        let _ = self
+            .opts
+            .state
+            .nodes
+            .delete_sigkill(self.node_manager.node_name().as_str(), false);
+    }
 }
