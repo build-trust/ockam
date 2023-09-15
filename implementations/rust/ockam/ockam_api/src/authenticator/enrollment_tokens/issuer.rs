@@ -1,10 +1,10 @@
 use minicbor::Decoder;
-use ockam::identity::secure_channel_required;
+use ockam::identity::{AttributesEntry, secure_channel_required};
 use ockam::identity::OneTimeCode;
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Result, Routed, Worker};
+use ockam_core::{async_trait, Result, Routed, Worker};
 use ockam_node::Context;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -14,6 +14,8 @@ use crate::authenticator::direct::types::CreateToken;
 use crate::authenticator::enrollment_tokens::authenticator::MAX_TOKEN_DURATION;
 use crate::authenticator::enrollment_tokens::types::Token;
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
+use crate::cloud::AuthorityNode;
+use crate::DefaultAddress;
 
 pub struct EnrollmentTokenIssuer(pub(super) EnrollmentTokenAuthenticator);
 
@@ -88,5 +90,134 @@ impl Worker for EnrollmentTokenIssuer {
         } else {
             secure_channel_required(c, m).await
         }
+    }
+}
+
+
+#[async_trait]
+pub trait Members {
+    async fn add_member(
+        &self,
+        ctx: &Context,
+        identifier: Identifier,
+        attributes: HashMap<&str, &str>,
+    ) -> miette::Result<()>;
+
+    async fn delete_member(
+        &self,
+        ctx: &Context,
+        identifier: Identifier,
+    ) -> miette::Result<()>;
+
+    async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>>;
+
+    async fn list_members(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<HashMap<Identifier, AttributesEntry>>;
+}
+
+#[async_trait]
+impl Members for AuthorityNode {
+    async fn add_member(
+        &self,
+        ctx: &Context,
+        identifier: Identifier,
+        attributes: HashMap<&str, &str>,
+    ) -> miette::Result<()> {
+        let req = Request::post("/").body(AddMember::new(identifier).with_attributes(attributes));
+        self.0
+            .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+
+    async fn delete_member(
+        &self,
+        ctx: &Context,
+        identifier: Identifier,
+    ) -> miette::Result<()> {
+        let req = Request::delete(format!("/{identifier}"));
+        self.0
+            .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+
+    async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>> {
+        let req = Request::get("/member_ids");
+        self.0
+            .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+
+    async fn list_members(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<HashMap<Identifier, AttributesEntry>> {
+        let req = Request::get("/");
+        self.0
+            .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+}
+
+#[async_trait]
+pub trait TokenIssuer {
+    async fn create_token(
+        &self,
+        ctx: &Context,
+        attributes: HashMap<&str, &str>,
+        duration: Option<Duration>,
+    ) -> miette::Result<OneTimeCode>;
+}
+
+#[async_trait]
+impl TokenIssuer for AuthorityNode {
+    async fn create_token(
+        &self,
+        ctx: &Context,
+        attributes: HashMap<&str, &str>,
+        duration: Option<Duration>,
+    ) -> miette::Result<OneTimeCode> {
+        let req = Request::post("/").body(
+            CreateToken::new()
+                .with_attributes(attributes)
+                .with_duration(duration),
+        );
+        self.0
+            .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+}
+
+#[async_trait]
+pub trait TokenAcceptor {
+    async fn present_token(&self, ctx: &Context, token: OneTimeCode) -> miette::Result<()>;
+}
+
+#[async_trait]
+impl TokenAcceptor for AuthorityNode {
+    async fn present_token(&self, ctx: &Context, token: OneTimeCode) -> miette::Result<()> {
+        let req = Request::post("/").body(token);
+        self.0
+            .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }

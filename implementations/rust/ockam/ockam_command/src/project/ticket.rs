@@ -1,6 +1,5 @@
 use crate::util::duration::duration_parser;
 use clap::Args;
-use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use ockam_api::config::cli::TrustContextConfig;
 use ockam_api::identity::EnrollmentTicket;
 use std::collections::HashMap;
@@ -9,15 +8,10 @@ use std::time::Duration;
 use miette::{miette, IntoDiagnostic};
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::DirectAuthenticatorClient;
-use ockam_api::authenticator::enrollment_tokens::TokenIssuerClient;
+use ockam_api::authenticator::enrollment_tokens::{Members, TokenIssuer};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
-use ockam_api::error::ApiError;
-use ockam_api::{route_to_multiaddr, DefaultAddress};
-use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
-use ockam_node::RpcClient;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::LocalNode;
@@ -94,7 +88,7 @@ impl Runner {
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
 
-        let base_addr = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
+        let authority_node = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
             let tc = &self.opts.state.trust_contexts.read_config_from_path(tc)?;
             trust_context = Some(tc.clone());
             let cred_retr = tc
@@ -121,91 +115,31 @@ impl Runner {
                 .into_diagnostic()?
                 .identifier();
 
-            let authority_node = node
-                .make_authority_node_client(authority_identifier, addr.clone(), Some(identity))
-                .await?;
-            let sc = authority_node
-                .create_secure_channel(&self.ctx)
-                .await
-                .into_diagnostic()?;
-            route_to_multiaddr(&route![sc.encryptor_address().to_string()])
-                .ok_or_else(|| ApiError::core(format!("Invalid route: {}", sc.encryptor_address())))
-                .into_diagnostic()?
+            node.make_authority_node_client(authority_identifier, addr.clone(), Some(identity))
+                .await?
         } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            let authority_node = node
-                .make_authority_node_client(
-                    a.identity_id().clone(),
-                    a.address().clone(),
-                    Some(identity),
-                )
-                .await?;
-            let sc = authority_node
-                .create_secure_channel(&self.ctx)
-                .await
-                .into_diagnostic()?;
             project = Some(p);
-            route_to_multiaddr(&route![sc.encryptor_address().to_string()])
-                .ok_or_else(|| ApiError::core(format!("Invalid route: {}", sc.encryptor_address())))
-                .into_diagnostic()?
+            node.make_authority_node_client(
+                a.identity_id().clone(),
+                a.address().clone(),
+                Some(identity),
+            )
+            .await?
         } else {
-            self.cmd.to.clone()
+            return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
         };
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a
         // credential.
         if let Some(id) = &self.cmd.member {
-            let direct_authenticator_route = {
-                let service = MultiAddr::try_from(
-                    format!("/service/{}", DefaultAddress::DIRECT_AUTHENTICATOR).as_str(),
-                )
-                .into_diagnostic()?;
-                let mut addr = base_addr.clone();
-                for proto in service.iter() {
-                    addr.push_back_value(&proto).into_diagnostic()?;
-                }
-                ockam_api::local_multiaddr_to_route(&addr)
-                    .ok_or(miette!("Invalid MultiAddr {addr}"))?
-            };
-            let client = DirectAuthenticatorClient::new(
-                RpcClient::new(
-                    route![DefaultAddress::RPC_PROXY, direct_authenticator_route],
-                    &self.ctx,
-                )
-                .await
-                .into_diagnostic()?
-                .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
-            );
-            client
-                .add_member(id.clone(), self.cmd.attributes()?)
-                .await
-                .into_diagnostic()?
+            authority_node
+                .add_member(&self.ctx, id.clone(), self.cmd.attributes()?)
+                .await?
         } else {
-            let token_issuer_route = {
-                let service = MultiAddr::try_from(
-                    format!("/service/{}", DefaultAddress::ENROLLMENT_TOKEN_ISSUER).as_str(),
-                )
-                .into_diagnostic()?;
-                let mut addr = base_addr.clone();
-                for proto in service.iter() {
-                    addr.push_back_value(&proto).into_diagnostic()?;
-                }
-                ockam_api::local_multiaddr_to_route(&addr)
-                    .ok_or(miette!("Invalid MultiAddr {addr}"))?
-            };
-            let client = TokenIssuerClient::new(
-                RpcClient::new(
-                    route![DefaultAddress::RPC_PROXY, token_issuer_route],
-                    &self.ctx,
-                )
-                .await
-                .into_diagnostic()?
-                .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
-            );
-            let token = client
-                .create_token(self.cmd.attributes()?, self.cmd.expires_in)
-                .await
-                .into_diagnostic()?;
+            let token = authority_node
+                .create_token(&self.ctx, self.cmd.attributes()?, self.cmd.expires_in)
+                .await?;
 
             let ticket = EnrollmentTicket::new(token, project, trust_context);
             let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
