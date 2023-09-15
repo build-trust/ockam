@@ -7,7 +7,7 @@ use ockam::identity::{
 };
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions};
-use ockam_api::authenticator::direct::TokenAcceptorClient;
+use ockam_api::authenticator::enrollment_tokens::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
