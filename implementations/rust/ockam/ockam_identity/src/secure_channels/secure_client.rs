@@ -2,14 +2,16 @@ use minicbor::{Decode, Encode};
 use std::sync::Arc;
 use std::time::Duration;
 
-use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{SecureChannel, SecureChannels};
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::{self, route, Result, Route};
-use ockam_identity::{SecureChannel, SecureChannels};
 use ockam_node::api::request_with_options;
 use ockam_node::{Context, MessageSendReceiveOptions};
 
+/// This client can create a secure channel to a node
+/// and send request / responses
 #[derive(Clone)]
 pub struct SecureClient {
     pub(crate) secure_channels: Arc<SecureChannels>,
@@ -20,6 +22,7 @@ pub struct SecureClient {
 }
 
 impl SecureClient {
+    /// Create a new secure client
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         server_route: Route,
@@ -38,6 +41,7 @@ impl SecureClient {
 }
 
 impl SecureClient {
+    /// Send a request of type T and receive a reply of type R
     pub async fn ask<T, R>(
         &self,
         ctx: &Context,
@@ -54,6 +58,7 @@ impl SecureClient {
         Response::parse_response_reply::<R>(&bytes)
     }
 
+    /// Send a request of type T and don't expect a reply
     pub async fn tell<T>(
         &self,
         ctx: &Context,
@@ -78,6 +83,7 @@ impl SecureClient {
         }
     }
 
+    /// Send a request of type T and expect an untyped reply
     pub async fn request<T>(
         &self,
         ctx: &Context,
@@ -91,6 +97,7 @@ impl SecureClient {
             .await
     }
 
+    /// Send a request of type T and expect an untyped reply within a specific timeout
     pub async fn request_with_timeout<T>(
         &self,
         ctx: &Context,
@@ -111,6 +118,7 @@ impl SecureClient {
         res
     }
 
+    /// Create a secure channel to the node
     pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
         let options = SecureChannelOptions::new()
             .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()));
@@ -124,6 +132,7 @@ impl SecureClient {
             .await
     }
 
+    /// Check if a secure channel can be created to the node
     pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
         let sc = self.create_secure_channel(ctx).await?;
         self.secure_channels

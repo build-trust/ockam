@@ -2,14 +2,14 @@ use crate::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
 use crate::utils::AttributesBuilder;
 use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
-use ockam_core::api::{Method, Request, RequestHeader, Response};
+use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Result, Route, Routed, Worker};
-use ockam_node::{Context, RpcClient};
+use ockam_core::{Result, Routed, Worker};
+use ockam_node::Context;
 
 use core::time::Duration;
 use minicbor::Decoder;
@@ -144,24 +144,4 @@ pub async fn secure_channel_required(c: &mut Context, m: Routed<Vec<u8>>) -> Res
     let req: RequestHeader = dec.decode()?;
     let res = Response::forbidden(&req, "secure channel required").to_vec()?;
     c.send(m.return_route(), res).await
-}
-
-/// Client for a credentials issuer
-pub struct CredentialsIssuerClient {
-    client: RpcClient,
-}
-
-impl CredentialsIssuerClient {
-    /// Create a new credentials issuer client
-    /// The route needs to be a secure channel
-    pub async fn new(route: Route, ctx: &Context) -> Result<Self> {
-        Ok(CredentialsIssuerClient {
-            client: RpcClient::new(route, ctx).await?,
-        })
-    }
-
-    /// Return a credential for the identity which initiated the secure channel
-    pub async fn credential(&self) -> Result<CredentialAndPurposeKey> {
-        self.client.request(&Request::post("/")).await
-    }
 }

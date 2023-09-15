@@ -60,7 +60,6 @@ mod parser;
 mod processor_builder;
 mod relay;
 mod router;
-mod rpc_client;
 
 /// Support for storing persistent values
 pub mod storage;
@@ -72,7 +71,6 @@ pub use error::*;
 pub use executor::*;
 pub use messages::*;
 pub use processor_builder::ProcessorBuilder;
-pub use rpc_client::*;
 pub use storage::*;
 pub use worker_builder::WorkerBuilder;
 
@@ -95,65 +93,3 @@ where
 
 #[cfg(not(feature = "std"))]
 pub use crate::tokio::runtime::{block_future, spawn};
-
-// pub(crate) mod error {
-//     //! Move this module to its own file eventually
-//     //!
-//     //! Utility module to construct various error types
-
-//     use crate::messages::RouterError;
-//     use crate::tokio::sync::mpsc::error::SendError;
-//     use core::fmt::Debug;
-//     #[cfg(feature = "std")]
-//     use ockam_core::compat::error::Error as StdError;
-//     use ockam_core::{
-//         errcode::{Kind, Origin},
-//         Error,
-//     };
-
-//     impl From<RouterError> for Error {
-//         #[track_caller]
-//         fn from(e: RouterError) -> Error {
-//             Error::new(Origin::Node, Kind::Internal, e)
-//         }
-//     }
-
-//     #[track_caller]
-//     pub fn from_send_err<T: Debug + Send + Sync + 'static>(e: SendError<T>) -> Error {
-//         node_internal(e)
-//     }
-
-//     #[track_caller]
-//     #[cfg(feature = "std")]
-//     pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error {
-//         Error::new(Origin::Node, Kind::Timeout, e)
-//     }
-
-//     #[track_caller]
-//     #[cfg(feature = "std")]
-//     pub fn node_internal(e: impl StdError + Send + Sync + 'static) -> Error {
-//         Error::new(Origin::Node, Kind::Internal, e)
-//     }
-
-//     #[track_caller]
-//     pub fn node_without_cause(kind: Kind) -> Error {
-//         Error::new_without_cause(Origin::Node, kind)
-//     }
-
-//     #[track_caller]
-//     pub fn internal_without_cause() -> Error {
-//         Error::new_without_cause(Origin::Node, Kind::Internal)
-//     }
-
-//     #[cfg(not(feature = "std"))]
-//     #[track_caller]
-//     pub fn node_internal<E>(_e: E) -> Error {
-//         Error::new_without_cause(Origin::Node, Kind::Internal)
-//     }
-
-//     #[cfg(not(feature = "std"))]
-//     #[track_caller]
-//     pub fn from_elapsed<E>(_e: E) -> Error {
-//         Error::new_without_cause(Origin::Node, Kind::Timeout)
-//     }
-// }

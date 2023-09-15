@@ -1,14 +1,15 @@
 use serde::{Deserialize, Serialize};
-use tracing::{debug, trace};
+use std::time::Duration;
+use tracing::debug;
 
+use ockam_core::api::Request;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, route, Address, Result, Route};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Result, Route};
+use ockam_node::{Context, DEFAULT_TIMEOUT};
 
-use crate::models::{CredentialAndPurposeKey, Identifier};
-use crate::CredentialsIssuerClient;
-use crate::{SecureChannelOptions, SecureChannels, TrustMultiIdentifiersPolicy};
+use crate::{Credential, Identifier, SecureChannels, SecureClient};
+use crate::models::CredentialAndPurposeKey;
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
@@ -64,6 +65,16 @@ impl RemoteCredentialsRetriever {
             issuer,
         }
     }
+
+    fn make_secure_client(&self, for_identity: &IdentityIdentifier) -> SecureClient {
+        SecureClient::new(
+            self.secure_channels.clone(),
+            self.issuer.route.clone(),
+            self.issuer.identifier.clone(),
+            for_identity.clone(),
+            Duration::from_secs(DEFAULT_TIMEOUT),
+        )
+    }
 }
 
 #[async_trait]
@@ -74,32 +85,11 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
         for_identity: &Identifier,
     ) -> Result<CredentialAndPurposeKey> {
         debug!("Getting credential from : {}", &self.issuer.route);
-        let resolved_route = ctx
-            .resolve_transport_route(self.issuer.route.clone())
-            .await?;
-        trace!(
-            "Getting credential from resolved route: {}",
-            resolved_route.clone()
-        );
-
-        let allowed = vec![self.issuer.identifier.clone()];
-        debug!("Create secure channel to authority");
-
-        let options = SecureChannelOptions::new()
-            .with_trust_policy(TrustMultiIdentifiersPolicy::new(allowed));
-
-        let sc = self
-            .secure_channels
-            .create_secure_channel(ctx, for_identity, resolved_route.clone(), options)
-            .await?;
-
-        debug!("Created secure channel to project authority");
-
-        let client =
-            CredentialsIssuerClient::new(route![sc, self.issuer.service_address.clone()], ctx)
-                .await?;
-
-        let credential = client.credential().await?;
+        let client = self.make_secure_client(for_identity);
+        let credential = client
+            .ask(ctx, "credential_issuer", Request::post("/"))
+            .await?
+            .success()?;
         Ok(credential)
     }
 }

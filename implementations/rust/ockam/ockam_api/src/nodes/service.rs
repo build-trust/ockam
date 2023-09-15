@@ -25,14 +25,14 @@ use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
+use ockam_identity::{SecureClient};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use crate::cloud::secure_client::SecureClient;
-use crate::cloud::{AuthorityNode, Controller, ProjectNode};
+use crate::cloud::{AuthorityNode, Controller, ProjectNode, SecureClients};
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
@@ -153,7 +153,7 @@ impl NodeManager {
 
 impl NodeManager {
     pub async fn make_controller_node_client(&self) -> Result<Controller> {
-        SecureClient::controller(
+        SecureClients::controller(
             &self.tcp_transport,
             self.secure_channels.clone(),
             self.get_identifier(None).await?,
@@ -167,7 +167,7 @@ impl NodeManager {
         authority_multiaddr: MultiAddr,
         caller_identifier: IdentityIdentifier,
     ) -> Result<AuthorityNode> {
-        SecureClient::authority(
+        SecureClients::authority(
             &self.tcp_transport,
             self.secure_channels.clone(),
             authority_identifier,
@@ -183,11 +183,27 @@ impl NodeManager {
         project_multiaddr: MultiAddr,
         caller_identifier: IdentityIdentifier,
     ) -> Result<ProjectNode> {
-        SecureClient::project(
+        SecureClients::project(
             &self.tcp_transport,
             self.secure_channels.clone(),
             project_identifier,
             project_multiaddr,
+            caller_identifier,
+        )
+        .await
+    }
+
+    pub async fn make_secure_client(
+        &self,
+        identifier: IdentityIdentifier,
+        multiaddr: MultiAddr,
+        caller_identifier: IdentityIdentifier,
+    ) -> Result<SecureClient> {
+        SecureClients::generic(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            identifier,
+            multiaddr,
             caller_identifier,
         )
         .await

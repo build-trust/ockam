@@ -18,7 +18,7 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{NodeManager, NODEMANAGER_ADDR};
 use ockam_core::env::get_env_with_default;
-use ockam_identity::IdentityIdentifier;
+use ockam_identity::{IdentityIdentifier, SecureClient};
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::CreateCommand;
@@ -312,6 +312,25 @@ impl LocalNode {
             .make_authority_node_client(
                 authority_identifier,
                 authority_address,
+                self.node_manager
+                    .get_identifier(caller_identity_name)
+                    .await
+                    .into_diagnostic()?,
+            )
+            .await
+            .into_diagnostic()
+    }
+
+    pub async fn make_secure_client(
+        &self,
+        identifier: IdentityIdentifier,
+        address: MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<SecureClient> {
+        self.node_manager
+            .make_secure_client(
+                identifier,
+                address,
                 self.node_manager
                     .get_identifier(caller_identity_name)
                     .await

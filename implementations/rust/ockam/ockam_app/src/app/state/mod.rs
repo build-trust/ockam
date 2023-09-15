@@ -17,8 +17,7 @@ use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait, StateItemTrait,
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
-use ockam_api::cloud::secure_client::SecureClient;
-use ockam_api::cloud::Controller;
+use ockam_api::cloud::{Controller, SecureClients};
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
@@ -275,7 +274,7 @@ impl AppState {
     }
 
     pub fn controller_address(&self) -> MultiAddr {
-        SecureClient::controller_multiaddr()
+        SecureClients::controller_multiaddr()
     }
 }
 

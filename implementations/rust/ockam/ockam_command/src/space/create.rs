@@ -1,6 +1,6 @@
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::space::{Space, Spaces};
+use ockam_api::cloud::space::Spaces;
 use rand::prelude::random;
 
 use crate::node::util::LocalNode;
@@ -57,8 +57,8 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let node = LocalNode::make(ctx, &opts, None).await?;
+    let space = node.create_space(ctx, cmd.name, cmd.admins).await?;
 
-    let space: Space = node.create_space(ctx, cmd.name, cmd.admins).await?;
     opts.println(&space)?;
     opts.state
         .spaces
