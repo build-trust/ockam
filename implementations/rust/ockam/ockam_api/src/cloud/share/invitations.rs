@@ -13,6 +13,7 @@ const API_SERVICE: &str = "users";
 
 #[async_trait]
 pub trait Invitations {
+    #[allow(clippy::too_many_arguments)]
     async fn create_invitation(
         &self,
         ctx: &Context,
@@ -24,6 +25,7 @@ pub trait Invitations {
         target_id: String,
     ) -> Result<Reply<SentInvitation>>;
 
+    #[allow(clippy::too_many_arguments)]
     async fn create_service_invitation(
         &self,
         ctx: &Context,

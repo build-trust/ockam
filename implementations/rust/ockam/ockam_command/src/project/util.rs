@@ -181,7 +181,7 @@ async fn check_project_ready(
         let result: miette::Result<Project> = if project.is_ready() {
             Ok(project)
         } else {
-            Err(miette!("Project creation timed out. Please try again.").into())
+            Err(miette!("Project creation timed out. Please try again."))
         };
         result
     })
@@ -232,7 +232,7 @@ async fn check_project_node_accessible(
     }
 
     Retry::spawn(retry_strategy.clone(), || async {
-        if let Ok(_) = project_node.check_secure_channel(ctx).await {
+        if project_node.check_secure_channel(ctx).await.is_ok() {
             Ok(())
         } else {
             Err(miette!("Timed out while trying to establish a secure channel to the project. Please try again."))
@@ -268,7 +268,7 @@ async fn check_authority_node_accessible(
         spinner.set_message("Establishing secure channel to project authority...");
     }
     Retry::spawn(retry_strategy.clone(), || async {
-            if let Ok(_) = authority_node.check_secure_channel(ctx).await {
+        if authority_node.check_secure_channel(ctx).await.is_ok() {
                 Ok(())
             } else {
                 Err(miette!("Timed out while trying to establish a secure channel to the project authority. Please try again."))

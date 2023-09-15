@@ -31,7 +31,7 @@ pub async fn check_for_completion(
             .into_diagnostic()?;
         let operation: miette::Result<Operation> = match result {
             Reply::Successful(o) if o.is_completed() => Ok(o),
-            _ => Err(miette!("Operation timed out. Please try again.").into()),
+            _ => Err(miette!("Operation timed out. Please try again.")),
         };
         operation
     })

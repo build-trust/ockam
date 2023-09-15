@@ -123,13 +123,13 @@ async fn check_configuration_completion(
     project_id: String,
     operation_id: String,
 ) -> Result<()> {
-    check_for_completion(&opts, &ctx, &controller, &operation_id).await?;
+    check_for_completion(opts, ctx, controller, &operation_id).await?;
     let project = controller
-        .get_project(&ctx, project_id)
+        .get_project(ctx, project_id)
         .await
         .into_diagnostic()?
         .success()
         .into_diagnostic()?;
-    let _ = check_project_readiness(&opts, &ctx, &node_manager, project).await?;
+    let _ = check_project_readiness(opts, ctx, node_manager, project).await?;
     Ok(())
 }
