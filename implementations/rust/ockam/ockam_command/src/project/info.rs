@@ -42,7 +42,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: InfoCommand,
 ) -> miette::Result<()> {
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let node_manager = start_node_manager(ctx, &opts, None).await?;
     let controller = node_manager
         .make_controller_client()
         .await

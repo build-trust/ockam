@@ -104,7 +104,7 @@ async fn rpc(
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
                 &opts,
-                &ctx,
+                ctx,
                 &node_manager,
                 &meta,
                 identifier,
@@ -132,7 +132,7 @@ async fn rpc(
                 .context("Received content is not a valid utf8 string")?
         };
 
-        opts.terminal.stdout().plain(&result).write_line()?;
+        opts.terminal.stdout().plain(result).write_line()?;
         Ok(())
     }
     go(&mut ctx, opts, cmd).await

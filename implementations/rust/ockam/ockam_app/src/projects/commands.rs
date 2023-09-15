@@ -7,7 +7,7 @@ use ockam_api::cloud::project::Projects;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
 
 use crate::app::AppState;
-use crate::projects::error::Error::{AppError, ListingFailed, StateSaveFailed};
+use crate::projects::error::Error::{InternalFailure, ListingFailed, StateSaveFailed};
 
 use super::error::{Error, Result};
 use super::State as ProjectState;
@@ -62,7 +62,7 @@ pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()
     let controller = state
         .controller()
         .await
-        .map_err(|e| AppError(e.to_string()))?;
+        .map_err(|e| InternalFailure(e.to_string()))?;
     let projects = controller
         .list_projects(&state.context())
         .await

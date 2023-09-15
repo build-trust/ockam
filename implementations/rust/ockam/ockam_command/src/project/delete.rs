@@ -61,7 +61,7 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this project?")?
     {
         let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-        let node_manager = start_node_manager(&ctx, &opts, None).await?;
+        let node_manager = start_node_manager(ctx, &opts, None).await?;
         let controller = node_manager
             .make_controller_client()
             .await

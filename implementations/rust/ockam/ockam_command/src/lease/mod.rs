@@ -98,7 +98,7 @@ async fn authenticate(
         .into_diagnostic()?;
 
     authority_node
-        .authenticate(&ctx, Some(identity.clone()))
+        .authenticate(ctx, Some(identity.clone()))
         .await
         .into_diagnostic()?
         .success()

@@ -104,6 +104,7 @@ impl NodeManager {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_monitored_secure_channel(
         &mut self,
         ctx: &Context,
