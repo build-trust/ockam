@@ -6,7 +6,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::CredentialsIssuerClient;
 use ockam::Context;
-use ockam_api::authenticator::direct::TokenAcceptorClient;
+use ockam_api::authenticator::enrollment_tokens::TokenAcceptorClient;
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::config::lookup::ProjectAuthority;

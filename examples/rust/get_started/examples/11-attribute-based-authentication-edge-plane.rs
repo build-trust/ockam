@@ -7,7 +7,7 @@ use ockam::identity::{
 };
 use ockam::node;
 use ockam::{route, Context, Result};
-use ockam_api::authenticator::direct::TokenAcceptorClient;
+use ockam_api::authenticator::enrollment_tokens::TokenAcceptorClient;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::compat::sync::Arc;
 use ockam_node::RpcClient;

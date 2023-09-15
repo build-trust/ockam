@@ -18,7 +18,7 @@ use ockam_core::{Error, Result, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 
-use crate::authenticator::direct::EnrollmentTokenAuthenticator;
+use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
 use crate::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::authority_node::Configuration;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
