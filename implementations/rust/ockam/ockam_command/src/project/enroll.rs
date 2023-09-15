@@ -94,7 +94,7 @@ pub async fn project_enroll(
     let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
 
     // Create secure channel to the project's authority node
-    let node_manager = start_node_manager(ctx, &opts, Some(&cmd.trust_opts)).await?;
+    let node_manager = start_node_manager(ctx, opts, Some(&cmd.trust_opts)).await?;
     let identifier = node_manager
         .get_identifier(Some(identity_name))
         .await
@@ -140,7 +140,7 @@ pub async fn project_enroll(
         .plain(credential.clone())
         .write_line()?;
 
-    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
+    delete_embedded_node(opts, node_manager.node_name().as_str()).await;
     Ok(project.name)
 }
 

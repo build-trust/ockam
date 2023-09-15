@@ -52,7 +52,7 @@ async fn run_impl(
     let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
 
     // Send request
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let node_manager = start_node_manager(ctx, &opts, None).await?;
     let controller = node_manager
         .make_controller_client()
         .await

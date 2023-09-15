@@ -43,7 +43,7 @@ async fn run_impl(
     _cmd: ListCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let node_manager = start_node_manager(ctx, &opts, None).await?;
     let controller = node_manager
         .make_controller_client()
         .await

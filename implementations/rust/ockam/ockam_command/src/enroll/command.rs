@@ -116,7 +116,7 @@ pub async fn retrieve_user_project(
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
 
-    let project = default_project(opts, ctx, controller, &node_manager, &space)
+    let project = default_project(opts, ctx, controller, node_manager, &space)
         .await
         .wrap_err(format!(
             "Unable to retrieve and set a project as default with space {}",
