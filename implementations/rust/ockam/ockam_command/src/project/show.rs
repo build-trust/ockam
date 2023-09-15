@@ -3,9 +3,9 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::Projects;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::project::util::refresh_projects;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -49,23 +49,19 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
 ) -> miette::Result<()> {
-    let node_manager = start_node_manager(ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let node = LocalNode::make(ctx, &opts, None).await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(&opts, ctx, &controller).await?;
+            refresh_projects(&opts, ctx, &node).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 
     // Send request
-    let project: Project = controller
+    let project = node
         .get_project(ctx, id)
         .await
         .into_diagnostic()?
@@ -76,6 +72,5 @@ async fn run_impl(
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

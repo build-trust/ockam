@@ -12,8 +12,6 @@ use miette::{Context as _, IntoDiagnostic};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
 use ockam_api::cloud::project::Projects;
-use ockam_api::cloud::Controller;
-use ockam_api::nodes::NodeManager;
 use ockam_node::Context;
 
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
@@ -25,6 +23,7 @@ use crate::project::addon::list::AddonListSubcommand;
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 
+use crate::node::util::LocalNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::{CommandGlobalOpts, Result};
@@ -118,18 +117,17 @@ pub fn get_project_id(cli_state: &CliState, project_name: &str) -> Result<String
 async fn check_configuration_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node_manager: &NodeManager,
-    controller: &Controller,
+    node: &LocalNode,
     project_id: String,
     operation_id: String,
 ) -> Result<()> {
-    check_for_completion(opts, ctx, controller, &operation_id).await?;
-    let project = controller
+    check_for_completion(opts, ctx, node, &operation_id).await?;
+    let project = node
         .get_project(ctx, project_id)
         .await
         .into_diagnostic()?
         .success()
         .into_diagnostic()?;
-    let _ = check_project_readiness(opts, ctx, node_manager, project).await?;
+    let _ = check_project_readiness(opts, ctx, node, project).await?;
     Ok(())
 }

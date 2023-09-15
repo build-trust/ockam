@@ -6,7 +6,7 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cloud::share::Invitations;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -42,14 +42,10 @@ async fn run_impl(
     cmd: AcceptCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node_manager = start_node_manager(ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let node = LocalNode::make(ctx, &opts, None).await?;
 
     let get_accepted_invitation = async {
-        let invitation = controller
+        let invitation = node
             .accept_invitation(ctx, cmd.id)
             .await
             .into_diagnostic()?
@@ -66,8 +62,6 @@ async fn run_impl(
         .progress_output(&output_messages, &is_finished);
 
     let (accepted, _) = try_join!(get_accepted_invitation, progress_output)?;
-
-    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     let plain = format!(
         "Accepted invite {} for {} {}",

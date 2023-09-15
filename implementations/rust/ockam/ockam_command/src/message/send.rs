@@ -12,7 +12,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -93,21 +93,16 @@ async fn rpc(
                 .ask(req(&to, msg_bytes))
                 .await?
         } else {
-            let node_manager =
-                start_node_manager(ctx, &opts, Some(&cmd.trust_context_opts)).await?;
+            let node = LocalNode::make(ctx, &opts, Some(&cmd.trust_context_opts)).await?;
             let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-            let identifier = node_manager
-                .get_identifier(Some(identity_name))
-                .await
-                .into_diagnostic()?;
 
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
                 &opts,
                 ctx,
-                &node_manager,
+                &node,
                 &meta,
-                identifier,
+                Some(identity_name),
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
@@ -115,13 +110,9 @@ async fn rpc(
             let route = local_multiaddr_to_route(&to)
                 .ok_or_else(|| ApiError::core("Invalid route"))
                 .into_diagnostic()?;
-            let response = ctx
-                .send_and_receive::<Vec<u8>>(route, msg_bytes)
+            ctx.send_and_receive::<Vec<u8>>(route, msg_bytes)
                 .await
-                .into_diagnostic()?;
-
-            delete_embedded_node(&opts, &node_manager.node_name()).await;
-            response
+                .into_diagnostic()?
         };
 
         let result = if cmd.hex {

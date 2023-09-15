@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::project::util::refresh_projects;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -61,11 +61,7 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this project?")?
     {
         let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-        let node_manager = start_node_manager(ctx, &opts, None).await?;
-        let controller = node_manager
-            .make_controller_client()
-            .await
-            .into_diagnostic()?;
+        let node = LocalNode::make(ctx, &opts, None).await?;
 
         // Lookup project
         let project_id = match opts.state.projects.get(&cmd.project_name) {
@@ -73,7 +69,7 @@ async fn run_impl(
             Err(_) => {
                 // The project is not in the config file.
                 // Fetch all available projects from the cloud.
-                refresh_projects(&opts, ctx, &controller).await?;
+                refresh_projects(&opts, ctx, &node).await?;
 
                 // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
                 match opts.state.projects.get(&cmd.project_name) {
@@ -86,11 +82,9 @@ async fn run_impl(
         };
 
         // Send request
-        controller
-            .delete_project(ctx, space_id, project_id)
+        node.delete_project(ctx, space_id, project_id)
             .await
             .into_diagnostic()?;
-        delete_embedded_node(&opts, &node_manager.node_name()).await;
 
         opts.state.projects.delete(&cmd.project_name)?;
         opts.terminal

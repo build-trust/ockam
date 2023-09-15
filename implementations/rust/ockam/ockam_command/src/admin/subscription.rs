@@ -4,10 +4,10 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use miette::{Context as _, IntoDiagnostic};
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscriptions;
 
+use crate::node::util::LocalNode;
 use crate::output::Output;
 use crate::subscription::get_subscription_by_id_or_space_id;
 use crate::util::api::CloudOpts;
@@ -141,11 +141,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let controller = LocalNode::make(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,
@@ -243,6 +239,5 @@ async fn run_impl(
             }
         }
     };
-    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
     Ok(())
 }
