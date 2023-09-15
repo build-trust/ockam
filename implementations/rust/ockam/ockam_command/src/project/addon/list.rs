@@ -1,6 +1,5 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
@@ -38,12 +37,7 @@ async fn run_impl(
 
     let node = LocalNode::make(&ctx, &opts, None).await?;
 
-    let addons = node
-        .list_addons(&ctx, project_id)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let addons = node.list_addons(&ctx, project_id).await?;
     opts.println(&addons)?;
     Ok(())
 }

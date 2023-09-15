@@ -1,3 +1,4 @@
+use miette::{miette, IntoDiagnostic};
 use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
@@ -6,8 +7,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
 use ockam::identity::Identifier;
-use ockam_core::api::Reply::Successful;
-use ockam_core::api::{Reply, Request};
+use ockam_core::api::Request;
 use ockam_core::{async_trait, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{tokio, Context};
@@ -247,25 +247,26 @@ pub trait Projects {
         space_id: String,
         name: String,
         users: Vec<String>,
-    ) -> Result<Reply<Project>>;
-    async fn get_project(&self, ctx: &Context, project_id: String) -> Result<Reply<Project>>;
+    ) -> miette::Result<Project>;
+
+    async fn get_project(&self, ctx: &Context, project_id: String) -> miette::Result<Project>;
 
     async fn delete_project(
         &self,
         ctx: &Context,
         space_id: String,
         project_id: String,
-    ) -> Result<Reply<()>>;
+    ) -> miette::Result<()>;
 
-    async fn get_project_version(&self, ctx: &Context) -> Result<Reply<ProjectVersion>>;
+    async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion>;
 
-    async fn list_projects(&self, ctx: &Context) -> Result<Reply<Vec<Project>>>;
+    async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
 
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
         project: Project,
-    ) -> Result<Reply<Project>>;
+    ) -> miette::Result<Project>;
 }
 
 #[async_trait]
@@ -276,17 +277,27 @@ impl Projects for Controller {
         space_id: String,
         name: String,
         users: Vec<String>,
-    ) -> Result<Reply<Project>> {
+    ) -> miette::Result<Project> {
         trace!(target: TARGET, %space_id, project_name = name, "creating project");
         let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
             .body(CreateProject::new(name, users));
-        self.0.ask(ctx, "projects", req).await
+        self.0
+            .ask(ctx, "projects", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
-    async fn get_project(&self, ctx: &Context, project_id: String) -> Result<Reply<Project>> {
+    async fn get_project(&self, ctx: &Context, project_id: String) -> miette::Result<Project> {
         trace!(target: TARGET, %project_id, "getting project");
         let req = Request::get(format!("/v0/{project_id}"));
-        self.0.ask(ctx, "projects", req).await
+        self.0
+            .ask(ctx, "projects", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn delete_project(
@@ -294,52 +305,67 @@ impl Projects for Controller {
         ctx: &Context,
         space_id: String,
         project_id: String,
-    ) -> Result<Reply<()>> {
+    ) -> miette::Result<()> {
         trace!(target: TARGET, %space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
-        self.0.ask(ctx, "projects", req).await
+        self.0
+            .ask(ctx, "projects", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
-    async fn get_project_version(&self, ctx: &Context) -> Result<Reply<ProjectVersion>> {
+    async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion> {
         trace!(target: TARGET, "getting project version");
-        self.0.ask(ctx, "version_info", Request::get("")).await
+        self.0
+            .ask(ctx, "version_info", Request::get(""))
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
-    async fn list_projects(&self, ctx: &Context) -> Result<Reply<Vec<Project>>> {
+    async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let req = Request::get("/v0");
-        self.0.ask(ctx, "projects", req).await
+        self.0
+            .ask(ctx, "projects", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
         project: Project,
-    ) -> Result<Reply<Project>> {
+    ) -> miette::Result<Project> {
         if project.is_ready() {
-            return Ok(Successful(project));
+            return Ok(project);
         }
         let operation_id = match &project.operation_id {
             Some(operation_id) => operation_id,
             None => {
-                return Err(ApiError::core("Project has no operation id"));
+                return Err(miette!("Project has no operation id"));
             }
         };
         let retry_strategy =
             FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
         let operation = Retry::spawn(retry_strategy.clone(), || async {
-            if let Successful(operation) = self.get_operation(ctx, operation_id).await? {
+            if let Some(operation) = self.get_operation(ctx, operation_id).await? {
                 if operation.is_completed() {
                     return Ok(operation);
                 }
             }
-            Err(ApiError::core("Project is not reachable yet. Retrying..."))
+            Err(miette!("Project is not reachable yet. Retrying..."))
         })
         .await?;
 
         if operation.is_successful() {
             self.get_project(ctx, project.id).await
         } else {
-            Err(ApiError::core("Operation failed. Please try again."))
+            Err(miette!("Operation failed. Please try again."))
         }
     }
 }

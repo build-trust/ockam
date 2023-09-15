@@ -1,4 +1,3 @@
-use minicbor::{Decode, Encode};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,21 +27,6 @@ pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
 
 /// Total time in milliseconds to wait for Orchestrator long-running operations to complete
 pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
-
-/// A wrapper around a cloud request with extra fields.
-#[derive(Encode, Decode, Debug)]
-#[cfg_attr(test, derive(Clone))]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct CloudRequestWrapper<T> {
-    #[b(1)] pub req: T,
-}
-
-impl<T> CloudRequestWrapper<T> {
-    pub fn new(req: T) -> Self {
-        Self { req }
-    }
-}
 
 pub struct AuthorityNode(pub(crate) SecureClient);
 pub struct ProjectNode(pub(crate) SecureClient);

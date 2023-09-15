@@ -1,6 +1,5 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -82,9 +81,7 @@ async fn run_impl(
         };
 
         // Send request
-        node.delete_project(ctx, space_id, project_id)
-            .await
-            .into_diagnostic()?;
+        node.delete_project(ctx, space_id, project_id).await?;
 
         opts.state.projects.delete(&cmd.project_name)?;
         opts.terminal

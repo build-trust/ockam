@@ -1,10 +1,9 @@
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
-use ockam_api::cloud::operation::{Operation, Operations};
+use ockam_api::cloud::operation::Operations;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
-use ockam_core::api::Reply;
 use ockam_node::Context;
 
 use crate::node::util::LocalNode;
@@ -23,18 +22,15 @@ pub async fn check_for_completion(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Configuring project...");
     }
-    let operation: Operation = Retry::spawn(retry_strategy.clone(), || async {
+    let operation = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the operation show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let result = node
-            .get_operation(ctx, operation_id)
-            .await
-            .into_diagnostic()?;
-        let operation: miette::Result<Operation> = match result {
-            Reply::Successful(o) if o.is_completed() => Ok(o),
+        let result = node.get_operation(ctx, operation_id).await?;
+
+        match result {
+            Some(o) if o.is_completed() => Ok(o),
             _ => Err(miette!("Operation timed out. Please try again.")),
-        };
-        operation
+        }
     })
     .await?;
 

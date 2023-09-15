@@ -1,5 +1,3 @@
-use miette::IntoDiagnostic;
-
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 use ockam_api::cloud::space::Spaces;
@@ -13,12 +11,7 @@ async fn refresh_spaces(
     opts: &CommandGlobalOpts,
     controller: &Controller,
 ) -> miette::Result<()> {
-    let spaces = controller
-        .list_spaces(ctx)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let spaces = controller.list_spaces(ctx).await?;
     for space in spaces {
         opts.state
             .spaces

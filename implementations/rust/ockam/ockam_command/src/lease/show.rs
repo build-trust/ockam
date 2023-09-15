@@ -1,5 +1,4 @@
 use clap::Args;
-use miette::IntoDiagnostic;
 use termimad::{minimad::TextTemplate, MadSkin};
 
 use ockam::Context;
@@ -41,12 +40,7 @@ async fn run_impl(
     ),
 ) -> miette::Result<()> {
     let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
-    let token = project_node
-        .get_token(&ctx, cmd.token_id)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let token = project_node.get_token(&ctx, cmd.token_id).await?;
     let token_template = TextTemplate::from(TOKEN_VIEW);
     let mut expander = token_template.expander();
 

@@ -94,10 +94,7 @@ async fn authenticate(
 
     authority_node
         .authenticate(ctx, Some(identity.clone()))
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+        .await?;
     node.make_project_node_client(
         project_identifier.clone(),
         project_addr,

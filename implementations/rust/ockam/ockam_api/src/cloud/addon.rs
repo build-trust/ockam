@@ -1,10 +1,10 @@
 use crate::cloud::operation::CreateOperationResponse;
 use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
 use crate::cloud::Controller;
+use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
-use ockam_core::api::{Reply, Request};
+use ockam_core::api::Request;
 use ockam_core::async_trait;
-use ockam_core::Result;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
@@ -79,43 +79,48 @@ impl DisableAddon {
 
 #[async_trait]
 pub trait Addons {
-    async fn list_addons(&self, ctx: &Context, project_id: String) -> Result<Reply<Vec<Addon>>>;
+    async fn list_addons(&self, ctx: &Context, project_id: String) -> miette::Result<Vec<Addon>>;
 
     async fn configure_confluent_addon(
         &self,
         ctx: &Context,
         project_id: String,
         config: ConfluentConfig,
-    ) -> Result<Reply<CreateOperationResponse>>;
+    ) -> miette::Result<CreateOperationResponse>;
 
     async fn configure_okta_addon(
         &self,
         ctx: &Context,
         project_id: String,
         config: OktaConfig,
-    ) -> Result<Reply<CreateOperationResponse>>;
+    ) -> miette::Result<CreateOperationResponse>;
 
     async fn configure_influxdb_addon(
         &self,
         ctx: &Context,
         project_id: String,
         config: InfluxDBTokenLeaseManagerConfig,
-    ) -> Result<Reply<CreateOperationResponse>>;
+    ) -> miette::Result<CreateOperationResponse>;
 
     async fn disable_addon(
         &self,
         ctx: &Context,
         project_id: String,
         addon_id: String,
-    ) -> Result<Reply<CreateOperationResponse>>;
+    ) -> miette::Result<CreateOperationResponse>;
 }
 
 #[async_trait]
 impl Addons for Controller {
-    async fn list_addons(&self, ctx: &Context, project_id: String) -> Result<Reply<Vec<Addon>>> {
+    async fn list_addons(&self, ctx: &Context, project_id: String) -> miette::Result<Vec<Addon>> {
         trace!(target: TARGET, project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn configure_confluent_addon(
@@ -123,13 +128,18 @@ impl Addons for Controller {
         ctx: &Context,
         project_id: String,
         config: ConfluentConfig,
-    ) -> Result<Reply<CreateOperationResponse>> {
+    ) -> miette::Result<CreateOperationResponse> {
         trace!(target: TARGET, project_id, "configuring confluent addon");
         let req = Request::post(format!(
             "/v1/projects/{project_id}/configure_addon/confluent"
         ))
         .body(config);
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn configure_okta_addon(
@@ -137,11 +147,16 @@ impl Addons for Controller {
         ctx: &Context,
         project_id: String,
         config: OktaConfig,
-    ) -> Result<Reply<CreateOperationResponse>> {
+    ) -> miette::Result<CreateOperationResponse> {
         trace!(target: TARGET, project_id, "configuring okta addon");
         let req =
             Request::post(format!("/v1/projects/{project_id}/configure_addon/okta")).body(config);
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn configure_influxdb_addon(
@@ -149,14 +164,19 @@ impl Addons for Controller {
         ctx: &Context,
         project_id: String,
         config: InfluxDBTokenLeaseManagerConfig,
-    ) -> Result<Reply<CreateOperationResponse>> {
+    ) -> miette::Result<CreateOperationResponse> {
         //
         trace!(target: TARGET, project_id, "configuring influxdb addon");
         let req = Request::post(format!(
             "/v1/projects/{project_id}/configure_addon/influxdb_token_lease_manager"
         ))
         .body(config);
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn disable_addon(
@@ -164,10 +184,15 @@ impl Addons for Controller {
         ctx: &Context,
         project_id: String,
         addon_id: String,
-    ) -> Result<Reply<CreateOperationResponse>> {
+    ) -> miette::Result<CreateOperationResponse> {
         trace!(target: TARGET, project_id, "disabling addon");
         let req = Request::post(format!("/v1/projects/{project_id}/disable_addon"))
             .body(DisableAddon::new(addon_id));
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }

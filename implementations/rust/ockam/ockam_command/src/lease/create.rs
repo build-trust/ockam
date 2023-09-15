@@ -42,12 +42,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let token = project_node
-            .create_token(&ctx)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let token = project_node.create_token(&ctx).await?;
         *is_finished.lock().await = true;
         Ok(token)
     };

@@ -66,9 +66,7 @@ pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()
     let projects = controller
         .list_projects(&state.context())
         .await
-        .map_err(ListingFailed)?
-        .success()
-        .map_err(ListingFailed)?
+        .map_err(|e| ListingFailed(e.to_string()))?
         .into_iter()
         .filter(|p| p.has_admin_with_email(&email))
         .collect::<Vec<Project>>();

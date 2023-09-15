@@ -106,8 +106,7 @@ pub async fn project_enroll(
     if let Some(tkn) = cmd.enroll_ticket.as_ref() {
         authority_node
             .present_token(ctx, &tkn.one_time_code)
-            .await
-            .into_diagnostic()?;
+            .await?;
     } else if cmd.okta {
         // Get auth0 token
         let okta_config: OktaAuth0 = project
@@ -117,18 +116,10 @@ pub async fn project_enroll(
 
         let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
         let token = auth0.get_token_interactively(opts).await?;
-        authority_node
-            .enroll_with_oidc_token(ctx, token)
-            .await
-            .into_diagnostic()?;
+        authority_node.enroll_with_oidc_token(ctx, token).await?;
     };
 
-    let credential = authority_node
-        .issue_credential(ctx)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let credential = authority_node.issue_credential(ctx).await?;
     opts.terminal
         .clone()
         .stdout()

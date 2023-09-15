@@ -4,9 +4,9 @@ use crate::cloud::share::{
     SentInvitation, ShareScope,
 };
 use crate::cloud::Controller;
-use ockam_core::api::{Reply, Request};
+use miette::IntoDiagnostic;
+use ockam_core::api::Request;
 use ockam_core::async_trait;
-use ockam_core::Result;
 use ockam_node::Context;
 
 const API_SERVICE: &str = "users";
@@ -23,7 +23,7 @@ pub trait Invitations {
         remaining_uses: Option<usize>,
         scope: ShareScope,
         target_id: String,
-    ) -> Result<Reply<SentInvitation>>;
+    ) -> miette::Result<SentInvitation>;
 
     #[allow(clippy::too_many_arguments)]
     async fn create_service_invitation(
@@ -39,25 +39,25 @@ pub trait Invitations {
         shared_node_identity: String,
         shared_node_route: String,
         enrollment_ticket: String,
-    ) -> Result<Reply<SentInvitation>>;
+    ) -> miette::Result<SentInvitation>;
 
     async fn accept_invitation(
         &self,
         ctx: &Context,
         invitation_id: String,
-    ) -> Result<Reply<AcceptedInvitation>>;
+    ) -> miette::Result<AcceptedInvitation>;
 
     async fn show_invitation(
         &self,
         ctx: &Context,
         invitation_id: String,
-    ) -> Result<Reply<InvitationWithAccess>>;
+    ) -> miette::Result<InvitationWithAccess>;
 
     async fn list_invitations(
         &self,
         ctx: &Context,
         kind: InvitationListKind,
-    ) -> Result<Reply<InvitationList>>;
+    ) -> miette::Result<InvitationList>;
 }
 
 #[async_trait]
@@ -71,7 +71,7 @@ impl Invitations for Controller {
         remaining_uses: Option<usize>,
         scope: ShareScope,
         target_id: String,
-    ) -> Result<Reply<SentInvitation>> {
+    ) -> miette::Result<SentInvitation> {
         trace!(%scope, target_id = %target_id, "creating invitation");
         let req_body = CreateInvitation {
             expires_at,
@@ -82,7 +82,12 @@ impl Invitations for Controller {
             target_id,
         };
         let req = Request::post("/v0/invites").body(req_body);
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn create_service_invitation(
@@ -98,7 +103,7 @@ impl Invitations for Controller {
         shared_node_identity: String,
         shared_node_route: String,
         enrollment_ticket: String,
-    ) -> Result<Reply<SentInvitation>> {
+    ) -> miette::Result<SentInvitation> {
         trace!(project_id = %project_id, "creating service invitation");
         let req_body = CreateServiceInvitation {
             expires_at,
@@ -113,35 +118,55 @@ impl Invitations for Controller {
             enrollment_ticket,
         };
         let req = Request::post("/v0/invites/service").body(req_body);
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn accept_invitation(
         &self,
         ctx: &Context,
         invitation_id: String,
-    ) -> Result<Reply<AcceptedInvitation>> {
+    ) -> miette::Result<AcceptedInvitation> {
         let req = Request::post("/v0/redeem_invite").body(AcceptInvitation { id: invitation_id });
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn show_invitation(
         &self,
         ctx: &Context,
         invitation_id: String,
-    ) -> Result<Reply<InvitationWithAccess>> {
+    ) -> miette::Result<InvitationWithAccess> {
         trace!(?invitation_id, "showing invitation");
         let req = Request::get(format!("/v0/invites/{invitation_id}"));
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn list_invitations(
         &self,
         ctx: &Context,
         kind: InvitationListKind,
-    ) -> Result<Reply<InvitationList>> {
+    ) -> miette::Result<InvitationList> {
         debug!(kink = ?kind, "Sending request to list shares");
         let req = Request::get("/v0/invites").body(ListInvitations { kind });
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }

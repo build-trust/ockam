@@ -1,11 +1,12 @@
 use std::str::FromStr;
 
 use either::Either;
+use miette::IntoDiagnostic;
 use minicbor::Decoder;
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::Result;
-use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
+use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -24,9 +25,9 @@ pub trait Credentials {
         &self,
         ctx: &Context,
         identity_name: Option<String>,
-    ) -> Result<Reply<()>> {
+    ) -> miette::Result<()> {
         let _ = self.get_credential(ctx, false, identity_name).await?;
-        Ok(Reply::Successful(()))
+        Ok(())
     }
 
     async fn get_credential(
@@ -34,7 +35,7 @@ pub trait Credentials {
         ctx: &Context,
         overwrite: bool,
         identity_name: Option<String>,
-    ) -> Result<Reply<Credential>>;
+    ) -> miette::Result<Credential>;
 }
 
 #[async_trait]
@@ -44,10 +45,15 @@ impl Credentials for AuthorityNode {
         ctx: &Context,
         overwrite: bool,
         identity_name: Option<String>,
-    ) -> Result<Reply<Credential>> {
+    ) -> miette::Result<Credential> {
         let body = GetCredentialRequest::new(overwrite, identity_name);
         let req = Request::post("/node/credentials/actions/get").body(body);
-        self.0.ask(ctx, "", req).await
+        self.0
+            .ask(ctx, "", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }
 

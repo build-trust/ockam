@@ -1,3 +1,4 @@
+use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -7,9 +8,8 @@ use crate::cloud::enroll::enrollment_token::{
 };
 use crate::cloud::Controller;
 
-use ockam_core::api::{Reply, Request};
+use ockam_core::api::Request;
 use ockam_core::async_trait;
-use ockam_core::Result;
 use ockam_identity::Attributes;
 use ockam_node::Context;
 
@@ -33,13 +33,13 @@ trait Enroll {
         &self,
         ctx: &Context,
         attributes: Attributes,
-    ) -> Result<Reply<EnrollmentToken>>;
+    ) -> miette::Result<EnrollmentToken>;
 
     async fn authenticate_enrollment_token(
         &self,
         ctx: &Context,
         enrollment_token: EnrollmentToken,
-    ) -> Result<Reply<()>>;
+    ) -> miette::Result<()>;
 }
 
 #[async_trait]
@@ -48,17 +48,22 @@ impl Enroll for Controller {
         &self,
         ctx: &Context,
         attributes: Attributes,
-    ) -> Result<Reply<EnrollmentToken>> {
+    ) -> miette::Result<EnrollmentToken> {
         trace!(target: TARGET, "generating tokens");
         let req = Request::post("v0/").body(RequestEnrollmentToken::new(attributes));
-        self.0.ask(ctx, "projects", req).await
+        self.0
+            .ask(ctx, "projects", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     async fn authenticate_enrollment_token(
         &self,
         ctx: &Context,
         enrollment_token: EnrollmentToken,
-    ) -> Result<Reply<()>> {
+    ) -> miette::Result<()> {
         let req = Request::post("v0/enroll").body(AuthenticateEnrollmentToken {
             token: enrollment_token.token,
         });
@@ -66,6 +71,9 @@ impl Enroll for Controller {
         self.0
             .tell(ctx, "enrollment_token_authenticator", req)
             .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }
 
