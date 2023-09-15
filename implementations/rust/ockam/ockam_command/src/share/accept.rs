@@ -45,12 +45,7 @@ async fn run_impl(
     let node = LocalNode::make(ctx, &opts, None).await?;
 
     let get_accepted_invitation = async {
-        let invitation = node
-            .accept_invitation(ctx, cmd.id)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let invitation = node.accept_invitation(ctx, cmd.id).await?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };

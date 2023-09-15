@@ -1,7 +1,6 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cloud::addon::{Addons, ConfluentConfig};
@@ -62,10 +61,7 @@ async fn run_impl(
 
     let response = node
         .configure_confluent_addon(&ctx, project_id.clone(), config)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+        .await?;
     check_configuration_completion(&opts, &ctx, &node, project_id, response.operation_id).await?;
 
     opts.terminal

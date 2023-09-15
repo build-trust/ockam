@@ -46,12 +46,7 @@ async fn run_impl(
     let node = LocalNode::make(ctx, &opts, None).await?;
 
     let get_invitation_with_access = async {
-        let invitation_with_access = node
-            .show_invitation(ctx, cmd.invitation_id)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let invitation_with_access = node.show_invitation(ctx, cmd.invitation_id).await?;
         *is_finished.lock().await = true;
         Ok(invitation_with_access)
     };

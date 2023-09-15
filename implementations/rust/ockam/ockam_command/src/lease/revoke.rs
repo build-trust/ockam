@@ -1,5 +1,4 @@
 use clap::Args;
-use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::InfluxDbTokenLease;
 
@@ -39,10 +38,7 @@ async fn run_impl(
     let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
     project_node
         .revoke_token(&ctx, cmd.token_id.clone())
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+        .await?;
     println!("Revoked influxdb token {}.", cmd.token_id);
     Ok(())
 }

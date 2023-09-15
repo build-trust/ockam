@@ -41,12 +41,7 @@ async fn run_impl(
     let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
 
     let send_req = async {
-        let tokens: Vec<Token> = project_node
-            .list_tokens(&ctx)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let tokens: Vec<Token> = project_node.list_tokens(&ctx).await?;
         *is_finished.lock().await = true;
         Ok(tokens)
     };

@@ -46,12 +46,7 @@ async fn run_impl(
     let node = LocalNode::make(ctx, &opts, None).await?;
 
     let get_invitations = async {
-        let invitations = node
-            .list_invitations(ctx, InvitationListKind::All)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let invitations = node.list_invitations(ctx, InvitationListKind::All).await?;
         *is_finished.lock().await = true;
         Ok(invitations)
     };

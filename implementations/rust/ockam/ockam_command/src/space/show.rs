@@ -1,5 +1,4 @@
 use clap::Args;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
@@ -53,12 +52,7 @@ async fn run_impl(
 
     // Send request
     let node = LocalNode::make(ctx, &opts, None).await?;
-    let space: Space = node
-        .get_space(ctx, id)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let space: Space = node.get_space(ctx, id).await?;
     opts.println(&space)?;
     opts.state
         .spaces

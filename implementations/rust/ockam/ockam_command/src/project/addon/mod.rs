@@ -7,7 +7,7 @@ mod list;
 use core::fmt::Write;
 
 use clap::{Args, Subcommand};
-use miette::{Context as _, IntoDiagnostic};
+use miette::Context as _;
 
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
@@ -122,12 +122,7 @@ async fn check_configuration_completion(
     operation_id: String,
 ) -> Result<()> {
     check_for_completion(opts, ctx, node, &operation_id).await?;
-    let project = node
-        .get_project(ctx, project_id)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let project = node.get_project(ctx, project_id).await?;
     let _ = check_project_readiness(opts, ctx, node, project).await?;
     Ok(())
 }
