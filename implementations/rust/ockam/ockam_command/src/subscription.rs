@@ -8,7 +8,7 @@ use ockam::Context;
 use ockam_api::cloud::subscription::{Subscription, Subscriptions};
 use ockam_api::cloud::Controller;
 
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -56,11 +56,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let controller = node_manager
-        .make_controller_client()
-        .await
-        .into_diagnostic()?;
+    let controller = LocalNode::make(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id,
@@ -76,7 +72,6 @@ async fn run_impl(
             }
         }
     };
-    delete_embedded_node(&opts, node_manager.node_name().as_str()).await;
     Ok(())
 }
 

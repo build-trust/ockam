@@ -16,7 +16,7 @@ use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::Credentials;
 
 use crate::identity::get_identity_name;
-use crate::node::util::start_node_manager;
+use crate::node::util::LocalNode;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::CommandGlobalOpts;
 
@@ -70,12 +70,8 @@ async fn authenticate(
     cloud_opts: &CloudOpts,
     trust_opts: &TrustContextOpts,
 ) -> miette::Result<ProjectNode> {
-    let node_manager = start_node_manager(ctx, opts, Some(trust_opts)).await?;
+    let node = LocalNode::make(ctx, opts, Some(trust_opts)).await?;
     let identity = get_identity_name(&opts.state, &cloud_opts.identity);
-    let identifier = node_manager
-        .get_identifier(Some(identity.clone()))
-        .await
-        .into_diagnostic()?;
     let project_info = retrieve_project_info(opts, trust_opts).await?;
     let project_authority = project_info
         .authority
@@ -88,14 +84,13 @@ async fn authenticate(
         .node_route
         .ok_or(miette!("Project route is required"))?;
 
-    let authority_node = node_manager
-        .make_authority_client(
+    let authority_node = node
+        .make_authority_node_client(
             project_authority.identity_id().clone(),
             project_authority.address().clone(),
-            identifier.clone(),
+            Some(identity.clone()),
         )
-        .await
-        .into_diagnostic()?;
+        .await?;
 
     authority_node
         .authenticate(ctx, Some(identity.clone()))
@@ -103,10 +98,12 @@ async fn authenticate(
         .into_diagnostic()?
         .success()
         .into_diagnostic()?;
-    node_manager
-        .make_project_client(project_identifier.clone(), project_addr, identifier)
-        .await
-        .into_diagnostic()
+    node.make_project_node_client(
+        project_identifier.clone(),
+        project_addr,
+        Some(identity.clone()),
+    )
+    .await
 }
 
 async fn retrieve_project_info(

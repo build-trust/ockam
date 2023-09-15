@@ -20,7 +20,7 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::RpcClient;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::node::util::LocalNode;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -89,8 +89,7 @@ impl Runner {
     }
 
     async fn run(self) -> miette::Result<()> {
-        let node_manager =
-            start_node_manager(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
+        let node = LocalNode::make(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
@@ -114,10 +113,6 @@ impl Runner {
                 }
             };
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            let identifier = node_manager
-                .get_identifier(Some(identity))
-                .await
-                .into_diagnostic()?;
             let authority_identifier = tc
                 .authority()
                 .into_diagnostic()?
@@ -126,10 +121,9 @@ impl Runner {
                 .into_diagnostic()?
                 .identifier();
 
-            let authority_node = node_manager
-                .make_authority_client(authority_identifier, addr.clone(), identifier)
-                .await
-                .into_diagnostic()?;
+            let authority_node = node
+                .make_authority_node_client(authority_identifier, addr.clone(), Some(identity))
+                .await?;
             let sc = authority_node
                 .create_secure_channel(&self.ctx)
                 .await
@@ -139,14 +133,13 @@ impl Runner {
                 .into_diagnostic()?
         } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            let identifier = node_manager
-                .get_identifier(Some(identity))
-                .await
-                .into_diagnostic()?;
-            let authority_node = node_manager
-                .make_authority_client(a.identity_id().clone(), a.address().clone(), identifier)
-                .await
-                .into_diagnostic()?;
+            let authority_node = node
+                .make_authority_node_client(
+                    a.identity_id().clone(),
+                    a.address().clone(),
+                    Some(identity),
+                )
+                .await?;
             let sc = authority_node
                 .create_secure_channel(&self.ctx)
                 .await
@@ -224,7 +217,6 @@ impl Runner {
                 .write_line()?;
         }
 
-        delete_embedded_node(&self.opts, &node_manager.node_name()).await;
         Ok(())
     }
 }

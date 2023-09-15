@@ -188,7 +188,7 @@ impl AppState {
     pub async fn controller(&self) -> Result<Controller> {
         let node_manager = self.node_manager_worker.read().await;
         Ok(node_manager
-            .make_controller_client()
+            .make_controller_node_client()
             .await
             .into_diagnostic()?)
     }

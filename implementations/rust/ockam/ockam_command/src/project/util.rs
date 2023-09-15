@@ -8,17 +8,16 @@ use tracing::debug;
 
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::{Project, Projects};
-use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
+use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::NodeManager;
 use ockam_api::route_to_multiaddr;
 use ockam_core::compat::str::FromStr;
 use ockam_core::route;
-use ockam_identity::Identifier;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 
+use crate::node::util::LocalNode;
 use crate::{CommandGlobalOpts, Result};
 
 pub fn clean_projects_multiaddr(
@@ -50,9 +49,9 @@ pub fn clean_projects_multiaddr(
 pub async fn get_projects_secure_channels_from_config_lookup(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node_manager: &NodeManager,
+    node: &LocalNode,
     meta: &LookupMeta,
-    caller: IdentityIdentifier,
+    identity_name: Option<String>,
 ) -> Result<Vec<MultiAddr>> {
     let mut sc = Vec::with_capacity(meta.project.len());
 
@@ -76,8 +75,12 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .wrap_err("Invalid project node route")?;
             (node_route, id)
         };
-        let project_node = node_manager
-            .make_project_client(project_identity_id, project_access_route, caller.clone())
+        let project_node = node
+            .make_project_node_client(
+                project_identity_id,
+                project_access_route,
+                identity_name.clone(),
+            )
             .await?;
         let secure_channel = project_node.create_secure_channel(ctx).await?;
         let address = route_to_multiaddr(&route![secure_channel.encryptor_address().to_string()])
@@ -99,7 +102,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
 pub async fn check_project_readiness(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node_manager: &NodeManager,
+    node: &LocalNode,
     project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
@@ -114,7 +117,7 @@ pub async fn check_project_readiness(
     let spinner_option = opts.terminal.progress_spinner();
     let project = check_project_ready(
         ctx,
-        node_manager,
+        node,
         project,
         retry_strategy.clone(),
         spinner_option.clone(),
@@ -122,20 +125,15 @@ pub async fn check_project_readiness(
     .await?;
     let project = check_project_node_accessible(
         ctx,
-        node_manager,
+        node,
         project,
         retry_strategy.clone(),
         spinner_option.clone(),
     )
     .await?;
-    let project = check_authority_node_accessible(
-        ctx,
-        node_manager,
-        project,
-        retry_strategy,
-        spinner_option.clone(),
-    )
-    .await?;
+    let project =
+        check_authority_node_accessible(ctx, node, project, retry_strategy, spinner_option.clone())
+            .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.finish_and_clear();
@@ -150,7 +148,7 @@ pub async fn check_project_readiness(
 
 async fn check_project_ready(
     ctx: &Context,
-    node_manager: &NodeManager,
+    node: &LocalNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -166,13 +164,9 @@ async fn check_project_ready(
 
     let project_id = project.id.clone();
     let project: Project = Retry::spawn(retry_strategy.clone(), || async {
-        let controller = node_manager
-            .make_controller_client()
-            .await
-            .into_diagnostic()?;
         // Handle the project show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let project = controller
+        let project = node
             .get_project(ctx, project_id.clone())
             .await
             .into_diagnostic()?
@@ -191,7 +185,7 @@ async fn check_project_ready(
 
 async fn check_project_node_accessible(
     ctx: &Context,
-    node_manager: &NodeManager,
+    node: &LocalNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -201,14 +195,9 @@ async fn check_project_node_accessible(
         .identity
         .as_ref()
         .ok_or(miette!("Project identity is not set."))?;
-    let project_node = node_manager
-        .make_project_client(
-            project_identity.clone(),
-            project_route,
-            node_manager.get_identifier(None).await?,
-        )
-        .await
-        .into_diagnostic()?;
+    let project_node = node
+        .make_project_node_client(project_identity.clone(), project_route, None)
+        .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Establishing connection to the project...");
@@ -245,7 +234,7 @@ async fn check_project_node_accessible(
 
 async fn check_authority_node_accessible(
     ctx: &Context,
-    node_manager: &NodeManager,
+    node: &LocalNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -255,14 +244,13 @@ async fn check_authority_node_accessible(
         .await?
         .ok_or(miette!("Project does not have an authority defined."))?;
 
-    let authority_node = node_manager
-        .make_authority_client(
+    let authority_node = node
+        .make_authority_node_client(
             authority.identity_id().clone(),
             authority.address().clone(),
-            node_manager.get_identifier(None).await?,
+            None,
         )
-        .await
-        .into_diagnostic()?;
+        .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Establishing secure channel to project authority...");
@@ -281,9 +269,9 @@ async fn check_authority_node_accessible(
 pub async fn refresh_projects(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: &Controller,
+    node: &LocalNode,
 ) -> miette::Result<()> {
-    let projects: Vec<Project> = controller
+    let projects: Vec<Project> = node
         .list_projects(ctx)
         .await
         .into_diagnostic()?

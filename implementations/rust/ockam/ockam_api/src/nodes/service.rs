@@ -151,7 +151,7 @@ impl NodeManager {
 }
 
 impl NodeManager {
-    pub async fn make_controller_client(&self) -> Result<Controller> {
+    pub async fn make_controller_node_client(&self) -> Result<Controller> {
         SecureClient::controller(
             &self.tcp_transport,
             self.secure_channels.clone(),
@@ -160,7 +160,7 @@ impl NodeManager {
         .await
     }
 
-    pub async fn make_authority_client(
+    pub async fn make_authority_node_client(
         &self,
         authority_identifier: IdentityIdentifier,
         authority_multiaddr: MultiAddr,
@@ -176,7 +176,7 @@ impl NodeManager {
         .await
     }
 
-    pub async fn make_project_client(
+    pub async fn make_project_node_client(
         &self,
         project_identifier: IdentityIdentifier,
         project_multiaddr: MultiAddr,
@@ -219,20 +219,9 @@ impl NodeManagerWorker {
         Ok(())
     }
 
-    pub async fn make_controller_client(&self) -> Result<Controller> {
+    pub async fn make_controller_node_client(&self) -> Result<Controller> {
         let nm = self.node_manager.read().await;
-        nm.make_controller_client().await
-    }
-
-    pub async fn make_authority_client(
-        &self,
-        authority_identifier: IdentityIdentifier,
-        authority_multiaddr: MultiAddr,
-        caller_identifier: IdentityIdentifier,
-    ) -> Result<AuthorityNode> {
-        let nm = self.node_manager.read().await;
-        nm.make_authority_client(authority_identifier, authority_multiaddr, caller_identifier)
-            .await
+        nm.make_controller_node_client().await
     }
 }
 
