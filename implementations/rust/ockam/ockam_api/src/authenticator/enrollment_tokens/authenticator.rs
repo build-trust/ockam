@@ -12,6 +12,7 @@ pub(super) const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 #[derive(Clone)]
 pub struct EnrollmentTokenAuthenticator {
     pub(super) trust_context: String,
+    // TODO: Replace with something sane and standard + implement expiration
     pub(super) tokens: Arc<RwLock<LruCache<[u8; 32], Token>>>,
 }
 
