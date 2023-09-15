@@ -114,7 +114,7 @@ impl Authority {
         }
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            configuration.clone().trust_context_identifier(),
+            configuration.clone().project_identifier(),
             self.attributes_writer(),
             self.attributes_reader(),
         )
@@ -143,7 +143,7 @@ impl Authority {
         }
 
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
-            configuration.trust_context_identifier(),
+            configuration.project_identifier(),
             self.attributes_writer(),
         );
 
@@ -190,7 +190,7 @@ impl Authority {
             self.secure_channels.identities().repository(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
-            configuration.trust_context_identifier(),
+            configuration.project_identifier(),
         )
         .await?;
 
@@ -362,7 +362,7 @@ impl Authority {
         env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));
         env.put(
             "resource.trust_context_id",
-            str(configuration.clone().trust_context_identifier),
+            str(configuration.clone().project_identifier),
         );
         let abac = Arc::new(AbacAccessControl::new(
             self.identities_repository(),
