@@ -7,7 +7,7 @@ use std::time::Duration;
 use tauri::async_runtime::spawn;
 use tauri::menu::Menu;
 use tauri::tray::TrayIconBuilder;
-use tauri::{App, Manager, Runtime, State};
+use tauri::{App, Manager, Runtime};
 use tracing::{debug, error, info};
 
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(5);
@@ -33,6 +33,12 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
         let handle = app.handle().clone();
         let menu_holder = menu_holder.clone();
         app.listen_global(SYSTEM_TRAY_ON_UPDATE, move |event| {
+            let app_state = handle.state::<AppState>();
+            let event_tracker = app_state.debounce_event(&handle, SYSTEM_TRAY_ON_UPDATE);
+            if event_tracker.is_processing() {
+                return;
+            }
+
             let payload = match event.payload() {
                 Some(p) => match SystemTrayOnUpdatePayload::try_from(p) {
                     Ok(p) => Some(p),
@@ -47,6 +53,8 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
             let menu_holder = menu_holder.clone();
             let handle = handle.clone();
             spawn(async move {
+                let _event_tracker = event_tracker;
+
                 debug!("Building system tray menu");
                 let tray = match handle.tray() {
                     Some(t) => t,
@@ -55,6 +63,7 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
                         return;
                     }
                 };
+
                 let menu = build_tray_menu(&handle, payload).await;
 
                 let mut lock = match menu_holder.lock() {
@@ -83,7 +92,7 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
         let mut interval = tokio::time::interval(DEFAULT_POLL_INTERVAL);
         loop {
             interval.tick().await;
-            let app_state: State<AppState> = handle.state::<AppState>();
+            let app_state = handle.state::<AppState>();
             if app_state.is_enrolled().await.unwrap_or(false) {
                 debug!("Refreshing tray menu via background poll");
                 handle.trigger_global(SYSTEM_TRAY_ON_UPDATE, None);

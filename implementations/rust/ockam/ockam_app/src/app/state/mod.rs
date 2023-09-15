@@ -3,12 +3,15 @@ mod repository;
 
 #[cfg(debug_assertions)]
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
 
 use miette::IntoDiagnostic;
 use ockam_multiaddr::MultiAddr;
 use tauri::async_runtime::{block_on, spawn, RwLock};
-use tracing::{error, info, warn};
+use tauri::{AppHandle, Manager, Runtime};
+use tracing::{error, info, trace, warn};
 
 pub(crate) use crate::app::state::model::ModelState;
 pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
@@ -34,9 +37,11 @@ pub const NODE_NAME: &str = "ockam_app";
 pub const PROJECT_NAME: &str = "default";
 
 /// The AppState struct contains all the state managed by `tauri`.
-/// It can be retrieved with the `AppHandle<Wry>` parameter and the `AppHandle::state()` method
+/// It can be retrieved with the `AppHandle<Wry>` parameter and the `AppHandle::state()` method.
+///
 /// Note that it contains a `NodeManagerWorker`. This makes the desktop app a full-fledged node
 /// with its own set of secure channels, outlets, transports etc...
+///
 /// However there is no associated persistence yet so outlets created with this `NodeManager` will
 /// have to be recreated when the application restarts.
 pub struct AppState {
@@ -46,6 +51,7 @@ pub struct AppState {
     node_manager_worker: Arc<RwLock<NodeManagerWorker>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
+    event_manager: StdRwLock<EventManager>,
 
     #[cfg(debug_assertions)]
     browser_dev_tools: AtomicBool,
@@ -88,6 +94,7 @@ impl AppState {
             node_manager_worker: Arc::new(RwLock::new(node_manager_worker)),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
+            event_manager: StdRwLock::new(EventManager::new()),
 
             #[cfg(debug_assertions)]
             browser_dev_tools: Default::default(),
@@ -97,6 +104,11 @@ impl AppState {
     pub async fn reset(&self) -> miette::Result<()> {
         self.reset_state().await?;
         self.reset_node_manager().await?;
+
+        {
+            let mut writer = self.event_manager.write().unwrap();
+            writer.events.clear();
+        }
 
         // recreate the model state repository since the cli state has changed
         {
@@ -216,6 +228,26 @@ impl AppState {
         let mut model_state = self.model_state.read().await;
         f(&mut model_state)
     }
+
+    /// Returns an EventDebouncer that will prevent the same event from being processed twice concurrently.
+    ///
+    /// The returned instance must be held in a variable until the event is processed. Once the variable
+    /// is dropped, the event will be marked as "free".
+    pub fn debounce_event<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        event_name: &str,
+    ) -> EventDebouncer<R> {
+        let is_processing = {
+            let mut writer = self.event_manager.write().unwrap();
+            writer.is_processing(event_name)
+        };
+        EventDebouncer {
+            app: app.clone(),
+            event_name: event_name.to_string(),
+            is_processing,
+        }
+    }
 }
 
 #[cfg(debug_assertions)]
@@ -330,4 +362,109 @@ fn load_model_state(
             }
         }
     })
+}
+
+pub type EventName = String;
+type IsProcessing = AtomicBool;
+struct Event {
+    name: EventName,
+    is_processing: IsProcessing,
+}
+
+struct EventManager {
+    events: Vec<Event>,
+}
+
+impl EventManager {
+    fn new() -> Self {
+        Self { events: Vec::new() }
+    }
+
+    /// Add a new event if it doesn't exist
+    fn add(&mut self, event_name: &str) {
+        if self.events.iter().any(|e| e.name == event_name) {
+            return;
+        }
+        let event = Event {
+            name: event_name.to_string(),
+            is_processing: AtomicBool::new(true),
+        };
+        self.events.push(event);
+        trace!(%event_name, "New event registered");
+    }
+
+    /// Check if it's being processed
+    fn is_processing(&mut self, event_name: &str) -> bool {
+        match self.events.iter().find(|e| e.name == event_name) {
+            Some(e) => {
+                let is_processing = e.is_processing.load(Ordering::SeqCst);
+                if !is_processing {
+                    e.is_processing.store(true, Ordering::SeqCst);
+                }
+                trace!(%event_name, is_processing, "Event status");
+                is_processing
+            }
+            None => {
+                self.add(event_name);
+                false
+            }
+        }
+    }
+
+    /// Reset an event after it's been dropped
+    fn reset(&self, event_name: &str, processed: bool) {
+        if let Some(e) = self.events.iter().find(|e| e.name == event_name) {
+            if processed {
+                trace!(%event_name, "Event reset");
+                e.is_processing.store(false, Ordering::SeqCst);
+            }
+        }
+    }
+}
+
+pub struct EventDebouncer<R: Runtime> {
+    app: AppHandle<R>,
+    event_name: EventName,
+    is_processing: bool,
+}
+
+impl<R: Runtime> EventDebouncer<R> {
+    pub fn is_processing(&self) -> bool {
+        self.is_processing
+    }
+}
+
+impl<R: Runtime> Drop for EventDebouncer<R> {
+    fn drop(&mut self) {
+        let state = self.app.state::<AppState>();
+        let reader = state.event_manager.read().unwrap();
+        reader.reset(&self.event_name, !self.is_processing);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_event_manager() {
+        let mut event_manager = EventManager::new();
+        let event_name = "e1";
+
+        // The first call using an unregistered event will register it and return false
+        assert!(!event_manager.is_processing(event_name));
+
+        // The second call will return true, as the event has not been marked as processed
+        assert!(event_manager.is_processing(event_name));
+
+        // Resetting the event marking it as unprocessed will leave the event as processing
+        event_manager.reset(event_name, false);
+        assert!(event_manager.is_processing(event_name));
+
+        // Resetting the event marking it as processed will leave the event as processed
+        event_manager.reset(event_name, true);
+
+        // The event is now ready to get processed again
+        assert!(!event_manager.is_processing(event_name));
+    }
 }

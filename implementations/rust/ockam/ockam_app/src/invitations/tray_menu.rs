@@ -36,7 +36,7 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
 ) -> MenuBuilder<'a, R, M> {
     let app_state: State<'_, AppState> = app_handle.state();
     if !app_state.is_enrolled().await.unwrap_or(false) {
-        trace!("not enrolled, skipping invitations menu");
+        trace!("Not enrolled, skipping invitations menu");
         return builder;
     };
 

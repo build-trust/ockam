@@ -3,6 +3,7 @@ use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder,
 use tauri::{AppHandle, Manager, Runtime, State};
 
 const DEV_MENU_ID: &str = "developer";
+const RESTART_MENU_ID: &str = "restart";
 const REFRESH_MENU_ID: &str = "refresh";
 const OPEN_DEV_TOOLS_ID: &str = "open_dev_tools";
 
@@ -15,7 +16,12 @@ pub async fn build_developer_tools_section<'a, R: Runtime, M: Manager<R>>(
     builder.item(
         &SubmenuBuilder::new(app_handle, "Developer Tools")
             .items(&[
-                &MenuItemBuilder::with_id(REFRESH_MENU_ID, "Refresh Data").build(app_handle),
+                &MenuItemBuilder::with_id(RESTART_MENU_ID, "Restart")
+                    .accelerator("cmd+1")
+                    .build(app_handle),
+                &MenuItemBuilder::with_id(REFRESH_MENU_ID, "Refresh Data")
+                    .accelerator("cmd+2")
+                    .build(app_handle),
                 &CheckMenuItemBuilder::with_id(OPEN_DEV_TOOLS_ID, "Browser Dev Tools")
                     .enabled(true)
                     .checked(app_state.browser_dev_tools())
@@ -36,17 +42,22 @@ pub fn process_tray_menu_event<R: Runtime>(
     event: &MenuEvent,
 ) -> tauri::Result<()> {
     match event.id.as_ref() {
+        RESTART_MENU_ID => on_restart(app),
         REFRESH_MENU_ID => on_refresh(app),
         OPEN_DEV_TOOLS_ID => toggle_dev_tools(app),
         _ => Ok(()),
     }
 }
 
+fn on_restart<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    app.restart();
+    Ok(())
+}
+
 fn on_refresh<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
     app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
-    use crate::app::events::system_tray_on_update;
-    system_tray_on_update(app);
+    crate::app::events::system_tray_on_update(app);
     Ok(())
 }
 

@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::app::events::system_tray_on_update;
+use crate::app::AppState;
 use tauri::{
     async_runtime::{spawn, RwLock},
     plugin::{Builder, TauriPlugin},
@@ -24,8 +25,15 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
 
             let handle = app.clone();
             app.listen_global(REFRESH_PROJECTS, move |_event| {
+                let app_state = handle.state::<AppState>();
+                let event_tracker = app_state.debounce_event(&handle, REFRESH_PROJECTS);
+                if event_tracker.is_processing() {
+                    return;
+                }
+
                 let handle = handle.clone();
                 spawn(async move {
+                    let _event_tracker = event_tracker;
                     let _ = refresh_projects(handle.clone())
                         .await
                         .map_err(|e| error!(%e, "Failed to refresh projects"));

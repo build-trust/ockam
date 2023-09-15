@@ -13,6 +13,9 @@ pub(crate) async fn build_user_info_section<'a, R: Runtime, M: Manager<R>>(
     mut builder: MenuBuilder<'a, R, M>,
 ) -> MenuBuilder<'a, R, M> {
     let app_state: State<AppState> = app_handle.state();
+    if !app_state.is_enrolled().await.unwrap_or(false) {
+        return builder;
+    }
     if let Ok(user_info) = app_state.user_info().await {
         builder = builder.items(&[
             &MenuItemBuilder::new(format!("{} ({})", user_info.name, user_info.nickname))
