@@ -58,13 +58,18 @@ pub struct EnrollCommand {
     pub force: bool,
 }
 
-pub fn parse_enroll_ticket(input: &str) -> Result<EnrollmentTicket> {
-    let decoded = match std::fs::read_to_string(input) {
-        Ok(s) => hex::decode(s)?,
-        Err(_) => hex::decode(input)?,
+pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentTicket> {
+    let decoded = match std::fs::read_to_string(hex_encoded_data_or_path) {
+        Ok(data) => hex::decode(data.trim())
+            .into_diagnostic()
+            .context("Failed to decode enrollment ticket from file")?,
+        Err(_) => hex::decode(hex_encoded_data_or_path)
+            .into_diagnostic()
+            .context("Failed to decode enrollment ticket from file")?,
     };
-
-    Ok(serde_json::from_slice(&decoded)?)
+    Ok(serde_json::from_slice(&decoded)
+        .into_diagnostic()
+        .context("Failed to parse enrollment ticket from decoded data")?)
 }
 
 impl EnrollCommand {

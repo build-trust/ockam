@@ -24,6 +24,18 @@ teardown() {
   run_success "$OCKAM" project version
 }
 
+@test "project - enrollment from file - parse check" {
+  run_success bash -c "$OCKAM project ticket >$OCKAM_HOME/p.ticket"
+
+  # From file
+  run_success "$OCKAM" project enroll "$OCKAM_HOME/p.ticket" --test-argument-parser
+  run_failure "$OCKAM" project enroll "$OCKAM_HOME/p.t" --test-argument-parser
+
+  # From contents
+  run_success "$OCKAM" project enroll $(cat "$OCKAM_HOME/p.ticket") --test-argument-parser
+  run_failure "$OCKAM" project enroll "INVALID_TICKET" --test-argument-parser
+}
+
 @test "projects - enrollment" {
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
