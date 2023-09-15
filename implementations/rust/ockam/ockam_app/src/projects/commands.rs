@@ -3,9 +3,11 @@ use std::sync::Arc;
 use tauri::{async_runtime::RwLock, AppHandle, Manager, Runtime, State};
 use tracing::{debug, error, info, trace, warn};
 
+use ockam_api::cloud::project::Projects;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
 
 use crate::app::AppState;
+use crate::projects::error::Error::{AppError, ListingFailed, StateSaveFailed};
 
 use super::error::{Error, Result};
 use super::State as ProjectState;
@@ -57,11 +59,16 @@ pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()
         }
     };
 
-    let node_manager_worker = state.node_manager_worker().await;
-    let projects = node_manager_worker
+    let controller = state
+        .controller()
+        .await
+        .map_err(|e| AppError(e.to_string()))?;
+    let projects = controller
         .list_projects(&state.context())
         .await
-        .map_err(Error::ListingFailed)?
+        .map_err(ListingFailed)?
+        .success()
+        .map_err(ListingFailed)?
         .into_iter()
         .filter(|p| p.has_admin_with_email(&email))
         .collect::<Vec<Project>>();
@@ -72,7 +79,7 @@ pub(crate) async fn refresh_projects<R: Runtime>(app: AppHandle<R>) -> Result<()
     for project in &projects {
         cli_projects
             .overwrite(&project.name, project.clone())
-            .map_err(|_| Error::StateSaveFailed)?;
+            .map_err(|_| StateSaveFailed)?;
     }
 
     let project_state: State<'_, SyncAdminProjectsState> = app.state();

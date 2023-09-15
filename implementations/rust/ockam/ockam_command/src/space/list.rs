@@ -5,11 +5,11 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
-use ockam_api::cloud::space::Space;
+use ockam_api::cloud::space::{Space, Spaces};
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -47,10 +47,19 @@ async fn run_impl(
     _cmd: ListCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
     let get_spaces = async {
-        let spaces: Vec<Space> = rpc.ask(api::space::list()).await?;
+        let spaces: Vec<Space> = controller
+            .list_spaces(ctx)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };
@@ -73,7 +82,7 @@ async fn run_impl(
             .spaces
             .overwrite(&space.name, SpaceConfig::from(&space))?;
     }
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     opts.terminal
         .stdout()

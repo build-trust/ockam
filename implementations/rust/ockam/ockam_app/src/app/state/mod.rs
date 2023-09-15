@@ -18,6 +18,7 @@ use ockam_api::cli_state::{
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::secure_client::SecureClient;
+use ockam_api::cloud::Controller;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
@@ -181,6 +182,15 @@ impl AppState {
     pub async fn node_manager_worker(&self) -> NodeManagerWorker {
         let node_manager = self.node_manager_worker.read().await;
         node_manager.clone()
+    }
+
+    /// Return a client to access the Controller
+    pub async fn controller(&self) -> Result<Controller> {
+        let node_manager = self.node_manager_worker.read().await;
+        Ok(node_manager
+            .make_controller_client()
+            .await
+            .into_diagnostic()?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {

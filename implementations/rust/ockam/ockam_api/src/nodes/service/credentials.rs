@@ -5,16 +5,51 @@ use minicbor::Decoder;
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::Result;
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
+use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 use crate::cli_state::traits::StateDirTrait;
+use crate::cloud::AuthorityNode;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
 
 use super::NodeManagerWorker;
+
+#[async_trait]
+pub trait Credentials {
+    async fn authenticate(
+        &self,
+        ctx: &Context,
+        identity_name: Option<String>,
+    ) -> Result<Reply<()>> {
+        let _ = self.get_credential(ctx, false, identity_name).await?;
+        Ok(Reply::Successful(()))
+    }
+
+    async fn get_credential(
+        &self,
+        ctx: &Context,
+        overwrite: bool,
+        identity_name: Option<String>,
+    ) -> Result<Reply<Credential>>;
+}
+
+#[async_trait]
+impl Credentials for AuthorityNode {
+    async fn get_credential(
+        &self,
+        ctx: &Context,
+        overwrite: bool,
+        identity_name: Option<String>,
+    ) -> Result<Reply<Credential>> {
+        let body = GetCredentialRequest::new(overwrite, identity_name);
+        let req = Request::post("/node/credentials/actions/get").body(body);
+        self.0.ask(ctx, "", req).await
+    }
+}
 
 impl NodeManagerWorker {
     pub(super) async fn get_credential(

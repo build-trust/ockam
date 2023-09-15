@@ -32,6 +32,7 @@ use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::cloud::secure_client::SecureClient;
+use crate::cloud::{AuthorityNode, Controller, ProjectNode};
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
@@ -52,7 +53,7 @@ use crate::RpcProxyService;
 
 use super::registry::Registry;
 
-mod credentials;
+pub(crate) mod credentials;
 mod flow_controls;
 mod forwarder;
 pub mod message;
@@ -151,7 +152,7 @@ impl NodeManager {
 }
 
 impl NodeManager {
-    pub async fn make_controller_client(&self) -> Result<SecureClient> {
+    pub async fn make_controller_client(&self) -> Result<Controller> {
         SecureClient::controller(
             &self.tcp_transport,
             self.secure_channels.clone(),
@@ -165,7 +166,7 @@ impl NodeManager {
         authority_identifier: IdentityIdentifier,
         authority_multiaddr: MultiAddr,
         caller_identifier: IdentityIdentifier,
-    ) -> Result<SecureClient> {
+    ) -> Result<AuthorityNode> {
         SecureClient::authority(
             &self.tcp_transport,
             self.secure_channels.clone(),
@@ -175,20 +176,33 @@ impl NodeManager {
         )
         .await
     }
+
+    pub async fn make_project_client(
+        &self,
+        project_identifier: IdentityIdentifier,
+        project_multiaddr: MultiAddr,
+        caller_identifier: IdentityIdentifier,
+    ) -> Result<ProjectNode> {
+        SecureClient::project(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            project_identifier,
+            project_multiaddr,
+            caller_identifier,
+        )
+        .await
+    }
 }
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
     node_manager: Arc<RwLock<NodeManager>>,
-    pub controller_client: SecureClient,
 }
 
 impl NodeManagerWorker {
     pub async fn new(node_manager: NodeManager) -> Result<Self> {
-        let controller_client = node_manager.make_controller_client().await?;
         Ok(NodeManagerWorker {
             node_manager: Arc::new(RwLock::new(node_manager)),
-            controller_client,
         })
     }
 
@@ -204,6 +218,22 @@ impl NodeManagerWorker {
         }
         ctx.stop_worker(NODEMANAGER_ADDR).await?;
         Ok(())
+    }
+
+    pub async fn make_controller_client(&self) -> Result<Controller> {
+        let nm = self.node_manager.read().await;
+        nm.make_controller_client().await
+    }
+
+    pub async fn make_authority_client(
+        &self,
+        authority_identifier: IdentityIdentifier,
+        authority_multiaddr: MultiAddr,
+        caller_identifier: IdentityIdentifier,
+    ) -> Result<AuthorityNode> {
+        let nm = self.node_manager.read().await;
+        nm.make_authority_client(authority_identifier, authority_multiaddr, caller_identifier)
+            .await
     }
 }
 
@@ -766,65 +796,8 @@ impl NodeManagerWorker {
                     .await,
             )?,
 
-            // ==*== Spaces ==*==
-            (Post, ["v0", "spaces"]) => self.create_space_response(ctx, dec.decode()?).await?,
-            (Get, ["v0", "spaces"]) => self.list_spaces_response(ctx).await?,
-            (Get, ["v0", "spaces", id]) => self.get_space_response(ctx, id).await?,
-            (Delete, ["v0", "spaces", id]) => self.delete_space_response(ctx, id).await?,
-
-            // ==*== Projects ==*==
-            (Post, ["v1", "spaces", space_id, "projects"]) => {
-                self.create_project_response(ctx, dec.decode()?, space_id)
-                    .await?
-            }
-            (Get, ["v0", "projects", "version_info"]) => {
-                self.get_project_version_response(ctx).await?
-            }
-            (Get, ["v0", "projects"]) => self.list_projects_response(ctx).await?,
-            (Get, ["v0", "projects", project_id]) => {
-                self.get_project_response(ctx, project_id).await?
-            }
-            (Delete, ["v0", "projects", space_id, project_id]) => {
-                self.delete_project_response(ctx, space_id, project_id)
-                    .await?
-            }
-
-            // ==*== Enroll ==*==
-            (Get, ["v0", "enroll", "token"]) => self.generate_enrollment_token(ctx, dec).await?,
-            (Put, ["v0", "enroll", "token"]) => {
-                self.authenticate_enrollment_token(ctx, dec).await?
-            }
-
-            // ==*== Addons ==*==
-            (Get, [project_id, "addons"]) => self.list_addons(ctx, project_id).await?,
-            (Post, ["v1", "projects", project_id, "configure_addon", addon_id]) => {
-                self.configure_addon(ctx, dec, project_id, addon_id).await?
-            }
-            (Post, ["v1", "projects", project_id, "disable_addon"]) => {
-                self.disable_addon(ctx, dec, project_id).await?
-            }
-
-            // ==*== Operations ==*==
-            (Get, ["v1", "operations", operation_id]) => {
-                self.get_operation(ctx, operation_id).await?
-            }
-
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
-
-            // ==*== Shares and Invitations ==*==
-            (Get, ["v0", "invitations"]) => self.list_shares_response(ctx, dec.decode()?).await?,
-            (Get, ["v0", "invitations", id]) => self.show_invitation_response(ctx, id).await?,
-            (Post, ["v0", "invitations"]) => {
-                self.create_invitation_response(ctx, dec.decode()?).await?
-            }
-            (Post, ["v0", "invitations/service"]) => {
-                self.create_service_invitation_response(ctx, dec.decode()?)
-                    .await?
-            }
-            (Post, ["v0", "accept_invitation"]) => {
-                self.accept_invitation_response(ctx, dec.decode()?).await?
-            }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {

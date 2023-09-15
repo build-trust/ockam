@@ -1,5 +1,12 @@
+use crate::cloud::Controller;
 use minicbor::{Decode, Encode};
+use ockam_core::api::{Reply, Request};
+use ockam_core::async_trait;
+use ockam_core::Result;
+use ockam_node::Context;
 use serde::Serialize;
+
+const TARGET: &str = "ockam_api::cloud::space";
 
 #[derive(Encode, Decode, Serialize, Debug, Clone)]
 #[rustfmt::skip]
@@ -25,104 +32,50 @@ impl CreateSpace {
     }
 }
 
-mod node {
-    use tracing::trace;
+#[async_trait]
+pub trait Spaces {
+    async fn create_space(
+        &self,
+        ctx: &Context,
+        name: String,
+        users: Vec<String>,
+    ) -> Result<Reply<Space>>;
 
-    use ockam_core::api::{Request, Response};
-    use ockam_core::{self, Result};
-    use ockam_node::Context;
+    async fn get_space(&self, ctx: &Context, space_id: String) -> Result<Reply<Space>>;
 
-    use crate::cloud::space::{CreateSpace, Space};
-    use crate::cloud::CloudRequestWrapper;
-    use crate::nodes::{NodeManager, NodeManagerWorker};
+    async fn delete_space(&self, ctx: &Context, space_id: String) -> Result<Reply<()>>;
 
-    const TARGET: &str = "ockam_api::cloud::space";
+    async fn list_spaces(&self, ctx: &Context) -> Result<Reply<Vec<Space>>>;
+}
 
-    impl NodeManager {
-        pub async fn create_space(&self, ctx: &Context, req: CreateSpace) -> Result<Space> {
-            Response::parse_response_body(
-                self.create_space_response(ctx, CloudRequestWrapper::new(req))
-                    .await?
-                    .as_slice(),
-            )
-        }
-
-        pub(crate) async fn create_space_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: CloudRequestWrapper<CreateSpace>,
-        ) -> Result<Vec<u8>> {
-            let req_body = req_wrapper.req;
-            trace!(target: TARGET, space = %req_body.name, "creating space");
-            let req = Request::post("/v0/").body(req_body);
-            self.make_controller_client()
-                .await?
-                .request(ctx, "spaces", req)
-                .await
-        }
-
-        pub async fn list_spaces(&self, ctx: &Context) -> Result<Vec<Space>> {
-            Response::parse_response_body(self.list_spaces_response(ctx).await?.as_slice())
-        }
-
-        pub(crate) async fn list_spaces_response(&self, ctx: &Context) -> Result<Vec<u8>> {
-            trace!(target: TARGET, "listing spaces");
-            let req = Request::get("/v0/");
-
-            self.make_controller_client()
-                .await?
-                .request(ctx, "spaces", req)
-                .await
-        }
-
-        pub async fn get_space(&self, ctx: &Context, id: &str) -> Result<Space> {
-            Response::parse_response_body(self.get_space_response(ctx, id).await?.as_slice())
-        }
-
-        pub(crate) async fn get_space_response(&self, ctx: &Context, id: &str) -> Result<Vec<u8>> {
-            trace!(target: TARGET, space = %id, space = %id, "getting space");
-            let req = Request::get(format!("/v0/{id}"));
-            self.make_controller_client()
-                .await?
-                .request(ctx, "spaces", req)
-                .await
-        }
+#[async_trait]
+impl Spaces for Controller {
+    async fn create_space(
+        &self,
+        ctx: &Context,
+        name: String,
+        users: Vec<String>,
+    ) -> Result<Reply<Space>> {
+        trace!(target: TARGET, space = %name, "creating space");
+        let req = Request::post("/v0/").body(CreateSpace::new(name, users));
+        self.0.ask(ctx, "spaces", req).await
     }
 
-    impl NodeManagerWorker {
-        pub(crate) async fn create_space_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: CloudRequestWrapper<CreateSpace>,
-        ) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.create_space_response(ctx, req_wrapper).await
-        }
+    async fn get_space(&self, ctx: &Context, space_id: String) -> Result<Reply<Space>> {
+        trace!(target: TARGET, space = %space_id, "getting space");
+        let req = Request::get(format!("/v0/{space_id}"));
+        self.0.ask(ctx, "spaces", req).await
+    }
 
-        pub(crate) async fn list_spaces_response(&self, ctx: &Context) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.list_spaces_response(ctx).await
-        }
+    async fn delete_space(&self, ctx: &Context, space_id: String) -> Result<Reply<()>> {
+        trace!(target: TARGET, space = %space_id, "deleting space");
+        let req = Request::delete(format!("/v0/{space_id}"));
+        self.0.tell(ctx, "spaces", req).await
+    }
 
-        pub(crate) async fn get_space_response(&self, ctx: &Context, id: &str) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.get_space_response(ctx, id).await
-        }
-
-        pub async fn delete_space(&self, ctx: &Context, id: &str) -> Result<()> {
-            let _ = self.delete_space_response(ctx, id).await?;
-            Ok(())
-        }
-
-        pub(crate) async fn delete_space_response(
-            &self,
-            ctx: &Context,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            trace!(target: TARGET, space = %id, "deleting space");
-            let req = Request::delete(format!("/v0/{id}"));
-            self.controller_client.request(ctx, "spaces", req).await
-        }
+    async fn list_spaces(&self, ctx: &Context) -> Result<Reply<Vec<Space>>> {
+        trace!(target: TARGET, "listing spaces");
+        self.0.ask(ctx, "spaces", Request::get("/v0/")).await
     }
 }
 

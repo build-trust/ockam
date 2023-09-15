@@ -3,11 +3,11 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::project::ProjectVersion;
+use ockam_api::cloud::project::Projects;
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
@@ -36,9 +36,19 @@ async fn rpc(mut ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
 
 async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     // Send request
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    let project_version: ProjectVersion = rpc.ask(api::project::version()).await?;
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
+
+    let project_version = controller
+        .get_project_version(ctx)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;
     let project_version = project_version

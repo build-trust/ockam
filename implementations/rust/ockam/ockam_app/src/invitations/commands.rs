@@ -10,7 +10,7 @@ use tracing::{debug, info, trace, warn};
 use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, InvitationWithAccess};
+use ockam_api::cloud::share::{CreateServiceInvitation, Invitations, InvitationWithAccess};
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 
 use crate::app::events::system_tray_on_update;
@@ -67,10 +67,12 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
         }
     }
 
-    let node_manager_worker = app_state.node_manager_worker().await;
-    let res = node_manager_worker
-        .accept_invitation(&app_state.context(), AcceptInvitation { id })
-        .await?;
+    let controller = app_state.controller().await.into_diagnostic()?;
+    let res = controller
+        .accept_invitation(&app_state.context(), id)
+        .await
+        .into_diagnostic()?
+        .success()?;
 
     // Update the invitation status to Accepted
     {
@@ -135,11 +137,37 @@ async fn send_invitation<R: Runtime>(
     app: &AppHandle<R>,
 ) -> crate::Result<()> {
     let state: State<'_, AppState> = app.state();
-    let node_manager_worker = state.node_manager_worker().await;
-    let res = node_manager_worker
-        .create_service_invitation(&state.context(), invite_args)
+
+    let controller = state.controller().await.into_diagnostic()?;
+    let CreateServiceInvitation {
+        expires_at,
+        project_id,
+        recipient_email,
+        project_identity,
+        project_route,
+        project_authority_identity,
+        project_authority_route,
+        shared_node_identity,
+        shared_node_route,
+        enrollment_ticket,
+    } = invite_args;
+    let res = controller
+        .create_service_invitation(
+            &state.context(),
+            expires_at,
+            project_id,
+            recipient_email,
+            project_identity,
+            project_route,
+            project_authority_identity,
+            project_authority_route,
+            shared_node_identity,
+            shared_node_route,
+            enrollment_ticket,
+        )
         .await
-        .map_err(|e| e.to_string());
+        .map_err(|e| e.to_string())?
+        .success()?;
     debug!(?res, "invitation sent");
     Ok(())
 }
@@ -152,8 +180,8 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
             debug!("not enrolled, skipping invitations refresh");
             return Ok(());
         }
-        let node_manager_worker = state.node_manager_worker().await;
-        let invitations = node_manager_worker
+        let controller = state.controller().await;
+        let invitations = controller
             .list_shares(
                 &state.context(),
                 ListInvitations {

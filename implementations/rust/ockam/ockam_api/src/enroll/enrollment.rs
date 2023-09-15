@@ -1,5 +1,6 @@
 use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
 use crate::cloud::secure_client::SecureClient;
+use crate::cloud::HasSecureClient;
 use crate::DefaultAddress;
 use ockam_core::api::{Reply, Request};
 use ockam_core::async_trait;
@@ -19,6 +20,33 @@ pub trait Enrollment {
     ) -> Result<Reply<()>>;
     async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> Result<Reply<()>>;
     async fn issue_credential(&self, ctx: &Context) -> Result<Reply<Credential>>;
+}
+
+#[async_trait]
+impl<T: HasSecureClient + Send + Sync> Enrollment for T {
+    async fn enroll_with_oidc_token(&self, ctx: &Context, token: OidcToken) -> Result<Reply<()>> {
+        self.get_secure_client()
+            .enroll_with_oidc_token(ctx, token)
+            .await
+    }
+
+    async fn enroll_with_oidc_token_okta(
+        &self,
+        ctx: &Context,
+        token: OidcToken,
+    ) -> Result<Reply<()>> {
+        self.get_secure_client()
+            .enroll_with_oidc_token_okta(ctx, token)
+            .await
+    }
+
+    async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> Result<Reply<()>> {
+        self.get_secure_client().present_token(ctx, token).await
+    }
+
+    async fn issue_credential(&self, ctx: &Context) -> Result<Reply<Credential>> {
+        self.get_secure_client().issue_credential(ctx).await
+    }
 }
 
 #[async_trait]

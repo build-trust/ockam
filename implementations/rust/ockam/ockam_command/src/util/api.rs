@@ -10,7 +10,6 @@ use regex::Regex;
 
 use ockam::identity::Identifier;
 use ockam_api::cli_state::CliState;
-use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
@@ -206,118 +205,6 @@ pub(crate) mod credentials {
 /// Return the path of a service given its name
 fn node_service(service_name: &str) -> String {
     format!("/node/services/{service_name}")
-}
-
-/// Helpers to create enroll API requests
-pub mod enroll {
-    use ockam_api::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
-
-    use super::*;
-
-    pub fn auth0(token: OidcToken) -> Request<CloudRequestWrapper<AuthenticateOidcToken>> {
-        let token = AuthenticateOidcToken::new(token);
-        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(token))
-    }
-}
-
-/// Helpers to create spaces API requests
-pub(crate) mod space {
-    use ockam_api::cloud::space::*;
-
-    use crate::space::*;
-
-    use super::*;
-
-    pub(crate) fn create(cmd: CreateCommand) -> Request<CloudRequestWrapper<CreateSpace>> {
-        let b = CreateSpace::new(cmd.name, cmd.admins);
-        Request::post("v0/spaces").body(CloudRequestWrapper::new(b))
-    }
-
-    pub(crate) fn list() -> Request<()> {
-        Request::get("v0/spaces")
-    }
-
-    pub(crate) fn show(id: &str) -> Request<()> {
-        Request::get(format!("v0/spaces/{id}"))
-    }
-
-    pub(crate) fn delete(id: &str) -> Request<()> {
-        Request::delete(format!("v0/spaces/{id}"))
-    }
-}
-
-/// Helpers to create projects API requests
-pub(crate) mod project {
-    use ockam_api::cloud::project::*;
-
-    use super::*;
-
-    pub(crate) fn create(
-        project_name: &str,
-        space_id: &str,
-    ) -> Request<CloudRequestWrapper<CreateProject>> {
-        let b = CreateProject::new(project_name.to_string(), vec![]);
-        Request::post(format!("v1/spaces/{space_id}/projects")).body(CloudRequestWrapper::new(b))
-    }
-
-    pub(crate) fn list() -> Request<()> {
-        Request::get("v0/projects")
-    }
-
-    pub(crate) fn show(id: &str) -> Request<()> {
-        Request::get(format!("v0/projects/{id}"))
-    }
-
-    pub(crate) fn version() -> Request<()> {
-        Request::get("v0/projects/version_info")
-    }
-
-    pub(crate) fn delete(space_id: &str, project_id: &str) -> Request<()> {
-        Request::delete(format!("v0/projects/{space_id}/{project_id}"))
-    }
-}
-
-/// Helpers to create operations API requests
-pub(crate) mod operation {
-    use super::*;
-
-    pub(crate) fn show(id: &str) -> Request<()> {
-        Request::get(format!("v1/operations/{id}"))
-    }
-}
-
-/// Helpers to create share API requests
-#[cfg(feature = "orchestrator")]
-pub(crate) mod share {
-    use ockam_api::cloud::share::{
-        AcceptInvitation, CreateInvitation, CreateServiceInvitation, InvitationListKind,
-        ListInvitations,
-    };
-
-    use super::*;
-
-    pub(crate) fn accept(req: AcceptInvitation) -> Request<CloudRequestWrapper<AcceptInvitation>> {
-        Request::post("v0/accept_invitation".to_string()).body(CloudRequestWrapper::new(req))
-    }
-
-    pub(crate) fn create(req: CreateInvitation) -> Request<CloudRequestWrapper<CreateInvitation>> {
-        Request::post("v0/invitations".to_string()).body(CloudRequestWrapper::new(req))
-    }
-
-    pub(crate) fn create_service_invitation(
-        req: CreateServiceInvitation,
-    ) -> Request<CloudRequestWrapper<CreateServiceInvitation>> {
-        Request::post("v0/invitations/service".to_string()).body(CloudRequestWrapper::new(req))
-    }
-
-    pub(crate) fn list(kind: InvitationListKind) -> Request<CloudRequestWrapper<ListInvitations>> {
-        let req = ListInvitations { kind };
-        Request::get("v0/invitations".to_string()).body(CloudRequestWrapper::new(req))
-    }
-
-    pub(crate) fn show(invitation_id: String) -> Request<()> {
-        Request::get(format!("v0/invitations/{invitation_id}"))
-    }
 }
 
 ////////////// !== parsers

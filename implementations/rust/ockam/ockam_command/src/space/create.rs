@@ -1,13 +1,14 @@
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::space::Space;
+use ockam_api::cloud::space::{Space, Spaces};
 use rand::prelude::random;
 
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::util::api::{self};
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -56,13 +57,23 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    let space: Space = rpc.ask(api::space::create(cmd)).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
+
+    let space: Space = controller
+        .create_space(ctx, cmd.name, cmd.admins)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     opts.println(&space)?;
     opts.state
         .spaces
         .overwrite(&space.name, SpaceConfig::from(&space))?;
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }
 

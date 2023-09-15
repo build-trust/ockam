@@ -7,7 +7,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::{OktaAuth0, Project};
-use ockam_api::cloud::secure_client::SecureClient;
+use ockam_api::cloud::AuthorityNode;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
@@ -99,7 +99,7 @@ pub async fn project_enroll(
         .get_identifier(Some(identity_name))
         .await
         .into_diagnostic()?;
-    let authority_client: SecureClient = node_manager
+    let authority_node: AuthorityNode = node_manager
         .make_authority_client(
             project_authority.identity_id().clone(),
             project_authority.address().clone(),
@@ -109,7 +109,7 @@ pub async fn project_enroll(
         .into_diagnostic()?;
 
     if let Some(tkn) = cmd.enroll_ticket.as_ref() {
-        authority_client
+        authority_node
             .present_token(ctx, &tkn.one_time_code)
             .await
             .into_diagnostic()?;
@@ -122,13 +122,13 @@ pub async fn project_enroll(
 
         let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
         let token = auth0.get_token_interactively(opts).await?;
-        authority_client
+        authority_node
             .enroll_with_oidc_token(ctx, token)
             .await
             .into_diagnostic()?;
     };
 
-    let credential = authority_client
+    let credential = authority_node
         .issue_credential(ctx)
         .await
         .into_diagnostic()?

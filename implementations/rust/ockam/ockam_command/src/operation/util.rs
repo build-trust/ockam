@@ -2,17 +2,17 @@ use miette::{miette, IntoDiagnostic};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
-use ockam::AsyncTryClone;
-use ockam_api::cloud::operation::Operation;
-use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
+use ockam_api::cloud::operation::{Operation, Operations};
+use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
+use ockam_core::api::Reply;
+use ockam_node::Context;
 
-use crate::util::{api, Rpc};
 use crate::CommandGlobalOpts;
-use crate::Result;
 
-pub async fn check_for_completion<'a>(
+pub async fn check_for_completion(
     opts: &CommandGlobalOpts,
-    rpc: &Rpc,
+    ctx: &Context,
+    controller: &Controller,
     operation_id: &str,
 ) -> miette::Result<()> {
     let retry_strategy =
@@ -22,18 +22,18 @@ pub async fn check_for_completion<'a>(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Configuring project...");
     }
-    let operation = Retry::spawn(retry_strategy.clone(), || async {
-        let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
+    let operation: Operation = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the operation show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let result: Result<Operation> = rpc_clone.ask(api::operation::show(operation_id)).await;
-        result.and_then(|o| {
-            if o.is_completed() {
-                Ok(o)
-            } else {
-                Err(miette!("Operation timed out. Please try again.").into())
-            }
-        })
+        let result = controller
+            .get_operation(ctx, operation_id)
+            .await
+            .into_diagnostic()?;
+        let operation: miette::Result<Operation> = match result {
+            Reply::Successful(o) if o.is_completed() => Ok(o),
+            _ => Err(miette!("Operation timed out. Please try again.").into()),
+        };
+        operation
     })
     .await?;
 

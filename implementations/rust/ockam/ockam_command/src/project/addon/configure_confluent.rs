@@ -1,20 +1,14 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::cloud::addon::ConfluentConfig;
-use ockam_api::cloud::operation::CreateOperationResponse;
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::CloudRequestWrapper;
-use ockam_core::api::Request;
+use ockam_api::cloud::addon::{Addons, ConfluentConfig};
 
-use crate::node::util::delete_embedded_node;
-use crate::operation::util::check_for_completion;
-use crate::project::addon::configure_addon_endpoint;
-use crate::project::util::check_project_readiness;
-use crate::util::{api, node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::project::addon::{check_configuration_completion, get_project_id};
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_confluent/long_about.txt");
@@ -61,28 +55,34 @@ async fn run_impl(
         project_name,
         bootstrap_server,
     } = cmd;
+    let project_id = get_project_id(&opts.state, project_name.as_str())?;
+    let config = ConfluentConfig::new(bootstrap_server);
 
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-    let body = ConfluentConfig::new(bootstrap_server);
-    let addon_id = "confluent";
-    let endpoint = format!(
-        "{}/{}",
-        configure_addon_endpoint(&opts.state, &project_name)?,
-        addon_id
-    );
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body));
-    let response: CreateOperationResponse = rpc.ask(req).await?;
-    let operation_id = response.operation_id;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
-    check_for_completion(&opts, &rpc, &operation_id).await?;
-
-    let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
-    let project: Project = rpc.ask(api::project::show(&project_id)).await?;
-    check_project_readiness(&opts, &rpc, project).await?;
+    let response = controller
+        .configure_confluent_addon(&ctx, project_id.clone(), config)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
+    check_configuration_completion(
+        &opts,
+        &ctx,
+        &node_manager,
+        &controller,
+        project_id,
+        response.operation_id,
+    )
+    .await?;
 
     opts.terminal
         .write_line(&fmt_ok!("Confluent addon configured successfully"))?;
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

@@ -6,11 +6,11 @@ use tokio::try_join;
 use tracing::debug;
 
 use ockam::Context;
-use ockam_api::cloud::share::{CreateInvitation, RoleInShare, SentInvitation, ShareScope};
+use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -38,27 +38,6 @@ impl CreateCommand {
     }
 }
 
-impl From<CreateCommand> for CreateInvitation {
-    fn from(val: CreateCommand) -> Self {
-        let CreateCommand {
-            expires_at,
-            grant_role,
-            recipient_email,
-            scope,
-            target_id,
-            ..
-        } = val;
-        Self {
-            expires_at,
-            grant_role,
-            recipient_email,
-            remaining_uses: None,
-            scope,
-            target_id,
-        }
-    }
-}
-
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
@@ -72,12 +51,27 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
     let get_sent_invitation = async {
-        let req = cmd.into();
-        debug!(?req);
-        let invitation: SentInvitation = rpc.ask(api::share::create(req)).await?;
+        let invitation = controller
+            .create_invitation(
+                ctx,
+                cmd.expires_at,
+                cmd.grant_role,
+                cmd.recipient_email,
+                None,
+                cmd.scope,
+                cmd.target_id,
+            )
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };
@@ -92,7 +86,7 @@ async fn run_impl(
 
     debug!(?sent);
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     let plain = fmt_ok!(
         "Invite {} to {} {} created, expiring at {}. {} will be notified via email.",

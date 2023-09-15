@@ -1,12 +1,14 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::cloud::space::Spaces;
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -55,13 +57,21 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this space?")?
     {
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
-        let mut rpc = Rpc::embedded(ctx, &opts).await?;
-        rpc.tell(api::space::delete(&space_id)).await?;
+        let node_manager = start_node_manager(&ctx, &opts, None).await?;
+        let controller = node_manager
+            .make_controller_client()
+            .await
+            .into_diagnostic()?;
+
+        controller
+            .delete_space(ctx, space_id)
+            .await
+            .into_diagnostic()?;
 
         let _ = opts.state.spaces.delete(&cmd.name);
         // TODO: remove projects associated to the space.
         //  Currently we are not storing that association in the project config file.
-        delete_embedded_node(&opts, rpc.node_name()).await;
+        delete_embedded_node(&opts, &node_manager.node_name()).await;
 
         opts.terminal
             .stdout()
