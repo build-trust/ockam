@@ -166,12 +166,7 @@ async fn check_project_ready(
     let project: Project = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the project show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let project = node
-            .get_project(ctx, project_id.clone())
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let project = node.get_project(ctx, project_id.clone()).await?;
         let result: miette::Result<Project> = if project.is_ready() {
             Ok(project)
         } else {
@@ -271,12 +266,7 @@ pub async fn refresh_projects(
     ctx: &Context,
     node: &LocalNode,
 ) -> miette::Result<()> {
-    let projects: Vec<Project> = node
-        .list_projects(ctx)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let projects: Vec<Project> = node.list_projects(ctx).await?;
     for project in projects {
         opts.state
             .projects

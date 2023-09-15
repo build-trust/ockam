@@ -110,10 +110,7 @@ async fn run_impl(
                 cmd.shared_node_route,
                 cmd.enrollment_ticket,
             )
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+            .await?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };

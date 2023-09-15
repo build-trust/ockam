@@ -8,7 +8,6 @@ use crate::util::api::{self};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
-use miette::IntoDiagnostic;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -59,12 +58,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node = LocalNode::make(ctx, &opts, None).await?;
 
-    let space: Space = node
-        .create_space(ctx, cmd.name, cmd.admins)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let space: Space = node.create_space(ctx, cmd.name, cmd.admins).await?;
     opts.println(&space)?;
     opts.state
         .spaces

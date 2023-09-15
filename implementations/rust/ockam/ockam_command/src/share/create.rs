@@ -64,10 +64,7 @@ async fn run_impl(
                 cmd.scope,
                 cmd.target_id,
             )
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+            .await?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };

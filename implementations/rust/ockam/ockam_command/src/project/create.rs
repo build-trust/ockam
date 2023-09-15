@@ -1,5 +1,4 @@
 use clap::Args;
-use miette::IntoDiagnostic;
 use rand::prelude::random;
 
 use ockam::Context;
@@ -59,10 +58,7 @@ async fn run_impl(
 
     let project = node
         .create_project(ctx, space_id, cmd.project_name, vec![])
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+        .await?;
     let operation_id = project.operation_id.clone().unwrap();
     check_for_completion(&opts, ctx, &node, &operation_id).await?;
     let project = check_project_readiness(&opts, ctx, &node, project).await?;

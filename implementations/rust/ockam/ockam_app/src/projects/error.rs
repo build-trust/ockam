@@ -11,7 +11,7 @@ pub enum Error {
     #[error("decoding enrollment ticket failed")]
     EnrollmentTicketDecodeFailed,
     #[error("listing projects failed: {0:?}")]
-    ListingFailed(ockam::Error),
+    ListingFailed(String),
     #[error("application error: {0:?}")]
     InternalFailure(String),
     #[error("binary for ockam command is invalid: {0}")]

@@ -1,6 +1,5 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -58,7 +57,7 @@ async fn run_impl(
     {
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
         let node = LocalNode::make(ctx, &opts, None).await?;
-        node.delete_space(ctx, space_id).await.into_diagnostic()?;
+        node.delete_space(ctx, space_id).await?;
 
         let _ = opts.state.spaces.delete(&cmd.name);
         // TODO: remove projects associated to the space.

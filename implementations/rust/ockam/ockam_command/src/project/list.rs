@@ -50,12 +50,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_projects = async {
-        let projects: Vec<Project> = node
-            .list_projects(ctx)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let projects: Vec<Project> = node.list_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };

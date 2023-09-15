@@ -13,7 +13,7 @@ use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::Controller;
-use ockam_api::enroll::enrollment::Enrollment;
+use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_core::api::{Reply, Status};
 use ockam_identity::Identifier;
@@ -140,28 +140,14 @@ pub async fn enroll_with_node(
     ctx: &Context,
     token: OidcToken,
 ) -> miette::Result<()> {
-    let reply = controller
-        .enroll_with_oidc_token(ctx, token)
-        .await
-        .into_diagnostic()?;
+    let reply = controller.enroll_with_oidc_token(ctx, token).await?;
     match reply {
-        Reply::Successful(_) => {
-            info!("Enrolled successfully");
-            Ok(())
-        }
-        Reply::Failed(_, Some(Status::BadRequest)) => {
-            info!("Already enrolled");
-            Ok(())
-        }
-        Reply::Failed(e, Some(s)) => {
-            warn!("Unexpected status {s}. The error is: {e}");
-            Ok(())
-        }
-        Reply::Failed(e, _) => {
-            warn!("A status was expected in the response to an enrollment request, got none. The error is: {e}");
-            Ok(())
-        }
-    }
+        EnrollStatus::EnrolledSuccessfully => info!("Enrolled successfully"),
+        EnrollStatus::AlreadyEnrolled => info!("Already enrolled"),
+        EnrollStatus::UnexpectedStatus(e, s) => warn!("Unexpected status {s}. The error is: {e}"),
+        EnrollStatus::FailedNoStatus(e) => warn!("A status was expected in the response to an enrollment request, got none. The error is: {e}"),
+    };
+    Ok(())
 }
 
 async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &LocalNode) -> Result<Space> {
@@ -170,12 +156,7 @@ async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &LocalNode
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
-        let spaces: Vec<Space> = node
-            .list_spaces(ctx)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let spaces: Vec<Space> = node.list_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };
@@ -204,12 +185,7 @@ async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &LocalNode
         let name = crate::util::random_name();
         let space_name = name.clone();
         let create_space = async {
-            let space = node
-                .create_space(ctx, space_name, vec![])
-                .await
-                .into_diagnostic()?
-                .success()
-                .into_diagnostic()?;
+            let space = node.create_space(ctx, space_name, vec![]).await?;
             *is_finished.lock().await = true;
             Ok(space)
         };
@@ -270,7 +246,7 @@ async fn default_project(
 
     let is_finished = Mutex::new(false);
     let get_projects = async {
-        let projects: Vec<Project> = node.list_projects(ctx).await?.success()?;
+        let projects = node.list_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
@@ -297,8 +273,7 @@ async fn default_project(
         let get_project = async {
             let project = node
                 .create_project(ctx, space.id.clone(), project_name.clone(), vec![])
-                .await?
-                .success()?;
+                .await?;
             *is_finished.lock().await = true;
             Ok(project)
         };

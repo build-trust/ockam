@@ -50,12 +50,7 @@ async fn run_impl(
     let node = LocalNode::make(ctx, &opts, None).await?;
 
     let get_spaces = async {
-        let spaces = node
-            .list_spaces(ctx)
-            .await
-            .into_diagnostic()?
-            .success()
-            .into_diagnostic()?;
+        let spaces = node.list_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };

@@ -1,8 +1,8 @@
 use crate::cloud::Controller;
+use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
-use ockam_core::api::{Reply, Request};
+use ockam_core::api::Request;
 use ockam_core::async_trait;
-use ockam_core::Result;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -49,7 +49,11 @@ pub enum Status {
 
 #[async_trait]
 pub trait Operations {
-    async fn get_operation(&self, ctx: &Context, operation_id: &str) -> Result<Reply<Operation>>;
+    async fn get_operation(
+        &self,
+        ctx: &Context,
+        operation_id: &str,
+    ) -> miette::Result<Option<Operation>>;
 }
 
 const TARGET: &str = "ockam_api::cloud::operation";
@@ -57,9 +61,18 @@ const API_SERVICE: &str = "projects";
 
 #[async_trait]
 impl Operations for Controller {
-    async fn get_operation(&self, ctx: &Context, operation_id: &str) -> Result<Reply<Operation>> {
+    async fn get_operation(
+        &self,
+        ctx: &Context,
+        operation_id: &str,
+    ) -> miette::Result<Option<Operation>> {
         trace!(target: TARGET, operation_id, "getting operation");
         let req = Request::get(format!("/v1/operations/{operation_id}"));
-        self.0.ask(ctx, API_SERVICE, req).await
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .found()
+            .into_diagnostic()
     }
 }

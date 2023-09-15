@@ -37,12 +37,7 @@ async fn rpc(mut ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
 async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     // Send request
     let node = LocalNode::make(ctx, &opts, None).await?;
-    let project_version = node
-        .get_project_version(ctx)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let project_version = node.get_project_version(ctx).await?;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;
     let project_version = project_version

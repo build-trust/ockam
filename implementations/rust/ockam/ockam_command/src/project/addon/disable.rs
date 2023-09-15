@@ -1,7 +1,6 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
@@ -51,12 +50,7 @@ async fn run_impl(
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
     let node = LocalNode::make(&ctx, &opts, None).await?;
 
-    let response = node
-        .disable_addon(&ctx, project_id, addon_id)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let response = node.disable_addon(&ctx, project_id, addon_id).await?;
     let operation_id = response.operation_id;
     check_for_completion(&opts, &ctx, &node, &operation_id).await?;
 

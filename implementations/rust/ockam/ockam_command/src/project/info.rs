@@ -1,5 +1,4 @@
 use clap::Args;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
@@ -55,12 +54,7 @@ async fn run_impl(
 
     // Send request
 
-    let project: Project = node
-        .get_project(ctx, id)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+    let project: Project = node.get_project(ctx, id).await?;
     let info: ProjectConfigCompact = project.into();
     opts.println(&info)?;
     Ok(())

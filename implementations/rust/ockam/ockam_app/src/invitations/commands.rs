@@ -68,11 +68,7 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
     }
 
     let controller = app_state.controller().await.into_diagnostic()?;
-    let res = controller
-        .accept_invitation(&app_state.context(), id)
-        .await
-        .into_diagnostic()?
-        .success()?;
+    let res = controller.accept_invitation(&app_state.context(), id).await?;
 
     // Update the invitation status to Accepted
     {
@@ -166,8 +162,7 @@ async fn send_invitation<R: Runtime>(
             enrollment_ticket,
         )
         .await
-        .map_err(|e| e.to_string())?
-        .success()?;
+        .map_err(|e| e.to_string())?;
     debug!(?res, "invitation sent");
     Ok(())
 }

@@ -159,10 +159,7 @@ async fn run_impl(
 
     let response = node
         .configure_influxdb_addon(&ctx, project_id.clone(), config)
-        .await
-        .into_diagnostic()?
-        .success()
-        .into_diagnostic()?;
+        .await?;
     check_configuration_completion(&opts, &ctx, &node, project_id, response.operation_id).await?;
 
     opts.terminal

@@ -1,8 +1,8 @@
 use crate::cloud::Controller;
+use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
-use ockam_core::api::{Reply, Request};
+use ockam_core::api::Request;
 use ockam_core::async_trait;
-use ockam_core::Result;
 use ockam_node::Context;
 use serde::Serialize;
 
@@ -39,13 +39,13 @@ pub trait Spaces {
         ctx: &Context,
         name: String,
         users: Vec<String>,
-    ) -> Result<Reply<Space>>;
+    ) -> miette::Result<Space>;
 
-    async fn get_space(&self, ctx: &Context, space_id: String) -> Result<Reply<Space>>;
+    async fn get_space(&self, ctx: &Context, space_id: String) -> miette::Result<Space>;
 
-    async fn delete_space(&self, ctx: &Context, space_id: String) -> Result<Reply<()>>;
+    async fn delete_space(&self, ctx: &Context, space_id: String) -> miette::Result<()>;
 
-    async fn list_spaces(&self, ctx: &Context) -> Result<Reply<Vec<Space>>>;
+    async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>>;
 }
 
 #[async_trait]
@@ -55,27 +55,47 @@ impl Spaces for Controller {
         ctx: &Context,
         name: String,
         users: Vec<String>,
-    ) -> Result<Reply<Space>> {
+    ) -> miette::Result<Space> {
         trace!(target: TARGET, space = %name, "creating space");
         let req = Request::post("/v0/").body(CreateSpace::new(name, users));
-        self.0.ask(ctx, "spaces", req).await
+        self.0
+            .ask(ctx, "spaces", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
-    async fn get_space(&self, ctx: &Context, space_id: String) -> Result<Reply<Space>> {
+    async fn get_space(&self, ctx: &Context, space_id: String) -> miette::Result<Space> {
         trace!(target: TARGET, space = %space_id, "getting space");
         let req = Request::get(format!("/v0/{space_id}"));
-        self.0.ask(ctx, "spaces", req).await
+        self.0
+            .ask(ctx, "spaces", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
-    async fn delete_space(&self, ctx: &Context, space_id: String) -> Result<Reply<()>> {
+    async fn delete_space(&self, ctx: &Context, space_id: String) -> miette::Result<()> {
         trace!(target: TARGET, space = %space_id, "deleting space");
         let req = Request::delete(format!("/v0/{space_id}"));
-        self.0.tell(ctx, "spaces", req).await
+        self.0
+            .tell(ctx, "spaces", req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
-    async fn list_spaces(&self, ctx: &Context) -> Result<Reply<Vec<Space>>> {
+    async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
         trace!(target: TARGET, "listing spaces");
-        self.0.ask(ctx, "spaces", Request::get("/v0/")).await
+        self.0
+            .ask(ctx, "spaces", Request::get("/v0/"))
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }
 
