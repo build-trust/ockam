@@ -4,12 +4,11 @@ use std::time::Duration;
 
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
-use ockam_identity::{Identifier, SecureChannel, SecureChannels};
+use ockam_identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 use ockam_transport_tcp::TcpTransport;
 
-use crate::cloud::secure_client::SecureClient;
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
 
@@ -54,7 +53,9 @@ impl HasSecureClient for Controller {
     }
 }
 
-impl SecureClient {
+pub struct SecureClients;
+
+impl SecureClients {
     pub async fn controller(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
@@ -106,6 +107,24 @@ impl SecureClient {
             caller_identifier,
             Duration::from_secs(DEFAULT_TIMEOUT),
         )))
+    }
+
+    pub async fn generic(
+        tcp_transport: &TcpTransport,
+        secure_channels: Arc<SecureChannels>,
+        identifier: IdentityIdentifier,
+        multiaddr: MultiAddr,
+        caller_identifier: IdentityIdentifier,
+    ) -> Result<SecureClient> {
+        let route = Self::authority_route(tcp_transport, multiaddr).await?;
+
+        Ok(SecureClient::new(
+            secure_channels,
+            route,
+            identifier,
+            caller_identifier,
+            Duration::from_secs(DEFAULT_TIMEOUT),
+        ))
     }
 
     /// Load controller identity id from file.

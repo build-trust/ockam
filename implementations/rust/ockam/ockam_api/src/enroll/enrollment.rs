@@ -1,11 +1,10 @@
 use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
-use crate::cloud::secure_client::SecureClient;
 use crate::cloud::HasSecureClient;
 use crate::DefaultAddress;
 use miette::IntoDiagnostic;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::async_trait;
-use ockam_identity::{Credential, OneTimeCode};
+use ockam_identity::{Credential, OneTimeCode, SecureClient};
 use ockam_node::Context;
 
 const TARGET: &str = "ockam_api::cloud::enroll";
