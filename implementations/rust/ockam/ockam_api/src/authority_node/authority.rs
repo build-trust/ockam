@@ -191,8 +191,7 @@ impl Authority {
             self.secure_channels.identities().credentials(),
             &self.identifier,
             configuration.project_identifier(),
-        )
-        .await?;
+        );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
         ctx.flow_controls()
@@ -343,20 +342,20 @@ impl Authority {
     ) -> Arc<AbacAccessControl> {
         // create an ABAC policy to only allow messages having
         // the same project id as the authority
-        let rule = if enroller_check == EnrollerOnly {
-            and([
+        let rule = match enroller_check {
+            EnrollerOnly => and([
                 eq([
                     ident("resource.trust_context_id"),
                     ident("subject.trust_context_id"),
                 ]),
                 eq([ident("subject.ockam-role"), str("enroller")]),
-            ])
-        } else {
-            eq([
+            ]),
+            AnyMember => eq([
                 ident("resource.trust_context_id"),
                 ident("subject.trust_context_id"),
-            ])
+            ]),
         };
+
         let mut env = Env::new();
         env.put("resource.id", str(address.as_str()));
         env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));

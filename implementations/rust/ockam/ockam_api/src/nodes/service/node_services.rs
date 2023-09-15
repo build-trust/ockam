@@ -205,8 +205,7 @@ impl NodeManager {
             self.identities().credentials(),
             &self.identifier,
             project,
-        )
-        .await?;
+        );
         WorkerBuilder::new(issuer)
             .with_address(addr.clone())
             .with_incoming_access_control_arc(abac)
