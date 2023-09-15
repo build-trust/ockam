@@ -38,22 +38,22 @@ pub struct CredentialsIssuer {
 
 impl CredentialsIssuer {
     /// Create a new credentials issuer
-    pub async fn new(
+    pub fn new(
         identities_repository: Arc<dyn IdentitiesRepository>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
         trust_context: String,
-    ) -> Result<Self> {
+    ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec())
             .build();
 
-        Ok(Self {
+        Self {
             identities_repository,
             credentials,
             issuer: issuer.clone(),
             subject_attributes,
-        })
+        }
     }
 
     async fn issue_credential(

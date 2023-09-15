@@ -70,8 +70,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         identities.credentials(),
         auth_identity.identifier(),
         "project42".into(),
-    )
-    .await?;
+    );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 
     // Connect to the API channel from the member:

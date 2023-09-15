@@ -48,8 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
         node.credentials(),
         issuer.identifier(),
         "trust_context".into(),
-    )
-    .await?;
+    );
     for identifier in known_identifiers.iter() {
         node.identities()
             .repository()
