@@ -7,10 +7,14 @@ mod list;
 use core::fmt::Write;
 
 use clap::{Args, Subcommand};
-use miette::Context as _;
+use miette::{Context as _, IntoDiagnostic};
 
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
+use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::Controller;
+use ockam_api::nodes::NodeManager;
+use ockam_node::Context;
 
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
@@ -21,6 +25,8 @@ use crate::project::addon::list::AddonListSubcommand;
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 
+use crate::operation::util::check_for_completion;
+use crate::project::util::check_project_readiness;
 use crate::{CommandGlobalOpts, Result};
 
 /// Manage addons for a project
@@ -97,8 +103,8 @@ impl Output for Vec<Addon> {
     }
 }
 
-pub fn base_endpoint(cli_state: &CliState, project_name: &str) -> Result<String> {
-    let project_id = cli_state
+pub fn get_project_id(cli_state: &CliState, project_name: &str) -> Result<String> {
+    Ok(cli_state
         .projects
         .get(project_name)
         .context(format!(
@@ -106,32 +112,24 @@ pub fn base_endpoint(cli_state: &CliState, project_name: &str) -> Result<String>
         ))?
         .config()
         .id
-        .clone();
-    Ok(format!("{project_id}/addons"))
+        .clone())
 }
 
-pub fn configure_addon_endpoint(cli_state: &CliState, project_name: &str) -> Result<String> {
-    let project_id = cli_state
-        .projects
-        .get(project_name)
-        .context(format!(
-            "Failed to get project {project_name} from config lookup"
-        ))?
-        .config()
-        .id
-        .clone();
-    Ok(format!("v1/projects/{project_id}/configure_addon"))
-}
-
-pub fn disable_addon_endpoint(cli_state: &CliState, project_name: &str) -> Result<String> {
-    let project_id = cli_state
-        .projects
-        .get(project_name)
-        .context(format!(
-            "Failed to get project {project_name} from config lookup"
-        ))?
-        .config()
-        .id
-        .clone();
-    Ok(format!("v1/projects/{project_id}/disable_addon"))
+async fn check_configuration_completion(
+    opts: &CommandGlobalOpts,
+    ctx: &Context,
+    node_manager: &NodeManager,
+    controller: &Controller,
+    project_id: String,
+    operation_id: String,
+) -> Result<()> {
+    check_for_completion(&opts, &ctx, &controller, &operation_id).await?;
+    let project = controller
+        .get_project(&ctx, project_id)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
+    let _ = check_project_readiness(&opts, &ctx, &node_manager, project).await?;
+    Ok(())
 }

@@ -7,11 +7,11 @@ use tracing::debug;
 
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::cloud::share::{CreateServiceInvitation, SentInvitation};
+use ockam_api::cloud::share::{CreateServiceInvitation, Invitations};
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -92,13 +92,32 @@ async fn run_impl(
     cmd: ServiceCreateCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
     let get_sent_invitation = async {
-        let req = cmd.into();
-        debug!(?req);
-        let invitation: SentInvitation =
-            rpc.ask(api::share::create_service_invitation(req)).await?;
+        let invitation = controller
+            .create_service_invitation(
+                ctx,
+                cmd.expires_at,
+                cmd.project_id,
+                cmd.recipient_email,
+                cmd.project_identity,
+                cmd.project_route,
+                cmd.project_authority_identity,
+                cmd.project_authority_route,
+                cmd.shared_node_identity,
+                cmd.shared_node_route,
+                cmd.enrollment_ticket,
+            )
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };
@@ -113,7 +132,7 @@ async fn run_impl(
 
     debug!(?sent);
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     let plain = fmt_ok!(
         "Invitation {} to {} {} created, expiring at {}. {} will be notified via email.",

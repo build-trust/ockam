@@ -6,18 +6,19 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models;
-use ockam_api::nodes::models::secure_channel::{
-    CreateSecureChannelResponse, CredentialExchangeMode,
-};
+use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
+use ockam_api::nodes::NodeManager;
 use ockam_api::route_to_multiaddr;
-use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::node::util::start_node_manager;
+use crate::project::util::{
+    clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
+};
 use crate::util::api::CloudOpts;
-use crate::util::{clean_nodes_multiaddr, Rpc};
+use crate::util::clean_nodes_multiaddr;
 use crate::{
     error::Error,
     fmt_log, fmt_ok,
@@ -66,23 +67,31 @@ impl CreateCommand {
 
     // Read the `to` argument and return a MultiAddr
     // or exit with and error if `to` can't be parsed.
-    async fn parse_to_route<'a>(
+    async fn parse_to_route(
         &self,
         opts: &CommandGlobalOpts,
-        rpc: &mut Rpc,
+        ctx: &Context,
+        node_manager: &NodeManager,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
 
-        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
+        let identity_name = get_identity_name(&opts.state, &self.cloud_opts.identity);
+        let identifier = node_manager
+            .get_identifier(Some(identity_name))
+            .await
+            .into_diagnostic()?;
+
+        let projects_sc = get_projects_secure_channels_from_config_lookup(
             opts,
-            rpc,
+            ctx,
+            node_manager,
             &meta,
-            CredentialExchangeMode::Oneway,
+            identifier,
         )
         .await?;
-        crate::project::util::clean_projects_multiaddr(to, projects_sc)
+        clean_projects_multiaddr(to, projects_sc)
             .into_diagnostic()
             .wrap_err("Could not parse projects from route")
     }
@@ -98,8 +107,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
     let from = &cmd.parse_from_node();
-    let mut rpc = Rpc::background(&ctx, &opts, from).await?;
-    let to = &cmd.parse_to_route(&opts, &mut rpc).await?;
+    let mut node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let to = cmd.parse_to_route(&opts, &ctx, &node_manager).await?;
 
     let authorized_identifiers = cmd.authorized.clone();
 
@@ -108,18 +117,20 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let create_secure_channel = async {
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-        let payload = models::secure_channel::CreateSecureChannelRequest::new(
-            to,
-            authorized_identifiers,
-            CredentialExchangeMode::Mutual,
-            Some(identity),
-            cmd.credential.clone(),
-        );
-        let request = Request::post("/node/secure_channel").body(payload);
 
-        let response: CreateSecureChannelResponse = rpc.ask(request).await?;
+        let sc = node_manager
+            .create_monitored_secure_channel(
+                &ctx,
+                to,
+                authorized_identifiers,
+                CredentialExchangeMode::Mutual,
+                None,
+                Some(identity),
+                cmd.credential.clone(),
+            )
+            .await?;
         *is_finished.lock().await = true;
-        Ok(response)
+        Ok(sc)
     };
 
     let output_messages = vec!["Creating Secure Channel...".to_string()];
@@ -130,7 +141,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
 
-    let route = &route![secure_channel.addr.to_string()];
+    let route = &route![secure_channel.encryptor_address().to_string()];
     let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
         Error::new(
             exitcode::PROTOCOL,

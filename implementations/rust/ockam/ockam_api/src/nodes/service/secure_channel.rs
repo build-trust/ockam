@@ -10,10 +10,11 @@ use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
-use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_identity::{SecureChannel, SecureChannelListener};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -103,8 +104,43 @@ impl NodeManager {
         .await
     }
 
+    pub async fn create_monitored_secure_channel(
+        &mut self,
+        ctx: &Context,
+        address: MultiAddr,
+        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        credential_exchange_mode: CredentialExchangeMode,
+        timeout: Option<Duration>,
+        identity_name: Option<String>,
+        credential_name: Option<String>,
+    ) -> Result<SecureChannel> {
+        // credential retrieved from request
+        info!(
+            "Handling request to create a new secure channel: {}",
+            address
+        );
+
+        // TODO: use the Connection machinery in NodeManagerWorker
+        let result = multiaddr_to_route(&address, &self.tcp_transport)
+            .await
+            .ok_or_else(|| {
+                ockam_core::Error::new(Origin::Core, Kind::Invalid, "Invalid multiaddr")
+            })?;
+
+        self.create_secure_channel_impl(
+            result.route,
+            authorized_identifiers,
+            credential_exchange_mode,
+            timeout,
+            identity_name,
+            ctx,
+            credential_name,
+        )
+        .await
+    }
+
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn create_secure_channel_impl(
+    pub async fn create_secure_channel_impl(
         &mut self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<Identifier>>,

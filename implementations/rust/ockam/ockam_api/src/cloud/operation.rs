@@ -1,5 +1,11 @@
+use crate::cloud::Controller;
 use minicbor::{Decode, Encode};
+use ockam_core::api::{Reply, Request};
+use ockam_core::async_trait;
+use ockam_core::Result;
+use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use tracing::trace;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
 #[cbor(map)]
@@ -41,39 +47,19 @@ pub enum Status {
     #[n(2)] Failed,
 }
 
-mod node {
-    use tracing::trace;
+#[async_trait]
+pub trait Operations {
+    async fn get_operation(&self, ctx: &Context, operation_id: &str) -> Result<Reply<Operation>>;
+}
 
-    use ockam_core::api::Request;
-    use ockam_core::{self, Result};
-    use ockam_node::Context;
+const TARGET: &str = "ockam_api::cloud::operation";
+const API_SERVICE: &str = "projects";
 
-    use crate::nodes::{NodeManager, NodeManagerWorker};
-
-    const TARGET: &str = "ockam_api::cloud::operation";
-    const API_SERVICE: &str = "projects";
-
-    impl NodeManagerWorker {
-        pub(crate) async fn get_operation(
-            &self,
-            ctx: &Context,
-            operation_id: &str,
-        ) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.get_operation(ctx, operation_id).await
-        }
-    }
-
-    impl NodeManager {
-        pub(crate) async fn get_operation(
-            &self,
-            ctx: &Context,
-            operation_id: &str,
-        ) -> Result<Vec<u8>> {
-            trace!(target: TARGET, operation_id, "getting operation");
-            let req = Request::get(format!("/v1/operations/{operation_id}"));
-            let client = self.make_controller_client().await?;
-            client.request(ctx, API_SERVICE, req).await
-        }
+#[async_trait]
+impl Operations for Controller {
+    async fn get_operation(&self, ctx: &Context, operation_id: &str) -> Result<Reply<Operation>> {
+        trace!(target: TARGET, operation_id, "getting operation");
+        let req = Request::get(format!("/v1/operations/{operation_id}"));
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 }

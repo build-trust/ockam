@@ -1,13 +1,13 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addon;
-use ockam_core::api::Request;
+use ockam_api::cloud::addon::Addons;
 
-use crate::node::util::delete_embedded_node;
-use crate::project::addon::base_endpoint;
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::project::addon::get_project_id;
+use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 
 /// List available addons for a project
@@ -34,11 +34,21 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, AddonListSubcommand),
 ) -> miette::Result<()> {
     let project_name = cmd.project_name;
+    let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-    let req = Request::get(base_endpoint(&opts.state, &project_name)?);
-    let addons: Vec<Addon> = rpc.ask(req).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
+
+    let addons = controller
+        .list_addons(&ctx, project_id)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     opts.println(&addons)?;
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

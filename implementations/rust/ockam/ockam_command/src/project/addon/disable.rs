@@ -1,17 +1,15 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::addon::DisableAddon;
-use ockam_api::cloud::operation::CreateOperationResponse;
-use ockam_api::cloud::CloudRequestWrapper;
-use ockam_core::api::Request;
+use ockam_api::cloud::addon::Addons;
 
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::operation::util::check_for_completion;
-use crate::project::addon::disable_addon_endpoint;
-use crate::util::{node_rpc, Rpc};
+use crate::project::addon::get_project_id;
+use crate::util::node_rpc;
 use crate::{fmt_ok, CommandGlobalOpts};
 
 /// Disable an addon for a project
@@ -50,18 +48,25 @@ async fn run_impl(
         project_name,
         addon_id,
     } = cmd;
+    let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-    let body = DisableAddon::new(addon_id);
-    let endpoint = disable_addon_endpoint(&opts.state, &project_name)?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body));
-    let response: CreateOperationResponse = rpc.ask(req).await?;
+    let response = controller
+        .disable_addon(&ctx, project_id, addon_id)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     let operation_id = response.operation_id;
+    check_for_completion(&opts, &ctx, &controller, &operation_id).await?;
 
-    check_for_completion(&opts, &rpc, &operation_id).await?;
     opts.terminal
         .write_line(&fmt_ok!("Addon disabled successfully"))?;
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

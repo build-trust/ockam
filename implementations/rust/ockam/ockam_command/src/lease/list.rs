@@ -2,29 +2,22 @@ use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use std::fmt::Write;
-use std::str::FromStr;
 
 use ockam::Context;
 use ockam_api::cloud::lease_manager::models::influxdb::Token;
-use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
+use ockam_api::InfluxDbTokenLease;
 use time::format_description::well_known::Iso8601;
 use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::identity::initialize_identity_if_default;
+use crate::lease::authenticate;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::{
-    docs,
-    util::{
-        api::{CloudOpts, TrustContextOpts},
-        node_rpc,
-        orchestrator_api::OrchestratorApiBuilder,
-    },
-    CommandGlobalOpts,
-};
+use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::node_rpc;
+use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
 
@@ -44,22 +37,18 @@ async fn run_impl(
     ctx: Context,
     (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
 ) -> miette::Result<()> {
-    let identity = get_identity_name(&opts.state, &cloud_opts.identity);
     let is_finished: Mutex<bool> = Mutex::new(false);
+    let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
 
     let send_req = async {
-        let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
-            .as_identity(identity)
-            .with_new_embedded_node()
-            .await?
-            .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
-            .await?;
-
-        let req = Request::get("/");
-
-        let response: Vec<Token> = orchestrator_client.ask(req).await?;
+        let tokens: Vec<Token> = project_node
+            .list_tokens(&ctx)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
         *is_finished.lock().await = true;
-        Ok(response)
+        Ok(tokens)
     };
 
     let output_messages = vec![format!("Listing Tokens...\n")];

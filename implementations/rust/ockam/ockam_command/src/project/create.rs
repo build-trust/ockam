@@ -1,15 +1,16 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 use rand::prelude::random;
 
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::cloud::project::Project;
+use ockam_api::cloud::project::Projects;
 
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -54,13 +55,21 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    let project: Project = rpc
-        .ask(api::project::create(&cmd.project_name, &space_id))
-        .await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
+
+    let project = controller
+        .create_project(ctx, space_id, cmd.project_name, vec![])
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     let operation_id = project.operation_id.clone().unwrap();
-    check_for_completion(&opts, &rpc, &operation_id).await?;
-    let project = check_project_readiness(&opts, &rpc, project).await?;
+    check_for_completion(&opts, ctx, &controller, &operation_id).await?;
+    let project = check_project_readiness(&opts, ctx, &node_manager, project).await?;
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
@@ -68,7 +77,7 @@ async fn run_impl(
         .trust_contexts
         .overwrite(&project.name, project.clone().try_into()?)?;
     opts.println(&project)?;
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }
 

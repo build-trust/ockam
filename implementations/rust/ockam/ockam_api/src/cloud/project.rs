@@ -2,19 +2,27 @@ use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::Retry;
 
 use ockam::identity::Identifier;
-use ockam_core::Result;
+use ockam_core::api::Reply::Successful;
+use ockam_core::api::{Reply, Request};
+use ockam_core::{async_trait, Result};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::tokio;
+use ockam_node::{tokio, Context};
 
 use crate::cloud::addon::ConfluentConfigResponse;
+use crate::cloud::operation::Operations;
 use crate::cloud::share::ShareScope;
+use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use crate::config::lookup::ProjectAuthority;
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 
 use super::share::RoleInShare;
+
+const TARGET: &str = "ockam_api::cloud::project";
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
@@ -231,6 +239,111 @@ impl InfluxDBTokenLeaseManagerConfig {
     }
 }
 
+#[async_trait]
+pub trait Projects {
+    async fn create_project(
+        &self,
+        ctx: &Context,
+        space_id: String,
+        name: String,
+        users: Vec<String>,
+    ) -> Result<Reply<Project>>;
+    async fn get_project(&self, ctx: &Context, project_id: String) -> Result<Reply<Project>>;
+
+    async fn delete_project(
+        &self,
+        ctx: &Context,
+        space_id: String,
+        project_id: String,
+    ) -> Result<Reply<()>>;
+
+    async fn get_project_version(&self, ctx: &Context) -> Result<Reply<ProjectVersion>>;
+
+    async fn list_projects(&self, ctx: &Context) -> Result<Reply<Vec<Project>>>;
+
+    async fn wait_until_project_is_ready(
+        &self,
+        ctx: &Context,
+        project: Project,
+    ) -> Result<Reply<Project>>;
+}
+
+#[async_trait]
+impl Projects for Controller {
+    async fn create_project(
+        &self,
+        ctx: &Context,
+        space_id: String,
+        name: String,
+        users: Vec<String>,
+    ) -> Result<Reply<Project>> {
+        trace!(target: TARGET, %space_id, project_name = name, "creating project");
+        let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
+            .body(CreateProject::new(name, users));
+        self.0.ask(ctx, "projects", req).await
+    }
+
+    async fn get_project(&self, ctx: &Context, project_id: String) -> Result<Reply<Project>> {
+        trace!(target: TARGET, %project_id, "getting project");
+        let req = Request::get(format!("/v0/{project_id}"));
+        self.0.ask(ctx, "projects", req).await
+    }
+
+    async fn delete_project(
+        &self,
+        ctx: &Context,
+        space_id: String,
+        project_id: String,
+    ) -> Result<Reply<()>> {
+        trace!(target: TARGET, %space_id, %project_id, "deleting project");
+        let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
+        self.0.ask(ctx, "projects", req).await
+    }
+
+    async fn get_project_version(&self, ctx: &Context) -> Result<Reply<ProjectVersion>> {
+        trace!(target: TARGET, "getting project version");
+        self.0.ask(ctx, "version_info", Request::get("")).await
+    }
+
+    async fn list_projects(&self, ctx: &Context) -> Result<Reply<Vec<Project>>> {
+        let req = Request::get("/v0");
+        self.0.ask(ctx, "projects", req).await
+    }
+
+    async fn wait_until_project_is_ready(
+        &self,
+        ctx: &Context,
+        project: Project,
+    ) -> Result<Reply<Project>> {
+        if project.is_ready() {
+            return Ok(Successful(project));
+        }
+        let operation_id = match &project.operation_id {
+            Some(operation_id) => operation_id,
+            None => {
+                return Err(ApiError::core("Project has no operation id"));
+            }
+        };
+        let retry_strategy =
+            FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
+        let operation = Retry::spawn(retry_strategy.clone(), || async {
+            if let Successful(operation) = self.get_operation(ctx, operation_id).await? {
+                if operation.is_completed() {
+                    return Ok(operation);
+                }
+            }
+            Err(ApiError::core("Project is not reachable yet. Retrying..."))
+        })
+        .await?;
+
+        if operation.is_successful() {
+            self.get_project(ctx, project.id).await
+        } else {
+            Err(ApiError::core("Operation failed. Please try again."))
+        }
+    }
+}
+
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
@@ -243,215 +356,6 @@ pub struct CreateProject {
 impl CreateProject {
     pub fn new(name: String, users: Vec<String>) -> Self {
         Self { name, users }
-    }
-}
-
-mod node {
-    use tokio_retry::strategy::FixedInterval;
-    use tokio_retry::Retry;
-    use tracing::trace;
-
-    use ockam_core::api::{Request, Response};
-    use ockam_core::{self, Result};
-    use ockam_node::Context;
-
-    use crate::cloud::operation::Operation;
-    use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
-    use crate::nodes::{NodeManager, NodeManagerWorker};
-
-    use super::*;
-
-    const TARGET: &str = "ockam_api::cloud::project";
-
-    impl NodeManager {
-        pub async fn create_project(
-            &self,
-            ctx: &Context,
-            space_id: &str,
-            project_name: &str,
-            users: Vec<String>,
-        ) -> Result<Project> {
-            let request =
-                CloudRequestWrapper::new(CreateProject::new(project_name.to_string(), users));
-            Response::parse_response_body(
-                self.create_project_response(ctx, request, space_id)
-                    .await?
-                    .as_slice(),
-            )
-        }
-
-        pub(crate) async fn create_project_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: CloudRequestWrapper<CreateProject>,
-            space_id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_body = req_wrapper.req;
-            trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
-            let req = Request::post(format!("/v1/spaces/{space_id}/projects")).body(&req_body);
-            self.make_controller_client()
-                .await?
-                .request(ctx, "projects", req)
-                .await
-        }
-
-        pub async fn list_projects(&self, ctx: &Context) -> Result<Vec<Project>> {
-            let bytes = self.list_projects_response(ctx).await?;
-            Response::parse_response_body(bytes.as_slice())
-        }
-
-        pub(crate) async fn list_projects_response(&self, ctx: &Context) -> Result<Vec<u8>> {
-            trace!(target: TARGET, "listing projects");
-            let req = Request::get("/v0");
-            self.make_controller_client()
-                .await?
-                .request(ctx, "projects", req)
-                .await
-        }
-
-        pub async fn get_project(&self, ctx: &Context, project_id: &str) -> Result<Project> {
-            Response::parse_response_body(
-                self.get_project_response(ctx, project_id).await?.as_slice(),
-            )
-        }
-
-        pub async fn wait_until_project_is_ready(
-            &self,
-            ctx: &Context,
-            project: Project,
-        ) -> Result<Project> {
-            if project.is_ready() {
-                return Ok(project);
-            }
-            let operation_id = match &project.operation_id {
-                Some(operation_id) => operation_id,
-                None => {
-                    return Err(ApiError::core("Project has no operation id"));
-                }
-            };
-            let retry_strategy =
-                FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
-            let operation = Retry::spawn(retry_strategy.clone(), || async {
-                if let Ok(res) = self.get_operation(ctx, operation_id).await {
-                    if let Ok(operation) =
-                        Response::parse_response_body::<Operation>(res.as_slice())
-                    {
-                        if operation.is_completed() {
-                            return Ok(operation);
-                        }
-                    }
-                }
-                Err(ApiError::core("Project is not reachable yet. Retrying..."))
-            })
-            .await?;
-            if operation.is_successful() {
-                self.get_project(ctx, &project.id).await
-            } else {
-                Err(ApiError::core("Operation failed. Please try again."))
-            }
-        }
-
-        pub(crate) async fn get_project_response(
-            &self,
-            ctx: &Context,
-            project_id: &str,
-        ) -> Result<Vec<u8>> {
-            trace!(target: TARGET, %project_id, "getting project");
-            let req = Request::get(format!("/v0/{project_id}"));
-            self.make_controller_client()
-                .await?
-                .request(ctx, "projects", req)
-                .await
-        }
-
-        pub async fn get_project_version(&self, ctx: &Context) -> Result<ProjectVersion> {
-            Response::parse_response_body(self.get_project_version_response(ctx).await?.as_slice())
-        }
-
-        pub(crate) async fn get_project_version_response(&self, ctx: &Context) -> Result<Vec<u8>> {
-            trace!(target: TARGET, "getting project version");
-            let req = Request::get("");
-            self.make_controller_client()
-                .await?
-                .request(ctx, "version_info", req)
-                .await
-        }
-
-        pub async fn delete_project(
-            &self,
-            ctx: &Context,
-            space_id: &str,
-            project_id: &str,
-        ) -> Result<()> {
-            let _ = self
-                .delete_project_response(ctx, space_id, project_id)
-                .await?;
-            Ok(())
-        }
-
-        pub(crate) async fn delete_project_response(
-            &self,
-            ctx: &Context,
-            space_id: &str,
-            project_id: &str,
-        ) -> Result<Vec<u8>> {
-            trace!(target: TARGET, %space_id, %project_id, "deleting project");
-            let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
-            self.make_controller_client()
-                .await?
-                .request(ctx, "projects", req)
-                .await
-        }
-    }
-`
-    impl NodeManagerWorker {
-        pub(crate) async fn create_project_response(
-            &self,
-            ctx: &Context,
-            req_wrapper: CloudRequestWrapper<CreateProject>,
-            space_id: &str,
-        ) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager
-                .create_project_response(ctx, req_wrapper, space_id)
-                .await
-        }
-
-        pub async fn list_projects(&self, ctx: &Context) -> Result<Vec<Project>> {
-            let node_manager = self.inner().read().await;
-            node_manager.list_projects(ctx).await
-        }
-
-        pub(crate) async fn list_projects_response(&self, ctx: &Context) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.list_projects_response(ctx).await
-        }
-
-        pub(crate) async fn get_project_response(
-            &self,
-            ctx: &Context,
-            project_id: &str,
-        ) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.get_project_response(ctx, project_id).await
-        }
-
-        pub(crate) async fn get_project_version_response(&self, ctx: &Context) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager.get_project_version_response(ctx).await
-        }
-
-        pub(crate) async fn delete_project_response(
-            &self,
-            ctx: &Context,
-            space_id: &str,
-            project_id: &str,
-        ) -> Result<Vec<u8>> {
-            let node_manager = self.inner().read().await;
-            node_manager
-                .delete_project_response(ctx, space_id, project_id)
-                .await
-        }
     }
 }
 
