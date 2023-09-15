@@ -30,18 +30,24 @@ pub async fn accept_invitation<R: Runtime>(id: String, app: AppHandle<R>) -> Res
 }
 
 async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> crate::Result<()> {
-    info!(?id, "accepting invitation");
+    debug!(?id, "Accepting invitation");
     let state: State<'_, AppState> = app.state();
+    if !state.is_enrolled().await? {
+        debug!(?id, "Not enrolled, invitation can't be accepted");
+        return Ok(());
+    }
+
     let node_manager_worker = state.node_manager_worker().await;
     let res = node_manager_worker
         .accept_invitation(
             &state.context(),
-            AcceptInvitation { id },
+            AcceptInvitation { id: id.clone() },
             &state.controller_address(),
             None,
         )
         .await?;
     debug!(?res);
+    info!(?id, "Invitation accepted");
     Ok(())
 }
 
@@ -112,7 +118,7 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
     debug!("Refreshing invitations");
     let state: State<'_, AppState> = app.state();
     if !state.is_enrolled().await.unwrap_or(false) {
-        debug!("not enrolled, skipping invitations refresh");
+        debug!("Not enrolled, skipping invitations refresh");
         return Ok(());
     }
     let node_manager_worker = state.node_manager_worker().await;

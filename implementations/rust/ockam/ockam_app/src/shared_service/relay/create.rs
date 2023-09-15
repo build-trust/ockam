@@ -40,7 +40,7 @@ async fn create_relay_impl(
 ) -> Result<Option<ForwarderInfo>> {
     trace!("Creating relay");
     if !cli_state.is_enrolled().unwrap_or(false) {
-        trace!("User is not enrolled, skipping...");
+        trace!("Not enrolled, skipping relay creation");
         return Ok(None);
     }
     match cli_state.projects.default() {
