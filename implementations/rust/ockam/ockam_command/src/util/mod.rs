@@ -27,10 +27,6 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
-use crate::node::util::{
-    start_node_manager_worker, start_node_manager_worker_with_vault_and_identity,
-};
-use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
@@ -57,68 +53,6 @@ pub struct Rpc {
 }
 
 impl Rpc {
-    /// Creates a new RPC to send a request to an embedded node.
-    pub async fn embedded(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Rpc> {
-        let node_name = start_node_manager_worker(ctx, opts, None).await?;
-        let ctx_clone = ctx.async_try_clone().await?;
-        Ok(Rpc {
-            ctx: ctx_clone,
-            buf: Vec::new(),
-            opts: opts.clone(),
-            node_name,
-            to: NODEMANAGER_ADDR.into(),
-            timeout: None,
-            mode: RpcMode::Embedded,
-        })
-    }
-
-    /// Creates a new RPC to send a request to an embedded node.
-    pub async fn embedded_with_trust_options(
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        trust_context_opts: &TrustContextOpts,
-    ) -> Result<Rpc> {
-        let node_name = start_node_manager_worker(ctx, opts, Some(trust_context_opts)).await?;
-        let ctx_clone = ctx.async_try_clone().await?;
-        Ok(Rpc {
-            ctx: ctx_clone,
-            buf: Vec::new(),
-            opts: opts.clone(),
-            node_name,
-            to: NODEMANAGER_ADDR.into(),
-            timeout: None,
-            mode: RpcMode::Embedded,
-        })
-    }
-
-    /// Creates a new RPC to send a request to an embedded node.
-    pub async fn embedded_with_vault_and_identity(
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        identity: String,
-        trust_context_opts: &TrustContextOpts,
-    ) -> Result<Rpc> {
-        let node_name = start_node_manager_worker_with_vault_and_identity(
-            ctx,
-            &opts.state,
-            None,
-            Some(identity),
-            Some(trust_context_opts),
-        )
-        .await?;
-
-        let ctx_clone = ctx.async_try_clone().await?;
-        Ok(Rpc {
-            ctx: ctx_clone,
-            buf: Vec::new(),
-            opts: opts.clone(),
-            node_name,
-            to: NODEMANAGER_ADDR.into(),
-            timeout: None,
-            mode: RpcMode::Embedded,
-        })
-    }
-
     /// Creates a new RPC to send a request to a running background node.
     pub async fn background(
         ctx: &Context,
