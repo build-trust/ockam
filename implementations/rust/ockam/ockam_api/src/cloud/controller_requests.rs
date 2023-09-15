@@ -5,9 +5,9 @@ use std::time::Duration;
 
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
-use ockam_identity::{Identifier, SecureChannels};
+use ockam_identity::{Identifier, SecureChannel, SecureChannels};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::DEFAULT_TIMEOUT;
+use ockam_node::{Context, DEFAULT_TIMEOUT};
 use ockam_transport_tcp::TcpTransport;
 
 use crate::cloud::secure_client::SecureClient;
@@ -44,40 +44,84 @@ impl<T> CloudRequestWrapper<T> {
     }
 }
 
+pub struct AuthorityNode(pub(crate) SecureClient);
+pub struct ProjectNode(pub(crate) SecureClient);
+pub struct Controller(pub(crate) SecureClient);
+
+pub trait HasSecureClient {
+    fn get_secure_client(&self) -> &SecureClient;
+}
+
+impl HasSecureClient for AuthorityNode {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.0
+    }
+}
+
+impl HasSecureClient for ProjectNode {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.0
+    }
+}
+
+impl HasSecureClient for Controller {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.0
+    }
+}
+
 impl SecureClient {
     pub async fn controller(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         caller_identifier: Identifier,
-    ) -> Result<SecureClient> {
+    ) -> Result<Controller> {
         let controller_route = Self::controller_route(tcp_transport).await?;
         let controller_identifier = Self::load_controller_identifier()?;
 
-        Ok(SecureClient::new(
+        Ok(Controller(SecureClient::new(
             secure_channels,
             controller_route,
             controller_identifier,
             caller_identifier,
             Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
-        ))
+        )))
     }
 
     pub async fn authority(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        authority_identifier: IdentityIdentifier,
+        authority_identifier: Identifier,
         authority_multiaddr: MultiAddr,
-        caller_identifier: IdentityIdentifier,
-    ) -> Result<SecureClient> {
+        caller_identifier: Identifier,
+    ) -> Result<AuthorityNode> {
         let authority_route = Self::authority_route(tcp_transport, authority_multiaddr).await?;
 
-        Ok(SecureClient::new(
+        Ok(AuthorityNode(SecureClient::new(
             secure_channels,
             authority_route,
             authority_identifier,
             caller_identifier,
             Duration::from_secs(DEFAULT_TIMEOUT),
-        ))
+        )))
+    }
+
+    pub async fn project(
+        tcp_transport: &TcpTransport,
+        secure_channels: Arc<SecureChannels>,
+        project_identifier: Identifier,
+        project_multiaddr: MultiAddr,
+        caller_identifier: Identifier,
+    ) -> Result<ProjectNode> {
+        let project_route = Self::project_route(tcp_transport, project_multiaddr).await?;
+
+        Ok(ProjectNode(SecureClient::new(
+            secure_channels,
+            project_route,
+            project_identifier,
+            caller_identifier,
+            Duration::from_secs(DEFAULT_TIMEOUT),
+        )))
     }
 
     /// Load controller identity id from file.
@@ -120,5 +164,39 @@ impl SecureClient {
                 ))
             })?
             .route)
+    }
+
+    async fn project_route(
+        tcp_transport: &TcpTransport,
+        project_multiaddr: MultiAddr,
+    ) -> Result<Route> {
+        Ok(multiaddr_to_route(&project_multiaddr, tcp_transport)
+            .await
+            .ok_or_else(|| {
+                ApiError::core(format!(
+                    "Couldn't convert MultiAddr to route: project_multiaddr={project_multiaddr}"
+                ))
+            })?
+            .route)
+    }
+}
+
+impl AuthorityNode {
+    pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
+        self.0.create_secure_channel(ctx).await
+    }
+
+    pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
+        self.0.check_secure_channel(ctx).await
+    }
+}
+
+impl ProjectNode {
+    pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
+        self.0.create_secure_channel(ctx).await
+    }
+
+    pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
+        self.0.check_secure_channel(ctx).await
     }
 }

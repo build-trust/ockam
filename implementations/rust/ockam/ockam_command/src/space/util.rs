@@ -1,20 +1,24 @@
+use miette::IntoDiagnostic;
+
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
-use ockam_api::cloud::space::Space;
-use ockam_multiaddr::MultiAddr;
+use ockam_api::cloud::space::Spaces;
+use ockam_api::cloud::Controller;
 
-use crate::util::{api, RpcBuilder};
-use crate::{CommandGlobalOpts, Result};
+use crate::CommandGlobalOpts;
 
+#[allow(dead_code)]
 async fn refresh_spaces(
     ctx: &Context,
     opts: &CommandGlobalOpts,
-    api_node: &str,
-    controller_route: &MultiAddr,
+    controller: &Controller,
 ) -> miette::Result<()> {
-    let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
-    rpc.request(api::space::list(controller_route)).await?;
-    let spaces = rpc.parse_response::<Vec<Space>>()?;
+    let spaces = controller
+        .list_spaces(ctx)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     for space in spaces {
         opts.state
             .spaces

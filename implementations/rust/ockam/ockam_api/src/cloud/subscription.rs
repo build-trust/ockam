@@ -1,11 +1,10 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
+use crate::cloud::Controller;
 use ockam_core::api::{Error, Reply, Request, Status};
 use ockam_core::{self, async_trait, Result};
 use ockam_node::Context;
-
-use crate::cloud::secure_client::SecureClient;
 
 const TARGET: &str = "ockam_api::cloud::subscription";
 const API_SERVICE: &str = "subscriptions";
@@ -113,7 +112,7 @@ pub trait Subscriptions {
 }
 
 #[async_trait]
-impl Subscriptions for SecureClient {
+impl Subscriptions for Controller {
     async fn activate_subscription(
         &self,
         ctx: &Context,
@@ -123,7 +122,7 @@ impl Subscriptions for SecureClient {
         let req_body = ActivateSubscription::existing(space_id, subscription_data);
         trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
         let req = Request::post("/v0/activate").body(req_body);
-        self.ask(ctx, API_SERVICE, req).await
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 
     async fn unsubscribe(
@@ -133,7 +132,7 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
         let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-        self.ask(ctx, API_SERVICE, req).await
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 
     async fn update_subscription_contact_info(
@@ -144,7 +143,7 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
         let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
-        self.ask(ctx, API_SERVICE, req).await
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 
     async fn update_subscription_space(
@@ -155,13 +154,13 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
         let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
-        self.ask(ctx, API_SERVICE, req).await
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<Subscription>>> {
         trace!(target: TARGET, "listing subscriptions");
         let req = Request::get("/v0/");
-        self.ask(ctx, API_SERVICE, req).await
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscription(
@@ -171,7 +170,7 @@ impl Subscriptions for SecureClient {
     ) -> Result<Reply<Subscription>> {
         trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
         let req = Request::get(format!("/v0/{subscription_id}"));
-        self.ask(ctx, API_SERVICE, req).await
+        self.0.ask(ctx, API_SERVICE, req).await
     }
 
     async fn get_subscription_by_space_id(

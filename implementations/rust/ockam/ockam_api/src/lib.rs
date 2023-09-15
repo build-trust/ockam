@@ -144,12 +144,14 @@ pub mod rpc_proxy_service;
 pub mod trust_context;
 pub mod uppercase;
 
+mod influxdb_token_lease;
 pub mod authority_node;
 
 mod schema;
 mod session;
 mod util;
 
+pub use influxdb_token_lease::*;
 pub use rpc_proxy_service::*;
 pub use util::*;
 

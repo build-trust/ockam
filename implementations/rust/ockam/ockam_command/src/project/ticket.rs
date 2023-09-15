@@ -13,16 +13,16 @@ use ockam_api::authenticator::direct::DirectAuthenticatorClient;
 use ockam_api::authenticator::enrollment_tokens::TokenIssuerClient;
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
-use ockam_api::DefaultAddress;
+use ockam_api::error::ApiError;
+use ockam_api::{route_to_multiaddr, DefaultAddress};
 use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::RpcClient;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::delete_embedded_node;
-use crate::project::util::create_secure_channel_to_authority;
+use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -89,8 +89,8 @@ impl Runner {
     }
 
     async fn run(self) -> miette::Result<()> {
-        let mut rpc =
-            Rpc::embedded_with_trust_options(&self.ctx, &self.opts, &self.cmd.trust_opts).await?;
+        let node_manager =
+            start_node_manager(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
@@ -114,31 +114,47 @@ impl Runner {
                 }
             };
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            create_secure_channel_to_authority(
-                &mut rpc,
-                tc.authority()
-                    .into_diagnostic()?
-                    .identity()
-                    .await
-                    .into_diagnostic()?
-                    .identifier()
-                    .clone(),
-                addr,
-                Some(identity),
-            )
-            .await?
+            let identifier = node_manager
+                .get_identifier(Some(identity))
+                .await
+                .into_diagnostic()?;
+            let authority_identifier = tc
+                .authority()
+                .into_diagnostic()?
+                .identity()
+                .await
+                .into_diagnostic()?
+                .identifier();
+
+            let authority_node = node_manager
+                .make_authority_client(authority_identifier, addr.clone(), identifier)
+                .await
+                .into_diagnostic()?;
+            let sc = authority_node
+                .create_secure_channel(&self.ctx)
+                .await
+                .into_diagnostic()?;
+            route_to_multiaddr(&route![sc.encryptor_address().to_string()])
+                .ok_or_else(|| ApiError::core(format!("Invalid route: {}", sc.encryptor_address())))
+                .into_diagnostic()?
         } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            let sc_addr = create_secure_channel_to_authority(
-                &mut rpc,
-                a.identity_id().clone(),
-                a.address(),
-                Some(identity),
-            )
-            .await?;
-
+            let identifier = node_manager
+                .get_identifier(Some(identity))
+                .await
+                .into_diagnostic()?;
+            let authority_node = node_manager
+                .make_authority_client(a.identity_id().clone(), a.address().clone(), identifier)
+                .await
+                .into_diagnostic()?;
+            let sc = authority_node
+                .create_secure_channel(&self.ctx)
+                .await
+                .into_diagnostic()?;
             project = Some(p);
-            sc_addr
+            route_to_multiaddr(&route![sc.encryptor_address().to_string()])
+                .ok_or_else(|| ApiError::core(format!("Invalid route: {}", sc.encryptor_address())))
+                .into_diagnostic()?
         } else {
             self.cmd.to.clone()
         };
@@ -208,7 +224,7 @@ impl Runner {
                 .write_line()?;
         }
 
-        delete_embedded_node(&self.opts, rpc.node_name()).await;
+        delete_embedded_node(&self.opts, &node_manager.node_name()).await;
         Ok(())
     }
 }

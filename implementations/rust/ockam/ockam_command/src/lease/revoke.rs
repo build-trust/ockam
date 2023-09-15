@@ -1,21 +1,13 @@
-use std::str::FromStr;
-
 use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::Context;
-use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
+use ockam_api::InfluxDbTokenLease;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::{
-    docs,
-    util::{
-        api::{CloudOpts, TrustContextOpts},
-        node_rpc,
-        orchestrator_api::OrchestratorApiBuilder,
-    },
-    CommandGlobalOpts,
-};
+use crate::identity::initialize_identity_if_default;
+use crate::lease::authenticate;
+use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::node_rpc;
+use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
 
@@ -44,17 +36,13 @@ async fn run_impl(
         TrustContextOpts,
     ),
 ) -> miette::Result<()> {
-    let identity = get_identity_name(&opts.state, &cloud_opts.identity);
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &trust_opts)
-        .as_identity(identity)
-        .with_new_embedded_node()
-        .await?
-        .build(&MultiAddr::from_str("/service/influxdb_token_lease").into_diagnostic()?)
-        .await?;
-
-    let req = Request::delete(format!("/{}", cmd.token_id));
-    orchestrator_client.tell(req).await?;
+    let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
+    project_node
+        .revoke_token(&ctx, cmd.token_id.clone())
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     println!("Revoked influxdb token {}.", cmd.token_id);
-
     Ok(())
 }

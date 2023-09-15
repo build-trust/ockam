@@ -2,14 +2,13 @@ use clap::Args;
 use miette::IntoDiagnostic;
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::debug;
 
 use ockam::Context;
-use ockam_api::cloud::share::{AcceptInvitation, AcceptedInvitation};
+use ockam_api::cloud::share::Invitations;
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -30,12 +29,6 @@ impl AcceptCommand {
     }
 }
 
-impl From<AcceptCommand> for AcceptInvitation {
-    fn from(val: AcceptCommand) -> Self {
-        Self { id: val.id }
-    }
-}
-
 async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AcceptCommand),
@@ -49,12 +42,19 @@ async fn run_impl(
     cmd: AcceptCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
     let get_accepted_invitation = async {
-        let req = cmd.into();
-        debug!(?req);
-        let invitation: AcceptedInvitation = rpc.ask(api::share::accept(req)).await?;
+        let invitation = controller
+            .accept_invitation(ctx, cmd.id)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };
@@ -67,7 +67,7 @@ async fn run_impl(
 
     let (accepted, _) = try_join!(get_accepted_invitation, progress_output)?;
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     let plain = format!(
         "Accepted invite {} for {} {}",

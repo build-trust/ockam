@@ -5,19 +5,13 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 
-use ockam::AsyncTryClone;
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::cloud::operation::CreateOperationResponse;
-use ockam_api::cloud::project::{InfluxDBTokenLeaseManagerConfig, Project};
-use ockam_api::cloud::CloudRequestWrapper;
-use ockam_core::api::Request;
+use ockam_api::cloud::addon::Addons;
+use ockam_api::cloud::project::InfluxDBTokenLeaseManagerConfig;
 
-use crate::node::util::delete_embedded_node;
-use crate::operation::util::check_for_completion;
-use crate::project::addon::configure_addon_endpoint;
-use crate::project::util::check_project_readiness;
-use crate::util::{api, node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::project::addon::{check_configuration_completion, get_project_id};
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
@@ -139,8 +133,8 @@ async fn run_impl(
         user_access_role,
         admin_access_role,
     } = cmd;
+    let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     let perms = match (permissions, permissions_path) {
         (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
         (Some(perms), _) => perms,
@@ -151,7 +145,7 @@ async fn run_impl(
         }
     };
 
-    let body = InfluxDBTokenLeaseManagerConfig::new(
+    let config = InfluxDBTokenLeaseManagerConfig::new(
         endpoint_url,
         token,
         org_id,
@@ -161,28 +155,31 @@ async fn run_impl(
         admin_access_role,
     );
 
-    let add_on_id = "influxdb_token_lease_manager";
-    let endpoint = format!(
-        "{}/{}",
-        configure_addon_endpoint(&opts.state, &project_name)?,
-        add_on_id
-    );
-    let req = Request::post(endpoint).body(CloudRequestWrapper::new(body));
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
-    let response: CreateOperationResponse = rpc.ask(req).await?;
-    let operation_id = response.operation_id;
-
-    // Wait until project is ready again
-    check_for_completion(&opts, &rpc, &operation_id).await?;
-
-    let project_id = opts.state.projects.get(&project_name)?.config().id.clone();
-    let mut rpc = rpc.async_try_clone().await.into_diagnostic()?;
-    let project: Project = rpc.ask(api::project::show(&project_id)).await?;
-    check_project_readiness(&opts, &rpc, project).await?;
+    let response = controller
+        .configure_influxdb_addon(&ctx, project_id.clone(), config)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
+    check_configuration_completion(
+        &opts,
+        &ctx,
+        &node_manager,
+        &controller,
+        project_id,
+        response.operation_id,
+    )
+    .await?;
 
     opts.terminal
         .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
     Ok(())
 }

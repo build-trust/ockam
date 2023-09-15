@@ -5,11 +5,11 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cloud::share::InvitationWithAccess;
+use ockam_api::cloud::share::Invitations;
 
-use crate::node::util::delete_embedded_node;
-use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::util::api::CloudOpts;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,11 +43,19 @@ async fn run_impl(
     cmd: ShowCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let node_manager = start_node_manager(&ctx, &opts, None).await?;
+    let controller = node_manager
+        .make_controller_client()
+        .await
+        .into_diagnostic()?;
 
     let get_invitation_with_access = async {
-        let invitation_with_access: InvitationWithAccess =
-            rpc.ask(api::share::show(cmd.invitation_id)).await?;
+        let invitation_with_access = controller
+            .show_invitation(ctx, cmd.invitation_id)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
         *is_finished.lock().await = true;
         Ok(invitation_with_access)
     };
@@ -60,7 +68,7 @@ async fn run_impl(
 
     let (response, _) = try_join!(get_invitation_with_access, progress_output)?;
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
+    delete_embedded_node(&opts, &node_manager.node_name()).await;
 
     // TODO: Emit connection details
     let plain = fmt_ok!("Invite {}", response.invitation.id);

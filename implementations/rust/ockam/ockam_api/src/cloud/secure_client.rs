@@ -6,13 +6,13 @@ use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierP
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::{self, route, Result, Route};
-use ockam_identity::SecureChannels;
+use ockam_identity::{SecureChannel, SecureChannels};
 use ockam_node::api::request_with_options;
 use ockam_node::{Context, MessageSendReceiveOptions};
 
 #[derive(Clone)]
 pub struct SecureClient {
-    secure_channels: Arc<SecureChannels>,
+    pub(crate) secure_channels: Arc<SecureChannels>,
     server_route: Route,
     server_identifier: IdentityIdentifier,
     client_identifier: IdentityIdentifier,
@@ -101,18 +101,7 @@ impl SecureClient {
     where
         T: Encode<()>,
     {
-        let options = SecureChannelOptions::new()
-            .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()));
-        let sc = self
-            .secure_channels
-            .create_secure_channel(
-                ctx,
-                &self.client_identifier,
-                self.server_route.clone(),
-                options,
-            )
-            .await?;
-
+        let sc = self.create_secure_channel(ctx).await?;
         let route = route![sc.clone(), api_service];
         let options = MessageSendReceiveOptions::new().with_timeout(timeout);
         let res = request_with_options(ctx, route, req, options).await;
@@ -120,5 +109,25 @@ impl SecureClient {
             .stop_secure_channel(ctx, sc.encryptor_address())
             .await?;
         res
+    }
+
+    pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
+        let options = SecureChannelOptions::new()
+            .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()));
+        self.secure_channels
+            .create_secure_channel(
+                ctx,
+                &self.client_identifier,
+                self.server_route.clone(),
+                options,
+            )
+            .await
+    }
+
+    pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
+        let sc = self.create_secure_channel(ctx).await?;
+        self.secure_channels
+            .stop_secure_channel(ctx, sc.encryptor_address())
+            .await
     }
 }

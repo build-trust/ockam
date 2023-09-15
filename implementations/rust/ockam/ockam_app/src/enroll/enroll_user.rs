@@ -6,8 +6,8 @@ use tracing::{debug, error, info};
 use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::space::{CreateSpace, Space};
+use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 
@@ -78,9 +78,8 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
 
     // enroll the current user using that token on the controller
     {
-        let node_manager_worker = app_state.node_manager_worker().await;
-        node_manager_worker
-            .controller_client
+        let controller = app_state.controller().await.into_diagnostic()?;
+        controller
             .enroll_with_oidc_token(&app_state.context(), token)
             .await
             .into_diagnostic()?;
@@ -104,17 +103,18 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
 
 async fn retrieve_space(app_state: &AppState) -> Result<Space> {
     info!("retrieving the user's space");
-    let node_manager_worker = app_state.node_manager_worker().await;
-    let node_manager = node_manager_worker.inner().read().await;
+    let controller = app_state.controller().await.into_diagnostic()?;
 
     // list the spaces that the user can access
     // and sort them by name to make sure to get the same space every time
     // if several spaces are available
     let spaces = {
-        let mut spaces = node_manager
+        let mut spaces = controller
             .list_spaces(&app_state.context())
             .await
-            .map_err(|e| miette!(e))?;
+            .map_err(|e| miette!(e))?
+            .success()
+            .into_diagnostic()?;
         spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
         spaces
     };
@@ -125,10 +125,12 @@ async fn retrieve_space(app_state: &AppState) -> Result<Space> {
         Some(space) => space.clone(),
         None => {
             let space_name = cli_state::random_name();
-            node_manager
-                .create_space(&app_state.context(), CreateSpace::new(space_name, vec![]))
+            controller
+                .create_space(&app_state.context(), space_name, vec![])
                 .await
                 .map_err(|e| miette!(e))?
+                .success()
+                .into_diagnostic()?
         }
     };
     app_state
@@ -151,12 +153,13 @@ async fn retrieve_project<R: Runtime>(
         .await
         .wrap_err("User info is not valid")?;
 
-    let node_manager_worker = app_state.node_manager_worker().await;
-    let node_manager = node_manager_worker.inner().read().await;
-    let projects = node_manager
+    let controller = app_state.controller().await.into_diagnostic()?;
+    let projects = controller
         .list_projects(&app_state.context())
         .await
-        .map_err(|e| miette!(e))?;
+        .map_err(|e| miette!(e))?
+        .success()
+        .into_diagnostic()?;
     let admin_project = projects
         .iter()
         .filter(|p| p.has_admin_with_email(&email))
@@ -172,13 +175,18 @@ async fn retrieve_project<R: Runtime>(
                 .show()
                 .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
             let ctx = &app_state.context();
-            let project = node_manager
-                .create_project(ctx, space.id.as_str(), PROJECT_NAME, vec![])
+            let project = controller
+                .create_project(ctx, space.id.to_string(), PROJECT_NAME.to_string(), vec![])
                 .await
-                .map_err(|e| miette!(e))?;
-            node_manager
+                .map_err(|e| miette!(e))?
+                .success()
+                .into_diagnostic()?;
+            controller
                 .wait_until_project_is_ready(ctx, project)
-                .await?
+                .await
+                .into_diagnostic()?
+                .success()
+                .into_diagnostic()?
         }
     };
     let cli_state = app_state.state().await;

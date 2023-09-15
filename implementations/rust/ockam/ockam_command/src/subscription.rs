@@ -5,8 +5,8 @@ use clap::{Args, Subcommand};
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::secure_client::SecureClient;
 use ockam_api::cloud::subscription::{Subscription, Subscriptions};
+use ockam_api::cloud::Controller;
 
 use crate::node::util::{delete_embedded_node, start_node_manager};
 use crate::output::Output;
@@ -57,7 +57,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
     let node_manager = start_node_manager(&ctx, &opts, None).await?;
-    let controller_client = node_manager
+    let controller = node_manager
         .make_controller_client()
         .await
         .into_diagnostic()?;
@@ -66,13 +66,8 @@ async fn run_impl(
             subscription_id,
             space_id,
         } => {
-            match get_subscription_by_id_or_space_id(
-                &controller_client,
-                &ctx,
-                subscription_id,
-                space_id,
-            )
-            .await?
+            match get_subscription_by_id_or_space_id(&controller, &ctx, subscription_id, space_id)
+                .await?
             {
                 Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
                 None => opts
@@ -86,14 +81,14 @@ async fn run_impl(
 }
 
 pub(crate) async fn get_subscription_by_id_or_space_id(
-    controller_client: &SecureClient,
+    controller: &Controller,
     ctx: &Context,
     subscription_id: Option<String>,
     space_id: Option<String>,
 ) -> Result<Option<Subscription>> {
     match (subscription_id, space_id) {
         (Some(subscription_id), _) => Ok(Some(
-            controller_client
+            controller
                 .get_subscription(ctx, subscription_id.clone())
                 .await
                 .and_then(|s| s.found())
@@ -106,7 +101,7 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
                 })?,
         )),
         (None, Some(space_id)) => Ok(Some(
-            controller_client
+            controller
                 .get_subscription_by_space_id(ctx, space_id.clone())
                 .await
                 .and_then(|s| s.found())

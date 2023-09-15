@@ -5,13 +5,17 @@ use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
+use ockam_api::error::ApiError;
+use ockam_api::local_multiaddr_to_route;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::delete_embedded_node;
+use crate::node::util::{delete_embedded_node, start_node_manager};
+use crate::project::util::{
+    clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
+};
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::duration::duration_parser;
 use crate::util::{clean_nodes_multiaddr, node_rpc, Rpc};
@@ -69,29 +73,9 @@ async fn rpc(
         opts: CommandGlobalOpts,
         cmd: SendCommand,
     ) -> miette::Result<()> {
-        // Setup environment depending on whether we are sending the message from an embedded node or a background node
-        let mut rpc = if let Some(node) = &cmd.from {
-            let api_node = extract_address_value(node)?;
-            Rpc::background(ctx, &opts, &api_node).await?
-        } else {
-            let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-            Rpc::embedded_with_vault_and_identity(ctx, &opts, identity, &cmd.trust_context_opts)
-                .await?
-        };
-
         // Process `--to` Multiaddr
         let (to, meta) =
             clean_nodes_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
-
-        // Replace `/project/<name>` occurrences with their respective secure channel addresses
-        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            &opts,
-            &mut rpc,
-            &meta,
-            CredentialExchangeMode::Oneway,
-        )
-        .await?;
-        let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
 
         let msg_bytes = if cmd.hex {
             hex::decode(cmd.message)
@@ -101,11 +85,45 @@ async fn rpc(
             cmd.message.as_bytes().to_vec()
         };
 
-        // Send request
-        let response: Vec<u8> = rpc
-            .set_timeout(cmd.timeout)
-            .ask(req(&to, msg_bytes))
+        // Setup environment depending on whether we are sending the message from an embedded node or a background node
+        let response: Vec<u8> = if let Some(node) = &cmd.from {
+            let api_node = extract_address_value(node)?;
+            let mut rpc = Rpc::background(ctx, &opts, &api_node).await?;
+            rpc.set_timeout(cmd.timeout)
+                .ask(req(&to, msg_bytes))
+                .await?
+        } else {
+            let node_manager =
+                start_node_manager(ctx, &opts, Some(&cmd.trust_context_opts)).await?;
+            let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+            let identifier = node_manager
+                .get_identifier(Some(identity_name))
+                .await
+                .into_diagnostic()?;
+
+            // Replace `/project/<name>` occurrences with their respective secure channel addresses
+            let projects_sc = get_projects_secure_channels_from_config_lookup(
+                &opts,
+                &ctx,
+                &node_manager,
+                &meta,
+                identifier,
+            )
             .await?;
+            let to = clean_projects_multiaddr(to, projects_sc)?;
+            // Send request
+            let route = local_multiaddr_to_route(&to)
+                .ok_or_else(|| ApiError::core("Invalid route"))
+                .into_diagnostic()?;
+            let response = ctx
+                .send_and_receive::<Vec<u8>>(route, msg_bytes)
+                .await
+                .into_diagnostic()?;
+
+            delete_embedded_node(&opts, &node_manager.node_name()).await;
+            response
+        };
+
         let result = if cmd.hex {
             hex::encode(response)
         } else {
@@ -114,10 +132,6 @@ async fn rpc(
                 .context("Received content is not a valid utf8 string")?
         };
 
-        // only delete node in case 'from' is empty and embedded node was started before
-        if cmd.from.is_none() {
-            delete_embedded_node(&opts, rpc.node_name()).await;
-        }
         opts.terminal.stdout().plain(&result).write_line()?;
         Ok(())
     }

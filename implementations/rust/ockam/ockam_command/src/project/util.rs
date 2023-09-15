@@ -1,22 +1,24 @@
+use indicatif::ProgressBar;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use std::iter::Take;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
-use ockam::identity::Identifier;
-use ockam::AsyncTryClone;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
+use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use ockam_api::config::lookup::LookupMeta;
-use ockam_api::multiaddr_to_addr;
-use ockam_api::nodes::models::{self, secure_channel::*};
-use ockam_core::api::Request;
+use ockam_api::error::ApiError;
+use ockam_api::nodes::NodeManager;
+use ockam_api::route_to_multiaddr;
 use ockam_core::compat::str::FromStr;
+use ockam_core::route;
+use ockam_identity::Identifier;
 use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_node::Context;
 
-use crate::util::{api, Rpc};
 use crate::{CommandGlobalOpts, Result};
 
 pub fn clean_projects_multiaddr(
@@ -45,11 +47,12 @@ pub fn clean_projects_multiaddr(
     Ok(new_ma)
 }
 
-pub async fn get_projects_secure_channels_from_config_lookup<'a>(
+pub async fn get_projects_secure_channels_from_config_lookup(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc,
+    ctx: &Context,
+    node_manager: &NodeManager,
     meta: &LookupMeta,
-    credential_exchange_mode: CredentialExchangeMode,
+    caller: IdentityIdentifier,
 ) -> Result<Vec<MultiAddr>> {
     let mut sc = Vec::with_capacity(meta.project.len());
 
@@ -67,22 +70,24 @@ pub async fn get_projects_secure_channels_from_config_lookup<'a>(
                 .clone();
             let id = p
                 .identity
-                .ok_or(miette!("Project should have identity set"))?
-                .to_string();
+                .ok_or(miette!("Project should have identity set"))?;
             let node_route = MultiAddr::from_str(&p.access_route)
                 .into_diagnostic()
                 .wrap_err("Invalid project node route")?;
             (node_route, id)
         };
-        let sc_address = create_secure_channel_to_project(
-            rpc,
-            &project_access_route,
-            &project_identity_id,
-            credential_exchange_mode,
-            None,
-        )
-        .await?;
-        sc.push(sc_address);
+        let project_node = node_manager
+            .make_project_client(project_identity_id, project_access_route, caller.clone())
+            .await?;
+        let secure_channel = project_node.create_secure_channel(ctx).await?;
+        let address = route_to_multiaddr(&route![secure_channel.encryptor_address().to_string()])
+            .ok_or_else(|| {
+            ApiError::core(format!(
+                "Invalid route: {}",
+                secure_channel.encryptor_address()
+            ))
+        })?;
+        sc.push(address);
     }
 
     // There should be the same number of project occurrences in the
@@ -91,58 +96,11 @@ pub async fn get_projects_secure_channels_from_config_lookup<'a>(
     Ok(sc)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub async fn create_secure_channel_to_project<'a>(
-    rpc: &mut Rpc,
-    project_access_route: &MultiAddr,
-    project_identity: &str,
-    credential_exchange_mode: CredentialExchangeMode,
-    identity: Option<String>,
-) -> crate::Result<MultiAddr> {
-    let authorized_identifier = vec![Identifier::from_str(project_identity)?];
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        project_access_route,
-        Some(authorized_identifier),
-        credential_exchange_mode,
-        identity,
-        None,
-    );
-    let req = Request::post("/node/secure_channel").body(payload);
-    let sc: CreateSecureChannelResponse = rpc.ask(req).await?;
-    Ok(sc.multiaddr()?)
-}
-
-pub async fn create_secure_channel_to_authority(
-    rpc: &mut Rpc,
-    authority: Identifier,
-    addr: &MultiAddr,
-    identity: Option<String>,
-) -> crate::Result<MultiAddr> {
-    debug!(%addr, "establishing secure channel to project authority");
-    let allowed = vec![authority];
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        addr,
-        Some(allowed),
-        CredentialExchangeMode::None,
-        identity,
-        None,
-    );
-    let req = Request::post("/node/secure_channel").body(payload);
-    let response: CreateSecureChannelResponse = rpc.ask(req).await?;
-    let addr = response.multiaddr()?;
-    Ok(addr)
-}
-
-async fn delete_secure_channel<'a>(rpc: &mut Rpc, sc_addr: &MultiAddr) -> miette::Result<()> {
-    let addr = multiaddr_to_addr(sc_addr).ok_or(miette!("Failed to convert MultiAddr to addr"))?;
-    rpc.tell(api::delete_secure_channel(&addr)).await?;
-    Ok(())
-}
-
-pub async fn check_project_readiness<'a>(
+pub async fn check_project_readiness(
     opts: &CommandGlobalOpts,
-    rpc: &Rpc,
-    mut project: Project,
+    ctx: &Context,
+    node_manager: &NodeManager,
+    project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
     let retry_strategy =
@@ -154,109 +112,30 @@ pub async fn check_project_readiness<'a>(
         .overwrite(&project.name, project.clone())?;
 
     let spinner_option = opts.terminal.progress_spinner();
-    if let Some(spinner) = spinner_option.as_ref() {
-        spinner.set_message("Waiting for project to be ready...");
-    }
-
-    // Check if Project and Project Authority info is available
-    if !project.is_ready() {
-        let project_id = project.id.clone();
-        project = Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
-
-            // Handle the project show request result
-            // so we can provide better errors in the case orchestrator does not respond timely
-            let result: Result<Project> = rpc_clone.ask(api::project::show(&project_id)).await;
-            result.and_then(|p| {
-                if p.is_ready() {
-                    Ok(p)
-                } else {
-                    Err(miette!("Project creation timed out. Please try again.").into())
-                }
-            })
-        })
-        .await?;
-    }
-
-    {
-        if let Some(spinner) = spinner_option.as_ref() {
-            spinner.set_message("Establishing connection to the project...");
-        }
-
-        Retry::spawn(retry_strategy.clone(), || async {
-            // Handle the reachable result, so we can provide better errors in the case a project isn't
-            if let Ok(reachable) = project.is_reachable().await {
-                if reachable {
-                    return Ok(());
-                }
-            }
-
-            Err(miette!("Timed out while trying to establish a connection to the project. Please try again."))
-        }).await?;
-    }
-
-    {
-        if let Some(spinner) = spinner_option.as_ref() {
-            spinner.set_message("Establishing secure channel to project...");
-        }
-
-        let project_route = project.access_route()?;
-        let project_identity = project
-            .identity
-            .as_ref()
-            .ok_or(miette!("Project identity is not set."))?
-            .to_string();
-
-        Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
-            if let Ok(sc_addr) = create_secure_channel_to_project(
-                &mut rpc_clone,
-                &project_route,
-                &project_identity,
-                CredentialExchangeMode::None,
-                None,
-            )
-            .await
-            {
-                // Try to delete secure channel, ignore result.
-                let _ = delete_secure_channel(&mut rpc_clone, &sc_addr).await;
-                return Ok(());
-            }
-
-            Err(miette!("Timed out while trying to establish a secure channel to the project. Please try again."))
-        })
-        .await?;
-    }
-
-    {
-        if let Some(spinner) = spinner_option.as_ref() {
-            spinner.set_message("Establishing secure channel to project authority...");
-        }
-
-        let authority = project
-            .authority()
-            .await?
-            .ok_or(miette!("Project does not have an authority defined."))?;
-
-        Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc_clone = rpc.async_try_clone().await.into_diagnostic()?;
-            if let Ok(sc_addr) = create_secure_channel_to_authority(
-                &mut rpc_clone,
-                authority.identity_id().clone(),
-                authority.address(),
-                None,
-            )
-            .await
-            {
-                // Try to delete secure channel, ignore result.
-                let _ = delete_secure_channel(&mut rpc_clone, &sc_addr).await;
-                return Ok(());
-            }
-
-            Err(miette!("Timed out while trying to establish a secure channel to the project authority. Please try again."))
-        })
-        .await?;
-    }
+    let project = check_project_ready(
+        ctx,
+        node_manager,
+        project,
+        retry_strategy.clone(),
+        spinner_option.clone(),
+    )
+    .await?;
+    let project = check_project_node_accessible(
+        ctx,
+        node_manager,
+        project,
+        retry_strategy.clone(),
+        spinner_option.clone(),
+    )
+    .await?;
+    let project = check_authority_node_accessible(
+        ctx,
+        node_manager,
+        project,
+        retry_strategy,
+        spinner_option.clone(),
+    )
+    .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.finish_and_clear();
@@ -269,8 +148,147 @@ pub async fn check_project_readiness<'a>(
     Ok(project)
 }
 
-pub async fn refresh_projects<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> miette::Result<()> {
-    let projects: Vec<Project> = rpc.ask(api::project::list()).await?;
+async fn check_project_ready(
+    ctx: &Context,
+    node_manager: &NodeManager,
+    project: Project,
+    retry_strategy: Take<FixedInterval>,
+    spinner_option: Option<ProgressBar>,
+) -> Result<Project> {
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.set_message("Waiting for project to be ready...");
+    }
+
+    // Check if Project and Project Authority info is available
+    if project.is_ready() {
+        return Ok(project);
+    };
+
+    let project_id = project.id.clone();
+    let project: Project = Retry::spawn(retry_strategy.clone(), || async {
+        let controller = node_manager
+            .make_controller_client()
+            .await
+            .into_diagnostic()?;
+        // Handle the project show request result
+        // so we can provide better errors in the case orchestrator does not respond timely
+        let project = controller
+            .get_project(ctx, project_id.clone())
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()?;
+        let result: miette::Result<Project> = if project.is_ready() {
+            Ok(project)
+        } else {
+            Err(miette!("Project creation timed out. Please try again.").into())
+        };
+        result
+    })
+    .await?;
+    Ok(project)
+}
+
+async fn check_project_node_accessible(
+    ctx: &Context,
+    node_manager: &NodeManager,
+    project: Project,
+    retry_strategy: Take<FixedInterval>,
+    spinner_option: Option<ProgressBar>,
+) -> Result<Project> {
+    let project_route = project.access_route()?;
+    let project_identity = project
+        .identity
+        .as_ref()
+        .ok_or(miette!("Project identity is not set."))?;
+    let project_node = node_manager
+        .make_project_client(
+            project_identity.clone(),
+            project_route,
+            node_manager.get_identifier(None).await?,
+        )
+        .await
+        .into_diagnostic()?;
+
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.set_message("Establishing connection to the project...");
+    }
+
+    Retry::spawn(retry_strategy.clone(), || async {
+        // Handle the reachable result, so we can provide better errors in the case a project isn't
+        if let Ok(reachable) = project.is_reachable().await {
+            if reachable {
+                return Ok(());
+            }
+        }
+        Err(miette!(
+            "Timed out while trying to establish a connection to the project. Please try again."
+        ))
+    })
+    .await?;
+
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.set_message("Establishing secure channel to project...");
+    }
+
+    Retry::spawn(retry_strategy.clone(), || async {
+        if let Ok(_) = project_node.check_secure_channel(ctx).await {
+            Ok(())
+        } else {
+            Err(miette!("Timed out while trying to establish a secure channel to the project. Please try again."))
+        }
+    })
+        .await?;
+
+    Ok(project)
+}
+
+async fn check_authority_node_accessible(
+    ctx: &Context,
+    node_manager: &NodeManager,
+    project: Project,
+    retry_strategy: Take<FixedInterval>,
+    spinner_option: Option<ProgressBar>,
+) -> Result<Project> {
+    let authority = project
+        .authority()
+        .await?
+        .ok_or(miette!("Project does not have an authority defined."))?;
+
+    let authority_node = node_manager
+        .make_authority_client(
+            authority.identity_id().clone(),
+            authority.address().clone(),
+            node_manager.get_identifier(None).await?,
+        )
+        .await
+        .into_diagnostic()?;
+
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.set_message("Establishing secure channel to project authority...");
+    }
+    Retry::spawn(retry_strategy.clone(), || async {
+            if let Ok(_) = authority_node.check_secure_channel(ctx).await {
+                Ok(())
+            } else {
+                Err(miette!("Timed out while trying to establish a secure channel to the project authority. Please try again."))
+            }
+        })
+            .await?;
+    Ok(project)
+}
+
+pub async fn refresh_projects(
+    opts: &CommandGlobalOpts,
+    ctx: &Context,
+    controller: &Controller,
+) -> miette::Result<()> {
+    let projects: Vec<Project> = controller
+        .list_projects(ctx)
+        .await
+        .into_diagnostic()?
+        .success()
+        .into_diagnostic()?;
     for project in projects {
         opts.state
             .projects
