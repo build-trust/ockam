@@ -310,6 +310,7 @@ fn load_model_state(
     context: Arc<Context>,
     cli_state: &CliState,
 ) -> ModelState {
+    crate::shared_service::relay::load_model_state(context.clone(), node_manager_worker, cli_state);
     block_on(async {
         match model_state_repository.load().await {
             Ok(model_state) => {
@@ -318,12 +319,6 @@ fn load_model_state(
                     context.clone(),
                     node_manager_worker,
                     &model_state,
-                    cli_state,
-                )
-                .await;
-                crate::shared_service::relay::load_model_state(
-                    context.clone(),
-                    node_manager_worker,
                     cli_state,
                 )
                 .await;

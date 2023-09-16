@@ -1,7 +1,7 @@
 pub(crate) mod commands;
 pub(crate) mod events;
 pub(super) mod plugin;
-mod state;
+pub(crate) mod state;
 mod tray_menu;
 
 use std::net::SocketAddr;

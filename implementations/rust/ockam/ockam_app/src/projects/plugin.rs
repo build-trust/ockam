@@ -26,9 +26,9 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             app.listen_global(REFRESH_PROJECTS, move |_event| {
                 let handle = handle.clone();
                 spawn(async move {
-                    refresh_projects(handle.clone())
+                    let _ = refresh_projects(handle.clone())
                         .await
-                        .map_err(|e| error!(%e, "Failed to refresh projects"))
+                        .map_err(|e| error!(%e, "Failed to refresh projects"));
                 });
             });
 

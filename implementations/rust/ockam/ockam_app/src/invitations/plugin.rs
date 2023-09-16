@@ -25,9 +25,9 @@ pub(crate) fn init<R: Runtime>() -> TauriPlugin<R> {
             app.listen_global(REFRESH_INVITATIONS, move |_event| {
                 let handle = handle.clone();
                 spawn(async move {
-                    refresh_invitations(handle.clone())
+                    let _ = refresh_invitations(handle.clone())
                         .await
-                        .map_err(|e| error!(%e, "Failed to refresh invitations"))
+                        .map_err(|e| error!(%e, "Failed to refresh invitations"));
                 });
             });
 

@@ -10,6 +10,7 @@ mod create;
 mod list;
 mod show;
 
+use crate::address::extract_address_value;
 use crate::error::ApiError;
 use crate::identity::EnrollmentTicket;
 pub use accept::*;
@@ -169,6 +170,10 @@ impl ServiceAccessDetails {
         let as_json = serde_json::from_slice(&hex_decoded)
             .map_err(|_| ApiError::core("Invalid enrollment ticket"))?;
         Ok(as_json)
+    }
+
+    pub fn service_name(&self) -> Result<String, ApiError> {
+        extract_address_value(&self.shared_node_route)
     }
 }
 

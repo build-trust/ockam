@@ -71,9 +71,9 @@ pub fn process_tray_menu_event<R: Runtime>(
 fn on_enroll<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let app_handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        enroll_user(&app_handle)
+        let _ = enroll_user(&app_handle)
             .await
-            .map_err(|e| error!(%e, "Failed to enroll user"))
+            .map_err(|e| error!(%e, "Failed to enroll user"));
     });
     Ok(())
 }

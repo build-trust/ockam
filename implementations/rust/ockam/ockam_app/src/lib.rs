@@ -28,6 +28,8 @@ mod cli;
 mod enroll;
 mod error;
 mod invitations;
+#[cfg(target_os = "linux")]
+mod linux_url_plugin;
 mod options;
 mod platform;
 mod projects;
@@ -42,6 +44,29 @@ pub fn run() {
     // The log messages should explain what went wrong
     if check_ockam_executable().is_err() {
         exit(-1)
+    }
+
+    //On linux only, to handle ockam:// link argument from args we check if
+    //the app is already running, send a packet to it via unix socket.
+    //Using unix socket rather than ockam, to fully separate concerns.
+    #[cfg(target_os = "linux")]
+    {
+        use std::io::Write;
+        use std::os::unix::net::UnixStream;
+
+        let mut args = std::env::args();
+        args.next(); //skip the first argument which is the executable name
+        let args: Vec<String> = args.collect();
+
+        //if we can connect to the socket then the app is already running
+        //if it's not running yet the arguments will be checked upon startup
+        if !args.is_empty() && args[0].starts_with("ockam:") {
+            if let Ok(mut stream) = UnixStream::connect(linux_url_plugin::open_url_sock_path()) {
+                stream.write_all(args[0].as_bytes()).unwrap();
+                stream.flush().unwrap();
+                return;
+            }
+        }
     }
 
     // For now, the application only consists of a system tray with several menu items
@@ -59,6 +84,11 @@ pub fn run() {
     #[cfg(feature = "log")]
     {
         builder = builder.plugin(configure_tauri_plugin_log());
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        builder = builder.plugin(linux_url_plugin::init());
     }
 
     let mut app = builder
