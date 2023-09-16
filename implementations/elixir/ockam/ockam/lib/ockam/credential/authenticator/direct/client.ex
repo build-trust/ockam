@@ -95,7 +95,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
   def list_member_ids(api_route) do
     case ApiClient.sync_request(:get, "/member_ids", "", api_route) do
       {:ok, %ApiResponse{status: 200, body: response}} ->
-        Ockam.TypedCBOR.decode_strict({:list, :string}, response)
+        Ockam.TypedCBOR.decode_strict({:list, :binary}, response)
 
       {:ok, %ApiResponse{status: status, body: body}} ->
         {:error, {:api_error, status, body}}
