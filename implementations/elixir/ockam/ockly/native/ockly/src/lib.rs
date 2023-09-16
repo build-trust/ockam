@@ -34,6 +34,8 @@ mod atoms {
     identity_import_error,
     credential_verification_failed,
     invalid_identifier,
+    identity_creation_error,
+    identity_export_error,
     utf8_error,
     attest_error,
     attestation_encode_error,
@@ -72,26 +74,33 @@ fn identities_ref() -> NifResult<Arc<Identities>> {
 #[rustler::nif]
 fn create_identity(env: Env, existing_key: Option<String>) -> NifResult<(Binary, Binary)> {
     let identities_ref = identities_ref()?;
+    let secret_type = if SIGNING_MEMORY_VAULT.read().unwrap().is_some() {
+        SecretType::Ed25519
+    } else {
+        SecretType::NistP256
+    };
     let identity = block_future(async move {
         if let Some(key) = existing_key {
             identities_ref
                 .identities_creation()
                 .identity_builder()
-                .with_existing_key(key, SecretType::Ed25519)
+                .with_existing_key(key, secret_type)
                 .build()
                 .await
         } else {
-            if SIGNING_MEMORY_VAULT.read().unwrap().is_some() {
-                identities_ref.identities_creation().identity_builder().with_random_key(SecretType::Ed25519).build().await
-            } else {
-                // AWS vault uses NistP256 keys
-                identities_ref.identities_creation().identity_builder().with_random_key(SecretType::NistP256).build().await
-            }
+            identities_ref
+                .identities_creation()
+                .identity_builder()
+                .with_random_key(secret_type)
+                .build()
+                .await
         }
     })
-    .map_err(|_|  Error::BadArg)?;
+    .map_err(|_| Error::Term(Box::new(atoms::identity_creation_error())))?;
 
-    let exported = identity.export().map_err(|_| Error::BadArg)?;
+    let exported = identity
+        .export()
+        .map_err(|_| Error::Term(Box::new(atoms::identity_export_error())))?;
     let id = identity.identifier().to_string();
     let mut binary = NewBinary::new(env, id.len());
     binary.copy_from_slice(id.as_bytes());
@@ -330,10 +339,9 @@ fn load_aws_vault() -> bool {
                 *IDENTITIES.write().unwrap() = Some(builder.build());
                 true
             }
-            Err(_) => {
-                false
-            }
-    }})
+            Err(_) => false,
+        }
+    })
 }
 
 fn load(_env: rustler::Env, load_data: rustler::Term) -> bool {
