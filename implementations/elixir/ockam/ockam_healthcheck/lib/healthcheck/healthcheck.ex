@@ -160,9 +160,7 @@ defmodule Ockam.Healthcheck do
   defp connect_secure_channel(tcp_conn, api_worker) do
     api_route = [tcp_conn, api_worker]
 
-    with {:ok, identity} <- get_healthcheck_identity(),
-         {:ok, keypair} <- SecureChannel.Crypto.generate_dh_keypair(),
-         {:ok, attestation} <- Ockam.Identity.attest_purpose_key(identity, keypair) do
+    with {:ok, {identity, keypair, attestation}} <- get_healthcheck_identity() do
       case SecureChannel.create_channel(
              [
                route: api_route,
@@ -249,7 +247,9 @@ defmodule Ockam.Healthcheck do
   end
 
   @spec get_healthcheck_identity() ::
-          {:ok, identity :: Ockam.Identity.t()}
+          {:ok,
+           {identity :: Ockam.Identity.t(), keypair :: map(),
+            attestation :: Ockam.Identity.PurposeKeyAttestation.t()}}
           | {:error, reason :: any()}
   defp get_healthcheck_identity() do
     case Application.get_env(:ockam_healthcheck, :identity_source) do
@@ -276,8 +276,10 @@ defmodule Ockam.Healthcheck do
   defp identity_from_file(file, secret) do
     with {:ok, identity_data} <- File.read(file),
          {:ok, signing_key} <- File.read(secret),
-         {:ok, identity, _identity_id} <- Ockam.Identity.import(identity_data, signing_key) do
-      {:ok, identity}
+         {:ok, identity, _identity_id} <- Ockam.Identity.import(identity_data, signing_key),
+         {:ok, keypair} <- SecureChannel.Crypto.generate_dh_keypair(),
+         {:ok, attestation} <- Ockam.Identity.attest_purpose_key(identity, keypair) do
+      {:ok, {identity, keypair, attestation}}
     end
   end
 
@@ -286,19 +288,17 @@ defmodule Ockam.Healthcheck do
       :none ->
         generate_and_cache_identity()
 
-      identity ->
-        {:ok, identity}
+      {identity, keypair, attestation} ->
+        {:ok, {identity, keypair, attestation}}
     end
   end
 
   defp generate_and_cache_identity() do
-    case generate_identity() do
-      {:ok, identity} ->
-        :persistent_term.put(:healthcheck_identity, identity)
-        {:ok, identity}
-
-      {:error, reason} ->
-        {:error, reason}
+    with {:ok, identity} <- generate_identity(),
+         {:ok, keypair} <- SecureChannel.Crypto.generate_dh_keypair(),
+         {:ok, attestation} <- Ockam.Identity.attest_purpose_key(identity, keypair) do
+      :persistent_term.put(:healthcheck_identity, {identity, keypair, attestation})
+      {:ok, {identity, keypair, attestation}}
     end
   end
 
