@@ -8,9 +8,9 @@ use crate::cloud::enroll::enrollment_token::{
 };
 use crate::cloud::Controller;
 
+use ockam::identity::Attributes;
 use ockam_core::api::Request;
 use ockam_core::async_trait;
-use ockam_identity::Attributes;
 use ockam_node::Context;
 
 const TARGET: &str = "ockam_api::cloud::enroll";

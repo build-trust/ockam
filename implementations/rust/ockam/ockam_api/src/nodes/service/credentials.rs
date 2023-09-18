@@ -35,7 +35,7 @@ pub trait Credentials {
         ctx: &Context,
         overwrite: bool,
         identity_name: Option<String>,
-    ) -> miette::Result<Credential>;
+    ) -> miette::Result<CredentialAndPurposeKey>;
 }
 
 #[async_trait]
@@ -45,7 +45,7 @@ impl Credentials for AuthorityNode {
         ctx: &Context,
         overwrite: bool,
         identity_name: Option<String>,
-    ) -> miette::Result<Credential> {
+    ) -> miette::Result<CredentialAndPurposeKey> {
         let body = GetCredentialRequest::new(overwrite, identity_name);
         let req = Request::post("/node/credentials/actions/get").body(body);
         self.0

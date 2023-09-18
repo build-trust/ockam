@@ -2,7 +2,7 @@ use minicbor::{Decode, Encode};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
 use crate::{SecureChannel, SecureChannels};
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
@@ -16,8 +16,8 @@ use ockam_node::{Context, MessageSendReceiveOptions};
 pub struct SecureClient {
     pub(crate) secure_channels: Arc<SecureChannels>,
     server_route: Route,
-    server_identifier: IdentityIdentifier,
-    client_identifier: IdentityIdentifier,
+    server_identifier: Identifier,
+    client_identifier: Identifier,
     timeout: Duration,
 }
 
@@ -26,8 +26,8 @@ impl SecureClient {
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         server_route: Route,
-        server_identifier: IdentityIdentifier,
-        client_identifier: IdentityIdentifier,
+        server_identifier: Identifier,
+        client_identifier: Identifier,
         timeout: Duration,
     ) -> SecureClient {
         Self {

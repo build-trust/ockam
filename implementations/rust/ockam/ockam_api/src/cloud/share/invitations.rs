@@ -5,6 +5,7 @@ use crate::cloud::share::{
 };
 use crate::cloud::Controller;
 use miette::IntoDiagnostic;
+use ockam::identity::Identifier;
 use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
@@ -32,11 +33,11 @@ pub trait Invitations {
         expires_at: Option<String>,
         project_id: String,
         recipient_email: String,
-        project_identity: String,
+        project_identity: Identifier,
         project_route: String,
-        project_authority_identity: String,
+        project_authority_identity: Identifier,
         project_authority_route: String,
-        shared_node_identity: String,
+        shared_node_identity: Identifier,
         shared_node_route: String,
         enrollment_ticket: String,
     ) -> miette::Result<SentInvitation>;
@@ -96,11 +97,11 @@ impl Invitations for Controller {
         expires_at: Option<String>,
         project_id: String,
         recipient_email: String,
-        project_identity: String,
+        project_identity: Identifier,
         project_route: String,
-        project_authority_identity: String,
+        project_authority_identity: Identifier,
         project_authority_route: String,
-        shared_node_identity: String,
+        shared_node_identity: Identifier,
         shared_node_route: String,
         enrollment_ticket: String,
     ) -> miette::Result<SentInvitation> {
