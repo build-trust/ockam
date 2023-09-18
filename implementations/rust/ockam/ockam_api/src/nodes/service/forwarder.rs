@@ -48,7 +48,7 @@ impl NodeManagerWorker {
 
         let manager = self.node_manager.clone();
 
-        let connection = Connection::new(ctx, req.address())
+        let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), req.address())
             .with_authorized_identity(req.authorized())
             .add_default_consumers();
 
@@ -244,7 +244,7 @@ fn replacer(
                 }
                 drop(node_manager);
 
-                let connection = Connection::new(ctx.as_ref(), &addr)
+                let connection = Connection::new(ctx.clone(), &addr)
                     .with_authorized_identity(auth)
                     .with_timeout(MAX_CONNECT_TIME)
                     .add_default_consumers();

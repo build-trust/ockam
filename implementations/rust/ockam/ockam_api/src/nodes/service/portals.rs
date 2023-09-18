@@ -231,7 +231,7 @@ impl NodeManagerWorker {
                 .wait_for_outlet_duration()
                 .unwrap_or(Duration::from_secs(5));
 
-            let connection = Connection::new(ctx, create_inlet_req.outlet_addr())
+            let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), create_inlet_req.outlet_addr())
                 .with_authorized_identity(create_inlet_req.authorized())
                 .with_timeout(duration);
 
@@ -596,7 +596,7 @@ fn replacer(
                 drop(node_manager);
 
                 // Now a connection attempt is made:
-                let connection = Connection::new(ctx.as_ref(), &addr)
+                let connection = Connection::new(ctx.clone(), &addr)
                     .with_authorized_identity(auth)
                     .with_timeout(MAX_CONNECT_TIME);
 

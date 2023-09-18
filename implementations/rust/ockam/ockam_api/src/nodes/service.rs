@@ -501,10 +501,10 @@ impl NodeManager {
     /// Returns [`ConnectionInstance`]
     pub(crate) async fn connect(
         node_manager: Arc<RwLock<NodeManager>>,
-        connection: Connection<'_>,
+        connection: Connection,
     ) -> Result<ConnectionInstance> {
         debug!("connecting to {}", &connection.addr);
-        let context = Arc::new(connection.ctx.async_try_clone().await?);
+        let context = connection.ctx.clone();
 
         let tcp_transport = node_manager
             .clone()
