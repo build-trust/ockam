@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
-use ockam_identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
+use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 use ockam_transport_tcp::TcpTransport;
@@ -112,9 +112,9 @@ impl SecureClients {
     pub async fn generic(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         multiaddr: MultiAddr,
-        caller_identifier: IdentityIdentifier,
+        caller_identifier: Identifier,
     ) -> Result<SecureClient> {
         let route = Self::authority_route(tcp_transport, multiaddr).await?;
 

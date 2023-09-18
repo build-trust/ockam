@@ -16,6 +16,7 @@ use ockam_api::identity::EnrollmentTicket;
 use crate::enroll::OidcServiceExt;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::node::util::LocalNode;
+use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -123,7 +124,7 @@ pub async fn project_enroll(
     opts.terminal
         .clone()
         .stdout()
-        .plain(credential.clone())
+        .plain(CredentialAndPurposeKeyDisplay(credential))
         .write_line()?;
 
     Ok(project.name)

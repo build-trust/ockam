@@ -10,11 +10,11 @@ use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
+use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_identity::{SecureChannel, SecureChannelListener};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -89,7 +89,7 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         route: Route,
-        to: IdentityIdentifier,
+        to: Identifier,
         from: Option<String>,
     ) -> Result<SecureChannel> {
         self.create_secure_channel_impl(
@@ -109,7 +109,7 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         address: MultiAddr,
-        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        authorized_identifiers: Option<Vec<Identifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
         identity_name: Option<String>,
@@ -288,10 +288,7 @@ impl NodeManager {
         NodeIdentities::new(self.identities(), self.cli_state.clone())
     }
 
-    pub async fn get_identifier(
-        &self,
-        identity_name: Option<String>,
-    ) -> Result<Identifier> {
+    pub async fn get_identifier(&self, identity_name: Option<String>) -> Result<Identifier> {
         if let Some(name) = identity_name {
             self.node_identities().get_identifier(name.clone()).await
         } else {
