@@ -3,6 +3,7 @@ use ockam::{Node, TcpTransportExtension};
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
 use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
+use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
 
@@ -52,7 +53,7 @@ async fn main(ctx: Context) -> Result<()> {
         &tcp,
         node.secure_channels().clone(),
         issuer.identifier(),
-        MultiAddr::try_from("ip/127.0.0.1/tcp/5000/secure/api")?,
+        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
         client.identifier(),
     )
     .await?;
@@ -81,6 +82,8 @@ async fn main(ctx: Context) -> Result<()> {
     let server_connection = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
     let channel = node
         .create_secure_channel(
+            &client.identifier(),
+            route![server_connection, DefaultAddress::SECURE_CHANNEL_LISTENER],
             client.identifier(),
             route![server_connection, "secure"],
             SecureChannelOptions::new()
@@ -92,7 +95,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Send a message to the worker at address "echoer".
     // Wait to receive a reply and print it.
     let reply = node
-        .send_and_receive::<String>(route![channel, "echoer"], "Hello Ockam!".to_string())
+        .send_and_receive::<String>(
+            route![channel, DefaultAddress::ECHO_SERVICE],
+            "Hello Ockam!".to_string(),
+        )
         .await?;
     println!("Received: {}", reply); // should print "Hello Ockam!"
 

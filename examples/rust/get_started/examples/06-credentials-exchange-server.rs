@@ -8,6 +8,7 @@ use ockam::{Node, TcpTransportExtension};
 use ockam::{node, Context, Result, TcpListenerOptions};
 use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
+use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
 
@@ -52,9 +53,9 @@ async fn main(ctx: Context) -> Result<()> {
     let authority_node = SecureClients::authority(
         &tcp,
         node.secure_channels().clone(),
-        issuer.identifier().clone(),
-        MultiAddr::try_from("ip/127.0.0.1/tcp/5000/secure/api")?,
-        server.identifier().clone(),
+        issuer.identifier(),
+        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000").unwrap(),
+        server.identifier(),
     )
     .await?;
     let credential = authority_node.issue_credential(node.context()).await.unwrap();
@@ -88,16 +89,22 @@ async fn main(ctx: Context) -> Result<()> {
         .with_credential(credential)
         .as_consumer(&tcp_listener_options.spawner_flow_control_id());
 
-    node.flow_controls()
-        .add_consumer("echoer", &sc_listener_options.spawner_flow_control_id());
+    node.flow_controls().add_consumer(
+        DefaultAddress::ECHO_SERVICE,
+        &sc_listener_options.spawner_flow_control_id(),
+    );
     let allow_production = AbacAccessControl::create(node.identities_repository(), "cluster", "production");
-    node.start_worker_with_access_control("echoer", Echoer, allow_production, AllowAll)
+    node.start_worker_with_access_control(DefaultAddress::ECHO_SERVICE, Echoer, allow_production, AllowAll)
         .await?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    node.create_secure_channel_listener(server.identifier(), "secure", sc_listener_options)
-        .await?;
+    node.create_secure_channel_listener(
+        &server.identifier(),
+        DefaultAddress::SECURE_CHANNEL_LISTENER,
+        sc_listener_options,
+    )
+    .await?;
 
     // Create a TCP listener and wait for incoming connections
     tcp.listen("127.0.0.1:4000", tcp_listener_options).await?;

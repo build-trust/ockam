@@ -15,7 +15,7 @@ use ockam_node::{Context, MessageSendReceiveOptions};
 #[derive(Clone)]
 pub struct SecureClient {
     pub(crate) secure_channels: Arc<SecureChannels>,
-    server_route: Route,
+    secure_route: Route,
     server_identifier: Identifier,
     client_identifier: Identifier,
     timeout: Duration,
@@ -30,9 +30,10 @@ impl SecureClient {
         client_identifier: Identifier,
         timeout: Duration,
     ) -> SecureClient {
+        let secure_route = route![server_route.clone()];
         Self {
             secure_channels,
-            server_route,
+            secure_route,
             server_identifier,
             client_identifier,
             timeout,
@@ -126,7 +127,7 @@ impl SecureClient {
             .create_secure_channel(
                 ctx,
                 &self.client_identifier,
-                self.server_route.clone(),
+                self.secure_route.clone(),
                 options,
             )
             .await
