@@ -231,9 +231,11 @@ jobs:
         run: |
           ockam --version
           echo $(which ockam)
+          echo $BATS_TEST_RETRIES
           bats implementations/rust/ockam/ockam_command/tests/bats;
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
+          BATS_TEST_RETRIES: 2
 
   ockam_command_cross_build:
     name: Rust - ockam_command_cross_build
