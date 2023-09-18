@@ -2,15 +2,16 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ockam_core::env::{get_env, get_env_with_default, FromString};
-use ockam_core::{Result, Route};
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
+use ockam_core::env::{get_env, get_env_with_default, FromString};
+use ockam_core::{route, Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 use ockam_transport_tcp::TcpTransport;
 
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
+use crate::DefaultAddress;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -80,7 +81,8 @@ impl SecureClients {
         authority_multiaddr: MultiAddr,
         caller_identifier: Identifier,
     ) -> Result<AuthorityNode> {
-        let authority_route = Self::authority_route(tcp_transport, authority_multiaddr).await?;
+        let authority_route =
+            Self::resolve_secure_route(tcp_transport, authority_multiaddr).await?;
 
         Ok(AuthorityNode(SecureClient::new(
             secure_channels,
@@ -98,7 +100,7 @@ impl SecureClients {
         project_multiaddr: MultiAddr,
         caller_identifier: Identifier,
     ) -> Result<ProjectNode> {
-        let project_route = Self::project_route(tcp_transport, project_multiaddr).await?;
+        let project_route = Self::resolve_secure_route(tcp_transport, project_multiaddr).await?;
 
         Ok(ProjectNode(SecureClient::new(
             secure_channels,
@@ -116,7 +118,7 @@ impl SecureClients {
         multiaddr: MultiAddr,
         caller_identifier: Identifier,
     ) -> Result<SecureClient> {
-        let route = Self::authority_route(tcp_transport, multiaddr).await?;
+        let route = Self::resolve_secure_route(tcp_transport, multiaddr).await?;
 
         Ok(SecureClient::new(
             secure_channels,
@@ -145,42 +147,25 @@ impl SecureClients {
     }
 
     async fn controller_route(tcp_transport: &TcpTransport) -> Result<Route> {
-        let controller_multiaddr = Self::controller_multiaddr();
-        Ok(multiaddr_to_route(&controller_multiaddr, tcp_transport)
-            .await
-            .ok_or_else(|| {
-                ApiError::core(format!(
-                    "Couldn't convert MultiAddr to route: controller_multiaddr={controller_multiaddr}"
-                ))
-            })?.route)
+        Self::resolve_secure_route(tcp_transport, Self::controller_multiaddr()).await
     }
 
-    async fn authority_route(
+    async fn resolve_secure_route(
         tcp_transport: &TcpTransport,
-        authority_multiaddr: MultiAddr,
+        multiaddr: MultiAddr,
     ) -> Result<Route> {
-        Ok(multiaddr_to_route(&authority_multiaddr, tcp_transport)
+        let transport_route = multiaddr_to_route(&multiaddr, tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
-                    "Couldn't convert MultiAddr to route: authority_multiaddr={authority_multiaddr}"
+                    "Couldn't convert MultiAddr to route: multiaddr={multiaddr}"
                 ))
             })?
-            .route)
-    }
-
-    async fn project_route(
-        tcp_transport: &TcpTransport,
-        project_multiaddr: MultiAddr,
-    ) -> Result<Route> {
-        Ok(multiaddr_to_route(&project_multiaddr, tcp_transport)
-            .await
-            .ok_or_else(|| {
-                ApiError::core(format!(
-                    "Couldn't convert MultiAddr to route: project_multiaddr={project_multiaddr}"
-                ))
-            })?
-            .route)
+            .route;
+        Ok(route![
+            transport_route,
+            DefaultAddress::SECURE_CHANNEL_LISTENER
+        ])
     }
 }
 

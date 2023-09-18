@@ -8,11 +8,11 @@ use ockam::identity::{
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
+use ockam_api::cloud::SecureClients;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
+use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpTransportExtension;
 use std::sync::Arc;
-use ockam_api::cloud::SecureClients;
-use ockam_multiaddr::MultiAddr;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -64,10 +64,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         &tcp,
         node.secure_channels().clone(),
         control_plane.clone(),
-        MultiAddr::try_from("ip/127.0.0.1/tcp/5000/secure/api")?,
+        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
         node.create_identity().await?,
     )
-        .await?;
+    .await?;
     authority_node.present_token(node.context(), token).await.unwrap();
 
     // Import the authority identity and route from the information file

@@ -1,9 +1,11 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
-use ockam::identity::{CredentialsIssuer, SecureChannelListenerOptions, Vault};
-use ockam::vault::{Secret, SecretAttributes, SoftwareSigningVault};
-use ockam::{Context, Result, TcpListenerOptions};
+use ockam::identity::{CredentialsIssuer, Vault};
+use ockam::identity::SecureChannelListenerOptions;
 use ockam::{Node, TcpTransportExtension};
+use ockam::{node, Context, Result, TcpListenerOptions};
+use ockam_api::DefaultAddress;
+use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -64,16 +66,25 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels where the identity
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
-    node.create_secure_channel_listener(issuer.identifier(), "secure", sc_listener_options)
-        .await?;
+    node.create_secure_channel_listener(
+        &issuer.identifier(),
+        DefaultAddress::SECURE_CHANNEL_LISTENER,
+        sc_listener_options,
+    )
+    .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
     // authenticated secure channels with our known public identifiers.
     let allow_known = IdentityIdAccessControl::new(known_identifiers);
     node.flow_controls()
-        .add_consumer("issuer", &sc_listener_flow_control_id);
-    node.start_worker_with_access_control("issuer", credential_issuer, allow_known, AllowAll)
-        .await?;
+        .add_consumer(DefaultAddress::CREDENTIAL_ISSUER, &sc_listener_flow_control_id);
+    node.start_worker_with_access_control(
+        DefaultAddress::CREDENTIAL_ISSUER,
+        credential_issuer,
+        allow_known,
+        AllowAll,
+    )
+    .await?;
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.
     let tcp = node.create_tcp_transport().await?;

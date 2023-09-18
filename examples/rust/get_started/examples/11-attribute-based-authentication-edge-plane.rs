@@ -63,10 +63,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         &tcp,
         node.secure_channels().clone(),
         edge_plane.clone(),
-        MultiAddr::try_from("ip/127.0.0.1/tcp/5000/secure/api")?,
+        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
         node.create_identity().await?,
     )
-        .await?;
+    .await?;
     authority_node.present_token(node.context(), token).await.unwrap();
 
     // Import the authority identity and route from the information file
