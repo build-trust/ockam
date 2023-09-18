@@ -170,8 +170,13 @@ fn add_accepted_menus<R: Runtime>(
         let mut submenu_builder = SubmenuBuilder::new(app_handle, owner_email);
         submenu_builder = invitations
             .into_iter()
-            .map(|(invitation_id, access_details, inlet_socket_addr)| {
-                accepted_invite_menu(app_handle, invitation_id, access_details, inlet_socket_addr)
+            .map(|(invitation_id, access_details, inlet)| {
+                accepted_invite_menu(
+                    app_handle,
+                    invitation_id,
+                    access_details,
+                    inlet.map(|i| &i.socket_addr),
+                )
             })
             .fold(submenu_builder, |menu, submenu| menu.item(&submenu));
         submenus.push(

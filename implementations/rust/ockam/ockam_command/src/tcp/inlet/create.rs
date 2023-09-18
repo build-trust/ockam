@@ -45,7 +45,7 @@ pub struct CreateCommand {
     at: Option<String>,
 
     /// Address on which to accept tcp connections.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
     from: SocketAddr,
 
     /// Route to a tcp outlet.
