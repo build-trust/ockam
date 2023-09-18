@@ -229,13 +229,17 @@ pub struct ShowSecureChannelResponse {
 }
 
 impl ShowSecureChannelResponse {
-    pub fn new(info: Option<&SecureChannelInfo>) -> Self {
+    pub fn new(info: Option<SecureChannelInfo>) -> Self {
         Self {
-            channel: info.map(|info| info.sc().encryptor_address().to_string()),
-            route: info.map(|info| info.route().to_string()),
+            channel: info
+                .clone()
+                .map(|info| info.sc().encryptor_address().to_string()),
+            route: info.clone().map(|info| info.route().to_string()),
             authorized_identifiers: info
+                .clone()
                 .map(|info| {
-                    info.authorized_identifiers()
+                    info.clone()
+                        .authorized_identifiers()
                         .map(|ids| ids.iter().map(|iid| iid.to_string()).collect())
                 })
                 .unwrap_or(None),

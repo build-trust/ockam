@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use minicbor::Decoder;
-use ockam::compat::asynchronous::RwLock;
 use ockam::compat::sync::Mutex;
 use ockam::identity::Identifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
@@ -46,8 +45,6 @@ impl NodeManagerWorker {
     ) -> Result<ForwarderInfo> {
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
-        let manager = self.node_manager.clone();
-
         let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), req.address())
             .with_authorized_identity(req.authorized())
             .add_default_consumers();
@@ -57,8 +54,8 @@ impl NodeManagerWorker {
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in manager.read().await.registry.hop_services.keys() {
-            connection_instance.add_consumer(ctx, hop);
+        for hop in self.node_manager.registry.hop_services.keys().await {
+            connection_instance.add_consumer(ctx, &hop);
         }
 
         let options = RemoteForwarderOptions::new();
@@ -82,17 +79,16 @@ impl NodeManagerWorker {
                 let ping_route = connection_instance.transport_route.clone();
                 let ctx = Arc::new(ctx.async_try_clone().await?);
                 let repl = replacer(
-                    manager,
+                    self.node_manager.clone(),
                     ctx,
                     connection_instance,
                     req.address().clone(),
                     req.alias().map(|a| a.to_string()),
                     req.authorized(),
                 );
-                let node_manager = self.node_manager.write().await;
                 let mut session = Session::new(ping_route);
                 session.set_replacer(repl);
-                node_manager.add_session(session);
+                self.node_manager.add_session(session);
             }
             result
         };
@@ -102,11 +98,11 @@ impl NodeManagerWorker {
                 let registry_info = info.clone();
                 let registry_remote_address = registry_info.remote_address().to_string();
                 let forwarder_info = ForwarderInfo::from(info);
-                let mut node_manager = self.node_manager.write().await;
-                node_manager
+                self.node_manager
                     .registry
                     .forwarders
-                    .insert(registry_remote_address, registry_info);
+                    .insert(registry_remote_address, registry_info)
+                    .await;
 
                 debug!(
                     forwarding_route = %forwarder_info.forwarding_route(),
@@ -128,11 +124,15 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         remote_address: &str,
     ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-
         debug!(%remote_address , "Handling DeleteForwarder request");
 
-        if let Some(forwarder_to_delete) = node_manager.registry.forwarders.remove(remote_address) {
+        if let Some(forwarder_to_delete) = self
+            .node_manager
+            .registry
+            .forwarders
+            .remove(remote_address)
+            .await
+        {
             debug!(%remote_address, "Successfully removed forwarder from node registry");
 
             match ctx
@@ -167,8 +167,13 @@ impl NodeManagerWorker {
         remote_address: &str,
     ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
         debug!("Handling ShowForwarder request");
-        let node_manager = self.node_manager.read().await;
-        if let Some(forwarder_to_show) = node_manager.registry.forwarders.get(remote_address) {
+        if let Some(forwarder_to_show) = self
+            .node_manager
+            .registry
+            .forwarders
+            .get(remote_address)
+            .await
+        {
             debug!(%remote_address, "Forwarder not found in node registry");
             Ok(Response::ok(req).body(Some(ForwarderInfo::from(forwarder_to_show.to_owned()))))
         } else {
@@ -181,8 +186,12 @@ impl NodeManagerWorker {
     }
 
     pub async fn get_forwarders(&self) -> Vec<ForwarderInfo> {
-        let registry = &self.node_manager.read().await.registry.forwarders;
-        let forwarders = registry
+        let forwarders = self
+            .node_manager
+            .registry
+            .forwarders
+            .entries()
+            .await
             .iter()
             .map(|(_, registry_info)| ForwarderInfo::from(registry_info.to_owned()))
             .collect();
@@ -205,7 +214,7 @@ impl NodeManagerWorker {
 /// the secure channel worker address) and constructs the whole route
 /// again.
 fn replacer(
-    manager: Arc<RwLock<NodeManager>>,
+    node_manager: Arc<NodeManager>,
     ctx: Arc<Context>,
     connection_instance: ConnectionInstance,
     addr: MultiAddr,
@@ -213,20 +222,19 @@ fn replacer(
     auth: Option<Identifier>,
 ) -> Replacer {
     let connection_instance_arc = Arc::new(Mutex::new(connection_instance));
+    let node_manager = node_manager.clone();
     Box::new(move |prev_route| {
         let ctx = ctx.clone();
         let addr = addr.clone();
         let alias = alias.clone();
         let auth = auth.clone();
-        let node_manager_arc = manager.clone();
         let connection_instance_arc = connection_instance_arc.clone();
         let previous_connection_instance = connection_instance_arc.lock().unwrap().clone();
-
+        let node_manager = node_manager.clone();
         Box::pin(async move {
             debug!(%prev_route, %addr, "creating new remote forwarder");
 
             let f = async {
-                let mut node_manager = node_manager_arc.write().await;
                 for encryptor in &previous_connection_instance.secure_channel_encryptors {
                     if let Err(error) = node_manager.delete_secure_channel(&ctx, encryptor).await {
                         //not much we can do about it
@@ -242,7 +250,6 @@ fn replacer(
                         debug!("cannot stop tcp worker `{tcp_connection}`: {error}");
                     }
                 }
-                drop(node_manager);
 
                 let connection = Connection::new(ctx.clone(), &addr)
                     .with_authorized_identity(auth)
@@ -250,7 +257,7 @@ fn replacer(
                     .add_default_consumers();
 
                 let new_connection_instance =
-                    NodeManager::connect(node_manager_arc, connection).await?;
+                    NodeManager::connect(node_manager.clone(), connection).await?;
 
                 *connection_instance_arc.lock().unwrap() = new_connection_instance.clone();
 

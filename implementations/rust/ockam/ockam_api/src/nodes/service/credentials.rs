@@ -64,20 +64,20 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<Either<Response<Error>, Response<CredentialAndPurposeKey>>> {
-        let node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
         let identifier = if let Some(identity) = &request.identity_name {
-            node_manager
+            self.node_manager
                 .cli_state
                 .identities
                 .get(identity)?
                 .identifier()
         } else {
-            node_manager.identifier()
+            self.node_manager.identifier()
         };
 
-        match node_manager
+        match self
+            .node_manager
             .trust_context()?
             .authority()?
             .credential(ctx, &identifier)
@@ -100,7 +100,6 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<Response, Response<Error>> {
-        let node_manager = self.node_manager.write().await;
         let request: PresentCredentialRequest = dec.decode()?;
 
         // TODO: Replace with self.connect?
@@ -115,24 +114,25 @@ impl NodeManagerWorker {
             None => return Err(ApiError::core("Invalid credentials service route").into()),
         };
 
-        let credential = node_manager
+        let credential = self
+            .node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, &node_manager.identifier())
+            .credential(ctx, &self.node_manager.identifier())
             .await?;
 
         if request.oneway {
-            node_manager
+            self.node_manager
                 .credentials_service()
                 .present_credential(ctx, route, credential)
                 .await?;
         } else {
-            node_manager
+            self.node_manager
                 .credentials_service()
                 .present_credential_mutual(
                     ctx,
                     route,
-                    node_manager
+                    self.node_manager
                         .trust_context()?
                         .authorities()
                         .await?
