@@ -5,33 +5,35 @@ mod secure;
 use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{async_trait, route, Address, CowStr, Route, LOCAL};
+use ockam_core::{async_trait, route, Address, Route, LOCAL};
+use ockam_identity::Identifier;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 use ockam_transport_tcp::TcpConnection;
 use std::fmt::{Debug, Formatter};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub(crate) use plain_tcp::PlainTcpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
 
-pub struct Connection<'a> {
-    pub ctx: &'a Context,
-    pub addr: &'a MultiAddr,
-    pub identity_name: Option<CowStr<'a>>,
-    pub credential_name: Option<CowStr<'a>>,
+pub struct Connection {
+    pub ctx: Arc<Context>,
+    pub addr: MultiAddr,
+    pub identity_name: Option<String>,
+    pub credential_name: Option<String>,
     pub authorized_identities: Option<Vec<Identifier>>,
     pub timeout: Option<Duration>,
     pub add_default_consumers: bool,
 }
 
-impl<'a> Connection<'a> {
-    pub fn new(ctx: &'a Context, addr: &'a MultiAddr) -> Self {
+impl Connection {
+    pub fn new(ctx: Arc<Context>, addr: &MultiAddr) -> Self {
         Self {
             ctx,
-            addr,
+            addr: addr.clone(),
             identity_name: None,
             credential_name: None,
             authorized_identities: None,
@@ -41,7 +43,7 @@ impl<'a> Connection<'a> {
     }
 
     #[allow(unused)]
-    pub fn with_credential_name<T: Into<Option<CowStr<'a>>>>(mut self, credential_name: T) -> Self {
+    pub fn with_credential_name<T: Into<Option<String>>>(mut self, credential_name: T) -> Self {
         self.credential_name = credential_name.into();
         self
     }

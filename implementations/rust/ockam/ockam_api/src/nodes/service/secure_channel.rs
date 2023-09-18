@@ -13,6 +13,7 @@ use ockam::identity::{
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::AsyncTryClone;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_multiaddr::MultiAddr;
@@ -396,7 +397,7 @@ impl NodeManagerWorker {
         let addr = MultiAddr::from_str(&addr)
             .map_err(|_| ApiError::core(format!("Couldn't convert String to MultiAddr: {addr}")))?;
 
-        let connection = Connection::new(ctx, &addr);
+        let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), &addr);
         let connection_instance =
             NodeManager::connect(self.node_manager.clone(), connection).await?;
 
