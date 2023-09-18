@@ -14,7 +14,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, IncomingAccessControl, Route};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 
@@ -35,7 +34,7 @@ use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManager {
     pub async fn create_outlet(
-        &mut self,
+        &self,
         ctx: &Context,
         socket_addr: SocketAddr,
         worker_addr: Address,
@@ -54,7 +53,7 @@ impl NodeManager {
         let alias = alias.unwrap_or_else(random_alias);
 
         // Check that there is no entry in the registry with the same alias
-        if self.registry.outlets.contains_key(&alias) {
+        if self.registry.outlets.contains_key(&alias).await {
             let message = format!("A TCP outlet with alias '{alias}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
@@ -103,10 +102,13 @@ impl NodeManager {
         Ok(match res {
             Ok(_) => {
                 // TODO: Use better way to store outlets?
-                self.registry.outlets.insert(
-                    alias.clone(),
-                    OutletInfo::new(&socket_addr, Some(&worker_addr)),
-                );
+                self.registry
+                    .outlets
+                    .insert(
+                        alias.clone(),
+                        OutletInfo::new(&socket_addr, Some(&worker_addr)),
+                    )
+                    .await;
 
                 OutletStatus::new(socket_addr, worker_addr, alias, None)
             }
@@ -122,9 +124,9 @@ impl NodeManager {
         })
     }
 
-    pub async fn delete_outlet(&mut self, alias: &str) -> Result<Option<OutletInfo>> {
+    pub async fn delete_outlet(&self, alias: &str) -> Result<Option<OutletInfo>> {
         info!(%alias, "Handling request to delete outlet portal");
-        if let Some(deleted_outlet) = self.registry.outlets.remove(alias) {
+        if let Some(deleted_outlet) = self.registry.outlets.remove(alias).await {
             debug!(%alias, "Successfully removed outlet from node registry");
             if let Err(e) = self
                 .tcp_transport
@@ -144,9 +146,11 @@ impl NodeManager {
 
 impl NodeManagerWorker {
     pub(super) async fn get_inlets(&self, req: &RequestHeader) -> Response<InletList> {
-        let registry = &self.node_manager.read().await.registry.inlets;
+        let registry = &self.node_manager.registry.inlets;
         Response::ok(req).body(InletList::new(
             registry
+                .entries()
+                .await
                 .iter()
                 .map(|(alias, info)| {
                     InletStatus::new(
@@ -166,7 +170,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn create_inlet(
-        &mut self,
+        &self,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
@@ -176,7 +180,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn create_inlet_impl(
-        &mut self,
+        &self,
         req: &RequestHeader,
         create_inlet_req: CreateInlet<'_>,
         ctx: &Context,
@@ -198,10 +202,10 @@ impl NodeManagerWorker {
         }
 
         {
-            let registry = &self.node_manager.read().await.registry.inlets;
+            let registry = &self.node_manager.registry.inlets;
 
             // Check that there is no entry in the registry with the same alias
-            if registry.contains_key(&alias) {
+            if registry.contains_key(&alias).await {
                 return Err(Response::bad_request(
                     req,
                     &format!("A TCP inlet with alias '{alias}' already exists"),
@@ -211,6 +215,8 @@ impl NodeManagerWorker {
             // Check that there is no entry in the registry with the same TCP bind address
             if registry
                 .values()
+                .await
+                .iter()
                 .any(|inlet| inlet.bind_addr == listen_addr)
             {
                 return Err(Response::bad_request(
@@ -231,9 +237,12 @@ impl NodeManagerWorker {
                 .wait_for_outlet_duration()
                 .unwrap_or(Duration::from_secs(5));
 
-            let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), create_inlet_req.outlet_addr())
-                .with_authorized_identity(create_inlet_req.authorized())
-                .with_timeout(duration);
+            let connection = Connection::new(
+                Arc::new(ctx.async_try_clone().await?),
+                create_inlet_req.outlet_addr(),
+            )
+            .with_authorized_identity(create_inlet_req.authorized())
+            .with_timeout(duration);
 
             NodeManager::connect(self.node_manager.clone(), connection).await?
         };
@@ -256,8 +265,8 @@ impl NodeManagerWorker {
             .map(Resource::new)
             .unwrap_or(resources::INLET);
 
-        let mut node_manager = self.node_manager.write().await;
-        let projects = node_manager
+        let projects = self
+            .node_manager
             .cli_state
             .projects
             .list()
@@ -265,7 +274,7 @@ impl NodeManagerWorker {
         let projects = ProjectLookup::from_state(projects)
             .await
             .map_err(|e| Response::bad_request(req, &e.to_string()))?;
-        let check_credential = node_manager.enable_credential_checks;
+        let check_credential = self.node_manager.enable_credential_checks;
         let project_id = if check_credential {
             let pid = create_inlet_req
                 .outlet_addr()
@@ -277,7 +286,7 @@ impl NodeManagerWorker {
                         None
                     }
                 })
-                .or_else(|| Some(node_manager.trust_context().ok()?.id()));
+                .or_else(|| Some(self.node_manager.trust_context().ok()?.id()));
             if pid.is_none() {
                 return Err(Response::bad_request(
                     req,
@@ -289,13 +298,15 @@ impl NodeManagerWorker {
             None
         };
 
-        let access_control = node_manager
+        let access_control = self
+            .node_manager
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
             .await?;
 
         let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
 
-        let res = node_manager
+        let res = self
+            .node_manager
             .tcp_transport
             .create_inlet(listen_addr.clone(), outlet_route.clone(), options)
             .await;
@@ -307,10 +318,14 @@ impl NodeManagerWorker {
                 let listen_addr = socket_address.to_string();
 
                 // TODO: Use better way to store inlets?
-                node_manager.registry.inlets.insert(
-                    alias.clone(),
-                    InletInfo::new(&listen_addr, Some(&worker_addr), &outlet_route),
-                );
+                self.node_manager
+                    .registry
+                    .inlets
+                    .insert(
+                        alias.clone(),
+                        InletInfo::new(&listen_addr, Some(&worker_addr), &outlet_route),
+                    )
+                    .await;
                 if !connection_instance.normalized_addr.is_empty() {
                     debug! {
                         %alias,
@@ -335,7 +350,7 @@ impl NodeManagerWorker {
                         ctx,
                     );
                     session.set_replacer(repl);
-                    node_manager.add_session(session);
+                    self.node_manager.add_session(session);
                 }
 
                 Response::ok(req).body(InletStatus::new(
@@ -357,16 +372,15 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn delete_inlet<'a>(
-        &mut self,
+        &self,
         req: &RequestHeader,
         alias: &'a str,
     ) -> Result<Response<InletStatus>, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-
         info!(%alias, "Handling request to delete inlet portal");
-        if let Some(inlet_to_delete) = node_manager.registry.inlets.remove(alias) {
+        if let Some(inlet_to_delete) = self.node_manager.registry.inlets.remove(alias).await {
             debug!(%alias, "Successfully removed inlet from node registry");
-            match node_manager
+            match self
+                .node_manager
                 .tcp_transport
                 .stop_inlet(inlet_to_delete.worker_addr.clone())
                 .await
@@ -399,14 +413,12 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn show_inlet<'a>(
-        &mut self,
+        &self,
         req: &RequestHeader,
         alias: &'a str,
     ) -> Result<Response<InletStatus>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
-
         info!(%alias, "Handling request to show inlet portal");
-        if let Some(inlet_to_show) = node_manager.registry.inlets.get(alias) {
+        if let Some(inlet_to_show) = self.node_manager.registry.inlets.get(alias).await {
             debug!(%alias, "Inlet not found in node registry");
             Ok(Response::ok(req).body(InletStatus::new(
                 inlet_to_show.bind_addr.to_string(),
@@ -425,7 +437,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn create_outlet(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         create_outlet: CreateOutlet,
@@ -458,8 +470,8 @@ impl NodeManagerWorker {
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        let mut node_manager = self.inner().write().await;
-        match node_manager
+        match self
+            .node_manager
             .create_outlet(
                 ctx,
                 socket_addr,
@@ -479,8 +491,7 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         alias: &str,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-        match node_manager.delete_outlet(alias).await {
+        match self.node_manager.delete_outlet(alias).await {
             Ok(res) => match res {
                 Some(outlet_info) => Ok(Response::ok(req).body(OutletStatus::new(
                     outlet_info.socket_addr,
@@ -497,15 +508,13 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn show_outlet<'a>(
-        &mut self,
+    pub(super) async fn show_outlet(
+        &self,
         req: &RequestHeader,
-        alias: &'a str,
+        alias: &str,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
-
         info!(%alias, "Handling request to show outlet portal");
-        if let Some(outlet_to_show) = node_manager.registry.outlets.get(alias) {
+        if let Some(outlet_to_show) = self.node_manager.registry.outlets.get(alias).await {
             debug!(%alias, "Outlet not found in node registry");
             Ok(Response::ok(req).body(OutletStatus::new(
                 outlet_to_show.socket_addr,
@@ -523,7 +532,7 @@ impl NodeManagerWorker {
     }
 
     pub async fn list_outlets(&self) -> OutletList {
-        self.node_manager.read().await.list_outlets()
+        self.node_manager.list_outlets().await
     }
 }
 
@@ -534,7 +543,7 @@ impl NodeManagerWorker {
 /// again.
 #[allow(clippy::too_many_arguments)]
 fn replacer(
-    manager: Arc<RwLock<NodeManager>>,
+    manager: Arc<NodeManager>,
     connection_instance: ConnectionInstance,
     inlet_address: Address,
     bind: String,
@@ -552,7 +561,7 @@ fn replacer(
         let addr = addr.clone();
         let auth = auth.clone();
         let bind = bind.clone();
-        let node_manager_arc = manager.clone();
+        let node_manager = manager.clone();
         let access = access.clone();
         let ctx = ctx.clone();
         let connection_instance_arc = connection_instance_arc.clone();
@@ -566,7 +575,6 @@ fn replacer(
             debug!(%previous_addr, %addr, "creating new tcp inlet");
             // The future that recreates the inlet:
             let f = async {
-                let mut node_manager = node_manager_arc.write().await;
                 //stop/delete previous secure channels
                 for encryptor in &previous_connection_instance.secure_channel_encryptors {
                     let result = node_manager.delete_secure_channel(&ctx, encryptor).await;
@@ -593,7 +601,6 @@ fn replacer(
                 {
                     debug!("cannot stop inlet `{inlet_address}`: {error}");
                 }
-                drop(node_manager);
 
                 // Now a connection attempt is made:
                 let connection = Connection::new(ctx.clone(), &addr)
@@ -601,7 +608,7 @@ fn replacer(
                     .with_timeout(MAX_CONNECT_TIME);
 
                 let new_connection_instance =
-                    NodeManager::connect(node_manager_arc.clone(), connection).await?;
+                    NodeManager::connect(node_manager.clone(), connection).await?;
 
                 *connection_instance_arc.lock().unwrap() = new_connection_instance.clone();
 
@@ -612,8 +619,6 @@ fn replacer(
                         .ok_or_else(|| ApiError::core("invalid normalized address"))?,
                     suffix_route
                 ];
-
-                let node_manager = node_manager_arc.write().await;
 
                 let options = TcpInletOptions::new().with_incoming_access_control(access);
 

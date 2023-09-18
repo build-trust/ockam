@@ -4,8 +4,6 @@ use crate::nodes::models::secure_channel::CredentialExchangeMode;
 use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
-use ockam::compat::tokio::sync::RwLock;
-use ockam::identity::Identifier;
 use ockam_core::{async_trait, route, Error};
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, Protocol};
@@ -13,10 +11,11 @@ use ockam_node::Context;
 
 use ockam_core::compat::sync::Arc;
 use std::time::Duration;
+use ockam_identity::Identifier;
 
 /// Creates secure connection from existing transport
 pub(crate) struct SecureChannelInstantiator {
-    node_manager: Arc<RwLock<NodeManager>>,
+    node_manager: Arc<NodeManager>,
     timeout: Option<Duration>,
     context: Arc<Context>,
     authorized_identities: Option<Vec<Identifier>>,
@@ -25,7 +24,7 @@ pub(crate) struct SecureChannelInstantiator {
 impl SecureChannelInstantiator {
     pub(crate) fn new(
         context: Arc<Context>,
-        node_manager: Arc<RwLock<NodeManager>>,
+        node_manager: Arc<NodeManager>,
         timeout: Option<Duration>,
         authorized_identities: Option<Vec<Identifier>>,
     ) -> Self {
@@ -61,8 +60,8 @@ impl Instantiator for SecureChannelInstantiator {
             ))
         })?;
 
-        let mut node_manager = self.node_manager.write().await;
-        let sc = node_manager
+        let sc = self
+            .node_manager
             .create_secure_channel_impl(
                 //the transport route is needed to reach the secure channel listener
                 //since it can be in another node

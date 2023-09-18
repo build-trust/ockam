@@ -41,13 +41,13 @@ use super::NodeManagerWorker;
 
 impl NodeManager {
     pub(super) async fn start_credentials_service_impl<'a>(
-        &mut self,
+        &self,
         ctx: &Context,
         trust_context: TrustContext,
         addr: Address,
         oneway: bool,
     ) -> Result<()> {
-        if self.registry.credentials_services.contains_key(&addr) {
+        if self.registry.credentials_services.contains_key(&addr).await {
             return Err(ApiError::core("Credentials service exists at this address"));
         }
 
@@ -57,17 +57,23 @@ impl NodeManager {
 
         self.registry
             .credentials_services
-            .insert(addr.clone(), CredentialsServiceInfo::default());
+            .insert(addr.clone(), CredentialsServiceInfo::default())
+            .await;
 
         Ok(())
     }
 
     pub(super) async fn start_authenticated_service_impl(
-        &mut self,
+        &self,
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
-        if self.registry.authenticated_services.contains_key(&addr) {
+        if self
+            .registry
+            .authenticated_services
+            .contains_key(&addr)
+            .await
+        {
             return Err(ApiError::core(
                 "Authenticated service exists at this address",
             ));
@@ -78,17 +84,18 @@ impl NodeManager {
 
         self.registry
             .authenticated_services
-            .insert(addr, Default::default());
+            .insert(addr, Default::default())
+            .await;
 
         Ok(())
     }
 
     pub(super) async fn start_uppercase_service_impl(
-        &mut self,
+        &self,
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
-        if self.registry.uppercase_services.contains_key(&addr) {
+        if self.registry.uppercase_services.contains_key(&addr).await {
             return Err(ApiError::core("Uppercase service exists at this address"));
         }
 
@@ -96,17 +103,18 @@ impl NodeManager {
 
         self.registry
             .uppercase_services
-            .insert(addr.clone(), Default::default());
+            .insert(addr.clone(), Default::default())
+            .await;
 
         Ok(())
     }
 
     pub(super) async fn start_echoer_service_impl(
-        &mut self,
+        &self,
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
-        if self.registry.echoer_services.contains_key(&addr) {
+        if self.registry.echoer_services.contains_key(&addr).await {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
 
@@ -129,17 +137,14 @@ impl NodeManager {
 
         self.registry
             .echoer_services
-            .insert(addr, Default::default());
+            .insert(addr, Default::default())
+            .await;
 
         Ok(())
     }
 
-    pub(super) async fn start_hop_service_impl(
-        &mut self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
-        if self.registry.hop_services.contains_key(&addr) {
+    pub(super) async fn start_hop_service_impl(&self, ctx: &Context, addr: Address) -> Result<()> {
+        if self.registry.hop_services.contains_key(&addr).await {
             return Err(ApiError::core("Hop service exists at this address"));
         }
 
@@ -148,7 +153,10 @@ impl NodeManager {
 
         ctx.start_worker(addr.clone(), Hop).await?;
 
-        self.registry.hop_services.insert(addr, Default::default());
+        self.registry
+            .hop_services
+            .insert(addr, Default::default())
+            .await;
 
         Ok(())
     }
@@ -156,66 +164,65 @@ impl NodeManager {
 
 impl NodeManagerWorker {
     pub(super) async fn start_authenticated_service(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
         let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
-        node_manager
+        self.node_manager
             .start_authenticated_service_impl(ctx, addr)
             .await?;
         Ok(Response::ok(req))
     }
 
     pub(super) async fn start_uppercase_service(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
         let req_body: StartUppercaseServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
-        node_manager.start_uppercase_service_impl(ctx, addr).await?;
+        self.node_manager
+            .start_uppercase_service_impl(ctx, addr)
+            .await?;
         Ok(Response::ok(req))
     }
 
     pub(super) async fn start_echoer_service(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
         let req_body: StartEchoerServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
-        node_manager.start_echoer_service_impl(ctx, addr).await?;
+        self.node_manager
+            .start_echoer_service_impl(ctx, addr)
+            .await?;
         Ok(Response::ok(req))
     }
 
     pub(super) async fn start_hop_service(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
         let req_body: StartHopServiceRequest = dec.decode()?;
         let addr = req_body.addr.to_string().into();
-        node_manager.start_hop_service_impl(ctx, addr).await?;
+        self.node_manager.start_hop_service_impl(ctx, addr).await?;
         Ok(Response::ok(req))
     }
 
     pub(super) async fn start_credentials_service(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
         let body: StartCredentialsService = dec.decode()?;
         let addr: Address = body.address().into();
         let oneway = body.oneway();
@@ -231,20 +238,20 @@ impl NodeManagerWorker {
         let trust_context = TrustContext::new(
             encoded_identity.to_string(),
             Some(AuthorityService::new(
-                node_manager.identities().credentials(),
+                self.node_manager.identities().credentials(),
                 i.identifier().clone(),
                 None,
             )),
         );
 
-        node_manager
+        self.node_manager
             .start_credentials_service_impl(ctx, trust_context, addr, oneway)
             .await?;
 
         Ok(Response::ok(req))
     }
     pub(super) async fn start_kafka_outlet_service(
-        &mut self,
+        &self,
         context: &Context,
         request: &RequestHeader,
         dec: &mut Decoder<'_>,
@@ -265,11 +272,10 @@ impl NodeManagerWorker {
         .await?;
 
         {
-            let node_manager = self.node_manager.write().await;
             OutletManagerService::create(
                 context,
-                node_manager.secure_channels.clone(),
-                node_manager.trust_context()?.id(),
+                self.node_manager.secure_channels.clone(),
+                self.node_manager.trust_context()?.id(),
                 default_secure_channel_listener_flow_control_id,
             )
             .await?;
@@ -290,18 +296,21 @@ impl NodeManagerWorker {
         };
 
         {
-            let mut node_manager = self.node_manager.write().await;
-            node_manager.registry.kafka_services.insert(
-                body.address().into(),
-                KafkaServiceInfo::new(KafkaServiceKind::Outlet),
-            );
+            self.node_manager
+                .registry
+                .kafka_services
+                .insert(
+                    body.address().into(),
+                    KafkaServiceInfo::new(KafkaServiceKind::Outlet),
+                )
+                .await;
         }
 
         Ok(Response::ok(request).to_vec()?)
     }
 
     pub(super) async fn start_kafka_direct_service(
-        &mut self,
+        &self,
         context: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
@@ -338,7 +347,7 @@ impl NodeManagerWorker {
 
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn start_direct_kafka_service_impl(
-        &mut self,
+        &self,
         context: &Context,
         request: &RequestHeader,
         local_interceptor_address: Address,
@@ -356,11 +365,10 @@ impl NodeManagerWorker {
             })?;
 
         {
-            let node_manager = self.node_manager.write().await;
             OutletManagerService::create(
                 context,
-                node_manager.secure_channels.clone(),
-                node_manager.trust_context()?.id(),
+                self.node_manager.secure_channels.clone(),
+                self.node_manager.trust_context()?.id(),
                 default_secure_channel_listener_flow_control_id,
             )
             .await?;
@@ -379,9 +387,8 @@ impl NodeManagerWorker {
         let trust_context_id;
         let secure_channels;
         {
-            let node_manager = self.node_manager.read().await;
-            trust_context_id = node_manager.trust_context()?.id().to_string();
-            secure_channels = node_manager.secure_channels.clone();
+            trust_context_id = self.node_manager.trust_context()?.id().to_string();
+            secure_channels = self.node_manager.secure_channels.clone();
         }
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
@@ -426,18 +433,21 @@ impl NodeManagerWorker {
         .await?;
 
         {
-            let mut node_manager = self.node_manager.write().await;
-            node_manager.registry.kafka_services.insert(
-                local_interceptor_address,
-                KafkaServiceInfo::new(KafkaServiceKind::Direct),
-            );
+            self.node_manager
+                .registry
+                .kafka_services
+                .insert(
+                    local_interceptor_address,
+                    KafkaServiceInfo::new(KafkaServiceKind::Direct),
+                )
+                .await;
         }
 
         Ok(())
     }
 
     pub(super) async fn start_kafka_consumer_service(
-        &mut self,
+        &self,
         context: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
@@ -498,7 +508,7 @@ impl NodeManagerWorker {
 
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn start_kafka_service_impl(
-        &mut self,
+        &self,
         context: &Context,
         request: &RequestHeader,
         local_interceptor_address: Address,
@@ -516,19 +526,18 @@ impl NodeManagerWorker {
         let trust_context_id;
         let secure_channels;
         {
-            let node_manager = self.node_manager.read().await;
-            trust_context_id = node_manager.trust_context()?.id().to_string();
-            secure_channels = node_manager.secure_channels.clone();
+            trust_context_id = self.node_manager.trust_context()?.id().to_string();
+            secure_channels = self.node_manager.secure_channels.clone();
 
             if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
                 value
                     .cast::<ockam_multiaddr::proto::Project>()
                     .map(|p| p.to_string())
             }) {
-                let (_, project_identifier) = node_manager.resolve_project(&project).await?;
+                let (_, project_identifier) = self.node_manager.resolve_project(&project).await?;
                 // if we are using the project we need to allow safe communication based on the
                 // project identifier
-                node_manager
+                self.node_manager
                     .policies
                     .set_policy(
                         &resources::INLET,
@@ -581,11 +590,11 @@ impl NodeManagerWorker {
         .await?;
 
         {
-            let mut node_manager = self.node_manager.write().await;
-            node_manager
+            self.node_manager
                 .registry
                 .kafka_services
-                .insert(local_interceptor_address, KafkaServiceInfo::new(kind));
+                .insert(local_interceptor_address, KafkaServiceInfo::new(kind))
+                .await;
         }
 
         Ok(())
@@ -605,8 +614,13 @@ impl NodeManagerWorker {
             }
         };
         let address = body.address();
-        let mut node_manager = self.node_manager.write().await;
-        let res = match node_manager.registry.kafka_services.get(&address) {
+        let res = match self
+            .node_manager
+            .registry
+            .kafka_services
+            .get(&address)
+            .await
+        {
             None => {
                 return Err(Response::not_found(
                     req,
@@ -616,7 +630,11 @@ impl NodeManagerWorker {
             Some(e) => {
                 if kind.eq(e.kind()) {
                     ctx.stop_worker(address.clone()).await?;
-                    node_manager.registry.kafka_services.remove(&address);
+                    self.node_manager
+                        .registry
+                        .kafka_services
+                        .remove(&address)
+                        .await;
                     Response::ok(req)
                 } else {
                     error!(address = %address, "Service is not a kafka {}", kind.to_string());
@@ -642,8 +660,7 @@ impl NodeManagerWorker {
             )
             .to_vec()?);
         }
-        let n = self.node_manager.read().await;
-        let services = Self::list_services_impl(&n.registry);
+        let services = Self::list_services_impl(&self.node_manager.registry).await;
         let filtered = services
             .into_iter()
             .filter(|service| service.service_type == service_type)
@@ -654,46 +671,45 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn list_services(&self, req: &RequestHeader) -> Result<Vec<u8>> {
-        let n = self.node_manager.read().await;
-        let services = Self::list_services_impl(&n.registry);
+        let services = Self::list_services_impl(&self.node_manager.registry).await;
         Ok(Response::ok(req)
             .body(ServiceList::new(services))
             .to_vec()?)
     }
 
-    fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
+    async fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
-        registry.authenticated_services.keys().for_each(|addr| {
+        registry.authenticated_services.keys().await.iter().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::AUTHENTICATED_SERVICE,
             ))
         });
-        registry.uppercase_services.keys().for_each(|addr| {
+        registry.uppercase_services.keys().await.iter().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::UPPERCASE_SERVICE,
             ))
         });
-        registry.echoer_services.keys().for_each(|addr| {
+        registry.echoer_services.keys().await.iter().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::ECHO_SERVICE,
             ))
         });
-        registry.hop_services.keys().for_each(|addr| {
+        registry.hop_services.keys().await.iter().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::HOP_SERVICE,
             ))
         });
-        registry.credentials_services.keys().for_each(|addr| {
+        registry.credentials_services.keys().await.iter().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::CREDENTIALS_SERVICE,
             ))
         });
-        registry.kafka_services.iter().for_each(|(address, info)| {
+        registry.kafka_services.iter().await.iter().for_each(|(address, info)| {
             list.push(ServiceStatus::new(
                 address.address(),
                 match info.kind() {

@@ -19,8 +19,7 @@ async fn tcp_outlet_delete_impl<R: Runtime>(app: AppHandle<R>, alias: String) ->
     debug!(%alias, "Deleting a TCP outlet");
     let app_state = app.state::<AppState>();
     let node_manager_worker = app_state.node_manager_worker().await;
-    let mut node_manager = node_manager_worker.inner().write().await;
-    match node_manager.delete_outlet(&alias).await {
+    match node_manager_worker.node_manager.delete_outlet(&alias).await {
         Ok(_) => {
             info!(%alias, "TCP outlet deleted");
             app_state.model_mut(|m| m.delete_tcp_outlet(&alias)).await?;

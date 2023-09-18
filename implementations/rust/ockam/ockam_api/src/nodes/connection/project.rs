@@ -4,7 +4,6 @@ use crate::nodes::models::secure_channel::CredentialExchangeMode;
 use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, try_address_to_multiaddr};
 
-use ockam::compat::tokio::sync::RwLock;
 use ockam_core::{async_trait, Error};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{Match, Protocol};
@@ -15,7 +14,7 @@ use std::time::Duration;
 
 /// Creates a secure connection to the project using provided credential
 pub(crate) struct ProjectInstantiator {
-    node_manager: Arc<RwLock<NodeManager>>,
+    node_manager: Arc<NodeManager>,
     timeout: Option<Duration>,
     credential_name: Option<String>,
     identity_name: Option<String>,
@@ -25,7 +24,7 @@ pub(crate) struct ProjectInstantiator {
 impl ProjectInstantiator {
     pub fn new(
         context: Arc<Context>,
-        node_manager: Arc<RwLock<NodeManager>>,
+        node_manager: Arc<NodeManager>,
         timeout: Option<Duration>,
         credential_name: Option<String>,
         identity_name: Option<String>,
@@ -62,12 +61,11 @@ impl Instantiator for ProjectInstantiator {
             .cast::<Project>()
             .ok_or_else(|| ApiError::core("invalid project protocol in multiaddr"))?;
 
-        let mut node_manager = self.node_manager.write().await;
         let (project_multiaddr, project_identifier) =
-            node_manager.resolve_project(&project).await?;
+            self.node_manager.resolve_project(&project).await?;
 
         debug!(addr = %project_multiaddr, "creating secure channel");
-        let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)
+        let tcp = multiaddr_to_route(&project_multiaddr, &self.node_manager.tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
@@ -75,7 +73,8 @@ impl Instantiator for ProjectInstantiator {
                 ))
             })?;
 
-        let sc = node_manager
+        let sc = self
+            .node_manager
             .create_secure_channel_impl(
                 tcp.route,
                 Some(vec![project_identifier]),
@@ -86,8 +85,6 @@ impl Instantiator for ProjectInstantiator {
                 self.credential_name.clone(),
             )
             .await?;
-
-        drop(node_manager);
 
         // when creating a secure channel we want the route to pass through that
         // ignoring previous steps, since they will be implicit

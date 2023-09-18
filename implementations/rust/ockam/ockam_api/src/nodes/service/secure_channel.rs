@@ -13,9 +13,9 @@ use ockam::identity::{
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, RequestHeader, Response};
-use ockam_core::AsyncTryClone;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -39,7 +39,7 @@ use super::NodeManagerWorker;
 
 impl NodeManager {
     pub(crate) async fn create_secure_channel_internal(
-        &mut self,
+        &self,
         identifier: &Identifier,
         ctx: &Context,
         sc_route: Route,
@@ -81,13 +81,14 @@ impl NodeManager {
 
         self.registry
             .secure_channels
-            .insert(sc_route, sc.clone(), authorized_identifiers);
+            .insert(sc_route, sc.clone(), authorized_identifiers)
+            .await;
 
         Ok(sc)
     }
 
     pub async fn create_secure_channel_to(
-        &mut self,
+        &self,
         ctx: &Context,
         route: Route,
         to: Identifier,
@@ -107,7 +108,7 @@ impl NodeManager {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn create_monitored_secure_channel(
-        &mut self,
+        &self,
         ctx: &Context,
         address: MultiAddr,
         authorized_identifiers: Option<Vec<Identifier>>,
@@ -143,7 +144,7 @@ impl NodeManager {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn create_secure_channel_impl(
-        &mut self,
+        &self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<Identifier>>,
         credential_exchange_mode: CredentialExchangeMode,
@@ -210,7 +211,7 @@ impl NodeManager {
     }
 
     pub(super) async fn create_secure_channel_listener_impl(
-        &mut self,
+        &self,
         address: Address,
         authorized_identifiers: Option<Vec<Identifier>>,
         vault_name: Option<String>,
@@ -243,10 +244,13 @@ impl NodeManager {
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
             .await?;
 
-        self.registry.secure_channel_listeners.insert(
-            address.clone(),
-            SecureChannelListenerInfo::new(listener.clone()),
-        );
+        self.registry
+            .secure_channel_listeners
+            .insert(
+                address.clone(),
+                SecureChannelListenerInfo::new(listener.clone()),
+            )
+            .await;
 
         // TODO: Clean
         // Add Echoer, Uppercase and Cred Exch as a consumer by default
@@ -269,7 +273,7 @@ impl NodeManager {
     /// Build a SecureChannels struct for a specific vault if one is specified
     /// Otherwise return the shared SecureChannels
     pub(crate) async fn build_secure_channels(
-        &mut self,
+        &self,
         vault_name: Option<String>,
     ) -> Result<Arc<SecureChannels>> {
         if vault_name.is_none() {
@@ -297,11 +301,14 @@ impl NodeManager {
         }
     }
 
-    async fn get_identities(&mut self, vault_name: Option<String>) -> Result<Arc<Identities>> {
+    async fn get_identities(&self, vault_name: Option<String>) -> Result<Arc<Identities>> {
         self.node_identities().get_identities(vault_name).await
     }
 
-    async fn get_secure_channels_vault(&mut self, vault_name: Option<String>) -> Result<Vault> {
+    async fn get_secure_channels_vault(
+        &self,
+        vault_name: Option<String>,
+    ) -> Result<Vault> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
             Ok(existing_vault)
@@ -310,34 +317,31 @@ impl NodeManager {
         }
     }
 
-    pub(super) async fn delete_secure_channel(
-        &mut self,
-        ctx: &Context,
-        addr: &Address,
-    ) -> Result<()> {
+    pub(super) async fn delete_secure_channel(&self, ctx: &Context, addr: &Address) -> Result<()> {
         debug!(%addr, "deleting secure channel");
         self.secure_channels.stop_secure_channel(ctx, addr).await?;
-        self.registry.secure_channels.remove_by_addr(addr);
+        self.registry.secure_channels.remove_by_addr(addr).await;
         Ok(())
     }
 
     pub(super) async fn delete_secure_channel_listener_impl(
-        &mut self,
+        &self,
         ctx: &Context,
         addr: &Address,
     ) -> Option<SecureChannelListenerInfo> {
         debug!("deleting secure channel listener: {addr}");
         let _ = ctx.stop_worker(addr.clone()).await;
-        self.registry.secure_channel_listeners.remove(addr)
+        self.registry.secure_channel_listeners.remove(addr).await
     }
 }
 
 impl NodeManagerWorker {
     pub(super) async fn list_secure_channels(&self, req: &RequestHeader) -> Response<Vec<String>> {
-        let registry = &self.node_manager.read().await.registry.secure_channels;
+        let registry = &self.node_manager.registry.secure_channels;
         Response::ok(req).body(
             registry
                 .list()
+                .await
                 .iter()
                 .map(|v| v.sc().encryptor_address().to_string())
                 .collect(),
@@ -348,15 +352,12 @@ impl NodeManagerWorker {
         &self,
         req: &RequestHeader,
     ) -> Response<SecureChannelListenersList> {
-        let registry = &self
-            .node_manager
-            .read()
-            .await
-            .registry
-            .secure_channel_listeners;
+        let registry = &self.node_manager.registry.secure_channel_listeners;
         Response::ok(req).body(SecureChannelListenersList::new(
             registry
                 .values()
+                .await
+                .iter()
                 .map(ShowSecureChannelListenerResponse::new)
                 .collect(),
         ))
@@ -401,10 +402,9 @@ impl NodeManagerWorker {
         let connection_instance =
             NodeManager::connect(self.node_manager.clone(), connection).await?;
 
-        let mut node_manager = self.node_manager.write().await;
         let result = multiaddr_to_route(
             &connection_instance.normalized_addr,
-            &node_manager.tcp_transport,
+            &self.node_manager.tcp_transport,
         )
         .await
         .ok_or_else(|| {
@@ -414,7 +414,8 @@ impl NodeManagerWorker {
             ))
         })?;
 
-        let sc = node_manager
+        let sc = self
+            .node_manager
             .create_secure_channel_impl(
                 result.route,
                 authorized_identifiers,
@@ -435,7 +436,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn delete_secure_channel(
-        &mut self,
+        &self,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
@@ -443,8 +444,7 @@ impl NodeManagerWorker {
         let body: DeleteSecureChannelRequest = dec.decode()?;
         let addr = Address::from(body.channel);
         info!(%addr, "Handling request to delete secure channel");
-        let mut node_manager = self.node_manager.write().await;
-        let res = match node_manager.delete_secure_channel(ctx, &addr).await {
+        let res = match self.node_manager.delete_secure_channel(ctx, &addr).await {
             Ok(()) => {
                 trace!(%addr, "Removed secure channel");
                 Some(addr)
@@ -458,32 +458,31 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn show_secure_channel(
-        &mut self,
+        &self,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response<ShowSecureChannelResponse>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelRequest = dec.decode()?;
-
         let sc_address = Address::from(body.channel);
 
         debug!(%sc_address, "On show secure channel");
 
-        let info = node_manager
+        let info = self
+            .node_manager
             .registry
             .secure_channels
-            .get_by_addr(&sc_address);
+            .get_by_addr(&sc_address)
+            .await;
 
         Ok(Response::ok(req).body(ShowSecureChannelResponse::new(info)))
     }
 
     pub(super) async fn create_secure_channel_listener(
-        &mut self,
+        &self,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<Response<()>, Response<Error>> {
-        let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelListenerRequest {
             addr,
             authorized_identifiers,
@@ -512,7 +511,7 @@ impl NodeManagerWorker {
             ));
         }
 
-        node_manager
+        self.node_manager
             .create_secure_channel_listener_impl(addr, authorized_identifiers, vault, identity, ctx)
             .await?;
 
@@ -522,7 +521,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn delete_secure_channel_listener(
-        &mut self,
+        &self,
         ctx: &Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
@@ -530,9 +529,9 @@ impl NodeManagerWorker {
         let body: DeleteSecureChannelListenerRequest = dec.decode()?;
         let addr = Address::from(body.addr);
         info!(%addr, "Handling request to delete secure channel listener");
-        let mut node_manager = self.node_manager.write().await;
         Ok(
-            match node_manager
+            match self
+                .node_manager
                 .delete_secure_channel_listener_impl(ctx, &addr)
                 .await
             {
@@ -555,20 +554,23 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn show_secure_channel_listener<'a>(
-        &mut self,
+        &self,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        let node_manager = self.node_manager.read().await;
         let body: ShowSecureChannelListenerRequest = dec.decode()?;
-
         let address = Address::from(body.addr);
-
         debug!(%address, "On show secure channel listener");
 
-        match node_manager.registry.secure_channel_listeners.get(&address) {
+        match self
+            .node_manager
+            .registry
+            .secure_channel_listeners
+            .get(&address)
+            .await
+        {
             Some(info) => Ok(Response::ok(req)
-                .body(ShowSecureChannelListenerResponse::new(info))
+                .body(ShowSecureChannelListenerResponse::new(&info))
                 .to_vec()?),
             None => Ok(Response::not_found(
                 req,
