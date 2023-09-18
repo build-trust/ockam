@@ -29,10 +29,10 @@ pub(crate) async fn load_model_state(
     if !cli_state.is_enrolled().unwrap_or(false) {
         return;
     }
-    let mut node_manager = node_manager_worker.inner().write().await;
     for tcp_outlet in model_state.get_tcp_outlets() {
         debug!(worker_addr = %tcp_outlet.worker_addr, "Restoring outlet");
-        let _ = node_manager
+        let _ = node_manager_worker
+            .node_manager
             .create_outlet(
                 &context,
                 tcp_outlet.socket_addr,

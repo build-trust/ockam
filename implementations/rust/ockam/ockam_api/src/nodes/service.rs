@@ -28,7 +28,6 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::compat::asynchronous::RwLock;
 
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
@@ -139,13 +138,20 @@ impl NodeManager {
         &self.tcp_transport
     }
 
-    pub(super) fn list_outlets(&self) -> OutletList {
-        let outlets = self.registry.outlets.clone();
+    pub(super) async fn list_outlets(&self) -> OutletList {
         OutletList::new(
-            outlets
+            self.registry
+                .outlets
+                .entries()
+                .await
                 .iter()
                 .map(|(alias, info)| {
-                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), alias, None)
+                    OutletStatus::new(
+                        info.socket_addr.clone(),
+                        info.worker_addr.clone(),
+                        alias,
+                        None,
+                    )
                 })
                 .collect(),
         )
@@ -213,23 +219,22 @@ impl NodeManager {
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
-    node_manager: Arc<RwLock<NodeManager>>,
+    pub node_manager: Arc<NodeManager>,
 }
 
 impl NodeManagerWorker {
     pub async fn new(node_manager: NodeManager) -> Result<Self> {
         Ok(NodeManagerWorker {
-            node_manager: Arc::new(RwLock::new(node_manager)),
+            node_manager: Arc::new(node_manager),
         })
     }
 
-    pub fn inner(&self) -> &Arc<RwLock<NodeManager>> {
+    pub fn inner(&self) -> &Arc<NodeManager> {
         &self.node_manager
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        let nm = self.node_manager.read().await;
-        nm.medic_handle.stop_medic(ctx).await?;
+        self.node_manager.medic_handle.stop_medic(ctx).await?;
         for addr in DefaultAddress::iter() {
             ctx.stop_worker(addr).await?;
         }
@@ -238,8 +243,7 @@ impl NodeManagerWorker {
     }
 
     pub async fn make_controller_node_client(&self) -> Result<Controller> {
-        let nm = self.node_manager.read().await;
-        nm.make_controller_node_client().await
+        self.node_manager.make_controller_node_client().await
     }
 }
 
@@ -455,7 +459,7 @@ impl NodeManager {
     }
 
     async fn initialize_defaults(
-        &mut self,
+        &self,
         ctx: &Context,
         api_flow_control_id: &FlowControlId,
     ) -> Result<()> {
@@ -500,19 +504,13 @@ impl NodeManager {
     /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
     /// Returns [`ConnectionInstance`]
     pub(crate) async fn connect(
-        node_manager: Arc<RwLock<NodeManager>>,
+        node_manager: Arc<NodeManager>,
         connection: Connection,
     ) -> Result<ConnectionInstance> {
         debug!("connecting to {}", &connection.addr);
         let context = connection.ctx.clone();
 
-        let tcp_transport = node_manager
-            .clone()
-            .read()
-            .await
-            .tcp_transport
-            .async_try_clone()
-            .await?;
+        let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
 
         let connection_instance = ConnectionInstanceBuilder::new(connection.addr.clone())
             .instantiate(ProjectInstantiator::new(
@@ -602,7 +600,7 @@ impl NodeManagerWorker {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
             (Get, ["node"]) => {
-                let node_name = &self.node_manager.read().await.node_name;
+                let node_name = &self.node_manager.node_name();
                 Response::ok(req)
                     .body(NodeStatus::new(
                         node_name,
@@ -775,32 +773,20 @@ impl NodeManagerWorker {
             }
             (Post, ["policy", resource, action]) => encode_request_result(
                 self.node_manager
-                    .read()
-                    .await
                     .add_policy(resource, action, req, dec)
                     .await,
             )?,
-            (Get, ["policy", resource]) => encode_request_result(
-                self.node_manager
-                    .read()
-                    .await
-                    .list_policies(req, resource)
-                    .await,
-            )?,
+            (Get, ["policy", resource]) => {
+                encode_request_result(self.node_manager.list_policies(req, resource).await)?
+            }
             (Get, ["policy", resource, action]) => self
                 .node_manager
-                .read()
-                .await
                 .get_policy(req, resource, action)
                 .await?
                 .either(Response::to_vec, Response::to_vec)?,
-            (Delete, ["policy", resource, action]) => encode_request_result(
-                self.node_manager
-                    .read()
-                    .await
-                    .del_policy(req, resource, action)
-                    .await,
-            )?,
+            (Delete, ["policy", resource, action]) => {
+                encode_request_result(self.node_manager.del_policy(req, resource, action).await)?
+            }
 
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
@@ -822,11 +808,10 @@ impl Worker for NodeManagerWorker {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let mut node_manager = self.node_manager.write().await;
-        let api_flow_control_id = node_manager.api_transport_flow_control_id.clone();
+        let api_flow_control_id = self.node_manager.api_transport_flow_control_id.clone();
 
-        if !node_manager.skip_defaults {
-            node_manager
+        if !self.node_manager.skip_defaults {
+            self.node_manager
                 .initialize_defaults(ctx, &api_flow_control_id)
                 .await?;
         }
@@ -835,7 +820,7 @@ impl Worker for NodeManagerWorker {
         // started unconditionally on every node. It's used for liveliness checks.
         ctx.flow_controls()
             .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
-        node_manager
+        self.node_manager
             .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
@@ -848,8 +833,7 @@ impl Worker for NodeManagerWorker {
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let node_manager = self.node_manager.read().await;
-        node_manager.medic_handle.stop_medic(ctx).await
+        self.node_manager.medic_handle.stop_medic(ctx).await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {

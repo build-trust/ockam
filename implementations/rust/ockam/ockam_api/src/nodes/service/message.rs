@@ -31,8 +31,8 @@ impl SendMessage {
 }
 
 mod node {
-    use std::sync::Arc;
     use minicbor::Decoder;
+    use std::sync::Arc;
     use tracing::trace;
 
     use ockam_core::api::{RequestHeader, Response};

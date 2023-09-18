@@ -72,7 +72,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn get_tcp_connections(&self, req: &RequestHeader) -> Response<TransportList> {
-        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+        let tcp_transport = &self.node_manager.tcp_transport;
         let map = |info: &TcpSenderInfo| {
             TransportStatus::new(ApiTransport {
                 tt: TransportType::Tcp,
@@ -99,7 +99,7 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         address: String,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
-        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+        let tcp_transport = &self.node_manager.tcp_transport;
         let sender = match Self::find_connection(tcp_transport, address.to_string()) {
             None => {
                 return Err(Response::not_found(
@@ -123,7 +123,7 @@ impl NodeManagerWorker {
     }
 
     pub(super) async fn get_tcp_listeners(&self, req: &RequestHeader) -> Response<TransportList> {
-        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+        let tcp_transport = &self.node_manager.tcp_transport;
 
         let map = |info: &TcpListenerInfo| {
             TransportStatus::new(ApiTransport {
@@ -151,7 +151,7 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         address: String,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
-        let tcp_transport = &self.node_manager.read().await.tcp_transport;
+        let tcp_transport = &self.node_manager.tcp_transport;
 
         let listener = match Self::find_listener(tcp_transport, address.to_string()) {
             None => {
@@ -181,7 +181,6 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
         ctx: &Context,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
         let CreateTcpConnection { addr, .. } = dec.decode()?;
 
         info!("Handling request to create a new TCP connection: {}", addr);
@@ -191,12 +190,13 @@ impl NodeManagerWorker {
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in node_manager.registry.hop_services.keys() {
+        for hop in self.node_manager.registry.hop_services.keys().await {
             ctx.flow_controls()
                 .add_consumer(hop.clone(), &options.flow_control_id());
         }
 
-        let res = node_manager
+        let res = self
+            .node_manager
             .tcp_transport
             .connect(&socket_addr, options)
             .await;
@@ -232,7 +232,6 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
         let CreateTcpListener { addr, .. } = dec.decode()?;
 
         use {super::TransportType::*, TransportMode::*};
@@ -240,7 +239,7 @@ impl NodeManagerWorker {
         info!("Handling request to create a new tcp listener: {}", addr);
 
         let options = TcpListenerOptions::new();
-        let res = node_manager.tcp_transport.listen(&addr, options).await;
+        let res = self.node_manager.tcp_transport.listen(&addr, options).await;
 
         let response = match res {
             Ok(listener) => {
@@ -271,14 +270,14 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response<()>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
         let body: DeleteTransport = dec.decode()?;
 
         info!("Handling request to stop listener: {}", body.address);
 
         let sender_address = match body.address.parse::<SocketAddr>() {
             Ok(socket_address) => {
-                match node_manager
+                match self
+                    .node_manager
                     .tcp_transport
                     .registry()
                     .get_all_sender_workers()
@@ -298,7 +297,8 @@ impl NodeManagerWorker {
             Err(_err) => body.address.into(),
         };
 
-        match node_manager
+        match self
+            .node_manager
             .tcp_transport
             .disconnect(sender_address.clone())
             .await
@@ -316,14 +316,14 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
     ) -> Result<Response<()>, Response<Error>> {
-        let node_manager = self.node_manager.read().await;
         let body: DeleteTransport = dec.decode()?;
 
         info!("Handling request to stop listener: {}", body.address);
 
         let listener_address = match body.address.parse::<SocketAddr>() {
             Ok(socket_address) => {
-                match node_manager
+                match self
+                    .node_manager
                     .tcp_transport
                     .registry()
                     .get_all_listeners()
@@ -343,7 +343,8 @@ impl NodeManagerWorker {
             Err(_err) => body.address.into(),
         };
 
-        match node_manager
+        match self
+            .node_manager
             .tcp_transport
             .stop_listener(&listener_address)
             .await
