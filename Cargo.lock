@@ -1657,6 +1657,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cace84e55f07e7301bae1c519df89cdad8cc3cd868413d3fdbdeca9ff3db484"
 
 [[package]]
+name = "crc32c"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8f48d60e5b4d2c53d5c2b1d8a58c849a70ae5e5509b08a48d047e3b65714a74"
+dependencies = [
+ "rustc_version 0.4.0",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3784,12 +3793,13 @@ dependencies = [
 
 [[package]]
 name = "kafka-protocol"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e454745a570c88acb1988a751a488189049c0b53cf222078b4eb85f52eb39c64"
+checksum = "6f53e3cbd517fb04d06ed9359a6ec9b85e09bc9cb40a42fef9ef67f494372544"
 dependencies = [
  "bytes 1.5.0",
  "crc",
+ "crc32c",
  "derive_builder",
  "flate2",
  "indexmap 2.0.0",
