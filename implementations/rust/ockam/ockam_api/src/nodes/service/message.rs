@@ -31,11 +31,12 @@ impl SendMessage {
 }
 
 mod node {
+    use std::sync::Arc;
     use minicbor::Decoder;
     use tracing::trace;
 
     use ockam_core::api::{RequestHeader, Response};
-    use ockam_core::{self, Result};
+    use ockam_core::{self, AsyncTryClone, Result};
     use ockam_node::Context;
 
     use crate::error::ApiError;
@@ -57,7 +58,7 @@ mod node {
             let msg = req_body.message.to_vec();
             let msg_length = msg.len();
 
-            let connection = Connection::new(ctx, &multiaddr);
+            let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), &multiaddr);
             let connection_instance =
                 NodeManager::connect(self.node_manager.clone(), connection).await?;
 
