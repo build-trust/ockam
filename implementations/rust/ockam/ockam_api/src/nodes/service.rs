@@ -8,11 +8,13 @@ use std::path::PathBuf;
 use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
+use ockam::identity::SecureClient;
+use ockam::identity::TrustContext;
 use ockam::identity::Vault;
 use ockam::identity::{
     Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
 };
-use ockam::identity::{CredentialsServerModule, TrustContext};
+use ockam::identity::{CredentialsServerModule};
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
@@ -25,7 +27,6 @@ use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
-use ockam_identity::{SecureClient};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 
@@ -163,9 +164,9 @@ impl NodeManager {
 
     pub async fn make_authority_node_client(
         &self,
-        authority_identifier: IdentityIdentifier,
+        authority_identifier: Identifier,
         authority_multiaddr: MultiAddr,
-        caller_identifier: IdentityIdentifier,
+        caller_identifier: Identifier,
     ) -> Result<AuthorityNode> {
         SecureClients::authority(
             &self.tcp_transport,
@@ -179,9 +180,9 @@ impl NodeManager {
 
     pub async fn make_project_node_client(
         &self,
-        project_identifier: IdentityIdentifier,
+        project_identifier: Identifier,
         project_multiaddr: MultiAddr,
-        caller_identifier: IdentityIdentifier,
+        caller_identifier: Identifier,
     ) -> Result<ProjectNode> {
         SecureClients::project(
             &self.tcp_transport,
@@ -195,9 +196,9 @@ impl NodeManager {
 
     pub async fn make_secure_client(
         &self,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         multiaddr: MultiAddr,
-        caller_identifier: IdentityIdentifier,
+        caller_identifier: Identifier,
     ) -> Result<SecureClient> {
         SecureClients::generic(
             &self.tcp_transport,

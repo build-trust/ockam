@@ -8,8 +8,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, Result, Route};
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 
-use crate::{Credential, Identifier, SecureChannels, SecureClient};
 use crate::models::CredentialAndPurposeKey;
+use crate::{Identifier, SecureChannels, SecureClient};
 
 /// Trait for retrieving a credential for a given identity
 #[async_trait]
@@ -66,7 +66,7 @@ impl RemoteCredentialsRetriever {
         }
     }
 
-    fn make_secure_client(&self, for_identity: &IdentityIdentifier) -> SecureClient {
+    fn make_secure_client(&self, for_identity: &Identifier) -> SecureClient {
         SecureClient::new(
             self.secure_channels.clone(),
             self.issuer.route.clone(),

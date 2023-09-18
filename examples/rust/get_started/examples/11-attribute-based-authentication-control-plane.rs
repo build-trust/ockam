@@ -7,11 +7,12 @@ use ockam::identity::{
 };
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions};
-use ockam_api::authenticator::enrollment_tokens::TokenAcceptorClient;
+use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
-use ockam_node::RpcClient;
 use ockam_transport_tcp::TcpTransportExtension;
 use std::sync::Arc;
+use ockam_api::cloud::SecureClients;
+use ockam_multiaddr::MultiAddr;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -55,31 +56,22 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create an Identity for the control node
     let control_plane = node.create_identity().await?;
 
-    // 2. create a secure channel to the authority
+    // 2. create a secure channel to the authority node to present the token
     //    to retrieve the node credential
+    // create a secure channel to the authority
+    // when creating the channel we check that the opposite side is indeed presenting the authority identity
+    let authority_node = SecureClients::authority(
+        &tcp,
+        node.secure_channels().clone(),
+        control_plane.clone(),
+        MultiAddr::try_from("ip/127.0.0.1/tcp/5000/secure/api")?,
+        node.create_identity().await?,
+    )
+        .await?;
+    authority_node.present_token(node.context(), token).await.unwrap();
 
     // Import the authority identity and route from the information file
     let project = import_project(project_information_path, node.identities()).await?;
-
-    let tcp_route = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
-    let options = SecureChannelOptions::new()
-        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.authority_identifier()]));
-
-    // create a secure channel to the authority
-    // when creating the channel we check that the opposite side is indeed presenting the authority identity
-    let secure_channel = node
-        .create_secure_channel(&control_plane, tcp_route.route, options)
-        .await?;
-
-    let token_acceptor = TokenAcceptorClient::new(
-        RpcClient::new(
-            route![secure_channel, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
-            node.context(),
-        )
-        .await?,
-    );
-    token_acceptor.present_token(&token).await?;
-
     let tcp_project_session = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
 
     // Create a trust context that will be used to authenticate credential exchanges

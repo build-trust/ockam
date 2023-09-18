@@ -8,6 +8,7 @@ use std::sync::Arc;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
+use ockam::identity::{Identifier, SecureClient};
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait,
@@ -18,7 +19,6 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{NodeManager, NODEMANAGER_ADDR};
 use ockam_core::env::get_env_with_default;
-use ockam_identity::{IdentityIdentifier, SecureClient};
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::CreateCommand;
@@ -285,7 +285,7 @@ impl LocalNode {
 
     pub async fn make_project_node_client(
         &self,
-        project_identifier: IdentityIdentifier,
+        project_identifier: Identifier,
         project_address: MultiAddr,
         caller_identity_name: Option<String>,
     ) -> miette::Result<ProjectNode> {
@@ -304,7 +304,7 @@ impl LocalNode {
 
     pub async fn make_authority_node_client(
         &self,
-        authority_identifier: IdentityIdentifier,
+        authority_identifier: Identifier,
         authority_address: MultiAddr,
         caller_identity_name: Option<String>,
     ) -> miette::Result<AuthorityNode> {
@@ -323,7 +323,7 @@ impl LocalNode {
 
     pub async fn make_secure_client(
         &self,
-        identifier: IdentityIdentifier,
+        identifier: Identifier,
         address: MultiAddr,
         caller_identity_name: Option<String>,
     ) -> miette::Result<SecureClient> {

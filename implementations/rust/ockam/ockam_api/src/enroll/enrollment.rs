@@ -2,9 +2,10 @@ use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
 use crate::cloud::HasSecureClient;
 use crate::DefaultAddress;
 use miette::IntoDiagnostic;
+use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::{OneTimeCode, SecureClient};
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::async_trait;
-use ockam_identity::{Credential, OneTimeCode, SecureClient};
 use ockam_node::Context;
 
 const TARGET: &str = "ockam_api::cloud::enroll";
@@ -32,7 +33,7 @@ pub trait Enrollment {
 
     async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> miette::Result<()>;
 
-    async fn issue_credential(&self, ctx: &Context) -> miette::Result<Credential>;
+    async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey>;
 }
 
 #[async_trait]
@@ -61,7 +62,7 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
         self.get_secure_client().present_token(ctx, token).await
     }
 
-    async fn issue_credential(&self, ctx: &Context) -> miette::Result<Credential> {
+    async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         self.get_secure_client().issue_credential(ctx).await
     }
 }
@@ -111,7 +112,7 @@ impl Enrollment for SecureClient {
             .into_diagnostic()
     }
 
-    async fn issue_credential(&self, ctx: &Context) -> miette::Result<Credential> {
+    async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         let req = Request::post("/");
         trace!(target: TARGET, "getting a credential");
         self.ask(ctx, DefaultAddress::CREDENTIAL_ISSUER, req)
