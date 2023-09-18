@@ -1,7 +1,6 @@
 use arboard::Clipboard;
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use tauri::async_runtime::spawn;
 use tauri::menu::{
     IconMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, NativeIcon, Submenu,
@@ -15,7 +14,7 @@ use ockam_api::cloud::share::{ReceivedInvitation, SentInvitation, ServiceAccessD
 
 use super::state::SyncInvitationsState;
 use crate::app::AppState;
-use crate::invitations::state::AcceptedInvitations;
+use crate::invitations::state::{AcceptedInvitations, Inlet};
 
 pub const INVITATIONS_WINDOW_ID: &str = "invitations_creation";
 
@@ -171,12 +170,7 @@ fn add_accepted_menus<R: Runtime>(
         submenu_builder = invitations
             .into_iter()
             .map(|(invitation_id, access_details, inlet)| {
-                accepted_invite_menu(
-                    app_handle,
-                    invitation_id,
-                    access_details,
-                    inlet.map(|i| &i.socket_addr),
-                )
+                accepted_invite_menu(app_handle, invitation_id, access_details, inlet)
             })
             .fold(submenu_builder, |menu, submenu| menu.item(&submenu));
         submenus.push(
@@ -190,32 +184,57 @@ fn add_accepted_menus<R: Runtime>(
 
 fn accepted_invite_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
-    _invitation_id: &str,
+    invitation_id: &str,
     access_details: &ServiceAccessDetails,
-    inlet_socket_addr: Option<&SocketAddr>,
+    inlet: Option<&Inlet>,
 ) -> Submenu<R> {
     let service_name = access_details
         .service_name()
         .unwrap_or_else(|_| "Unknown service name".to_string());
     let mut submenu_builder = SubmenuBuilder::new(app_handle, &service_name);
-    submenu_builder = match inlet_socket_addr {
-        Some(s) => submenu_builder.items(&[
-            &IconMenuItemBuilder::new(format!("Available at: {s}"))
-                .enabled(false)
-                .native_icon(NativeIcon::StatusAvailable)
-                .build(app_handle),
-            &IconMenuItemBuilder::with_id(
-                format!("invitation-accepted-copy-{s}"),
-                format!("Copy {s}"),
-            )
-            .icon(Icon::Raw(
-                include_bytes!("../../icons/clipboard2.png").to_vec(),
-            ))
-            .build(app_handle),
-        ]),
+    submenu_builder = match &inlet {
+        Some(i) => {
+            let socket_addr = i.socket_addr;
+            if i.enabled {
+                submenu_builder.items(&[
+                    &IconMenuItemBuilder::new(format!("Available at: {socket_addr}"))
+                        .enabled(false)
+                        .native_icon(NativeIcon::StatusAvailable)
+                        .build(app_handle),
+                    &IconMenuItemBuilder::with_id(
+                        format!("invitation-accepted-copy-{socket_addr}"),
+                        format!("Copy {socket_addr}"),
+                    )
+                    .icon(Icon::Raw(
+                        include_bytes!("../../icons/clipboard2.png").to_vec(),
+                    ))
+                    .build(app_handle),
+                    &IconMenuItemBuilder::with_id(
+                        format!("invitation-accepted-disconnect-{invitation_id}"),
+                        "Disconnect",
+                    )
+                    .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
+                    .build(app_handle),
+                ])
+            } else {
+                submenu_builder.items(&[
+                    &IconMenuItemBuilder::new("Not connected")
+                        .native_icon(NativeIcon::StatusUnavailable)
+                        .enabled(false)
+                        .build(app_handle),
+                    &IconMenuItemBuilder::with_id(
+                        format!("invitation-accepted-connect-{invitation_id}"),
+                        "Connect",
+                    )
+                    .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
+                    .build(app_handle),
+                ])
+            }
+        }
         None => submenu_builder.item(
             &IconMenuItemBuilder::new("Not connected")
                 .native_icon(NativeIcon::StatusUnavailable)
+                .enabled(false)
                 .build(app_handle),
         ),
     };
@@ -245,6 +264,8 @@ fn dispatch_click_event<R: Runtime>(app: &AppHandle<R>, id: &str) -> tauri::Resu
         ["create", "for", outlet_socket_addr] => on_create(app, outlet_socket_addr),
         ["received", "accept", id] => on_accept(app, id),
         ["accepted", "copy", socket_address] => on_copy(app, socket_address),
+        ["accepted", "disconnect", id] => on_disconnect(app, id),
+        ["accepted", "connect", id] => on_connect(app, id),
         other => {
             warn!(?other, "unexpected menu ID");
             Ok(())
@@ -310,5 +331,29 @@ fn on_copy<R: Runtime>(_app: &AppHandle<R>, socket_address: &str) -> tauri::Resu
     if let Ok(mut clipboard) = Clipboard::new() {
         let _ = clipboard.set_text(socket_address);
     }
+    Ok(())
+}
+
+fn on_disconnect<R: Runtime>(app: &AppHandle<R>, invitation_id: &str) -> tauri::Result<()> {
+    debug!(%invitation_id, "Invite on_disconnect clicked");
+    let app = app.clone();
+    let invitation_id = invitation_id.to_string();
+    spawn(async move {
+        let _ = super::commands::disconnect_tcp_inlet(app, &invitation_id)
+            .await
+            .map_err(|e| error!(%e, "Failed to disconnect TCP inlet"));
+    });
+    Ok(())
+}
+
+fn on_connect<R: Runtime>(app: &AppHandle<R>, invitation_id: &str) -> tauri::Result<()> {
+    debug!(%invitation_id, "Invite on_connect clicked");
+    let app = app.clone();
+    let invitation_id = invitation_id.to_string();
+    spawn(async move {
+        let _ = super::commands::enable_tcp_inlet(app, &invitation_id)
+            .await
+            .map_err(|e| error!(%e, "Failed to re-enable TCP inlet"));
+    });
     Ok(())
 }

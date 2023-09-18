@@ -15,7 +15,7 @@ use ockam_api::nodes::models::portal::InletStatus;
 
 use crate::app::{AppState, PROJECT_NAME};
 use crate::cli::cli_bin;
-use crate::invitations::state::{InvitationState, TcpInlet};
+use crate::invitations::state::{Inlet, InvitationState};
 use crate::projects::commands::{create_enrollment_ticket, SyncAdminProjectsState};
 use crate::shared_service::relay::RELAY_NAME;
 
@@ -153,7 +153,7 @@ async fn refresh_inlets(
 
     let cli_state = app_state.state().await;
     let cli_bin = cli_bin()?;
-    let mut inlets_socket_addrs = vec![];
+    let mut running_inlets = vec![];
     for invitation in &invitations_state.accepted.invitations {
         match InletDataFromInvitation::new(
             &cli_state,
@@ -161,13 +161,12 @@ async fn refresh_inlets(
             &invitations_state.accepted.inlets,
         ) {
             Ok(i) => match i {
-                Some(i) => {
+                Some(mut i) => {
                     if !i.enabled {
                         debug!(node = %i.local_node_name, "TCP inlet is disabled by the user, skipping");
                         continue;
                     }
 
-                    let mut inlet_is_running = false;
                     debug!(node = %i.local_node_name, "Checking node status");
                     if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
                         if node.is_running() {
@@ -191,20 +190,15 @@ async fn refresh_inlets(
                             {
                                 trace!(output = ?String::from_utf8_lossy(&cmd.stdout), "TCP inlet status");
                                 let inlet: InletStatus = serde_json::from_slice(&cmd.stdout)?;
-                                let inlet_socket_addr = SocketAddr::from_str(&inlet.bind_addr)?;
-                                inlet_is_running = true;
                                 debug!(
                                     at = ?inlet.bind_addr,
                                     alias = inlet.alias,
                                     "TCP inlet running"
                                 );
-                                inlets_socket_addrs
-                                    .push((invitation.invitation.id.clone(), inlet_socket_addr));
+                                running_inlets.push((invitation.invitation.id.clone(), i));
+                                continue;
                             }
                         }
-                    }
-                    if inlet_is_running {
-                        continue;
                     }
                     debug!(node = %i.local_node_name, "Deleting node");
                     let _ = duct::cmd!(
@@ -219,9 +213,9 @@ async fn refresh_inlets(
                     .stdout_capture()
                     .run();
                     match create_inlet(&i).await {
-                        Ok(inlet_socket_addr) => {
-                            inlets_socket_addrs
-                                .push((invitation.invitation.id.clone(), inlet_socket_addr));
+                        Ok(socket_addr) => {
+                            i.socket_addr = Some(socket_addr);
+                            running_inlets.push((invitation.invitation.id.clone(), i));
                         }
                         Err(err) => {
                             warn!(%err, node = %i.local_node_name, "Failed to create TCP inlet for accepted invitation");
@@ -237,11 +231,11 @@ async fn refresh_inlets(
             }
         }
     }
-    for (invitation_id, inlet_socket_addr) in inlets_socket_addrs {
+    for (invitation_id, i) in running_inlets {
         invitations_state
             .accepted
             .inlets
-            .insert(invitation_id, TcpInlet::new(inlet_socket_addr));
+            .insert(invitation_id, Inlet::new(i)?);
     }
     info!("Inlets refreshed");
     Ok(())
@@ -318,13 +312,70 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
     info!(
         from = from_str,
         to = service_route,
-        "Created tcp-inlet for accepted invitation"
+        "Created TCP inlet for accepted invitation"
     );
     Ok(from)
 }
 
+pub(crate) async fn disconnect_tcp_inlet<R: Runtime>(
+    app: AppHandle<R>,
+    invitation_id: &str,
+) -> crate::Result<()> {
+    let invitation_state: State<'_, SyncInvitationsState> = app.state();
+    let mut writer = invitation_state.write().await;
+    if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
+        if !inlet.enabled {
+            debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already disconnected");
+            return Ok(());
+        }
+        inlet.disable();
+        let local_node_name = &inlet.node_name;
+        let alias = &inlet.alias;
+        debug!(node = %local_node_name, %alias, "Deleting TCP inlet");
+        let _ = duct::cmd!(
+            &cli_bin()?,
+            "--no-input",
+            "tcp-inlet",
+            "delete",
+            alias,
+            "--at",
+            local_node_name,
+            "--yes"
+        )
+        .stderr_null()
+        .stdout_capture()
+        .run()
+        .map_err(
+            |e| warn!(%e, node = %local_node_name, alias = %alias, "Failed to delete TCP inlet"),
+        );
+        info!(
+            node = %local_node_name, %alias,
+            "Disconnected TCP inlet for accepted invitation"
+        );
+    }
+    Ok(())
+}
+
+pub(crate) async fn enable_tcp_inlet<R: Runtime>(
+    app: AppHandle<R>,
+    invitation_id: &str,
+) -> crate::Result<()> {
+    let invitation_state: State<'_, SyncInvitationsState> = app.state();
+    let mut writer = invitation_state.write().await;
+    if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
+        if inlet.enabled {
+            debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already enabled");
+            return Ok(());
+        }
+        inlet.enable();
+        app.trigger_global(super::events::REFRESH_INVITATIONS, None);
+        info!(node = %inlet.node_name, alias = %inlet.alias, "Enabled TCP inlet");
+    }
+    Ok(())
+}
+
 #[derive(Debug)]
-struct InletDataFromInvitation {
+pub(crate) struct InletDataFromInvitation {
     pub enabled: bool,
     pub local_node_name: String,
     pub service_name: String,
@@ -337,7 +388,7 @@ impl InletDataFromInvitation {
     pub fn new(
         cli_state: &CliState,
         invitation: &InvitationWithAccess,
-        inlets: &HashMap<String, TcpInlet>,
+        inlets: &HashMap<String, Inlet>,
     ) -> crate::Result<Option<Self>> {
         match &invitation.service_access_details {
             Some(d) => {
@@ -468,7 +519,9 @@ mod tests {
         // Validate the inlet data, with prior inlet data
         inlets.insert(
             "invitation_id".to_string(),
-            TcpInlet {
+            Inlet {
+                node_name: "local_node_name".to_string(),
+                alias: "alias".to_string(),
                 socket_addr: "127.0.0.1:1000".parse().unwrap(),
                 enabled: true,
             },
