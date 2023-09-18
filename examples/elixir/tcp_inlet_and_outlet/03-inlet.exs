@@ -6,13 +6,16 @@
 
 Ockam.Transport.TCP.start()
 
-# Create a vault and an static keypair.
-{:ok, vault} = Ockam.Vault.Software.init()
-{:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+# Create an identity and a purpose key
+{:ok, identity} = Ockam.Identity.create()
+{:ok, keypair} = Ockam.SecureChannel.Crypto.generate_dh_keypair()
+{:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair)
 
 # Connect to a secure channel listener and perform a handshake.
 r = [Ockam.Transport.TCPAddress.new("localhost", 4000), "secure_channel_listener"]
-{:ok, c} = Ockam.SecureChannel.create(route: r, vault: vault, static_keypair: keypair)
+{:ok, c} = Ockam.SecureChannel.create_channel(identity: identity,
+                                              route: r,
+                                              encryption_options: [static_keypair: keypair, static_key_attestation: attestation])
 
 {:ok, _pid} =
   Ockam.Transport.Portal.InletListener.start_link(port: lport, peer_route: [c, "outlet"])

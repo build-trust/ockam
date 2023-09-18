@@ -6,14 +6,17 @@ Ockam.Node.register_address("app")
 # Start the TCP Transport Add-on for Ockam Routing.
 Ockam.Transport.TCP.start()
 
-# Create a vault and an static keypair.
-{:ok, vault} = Ockam.Vault.Software.init()
-{:ok, keypair} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+# Create an identity and a purpose key
+{:ok, identity} = Ockam.Identity.create()
+{:ok, keypair} = Ockam.SecureChannel.Crypto.generate_dh_keypair()
+{:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair)
 
 # Connect to a secure channel listener and perform a handshake.
 alias Ockam.Transport.TCPAddress
 r = [TCPAddress.new("localhost", 3000), "h1", TCPAddress.new("localhost", 4000), "secure_channel_listener"]
-{:ok, c} = Ockam.SecureChannel.create(route: r, vault: vault, static_keypair: keypair)
+{:ok, c} = Ockam.SecureChannel.create_channel(route: r,
+                                              identity: identity,
+                                              encryption_options: [static_keypair: keypair, static_key_attestation: attestation])
 
 # Prepare the message.
 message = %{onward_route: [c, "echoer"], return_route: ["app"], payload: "Hello Ockam!"}
