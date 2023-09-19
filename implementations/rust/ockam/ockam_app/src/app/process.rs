@@ -8,7 +8,7 @@ pub fn process_application_event<R: Runtime>(app: &AppHandle<R>, event: RunEvent
         RunEvent::Opened { urls } => {
             urls.into_iter().for_each(|url| {
                 use tauri::Manager;
-                app.trigger_global(crate::app::events::URL_OPEN, Some(url.into()));
+                app.trigger_global(crate::ockam_url::events::URL_OPENED, Some(url.into()));
             });
         }
         RunEvent::ExitRequested { api, .. } => {

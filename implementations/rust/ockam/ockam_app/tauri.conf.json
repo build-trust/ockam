@@ -23,6 +23,12 @@
       "category": "DeveloperTool",
       "identifier": "io.ockam.app",
       "publisher": "Ockam",
+      "schemeAssociations": [
+        {
+          "scheme": ["ockam"],
+          "role": "Editor"
+        }
+      ],
       "externalBin": [],
       "icon": [
         "icons/32x32.png",
