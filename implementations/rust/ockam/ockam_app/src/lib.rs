@@ -28,8 +28,7 @@ mod cli;
 mod enroll;
 mod error;
 mod invitations;
-#[cfg(target_os = "linux")]
-mod linux_url_plugin;
+mod ockam_url;
 mod options;
 mod platform;
 mod projects;
@@ -61,7 +60,9 @@ pub fn run() {
         //if we can connect to the socket then the app is already running
         //if it's not running yet the arguments will be checked upon startup
         if !args.is_empty() && args[0].starts_with("ockam:") {
-            if let Ok(mut stream) = UnixStream::connect(linux_url_plugin::open_url_sock_path()) {
+            if let Ok(mut stream) =
+                UnixStream::connect(ockam_url::plugin::linux::open_url_sock_path())
+            {
                 stream.write_all(args[0].as_bytes()).unwrap();
                 stream.flush().unwrap();
                 return;
@@ -78,17 +79,13 @@ pub fn run() {
         .plugin(shared_service::plugin::init())
         .plugin(projects::plugin::init())
         .plugin(invitations::plugin::init())
+        .plugin(ockam_url::plugin::init())
         .setup(setup)
         .manage(AppState::new());
 
     #[cfg(feature = "log")]
     {
         builder = builder.plugin(configure_tauri_plugin_log());
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        builder = builder.plugin(linux_url_plugin::init());
     }
 
     let mut app = builder
