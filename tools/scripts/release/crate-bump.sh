@@ -85,7 +85,7 @@ while [[ "${updated_crates[*]}" != "${recently_updated_crates[*]}" ]]; do
     bumped_crates[$crate]=true
 
     echo "Bumping $crate crate"
-    echo y | cargo release "$version" --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$name" --execute
+    cargo release "$version" --config tools/scripts/release/release.toml --no-confirm --no-sign --no-push --no-publish --no-tag --package "$name" --execute -v
   done
 
   recently_updated_crates="${updated_crates[@]}"

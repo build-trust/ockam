@@ -34,7 +34,7 @@ on:
 # runs every command in bash (for every job in the workflow)
 defaults:
   run:
-    shell: bash
+    shell: nix develop ./tools/nix#tooling --command bash {0}
 
 jobs:
   bump_crates:
@@ -45,18 +45,15 @@ jobs:
       pull-requests: write
 
     name: Bump Crates And Create PR
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment: release
-    container:
-      # Note: Do not update this image has it has installed all binaries
-      # to bump crates and generate changelogs which we don't want installed
-      # in our CI packages.
-      image: ghcr.io/build-trust/ockam-builder@sha256:b7790a79e5fd4265d8333bb882010e5d4326778f270bd49693fa35763865df82
     steps:
       - name: Checkout Ockam
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           fetch-depth: 0
+
+      - uses: ./.github/actions/nix_installer
 
       - name: Checkout To New Release Branch
         id: commit

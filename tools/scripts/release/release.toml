@@ -1,12 +1,7 @@
-dev-version = true
-dev-version-ext = "dev"
-post-release-commit-message = "chore(rust): release {{crate_name}} dev version {{version}}"
 push = false
 tag = false
-verify = true
-consolidate-pushes = true
-sign-commit = true
-pre-release-commit-message = "chore(rust): crate release {{crate_name}} version {{version}}"
+sign-commit = false
+sign-tag = false
 pre-release-replacements = [
     { file = "CHANGELOG.md", min = 0, search = "## unreleased", replace = "## {{version}} - {{date}}" },
 ]
