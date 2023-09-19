@@ -14,14 +14,16 @@ pub(crate) async fn build_user_info_section<'a, R: Runtime, M: Manager<R>>(
 ) -> MenuBuilder<'a, R, M> {
     let app_state: State<AppState> = app_handle.state();
     if let Ok(user_info) = app_state.user_info().await {
-        builder = builder.items(&[
-            &MenuItemBuilder::new(format!("{} ({})", user_info.name, user_info.nickname))
-                .enabled(false)
-                .build(app_handle),
-            &MenuItemBuilder::new(user_info.email)
-                .enabled(false)
-                .build(app_handle),
-        ])
+        builder = builder
+            .items(&[
+                &MenuItemBuilder::new(format!("{} ({})", user_info.name, user_info.nickname))
+                    .enabled(false)
+                    .build(app_handle),
+                &MenuItemBuilder::new(user_info.email)
+                    .enabled(false)
+                    .build(app_handle),
+            ])
+            .separator()
     }
     builder
 }
@@ -33,25 +35,29 @@ pub(crate) async fn build_enroll_section<'a, R: Runtime, M: Manager<R>>(
 ) -> MenuBuilder<'a, R, M> {
     let app_state: State<AppState> = app_handle.state();
     if let Some(message) = payload.and_then(|p| p.enroll_status.as_ref()) {
-        return builder.items(&[&IconMenuItemBuilder::new(message)
-            .id("status")
-            .native_icon(NativeIcon::StatusPartiallyAvailable)
-            .enabled(false)
-            .build(app_handle)]);
+        return builder
+            .items(&[&IconMenuItemBuilder::new(message)
+                .id("status")
+                .native_icon(NativeIcon::StatusPartiallyAvailable)
+                .enabled(false)
+                .build(app_handle)])
+            .separator();
     }
     if !app_state.is_enrolled().await.unwrap_or(false) {
-        builder = builder.items(&[
-            &IconMenuItemBuilder::new("Start by enrolling your computer")
-                .enabled(false)
-                .build(app_handle),
-            &IconMenuItemBuilder::new("Enroll")
-                .id(ENROLL_MENU_ID)
-                .icon(Icon::Raw(
-                    include_bytes!("../../icons/box-arrow-in-right.png").to_vec(),
-                ))
-                .accelerator("cmd+e")
-                .build(app_handle),
-        ])
+        builder = builder
+            .items(&[
+                &IconMenuItemBuilder::new("Start by enrolling your computer")
+                    .enabled(false)
+                    .build(app_handle),
+                &IconMenuItemBuilder::new("Enroll")
+                    .id(ENROLL_MENU_ID)
+                    .icon(Icon::Raw(
+                        include_bytes!("../../icons/box-arrow-in-right.png").to_vec(),
+                    ))
+                    .accelerator("cmd+e")
+                    .build(app_handle),
+            ])
+            .separator()
     }
     builder
 }

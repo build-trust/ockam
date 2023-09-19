@@ -26,6 +26,7 @@ pub async fn build_tray_menu<R: Runtime>(
     builder = build_options_section(app_handle, builder).await;
     #[cfg(debug_assertions)]
     {
+        builder = builder.separator();
         builder = dev_tools::build_developer_tools_section(app_handle, builder).await;
     }
 
