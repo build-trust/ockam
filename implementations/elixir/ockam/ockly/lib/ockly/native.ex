@@ -1,7 +1,12 @@
 defmodule Ockly.Native do
   @moduledoc false
 
-  use Rustler, otp_app: :ockly, crate: "ockly", load_data_fun: {Ockly, :nif_config}
+  use Rustler,
+    otp_app: :ockly,
+    crate: "ockly",
+    load_data_fun: {Ockly, :nif_config},
+    skip_compilation?: true,
+    load_from: {:ockly, "priv/native/libockly"}
 
   def create_identity, do: create_identity(nil)
   def create_identity(_), do: error()
