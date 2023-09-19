@@ -58,7 +58,8 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
             .enabled(false)
             .build(app_handle),
     );
-    if menu_items.is_empty() {
+
+    builder = if menu_items.is_empty() {
         builder.item(
             &MenuItemBuilder::new("When they share a service with you they will appear here")
                 .enabled(false)
@@ -68,7 +69,9 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
         menu_items
             .into_iter()
             .fold(builder, |builder, submenu| builder.item(&submenu))
-    }
+    };
+
+    builder.separator()
 }
 
 pub(crate) fn pending_invitation_menu<R: Runtime>(

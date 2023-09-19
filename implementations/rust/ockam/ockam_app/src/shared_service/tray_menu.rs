@@ -26,17 +26,21 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
         return builder;
     };
 
-    let mut builder = builder.items(&[
-        &IconMenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create service")
-            .icon(Icon::Raw(
-                include_bytes!("../../icons/plus-circle.png").to_vec(),
-            ))
-            .accelerator("cmd+n")
-            .build(app_handle),
-        &MenuItemBuilder::new("Your services")
-            .enabled(false)
-            .build(app_handle),
-    ]);
+    let mut builder = builder
+        .item(
+            &IconMenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create service")
+                .icon(Icon::Raw(
+                    include_bytes!("../../icons/plus-circle.png").to_vec(),
+                ))
+                .accelerator("cmd+n")
+                .build(app_handle),
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::new("Your services")
+                .enabled(false)
+                .build(app_handle),
+        );
 
     let outlets = app_state.tcp_outlet_list().await;
     builder = if outlets.is_empty() {
@@ -70,7 +74,7 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
         )
     };
 
-    builder
+    builder.separator()
 }
 
 fn shared_service_submenu<R: Runtime>(
