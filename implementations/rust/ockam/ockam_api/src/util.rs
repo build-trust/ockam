@@ -371,7 +371,7 @@ pub mod test_utils {
     /// - useful access to the NodeManager
     pub struct NodeManagerHandle {
         pub cli_state: CliState,
-        pub node_manager: Arc<RwLock<NodeManager>>,
+        pub node_manager: Arc<NodeManager>,
         pub tcp: TcpTransport,
         pub secure_channels: Arc<SecureChannels>,
         pub identifier: Identifier,
@@ -460,10 +460,9 @@ pub mod test_utils {
             ))),
         )
         .await?;
-
-        let node_manager_worker = NodeManagerWorker::new(node_manager).await?;
-        let node_manager = node_manager_worker.inner().clone();
-        let secure_channels = node_manager.read().await.secure_channels.clone();
+        let node_manager = Arc::new(node_manager);
+        let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
+        let secure_channels = node_manager.secure_channels.clone();
 
         // Import identity, since it doesn't exist in the LMDB storage
         let _ = secure_channels

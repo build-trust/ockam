@@ -10,8 +10,8 @@ pub(crate) async fn build_relay_section<'a, R: Runtime, M: Manager<R>>(
     mut builder: MenuBuilder<'a, R, M>,
 ) -> MenuBuilder<'a, R, M> {
     let app_state: State<AppState> = app_handle.state();
-    let node_manager_worker = app_state.node_manager_worker().await;
-    match get_relay(&node_manager_worker).await {
+    let node_manager = app_state.node_manager().await;
+    match get_relay(node_manager).await {
         Some(relay) => {
             debug!(relay = %relay.forwarding_route(), "Relay up and running");
             builder = builder.item(

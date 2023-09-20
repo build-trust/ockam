@@ -4,10 +4,12 @@ use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::SecureClient;
 use ockam::identity::TrustContext;
 use ockam::identity::Vault;
@@ -37,8 +39,8 @@ use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::nodes::connection::{
-    Connection, ConnectionInstance, ConnectionInstanceBuilder, PlainTcpInstantiator,
-    ProjectInstantiator, SecureChannelInstantiator,
+    Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
+    SecureChannelInstantiator,
 };
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::portal::{OutletList, OutletStatus};
@@ -138,7 +140,7 @@ impl NodeManager {
         &self.tcp_transport
     }
 
-    pub(super) async fn list_outlets(&self) -> OutletList {
+    pub async fn list_outlets(&self) -> OutletList {
         OutletList::new(
             self.registry
                 .outlets
@@ -223,14 +225,8 @@ pub struct NodeManagerWorker {
 }
 
 impl NodeManagerWorker {
-    pub async fn new(node_manager: NodeManager) -> Result<Self> {
-        Ok(NodeManagerWorker {
-            node_manager: Arc::new(node_manager),
-        })
-    }
-
-    pub fn inner(&self) -> &Arc<NodeManager> {
-        &self.node_manager
+    pub fn new(node_manager: Arc<NodeManager>) -> Self {
+        NodeManagerWorker { node_manager }
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
@@ -478,7 +474,7 @@ impl NodeManager {
         )
         .await?;
 
-        self.create_secure_channel_listener_impl(
+        self.create_secure_channel_listener(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
             None, // Not checking identifiers here in favor of credential check
             None,
@@ -501,47 +497,58 @@ impl NodeManager {
         Ok(())
     }
 
+    pub async fn make_connection(
+        &self,
+        ctx: Arc<Context>,
+        addr: &MultiAddr,
+        identifier: Option<Identifier>,
+        authorized: Option<Identifier>,
+        credential: Option<CredentialAndPurposeKey>,
+        timeout: Option<Duration>,
+    ) -> Result<Connection> {
+        let identifier = match identifier {
+            Some(identifier) => identifier,
+            None => self.get_identifier(None).await?,
+        };
+        let authorized = match authorized {
+            Some(authorized) => Some(vec![authorized]),
+            None => None,
+        };
+        self.connect(ctx, addr, identifier, authorized, credential, timeout)
+            .await
+    }
+
     /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
-    /// Returns [`ConnectionInstance`]
-    pub(crate) async fn connect(
-        node_manager: Arc<NodeManager>,
-        connection: Connection,
-    ) -> Result<ConnectionInstance> {
-        debug!("connecting to {}", &connection.addr);
-        let context = connection.ctx.clone();
-
-        let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
-
-        let connection_instance = ConnectionInstanceBuilder::new(connection.addr.clone())
-            .instantiate(ProjectInstantiator::new(
-                context.clone(),
-                node_manager.clone(),
-                connection.timeout,
-                connection.credential_name.map(|x| x.to_string()),
-                connection.identity_name.map(|x| x.to_string()),
-            ))
+    /// Returns [`Connection`]
+    async fn connect(
+        &self,
+        ctx: Arc<Context>,
+        addr: &MultiAddr,
+        identifier: Identifier,
+        authorized: Option<Vec<Identifier>>,
+        credential: Option<CredentialAndPurposeKey>,
+        timeout: Option<Duration>,
+    ) -> Result<Connection> {
+        debug!("connecting to {}", &addr);
+        let connection = ConnectionBuilder::new(addr.clone())
+            .instantiate(
+                ctx.clone(),
+                self,
+                ProjectInstantiator::new(identifier.clone(), timeout, credential),
+            )
             .await?
-            .instantiate(PlainTcpInstantiator::new(tcp_transport))
+            .instantiate(ctx.clone(), self, PlainTcpInstantiator::new())
             .await?
-            .instantiate(SecureChannelInstantiator::new(
-                context.clone(),
-                node_manager.clone(),
-                connection.timeout,
-                connection.authorized_identities,
-            ))
+            .instantiate(
+                ctx,
+                self,
+                SecureChannelInstantiator::new(&identifier, timeout, authorized),
+            )
             .await?
             .build();
 
-        debug!("connected to {connection_instance:?}");
-
-        if connection.add_default_consumers {
-            connection_instance
-                .add_consumer(&context, &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
-            connection_instance.add_consumer(&context, &DefaultAddress::UPPERCASE_SERVICE.into());
-            connection_instance.add_consumer(&context, &DefaultAddress::ECHO_SERVICE.into());
-        }
-
-        Ok(connection_instance)
+        debug!("connected to {connection:?}");
+        Ok(connection)
     }
 
     pub(crate) async fn resolve_project(&self, name: &str) -> Result<(MultiAddr, Identifier)> {

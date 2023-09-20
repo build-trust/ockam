@@ -21,7 +21,6 @@ use crate::kafka::{
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
 use crate::kafka::{OutletManagerService, PrefixForwarderService};
-use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -282,9 +281,9 @@ impl NodeManagerWorker {
         }
 
         if let Err(e) = self
-            .create_outlet_impl(
+            .node_manager
+            .create_outlet(
                 context,
-                request,
                 body.request().bootstrap_server_addr,
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
@@ -292,7 +291,7 @@ impl NodeManagerWorker {
             )
             .await
         {
-            return Ok(e.to_vec()?);
+            return Ok(e.to_string().into_bytes());
         };
 
         {
@@ -329,7 +328,6 @@ impl NodeManagerWorker {
         if let Err(e) = self
             .start_direct_kafka_service_impl(
                 context,
-                req,
                 listener_address,
                 body_req.bind_address().ip(),
                 body_req.bind_address().port(),
@@ -349,7 +347,6 @@ impl NodeManagerWorker {
     pub(super) async fn start_direct_kafka_service_impl(
         &self,
         context: &Context,
-        request: &RequestHeader,
         local_interceptor_address: Address,
         bind_ip: IpAddr,
         server_bootstrap_port: u16,
@@ -374,15 +371,15 @@ impl NodeManagerWorker {
             .await?;
         }
 
-        self.create_outlet_impl(
-            context,
-            request,
-            bootstrap_server_addr,
-            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
-            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
-            false,
-        )
-        .await?;
+        self.node_manager
+            .create_outlet(
+                context,
+                bootstrap_server_addr,
+                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
+                Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
+                false,
+            )
+            .await?;
 
         let trust_context_id;
         let secure_channels;
@@ -408,21 +405,21 @@ impl NodeManagerWorker {
 
         // since we cannot call APIs of node manager via message due to the read/write lock
         // we need to call it directly
-        self.create_inlet_impl(
-            request,
-            CreateInlet::to_node(
+        self.node_manager
+            .create_inlet(
+                context,
                 SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-                "/secure/api".parse().unwrap(),
+                None,
                 route![local_interceptor_address.clone()],
                 route![
                     KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                     KAFKA_OUTLET_BOOTSTRAP_ADDRESS
                 ],
+                "/secure/api".parse().unwrap(),
                 None,
-            ),
-            context,
-        )
-        .await?;
+                None,
+            )
+            .await?;
 
         KafkaPortalListener::create(
             context,
@@ -460,7 +457,6 @@ impl NodeManagerWorker {
         if let Err(e) = self
             .start_kafka_service_impl(
                 context,
-                req,
                 listener_address,
                 body_req.bootstrap_server_addr.ip(),
                 body_req.bootstrap_server_addr.port(),
@@ -490,7 +486,6 @@ impl NodeManagerWorker {
         if let Err(e) = self
             .start_kafka_service_impl(
                 context,
-                req,
                 listener_address,
                 body_req.bootstrap_server_addr.ip(),
                 body_req.bootstrap_server_addr.port(),
@@ -510,7 +505,6 @@ impl NodeManagerWorker {
     pub(super) async fn start_kafka_service_impl(
         &self,
         context: &Context,
-        request: &RequestHeader,
         local_interceptor_address: Address,
         bind_ip: IpAddr,
         server_bootstrap_port: u16,
@@ -565,21 +559,21 @@ impl NodeManagerWorker {
 
         // since we cannot call APIs of node manager via message due to the read/write lock
         // we need to call it directly
-        self.create_inlet_impl(
-            request,
-            CreateInlet::to_node(
+        self.node_manager
+            .create_inlet(
+                context,
                 SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-                outlet_node_multiaddr,
+                None,
                 route![local_interceptor_address.clone()],
                 route![
                     KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                     KAFKA_OUTLET_BOOTSTRAP_ADDRESS
                 ],
+                outlet_node_multiaddr,
                 None,
-            ),
-            context,
-        )
-        .await?;
+                None,
+            )
+            .await?;
 
         KafkaPortalListener::create(
             context,
@@ -709,7 +703,7 @@ impl NodeManagerWorker {
                 DefaultAddress::CREDENTIALS_SERVICE,
             ))
         });
-        registry.kafka_services.iter().await.iter().for_each(|(address, info)| {
+        registry.kafka_services.entries().await.iter().for_each(|(address, info)| {
             list.push(ServiceStatus::new(
                 address.address(),
                 match info.kind() {

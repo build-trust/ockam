@@ -47,9 +47,8 @@ async fn tcp_outlet_create_impl<R: Runtime>(
         .into_diagnostic()
         .wrap_err("Invalid address. The expected formats are 'host:port', 'ip:port' or 'port'")?;
     let worker_addr = extract_address_value(&service).wrap_err("Invalid service address")?;
-    let node_manager_worker = app_state.node_manager_worker().await;
-    match node_manager_worker
-        .node_manager
+    let node_manager = app_state.node_manager().await;
+    match node_manager
         .create_outlet(
             &app_state.context(),
             socket_addr,

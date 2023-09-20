@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{path::PathBuf, process, str::FromStr};
 
 use clap::Args;
@@ -318,7 +319,7 @@ async fn run_foreground_node(
     )
     .await
     .into_diagnostic()?;
-    let node_manager_worker = NodeManagerWorker::new(node_man).await.into_diagnostic()?;
+    let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
 
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());

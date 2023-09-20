@@ -2,7 +2,7 @@ use crate::app::ModelState;
 use ockam::Context;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::NodeManagerWorker;
+use ockam_api::nodes::NodeManager;
 use std::sync::Arc;
 use tracing::{debug, error};
 
@@ -22,7 +22,7 @@ impl ModelState {
 
 pub(crate) async fn load_model_state(
     context: Arc<Context>,
-    node_manager_worker: &NodeManagerWorker,
+    node_manager: Arc<NodeManager>,
     model_state: &ModelState,
     cli_state: &CliState,
 ) {
@@ -31,8 +31,7 @@ pub(crate) async fn load_model_state(
     }
     for tcp_outlet in model_state.get_tcp_outlets() {
         debug!(worker_addr = %tcp_outlet.worker_addr, "Restoring outlet");
-        let _ = node_manager_worker
-            .node_manager
+        let _ = node_manager
             .create_outlet(
                 &context,
                 tcp_outlet.socket_addr,

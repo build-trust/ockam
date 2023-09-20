@@ -31,25 +31,22 @@ impl SendMessage {
 }
 
 mod node {
-    use minicbor::Decoder;
     use std::sync::Arc;
+    use minicbor::Decoder;
     use tracing::trace;
 
     use ockam_core::api::{RequestHeader, Response};
     use ockam_core::{self, AsyncTryClone, Result};
     use ockam_node::Context;
 
-    use crate::error::ApiError;
-    use crate::local_multiaddr_to_route;
-    use crate::nodes::connection::Connection;
-    use crate::nodes::{NodeManager, NodeManagerWorker};
+    use crate::nodes::NodeManagerWorker;
 
     const TARGET: &str = "ockam_api::message";
 
     impl NodeManagerWorker {
         pub(crate) async fn send_message(
-            &mut self,
-            ctx: &mut Context,
+            &self,
+            ctx: &Context,
             req: &RequestHeader,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
@@ -58,13 +55,12 @@ mod node {
             let msg = req_body.message.to_vec();
             let msg_length = msg.len();
 
-            let connection = Connection::new(Arc::new(ctx.async_try_clone().await?), &multiaddr);
-            let connection_instance =
-                NodeManager::connect(self.node_manager.clone(), connection).await?;
-
-            let route = local_multiaddr_to_route(&connection_instance.normalized_addr)
-                .ok_or_else(|| ApiError::core("Invalid route"))?;
-
+            let connection_ctx = Arc::new(ctx.async_try_clone().await?);
+            let connection = self
+                .node_manager
+                .make_connection(connection_ctx, &multiaddr, None, None, None, None)
+                .await?;
+            let route = connection.route()?;
             trace!(target: TARGET, route = %route, msg_l = %msg_length, "sending message");
 
             let res = ctx.send_and_receive::<Vec<u8>>(route, msg).await;
