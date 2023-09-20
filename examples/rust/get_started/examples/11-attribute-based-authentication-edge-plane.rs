@@ -62,9 +62,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let authority_node = SecureClients::authority(
         &tcp,
         node.secure_channels().clone(),
-        edge_plane.clone(),
-        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
-        node.create_identity().await?,
+        &edge_plane,
+        &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
+        &node.create_identity().await?,
     )
     .await?;
     authority_node.present_token(node.context(), token).await.unwrap();

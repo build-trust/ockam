@@ -26,16 +26,16 @@ impl SecureClient {
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         server_route: Route,
-        server_identifier: Identifier,
-        client_identifier: Identifier,
+        server_identifier: &Identifier,
+        client_identifier: &Identifier,
         timeout: Duration,
     ) -> SecureClient {
         let secure_route = route![server_route.clone()];
         Self {
             secure_channels,
             secure_route,
-            server_identifier,
-            client_identifier,
+            server_identifier: server_identifier.clone(),
+            client_identifier: client_identifier.clone(),
             timeout,
         }
     }

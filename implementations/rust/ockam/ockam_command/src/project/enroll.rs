@@ -98,8 +98,8 @@ pub async fn project_enroll(
     let node = LocalNode::make(ctx, opts, Some(&cmd.trust_opts)).await?;
     let authority_node: AuthorityNode = node
         .make_authority_node_client(
-            project_authority.identity_id().clone(),
-            project_authority.address().clone(),
+            project_authority.identity_id(),
+            project_authority.address(),
             Some(identity_name),
         )
         .await?;

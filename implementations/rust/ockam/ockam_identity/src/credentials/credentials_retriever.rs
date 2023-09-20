@@ -70,8 +70,8 @@ impl RemoteCredentialsRetriever {
         SecureClient::new(
             self.secure_channels.clone(),
             self.issuer.route.clone(),
-            self.issuer.identifier.clone(),
-            for_identity.clone(),
+            &self.issuer.identifier,
+            for_identity,
             Duration::from_secs(DEFAULT_TIMEOUT),
         )
     }

@@ -216,21 +216,19 @@ impl SupervisedNodeManager {
             .node_manager
             .create_forwarder(ctx, connection.clone(), req.alias().map(|a| a.to_string()))
             .await?;
-        if !req.at_rust_node() {
-            if !connection.transport_route().is_empty() {
-                let ping_route = connection.transport_route().clone();
-                let repl = Self::relay_replacer(
-                    self.node_manager.clone(),
-                    Arc::new(ctx.async_try_clone().await?),
-                    connection,
-                    req.address().clone(),
-                    req.alias().map(|a| a.to_string()),
-                    req.authorized(),
-                );
-                let mut session = Session::new(ping_route);
-                session.set_replacer(repl);
-                self.add_session(session);
-            }
+        if !req.at_rust_node() && !connection.transport_route().is_empty() {
+            let ping_route = connection.transport_route().clone();
+            let repl = Self::relay_replacer(
+                self.node_manager.clone(),
+                Arc::new(ctx.async_try_clone().await?),
+                connection,
+                req.address().clone(),
+                req.alias().map(|a| a.to_string()),
+                req.authorized(),
+            );
+            let mut session = Session::new(ping_route);
+            session.set_replacer(repl);
+            self.add_session(session);
         };
         Ok(forwarder)
     }

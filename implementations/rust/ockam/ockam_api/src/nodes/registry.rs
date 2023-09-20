@@ -20,7 +20,7 @@ impl SecureChannelRegistry {
         channels
             .iter()
             .find(|&x| x.sc.encryptor_address() == addr)
-            .map(|c| c.clone())
+            .cloned()
     }
 
     pub async fn insert(
@@ -242,12 +242,12 @@ impl<K: Clone, V: Clone> RegistryOf<K, V> {
 
     pub async fn keys(&self) -> Vec<K> {
         let map = self.map.read().await;
-        map.clone().keys().map(|k| k.clone()).collect()
+        map.clone().keys().cloned().collect()
     }
 
     pub async fn values(&self) -> Vec<V> {
         let map = self.map.read().await;
-        map.clone().values().map(|v| v.clone()).collect()
+        map.clone().values().cloned().collect()
     }
 
     pub async fn entries(&self) -> Vec<(K, V)> {

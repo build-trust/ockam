@@ -86,8 +86,8 @@ async fn authenticate(
 
     let authority_node = node
         .make_authority_node_client(
-            project_authority.identity_id().clone(),
-            project_authority.address().clone(),
+            project_authority.identity_id(),
+            project_authority.address(),
             Some(identity.clone()),
         )
         .await?;
@@ -95,12 +95,8 @@ async fn authenticate(
     authority_node
         .authenticate(ctx, Some(identity.clone()))
         .await?;
-    node.make_project_node_client(
-        project_identifier.clone(),
-        project_addr,
-        Some(identity.clone()),
-    )
-    .await
+    node.make_project_node_client(&project_identifier, &project_addr, Some(identity.clone()))
+        .await
 }
 
 async fn retrieve_project_info(

@@ -77,8 +77,8 @@ pub async fn get_projects_secure_channels_from_config_lookup(
         };
         let project_node = node
             .make_project_node_client(
-                project_identity_id,
-                project_access_route,
+                &project_identity_id,
+                &project_access_route,
                 identity_name.clone(),
             )
             .await?;
@@ -191,7 +191,7 @@ async fn check_project_node_accessible(
         .as_ref()
         .ok_or(miette!("Project identity is not set."))?;
     let project_node = node
-        .make_project_node_client(project_identity.clone(), project_route, None)
+        .make_project_node_client(project_identity, &project_route, None)
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
@@ -240,11 +240,7 @@ async fn check_authority_node_accessible(
         .ok_or(miette!("Project does not have an authority defined."))?;
 
     let authority_node = node
-        .make_authority_node_client(
-            authority.identity_id().clone(),
-            authority.address().clone(),
-            None,
-        )
+        .make_authority_node_client(authority.identity_id(), authority.address(), None)
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {

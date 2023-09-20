@@ -509,6 +509,7 @@ impl NodeManager {
 }
 
 impl SupervisedNodeManager {
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_inlet(
         &self,
         ctx: &Context,

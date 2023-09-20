@@ -73,7 +73,7 @@ impl NodeManagerWorker {
                 .get(identity)?
                 .identifier()
         } else {
-            self.node_manager.identifier()
+            self.node_manager.identifier().clone()
         };
 
         match self
@@ -118,7 +118,7 @@ impl NodeManagerWorker {
             .node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, &self.node_manager.identifier())
+            .credential(ctx, self.node_manager.identifier())
             .await?;
 
         if request.oneway {

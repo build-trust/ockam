@@ -60,7 +60,7 @@ impl SecureClients {
     pub async fn controller(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        caller_identifier: Identifier,
+        caller_identifier: &Identifier,
     ) -> Result<Controller> {
         let controller_route = Self::controller_route(tcp_transport).await?;
         let controller_identifier = Self::load_controller_identifier()?;
@@ -68,7 +68,7 @@ impl SecureClients {
         Ok(Controller(SecureClient::new(
             secure_channels,
             controller_route,
-            controller_identifier,
+            &controller_identifier,
             caller_identifier,
             Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
         )))
@@ -77,9 +77,9 @@ impl SecureClients {
     pub async fn authority(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        authority_identifier: Identifier,
-        authority_multiaddr: MultiAddr,
-        caller_identifier: Identifier,
+        authority_identifier: &Identifier,
+        authority_multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
     ) -> Result<AuthorityNode> {
         let authority_route =
             Self::resolve_secure_route(tcp_transport, authority_multiaddr).await?;
@@ -96,9 +96,9 @@ impl SecureClients {
     pub async fn project(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        project_identifier: Identifier,
-        project_multiaddr: MultiAddr,
-        caller_identifier: Identifier,
+        project_identifier: &Identifier,
+        project_multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
     ) -> Result<ProjectNode> {
         let project_route = Self::resolve_secure_route(tcp_transport, project_multiaddr).await?;
 
@@ -114,9 +114,9 @@ impl SecureClients {
     pub async fn generic(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        identifier: Identifier,
-        multiaddr: MultiAddr,
-        caller_identifier: Identifier,
+        identifier: &Identifier,
+        multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
     ) -> Result<SecureClient> {
         let route = Self::resolve_secure_route(tcp_transport, multiaddr).await?;
 
@@ -147,14 +147,14 @@ impl SecureClients {
     }
 
     async fn controller_route(tcp_transport: &TcpTransport) -> Result<Route> {
-        Self::resolve_secure_route(tcp_transport, Self::controller_multiaddr()).await
+        Self::resolve_secure_route(tcp_transport, &Self::controller_multiaddr()).await
     }
 
     async fn resolve_secure_route(
         tcp_transport: &TcpTransport,
-        multiaddr: MultiAddr,
+        multiaddr: &MultiAddr,
     ) -> Result<Route> {
-        let transport_route = multiaddr_to_route(&multiaddr, tcp_transport)
+        let transport_route = multiaddr_to_route(multiaddr, tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(

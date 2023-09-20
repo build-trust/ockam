@@ -4,7 +4,7 @@ use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::identity::{AuthorityService, SecureChannelListenerOptions, TrustContext, Vault};
-use ockam::{node, Context, Result, TcpListenerOptions};
+use ockam::{Context, Result, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
 use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
@@ -54,12 +54,11 @@ async fn main(ctx: Context) -> Result<()> {
         &tcp,
         node.secure_channels().clone(),
         issuer.identifier(),
-        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000").unwrap(),
+        &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000").unwrap(),
         server.identifier(),
     )
     .await?;
     let credential = authority_node.issue_credential(node.context()).await.unwrap();
-    println!("Credential:\n{credential}");
 
     // Verify that the received credential has indeed be signed by the issuer.
     // The issuer identity must be provided out-of-band from a trusted source
