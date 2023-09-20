@@ -2,7 +2,7 @@ use core::str::FromStr;
 use ockam_core::Result;
 use ockam_identity::models::Identifier;
 use ockam_identity::{identities, Identity};
-use ockam_vault::SecretType;
+use ockam_vault::SigningKeyType;
 
 #[tokio::test]
 async fn create_and_retrieve() -> Result<()> {
@@ -57,7 +57,7 @@ async fn create_p256() -> Result<()> {
 
     let identity = identities_creation
         .identity_builder()
-        .with_random_key(SecretType::NistP256)
+        .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
         .await?;
     let actual = repository.get_identity(identity.identifier()).await?;

@@ -3,7 +3,7 @@ use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Result};
-use ockam_vault::{KeyId, PublicKey, SecretType};
+use ockam_vault::{AeadSecretKeyHandle, X25519PublicKey};
 use tracing::{debug, warn};
 
 use crate::models::{
@@ -48,8 +48,8 @@ pub(super) enum Status {
 /// At the end of a successful handshake a pair of encryption/decryption keys is available
 #[derive(Debug, Clone)]
 pub(super) struct HandshakeKeys {
-    pub(super) encryption_key: KeyId,
-    pub(super) decryption_key: KeyId,
+    pub(super) encryption_key: AeadSecretKeyHandle,
+    pub(super) decryption_key: AeadSecretKeyHandle,
 }
 
 /// The end result of a handshake with identity/credentials exchange is
@@ -119,7 +119,7 @@ impl CommonStateMachine {
     pub(super) async fn verify_identity(
         &mut self,
         peer: IdentityAndCredentials,
-        peer_public_key: &PublicKey,
+        peer_public_key: &X25519PublicKey,
     ) -> Result<()> {
         let identity = Identity::import_from_change_history(
             None,
@@ -143,17 +143,13 @@ impl CommonStateMachine {
             )
             .await?;
 
-        if peer_public_key.stype() != SecretType::X25519 {
-            return Err(IdentityError::InvalidKeyType.into());
-        }
-
         match &purpose_key.public_key {
-            PurposePublicKey::SecureChannelStaticKey(public_key) => {
-                if public_key.0 != peer_public_key.data() {
+            PurposePublicKey::SecureChannelStatic(public_key) => {
+                if public_key.0 != peer_public_key.0 {
                     return Err(IdentityError::InvalidKeyData.into());
                 }
             }
-            PurposePublicKey::CredentialSigningKey(_) => {
+            PurposePublicKey::CredentialSigning(_) => {
                 return Err(IdentityError::InvalidKeyType.into())
             }
         }

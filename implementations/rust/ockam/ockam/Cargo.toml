@@ -34,6 +34,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["std", "ockam_transport_tcp", "software_vault_storage"]
 software_vault = ["ockam_identity/software_vault"]
 software_vault_storage = ["software_vault", "ockam_vault/storage"]
+OCKAM_XX_25519_AES256_GCM_SHA256 = ["ockam_identity/OCKAM_XX_25519_AES256_GCM_SHA256"]
+OCKAM_XX_25519_AES128_GCM_SHA256 = ["ockam_identity/OCKAM_XX_25519_AES128_GCM_SHA256"]
+OCKAM_XX_25519_ChaChaPolyBLAKE2s = ["ockam_identity/OCKAM_XX_25519_ChaChaPolyBLAKE2s"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.

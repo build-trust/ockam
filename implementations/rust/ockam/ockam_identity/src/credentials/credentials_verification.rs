@@ -2,7 +2,7 @@ use crate::identities::AttributesEntry;
 use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey};
 use crate::utils::now;
 use crate::{
-    CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeysVerification,
+    CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeyVerification,
     TimestampInSeconds,
 };
 
@@ -10,7 +10,7 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::VerifyingVault;
+use ockam_vault::VaultForVerifyingSignatures;
 
 /// We allow Credentials to be created in the future related to this machine's time due to
 /// possible time dyssynchronization
@@ -18,16 +18,16 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 
 /// Service for managing [`Credential`]s
 pub struct CredentialsVerification {
-    purpose_keys_verification: Arc<PurposeKeysVerification>,
-    verifying_vault: Arc<dyn VerifyingVault>,
+    purpose_keys_verification: Arc<PurposeKeyVerification>,
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     identities_repository: Arc<dyn IdentitiesRepository>,
 }
 
 impl CredentialsVerification {
     ///Constructor
     pub fn new(
-        purpose_keys_verification: Arc<PurposeKeysVerification>,
-        verifying_vault: Arc<dyn VerifyingVault>,
+        purpose_keys_verification: Arc<PurposeKeyVerification>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
         identities_repository: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {
@@ -65,11 +65,11 @@ impl CredentialsVerification {
         }
 
         let public_key = match purpose_key_data.public_key.clone() {
-            PurposePublicKey::SecureChannelStaticKey(_) => {
+            PurposePublicKey::SecureChannelStatic(_) => {
                 return Err(IdentityError::InvalidKeyType.into())
             }
 
-            PurposePublicKey::CredentialSigningKey(public_key) => public_key,
+            PurposePublicKey::CredentialSigning(public_key) => public_key,
         };
 
         let public_key = public_key.into();
@@ -87,7 +87,7 @@ impl CredentialsVerification {
 
         if !self
             .verifying_vault
-            .verify(&public_key, &versioned_data_hash, &signature)
+            .verify_signature(&public_key, &versioned_data_hash.0, &signature)
             .await?
         {
             return Err(IdentityError::CredentialVerificationFailed.into());

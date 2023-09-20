@@ -1,10 +1,9 @@
-use crate::{KeyId, Secret, SecretAttributes, StoredSecret};
-
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Result};
 use ockam_node::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueStorage};
 
+use crate::legacy::{KeyId, Secret, SecretAttributes, StoredSecret};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::path::Path;
 
@@ -154,7 +153,6 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::Secret;
     use std::fs::File;
     use std::io::Read;
     use tempfile::NamedTempFile;

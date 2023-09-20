@@ -2,14 +2,14 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::{KeyId, Secret, SecureChannelVault};
+use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 
 use crate::IdentityError;
 
 pub(crate) struct Encryptor {
-    key: KeyId,
+    key: AeadSecretKeyHandle,
     nonce: u64,
-    vault: Arc<dyn SecureChannelVault>,
+    vault: Arc<dyn VaultForSecureChannels>,
 }
 
 // To simplify the implementation we use the same constant for the size of the message
@@ -30,19 +30,20 @@ impl Encryptor {
         (b, n)
     }
 
-    pub async fn rekey(vault: &Arc<dyn SecureChannelVault>, key: &KeyId) -> Result<KeyId> {
+    pub async fn rekey(
+        vault: &Arc<dyn VaultForSecureChannels>,
+        key: &AeadSecretKeyHandle,
+    ) -> Result<AeadSecretKeyHandle> {
         let nonce_buffer = Self::convert_nonce_from_u64(u64::MAX).1;
         let zeroes = [0u8; 32];
 
-        let new_key_buffer = vault
-            .aead_aes_gcm_encrypt(key, &zeroes, &nonce_buffer, &[])
+        let new_key_buffer = vault.aead_encrypt(key, &zeroes, &nonce_buffer, &[]).await?;
+
+        let buffer = vault
+            .import_secret_buffer(new_key_buffer[0..32].to_vec())
             .await?;
 
-        let attributes = vault.get_secret_attributes(key).await?;
-
-        vault
-            .import_ephemeral_secret(Secret::new(new_key_buffer[0..32].to_vec()), attributes)
-            .await
+        vault.convert_secret_buffer_to_aead_key(buffer).await
     }
 
     pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
@@ -56,14 +57,14 @@ impl Encryptor {
         if current_nonce > 0 && current_nonce % KEY_RENEWAL_INTERVAL == 0 {
             let new_key = Self::rekey(&self.vault, &self.key).await?;
             let old_key = core::mem::replace(&mut self.key, new_key);
-            self.vault.delete_secret(old_key).await?;
+            self.vault.delete_aead_secret_key(old_key).await?;
         }
 
         let (small_nonce, nonce) = Self::convert_nonce_from_u64(current_nonce);
 
         let mut cipher_text = self
             .vault
-            .aead_aes_gcm_encrypt(&self.key, payload, &nonce, &[])
+            .aead_encrypt(&self.key, payload, &nonce, &[])
             .await?;
 
         let mut res = Vec::new();
@@ -73,18 +74,22 @@ impl Encryptor {
         Ok(res)
     }
 
-    pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn SecureChannelVault>) -> Self {
+    pub fn new(
+        key: AeadSecretKeyHandle,
+        nonce: u64,
+        vault: Arc<dyn VaultForSecureChannels>,
+    ) -> Self {
         Self { key, nonce, vault }
     }
 
     pub(crate) async fn shutdown(&self) -> Result<()> {
-        if !self.vault.delete_secret(self.key.clone()).await? {
+        if !self.vault.delete_aead_secret_key(self.key.clone()).await? {
             Err(Error::new(
                 Origin::Ockam,
                 Kind::Internal,
                 format!(
                     "the key id {} could not be deleted in the Encryptor shutdown",
-                    self.key
+                    hex::encode(self.key.0 .0.value())
                 ),
             ))
         } else {

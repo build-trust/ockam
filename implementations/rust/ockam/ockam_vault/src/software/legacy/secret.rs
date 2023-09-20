@@ -1,20 +1,22 @@
-use crate::{KeyId, SecretKeyVec};
 use core::fmt;
 use minicbor::{Decode, Encode};
+use ockam_core::compat::string::String;
+use ockam_core::compat::vec::Vec;
 use ockam_core::hex_encoding;
 use p256::elliptic_curve::subtle;
-use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
+
+/// KeyId.
+pub type KeyId = String;
 
 /// Binary representation of a Secret.
-#[derive(Serialize, Clone, Zeroize, Encode, Decode)]
-#[zeroize(drop)]
+#[derive(Serialize, Clone, Zeroize, ZeroizeOnDrop, Encode, Decode)]
 #[cbor(transparent)]
 pub struct Secret(
     #[serde(with = "hex_encoding")]
     #[n(0)]
-    SecretKeyVec,
+    Vec<u8>,
 );
 
 impl<'de> Deserialize<'de> for Secret {
@@ -23,24 +25,14 @@ impl<'de> Deserialize<'de> for Secret {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
-        pub enum SecretV1 {
-            Key(#[serde(with = "hex_encoding")] SecretKeyVec),
-            Aws(KeyId),
-        }
-        #[derive(Deserialize)]
-        struct SecretV2(#[serde(with = "hex_encoding")] SecretKeyVec);
+        struct SecretV2(#[serde(with = "hex_encoding")] Vec<u8>);
 
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum Secrets {
-            V1(SecretV1),
             V2(SecretV2),
         }
         match Secrets::deserialize(deserializer) {
-            Ok(Secrets::V1(SecretV1::Key(secret))) => Ok(Secret(secret)),
-            Ok(Secrets::V1(SecretV1::Aws(_))) => {
-                Err(D::Error::custom("AWS key ids are not supported anymore"))
-            }
             Ok(Secrets::V2(SecretV2(secret))) => Ok(Secret(secret)),
             Err(e) => Err(e),
         }
@@ -49,7 +41,7 @@ impl<'de> Deserialize<'de> for Secret {
 
 impl Secret {
     /// Create a new secret key.
-    pub fn new(data: SecretKeyVec) -> Self {
+    pub fn new(data: Vec<u8>) -> Self {
         Self(data)
     }
 
@@ -95,20 +87,5 @@ mod tests {
     fn test_deserialize_secret() {
         let actual: Secret = de::from_str("\"010203\"").unwrap();
         assert_eq!(actual, Secret(vec![1, 2, 3]));
-    }
-
-    #[test]
-    fn test_deserialize_legacy_secret_1() {
-        let legacy = r#"{"Key":[1, 2, 3]}"#;
-        let actual: Secret = de::from_str(legacy).unwrap();
-        assert_eq!(actual, Secret(vec![1, 2, 3]));
-    }
-
-    #[test]
-    fn test_deserialize_legacy_secret_2() {
-        let legacy = r#"{"Key":"010203"}"#;
-        let actual: Secret = de::from_str(legacy).unwrap();
-        let expected = Secret(vec![1, 2, 3]);
-        assert_eq!(actual, expected);
     }
 }

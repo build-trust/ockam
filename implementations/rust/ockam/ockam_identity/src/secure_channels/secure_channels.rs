@@ -10,7 +10,7 @@ use crate::secure_channel::{
     Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannelRegistry,
 };
-use crate::{Purpose, SecureChannel, SecureChannelListener, SecureChannelsBuilder, Vault};
+use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -102,7 +102,7 @@ impl SecureChannels {
             .identities
             .purpose_keys()
             .purpose_keys_creation()
-            .get_or_create_purpose_key(identifier, Purpose::SecureChannel)
+            .get_or_create_secure_channel_purpose_key(identifier)
             .await?;
 
         HandshakeWorker::create(

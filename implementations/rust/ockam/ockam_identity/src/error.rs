@@ -10,8 +10,6 @@ pub enum IdentityError {
     InvalidKeyType = 1,
     /// Invalid Key Data
     InvalidKeyData,
-    /// Invalid Signature Data
-    InvalidSignatureData,
     /// Invalid Identifier format
     InvalidIdentifier,
     /// Identity Change History is empty
@@ -24,28 +22,14 @@ pub enum IdentityError {
     CredentialVerificationFailed,
     /// Error occurred while getting current UTC Timestamp
     UnknownTimestamp,
-    /// Attributes were already set
-    AttributesAlreadySet,
-    /// Attributes hasn't been set
-    AttributesNotSet,
-    /// Schema was not yet set
-    SchemaNotSet,
-    /// Maximum time for credential validity exceeded
-    CredentialTtlExceeded,
-    /// Credential ttl wasn't set
-    CredentialTtlNotSet,
     /// Unknown Authority
     UnknownAuthority,
     /// Unknown version of the Credential
     UnknownCredentialVersion,
-    /// Unknown version of the PurposeKeyAttestation
-    UnknownPurposeKeyVersion,
     /// Unknown version of the Identity
     UnknownIdentityVersion,
     /// A credential was rejected by the trust context
     SecureChannelVerificationFailedIncorrectCredential,
-    /// The trust context was expecting at least one credential
-    SecureChannelVerificationFailedMissingCredential,
     /// Credentials could not be checked because the trust context is missing
     SecureChannelVerificationFailedMissingTrustContext,
     /// SecureChannelTrustCheckFailed
@@ -66,10 +50,6 @@ pub enum IdentityError {
     InvalidHex,
     /// Secret Key doesn't correspond to the Identity
     WrongSecretKey,
-    /// Expected Secret Key, got Public Key
-    ExpectedSecretKeyInsteadOfPublic,
-    /// Expected Public Key, got Secret Key
-    ExpectedPublicKeyInsteadOfSecret,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

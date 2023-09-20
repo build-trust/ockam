@@ -1,6 +1,6 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SigningVault, VerifyingVault};
+use ockam_vault::{SigningSecretKeyHandle, VaultForSigning, VaultForVerifyingSignatures};
 
 use crate::identities::identity_builder::IdentityBuilder;
 use crate::models::{ChangeHistory, Identifier};
@@ -10,16 +10,16 @@ use crate::{IdentityHistoryComparison, IdentityOptions};
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
     pub(super) repository: Arc<dyn IdentitiesRepository>,
-    pub(super) identity_vault: Arc<dyn SigningVault>,
-    pub(super) verifying_vault: Arc<dyn VerifyingVault>,
+    pub(super) identity_vault: Arc<dyn VaultForSigning>,
+    pub(super) verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
 }
 
 impl IdentitiesCreation {
     /// Create a new identities import module
     pub fn new(
         repository: Arc<dyn IdentitiesRepository>,
-        identity_vault: Arc<dyn SigningVault>,
-        verifying_vault: Arc<dyn VerifyingVault>,
+        identity_vault: Arc<dyn VaultForSigning>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Self {
         Self {
             repository,
@@ -135,10 +135,15 @@ impl IdentitiesCreation {
     pub async fn import_private_identity(
         &self,
         identity_change_history: &[u8],
-        key_id: &KeyId,
+        signing_secret_key_handle: &SigningSecretKeyHandle,
     ) -> Result<Identity> {
         let identity = self.import(None, identity_change_history).await?;
-        if identity.get_latest_public_key()? != self.identity_vault.get_public_key(key_id).await? {
+        if identity.get_latest_public_key()?
+            != self
+                .identity_vault
+                .get_verifying_public_key(signing_secret_key_handle)
+                .await?
+        {
             return Err(IdentityError::WrongSecretKey.into());
         }
 
@@ -149,12 +154,12 @@ impl IdentitiesCreation {
     }
 
     /// [`SigningVault`]
-    pub fn identity_vault(&self) -> Arc<dyn SigningVault> {
+    pub fn identity_vault(&self) -> Arc<dyn VaultForSigning> {
         self.identity_vault.clone()
     }
 
     /// [`VerifyingVault`]
-    pub fn verifying_vault(&self) -> Arc<dyn VerifyingVault> {
+    pub fn verifying_vault(&self) -> Arc<dyn VaultForVerifyingSignatures> {
         self.verifying_vault.clone()
     }
 }

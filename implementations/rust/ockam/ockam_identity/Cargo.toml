@@ -19,6 +19,18 @@ and trustfully with cloud services and other devices.
 default = ["std", "software_vault"]
 software_vault = ["ockam_vault"]
 lease_proto_json = ["serde_json"]
+OCKAM_XX_25519_AES256_GCM_SHA256 = [
+  "ockam_vault/disable_default_noise_protocol",
+  "ockam_vault/OCKAM_XX_25519_AES256_GCM_SHA256",
+]
+OCKAM_XX_25519_AES128_GCM_SHA256 = [
+  "ockam_vault/disable_default_noise_protocol",
+  "ockam_vault/OCKAM_XX_25519_AES128_GCM_SHA256",
+]
+OCKAM_XX_25519_ChaChaPolyBLAKE2s = [
+  "ockam_vault/disable_default_noise_protocol",
+  "ockam_vault/OCKAM_XX_25519_ChaChaPolyBLAKE2s",
+]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.

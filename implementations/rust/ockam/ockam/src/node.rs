@@ -2,7 +2,7 @@ use crate::identity::models::Identifier;
 use crate::identity::storage::Storage;
 use crate::identity::{
     secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, Purpose, SecureChannel, SecureChannelListener,
+    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
     SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
 };
 use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
@@ -15,7 +15,7 @@ use ockam_core::{
 };
 use ockam_identity::{PurposeKeys, Vault, VaultStorage};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
-use ockam_vault::KeyId;
+use ockam_vault::SigningSecretKeyHandle;
 
 use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
 use crate::stream::Stream;
@@ -116,7 +116,7 @@ impl Node {
             .identities()
             .purpose_keys()
             .purpose_keys_creation()
-            .create_purpose_key(identifier, Purpose::SecureChannel)
+            .create_secure_channel_purpose_key(identifier)
             .await?;
 
         Ok(())
@@ -127,10 +127,10 @@ impl Node {
     pub async fn import_private_identity(
         &self,
         identity_change_history: &[u8],
-        key_id: &KeyId,
+        key: &SigningSecretKeyHandle,
     ) -> Result<Identity> {
         self.identities_creation()
-            .import_private_identity(identity_change_history, key_id)
+            .import_private_identity(identity_change_history, key)
             .await
     }
 

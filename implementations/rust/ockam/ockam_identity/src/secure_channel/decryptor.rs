@@ -3,7 +3,6 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{Any, Result, Routed, TransportMessage};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
-use ockam_vault::{KeyId, SecureChannelVault};
 
 use crate::models::Identifier;
 use crate::secure_channel::encryptor::{Encryptor, KEY_RENEWAL_INTERVAL};
@@ -12,6 +11,7 @@ use crate::secure_channel::nonce_tracker::NonceTracker;
 use crate::secure_channel::Addresses;
 use crate::{DecryptionRequest, DecryptionResponse, IdentityError, IdentitySecureChannelLocalInfo};
 
+use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, warn};
 
 pub(crate) struct DecryptorHandler {
@@ -26,8 +26,8 @@ impl DecryptorHandler {
     pub fn new(
         role: &'static str,
         addresses: Addresses,
-        key: KeyId,
-        vault: Arc<dyn SecureChannelVault>,
+        key: AeadSecretKeyHandle,
+        vault: Arc<dyn VaultForSecureChannels>,
         their_identity_id: Identifier,
     ) -> Self {
         Self {
@@ -122,16 +122,16 @@ impl DecryptorHandler {
 }
 
 pub(crate) struct Decryptor {
-    vault: Arc<dyn SecureChannelVault>,
+    vault: Arc<dyn VaultForSecureChannels>,
     key_tracker: KeyTracker,
     nonce_tracker: NonceTracker,
 }
 
 impl Decryptor {
-    pub fn new(key_id: KeyId, vault: Arc<dyn SecureChannelVault>) -> Self {
+    pub fn new(key: AeadSecretKeyHandle, vault: Arc<dyn VaultForSecureChannels>) -> Self {
         Self {
             vault,
-            key_tracker: KeyTracker::new(key_id, KEY_RENEWAL_INTERVAL),
+            key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
             nonce_tracker: NonceTracker::new(),
         }
     }
@@ -165,13 +165,13 @@ impl Decryptor {
         // message with a decryption _before_ committing to the new state
         let result = self
             .vault
-            .aead_aes_gcm_decrypt(&key, &payload[8..], &nonce_buffer, &[])
+            .aead_decrypt(&key, &payload[8..], &nonce_buffer, &[])
             .await;
 
         if result.is_ok() {
             self.nonce_tracker = nonce_tracker;
             if let Some(key_to_delete) = self.key_tracker.update_key(key)? {
-                self.vault.delete_secret(key_to_delete).await?;
+                self.vault.delete_aead_secret_key(key_to_delete).await?;
             }
         }
         result
@@ -180,10 +180,10 @@ impl Decryptor {
     /// Remove the channel keys on shutdown
     pub(crate) async fn shutdown(&self) -> Result<()> {
         self.vault
-            .delete_secret(self.key_tracker.current_key.clone())
+            .delete_aead_secret_key(self.key_tracker.current_key.clone())
             .await?;
         if let Some(previous_key) = self.key_tracker.previous_key.clone() {
-            self.vault.delete_secret(previous_key).await?;
+            self.vault.delete_aead_secret_key(previous_key).await?;
         };
         Ok(())
     }

@@ -5,6 +5,7 @@ use ockam::Context;
 use ockam_api::cli_state;
 use ockam_api::cli_state::identities::IdentityConfig;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
@@ -47,15 +48,13 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
             .await?
             .identities_creation();
 
-        let public_key = identities_creation
-            .identity_vault()
-            .get_public_key(&cmd.key_id)
-            .await
-            .into_diagnostic()?;
+        let handle = SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(
+            cmd.key_id.as_bytes().to_vec(),
+        ));
 
         identities_creation
             .identity_builder()
-            .with_existing_key(cmd.key_id, public_key.stype())
+            .with_existing_key(handle)
             .build()
             .await
             .into_diagnostic()?

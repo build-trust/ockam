@@ -1,7 +1,7 @@
-mod secure_channel_vault;
-mod signing_vault;
-mod verifying_vault;
+mod vault_for_secure_channels;
+mod vault_for_signing;
+mod vault_for_verifying_signatures;
 
-pub use secure_channel_vault::*;
-pub use signing_vault::*;
-pub use verifying_vault::*;
+pub use vault_for_secure_channels::*;
+pub use vault_for_signing::*;
+pub use vault_for_verifying_signatures::*;
