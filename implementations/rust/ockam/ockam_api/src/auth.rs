@@ -3,7 +3,7 @@ use core::fmt;
 use minicbor::Decoder;
 use tracing::trace;
 
-use ockam::identity::{AttributesEntry, IdentityAttributesReader, Identifier};
+use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesReader};
 use ockam_core::api::{decode_option, Request, Response};
 use ockam_core::api::{Method, RequestHeader};
 use ockam_core::compat::sync::Arc;

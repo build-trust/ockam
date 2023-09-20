@@ -2,7 +2,7 @@ use crate::app::ModelState;
 use ockam::Context;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::NodeManager;
+use ockam_api::nodes::service::SupervisedNodeManager;
 use std::sync::Arc;
 use tracing::{debug, error};
 
@@ -22,7 +22,7 @@ impl ModelState {
 
 pub(crate) async fn load_model_state(
     context: Arc<Context>,
-    node_manager: Arc<NodeManager>,
+    node_manager: Arc<SupervisedNodeManager>,
     model_state: &ModelState,
     cli_state: &CliState,
 ) {

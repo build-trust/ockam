@@ -6,8 +6,8 @@ use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
-use ockam_core::{async_trait, route, Error, Route, AsyncTryClone};
 use ockam::identity::Identifier;
+use ockam_core::{async_trait, route, AsyncTryClone, Error, Route};
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;

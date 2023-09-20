@@ -476,10 +476,7 @@ impl NodeManager {
         NodeIdentities::new(self.identities(), self.cli_state.clone())
     }
 
-    pub async fn get_identifier(
-        &self,
-        identity_name: Option<String>,
-    ) -> Result<Identifier> {
+    pub async fn get_identifier(&self, identity_name: Option<String>) -> Result<Identifier> {
         if let Some(name) = identity_name {
             self.node_identities().get_identifier(name.clone()).await
         } else {
@@ -491,10 +488,7 @@ impl NodeManager {
         self.node_identities().get_identities(vault_name).await
     }
 
-    async fn get_secure_channels_vault(
-        &self,
-        vault_name: Option<String>,
-    ) -> Result<Vault> {
+    async fn get_secure_channels_vault(&self, vault_name: Option<String>) -> Result<Vault> {
         if let Some(vault) = vault_name {
             let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
             Ok(existing_vault)

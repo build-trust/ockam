@@ -4,12 +4,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::timeout;
 
+use ockam::identity::Identifier;
 use ockam::{Address, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AsyncTryClone, IncomingAccessControl, Route};
-use ockam::identity::Identifier;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -23,7 +23,7 @@ use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
-use crate::nodes::service::random_alias;
+use crate::nodes::service::{random_alias, SupervisedNodeManager};
 use crate::session::sessions::{Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 use crate::{actions, resources, DefaultAddress};
 
@@ -303,15 +303,13 @@ impl NodeManager {
 impl NodeManager {
     pub async fn create_inlet(
         &self,
-        ctx: &Context,
+        connection: Connection,
         listen_addr: String,
         requested_alias: Option<String>,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
-        wait_for_outlet_duration: Option<Duration>,
-        authorized: Option<Identifier>,
-    ) -> Result<InletStatus> {
+    ) -> Result<(InletStatus, Arc<dyn IncomingAccessControl>)> {
         info!("Handling request to create inlet portal");
 
         let alias = requested_alias.clone().unwrap_or_else(random_alias);
@@ -354,25 +352,7 @@ impl NodeManager {
             }
         }
 
-        // The addressing scheme is very flexible. Typically the node connects to
-        // the cloud via secure channel and the with another secure channel via
-        // forwarder to the actual outlet on the target node. However it is also
-        // possible that there is just a single secure channel used to go directly
-        // to another node.
-        let duration = wait_for_outlet_duration.unwrap_or(Duration::from_secs(5));
-        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
-        let connection = self
-            .make_connection(
-                connection_ctx.clone(),
-                &outlet_addr,
-                None,
-                authorized.clone(),
-                None,
-                Some(duration),
-            )
-            .await?;
         let outlet_route = connection.route()?;
-
         let outlet_route = route![prefix_route.clone(), outlet_route, suffix_route.clone()];
 
         let projects = self.cli_state.projects.list()?;
@@ -427,37 +407,15 @@ impl NodeManager {
                         InletInfo::new(&listen_addr, Some(&worker_addr), &outlet_route),
                     )
                     .await;
-                if !connection.route()?.is_empty() {
-                    debug! {
-                        %alias,
-                        %listen_addr,
-                        %worker_addr,
-                        ping_addr = %connection.transport_route(),
-                        "Creating session for TCP inlet"
-                    };
-                    let mut session = Session::new(connection.transport_route());
-
-                    let repl = self.portal_replacer(
-                        connection_ctx,
-                        connection,
-                        worker_addr.clone(),
-                        listen_addr.clone(),
-                        outlet_addr.clone(),
-                        prefix_route.clone(),
-                        suffix_route.clone(),
-                        authorized,
-                        access_control.clone(),
-                    );
-                    session.set_replacer(repl);
-                    self.add_session(session);
-                }
-
-                InletStatus::new(
-                    listen_addr,
-                    worker_addr.to_string(),
-                    alias,
-                    None,
-                    outlet_route.to_string(),
+                (
+                    InletStatus::new(
+                        listen_addr,
+                        worker_addr.to_string(),
+                        alias,
+                        None,
+                        outlet_route.to_string(),
+                    ),
+                    access_control,
                 )
             }
             Err(e) => {
@@ -548,6 +506,76 @@ impl NodeManager {
                 .collect(),
         )
     }
+}
+
+impl SupervisedNodeManager {
+    pub async fn create_inlet(
+        &self,
+        ctx: &Context,
+        listen_addr: String,
+        requested_alias: Option<String>,
+        prefix_route: Route,
+        suffix_route: Route,
+        outlet_addr: MultiAddr,
+        wait_for_outlet_duration: Option<Duration>,
+        authorized: Option<Identifier>,
+    ) -> Result<InletStatus> {
+        // The addressing scheme is very flexible. Typically the node connects to
+        // the cloud via secure channel and the with another secure channel via
+        // forwarder to the actual outlet on the target node. However it is also
+        // possible that there is just a single secure channel used to go directly
+        // to another node.
+        let duration = wait_for_outlet_duration.unwrap_or(Duration::from_secs(5));
+        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
+        let connection = self
+            .make_connection(
+                connection_ctx.clone(),
+                &outlet_addr,
+                None,
+                authorized.clone(),
+                None,
+                Some(duration),
+            )
+            .await?;
+
+        let (inlet, access_control) = self
+            .node_manager
+            .create_inlet(
+                connection.clone(),
+                listen_addr.clone(),
+                requested_alias,
+                prefix_route.clone(),
+                suffix_route.clone(),
+                outlet_addr.clone(),
+            )
+            .await?;
+        if !connection.route()?.is_empty() {
+            debug! {
+                %inlet.alias,
+                %inlet.bind_addr,
+                %inlet.worker_addr,
+                ping_addr = %connection.transport_route(),
+                "Creating session for TCP inlet"
+            };
+            let mut session = Session::new(connection.transport_route());
+
+            let repl = Self::portal_replacer(
+                self.node_manager.clone(),
+                connection_ctx,
+                connection,
+                Address::from_string(inlet.worker_addr.clone()),
+                listen_addr,
+                outlet_addr,
+                prefix_route,
+                suffix_route,
+                authorized,
+                access_control,
+            );
+            session.set_replacer(repl);
+            self.add_session(session);
+        };
+        Ok(inlet)
+    }
 
     /// Create a session replacer.
     ///
@@ -556,7 +584,7 @@ impl NodeManager {
     /// again.
     #[allow(clippy::too_many_arguments)]
     fn portal_replacer(
-        &self,
+        node_manager: Arc<NodeManager>,
         ctx: Arc<Context>,
         connection: Connection,
         inlet_address: Address,
@@ -569,6 +597,7 @@ impl NodeManager {
     ) -> Replacer {
         let connection_arc = Arc::new(Mutex::new(connection.clone()));
         let inlet_address_arc = Arc::new(Mutex::new(inlet_address));
+        let node_manager = node_manager.clone();
 
         Box::new(move |previous_addr| {
             let addr = addr.clone();
@@ -582,20 +611,21 @@ impl NodeManager {
             let prefix_route = prefix_route.clone();
             let suffix_route = suffix_route.clone();
             let previous_connection = connection_arc.lock().unwrap().clone();
+            let node_manager = node_manager.clone();
             Box::pin(async move {
                 debug!(%previous_addr, %addr, "creating new tcp inlet");
                 // The future that recreates the inlet:
                 let f = async {
                     //stop/delete previous secure channels
                     for encryptor in &previous_connection.secure_channel_encryptors {
-                        let result = self.delete_secure_channel(&ctx, encryptor).await;
+                        let result = node_manager.delete_secure_channel(&ctx, encryptor).await;
                         if let Err(error) = result {
                             //we can't do much more
                             debug!("cannot delete secure channel `{encryptor}`: {error}");
                         }
                     }
                     if let Some(tcp_connection) = previous_connection.tcp_connection.as_ref() {
-                        if let Err(error) = self
+                        if let Err(error) = node_manager
                             .tcp_transport
                             .disconnect(tcp_connection.sender_address().clone())
                             .await
@@ -605,13 +635,24 @@ impl NodeManager {
                     }
 
                     // The previous inlet worker needs to be stopped:
-                    if let Err(error) = self.tcp_transport.stop_inlet(inlet_address.clone()).await {
+                    if let Err(error) = node_manager
+                        .tcp_transport
+                        .stop_inlet(inlet_address.clone())
+                        .await
+                    {
                         debug!("cannot stop inlet `{inlet_address}`: {error}");
                     }
 
                     // Now a connection attempt is made
-                    let new_connection = self
-                        .make_connection(ctx.clone(), &addr, None, authorized, None, Some(MAX_CONNECT_TIME))
+                    let new_connection = node_manager
+                        .make_connection(
+                            ctx.clone(),
+                            &addr,
+                            None,
+                            authorized,
+                            None,
+                            Some(MAX_CONNECT_TIME),
+                        )
                         .await?;
                     *connection_arc.lock().unwrap() = new_connection.clone();
                     let connection_route = new_connection.route()?;
@@ -621,7 +662,7 @@ impl NodeManager {
                     let options = TcpInletOptions::new().with_incoming_access_control(access);
 
                     // Finally attempt to create a new inlet using the new route:
-                    let new_inlet_address = self
+                    let new_inlet_address = node_manager
                         .tcp_transport
                         .create_inlet(bind, normalized_route, options)
                         .await?
