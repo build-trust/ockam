@@ -81,7 +81,7 @@ async fn main(ctx: Context) -> Result<()> {
     let server_connection = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
     let channel = node
         .create_secure_channel(
-            &client.identifier(),
+            client.identifier(),
             route![server_connection, DefaultAddress::SECURE_CHANNEL_LISTENER],
             SecureChannelOptions::new()
                 .with_trust_context(trust_context)
