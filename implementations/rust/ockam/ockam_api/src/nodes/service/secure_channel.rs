@@ -443,7 +443,7 @@ impl NodeManager {
         addr: &Address,
     ) -> Option<SecureChannelListenerInfo> {
         debug!(%addr, "On show secure channel listener");
-        self.registry.secure_channel_listeners.get(&addr).await
+        self.registry.secure_channel_listeners.get(addr).await
     }
 
     pub async fn list_secure_channel_listeners(&self) -> Vec<SecureChannelListenerInfo> {
@@ -480,7 +480,7 @@ impl NodeManager {
         if let Some(name) = identity_name {
             self.node_identities().get_identifier(name.clone()).await
         } else {
-            Ok(self.identifier())
+            Ok(self.identifier().clone())
         }
     }
 

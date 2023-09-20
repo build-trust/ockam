@@ -1,15 +1,18 @@
 use minicbor::bytes::ByteSlice;
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::utils::now;
 use ockam::identity::{identities, AttributesEntry};
 use ockam::identity::{
-    CredentialsIssuer, CredentialsIssuerClient, Identities, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels,
+    CredentialsIssuer, Identities, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannels,
 };
 use ockam::route;
 use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
+use ockam_core::api::Request;
 use ockam_core::compat::collections::{BTreeMap, HashMap};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
+use ockam_node::api::ask;
 use ockam_node::Context;
 
 #[ockam_macros::test]
@@ -83,9 +86,9 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     // Add the member via the enroller's connection:
-    let c = CredentialsIssuerClient::new(route![e2a, auth_worker_addr], ctx).await?;
     // Get a fresh member credential and verify its validity:
-    let credential = c.credential().await?;
+    let credential: CredentialAndPurposeKey =
+        ask(ctx, route![e2a, auth_worker_addr], Request::post("/")).await?;
     let exported = member_identity.export()?;
 
     let imported = identities_creation

@@ -51,7 +51,13 @@ impl NodeManager {
         }
 
         self.credentials_service()
-            .start(ctx, trust_context, self.identifier(), addr.clone(), !oneway)
+            .start(
+                ctx,
+                trust_context,
+                self.identifier().clone(),
+                addr.clone(),
+                !oneway,
+            )
             .await?;
 
         self.registry

@@ -2,9 +2,9 @@
 
 use core::fmt::Display;
 
-use minicbor::Encode;
+use minicbor::{Decode, Encode};
 
-use ockam_core::api::Request;
+use ockam_core::api::{Request, Response};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{LocalInfo, Result, Route};
 
@@ -20,6 +20,19 @@ where
     T: Encode<()>,
 {
     request_with_options(ctx, route, req, MessageSendReceiveOptions::new()).await
+}
+
+/// Encode request header and body (if any), send the package to the server and returns its decoded response.
+pub async fn ask<T, R>(
+    ctx: &Context,
+    route: impl Into<Route> + Display,
+    req: Request<T>,
+) -> Result<R>
+where
+    T: Encode<()>,
+    R: for<'a> Decode<'a, ()>,
+{
+    Response::parse_response_body(request(ctx, route, req).await?.as_slice())
 }
 
 /// Encode request header and body (if any), send the package to the server and returns its response.

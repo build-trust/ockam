@@ -116,17 +116,13 @@ impl Runner {
                 .identifier()
                 .clone();
 
-            node.make_authority_node_client(authority_identifier, addr.clone(), Some(identity))
+            node.make_authority_node_client(&authority_identifier, addr, Some(identity))
                 .await?
         } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
             let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
             project = Some(p);
-            node.make_authority_node_client(
-                a.identity_id().clone(),
-                a.address().clone(),
-                Some(identity),
-            )
-            .await?
+            node.make_authority_node_client(a.identity_id(), a.address(), Some(identity))
+                .await?
         } else {
             return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
         };

@@ -2,7 +2,7 @@ use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::identity::{CredentialsIssuer, Vault};
-use ockam::{node, Context, Result, TcpListenerOptions};
+use ockam::{Context, Result, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
 use ockam_api::DefaultAddress;
 use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
