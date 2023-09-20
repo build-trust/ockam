@@ -35,7 +35,7 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let req = Request::delete("/node/services/kafka_consumer").body(
         models::services::DeleteServiceRequest::new(cmd.address.clone()),
     );

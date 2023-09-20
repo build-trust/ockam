@@ -58,7 +58,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node = parse_node_name(&at)?;
-    let mut rpc = Rpc::background(ctx, &opts, &node).await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, &node).await?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(
             &cmd.address,

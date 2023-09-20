@@ -55,7 +55,7 @@ async fn run_impl(
 
     let mut nodes: Vec<NodeListOutput> = Vec::new();
     for node_name in node_names {
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 

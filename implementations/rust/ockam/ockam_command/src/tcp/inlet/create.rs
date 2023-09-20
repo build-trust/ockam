@@ -103,7 +103,7 @@ async fn rpc(
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node = parse_node_name(&node_name)?;
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {

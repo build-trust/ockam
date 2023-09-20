@@ -154,7 +154,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         let at = get_node_name(&opts.state, &cmd.at);
         let node_name = parse_node_name(&at)?;
         let address = &cmd.address;
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
         let response: DeleteSecureChannelResponse =
             rpc.ask(api::delete_secure_channel(address)).await?;
         cmd.print_output(&node_name, address, &opts, response);

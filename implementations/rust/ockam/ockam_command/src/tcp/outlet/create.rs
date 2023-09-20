@@ -150,7 +150,7 @@ pub async fn send_request(
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletStatus> {
     let to_node = get_node_name(&opts.state, &to_node.into());
-    let mut rpc = Rpc::background(ctx, opts, &to_node).await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, &to_node).await?;
     let req = Request::post("/node/outlet").body(payload);
     rpc.ask(req).await
 }

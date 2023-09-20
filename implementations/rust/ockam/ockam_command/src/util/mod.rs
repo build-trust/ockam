@@ -27,7 +27,7 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
-use crate::{CommandGlobalOpts, Result};
+use crate::Result;
 
 pub mod api;
 pub mod duration;
@@ -39,26 +39,22 @@ pub mod parsers;
 pub struct Rpc {
     ctx: Context,
     buf: Vec<u8>,
-    pub opts: CommandGlobalOpts,
+    cli_state: CliState,
     node_name: String,
     to: Route,
-    pub timeout: Option<Duration>,
+    timeout: Option<Duration>,
     tcp_transport: Arc<TcpTransport>,
 }
 
 impl Rpc {
     /// Creates a new RPC to send a request to a running background node.
-    pub async fn background(
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        node_name: &str,
-    ) -> Result<Rpc> {
+    pub async fn background(ctx: &Context, cli_state: &CliState, node_name: &str) -> Result<Rpc> {
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let ctx_clone = ctx.async_try_clone().await?;
         Ok(Rpc {
             ctx: ctx_clone,
             buf: Vec::new(),
-            opts: opts.clone(),
+            cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
@@ -159,7 +155,7 @@ impl Rpc {
 
     async fn route_impl(&self) -> Result<Route> {
         let mut route = self.to.clone();
-        let node_state = self.opts.state.nodes.get(&self.node_name)?;
+        let node_state = self.cli_state.nodes.get(&self.node_name)?;
         let port = node_state.config().setup().api_transport()?.addr.port();
         let addr_str = format!("localhost:{port}");
         let addr = self

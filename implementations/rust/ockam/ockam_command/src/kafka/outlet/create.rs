@@ -54,7 +54,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_outlet").body(payload);
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
 
         start_service_impl(&mut rpc, "KafkaOutlet", req).await?;
         *is_finished.lock().await = true;

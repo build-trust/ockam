@@ -44,7 +44,7 @@ pub async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let outlet_status: OutletStatus = rpc.ask(make_api_request(cmd)?).await?;
 
     println!("Outlet:");

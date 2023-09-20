@@ -47,7 +47,7 @@ pub async fn run_impl(
         let alias = cmd.alias.clone();
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
         let node = parse_node_name(&node_name)?;
-        let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
         rpc.tell(Request::delete(format!("/node/inlet/{alias}")))
             .await?;
 
