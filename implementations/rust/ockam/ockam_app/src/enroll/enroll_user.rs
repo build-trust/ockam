@@ -39,7 +39,7 @@ pub async fn enroll_user<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
             shared_service::relay::create_relay(
                 app_state.context(),
                 app_state.state().await,
-                app_state.node_manager_worker().await,
+                app_state.node_manager().await,
             )
             .await;
             system_tray_on_update(app);

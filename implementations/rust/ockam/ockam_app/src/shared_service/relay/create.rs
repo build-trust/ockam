@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use ockam_api::nodes::NodeManagerWorker;
+use ockam_api::nodes::NodeManager;
 use ockam_multiaddr::MultiAddr;
 use once_cell::sync::Lazy;
 use std::str::FromStr;
@@ -17,10 +17,10 @@ pub static RELAY_NAME: Lazy<String> = Lazy::new(|| format!("forward_to_{NODE_NAM
 pub async fn create_relay(
     context: Arc<Context>,
     cli_state: CliState,
-    node_manager_worker: NodeManagerWorker,
+    node_manager: Arc<NodeManager>,
 ) {
     loop {
-        match create_relay_impl(&context, &cli_state, &node_manager_worker).await {
+        match create_relay_impl(&context, &cli_state, node_manager.clone()).await {
             Ok(_) => break,
             Err(e) => {
                 warn!(%e, "Failed to create relay, retrying...");
@@ -36,7 +36,7 @@ pub async fn create_relay(
 async fn create_relay_impl(
     context: &Context,
     cli_state: &CliState,
-    node_manager_worker: &NodeManagerWorker,
+    node_manager: Arc<NodeManager>,
 ) -> Result<Option<ForwarderInfo>> {
     trace!("Creating relay");
     if !cli_state.is_enrolled().unwrap_or(false) {
@@ -45,7 +45,7 @@ async fn create_relay_impl(
     }
     match cli_state.projects.default() {
         Ok(project) => {
-            if let Some(relay) = get_relay(node_manager_worker).await {
+            if let Some(relay) = get_relay(node_manager.clone()).await {
                 debug!(project = %project.name(), "Relay already exists");
                 Ok(Some(relay.clone()))
             } else {
@@ -56,7 +56,7 @@ async fn create_relay_impl(
                     project_address.clone(),
                     Some(NODE_NAME.to_string()),
                 );
-                let relay = node_manager_worker
+                let relay = node_manager
                     .create_forwarder(context, req)
                     .await
                     .into_diagnostic()?;
@@ -71,8 +71,8 @@ async fn create_relay_impl(
     }
 }
 
-pub(crate) async fn get_relay(node_manager_worker: &NodeManagerWorker) -> Option<ForwarderInfo> {
-    node_manager_worker
+pub(crate) async fn get_relay(node_manager: Arc<NodeManager>) -> Option<ForwarderInfo> {
+    node_manager
         .get_forwarders()
         .await
         .into_iter()

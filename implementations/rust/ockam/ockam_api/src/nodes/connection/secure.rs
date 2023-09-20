@@ -1,37 +1,33 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use crate::error::ApiError;
-use crate::nodes::connection::{Changes, ConnectionInstanceBuilder, Instantiator};
-use crate::nodes::models::secure_channel::CredentialExchangeMode;
+use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
-use ockam_core::{async_trait, route, Error};
+use ockam_core::{async_trait, route, Error, Route, AsyncTryClone};
+use ockam::identity::Identifier;
 use ockam_multiaddr::proto::Secure;
-use ockam_multiaddr::{Match, Protocol};
+use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
-
-use ockam_core::compat::sync::Arc;
-use std::time::Duration;
-use ockam_identity::Identifier;
 
 /// Creates secure connection from existing transport
 pub(crate) struct SecureChannelInstantiator {
-    node_manager: Arc<NodeManager>,
-    timeout: Option<Duration>,
-    context: Arc<Context>,
+    identifier: Identifier,
     authorized_identities: Option<Vec<Identifier>>,
+    timeout: Option<Duration>,
 }
 
 impl SecureChannelInstantiator {
     pub(crate) fn new(
-        context: Arc<Context>,
-        node_manager: Arc<NodeManager>,
+        identifier: &Identifier,
         timeout: Option<Duration>,
         authorized_identities: Option<Vec<Identifier>>,
     ) -> Self {
         Self {
+            identifier: identifier.clone(),
             authorized_identities,
-            context,
-            node_manager,
             timeout,
         }
     }
@@ -45,14 +41,12 @@ impl Instantiator for SecureChannelInstantiator {
 
     async fn instantiate(
         &self,
-        builder: &ConnectionInstanceBuilder,
-        match_start: usize,
+        ctx: Arc<Context>,
+        node_manager: &NodeManager,
+        transport_route: Route,
+        extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, Error> {
-        let (_before, secure_piece, after) =
-            ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 1);
-
-        let transport_route = builder.transport_route.clone();
-
+        let (_before, secure_piece, after) = extracted;
         debug!(%secure_piece, %transport_route, "creating secure channel");
         let route = local_multiaddr_to_route(&secure_piece).ok_or_else(|| {
             ApiError::core(format!(
@@ -60,17 +54,16 @@ impl Instantiator for SecureChannelInstantiator {
             ))
         })?;
 
-        let sc = self
-            .node_manager
-            .create_secure_channel_impl(
+        let sc_ctx = ctx.async_try_clone().await?;
+        let sc = node_manager
+            .create_secure_channel_internal(
+                &sc_ctx,
                 //the transport route is needed to reach the secure channel listener
                 //since it can be in another node
                 route![transport_route, route],
+                &self.identifier,
                 self.authorized_identities.clone(),
-                CredentialExchangeMode::Mutual,
                 self.timeout,
-                None,
-                &self.context,
                 None,
             )
             .await?;
