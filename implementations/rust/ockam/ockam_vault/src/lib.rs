@@ -27,7 +27,6 @@ compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#)
 extern crate core;
 
 #[cfg(feature = "alloc")]
-#[macro_use]
 extern crate alloc;
 
 /// Storage
@@ -46,8 +45,60 @@ mod software;
 /// Main vault types: PublicKey, Secret, SecretAttributes etc...
 mod types;
 
-pub use constants;
 pub use error::*;
 pub use software::*;
 pub use traits::*;
 pub use types::*;
+
+/// Feature set compatibility checks
+
+#[cfg(all(
+    feature = "disable_default_noise_protocol",
+    not(feature = "OCKAM_XX_25519_AES256_GCM_SHA256"),
+    not(feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s"),
+    not(feature = "OCKAM_XX_25519_AES128_GCM_SHA256")
+))]
+compile_error! {"NOISE protocol name not selected, please enable one of the following features: \"OCKAM_XX_25519_ChaChaPolyBLAKE2s\", \"OCKAM_XX_25519_AES128_GCM_SHA256\", \"OCKAM_XX_25519_AES256_GCM_SHA256\""}
+
+#[cfg(all(
+    not(feature = "disable_default_noise_protocol"),
+    any(
+        feature = "OCKAM_XX_25519_AES256_GCM_SHA256",
+        feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s",
+        feature = "OCKAM_XX_25519_AES128_GCM_SHA256"
+    )
+))]
+compile_error! {"please enable disable_default_noise_protocol feature to customize Noise protocol"}
+
+#[cfg(all(
+    feature = "OCKAM_XX_25519_AES256_GCM_SHA256",
+    any(
+        feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s",
+        feature = "OCKAM_XX_25519_AES128_GCM_SHA256"
+    )
+))]
+compile_error! {"only one protocol can be selected"}
+
+#[cfg(all(
+    feature = "OCKAM_XX_25519_AES128_GCM_SHA256",
+    any(
+        feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s",
+        feature = "OCKAM_XX_25519_AES256_GCM_SHA256"
+    )
+))]
+compile_error! {"only one protocol can be selected"}
+
+#[cfg(all(
+    feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s",
+    any(
+        feature = "OCKAM_XX_25519_AES128_GCM_SHA256",
+        feature = "OCKAM_XX_25519_AES256_GCM_SHA256"
+    )
+))]
+compile_error! {"only one protocol can be selected"}
+
+#[cfg(feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s")]
+compile_error! {"OCKAM_XX_25519_ChaChaPolyBLAKE2s is not supported yet"}
+
+#[cfg(feature = "OCKAM_XX_25519_AES128_GCM_SHA256")]
+compile_error! {"OCKAM_XX_25519_AES128_GCM_SHA256 is not supported yet"}

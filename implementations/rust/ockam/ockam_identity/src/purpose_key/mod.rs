@@ -1,6 +1,7 @@
+mod credential;
 mod purpose;
-#[allow(clippy::module_inception)]
-mod purpose_key;
+mod secure_channel;
 
+pub use credential::*;
 pub use purpose::*;
-pub use purpose_key::*;
+pub use secure_channel::*;

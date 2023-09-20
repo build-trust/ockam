@@ -3,7 +3,7 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
-use crate::models::{Attributes, SchemaId, TimestampInSeconds};
+use crate::models::{Attributes, CredentialSchemaIdentifier, TimestampInSeconds};
 use crate::IdentityError;
 
 /// Create a new timestamp using the system time
@@ -29,13 +29,13 @@ pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInS
 
 /// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
-    schema_id: SchemaId,
+    schema_id: CredentialSchemaIdentifier,
     map: BTreeMap<ByteVec, ByteVec>,
 }
 
 impl AttributesBuilder {
-    /// Create an empty [`Attributes`] struct with a given [`SchemaId`]
-    pub fn with_schema(schema_id: SchemaId) -> Self {
+    /// Create an empty [`Attributes`] struct with a given [`CredentialSchemaIdentifier`]
+    pub fn with_schema(schema_id: CredentialSchemaIdentifier) -> Self {
         Self {
             schema_id,
             map: Default::default(),

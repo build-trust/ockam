@@ -6,11 +6,7 @@ use crate::{Identifier, IdentityError};
 
 use crate::models::{ChangeHash, CHANGE_HASH_LEN, IDENTIFIER_LEN};
 use core::fmt::{Display, Formatter};
-use core::ops::Deref;
 use core::str::FromStr;
-use minicbor::bytes::ByteArray;
-use minicbor::encode::Write;
-use minicbor::{Decode, Decoder, Encode, Encoder};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 impl Serialize for Identifier {
@@ -30,24 +26,6 @@ impl<'de> Deserialize<'de> for Identifier {
         let str: String = Deserialize::deserialize(deserializer)?;
 
         Self::try_from(str).map_err(de::Error::custom)
-    }
-}
-
-impl<C> Encode<C> for Identifier {
-    fn encode<W: Write>(
-        &self,
-        e: &mut Encoder<W>,
-        ctx: &mut C,
-    ) -> Result<(), minicbor::encode::Error<W::Error>> {
-        ByteArray::from(self.0).encode(e, ctx)
-    }
-}
-
-impl<'b, C> Decode<'b, C> for Identifier {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        let data = ByteArray::<IDENTIFIER_LEN>::decode(d, ctx)?;
-
-        Ok(Self(*data.deref()))
     }
 }
 
@@ -135,24 +113,6 @@ impl FromString for Identifier {
 impl From<ChangeHash> for Identifier {
     fn from(value: ChangeHash) -> Self {
         Self(value.0)
-    }
-}
-
-impl<C> Encode<C> for ChangeHash {
-    fn encode<W: Write>(
-        &self,
-        e: &mut Encoder<W>,
-        ctx: &mut C,
-    ) -> Result<(), minicbor::encode::Error<W::Error>> {
-        ByteArray::from(self.0).encode(e, ctx)
-    }
-}
-
-impl<'b, C> Decode<'b, C> for ChangeHash {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        let data = ByteArray::<CHANGE_HASH_LEN>::decode(d, ctx)?;
-
-        Ok(Self(*data.deref()))
     }
 }
 

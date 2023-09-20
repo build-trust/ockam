@@ -10,17 +10,19 @@ use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
+use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let identity_vault = SoftwareSigningVault::create();
+    let identity_vault = SoftwareVaultForSigning::create();
     // Import the signing secret key to the Vault
     let secret = identity_vault
-        .import_key(
-            Secret::new(hex::decode("5FB3663DF8405379981462BABED7507E3D53A8D061188105E3ADBD70E0A74B8A").unwrap()),
-            SecretAttributes::Ed25519,
-        )
+        .import_key(SigningSecret::EdDSACurve25519(EdDSACurve25519SecretKey::new(
+            hex::decode("5FB3663DF8405379981462BABED7507E3D53A8D061188105E3ADBD70E0A74B8A")
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        )))
         .await?;
 
     // Create a default Vault but use the signing vault with our secret in it

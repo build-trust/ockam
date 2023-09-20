@@ -1,16 +1,13 @@
-use crate::constants::{AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32};
-use crate::constants::{
-    ED25519_SECRET_LENGTH_U32, NIST_P256_SECRET_LENGTH_U32, X25519_SECRET_LENGTH_U32,
+use crate::{
+    VaultError, ECDSA_SHA256_CURVEP256_PUBLIC_KEY_LENGTH, EDDSA_CURVE25519_SECRET_KEY_LENGTH,
+    X25519_SECRET_KEY_LENGTH,
 };
-use crate::VaultError;
 use core::fmt;
 use core::fmt::{Display, Formatter};
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-// TODO: Remove in favor of SecretType
-// TODO: Has room for better type-safety
 /// Attributes for secrets
 ///   - a type indicating how the secret is generated: Aes, Ed25519
 ///   - an expected length corresponding to the type
@@ -67,11 +64,11 @@ impl SecretAttributes {
     pub fn length(&self) -> u32 {
         match self {
             SecretAttributes::Buffer(s) => *s,
-            SecretAttributes::Aes128 => AES128_SECRET_LENGTH_U32,
-            SecretAttributes::Aes256 => AES256_SECRET_LENGTH_U32,
-            SecretAttributes::Ed25519 => ED25519_SECRET_LENGTH_U32,
-            SecretAttributes::X25519 => X25519_SECRET_LENGTH_U32,
-            SecretAttributes::NistP256 => NIST_P256_SECRET_LENGTH_U32,
+            SecretAttributes::Aes128 => 16u32,
+            SecretAttributes::Aes256 => 32u32,
+            SecretAttributes::Ed25519 => EDDSA_CURVE25519_SECRET_KEY_LENGTH as u32,
+            SecretAttributes::X25519 => X25519_SECRET_KEY_LENGTH as u32,
+            SecretAttributes::NistP256 => ECDSA_SHA256_CURVEP256_PUBLIC_KEY_LENGTH as u32,
         }
     }
 }

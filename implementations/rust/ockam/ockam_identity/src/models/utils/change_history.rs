@@ -1,13 +1,11 @@
 use crate::models::utils::get_versioned_data;
 use crate::models::{
-    Change, ChangeData, ChangeHistory, ChangeSignature, Ed25519PublicKey, Ed25519Signature,
-    P256ECDSAPublicKey, P256ECDSASignature, PrimaryPublicKey, VersionedData,
+    Change, ChangeData, ChangeHistory, ChangeSignature, PrimaryPublicKey, VersionedData,
 };
-use crate::IdentityError;
 
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Error, Result};
-use ockam_vault::{PublicKey, SecretType, Signature};
+use ockam_core::Result;
+use ockam_vault::{Signature, VerifyingPublicKey};
 
 impl Change {
     /// Extract [`VersionedData`]
@@ -35,35 +33,21 @@ impl ChangeHistory {
     }
 }
 
-impl From<PrimaryPublicKey> for PublicKey {
+impl From<PrimaryPublicKey> for VerifyingPublicKey {
     fn from(value: PrimaryPublicKey) -> Self {
         match value {
-            PrimaryPublicKey::Ed25519PublicKey(value) => Self::from(value),
-            PrimaryPublicKey::P256ECDSAPublicKey(value) => Self::from(value),
+            PrimaryPublicKey::EdDSACurve25519(value) => Self::EdDSACurve25519(value),
+            PrimaryPublicKey::ECDSASHA256CurveP256(value) => Self::ECDSASHA256CurveP256(value),
         }
     }
 }
 
-impl TryFrom<PublicKey> for PrimaryPublicKey {
-    type Error = Error;
-
-    fn try_from(value: PublicKey) -> Result<Self> {
-        match value.stype() {
-            SecretType::Ed25519 => Ok(Self::Ed25519PublicKey(Ed25519PublicKey(
-                value
-                    .data()
-                    .try_into()
-                    .map_err(|_| IdentityError::InvalidKeyData)?,
-            ))),
-            SecretType::NistP256 => Ok(Self::P256ECDSAPublicKey(P256ECDSAPublicKey(
-                value
-                    .data()
-                    .try_into()
-                    .map_err(|_| IdentityError::InvalidKeyData)?,
-            ))),
-
-            SecretType::X25519 | SecretType::Buffer | SecretType::Aes => {
-                Err(IdentityError::InvalidKeyType.into())
+impl From<VerifyingPublicKey> for PrimaryPublicKey {
+    fn from(value: VerifyingPublicKey) -> Self {
+        match value {
+            VerifyingPublicKey::EdDSACurve25519(value) => PrimaryPublicKey::EdDSACurve25519(value),
+            VerifyingPublicKey::ECDSASHA256CurveP256(value) => {
+                PrimaryPublicKey::ECDSASHA256CurveP256(value)
             }
         }
     }
@@ -72,32 +56,17 @@ impl TryFrom<PublicKey> for PrimaryPublicKey {
 impl From<ChangeSignature> for Signature {
     fn from(value: ChangeSignature) -> Self {
         match value {
-            ChangeSignature::Ed25519Signature(value) => Self::new(value.0.to_vec()),
-            ChangeSignature::P256ECDSASignature(value) => Self::new(value.0.to_vec()),
+            ChangeSignature::EdDSACurve25519(value) => Self::EdDSACurve25519(value),
+            ChangeSignature::ECDSASHA256CurveP256(value) => Self::ECDSASHA256CurveP256(value),
         }
     }
 }
 
-impl ChangeSignature {
-    /// Try to create a [`ChangeSignature`] using a binary [`Signature`] and its type
-    pub fn try_from_signature(signature: Signature, stype: SecretType) -> Result<Self> {
-        match stype {
-            SecretType::Ed25519 => Ok(Self::Ed25519Signature(Ed25519Signature(
-                signature
-                    .as_ref()
-                    .try_into()
-                    .map_err(|_| IdentityError::InvalidSignatureData)?,
-            ))),
-            SecretType::NistP256 => Ok(Self::P256ECDSASignature(P256ECDSASignature(
-                signature
-                    .as_ref()
-                    .try_into()
-                    .map_err(|_| IdentityError::InvalidSignatureData)?,
-            ))),
-
-            SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
-                Err(IdentityError::InvalidKeyType.into())
-            }
+impl From<Signature> for ChangeSignature {
+    fn from(value: Signature) -> Self {
+        match value {
+            Signature::EdDSACurve25519(value) => Self::EdDSACurve25519(value),
+            Signature::ECDSASHA256CurveP256(value) => Self::ECDSASHA256CurveP256(value),
         }
     }
 }

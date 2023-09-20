@@ -26,6 +26,10 @@ path = "src/lib.rs"
 
 [features]
 default = ["std", "storage"]
+disable_default_noise_protocol = []
+OCKAM_XX_25519_AES256_GCM_SHA256 = []
+OCKAM_XX_25519_AES128_GCM_SHA256 = []
+OCKAM_XX_25519_ChaChaPolyBLAKE2s = []
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -64,7 +68,7 @@ alloc = [
   "p256/pem",
 ]
 
-storage = ["ockam_node/storage", "std", "serde_cbor"]
+storage = ["ockam_node", "ockam_node/storage", "std", "serde_cbor"]
 
 [dependencies]
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
@@ -76,7 +80,7 @@ hkdf = { version = "0.12", default-features = false }
 minicbor = { version = "0.20.0", features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.86.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.31.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.91.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.91.0", default_features = false, optional = true }
 # ECDSA providers:
 p256 = { version = "0.13.2", default_features = false }
 rand = { version = "0.8", default-features = false }

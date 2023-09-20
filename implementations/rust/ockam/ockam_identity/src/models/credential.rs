@@ -1,9 +1,8 @@
-use crate::models::{
-    ChangeHash, Ed25519Signature, Identifier, P256ECDSASignature, TimestampInSeconds,
-};
+use crate::models::{ChangeHash, Identifier, TimestampInSeconds};
 use minicbor::bytes::ByteVec;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
+use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
 /// Credential
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
@@ -22,10 +21,10 @@ pub struct Credential {
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 pub enum CredentialSignature {
-    /// Signature using EdDSA Ed25519 key from the corresponding [`super::PurposeKeyAttestation`]
-    #[n(1)] Ed25519Signature(#[n(0)] Ed25519Signature),
-    /// Signature using ECDSA P256 key from the corresponding [`super::PurposeKeyAttestation`]
-    #[n(2)] P256ECDSASignature(#[n(0)] P256ECDSASignature),
+    /// An EdDSA signature using Curve 25519.
+    #[n(1)] EdDSACurve25519(#[n(0)] EdDSACurve25519Signature),
+    /// An ECDSA signature using SHA-256 and Curve P-256.
+    #[n(2)] ECDSASHA256CurveP256(#[n(0)] ECDSASHA256CurveP256Signature),
 }
 
 /// Data inside a [`Credential`]
@@ -50,15 +49,15 @@ pub struct CredentialData {
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(transparent)]
-pub struct SchemaId(#[n(0)] pub u64);
+pub struct CredentialSchemaIdentifier(#[n(0)] pub u64);
 
 /// Set a keys&values that an Authority (issuer) attests about the Subject
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Attributes {
-    /// [`SchemaId`] that determines which keys&values to expect in the [`Attributes`]
-    #[n(1)] pub schema: SchemaId,
+    /// [`CredentialSchemaIdentifier`] that determines which keys&values to expect in the [`Attributes`]
+    #[n(1)] pub schema: CredentialSchemaIdentifier,
     /// Set of keys&values
     #[n(2)] pub map: BTreeMap<ByteVec, ByteVec>,
 }

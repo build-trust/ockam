@@ -30,6 +30,8 @@ pub enum Error {
     TruncatedKeysList,
     #[error("key was not found")]
     KeyNotFound,
+    #[error("invalid handle")]
+    InvalidHandle,
 }
 
 impl From<Error> for ockam_core::Error {
