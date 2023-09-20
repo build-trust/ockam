@@ -1,8 +1,8 @@
 use crate::kafka::KAFKA_OUTLET_CONSUMERS;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::nodes::models::secure_channel::{
-    CreateSecureChannelRequest, CreateSecureChannelResponse, CredentialExchangeMode,
-    DeleteSecureChannelRequest, DeleteSecureChannelResponse,
+    CreateSecureChannelRequest, CreateSecureChannelResponse, DeleteSecureChannelRequest,
+    DeleteSecureChannelResponse,
 };
 use crate::nodes::NODEMANAGER_ADDR;
 use crate::DefaultAddress;
@@ -245,7 +245,6 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
                     .body(CreateSecureChannelRequest::new(
                         &destination,
                         None,
-                        CredentialExchangeMode::Mutual,
                         None,
                         None,
                     ))

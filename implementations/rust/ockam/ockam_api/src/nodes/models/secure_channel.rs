@@ -12,15 +12,6 @@ use crate::error::ApiError;
 use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use crate::route_to_multiaddr;
 
-#[derive(Debug, Clone, Copy, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(index_only)]
-pub enum CredentialExchangeMode {
-    #[n(0)] None,
-    #[n(1)] Oneway,
-    #[n(2)] Mutual,
-}
-
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -28,7 +19,6 @@ pub enum CredentialExchangeMode {
 pub struct CreateSecureChannelRequest {
     #[n(1)] pub addr: String,
     #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
-    #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
     #[n(4)] pub timeout: Option<Duration>,
     #[n(5)] pub identity_name: Option<String>,
     #[n(6)] pub credential_name: Option<String>,
@@ -38,7 +28,6 @@ impl CreateSecureChannelRequest {
     pub fn new(
         addr: &MultiAddr,
         authorized_identifiers: Option<Vec<Identifier>>,
-        credential_exchange_mode: CredentialExchangeMode,
         identity_name: Option<String>,
         credential_name: Option<String>,
     ) -> Self {
@@ -46,7 +35,6 @@ impl CreateSecureChannelRequest {
             addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
-            credential_exchange_mode,
             timeout: None,
             identity_name,
             credential_name,

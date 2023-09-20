@@ -1,20 +1,20 @@
+use std::sync::Arc;
 use crate::error::ApiError;
-use crate::nodes::connection::{Changes, ConnectionInstanceBuilder, Instantiator};
+use crate::nodes::connection::{Changes, ConnectionBuilder, Instantiator};
 use crate::{multiaddr_to_route, route_to_multiaddr};
 
-use ockam_core::{async_trait, Error};
+use crate::nodes::NodeManager;
+use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
-use ockam_multiaddr::{Match, Protocol};
-use ockam_transport_tcp::TcpTransport;
+use ockam_multiaddr::{Match, MultiAddr, Protocol};
+use ockam_node::Context;
 
 /// Creates the tcp connection.
-pub(crate) struct PlainTcpInstantiator {
-    tcp_transport: TcpTransport,
-}
+pub(crate) struct PlainTcpInstantiator {}
 
 impl PlainTcpInstantiator {
-    pub(crate) fn new(tcp_transport: TcpTransport) -> Self {
-        Self { tcp_transport }
+    pub(crate) fn new() -> Self {
+        Self {}
     }
 }
 
@@ -30,13 +30,14 @@ impl Instantiator for PlainTcpInstantiator {
 
     async fn instantiate(
         &self,
-        builder: &ConnectionInstanceBuilder,
-        match_start: usize,
+        _ctx: Arc<Context>,
+        node_manager: &NodeManager,
+        _transport_route: Route,
+        extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, Error> {
-        let (before, tcp_piece, after) =
-            ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 2);
+        let (before, tcp_piece, after) = extracted;
 
-        let mut tcp = multiaddr_to_route(&tcp_piece, &self.tcp_transport)
+        let mut tcp = multiaddr_to_route(&tcp_piece, &node_manager.tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
@@ -51,7 +52,7 @@ impl Instantiator for PlainTcpInstantiator {
             ))
         })?;
 
-        let current_multiaddr = ConnectionInstanceBuilder::combine(before, multiaddr, after)?;
+        let current_multiaddr = ConnectionBuilder::combine(before, multiaddr, after)?;
 
         // since we only pass the piece regarding tcp
         // tcp_connection should exist

@@ -6,8 +6,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
-use ockam_core::compat::borrow::Cow;
-use ockam_core::{Address, CowStr, Route};
+use ockam_core::{Address, Route};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +17,7 @@ use crate::route_to_multiaddr;
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateInlet<'a> {
+pub struct CreateInlet {
     /// The address the portal should listen at.
     #[n(1)] listen_addr: String,
     /// The peer address.
@@ -26,7 +25,7 @@ pub struct CreateInlet<'a> {
     /// created outlet, or a forwarding mechanism via ockam cloud.
     #[n(2)] outlet_addr: MultiAddr,
     /// A human-friendly alias for this portal endpoint
-    #[b(3)] alias: Option<CowStr<'a>>,
+    #[b(3)] alias: Option<String>,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
@@ -41,7 +40,7 @@ pub struct CreateInlet<'a> {
     #[n(7)] wait_for_outlet_duration: Option<Duration>,
 }
 
-impl<'a> CreateInlet<'a> {
+impl CreateInlet {
     pub fn via_project(
         listen: String,
         to: MultiAddr,
@@ -77,8 +76,8 @@ impl<'a> CreateInlet<'a> {
         }
     }
 
-    pub fn set_alias(&mut self, a: impl Into<Cow<'a, str>>) {
-        self.alias = Some(CowStr(a.into()))
+    pub fn set_alias(&mut self, a: impl Into<String>) {
+        self.alias = Some(a.into())
     }
 
     pub fn set_wait_ms(&mut self, ms: u64) {

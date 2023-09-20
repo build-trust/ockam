@@ -1,40 +1,35 @@
 use crate::error::ApiError;
-use crate::nodes::connection::{Changes, ConnectionInstanceBuilder, Instantiator};
-use crate::nodes::models::secure_channel::CredentialExchangeMode;
+use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, try_address_to_multiaddr};
+use std::sync::Arc;
 
-use ockam_core::{async_trait, Error};
+use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::{Match, Protocol};
+use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
-use std::sync::Arc;
+use ockam::identity::Identifier;
+use ockam::identity::models::CredentialAndPurposeKey;
 use std::time::Duration;
 
 /// Creates a secure connection to the project using provided credential
 pub(crate) struct ProjectInstantiator {
-    node_manager: Arc<NodeManager>,
+    identifier: Identifier,
     timeout: Option<Duration>,
-    credential_name: Option<String>,
-    identity_name: Option<String>,
-    context: Arc<Context>,
+    credential: Option<CredentialAndPurposeKey>,
 }
 
 impl ProjectInstantiator {
     pub fn new(
-        context: Arc<Context>,
-        node_manager: Arc<NodeManager>,
+        identifier: Identifier,
         timeout: Option<Duration>,
-        credential_name: Option<String>,
-        identity_name: Option<String>,
+        credential: Option<CredentialAndPurposeKey>,
     ) -> Self {
         Self {
-            context,
-            node_manager,
+            identifier,
             timeout,
-            credential_name,
-            identity_name,
+            credential,
         }
     }
 }
@@ -47,11 +42,12 @@ impl Instantiator for ProjectInstantiator {
 
     async fn instantiate(
         &self,
-        builder: &ConnectionInstanceBuilder,
-        match_start: usize,
+        ctx: Arc<Context>,
+        node_manager: &NodeManager,
+        _transport_route: Route,
+        extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, Error> {
-        let (_before, project_piece, after) =
-            ConnectionInstanceBuilder::extract(&builder.current_multiaddr, match_start, 1);
+        let (_before, project_piece, after) = extracted;
 
         let project_protocol_value = project_piece
             .first()
@@ -62,10 +58,10 @@ impl Instantiator for ProjectInstantiator {
             .ok_or_else(|| ApiError::core("invalid project protocol in multiaddr"))?;
 
         let (project_multiaddr, project_identifier) =
-            self.node_manager.resolve_project(&project).await?;
+            node_manager.resolve_project(&project).await?;
 
         debug!(addr = %project_multiaddr, "creating secure channel");
-        let tcp = multiaddr_to_route(&project_multiaddr, &self.node_manager.tcp_transport)
+        let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
@@ -73,16 +69,14 @@ impl Instantiator for ProjectInstantiator {
                 ))
             })?;
 
-        let sc = self
-            .node_manager
-            .create_secure_channel_impl(
+        let sc = node_manager
+            .create_secure_channel_internal(
+                &ctx,
                 tcp.route,
+                &self.identifier.clone(),
                 Some(vec![project_identifier]),
-                CredentialExchangeMode::Oneway,
                 self.timeout,
-                self.identity_name.clone(),
-                &self.context,
-                self.credential_name.clone(),
+                self.credential.clone(),
             )
             .await?;
 

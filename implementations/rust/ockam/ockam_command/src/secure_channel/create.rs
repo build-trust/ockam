@@ -6,7 +6,6 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::route_to_multiaddr;
 use ockam_multiaddr::MultiAddr;
 
@@ -115,14 +114,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
         let sc = node
             .node_manager
-            .create_monitored_secure_channel(
+            .create_secure_channel(
                 &ctx,
                 to,
-                authorized_identifiers,
-                CredentialExchangeMode::Mutual,
-                None,
                 Some(identity),
+                authorized_identifiers,
                 cmd.credential.clone(),
+                None,
             )
             .await?;
         *is_finished.lock().await = true;
