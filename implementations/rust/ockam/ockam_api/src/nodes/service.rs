@@ -153,8 +153,8 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    pub(super) fn identifier(&self) -> Identifier {
-        self.identifier.clone()
+    pub(super) fn identifier(&self) -> &Identifier {
+        &self.identifier
     }
 
     pub fn node_name(&self) -> String {
@@ -197,12 +197,7 @@ impl NodeManager {
                 .await
                 .iter()
                 .map(|(alias, info)| {
-                    OutletStatus::new(
-                        info.socket_addr.clone(),
-                        info.worker_addr.clone(),
-                        alias,
-                        None,
-                    )
+                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), alias, None)
                 })
                 .collect(),
         )
@@ -214,16 +209,16 @@ impl NodeManager {
         SecureClients::controller(
             &self.tcp_transport,
             self.secure_channels.clone(),
-            self.get_identifier(None).await?,
+            &self.get_identifier(None).await?,
         )
         .await
     }
 
     pub async fn make_authority_node_client(
         &self,
-        authority_identifier: Identifier,
-        authority_multiaddr: MultiAddr,
-        caller_identifier: Identifier,
+        authority_identifier: &Identifier,
+        authority_multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
     ) -> Result<AuthorityNode> {
         SecureClients::authority(
             &self.tcp_transport,
@@ -237,9 +232,9 @@ impl NodeManager {
 
     pub async fn make_project_node_client(
         &self,
-        project_identifier: Identifier,
-        project_multiaddr: MultiAddr,
-        caller_identifier: Identifier,
+        project_identifier: &Identifier,
+        project_multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
     ) -> Result<ProjectNode> {
         SecureClients::project(
             &self.tcp_transport,
@@ -253,9 +248,9 @@ impl NodeManager {
 
     pub async fn make_secure_client(
         &self,
-        identifier: Identifier,
-        multiaddr: MultiAddr,
-        caller_identifier: Identifier,
+        identifier: &Identifier,
+        multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
     ) -> Result<SecureClient> {
         SecureClients::generic(
             &self.tcp_transport,
@@ -551,10 +546,7 @@ impl NodeManager {
             Some(identifier) => identifier,
             None => self.get_identifier(None).await?,
         };
-        let authorized = match authorized {
-            Some(authorized) => Some(vec![authorized]),
-            None => None,
-        };
+        let authorized = authorized.map(|authorized| vec![authorized]);
         self.connect(ctx, addr, identifier, authorized, credential, timeout)
             .await
     }

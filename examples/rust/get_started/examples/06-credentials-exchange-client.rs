@@ -1,5 +1,5 @@
 use ockam::identity::{AuthorityService, SecureChannelOptions, TrustContext, Vault};
-use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam::{route, Context, Result, TcpConnectionOptions};
 use ockam::{Node, TcpTransportExtension};
 use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
@@ -53,12 +53,11 @@ async fn main(ctx: Context) -> Result<()> {
         &tcp,
         node.secure_channels().clone(),
         issuer.identifier(),
-        MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
+        &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
         client.identifier(),
     )
     .await?;
     let credential = authority_node.issue_credential(node.context()).await.unwrap();
-    println!("Credential:\n{credential}");
 
     // Verify that the received credential has indeed be signed by the issuer.
     // The issuer identity must be provided out-of-band from a trusted source
@@ -84,8 +83,6 @@ async fn main(ctx: Context) -> Result<()> {
         .create_secure_channel(
             &client.identifier(),
             route![server_connection, DefaultAddress::SECURE_CHANNEL_LISTENER],
-            client.identifier(),
-            route![server_connection, "secure"],
             SecureChannelOptions::new()
                 .with_trust_context(trust_context)
                 .with_credential(credential),

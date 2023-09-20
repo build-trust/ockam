@@ -353,7 +353,7 @@ pub mod test_utils {
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-    use ockam_node::compat::asynchronous::RwLock;
+
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
@@ -361,8 +361,9 @@ pub mod test_utils {
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
+        SupervisedNodeManager,
     };
-    use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+    use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
 
     /// This struct is used by tests, it has two responsibilities:
     /// - guard to delete the cli state at the end of the test, the cli state
@@ -371,7 +372,7 @@ pub mod test_utils {
     /// - useful access to the NodeManager
     pub struct NodeManagerHandle {
         pub cli_state: CliState,
-        pub node_manager: Arc<NodeManager>,
+        pub node_manager: Arc<SupervisedNodeManager>,
         pub tcp: TcpTransport,
         pub secure_channels: Arc<SecureChannels>,
         pub identifier: Identifier,
@@ -442,7 +443,7 @@ pub mod test_utils {
         let node_config = NodeConfig::try_from(&cli_state).unwrap();
         cli_state.nodes.create(&node_name, node_config)?;
 
-        let node_manager = NodeManagerSupervisor::create(
+        let node_manager = SupervisedNodeManager::create(
             context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
             NodeManagerTransportOptions::new(

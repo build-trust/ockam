@@ -389,7 +389,6 @@ impl CreateProject {
 mod tests {
     use ockam::identity::models::IDENTIFIER_LEN;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
-    use quickcheck::{Arbitrary, Gen};
 
     use crate::schema::tests::validate_with_schema;
 

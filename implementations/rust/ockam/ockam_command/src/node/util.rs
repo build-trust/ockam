@@ -286,15 +286,16 @@ impl LocalNode {
 
     pub async fn make_project_node_client(
         &self,
-        project_identifier: Identifier,
-        project_address: MultiAddr,
+        project_identifier: &Identifier,
+        project_address: &MultiAddr,
         caller_identity_name: Option<String>,
     ) -> miette::Result<ProjectNode> {
         self.node_manager
             .make_project_node_client(
                 project_identifier,
                 project_address,
-                self.node_manager
+                &self
+                    .node_manager
                     .get_identifier(caller_identity_name)
                     .await
                     .into_diagnostic()?,
@@ -305,15 +306,16 @@ impl LocalNode {
 
     pub async fn make_authority_node_client(
         &self,
-        authority_identifier: Identifier,
-        authority_address: MultiAddr,
+        authority_identifier: &Identifier,
+        authority_address: &MultiAddr,
         caller_identity_name: Option<String>,
     ) -> miette::Result<AuthorityNode> {
         self.node_manager
             .make_authority_node_client(
                 authority_identifier,
                 authority_address,
-                self.node_manager
+                &self
+                    .node_manager
                     .get_identifier(caller_identity_name)
                     .await
                     .into_diagnostic()?,
@@ -324,15 +326,16 @@ impl LocalNode {
 
     pub async fn make_secure_client(
         &self,
-        identifier: Identifier,
-        address: MultiAddr,
+        identifier: &Identifier,
+        address: &MultiAddr,
         caller_identity_name: Option<String>,
     ) -> miette::Result<SecureClient> {
         self.node_manager
             .make_secure_client(
                 identifier,
                 address,
-                self.node_manager
+                &self
+                    .node_manager
                     .get_identifier(caller_identity_name)
                     .await
                     .into_diagnostic()?,
