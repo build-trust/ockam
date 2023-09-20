@@ -1,9 +1,12 @@
-use crate::Result;
-use miette::miette;
-use ockam::identity::Identifier;
-use ockam_transport_tcp::resolve_peer;
 use std::net::SocketAddr;
 use std::str::FromStr;
+
+use miette::miette;
+
+use ockam::identity::Identifier;
+use ockam_transport_tcp::resolve_peer;
+
+use crate::Result;
 
 /// Helper function for parsing a socket from user input
 /// It is possible to just input a `port`. In that case the address will be assumed to be
@@ -22,16 +25,18 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
 }
 
 /// Helper fn for parsing an identity from user input by using
-/// [`ockam_identity::IdentityIdentifier::from_str()`]
+/// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
     Identifier::from_str(input).map_err(|_| miette!("Invalid identity identifier: {input}").into())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ockam_core::compat::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::net::Ipv6Addr;
+
+    use ockam_core::compat::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+    use super::*;
 
     #[test]
     fn test_parse_port_only() {

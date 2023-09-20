@@ -11,7 +11,7 @@ class Project {
 class User {
   name: String
   email: Email
-  identity: IdentityIdentifier
+  identity: Identifier
   is_enrolled: true
 }
 

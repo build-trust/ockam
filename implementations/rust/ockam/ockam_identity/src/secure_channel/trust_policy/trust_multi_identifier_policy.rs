@@ -7,7 +7,7 @@ use tracing::info;
 use crate::models::Identifier;
 use crate::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 
-/// `TrustPolicy` based on list of pre-known `IdentityIdentifier`s of the possible participants
+/// `TrustPolicy` based on list of pre-known `Identifier`s of the possible participants
 #[derive(Clone)]
 pub struct TrustMultiIdentifiersPolicy {
     identity_ids: Vec<Identifier>,
