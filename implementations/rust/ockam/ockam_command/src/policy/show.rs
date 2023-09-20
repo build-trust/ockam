@@ -42,7 +42,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node = extract_address_value(&cmd.at)?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
-    let mut rpc = Rpc::background(ctx, &opts, &node).await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, &node).await?;
     let policy: Policy = rpc.ask(req).await?;
     println!("{}", policy.expression());
     Ok(())

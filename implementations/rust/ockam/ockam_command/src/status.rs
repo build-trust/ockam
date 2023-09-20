@@ -60,7 +60,7 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     if node_states.is_empty() {
         return Ok(node_details);
     }
-    let mut rpc = Rpc::background(ctx, opts, "default").await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, "default").await?;
 
     for node_state in &node_states {
         rpc.set_node_name(node_state.name());

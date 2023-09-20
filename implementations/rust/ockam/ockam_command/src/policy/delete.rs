@@ -52,7 +52,7 @@ async fn run_impl(
     {
         let policy_path = policy_path(&cmd.resource, &cmd.action);
         let req = Request::delete(&policy_path);
-        let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
+        let mut rpc = Rpc::background(ctx, &opts.state, &node_name).await?;
         rpc.tell(req).await?;
 
         opts.terminal

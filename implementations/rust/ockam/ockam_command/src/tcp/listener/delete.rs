@@ -44,7 +44,7 @@ async fn run_impl(
     )? {
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
         let node = parse_node_name(&node_name)?;
-        let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
         let req = Request::delete("/node/tcp/listener")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         rpc.tell(req).await?;

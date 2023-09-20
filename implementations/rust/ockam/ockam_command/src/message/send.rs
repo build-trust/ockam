@@ -88,7 +88,7 @@ async fn rpc(
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let response: Vec<u8> = if let Some(node) = &cmd.from {
             let api_node = extract_address_value(node)?;
-            let mut rpc = Rpc::background(ctx, &opts, &api_node).await?;
+            let mut rpc = Rpc::background(ctx, &opts.state, &api_node).await?;
             rpc.set_timeout(cmd.timeout)
                 .ask(req(&to, msg_bytes))
                 .await?
