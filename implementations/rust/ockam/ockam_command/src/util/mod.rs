@@ -34,12 +34,6 @@ pub mod duration;
 pub mod exitcode;
 pub mod parsers;
 
-#[derive(Clone)]
-pub enum RpcMode {
-    Embedded,
-    Background(Arc<TcpTransport>),
-}
-
 #[derive(AsyncTryClone)]
 #[async_try_clone(crate = "ockam_core")]
 pub struct Rpc {
@@ -49,7 +43,7 @@ pub struct Rpc {
     node_name: String,
     to: Route,
     pub timeout: Option<Duration>,
-    mode: RpcMode,
+    tcp_transport: Arc<TcpTransport>,
 }
 
 impl Rpc {
@@ -68,7 +62,7 @@ impl Rpc {
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
             timeout: None,
-            mode: RpcMode::Background(Arc::new(tcp)),
+            tcp_transport: Arc::new(tcp),
         })
     }
 
@@ -164,22 +158,17 @@ impl Rpc {
     }
 
     async fn route_impl(&self) -> Result<Route> {
-        let mut to = self.to.clone();
-        let route = match &self.mode {
-            RpcMode::Embedded => to,
-            RpcMode::Background(tcp) => {
-                let node_state = self.opts.state.nodes.get(&self.node_name)?;
-                let port = node_state.config().setup().api_transport()?.addr.port();
-                let addr_str = format!("localhost:{port}");
-                let addr = tcp
-                    .connect(addr_str, TcpConnectionOptions::new())
-                    .await?
-                    .sender_address()
-                    .clone();
-                to.modify().prepend(addr);
-                to
-            }
-        };
+        let mut route = self.to.clone();
+        let node_state = self.opts.state.nodes.get(&self.node_name)?;
+        let port = node_state.config().setup().api_transport()?.addr.port();
+        let addr_str = format!("localhost:{port}");
+        let addr = self
+            .tcp_transport
+            .connect(addr_str, TcpConnectionOptions::new())
+            .await?
+            .sender_address()
+            .clone();
+        route.modify().prepend(addr);
         debug!(%route, "Sending request");
         Ok(route)
     }
