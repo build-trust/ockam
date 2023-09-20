@@ -47,8 +47,14 @@ defmodule Ockly.MixProject do
 
   defp check_native(args) do
     case prebuilt_lib_exists?() do
-      true -> :ok
-      false -> download_native(args)
+      true ->
+        :ok
+
+      false ->
+        case System.get_env("OCKLY_PRECOMPILED_LIB", "true") do
+          "true" -> download_native(args)
+          "false" -> :ok
+        end
     end
   end
 

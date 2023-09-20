@@ -1284,7 +1284,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.84.0"
+version = "0.85.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -1307,7 +1307,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.52.0"
+version = "0.53.0"
 dependencies = [
  "crossbeam-queue",
  "futures",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.79.0"
+version = "0.80.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -1357,7 +1357,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.87.0"
+version = "0.88.0"
 dependencies = [
  "cfg-if",
  "fs2",
@@ -1378,7 +1378,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.57.0"
+version = "0.58.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.80.0"
+version = "0.81.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -1411,7 +1411,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aws-config",
  "aws-sdk-kms",
