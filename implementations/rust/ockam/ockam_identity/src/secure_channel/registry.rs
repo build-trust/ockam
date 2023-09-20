@@ -69,12 +69,12 @@ impl SecureChannelRegistryEntry {
         self.clone().is_initiator
     }
 
-    /// Our `IdentityIdentifier`
+    /// Our `Identifier`
     pub fn my_id(&self) -> &Identifier {
         &self.my_id
     }
 
-    /// Their `IdentityIdentifier`
+    /// Their `Identifier`
     pub fn their_id(&self) -> &Identifier {
         &self.their_id
     }

@@ -16,7 +16,7 @@ pub struct SecureChannelTrustInfo {
 }
 
 impl SecureChannelTrustInfo {
-    /// `IdentityIdentifier` of the other participant
+    /// `Identifier` of the other participant
     pub fn their_identity_id(&self) -> &Identifier {
         &self.their_identity_id
     }

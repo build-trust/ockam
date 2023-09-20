@@ -8,7 +8,7 @@ class User {
   name: String
   nickname: String
   email: String
-  identity: IdentityIdentifier
+  identity: Identifier
   is_enrolled: bool
 }
 
@@ -24,7 +24,7 @@ class Project {
 Project "n" --> "1" Space: belongs to
 
 class Node {
-  identity: IdentityIdentifier
+  identity: Identifier
   route: MultiAddr
 }
 

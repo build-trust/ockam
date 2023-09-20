@@ -12,13 +12,13 @@ pub struct IdentityAccessControlBuilder;
 
 impl IdentityAccessControlBuilder {
     /// `IncomingAccessControl` that checks if the author of the message possesses
-    /// given `IdentityIdentifier`
+    /// given `Identifier`
     pub fn new_with_id(their_identity_id: Identifier) -> IdentityIdAccessControl {
         IdentityIdAccessControl::new(vec![their_identity_id])
     }
 
     /// `IncomingAccessControl` that checks if the author of the message possesses
-    /// an `IdentityIdentifier` from the pre-known list
+    /// an `Identifier` from the pre-known list
     pub fn new_with_ids(identity_ids: impl Into<Vec<Identifier>>) -> IdentityIdAccessControl {
         IdentityIdAccessControl::new(identity_ids.into())
     }
@@ -30,7 +30,7 @@ impl IdentityAccessControlBuilder {
 }
 
 /// `IncomingAccessControl` check that succeeds if message came through a SecureChannel
-/// with any `IdentityIdentifier` (i.e. any SecureChannel)
+/// with any `Identifier` (i.e. any SecureChannel)
 #[derive(Debug)]
 pub struct IdentityAnyIdAccessControl;
 
@@ -41,7 +41,7 @@ impl IncomingAccessControl for IdentityAnyIdAccessControl {
     }
 }
 
-/// `IncomingAccessControl` check that succeeds if message came from some `IdentityIdentifier`
+/// `IncomingAccessControl` check that succeeds if message came from some `Identifier`
 /// from a pre-known list
 #[derive(Clone, Debug)]
 pub struct IdentityIdAccessControl {

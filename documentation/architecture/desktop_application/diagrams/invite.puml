@@ -21,7 +21,7 @@ class Project {
 class User {
   name: String
   email: Email
-  identity: IdentityIdentifier
+  identity: Identifier
 }
 
 class Service {
@@ -32,7 +32,7 @@ class Service {
 Service --> "1" Project: belongs to
 
 class Node {
-  identity: IdentityIdentifier
+  identity: Identifier
   route: MultiAddr
 }
 

@@ -5,7 +5,7 @@ use ockam_core::Result;
 use crate::models::Identifier;
 use crate::secure_channel::trust_policy::{SecureChannelTrustInfo, TrustPolicy};
 
-/// `TrustPolicy` based on pre-known `IdentityIdentifier` of the other participant
+/// `TrustPolicy` based on pre-known `Identifier` of the other participant
 #[derive(Clone)]
 pub struct TrustIdentifierPolicy {
     their_identity_id: Identifier,
