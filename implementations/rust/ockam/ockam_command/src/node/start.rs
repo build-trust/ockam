@@ -76,7 +76,7 @@ async fn run_impl(
     )?;
 
     // Print node status
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
 

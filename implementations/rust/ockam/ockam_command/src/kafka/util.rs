@@ -46,7 +46,7 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
     let is_finished = Mutex::new(false);
     let send_req = async {
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
 
         let payload = StartKafkaProducerRequest::new(
             bootstrap_server.to_owned(),

@@ -47,7 +47,7 @@ pub async fn run_impl(
         let relay_name = cmd.relay_name.clone();
         let at = get_node_name(&opts.state, &cmd.at);
         let node = parse_node_name(&at)?;
-        let mut rpc = Rpc::background(&ctx, &opts, &node).await?;
+        let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
         rpc.tell(Request::delete(format!("/node/forwarder/{relay_name}",)))
             .await?;
 

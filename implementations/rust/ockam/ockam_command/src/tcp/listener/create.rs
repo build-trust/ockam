@@ -38,7 +38,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let transport_status: TransportStatus = rpc
         .ask(Request::post("/node/tcp/listener").body(CreateTcpListener::new(cmd.address)))
         .await?;

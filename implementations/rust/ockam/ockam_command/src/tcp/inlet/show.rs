@@ -45,7 +45,7 @@ pub async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
 
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let inlet_status: InletStatus = rpc.ask(make_api_request(cmd)?).await?;
 
     let json = serde_json::to_string(&inlet_status).into_diagnostic()?;

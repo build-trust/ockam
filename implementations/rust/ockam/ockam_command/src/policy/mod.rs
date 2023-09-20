@@ -55,7 +55,7 @@ pub(crate) async fn has_policy(
     resource: &Resource,
 ) -> Result<bool> {
     let req = Request::get(format!("/policy/{resource}"));
-    let mut rpc = Rpc::background(ctx, opts, node).await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, node).await?;
     let policies: PolicyList = rpc.ask(req).await?;
     Ok(!policies.expressions().is_empty())
 }
@@ -74,7 +74,7 @@ pub(crate) async fn add_default_project_policy(
     let bdy = Policy::new(expr);
     let req = Request::post(policy_path(resource, &Action::new("handle_message"))).body(bdy);
 
-    let mut rpc = Rpc::background(ctx, opts, node).await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, node).await?;
     rpc.tell(req).await?;
     Ok(())
 }

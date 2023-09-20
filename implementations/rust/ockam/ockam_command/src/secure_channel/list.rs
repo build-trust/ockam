@@ -91,7 +91,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     }
 
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
 
     let get_secure_channel_identifiers = async {
         let secure_channel_identifiers: Vec<String> = rpc.ask(api::list_secure_channels()).await?;

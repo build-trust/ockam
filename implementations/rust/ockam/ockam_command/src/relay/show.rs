@@ -43,7 +43,7 @@ async fn run_impl(
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let relay_info: ForwarderInfo = rpc
         .ask(Request::get(format!("/node/forwarder/{remote_address}")))
         .await?;

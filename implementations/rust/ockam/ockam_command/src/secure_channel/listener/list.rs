@@ -63,7 +63,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_listeners = async {

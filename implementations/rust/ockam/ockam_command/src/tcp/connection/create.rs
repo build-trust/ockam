@@ -91,7 +91,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let from = get_node_name(&opts.state, &cmd.node_opts.from);
     let node_name = extract_address_value(&from)?;
-    let mut rpc = Rpc::background(&ctx, &opts, &node_name).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
     let request = api::create_tcp_connection(&cmd);
     let transport_status: TransportStatus = rpc.ask(request).await?;
     cmd.print_output(&opts, &transport_status)

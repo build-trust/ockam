@@ -87,7 +87,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         cmd.relay_name.clone()
     };
 
-    let mut rpc = Rpc::background(&ctx, &opts, &api_node).await?;
+    let mut rpc = Rpc::background(&ctx, &opts.state, &api_node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relay_info = async {
