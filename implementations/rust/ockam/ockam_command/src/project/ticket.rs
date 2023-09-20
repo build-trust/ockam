@@ -113,7 +113,8 @@ impl Runner {
                 .identity()
                 .await
                 .into_diagnostic()?
-                .identifier().clone();
+                .identifier()
+                .clone();
 
             node.make_authority_node_client(authority_identifier, addr.clone(), Some(identity))
                 .await?

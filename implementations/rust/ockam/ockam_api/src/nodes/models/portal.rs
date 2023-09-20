@@ -19,25 +19,25 @@ use crate::route_to_multiaddr;
 #[cbor(map)]
 pub struct CreateInlet {
     /// The address the portal should listen at.
-    #[n(1)] listen_addr: String,
+    #[n(1)] pub(crate) listen_addr: String,
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
-    #[n(2)] outlet_addr: MultiAddr,
+    #[n(2)] pub(crate) outlet_addr: MultiAddr,
     /// A human-friendly alias for this portal endpoint
-    #[b(3)] alias: Option<String>,
+    #[b(3)] pub(crate) alias: Option<String>,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] authorized: Option<Identifier>,
+    #[n(4)] pub(crate) authorized: Option<Identifier>,
     /// A prefix route that will be applied before outlet_addr, and won't be used
     /// to monitor the state of the connection
-    #[n(5)] prefix_route: Route,
+    #[n(5)] pub(crate) prefix_route: Route,
     /// A suffix route that will be applied after outlet_addr, and won't be used
     /// to monitor the state of the connection
-    #[n(6)] suffix_route: Route,
+    #[n(6)] pub(crate) suffix_route: Route,
     /// The maximum duration to wait for an outlet to be available
-    #[n(7)] wait_for_outlet_duration: Option<Duration>,
+    #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
 }
 
 impl CreateInlet {

@@ -9,8 +9,8 @@ use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
-use ockam::identity::Identifier;
 use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::Identifier;
 use std::time::Duration;
 
 /// Creates a secure connection to the project using provided credential

@@ -79,7 +79,7 @@ impl SecureChannelInfo {
 }
 
 #[derive(Clone)]
-pub(crate) struct SecureChannelListenerInfo {
+pub struct SecureChannelListenerInfo {
     listener: SecureChannelListener,
 }
 

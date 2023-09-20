@@ -1,7 +1,7 @@
-use std::sync::Arc;
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionBuilder, Instantiator};
 use crate::{multiaddr_to_route, route_to_multiaddr};
+use std::sync::Arc;
 
 use crate::nodes::NodeManager;
 use ockam_core::{async_trait, Error, Route};
