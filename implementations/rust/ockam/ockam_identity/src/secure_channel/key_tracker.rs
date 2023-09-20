@@ -1,22 +1,22 @@
 use ockam_core::Result;
-use ockam_vault::KeyId;
+use ockam_vault::AeadSecretKeyHandle;
 use tracing::debug;
 use tracing::warn;
 
 use crate::IdentityError;
 
 pub(crate) struct KeyTracker {
-    pub(crate) current_key: KeyId,
-    pub(crate) previous_key: Option<KeyId>,
+    pub(crate) current_key: AeadSecretKeyHandle,
+    pub(crate) previous_key: Option<AeadSecretKeyHandle>,
     number_of_rekeys: u64,
     max_rekeys_reached: bool,
     renewal_interval: u64,
 }
 
 impl KeyTracker {
-    pub(crate) fn new(key_id: KeyId, renewal_interval: u64) -> Self {
+    pub(crate) fn new(current_key: AeadSecretKeyHandle, renewal_interval: u64) -> Self {
         KeyTracker {
-            current_key: key_id,
+            current_key,
             number_of_rekeys: 0,
             max_rekeys_reached: false,
             previous_key: None,
@@ -39,7 +39,7 @@ impl KeyTracker {
     ///      - if the the nonce falls before the previous interval
     ///      - if it the previous nonce but is not set
     ///      - we reached the maximum number of rekeyings
-    pub(crate) fn get_key(&self, nonce: u64) -> Result<Option<KeyId>> {
+    pub(crate) fn get_key(&self, nonce: u64) -> Result<Option<AeadSecretKeyHandle>> {
         debug!(
             "The current number of rekeys is {}, the rekey interval is {}",
             self.number_of_rekeys, self.renewal_interval
@@ -87,7 +87,10 @@ impl KeyTracker {
     }
 
     // Update the key if a key renewal happened
-    pub(crate) fn update_key(&mut self, decryption_key: KeyId) -> Result<Option<KeyId>> {
+    pub(crate) fn update_key(
+        &mut self,
+        decryption_key: AeadSecretKeyHandle,
+    ) -> Result<Option<AeadSecretKeyHandle>> {
         let mut key_to_delete = None;
         // if the key used for the decryption is not the current key nor the previous key
         // this means that a rekeying happened
@@ -110,15 +113,17 @@ impl KeyTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_vault::{Aes256GcmSecretKeyHandle, HandleToSecret};
 
     #[test]
     fn test_get_key_first_interval() {
-        let key_id = "key_id".to_string();
-        let key_tracker = KeyTracker::new(key_id.clone(), 10);
+        let handle = b"handle".to_vec();
+        let handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(handle)));
+        let key_tracker = KeyTracker::new(handle.clone(), 10);
 
-        assert_eq!(key_tracker.get_key(0).unwrap(), Some(key_id.clone()));
-        assert_eq!(key_tracker.get_key(5).unwrap(), Some(key_id.clone()));
-        assert_eq!(key_tracker.get_key(9).unwrap(), Some(key_id));
+        assert_eq!(key_tracker.get_key(0).unwrap(), Some(handle.clone()));
+        assert_eq!(key_tracker.get_key(5).unwrap(), Some(handle.clone()));
+        assert_eq!(key_tracker.get_key(9).unwrap(), Some(handle));
         assert_eq!(
             key_tracker.get_key(10).unwrap(),
             None,
@@ -138,13 +143,17 @@ mod tests {
 
     #[test]
     fn test_get_key_middle_interval() {
-        let key_id = "key_id".to_string();
-        let previous_key_id = "previous_key_id".to_string();
+        let handle = b"handle".to_vec();
+        let handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(handle)));
+        let previous_handle = b"previous_handle".to_vec();
+        let previous_handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(
+            previous_handle,
+        )));
         let key_tracker = KeyTracker {
-            current_key: key_id.clone(),
+            current_key: handle.clone(),
             number_of_rekeys: 5,
             max_rekeys_reached: false,
-            previous_key: Some(previous_key_id.clone()),
+            previous_key: Some(previous_handle.clone()),
             renewal_interval: 10,
         };
 
@@ -165,15 +174,15 @@ mod tests {
         );
         assert_eq!(
             key_tracker.get_key(40).unwrap(),
-            Some(previous_key_id.clone())
+            Some(previous_handle.clone())
         );
         assert_eq!(
             key_tracker.get_key(45).unwrap(),
-            Some(previous_key_id.clone())
+            Some(previous_handle.clone())
         );
-        assert_eq!(key_tracker.get_key(49).unwrap(), Some(previous_key_id));
-        assert_eq!(key_tracker.get_key(50).unwrap(), Some(key_id.clone()));
-        assert_eq!(key_tracker.get_key(59).unwrap(), Some(key_id));
+        assert_eq!(key_tracker.get_key(49).unwrap(), Some(previous_handle));
+        assert_eq!(key_tracker.get_key(50).unwrap(), Some(handle.clone()));
+        assert_eq!(key_tracker.get_key(59).unwrap(), Some(handle));
         assert_eq!(
             key_tracker.get_key(60).unwrap(),
             None,
@@ -188,13 +197,17 @@ mod tests {
 
     #[test]
     fn test_get_key_last_interval() {
-        let key_id = "key_id".to_string();
-        let previous_key_id = "previous_key_id".to_string();
+        let handle = b"handle".to_vec();
+        let handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(handle)));
+        let previous_handle = b"previous_handle".to_vec();
+        let previous_handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(
+            previous_handle,
+        )));
         let key_tracker = KeyTracker {
-            current_key: key_id,
+            current_key: handle,
             number_of_rekeys: 5,
             max_rekeys_reached: true,
-            previous_key: Some(previous_key_id),
+            previous_key: Some(previous_handle),
             renewal_interval: 10,
         };
 
@@ -207,54 +220,68 @@ mod tests {
 
     #[test]
     fn test_update_key() {
-        let key_id = "key_id".to_string();
-        let previous_key_id = "previous_key_id".to_string();
-        let new_key_id = "new_key_id".to_string();
+        let handle = b"handle".to_vec();
+        let handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(handle)));
+        let previous_handle = b"previous_handle".to_vec();
+        let previous_handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(
+            previous_handle,
+        )));
+        let new_handle = b"new_handle".to_vec();
+        let new_handle =
+            AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(new_handle)));
         let mut key_tracker = KeyTracker {
-            current_key: key_id.clone(),
+            current_key: handle.clone(),
             number_of_rekeys: 5,
             max_rekeys_reached: false,
-            previous_key: Some(previous_key_id.clone()),
+            previous_key: Some(previous_handle.clone()),
             renewal_interval: 10,
         };
 
-        assert_eq!(key_tracker.update_key(key_id.clone()).unwrap(), None);
+        assert_eq!(key_tracker.update_key(handle.clone()).unwrap(), None);
         assert_eq!(
-            key_tracker.update_key(previous_key_id.clone()).unwrap(),
+            key_tracker.update_key(previous_handle.clone()).unwrap(),
             None
         );
         assert_eq!(
-            key_tracker.update_key(new_key_id.clone()).unwrap(),
-            Some(previous_key_id),
+            key_tracker.update_key(new_handle.clone()).unwrap(),
+            Some(previous_handle),
             "the previous key id must be returned in order to be deleted",
         );
-        assert_eq!(key_tracker.current_key, new_key_id);
-        assert_eq!(key_tracker.previous_key, Some(key_id));
+        assert_eq!(key_tracker.current_key, new_handle);
+        assert_eq!(key_tracker.previous_key, Some(handle));
     }
 
     #[test]
     fn test_update_key_on_last_interval() {
-        let key_id = "key_id".to_string();
-        let previous_key_id = "previous_key_id".to_string();
-        let new_key_id = "new_key_id".to_string();
+        let handle = b"handle".to_vec();
+        let handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(handle)));
+        let previous_handle = b"previous_handle".to_vec();
+        let previous_handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(
+            previous_handle,
+        )));
+        let new_handle = b"new_handle".to_vec();
+        let new_handle =
+            AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(new_handle)));
         let mut key_tracker = KeyTracker {
-            current_key: key_id,
+            current_key: handle,
             number_of_rekeys: u64::MAX / 10 - 1,
             max_rekeys_reached: false,
-            previous_key: Some(previous_key_id),
+            previous_key: Some(previous_handle),
             renewal_interval: 10,
         };
 
         // this brings us to the last interval
-        key_tracker.update_key(new_key_id).unwrap();
+        key_tracker.update_key(new_handle).unwrap();
         assert!(
             !key_tracker.max_rekeys_reached,
             "the maximum number of rekeys is not yet reached"
         );
 
         // now there are no more intervals available
-        let new_key_id_2 = "new_key_id_2".to_string();
-        key_tracker.update_key(new_key_id_2).unwrap();
+        let new_handle2 = b"new_handle2".to_vec();
+        let new_handle2 =
+            AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(new_handle2)));
+        key_tracker.update_key(new_handle2).unwrap();
         assert!(
             key_tracker.max_rekeys_reached,
             "the maximum number of rekeys is reached now"

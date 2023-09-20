@@ -4,7 +4,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_vault::{PublicKey, SecureChannelVault};
+use ockam_vault::{VaultForSecureChannels, X25519PublicKey};
 use Action::*;
 use Event::*;
 use Role::*;
@@ -17,7 +17,7 @@ use crate::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
     StateMachine, Status,
 };
-use crate::{Identities, PurposeKey, Role, TrustContext, TrustPolicy};
+use crate::{Identities, Role, SecureChannelPurposeKey, TrustContext, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the responder side
 #[async_trait]
@@ -80,7 +80,7 @@ pub struct ResponderStateMachine {
 impl ResponderStateMachine {
     delegate! {
         to self.common {
-            async fn verify_identity(&mut self, peer: IdentityAndCredentials, peer_public_key: &PublicKey) -> Result<()>;
+            async fn verify_identity(&mut self, peer: IdentityAndCredentials, peer_public_key: &X25519PublicKey) -> Result<()>;
             fn make_handshake_results(&self, handshake_keys: Option<HandshakeKeys>) -> Option<HandshakeResults>;
         }
     }
@@ -99,10 +99,10 @@ impl ResponderStateMachine {
 
 impl ResponderStateMachine {
     pub async fn new(
-        vault: Arc<dyn SecureChannelVault>,
+        vault: Arc<dyn VaultForSecureChannels>,
         identities: Arc<Identities>,
         identifier: Identifier,
-        purpose_key: PurposeKey,
+        purpose_key: SecureChannelPurposeKey,
         credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
         trust_context: Option<TrustContext>,
@@ -119,7 +119,7 @@ impl ResponderStateMachine {
 
         Ok(ResponderStateMachine {
             common,
-            handshake: Handshake::new(vault, purpose_key.key_id().clone()).await?,
+            handshake: Handshake::new(vault, purpose_key.key().clone()).await?,
             identity_payload: Some(identity_payload),
         })
     }

@@ -1,8 +1,8 @@
 use ockam_core::Result;
-use ockam_identity::models::SchemaId;
+use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::utils::AttributesBuilder;
-use ockam_identity::{Identities, Purpose, Vault};
-use ockam_vault::{SecretAttributes, SecretType, SigningVault};
+use ockam_identity::{Identities, Vault};
+use ockam_vault::{SigningKeyType, VaultForSigning};
 use ockam_vault_aws::AwsSigningVault;
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,12 +22,14 @@ async fn create_identity_with_aws_pregenerated_key() -> Result<()> {
     let identities = Identities::builder().with_vault(vault.clone()).build();
 
     // create a secret key using the AWS KMS
-    let key_id = aws_vault.generate_key(SecretAttributes::NistP256).await?;
+    let key_id = aws_vault
+        .generate_signing_secret_key(SigningKeyType::ECDSASHA256CurveP256)
+        .await?;
 
     let identity = identities
         .identities_creation()
         .identity_builder()
-        .with_existing_key(key_id.clone(), SecretType::NistP256)
+        .with_existing_key(key_id.clone())
         .build()
         .await?;
 
@@ -36,7 +38,7 @@ async fn create_identity_with_aws_pregenerated_key() -> Result<()> {
         .import(Some(identity.identifier()), &identity.export()?)
         .await?;
 
-    aws_vault.delete_key(key_id).await?;
+    aws_vault.delete_signing_secret_key(key_id).await?;
 
     Ok(())
 }
@@ -52,7 +54,7 @@ async fn create_identity_with_aws_random_key() -> Result<()> {
     let identity = identities
         .identities_creation()
         .identity_builder()
-        .with_random_key(SecretType::NistP256)
+        .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
         .await?;
 
@@ -66,7 +68,7 @@ async fn create_identity_with_aws_random_key() -> Result<()> {
         .get_secret_key(&identity)
         .await?;
 
-    aws_vault.delete_key(key).await?;
+    aws_vault.delete_signing_secret_key(key).await?;
 
     Ok(())
 }
@@ -84,8 +86,8 @@ async fn create_credential_aws_key() -> Result<()> {
     let purpose_key = identities
         .purpose_keys()
         .purpose_keys_creation()
-        .purpose_key_builder(identity.identifier(), Purpose::Credentials)
-        .with_random_key(SecretType::NistP256)
+        .credential_purpose_key_builder(identity.identifier())
+        .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
         .await?;
 
@@ -95,7 +97,7 @@ async fn create_credential_aws_key() -> Result<()> {
         .verify_purpose_key_attestation(Some(identity.identifier()), purpose_key.attestation())
         .await?;
 
-    let attributes = AttributesBuilder::with_schema(SchemaId(1))
+    let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
         .with_attribute(*b"key", *b"value")
         .build();
 
@@ -120,7 +122,9 @@ async fn create_credential_aws_key() -> Result<()> {
         )
         .await?;
 
-    aws_vault.delete_key(purpose_key.key_id().clone()).await?;
+    aws_vault
+        .delete_signing_secret_key(purpose_key.key().clone())
+        .await?;
 
     Ok(())
 }

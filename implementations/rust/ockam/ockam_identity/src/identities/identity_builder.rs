@@ -1,6 +1,6 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SecretType};
+use ockam_vault::{SigningKeyType, SigningSecretKeyHandle};
 
 use crate::models::TimestampInSeconds;
 use crate::utils::now;
@@ -11,8 +11,8 @@ use crate::{Identity, IdentityOptions};
 pub const DEFAULT_IDENTITY_TTL: TimestampInSeconds = TimestampInSeconds(10 * 365 * 24 * 60 * 60); // Ten years
 
 enum Key {
-    Generate(SecretType),
-    Existing { key_id: KeyId, stype: SecretType },
+    Generate(SigningKeyType),
+    Existing(SigningSecretKeyHandle),
 }
 
 enum Ttl {
@@ -38,19 +38,19 @@ impl IdentityBuilder {
         Self {
             identities_creation,
             revoke_all_purpose_keys: false,
-            key: Key::Generate(SecretType::Ed25519),
+            key: Key::Generate(SigningKeyType::EdDSACurve25519),
             ttl: Ttl::CreatedNowWithTtl(DEFAULT_IDENTITY_TTL),
         }
     }
 
     /// Use an existing key for the Identity (should be present in the corresponding [`SigningVault`])
-    pub fn with_existing_key(mut self, key_id: KeyId, stype: SecretType) -> Self {
-        self.key = Key::Existing { key_id, stype };
+    pub fn with_existing_key(mut self, signing_secret_key_handle: SigningSecretKeyHandle) -> Self {
+        self.key = Key::Existing(signing_secret_key_handle);
         self
     }
 
     /// Will generate a fresh key with the given type
-    pub fn with_random_key(mut self, key_type: SecretType) -> Self {
+    pub fn with_random_key(mut self, key_type: SigningKeyType) -> Self {
         self.key = Key::Generate(key_type);
         self
     }
@@ -82,18 +82,14 @@ impl IdentityBuilder {
 
     /// Create the corresponding [`IdentityOptions`] object
     pub async fn build_options(self) -> Result<IdentityOptions> {
-        let (key, stype) = match self.key {
+        let key = match self.key {
             Key::Generate(stype) => {
-                let attributes = stype.try_into()?;
-                let key = self
-                    .identities_creation
+                self.identities_creation
                     .identity_vault
-                    .generate_key(attributes)
-                    .await?;
-
-                (key, stype)
+                    .generate_signing_secret_key(stype)
+                    .await?
             }
-            Key::Existing { key_id, stype } => (key_id, stype),
+            Key::Existing(signing_secret_key_handle) => signing_secret_key_handle,
         };
 
         let (created_at, expires_at) = match self.ttl {
@@ -109,13 +105,8 @@ impl IdentityBuilder {
             } => (created_at, expires_at),
         };
 
-        let options = IdentityOptions::new(
-            key,
-            stype,
-            self.revoke_all_purpose_keys,
-            created_at,
-            expires_at,
-        );
+        let options =
+            IdentityOptions::new(key, self.revoke_all_purpose_keys, created_at, expires_at);
 
         Ok(options)
     }

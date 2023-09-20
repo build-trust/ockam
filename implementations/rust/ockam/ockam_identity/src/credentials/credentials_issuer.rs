@@ -1,4 +1,4 @@
-use crate::models::{Attributes, CredentialAndPurposeKey, Identifier, SchemaId};
+use crate::models::{Attributes, CredentialAndPurposeKey, CredentialSchemaIdentifier, Identifier};
 use crate::utils::AttributesBuilder;
 use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
@@ -23,7 +23,7 @@ pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
 pub const TRUST_CONTEXT_ID_UTF8: &str = "trust_context_id";
 
 /// Identifier for the schema of a project credential
-pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
+pub const PROJECT_MEMBER_SCHEMA: CredentialSchemaIdentifier = CredentialSchemaIdentifier(1);
 
 /// Maximum duration for a valid credential in seconds (30 days)
 pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);

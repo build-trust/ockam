@@ -1,6 +1,6 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::VerifyingVault;
+use ockam_vault::VaultForVerifyingSignatures;
 
 use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
 use crate::utils::now;
@@ -12,15 +12,15 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
-pub struct PurposeKeysVerification {
-    verifying_vault: Arc<dyn VerifyingVault>,
+pub struct PurposeKeyVerification {
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     identities_reader: Arc<dyn IdentitiesReader>,
 }
 
-impl PurposeKeysVerification {
+impl PurposeKeyVerification {
     /// Create a new identities module
     pub(crate) fn new(
-        verifying_vault: Arc<dyn VerifyingVault>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
         identities_reader: Arc<dyn IdentitiesReader>,
     ) -> Self {
         Self {
@@ -30,7 +30,7 @@ impl PurposeKeysVerification {
     }
 }
 
-impl PurposeKeysVerification {
+impl PurposeKeyVerification {
     /// Verify a [`PurposeKeyAttestation`]
     pub async fn verify_purpose_key_attestation(
         &self,
@@ -108,9 +108,9 @@ impl PurposeKeysVerification {
 
         if !self
             .verifying_vault
-            .verify(
+            .verify_signature(
                 identity_public_key,
-                &versioned_data_hash,
+                &versioned_data_hash.0,
                 &attestation.signature.clone().into(),
             )
             .await?

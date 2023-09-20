@@ -1,19 +1,19 @@
 use crate::models::{ChangeData, ChangeHash};
-use ockam_vault::PublicKey;
+use ockam_vault::VerifyingPublicKey;
 
 /// Verified Changes of an [`Identity`]
 #[derive(Clone, Debug)]
 pub struct VerifiedChange {
     data: ChangeData,
     change_hash: ChangeHash,
-    primary_public_key: PublicKey,
+    primary_public_key: VerifyingPublicKey,
 }
 
 impl VerifiedChange {
     pub(crate) fn new(
         data: ChangeData,
         change_hash: ChangeHash,
-        primary_public_key: PublicKey,
+        primary_public_key: VerifyingPublicKey,
     ) -> Self {
         Self {
             data,
@@ -33,7 +33,7 @@ impl VerifiedChange {
     }
 
     /// [`PrimaryPublicKey`]
-    pub fn primary_public_key(&self) -> &PublicKey {
+    pub fn primary_public_key(&self) -> &VerifyingPublicKey {
         &self.primary_public_key
     }
 }

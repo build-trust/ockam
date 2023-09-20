@@ -10,7 +10,6 @@ use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
 use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
-use crate::Purpose;
 
 pub(crate) struct IdentityChannelListener {
     secure_channels: Arc<SecureChannels>,
@@ -96,7 +95,7 @@ impl Worker for IdentityChannelListener {
             .identities
             .purpose_keys()
             .purpose_keys_creation()
-            .get_or_create_purpose_key(&self.identifier, Purpose::SecureChannel)
+            .get_or_create_secure_channel_purpose_key(&self.identifier)
             .await?;
 
         HandshakeWorker::create(

@@ -6,7 +6,10 @@ use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::Client;
 use ockam_core::{async_trait, Result};
-use ockam_vault::{KeyId, PublicKey, SecretType, Signature};
+use ockam_vault::{
+    ECDSASHA256CurveP256PublicKey, ECDSASHA256CurveP256Signature, HandleToSecret, Signature,
+    SigningSecretKeyHandle, VerifyingPublicKey,
+};
 use sha2::{Digest, Sha256};
 use tracing as log;
 
@@ -24,7 +27,7 @@ pub enum InitialKeysDiscovery {
     ListFromAwsKms,
 
     /// Use a specific set of key-ids
-    Keys(Vec<String>),
+    Keys(Vec<SigningSecretKeyHandle>),
 }
 
 /// AWS KMS configuration.
@@ -71,8 +74,19 @@ impl AwsKmsClient {
         Ok(Self { client, config })
     }
 
+    fn cast_handle_to_kid(handle: &SigningSecretKeyHandle) -> Result<String> {
+        let handle = match handle {
+            SigningSecretKeyHandle::EdDSACurve25519(_) => return Err(Error::InvalidHandle.into()),
+            SigningSecretKeyHandle::ECDSASHA256CurveP256(handle) => handle.value().clone(),
+        };
+
+        let kid = String::from_utf8(handle).map_err(|_| Error::InvalidHandle)?;
+
+        Ok(kid)
+    }
+
     /// Create a new NIST P-256 key-pair in AWS KMS and return its ID.
-    pub async fn create_key(&self) -> Result<KeyId> {
+    pub async fn create_key(&self) -> Result<SigningSecretKeyHandle> {
         log::trace!("create new key");
         let mut client = self
             .client
@@ -93,104 +107,110 @@ impl AwsKmsClient {
         };
         if let Some(kid) = output.key_metadata().and_then(|meta| meta.key_id()) {
             log::debug!(%kid, "created new key");
-            return Ok(kid.to_string());
+            let handle = SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(
+                kid.as_bytes().to_vec(),
+            ));
+            return Ok(handle);
         }
         Err(Error::MissingKeyId.into())
     }
 
     /// Have AWS KMS schedule key deletion.
-    pub async fn delete_key(&self, key_id: &KeyId) -> Result<bool> {
-        log::trace!(%key_id, "schedule key for deletion");
+    pub async fn delete_key(&self, key: &SigningSecretKeyHandle) -> Result<bool> {
+        let key = Self::cast_handle_to_kid(key)?;
+        log::trace!(%key, "schedule key for deletion");
         const DAYS: i32 = 7;
         let client = self
             .client
             .schedule_key_deletion()
-            .key_id(key_id)
+            .key_id(&key)
             .pending_window_in_days(DAYS);
         match client.send().await {
             Err(SdkError::ServiceError(err))
                 if matches!(err.err(), ScheduleKeyDeletionError::NotFoundException(_)) =>
             {
-                log::debug!(%key_id, "key does not exist");
+                log::debug!(%key, "key does not exist");
                 Ok(false)
             }
             Err(err) => {
-                log::error!(%key_id, %err, "failed to schedule key for deletion");
+                log::error!(%key, %err, "failed to schedule key for deletion");
                 Err(Error::Delete {
-                    keyid: key_id.to_string(),
+                    keyid: key.to_string(),
                     error: err.to_string(),
                 }
                 .into())
             }
             Ok(_) => {
-                log::debug!(%key_id, "key is scheduled for deletion in {DAYS} days");
+                log::debug!(%key, "key is scheduled for deletion in {DAYS} days");
                 Ok(true)
             }
         }
     }
 
     /// Get the public key part of a AWS KMS key-pair.
-    pub async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
-        log::trace!(%key_id, "get public key");
+    pub async fn public_key(&self, key: &SigningSecretKeyHandle) -> Result<VerifyingPublicKey> {
+        let key = Self::cast_handle_to_kid(key)?;
+        log::trace!(%key, "get public key");
         let output = self
             .client
             .get_public_key()
-            .key_id(key_id)
+            .key_id(&key)
             .send()
             .await
             .map_err(|err| {
-                log::error!(%key_id, %err, "failed to get public key");
+                log::error!(%key, %err, "failed to get public key");
                 Error::Export {
-                    keyid: key_id.to_string(),
+                    keyid: key.to_string(),
                     error: err.to_string(),
                 }
             })?;
         if output.key_spec() != Some(&KeySpec::EccNistP256) {
-            log::error!(%key_id, "key spec not supported to get a public key");
+            log::error!(%key, "key spec not supported to get a public key");
             return Err(Error::UnsupportedKeyType.into());
         }
         if output.key_usage() != Some(&KeyUsageType::SignVerify) {
-            log::error!(%key_id, "usage type not supported to get a public key");
+            log::error!(%key, "usage type not supported to get a public key");
             return Err(Error::UnsupportedKeyType.into());
         }
         if let Some(k) = output.public_key() {
-            log::debug!(%key_id, "received public key");
+            log::debug!(%key, "received public key");
             use p256::pkcs8::DecodePublicKey;
             let k = p256::ecdsa::VerifyingKey::from_public_key_der(k.as_ref())
                 .map_err(|_| Error::InvalidPublicKeyDer)?;
-            return Ok(PublicKey::new(
-                k.to_sec1_bytes().to_vec(),
-                SecretType::NistP256,
-            ));
+            let public_key = k.to_sec1_bytes().to_vec();
+            let public_key = ECDSASHA256CurveP256PublicKey(public_key.try_into().unwrap());
+            return Ok(VerifyingPublicKey::ECDSASHA256CurveP256(public_key)); // FIXME
         }
-        log::error!(%key_id, "key type not supported to get a public key");
+        log::error!(%key, "key type not supported to get a public key");
         Err(Error::UnsupportedKeyType.into())
     }
 
     /// Have AWS KMS sign a message.
-    pub async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
-        log::trace!(%key_id, "sign message");
+    pub async fn sign(&self, key: &SigningSecretKeyHandle, message: &[u8]) -> Result<Signature> {
+        let key = Self::cast_handle_to_kid(key)?;
+        log::trace!(%key, "sign message");
         let client = self
             .client
             .sign()
-            .key_id(key_id)
+            .key_id(&key)
             .signing_algorithm(SigningAlgorithmSpec::EcdsaSha256)
             .message(digest(message))
             .message_type(MessageType::Digest);
         let output = client.send().await.map_err(|err| {
-            log::error!(%key_id, %err, "failed to sign message");
+            log::error!(%key, %err, "failed to sign message");
             Error::Sign {
-                keyid: key_id.to_string(),
+                keyid: key.to_string(),
                 error: err.to_string(),
             }
         })?;
         if let Some(sig) = output.signature() {
-            log::debug!(%key_id, "signed message");
+            log::debug!(%key, "signed message");
             let sig = p256::ecdsa::Signature::from_der(sig.as_ref())
                 .map_err(|_| Error::InvalidSignatureDer)?;
-            return Ok(Signature::new(sig.to_vec()));
+            let sig = ECDSASHA256CurveP256Signature(sig.to_vec().try_into().unwrap()); //FIXME
+            return Ok(Signature::ECDSASHA256CurveP256(sig));
         }
-        log::error!(%key_id, "no signature received from aws");
+        log::error!(%key, "no signature received from aws");
         Err(Error::MissingSignature.into())
     }
 }
@@ -199,32 +219,32 @@ impl AwsKmsClient {
 #[async_trait]
 pub trait KmsClient {
     /// Create a key
-    async fn create_key(&self) -> Result<KeyId>;
+    async fn create_key(&self) -> Result<SigningSecretKeyHandle>;
 
     /// Delete a key
-    async fn delete_key(&self, key_id: &KeyId) -> Result<bool>;
+    async fn delete_key(&self, key: &SigningSecretKeyHandle) -> Result<bool>;
 
     /// Get PublicKey
-    async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey>;
+    async fn public_key(&self, key: &SigningSecretKeyHandle) -> Result<VerifyingPublicKey>;
 
     /// List All Keys
-    async fn list_keys(&self) -> Result<Vec<KeyId>>;
+    async fn list_keys(&self) -> Result<Vec<SigningSecretKeyHandle>>;
 
     /// Sign a message
-    async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature>;
+    async fn sign(&self, key: &SigningSecretKeyHandle, message: &[u8]) -> Result<Signature>;
 }
 
 #[async_trait]
 impl KmsClient for AwsKmsClient {
-    async fn create_key(&self) -> Result<KeyId> {
+    async fn create_key(&self) -> Result<SigningSecretKeyHandle> {
         self.create_key().await
     }
 
-    async fn delete_key(&self, key_id: &KeyId) -> Result<bool> {
+    async fn delete_key(&self, key_id: &SigningSecretKeyHandle) -> Result<bool> {
         self.delete_key(key_id).await
     }
 
-    async fn list_keys(&self) -> Result<Vec<KeyId>> {
+    async fn list_keys(&self) -> Result<Vec<SigningSecretKeyHandle>> {
         match &self.config.initial_keys_discovery {
             InitialKeysDiscovery::ListFromAwsKms => {
                 // There shouldn't be more than 2-3 active keys in the KMS,
@@ -243,9 +263,13 @@ impl KmsClient for AwsKmsClient {
                     let mut result = vec![];
                     for key in keys {
                         if let Some(key_id) = key.key_id() {
-                            result.push(key_id.to_string())
+                            let key = SigningSecretKeyHandle::ECDSASHA256CurveP256(
+                                HandleToSecret::new(key_id.as_bytes().to_vec()),
+                            );
+                            result.push(key)
                         }
                     }
+
                     return Ok(result);
                 }
 
@@ -255,12 +279,12 @@ impl KmsClient for AwsKmsClient {
         }
     }
 
-    async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
-        self.public_key(key_id).await
+    async fn public_key(&self, key: &SigningSecretKeyHandle) -> Result<VerifyingPublicKey> {
+        self.public_key(key).await
     }
 
-    async fn sign(&self, key_id: &KeyId, message: &[u8]) -> Result<Signature> {
-        self.sign(key_id, message).await
+    async fn sign(&self, key: &SigningSecretKeyHandle, message: &[u8]) -> Result<Signature> {
+        self.sign(key, message).await
     }
 }
 

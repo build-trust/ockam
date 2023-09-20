@@ -6,8 +6,7 @@ use arrayref::array_ref;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::constants::SHA256_LENGTH;
-use ockam_vault::{PublicKey, SecretType, Signature, VerifyingVault};
+use ockam_vault::{VaultForVerifyingSignatures, VerifyingPublicKey, SHA256_LENGTH};
 
 struct ChangeDetails {
     version: u8,
@@ -24,7 +23,7 @@ impl Identity {
     /// Check consistency of changes that are being added
     pub async fn check_entire_consistency(
         changes: &[Change],
-        verifying_vault: Arc<dyn VerifyingVault>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<Vec<VerifiedChange>> {
         let to_be_verified_changes =
             Self::check_consistency(None, changes, verifying_vault).await?;
@@ -34,10 +33,10 @@ impl Identity {
 
     async fn get_change_details(
         change: &Change,
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<ChangeDetails> {
         let change_full_hash = vault.sha256(&change.data).await?;
-        let change_hash = Self::compute_change_hash_from_hash(change_full_hash)?;
+        let change_hash = Self::compute_change_hash_from_hash(change_full_hash.0)?;
         let versioned_data = change.get_versioned_data()?;
 
         if versioned_data.version != 1 {
@@ -49,7 +48,7 @@ impl Identity {
         Ok(ChangeDetails {
             version: versioned_data.version,
             change_hash,
-            change_full_hash,
+            change_full_hash: change_full_hash.0,
             change_data,
         })
     }
@@ -58,7 +57,7 @@ impl Identity {
     async fn check_consistency(
         last_known_change: Option<&Change>,
         new_changes: &[Change],
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<Vec<VerifiedChange>> {
         let mut to_be_verified_changes = Vec::with_capacity(new_changes.len());
 
@@ -115,7 +114,7 @@ impl Identity {
     pub(crate) async fn verify_all_existing_changes(
         to_be_verified_changes: &[VerifiedChange],
         changes: &[Change],
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<()> {
         if to_be_verified_changes.len() != changes.len() {
             return Err(IdentityError::IdentityVerificationFailed.into());
@@ -135,27 +134,14 @@ impl Identity {
     }
 
     async fn verify_change_signature(
-        public_key: &PublicKey,
+        public_key: &VerifyingPublicKey,
         hash: [u8; 32],
         signature: &ChangeSignature,
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<bool> {
-        let signature = match signature {
-            ChangeSignature::Ed25519Signature(signature) => {
-                if public_key.stype() != SecretType::Ed25519 {
-                    return Err(IdentityError::IdentityVerificationFailed.into());
-                }
-                Signature::new(signature.0.to_vec())
-            }
-            ChangeSignature::P256ECDSASignature(signature) => {
-                if public_key.stype() != SecretType::NistP256 {
-                    return Err(IdentityError::IdentityVerificationFailed.into());
-                }
-                Signature::new(signature.0.to_vec())
-            }
-        };
-
-        vault.verify(public_key, &hash, &signature).await
+        vault
+            .verify_signature(public_key, &hash, &signature.clone().into())
+            .await
     }
 
     /// WARNING: This function assumes all existing changes in chain are verified.
@@ -163,7 +149,7 @@ impl Identity {
     async fn verify_change_signatures(
         last_verified_change: Option<&VerifiedChange>,
         new_change: &Change,
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<()> {
         let new_change_details = Self::get_change_details(new_change, vault.clone()).await?;
 

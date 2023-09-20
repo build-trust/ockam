@@ -1,18 +1,18 @@
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
-use ockam_identity::models::{Identifier, SchemaId};
+use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
     AuthorityService, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    IdentityAccessControlBuilder, IdentitySecureChannelLocalInfo, Purpose,
-    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels, TrustContext,
-    TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
+    IdentityAccessControlBuilder, IdentitySecureChannelLocalInfo, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels, TrustContext, TrustEveryonePolicy, TrustIdentifierPolicy,
+    Vault,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use ockam_vault::{
-    SigningVault, SoftwareSecureChannelVault, SoftwareSigningVault, SoftwareVerifyingVault,
+    SoftwareVaultForSecureChannels, SoftwareVaultForSigning, SoftwareVaultForVerifyingSignatures,
 };
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -112,7 +112,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             bob.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_bob", "true")
                 .build(),
             Duration::from_secs(60),
@@ -126,7 +126,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             bob.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("bob_2", "true")
                 .build(),
             Duration::from_secs(60),
@@ -151,7 +151,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             alice.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_alice", "true")
                 .build(),
             Duration::from_secs(60),
@@ -165,7 +165,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             alice.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("alice_2", "true")
                 .build(),
             Duration::from_secs(60),
@@ -938,22 +938,22 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
 
 #[ockam_macros::test]
 async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
-    let alice_identity_vault = SoftwareSigningVault::create();
-    let alice_sc_vault = SoftwareSecureChannelVault::create();
+    let alice_identity_vault = SoftwareVaultForSigning::create();
+    let alice_sc_vault = SoftwareVaultForSecureChannels::create();
     let alice_vault = Vault::new(
         alice_identity_vault.clone(),
         alice_sc_vault.clone(),
-        SoftwareSigningVault::create(),
-        SoftwareVerifyingVault::create(),
+        SoftwareVaultForSigning::create(),
+        SoftwareVaultForVerifyingSignatures::create(),
     );
 
-    let bob_identity_vault = SoftwareSigningVault::create();
-    let bob_sc_vault = SoftwareSecureChannelVault::create();
+    let bob_identity_vault = SoftwareVaultForSigning::create();
+    let bob_sc_vault = SoftwareVaultForSecureChannels::create();
     let bob_vault = Vault::new(
         bob_identity_vault.clone(),
         bob_sc_vault.clone(),
-        SoftwareSigningVault::create(),
-        SoftwareVerifyingVault::create(),
+        SoftwareVaultForSigning::create(),
+        SoftwareVaultForVerifyingSignatures::create(),
     );
 
     let secure_channels_alice = SecureChannels::builder().with_vault(alice_vault).build();
@@ -963,33 +963,41 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     let identities_creation_bob = secure_channels_bob.identities().identities_creation();
 
     assert_eq!(alice_identity_vault.number_of_keys().await?, 0);
-    assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_static_x25519_secrets().await?, 0);
     assert_eq!(bob_identity_vault.number_of_keys().await?, 0);
-    assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_static_x25519_secrets().await?, 0);
 
     let alice = identities_creation_alice.create_identity().await?;
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_static_x25519_secrets().await?, 0);
 
     secure_channels_alice
         .identities()
         .purpose_keys()
         .purpose_keys_creation()
-        .create_purpose_key(alice.identifier(), Purpose::SecureChannel)
+        .create_secure_channel_purpose_key(alice.identifier())
         .await?;
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
     let bob = identities_creation_bob.create_identity().await?;
     secure_channels_bob
         .identities()
         .purpose_keys()
         .purpose_keys_creation()
-        .create_purpose_key(bob.identifier(), Purpose::SecureChannel)
+        .create_secure_channel_purpose_key(bob.identifier())
         .await?;
 
     secure_channels_bob
@@ -1001,8 +1009,10 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
     secure_channels_alice
         .create_secure_channel(
@@ -1016,23 +1026,31 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
 
     // k1, k2 and purpose key should exist
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 2);
-    assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_aead_secrets(), 2);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
     assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 2);
-    assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_aead_secrets(), 2);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
     ctx.stop().await?;
 
     // when the channel is closed only purpose key should be left
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(alice_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(alice_sc_vault.number_of_static_secrets().await?, 1);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(alice_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
     assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
-    assert_eq!(bob_sc_vault.number_of_ephemeral_secrets(), 0);
-    assert_eq!(bob_sc_vault.number_of_static_secrets().await?, 1);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_aead_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
+    assert_eq!(bob_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
     Ok(())
 }

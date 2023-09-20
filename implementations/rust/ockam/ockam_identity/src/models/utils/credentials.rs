@@ -1,11 +1,9 @@
 use crate::models::utils::get_versioned_data;
-use crate::models::{
-    CredentialData, CredentialSignature, Ed25519Signature, P256ECDSASignature, VersionedData,
-};
-use crate::{Credential, IdentityError};
+use crate::models::{CredentialData, CredentialSignature, VersionedData};
+use crate::Credential;
 
 use ockam_core::Result;
-use ockam_vault::{SecretType, Signature};
+use ockam_vault::Signature;
 
 impl Credential {
     /// Extract [`VersionedData`]
@@ -24,32 +22,17 @@ impl CredentialData {
 impl From<CredentialSignature> for Signature {
     fn from(value: CredentialSignature) -> Self {
         match value {
-            CredentialSignature::Ed25519Signature(value) => Self::new(value.0.to_vec()),
-            CredentialSignature::P256ECDSASignature(value) => Self::new(value.0.to_vec()),
+            CredentialSignature::EdDSACurve25519(value) => Self::EdDSACurve25519(value),
+            CredentialSignature::ECDSASHA256CurveP256(value) => Self::ECDSASHA256CurveP256(value),
         }
     }
 }
 
-impl CredentialSignature {
-    /// Try to create a [`CredentialSignature`] using a binary [`Signature`] and its type
-    pub fn try_from_signature(signature: Signature, stype: SecretType) -> Result<Self> {
-        match stype {
-            SecretType::Ed25519 => Ok(Self::Ed25519Signature(Ed25519Signature(
-                signature
-                    .as_ref()
-                    .try_into()
-                    .map_err(|_| IdentityError::InvalidSignatureData)?,
-            ))),
-            SecretType::NistP256 => Ok(Self::P256ECDSASignature(P256ECDSASignature(
-                signature
-                    .as_ref()
-                    .try_into()
-                    .map_err(|_| IdentityError::InvalidSignatureData)?,
-            ))),
-
-            SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
-                Err(IdentityError::InvalidKeyType.into())
-            }
+impl From<Signature> for CredentialSignature {
+    fn from(value: Signature) -> Self {
+        match value {
+            Signature::EdDSACurve25519(value) => Self::EdDSACurve25519(value),
+            Signature::ECDSASHA256CurveP256(value) => Self::ECDSASHA256CurveP256(value),
         }
     }
 }
