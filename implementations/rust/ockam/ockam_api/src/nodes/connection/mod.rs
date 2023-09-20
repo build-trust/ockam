@@ -20,7 +20,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub(crate) struct Connection {
+pub struct Connection {
     /// Transport route consists of only transport addresses,
     /// transport addresses are services which only carries over the payload without
     /// interpreting the content, and must be used to reach the other side of the connection.

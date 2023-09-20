@@ -6,6 +6,7 @@ use tokio::try_join;
 use tracing::info;
 use tracing::log::warn;
 
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{update_enrolled_identity, SpaceConfig};
@@ -15,7 +16,6 @@ use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::Controller;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
-use ockam::identity::Identifier;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;

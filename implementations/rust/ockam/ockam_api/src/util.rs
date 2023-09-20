@@ -442,7 +442,7 @@ pub mod test_utils {
         let node_config = NodeConfig::try_from(&cli_state).unwrap();
         cli_state.nodes.create(&node_name, node_config)?;
 
-        let node_manager = NodeManager::create(
+        let node_manager = NodeManagerSupervisor::create(
             context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
             NodeManagerTransportOptions::new(

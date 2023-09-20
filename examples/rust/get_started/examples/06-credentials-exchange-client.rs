@@ -1,6 +1,6 @@
 use ockam::identity::{AuthorityService, SecureChannelOptions, TrustContext, Vault};
-use ockam::{Node, TcpTransportExtension};
 use ockam::{node, route, Context, Result, TcpConnectionOptions};
+use ockam::{Node, TcpTransportExtension};
 use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::DefaultAddress;

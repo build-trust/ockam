@@ -16,8 +16,9 @@ use ockam_api::cli_state::{
 use ockam_api::cloud::{AuthorityNode, Controller, ProjectNode};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
+    SupervisedNodeManager,
 };
-use ockam_api::nodes::{NodeManager, NODEMANAGER_ADDR};
+use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::env::get_env_with_default;
 use ockam_multiaddr::MultiAddr;
 
@@ -29,7 +30,7 @@ pub async fn start_node_manager(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     trust_opts: Option<&TrustContextOpts>,
-) -> Result<NodeManager> {
+) -> Result<SupervisedNodeManager> {
     start_node_manager_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
 }
 
@@ -39,7 +40,7 @@ pub async fn start_node_manager_with_vault_and_identity(
     vault: Option<String>,
     identity: Option<String>,
     trust_opts: Option<&TrustContextOpts>,
-) -> Result<NodeManager> {
+) -> Result<SupervisedNodeManager> {
     let cmd = CreateCommand::default();
 
     init_node_state(
@@ -72,7 +73,7 @@ pub async fn start_node_manager_with_vault_and_identity(
     let options = TcpListenerOptions::new();
     let listener = tcp.listen(&bind, options).await?;
 
-    let node_manager = NodeManager::create(
+    let node_manager = SupervisedNodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(
             cli_state.clone(),
@@ -260,7 +261,7 @@ pub fn run_ockam(
 }
 
 pub struct LocalNode {
-    pub(crate) node_manager: NodeManager,
+    pub(crate) node_manager: SupervisedNodeManager,
     controller: Arc<Controller>,
     opts: CommandGlobalOpts,
 }

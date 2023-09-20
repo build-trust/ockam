@@ -22,8 +22,9 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
+    SupervisedNodeManager,
 };
-use ockam_api::nodes::{NodeManager, NODEMANAGER_ADDR};
+use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
 
@@ -47,7 +48,7 @@ pub const PROJECT_NAME: &str = "default";
 pub struct AppState {
     context: Arc<Context>,
     state: Arc<RwLock<CliState>>,
-    node_manager: Arc<RwLock<Arc<NodeManager>>>,
+    node_manager: Arc<RwLock<Arc<SupervisedNodeManager>>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
     event_manager: StdRwLock<EventManager>,
@@ -177,7 +178,7 @@ impl AppState {
     }
 
     /// Return the node manager
-    pub async fn node_manager(&self) -> Arc<NodeManager> {
+    pub async fn node_manager(&self) -> Arc<SupervisedNodeManager> {
         let node_manager = self.node_manager.read().await;
         node_manager.clone()
     }
@@ -278,7 +279,7 @@ impl AppState {
 }
 
 /// Create a node manager
-fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> NodeManager {
+fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> SupervisedNodeManager {
     match block_on(async { make_node_manager(ctx.clone(), cli_state).await }) {
         Ok(w) => w,
         Err(e) => {
@@ -292,7 +293,7 @@ fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> NodeManager {
 pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
-) -> miette::Result<NodeManager> {
+) -> miette::Result<SupervisedNodeManager> {
     init_node_state(cli_state, NODE_NAME, None, None).await?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
@@ -317,7 +318,7 @@ pub(crate) async fn make_node_manager(
     )?;
     let trust_context_config = TrustContextConfigBuilder::new(cli_state).build();
 
-    let node_manager = NodeManager::create(
+    let node_manager = SupervisedNodeManager::create(
         &ctx,
         NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), false, None),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
@@ -349,7 +350,7 @@ fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateReposito
 /// Load a previously persisted ModelState
 fn load_model_state(
     model_state_repository: Arc<dyn ModelStateRepository>,
-    node_manager: Arc<NodeManager>,
+    node_manager: Arc<SupervisedNodeManager>,
     context: Arc<Context>,
     cli_state: &CliState,
 ) -> ModelState {

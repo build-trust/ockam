@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -88,6 +89,55 @@ pub(crate) fn encode_request_result<T: Encode<()>>(
 }
 
 /// Node manager provides a messaging API to interact with the current node
+pub struct SupervisedNodeManager {
+    node_manager: Arc<NodeManager>,
+    medic_handle: MedicHandle,
+}
+
+impl Deref for SupervisedNodeManager {
+    type Target = Arc<NodeManager>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node_manager
+    }
+}
+
+impl SupervisedNodeManager {
+    /// Create a new NodeManager with the node name from the ockam CLI
+    pub async fn create(
+        ctx: &Context,
+        general_options: NodeManagerGeneralOptions,
+        transport_options: NodeManagerTransportOptions,
+        trust_options: NodeManagerTrustOptions,
+    ) -> Result<Self> {
+        let node_manager =
+            NodeManager::create(general_options, transport_options, trust_options).await?;
+        debug!("start the Medic");
+        let medic_handle = MedicHandle::start_medic(ctx).await?;
+        Ok(Self {
+            node_manager: Arc::new(node_manager),
+            medic_handle,
+        })
+    }
+
+    pub fn node_manager(&self) -> Arc<NodeManager> {
+        self.node_manager.clone()
+    }
+
+    pub fn add_session(&self, session: Session) -> Key {
+        self.medic_handle.add_session(session)
+    }
+
+    pub async fn stop(&self, ctx: &Context) -> Result<()> {
+        self.medic_handle.stop_medic(ctx).await?;
+        for addr in DefaultAddress::iter() {
+            ctx.stop_worker(addr).await?;
+        }
+        Ok(())
+    }
+}
+
+/// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
@@ -99,7 +149,6 @@ pub struct NodeManager {
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
-    medic_handle: MedicHandle,
     policies: Arc<dyn PolicyStorage>,
 }
 
@@ -221,19 +270,16 @@ impl NodeManager {
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
-    pub node_manager: Arc<NodeManager>,
+    pub node_manager: Arc<SupervisedNodeManager>,
 }
 
 impl NodeManagerWorker {
-    pub fn new(node_manager: Arc<NodeManager>) -> Self {
+    pub fn new(node_manager: Arc<SupervisedNodeManager>) -> Self {
         NodeManagerWorker { node_manager }
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        self.node_manager.medic_handle.stop_medic(ctx).await?;
-        for addr in DefaultAddress::iter() {
-            ctx.stop_worker(addr).await?;
-        }
+        self.node_manager.stop(ctx).await?;
         ctx.stop_worker(NODEMANAGER_ADDR).await?;
         Ok(())
     }
@@ -364,7 +410,6 @@ impl NodeManagerTrustOptions {
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
-        ctx: &Context,
         general_options: NodeManagerGeneralOptions,
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
@@ -404,9 +449,6 @@ impl NodeManager {
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        debug!("start the Medic");
-        let medic_handle = MedicHandle::start_medic(ctx).await?;
-
         let mut s = Self {
             cli_state,
             node_name: general_options.node_name,
@@ -424,7 +466,6 @@ impl NodeManager {
             secure_channels,
             trust_context: None,
             registry: Default::default(),
-            medic_handle,
             policies,
         };
 
@@ -570,10 +611,6 @@ impl NodeManager {
         } else {
             Err(ApiError::core(format!("project {name} not found")))
         }
-    }
-
-    pub fn add_session(&self, session: Session) -> Key {
-        self.medic_handle.add_session(session)
     }
 }
 

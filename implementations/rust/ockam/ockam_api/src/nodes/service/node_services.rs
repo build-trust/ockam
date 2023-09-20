@@ -673,47 +673,72 @@ impl NodeManagerWorker {
 
     async fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
-        registry.authenticated_services.keys().await.iter().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::AUTHENTICATED_SERVICE,
-            ))
-        });
-        registry.uppercase_services.keys().await.iter().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::UPPERCASE_SERVICE,
-            ))
-        });
-        registry.echoer_services.keys().await.iter().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::ECHO_SERVICE,
-            ))
-        });
+        registry
+            .authenticated_services
+            .keys()
+            .await
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::AUTHENTICATED_SERVICE,
+                ))
+            });
+        registry
+            .uppercase_services
+            .keys()
+            .await
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::UPPERCASE_SERVICE,
+                ))
+            });
+        registry
+            .echoer_services
+            .keys()
+            .await
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::ECHO_SERVICE,
+                ))
+            });
         registry.hop_services.keys().await.iter().for_each(|addr| {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::HOP_SERVICE,
             ))
         });
-        registry.credentials_services.keys().await.iter().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::CREDENTIALS_SERVICE,
-            ))
-        });
-        registry.kafka_services.entries().await.iter().for_each(|(address, info)| {
-            list.push(ServiceStatus::new(
-                address.address(),
-                match info.kind() {
-                    KafkaServiceKind::Consumer => DefaultAddress::KAFKA_CONSUMER,
-                    KafkaServiceKind::Producer => DefaultAddress::KAFKA_PRODUCER,
-                    KafkaServiceKind::Outlet => DefaultAddress::KAFKA_OUTLET,
-                    KafkaServiceKind::Direct => DefaultAddress::KAFKA_DIRECT,
-                },
-            ))
-        });
+        registry
+            .credentials_services
+            .keys()
+            .await
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::CREDENTIALS_SERVICE,
+                ))
+            });
+        registry
+            .kafka_services
+            .entries()
+            .await
+            .iter()
+            .for_each(|(address, info)| {
+                list.push(ServiceStatus::new(
+                    address.address(),
+                    match info.kind() {
+                        KafkaServiceKind::Consumer => DefaultAddress::KAFKA_CONSUMER,
+                        KafkaServiceKind::Producer => DefaultAddress::KAFKA_PRODUCER,
+                        KafkaServiceKind::Outlet => DefaultAddress::KAFKA_OUTLET,
+                        KafkaServiceKind::Direct => DefaultAddress::KAFKA_DIRECT,
+                    },
+                ))
+            });
 
         list
     }

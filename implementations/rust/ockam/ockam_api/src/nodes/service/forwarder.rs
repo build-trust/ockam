@@ -6,7 +6,7 @@ use ockam::identity::Identifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::Result;
 use ockam_core::api::{Error, RequestHeader, Response};
-use ockam_core::{AsyncTryClone};
+use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
@@ -14,6 +14,7 @@ use ockam_node::Context;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use crate::nodes::service::SupervisedNodeManager;
 use crate::session::sessions::{Replacer, Session};
 use crate::session::sessions::{MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 
@@ -94,50 +95,15 @@ impl NodeManager {
     pub async fn create_forwarder(
         &self,
         ctx: &Context,
-        req: CreateForwarder,
+        connection: Connection,
+        alias: Option<String>,
     ) -> Result<ForwarderInfo> {
-        debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
-        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
-        let connection = self
-            .make_connection(connection_ctx.clone(), req.address(), None, req.authorized(), None, None)
-            .await?;
-        connection.add_default_consumers(connection_ctx.clone());
-
-        // Add all Hop workers as consumers for Demo purposes
-        // Production nodes should not run any Hop workers
-        for hop in self.registry.hop_services.keys().await {
-            connection.add_consumer(connection_ctx.clone(), &hop);
-        }
-
         let route = connection.route()?;
         let options = RemoteForwarderOptions::new();
-
-        let forwarder = if req.at_rust_node() {
-            if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, options).await
-            } else {
-                RemoteForwarder::create(ctx, route, options).await
-            }
+        let forwarder = if let Some(alias) = alias {
+            RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, options).await
         } else {
-            let result = if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static(ctx, route, alias, options).await
-            } else {
-                RemoteForwarder::create(ctx, route, options).await
-            };
-            if result.is_ok() && !connection.transport_route().is_empty() {
-                let ping_route = connection.transport_route().clone();
-                let repl = self.relay_replacer(
-                    Arc::new(ctx.async_try_clone().await?),
-                    connection,
-                    req.address().clone(),
-                    req.alias().map(|a| a.to_string()),
-                    req.authorized(),
-                );
-                let mut session = Session::new(ping_route);
-                session.set_replacer(repl);
-                self.add_session(session);
-            }
-            result
+            RemoteForwarder::create(ctx, route, options).await
         };
 
         match forwarder {
@@ -218,6 +184,56 @@ impl NodeManager {
             ))
         }
     }
+}
+
+impl SupervisedNodeManager {
+    pub async fn create_forwarder(
+        &self,
+        ctx: &Context,
+        req: CreateForwarder,
+    ) -> Result<ForwarderInfo> {
+        debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
+        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
+        let connection = self
+            .make_connection(
+                connection_ctx.clone(),
+                req.address(),
+                None,
+                req.authorized(),
+                None,
+                None,
+            )
+            .await?;
+        connection.add_default_consumers(connection_ctx.clone());
+
+        // Add all Hop workers as consumers for Demo purposes
+        // Production nodes should not run any Hop workers
+        for hop in self.registry.hop_services.keys().await {
+            connection.add_consumer(connection_ctx.clone(), &hop);
+        }
+
+        let forwarder = self
+            .node_manager
+            .create_forwarder(ctx, connection.clone(), req.alias().map(|a| a.to_string()))
+            .await?;
+        if !req.at_rust_node() {
+            if !connection.transport_route().is_empty() {
+                let ping_route = connection.transport_route().clone();
+                let repl = Self::relay_replacer(
+                    self.node_manager.clone(),
+                    Arc::new(ctx.async_try_clone().await?),
+                    connection,
+                    req.address().clone(),
+                    req.alias().map(|a| a.to_string()),
+                    req.authorized(),
+                );
+                let mut session = Session::new(ping_route);
+                session.set_replacer(repl);
+                self.add_session(session);
+            }
+        };
+        Ok(forwarder)
+    }
 
     /// Create a session replacer.
     ///
@@ -225,7 +241,7 @@ impl NodeManager {
     /// the secure channel worker address) and constructs the whole route
     /// again.
     fn relay_replacer(
-        &self,
+        node_manager: Arc<NodeManager>,
         ctx: Arc<Context>,
         connection: Connection,
         addr: MultiAddr,
@@ -233,6 +249,7 @@ impl NodeManager {
         authorized: Option<Identifier>,
     ) -> Replacer {
         let connection_arc = Arc::new(Mutex::new(connection));
+        let node_manager = node_manager.clone();
         Box::new(move |prev_route| {
             let ctx = ctx.clone();
             let addr = addr.clone();
@@ -240,19 +257,23 @@ impl NodeManager {
             let authorized = authorized.clone();
             let connection_arc = connection_arc.clone();
             let previous_connection = connection_arc.lock().unwrap().clone();
+            let node_manager = node_manager.clone();
 
             Box::pin(async move {
                 debug!(%prev_route, %addr, "creating new remote forwarder");
 
                 let f = async {
                     for encryptor in &previous_connection.secure_channel_encryptors {
-                        if let Err(error) = self.delete_secure_channel(&ctx.clone(), encryptor).await {
+                        if let Err(error) = node_manager
+                            .delete_secure_channel(&ctx.clone(), encryptor)
+                            .await
+                        {
                             //not much we can do about it
                             debug!("cannot delete secure channel `{encryptor}`: {error}");
                         }
                     }
                     if let Some(tcp_connection) = previous_connection.tcp_connection.as_ref() {
-                        if let Err(error) = self
+                        if let Err(error) = node_manager
                             .tcp_transport
                             .disconnect(tcp_connection.sender_address().clone())
                             .await
@@ -261,8 +282,15 @@ impl NodeManager {
                         }
                     }
 
-                    let connection = self
-                        .make_connection(ctx.clone(), &addr, None, authorized, None, Some(MAX_CONNECT_TIME))
+                    let connection = node_manager
+                        .make_connection(
+                            ctx.clone(),
+                            &addr,
+                            None,
+                            authorized,
+                            None,
+                            Some(MAX_CONNECT_TIME),
+                        )
                         .await?;
                     connection.add_default_consumers(ctx.clone());
                     *connection_arc.lock().unwrap() = connection.clone();
