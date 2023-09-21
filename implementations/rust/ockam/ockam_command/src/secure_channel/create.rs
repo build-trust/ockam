@@ -6,7 +6,12 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models::secure_channel::{
+    CreateSecureChannelRequest, CreateSecureChannelResponse,
+};
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
+use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::docs;
@@ -69,8 +74,8 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
         ctx: &Context,
-        node: &InMemoryNode,
     ) -> miette::Result<MultiAddr> {
+        let node = InMemoryNode::create(&ctx, &opts.state, None).await?;
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
@@ -80,7 +85,7 @@ impl CreateCommand {
         let projects_sc = get_projects_secure_channels_from_config_lookup(
             opts,
             ctx,
-            node,
+            &node,
             &meta,
             Some(identity_name),
         )
@@ -91,8 +96,8 @@ impl CreateCommand {
     }
 
     // Read the `from` argument and return node name
-    fn parse_from_node(&self) -> String {
-        extract_address_value(&self.from).unwrap_or_else(|_| "".to_string())
+    fn parse_from_node(&self) -> miette::Result<String> {
+        extract_address_value(&self.from).into_diagnostic()
     }
 }
 
@@ -100,31 +105,26 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     opts.terminal
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
-    let from = &cmd.parse_from_node();
-    let node = InMemoryNode::create(&ctx, &opts, None).await?;
-    let to = cmd.parse_to_route(&opts, &ctx, &node).await?;
-
-    let authorized_identifiers = cmd.authorized.clone();
-
     // Delegate the request to create a secure channel to the from node.
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let create_secure_channel = async {
-        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+    let from = cmd.parse_from_node()?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &from).await?;
+    let to = cmd.parse_to_route(&opts, &ctx).await?;
+    let authorized_identifiers = cmd.authorized.clone();
 
-        let sc = node
-            .node_manager
-            .create_secure_channel(
-                &ctx,
-                to,
-                Some(identity),
-                authorized_identifiers,
-                cmd.credential.clone(),
-                None,
-            )
-            .await?;
+    let create_secure_channel = async {
+        let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        let payload = CreateSecureChannelRequest::new(
+            &to,
+            authorized_identifiers,
+            Some(identity_name),
+            cmd.credential.clone(),
+        );
+        let request = Request::post("/node/secure_channel").body(payload);
+        let response: CreateSecureChannelResponse = node.ask(&ctx, request).await?;
         *is_finished.lock().await = true;
-        Ok(sc)
+        Ok(response.addr)
     };
 
     let output_messages = vec!["Creating Secure Channel...".to_string()];
@@ -135,7 +135,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
 
-    let route = &route![secure_channel.encryptor_address().to_string()];
+    let route = &route![secure_channel.to_string()];
     let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
         Error::new(
             exitcode::PROTOCOL,
