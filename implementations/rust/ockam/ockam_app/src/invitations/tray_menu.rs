@@ -304,7 +304,7 @@ fn on_create<R: Runtime>(app: &AppHandle<R>, outlet_socket_addr: &str) -> tauri:
                 INVITATIONS_WINDOW_ID,
                 tauri::WindowUrl::App(url_path.into()),
             )
-            .title("Invite To Share");
+            .title("Share a service");
             crate::window::create(app, builder, 450.0, 350.0)?;
         }
         Some(w) => w.set_focus()?,

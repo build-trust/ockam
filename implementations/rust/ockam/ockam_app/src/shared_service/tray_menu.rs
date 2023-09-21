@@ -133,7 +133,7 @@ fn on_create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 SHARED_SERVICE_WINDOW_ID,
                 tauri::WindowUrl::App("service".into()),
             )
-            .title("Share a service");
+            .title("Create a service");
             crate::window::create(app, builder, 450.0, 350.0)?;
         }
         Some(w) => w.set_focus()?,
