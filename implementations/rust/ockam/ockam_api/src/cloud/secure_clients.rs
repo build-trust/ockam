@@ -1,8 +1,8 @@
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Duration;
 
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
+use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{route, Result, Route};
 use ockam_multiaddr::MultiAddr;

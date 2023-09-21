@@ -317,6 +317,18 @@ pub mod vec {
     pub type Vec<T> = heapless::Vec<T, 64>;
 }
 
+/// Provides `std::time` for `std` targets.
+#[cfg(feature = "std")]
+pub mod time {
+    pub use std::time::*;
+}
+
+/// Provides `std::time` for no_std targets
+#[cfg(not(feature = "std"))]
+pub mod time {
+    pub use core::time::Duration;
+}
+
 /// Provides `core::fmt`
 pub mod fmt {
     #[cfg(feature = "alloc")]

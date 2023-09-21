@@ -1,10 +1,10 @@
+use ockam_core::api::Request;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use tracing::debug;
 
-use ockam_core::api::Request;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::time::Duration;
 use ockam_core::{async_trait, Address, Result, Route};
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 
