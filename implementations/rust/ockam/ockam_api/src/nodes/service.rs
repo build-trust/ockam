@@ -56,11 +56,11 @@ use crate::RpcProxyService;
 
 use super::registry::Registry;
 
+pub(crate) mod background_node;
 pub(crate) mod credentials;
 mod flow_controls;
 mod forwarder;
 pub mod message;
-pub(crate) mod background_node;
 mod node_identities;
 mod node_services;
 mod policy;

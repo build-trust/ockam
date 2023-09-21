@@ -66,8 +66,7 @@ impl BackgroundNode {
     }
 
     pub fn set_to(&mut self, to: &MultiAddr) -> miette::Result<&Self> {
-        self.to = local_multiaddr_to_route(to)
-            .ok_or_else(|| miette!("failed to convert {} to route", to))?;
+        self.to = local_multiaddr_to_route(to).into_diagnostic()?;
         Ok(self)
     }
 

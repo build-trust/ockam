@@ -5,7 +5,7 @@ mod secure;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Result;
-use ockam_core::{async_trait, route, Address, Error, Route, LOCAL};
+use ockam_core::{async_trait, route, Address, Route, LOCAL};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
@@ -60,13 +60,7 @@ impl Connection {
     }
 
     pub fn route(&self) -> Result<Route> {
-        local_multiaddr_to_route(&self.normalized_addr).ok_or_else(|| {
-            Error::new(
-                Origin::Api,
-                Kind::Invalid,
-                format!("invalid normalized address: {}", self.normalized_addr),
-            )
-        })
+        local_multiaddr_to_route(&self.normalized_addr)
     }
 }
 
