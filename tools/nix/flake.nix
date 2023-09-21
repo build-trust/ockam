@@ -20,6 +20,7 @@
       # 24.1.7 stipulated by Dockerfile does not build successfully with current nixpkgs input
       ockam.elixir.erlangVersion = "24.3.4.10";
       ockam.elixir.version = "1.13.0";
-      ockam.rust.suggestedCargoPlugins = true;
+      ockam.rust.suggestedCargoPlugins = false;
+      ockam.rust.rustAnalyzer = false;
     };
 }
