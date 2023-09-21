@@ -17,7 +17,7 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
 
     typedstruct do
       plugin(Ockam.TypedCBOR.Plugin)
-      field(:name, String.t(), minicbor: [key: 1])
+      field(:name, Test.Name, minicbor: [schema: Test.Name, key: 1])
 
       field(:addresses, list(Test.Address.t()),
         minicbor: [key: 2, schema: {:list, Test.Address.minicbor_schema()}]
@@ -30,8 +30,26 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     end
   end
 
+  defmodule Test.Name do
+    defstruct [:firstname, :lastname]
+
+    # Encode it as a 2-element array of binaries
+    def to_cbor_term(%Test.Name{firstname: f, lastname: l}) do
+      {:ok, [%CBOR.Tag{tag: :bytes, value: f}, %CBOR.Tag{tag: :bytes, value: l}]}
+    end
+
+    def to_cbor_term(_), do: :error
+
+    def from_cbor_term([%CBOR.Tag{tag: :bytes, value: f}, %CBOR.Tag{tag: :bytes, value: l}]) do
+      {:ok, %Test.Name{firstname: f, lastname: l}}
+    end
+
+    def from_cbor_term(_), do: :error
+  end
+
   test "encode-decode" do
-    p = %Test.Person{name: "Test", age: 23, gender: :male, addresses: [], like_shoes: false}
+    name = %Test.Name{firstname: "john", lastname: "smith"}
+    p = %Test.Person{name: name, age: 23, gender: :male, addresses: [], like_shoes: false}
     {:ok, data} = Test.Person.encode(p)
     {:ok, ^p, ""} = Test.Person.decode(data)
 
@@ -66,7 +84,8 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     # Incorrect type
     p = %Test.Person{name: ["Test"], age: 23, gender: :male, addresses: [], like_shoes: false}
 
-    assert {:error, "type mismatch, expected schema :string"} = Test.Person.encode(p)
+    assert {:error, "type mismatch, expected schema Ockam.TypedCBOR.Plugin.Test.Test.Name"} =
+             Test.Person.encode(p)
   end
 
   test "decode errors" do
@@ -74,7 +93,7 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     {:error, _} = Test.Person.decode(CBOR.encode(%{}))
 
     # Incorrect type for field 1 (name)
-    assert {:error, "type mismatch, expected schema :string"} =
+    assert {:error, "type mismatch, expected schema Ockam.TypedCBOR.Plugin.Test.Test.Name"} =
              Test.Person.decode(CBOR.encode(%{1 => 22, 2 => [], 4 => 0, 5 => true}))
 
     # Garbage data
