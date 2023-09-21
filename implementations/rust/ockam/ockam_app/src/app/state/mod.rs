@@ -14,6 +14,7 @@ use tracing::{error, info, trace, warn};
 
 pub(crate) use crate::app::state::model::ModelState;
 pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
+use crate::background_node::{BackgroundNodeClient, Cli};
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::address::controller_route;
@@ -51,6 +52,7 @@ pub struct AppState {
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
     event_manager: StdRwLock<EventManager>,
+    background_node_client: Arc<RwLock<Arc<dyn BackgroundNodeClient>>>,
 
     #[cfg(debug_assertions)]
     browser_dev_tools: AtomicBool,
@@ -94,6 +96,7 @@ impl AppState {
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
             event_manager: StdRwLock::new(EventManager::new()),
+            background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
 
             #[cfg(debug_assertions)]
             browser_dev_tools: Default::default(),
@@ -119,7 +122,7 @@ impl AppState {
             .await
             .identities
             .identities_repository_path()
-            .unwrap();
+            .expect("Failed to get the identities repository path");
         let new_state_repository = LmdbModelStateRepository::new(identity_path).await?;
         {
             let mut writer = self.model_state_repository.write().await;
@@ -247,6 +250,10 @@ impl AppState {
             is_processing,
         }
     }
+
+    pub async fn background_node_client(&self) -> Arc<dyn BackgroundNodeClient> {
+        self.background_node_client.read().await.clone()
+    }
 }
 
 #[cfg(debug_assertions)]
@@ -267,8 +274,8 @@ fn create_node_manager_worker(ctx: Arc<Context>, cli_state: &CliState) -> NodeMa
     match block_on(async { make_node_manager_worker(ctx.clone(), cli_state).await }) {
         Ok(w) => w,
         Err(e) => {
-            println!("cannot create a node manager: {e:?}");
-            panic!("{e}")
+            error!(%e, "Cannot load the model state");
+            panic!("Cannot load the model state: {e:?}")
         }
     }
 }
@@ -324,12 +331,15 @@ pub(crate) async fn make_node_manager_worker(
 
 /// Create the repository containing the model state
 fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
-    let identity_path = state.identities.identities_repository_path().unwrap();
+    let identity_path = state
+        .identities
+        .identities_repository_path()
+        .expect("Failed to get the identities repository path");
     match block_on(async move { LmdbModelStateRepository::new(identity_path).await }) {
         Ok(model_state_repository) => Arc::new(model_state_repository),
         Err(e) => {
-            println!("cannot create a model state repository manager: {e:?}");
-            panic!("{}", e)
+            error!(%e, "Cannot create a model state repository manager");
+            panic!("Cannot create a model state repository manager: {e:?}");
         }
     }
 }
@@ -356,8 +366,8 @@ fn load_model_state(
                 model_state
             }
             Err(e) => {
-                error!(?e, "cannot load the model state");
-                panic!("{}", e)
+                error!(?e, "Cannot load the model state");
+                panic!("Cannot load the model state: {e:?}")
             }
         }
     })

@@ -216,7 +216,7 @@ pub struct OutletStatus {
     #[n(0)] tag: TypeTag<4012569>,
     #[n(1)] pub socket_addr: SocketAddr,
     #[n(2)] pub worker_addr: Address,
-    #[n(3)] pub alias:String,
+    #[n(3)] pub alias: String,
     /// An optional status payload
     #[n(4)] pub payload: Option<String>,
 }
@@ -252,6 +252,14 @@ impl OutletStatus {
     pub fn worker_address(&self) -> Result<MultiAddr, ockam_core::Error> {
         route_to_multiaddr(&route![self.worker_addr.to_string()])
             .ok_or_else(|| ApiError::core("Invalid Worker Address"))
+    }
+
+    pub fn worker_name(&self) -> Result<String, ockam_core::Error> {
+        match self.worker_address()?.last() {
+            Some(worker_name) => String::from_utf8(worker_name.data().to_vec())
+                .map_err(|_| ApiError::core("Invalid Worker Address")),
+            None => Ok(self.worker_addr.to_string()),
+        }
     }
 }
 

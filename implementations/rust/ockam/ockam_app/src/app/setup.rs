@@ -22,7 +22,11 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn Error>> {
     TrayIconBuilder::with_id("tray")
         .tooltip("Ockam")
         .icon_as_template(true)
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(
+            app.default_window_icon()
+                .expect("No default window icon")
+                .clone(),
+        )
         .on_menu_event(process_system_tray_menu_event)
         .build(app)
         .expect("Couldn't initialize the system tray menu");

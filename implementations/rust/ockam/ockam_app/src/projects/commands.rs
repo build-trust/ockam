@@ -9,52 +9,36 @@ use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::Enr
 use super::error::{Error, Result};
 use super::State as ProjectState;
 use crate::app::AppState;
-use crate::cli::cli_bin;
 
 // Store the user's admin projects
 pub type SyncAdminProjectsState = Arc<RwLock<ProjectState>>;
-
-// Matches backend default of 14 days
-const DEFAULT_ENROLLMENT_TICKET_EXPIRY: &str = "14d";
 
 pub(crate) async fn create_enrollment_ticket<R: Runtime>(
     project_id: String,
     app: AppHandle<R>,
 ) -> Result<EnrollmentTicket> {
-    let state: State<'_, SyncAdminProjectsState> = app.state();
-    let projects = state.read().await;
+    let app_state: State<'_, AppState> = app.state();
+    let projects_state: State<'_, SyncAdminProjectsState> = app.state();
+    let projects = projects_state.read().await;
     let project = projects
         .iter()
         .find(|p| p.id == project_id)
         .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?;
 
-    debug!(?project_id, "creating enrollment ticket via CLI");
-    // TODO: Issue enrollment ticket using in-memory code instead of subshell
+    debug!(?project_id, "Creating enrollment ticket via CLI");
     // TODO: How might this degrade for users who have multiple spaces and projects?
-    let bin = cli_bin().map_err(|e| Error::OckamCommandInvalid(e.to_string()))?;
-    let hex_encoded_ticket = duct::cmd!(
-        bin,
-        "project",
-        "ticket",
-        "--quiet",
-        "--project",
-        project.name.clone(),
-        "--expires-in",
-        DEFAULT_ENROLLMENT_TICKET_EXPIRY.to_string(),
-        "--to",
-        &format!("/project/{}", project.name)
-    )
-    .read()
-    .map_err(|err| {
-        error!(?err, "could not create enrollment ticket");
-        Error::EnrollmentTicketFailed
-    })?;
+    let background_node_client = app_state.background_node_client().await;
+    let hex_encoded_ticket = background_node_client
+        .projects()
+        .ticket(&project.name)
+        .await
+        .map_err(|_| Error::EnrollmentTicketFailed)?;
     serde_json::from_slice(&hex::decode(hex_encoded_ticket).map_err(|err| {
-        error!(?err, "could not hex-decode enrollment ticket");
+        error!(?err, "Could not hex-decode enrollment ticket");
         Error::EnrollmentTicketDecodeFailed
     })?)
     .map_err(|err| {
-        error!(?err, "could not JSON-decode enrollment ticket");
+        error!(?err, "Could not JSON-decode enrollment ticket");
         Error::EnrollmentTicketDecodeFailed
     })
 }

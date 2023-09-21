@@ -24,6 +24,7 @@ use crate::error::{Error, Result};
 use std::process::exit;
 
 mod app;
+pub(crate) mod background_node;
 mod cli;
 mod enroll;
 mod error;

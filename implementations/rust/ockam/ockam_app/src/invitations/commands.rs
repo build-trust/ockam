@@ -2,8 +2,8 @@ use miette::IntoDiagnostic;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime, State};
-use tokio::sync::RwLockWriteGuard;
 use tracing::{debug, info, trace, warn};
 
 use ockam_api::address::get_free_address;
@@ -11,11 +11,10 @@ use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, InvitationWithAccess};
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
-use ockam_api::nodes::models::portal::InletStatus;
 
 use crate::app::{AppState, PROJECT_NAME};
-use crate::cli::cli_bin;
-use crate::invitations::state::{Inlet, InvitationState};
+use crate::background_node::BackgroundNodeClient;
+use crate::invitations::state::Inlet;
 use crate::projects::commands::{create_enrollment_ticket, SyncAdminProjectsState};
 use crate::shared_service::relay::RELAY_NAME;
 
@@ -116,49 +115,50 @@ async fn send_invitation<R: Runtime>(
 
 pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     debug!("Refreshing invitations");
-    let state: State<'_, AppState> = app.state();
-    if !state.is_enrolled().await.unwrap_or(false) {
-        debug!("Not enrolled, skipping invitations refresh");
-        return Ok(());
-    }
-    let node_manager_worker = state.node_manager_worker().await;
-    let invitations = node_manager_worker
-        .list_shares(
-            &state.context(),
-            ListInvitations {
-                kind: InvitationListKind::All,
-            },
-            &state.controller_address(),
-            None,
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    debug!("Invitations fetched");
-    trace!(?invitations);
+    let invitations = {
+        let state: State<'_, AppState> = app.state();
+        if !state.is_enrolled().await.unwrap_or(false) {
+            debug!("not enrolled, skipping invitations refresh");
+            return Ok(());
+        }
+        let node_manager_worker = state.node_manager_worker().await;
+        let invitations = node_manager_worker
+            .list_shares(
+                &state.context(),
+                ListInvitations {
+                    kind: InvitationListKind::All,
+                },
+                &state.controller_address(),
+                None,
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        debug!("Invitations fetched");
+        trace!(?invitations);
+        invitations
+    };
     {
         let invitation_state: State<'_, SyncInvitationsState> = app.state();
         let mut writer = invitation_state.write().await;
-        writer.replace_by(invitations.clone());
-        refresh_inlets(state, writer)
-            .await
-            .map_err(|e| e.to_string())?;
+        writer.replace_by(invitations);
     }
+    refresh_inlets(&app).await.map_err(|e| e.to_string())?;
     app.trigger_global(REFRESHED_INVITATIONS, None);
     Ok(())
 }
 
-async fn refresh_inlets(
-    app_state: State<'_, AppState>,
-    mut invitations_state: RwLockWriteGuard<'_, InvitationState>,
-) -> crate::Result<()> {
+async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
     debug!("Refreshing inlets");
+    let app_state: State<'_, AppState> = app.state();
+    let invitation_state: State<'_, SyncInvitationsState> = app.state();
+    let mut invitations_state = invitation_state.write().await;
     if invitations_state.accepted.invitations.is_empty() {
         debug!("No accepted invitations, skipping inlets refresh");
         return Ok(());
     }
 
     let cli_state = app_state.state().await;
-    let cli_bin = cli_bin()?;
+    let background_node_client = app_state.background_node_client().await;
     let mut running_inlets = vec![];
     for invitation in &invitations_state.accepted.invitations {
         match InletDataFromInvitation::new(
@@ -177,48 +177,22 @@ async fn refresh_inlets(
                     if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
                         if node.is_running() {
                             debug!(node = %i.local_node_name, "Node already running");
-                            debug!(node = %i.local_node_name, "Checking TCP inlet status");
-                            if let Ok(cmd) = duct::cmd!(
-                                &cli_bin,
-                                "--no-input",
-                                "tcp-inlet",
-                                "show",
-                                &i.service_name,
-                                "--at",
-                                &i.local_node_name,
-                                "--output",
-                                "json"
-                            )
-                            .env("OCKAM_LOG", "off")
-                            .stderr_null()
-                            .stdout_capture()
-                            .run()
+                            if let Ok(inlet) = background_node_client
+                                .inlets()
+                                .show(&i.local_node_name, &i.service_name)
+                                .await
                             {
-                                trace!(output = ?String::from_utf8_lossy(&cmd.stdout), "TCP inlet status");
-                                let inlet: InletStatus = serde_json::from_slice(&cmd.stdout)?;
-                                debug!(
-                                    at = ?inlet.bind_addr,
-                                    alias = inlet.alias,
-                                    "TCP inlet running"
-                                );
+                                i.socket_addr = Some(inlet.bind_addr.parse()?);
                                 running_inlets.push((invitation.invitation.id.clone(), i));
                                 continue;
                             }
                         }
                     }
-                    debug!(node = %i.local_node_name, "Deleting node");
-                    let _ = duct::cmd!(
-                        &cli_bin,
-                        "--no-input",
-                        "node",
-                        "delete",
-                        "--yes",
-                        &i.local_node_name
-                    )
-                    .stderr_null()
-                    .stdout_capture()
-                    .run();
-                    match create_inlet(&i).await {
+                    background_node_client
+                        .nodes()
+                        .delete(&i.local_node_name)
+                        .await?;
+                    match create_inlet(background_node_client.clone(), &i).await {
                         Ok(socket_addr) => {
                             i.socket_addr = Some(socket_addr);
                             running_inlets.push((invitation.invitation.id.clone(), i));
@@ -249,7 +223,10 @@ async fn refresh_inlets(
 
 /// Create the tcp-inlet for the accepted invitation
 /// Returns the inlet SocketAddr
-async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<SocketAddr> {
+async fn create_inlet(
+    background_node_client: Arc<dyn BackgroundNodeClient>,
+    inlet_data: &InletDataFromInvitation,
+) -> crate::Result<SocketAddr> {
     debug!(service_name = ?inlet_data.service_name, "Creating TCP inlet for accepted invitation");
     let InletDataFromInvitation {
         enabled,
@@ -266,60 +243,20 @@ async fn create_inlet(inlet_data: &InletDataFromInvitation) -> crate::Result<Soc
         Some(socket_addr) => *socket_addr,
         None => get_free_address()?,
     };
-    let from_str = from.to_string();
-    let cli_bin = cli_bin()?;
     if let Some(enrollment_ticket_hex) = enrollment_ticket_hex {
-        let _ = duct::cmd!(
-            &cli_bin,
-            "--no-input",
-            "project",
-            "enroll",
-            "--new-trust-context-name",
-            &local_node_name,
-            &enrollment_ticket_hex,
-        )
-        .stderr_null()
-        .stdout_capture()
-        .run();
-        debug!(node = %local_node_name, "Node enrolled using enrollment ticket");
+        background_node_client
+            .projects()
+            .enroll(local_node_name, enrollment_ticket_hex)
+            .await?;
     }
-    duct::cmd!(
-        &cli_bin,
-        "--no-input",
-        "node",
-        "create",
-        &local_node_name,
-        "--trust-context",
-        &local_node_name
-    )
-    .stderr_null()
-    .stdout_capture()
-    .run()?;
-    debug!(node = %local_node_name, "Node created");
-    duct::cmd!(
-        &cli_bin,
-        "--no-input",
-        "tcp-inlet",
-        "create",
-        "--at",
-        &local_node_name,
-        "--from",
-        &from_str,
-        "--to",
-        &service_route,
-        "--alias",
-        &service_name,
-        "--retry-wait",
-        "0",
-    )
-    .stderr_null()
-    .stdout_capture()
-    .run()?;
-    info!(
-        from = from_str,
-        to = service_route,
-        "Created TCP inlet for accepted invitation"
-    );
+    background_node_client
+        .nodes()
+        .create(local_node_name)
+        .await?;
+    background_node_client
+        .inlets()
+        .create(local_node_name, &from, service_route, service_name)
+        .await?;
     Ok(from)
 }
 
@@ -327,6 +264,8 @@ pub(crate) async fn disconnect_tcp_inlet<R: Runtime>(
     app: AppHandle<R>,
     invitation_id: &str,
 ) -> crate::Result<()> {
+    let app_state: State<'_, AppState> = app.state();
+    let background_node_client = app_state.background_node_client().await;
     let invitation_state: State<'_, SyncInvitationsState> = app.state();
     let mut writer = invitation_state.write().await;
     if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
@@ -335,29 +274,10 @@ pub(crate) async fn disconnect_tcp_inlet<R: Runtime>(
             return Ok(());
         }
         inlet.disable();
-        let local_node_name = &inlet.node_name;
-        let alias = &inlet.alias;
-        debug!(node = %local_node_name, %alias, "Deleting TCP inlet");
-        let _ = duct::cmd!(
-            &cli_bin()?,
-            "--no-input",
-            "tcp-inlet",
-            "delete",
-            alias,
-            "--at",
-            local_node_name,
-            "--yes"
-        )
-        .stderr_null()
-        .stdout_capture()
-        .run()
-        .map_err(
-            |e| warn!(%e, node = %local_node_name, alias = %alias, "Failed to delete TCP inlet"),
-        );
-        info!(
-            node = %local_node_name, %alias,
-            "Disconnected TCP inlet for accepted invitation"
-        );
+        background_node_client
+            .inlets()
+            .delete(&inlet.node_name, &inlet.alias)
+            .await?;
     }
     Ok(())
 }
