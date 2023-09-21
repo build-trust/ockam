@@ -1,11 +1,12 @@
-use minicbor::{Decode, Encode};
-use std::sync::Arc;
-use std::time::Duration;
-
 use crate::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
+use minicbor::{Decode, Encode};
+
 use crate::{SecureChannel, SecureChannels};
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
+use ockam_core::compat::sync::Arc;
+use ockam_core::compat::time::Duration;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{self, route, Result, Route};
 use ockam_node::api::request_with_options;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -53,10 +54,10 @@ impl SecureClient {
         T: Encode<()>,
         R: for<'a> Decode<'a, ()>,
     {
-        let bytes = self
+        let bytes: Vec<u8> = self
             .request_with_timeout(ctx, api_service, req, self.timeout)
             .await?;
-        Response::parse_response_reply::<R>(&bytes)
+        Response::parse_response_reply::<R>(bytes.as_slice())
     }
 
     /// Send a request of type T and don't expect a reply

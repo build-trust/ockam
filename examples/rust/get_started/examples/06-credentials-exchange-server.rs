@@ -99,7 +99,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
     node.create_secure_channel_listener(
-        &server.identifier(),
+        server.identifier(),
         DefaultAddress::SECURE_CHANNEL_LISTENER,
         sc_listener_options,
     )
