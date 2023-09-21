@@ -57,12 +57,9 @@ impl SecureChannelsBuilder {
     }
 
     /// Set a specific channel registry
-    pub fn with_secure_channels_registry(
-        &mut self,
-        registry: SecureChannelRegistry,
-    ) -> SecureChannelsBuilder {
+    pub fn with_secure_channels_registry(mut self, registry: SecureChannelRegistry) -> Self {
         self.registry = registry;
-        self.clone()
+        self
     }
 
     /// Return the vault used by this builder
