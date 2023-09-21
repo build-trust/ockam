@@ -38,7 +38,12 @@ pub trait Credentials {
         identity_name: Option<String>,
     ) -> miette::Result<CredentialAndPurposeKey>;
 
-    async fn present_credential(&self, ctx: &Context, to: &MultiAddr, oneway: bool) -> miette::Result<()>;
+    async fn present_credential(
+        &self,
+        ctx: &Context,
+        to: &MultiAddr,
+        oneway: bool,
+    ) -> miette::Result<()>;
 }
 
 #[async_trait]
@@ -59,7 +64,12 @@ impl Credentials for AuthorityNode {
             .into_diagnostic()
     }
 
-    async fn present_credential(&self, ctx: &Context, to: &MultiAddr, oneway: bool) -> miette::Result<()> {
+    async fn present_credential(
+        &self,
+        ctx: &Context,
+        to: &MultiAddr,
+        oneway: bool,
+    ) -> miette::Result<()> {
         let body = PresentCredentialRequest::new(to, oneway);
         let req = Request::post("/node/credentials/actions/present").body(body);
         self.0
@@ -73,14 +83,32 @@ impl Credentials for AuthorityNode {
 
 #[async_trait]
 impl Credentials for BackgroundNode {
-    async fn get_credential(&self, ctx: &Context, overwrite: bool, identity_name: Option<String>) -> miette::Result<CredentialAndPurposeKey> {
+    async fn get_credential(
+        &self,
+        ctx: &Context,
+        overwrite: bool,
+        identity_name: Option<String>,
+    ) -> miette::Result<CredentialAndPurposeKey> {
         let body = GetCredentialRequest::new(overwrite, identity_name);
-        self.ask(ctx, Request::post("/node/credentials/actions/get").body(body)).await
+        self.ask(
+            ctx,
+            Request::post("/node/credentials/actions/get").body(body),
+        )
+        .await
     }
 
-    async fn present_credential(&self, ctx: &Context, to: &MultiAddr, oneway: bool) -> miette::Result<()> {
+    async fn present_credential(
+        &self,
+        ctx: &Context,
+        to: &MultiAddr,
+        oneway: bool,
+    ) -> miette::Result<()> {
         let body = PresentCredentialRequest::new(to, oneway);
-        self.tell(ctx, Request::post("/node/credentials/actions/present").body(body)).await
+        self.tell(
+            ctx,
+            Request::post("/node/credentials/actions/present").body(body),
+        )
+        .await
     }
 }
 
@@ -136,10 +164,7 @@ impl NodeManagerWorker {
                 &request.route
             ))
         })?;
-        let route = match local_multiaddr_to_route(&route) {
-            Some(route) => route,
-            None => return Err(ApiError::core("Invalid credentials service route").into()),
-        };
+        let route = local_multiaddr_to_route(&route)?;
 
         let credential = self
             .node_manager

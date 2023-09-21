@@ -149,7 +149,11 @@ pub async fn enroll_with_node(
     Ok(())
 }
 
-async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &InMemoryNode) -> Result<Space> {
+async fn default_space(
+    opts: &CommandGlobalOpts,
+    ctx: &Context,
+    node: &InMemoryNode,
+) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;

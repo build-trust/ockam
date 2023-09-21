@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::error::ApiError;
 use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
@@ -48,11 +47,7 @@ impl Instantiator for SecureChannelInstantiator {
     ) -> Result<Changes, Error> {
         let (_before, secure_piece, after) = extracted;
         debug!(%secure_piece, %transport_route, "creating secure channel");
-        let route = local_multiaddr_to_route(&secure_piece).ok_or_else(|| {
-            ApiError::core(format!(
-                "Couldn't convert local MultiAddr to route: secure_piece={secure_piece}"
-            ))
-        })?;
+        let route = local_multiaddr_to_route(&secure_piece)?;
 
         let sc_ctx = ctx.async_try_clone().await?;
         let sc = node_manager

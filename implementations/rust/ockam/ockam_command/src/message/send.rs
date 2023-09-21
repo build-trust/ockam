@@ -5,8 +5,6 @@ use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::error::ApiError;
-use ockam_api::local_multiaddr_to_route;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
@@ -70,6 +68,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
         // Process `--to` Multiaddr
         let (to, meta) =
             clean_nodes_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
+        println!("to is {to}");
 
         let msg_bytes = if cmd.hex {
             hex::decode(cmd.message)
@@ -79,7 +78,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             cmd.message.as_bytes().to_vec()
         };
 
-        // Setup environment depending on whether we are sending the message from an embedded node or a background node
+        // Setup environment depending on whether we are sending the message from an background node
+        // or an in-memory node
         let response: Vec<u8> = if let Some(node) = &cmd.from {
             let node_name = extract_address_value(node)?;
             BackgroundNode::create(ctx, &opts.state, &node_name)
@@ -90,7 +90,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
         } else {
             let node = InMemoryNode::create(ctx, &opts, Some(&cmd.trust_context_opts)).await?;
             let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
                 &opts,
@@ -101,11 +100,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
-            // Send request
-            let route = local_multiaddr_to_route(&to)
-                .ok_or_else(|| ApiError::core("Invalid route"))
-                .into_diagnostic()?;
-            ctx.send_and_receive::<Vec<u8>>(route, msg_bytes)
+            node.node_manager
+                .send_message(ctx, &to, msg_bytes)
                 .await
                 .into_diagnostic()?
         };
