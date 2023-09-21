@@ -1,12 +1,19 @@
 name: Elixir Cache
 description: Elixir Cache
 
+inputs:
+  job_name:
+    description: Extra key to use for restoring and saving the cache
+    required: true
+
 runs:
   using: composite
   steps:
     - uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
       with:
-        path: '**/deps'
-        key: cache-elixir-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+        path: |
+          **/deps
+          **/_build
+        key: cache-elixir-${{ github.workflow }}-${{ inputs.job_name }}-${{ hashFiles('**/mix.lock') }}
         restore-keys: |
-          cache-elixir-${{ github.workflow }}-${{ github.job }}-
+          cache-elixir-${{ github.workflow }}-${{ inputs.job_name }}-

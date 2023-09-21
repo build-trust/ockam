@@ -74,6 +74,8 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/nix_installer
       - uses: ./.github/actions/elixir_cache
+        with:
+          job_name: lint_${{ matrix.mix_project }}
       - run: make lint_${{ matrix.mix_project }}
         working-directory: implementations/elixir
 
@@ -99,6 +101,8 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/nix_installer
       - uses: ./.github/actions/elixir_cache
+        with:
+          job_name: build_${{ matrix.mix_project }}
       - run: make build_${{ matrix.mix_project }}
         working-directory: implementations/elixir
 
@@ -124,5 +128,7 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/nix_installer
       - uses: ./.github/actions/elixir_cache
+        with:
+          job_name: test_${{ matrix.mix_project }}
       - run: make test_${{ matrix.mix_project }}
         working-directory: implementations/elixir
