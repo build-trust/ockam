@@ -3,7 +3,6 @@ use tauri::menu::{
     SubmenuBuilder,
 };
 use tauri::{AppHandle, Icon, Manager, Runtime, State};
-use tauri_plugin_positioner::{Position, WindowExt};
 use tracing::error;
 
 use ockam_api::nodes::models::portal::OutletStatus;
@@ -129,29 +128,13 @@ pub fn process_tray_menu_event<R: Runtime>(
 fn on_create<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     match app.get_window(SHARED_SERVICE_WINDOW_ID) {
         None => {
-            let w = tauri::WindowBuilder::new(
+            let builder = tauri::WindowBuilder::new(
                 app,
                 SHARED_SERVICE_WINDOW_ID,
                 tauri::WindowUrl::App("service".into()),
             )
-            .always_on_top(true)
-            .visible(false)
-            .title("Share a service")
-            .max_inner_size(450.0, 350.0)
-            .resizable(false)
-            .minimizable(false)
-            .build()?;
-            // TODO: ideally we should use Position::TrayCenter, but it's broken on the latest alpha
-            let _ = w.move_window(Position::TopRight);
-            w.show()?;
-
-            #[cfg(debug_assertions)]
-            {
-                let app_state: State<AppState> = app.state();
-                if app_state.browser_dev_tools() {
-                    w.open_devtools();
-                }
-            }
+            .title("Share a service");
+            crate::window::create(app, builder, 450.0, 350.0)?;
         }
         Some(w) => w.set_focus()?,
     }

@@ -33,6 +33,7 @@ mod options;
 mod platform;
 mod projects;
 mod shared_service;
+pub(crate) mod window;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
