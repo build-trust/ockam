@@ -75,14 +75,13 @@ fn shared_service_submenu<R: Runtime>(
     app_handle: &AppHandle<R>,
     outlet: &OutletStatus,
 ) -> Submenu<R> {
-    let worker_address = outlet.worker_address().unwrap();
-
-    let outlet_info = String::from_utf8(worker_address.last().unwrap().data().to_vec())
-        .unwrap_or_else(|_| worker_address.to_string());
+    let outlet_name = outlet
+        .worker_name()
+        .unwrap_or(outlet.worker_addr.to_string());
 
     // NOTE: Event handler for dynamic ID is defined in crate::invitations::tray_menu module,
     // and reached via crate::app::tray_menu::fallback_for_id
-    SubmenuBuilder::new(app_handle, outlet_info)
+    SubmenuBuilder::new(app_handle, outlet_name)
         .items(&[
             &IconMenuItemBuilder::new(format!("Serving at: {}", outlet.socket_addr))
                 .enabled(false)

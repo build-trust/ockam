@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use tauri::async_runtime::RwLock;
+use tracing::debug;
 
 use ockam_api::cloud::share::{
     InvitationList, InvitationWithAccess, ReceivedInvitation, SentInvitation,
@@ -24,6 +25,7 @@ pub struct InvitationState {
 
 impl InvitationState {
     pub fn replace_by(&mut self, list: InvitationList) {
+        debug!("Updating invitations state");
         self.sent = list.sent.unwrap_or_default();
         self.received = list.received.unwrap_or_default();
         self.accepted.invitations = list.accepted.unwrap_or_default();
