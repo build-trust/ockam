@@ -67,7 +67,7 @@ async fn main(ctx: Context) -> Result<()> {
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
     node.create_secure_channel_listener(
-        &issuer.identifier(),
+        issuer.identifier(),
         DefaultAddress::SECURE_CHANNEL_LISTENER,
         sc_listener_options,
     )
