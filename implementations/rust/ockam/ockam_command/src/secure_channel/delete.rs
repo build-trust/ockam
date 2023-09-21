@@ -5,7 +5,7 @@ use colorful::Colorful;
 use serde_json::json;
 
 use ockam::{route, Context};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
@@ -155,7 +155,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         let at = get_node_name(&opts.state, &cmd.at);
         let node_name = parse_node_name(&at)?;
         let address = &cmd.address;
-        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let response: DeleteSecureChannelResponse =
             node.ask(&ctx, api::delete_secure_channel(address)).await?;
         cmd.print_output(&node_name, address, &opts, response);

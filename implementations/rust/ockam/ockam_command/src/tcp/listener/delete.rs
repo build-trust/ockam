@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::nodes::{models, RemoteNode};
+use ockam_api::nodes::{models, BackgroundNode};
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default};
@@ -44,7 +44,7 @@ async fn run_impl(
     )? {
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
         let node_name = parse_node_name(&node_name)?;
-        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let req = Request::delete("/node/tcp/listener")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
         node.tell(&ctx, req).await?;

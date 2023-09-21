@@ -3,7 +3,7 @@ use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use rand::prelude::random;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::util::api::{self};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -53,7 +53,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    let node = LocalNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts, None).await?;
     let space = node.create_space(ctx, cmd.name, cmd.admins).await?;
 
     opts.println(&space)?;

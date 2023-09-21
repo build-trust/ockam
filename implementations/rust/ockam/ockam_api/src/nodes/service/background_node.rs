@@ -11,8 +11,10 @@ use ockam_transport_tcp::{TcpConnectionOptions, TcpTransport};
 use std::sync::Arc;
 use std::time::Duration;
 
+/// This struct represents a node that has been started
+/// on the same machine with a given node name
 #[derive(Clone)]
-pub struct RemoteNode {
+pub struct BackgroundNode {
     cli_state: CliState,
     node_name: String,
     to: Route,
@@ -20,7 +22,7 @@ pub struct RemoteNode {
     tcp_transport: Arc<TcpTransport>,
 }
 
-impl RemoteNode {
+impl BackgroundNode {
     /// Create a new client to send requests to a running background node
     /// This function instantiates a TcpTransport. Since a TcpTransport can only be created once
     /// this function must only be called once
@@ -28,9 +30,9 @@ impl RemoteNode {
         ctx: &Context,
         cli_state: &CliState,
         node_name: &str,
-    ) -> miette::Result<RemoteNode> {
+    ) -> miette::Result<BackgroundNode> {
         let tcp_transport = TcpTransport::create(ctx).await.into_diagnostic()?;
-        RemoteNode::new(&tcp_transport, cli_state, node_name).await
+        BackgroundNode::new(&tcp_transport, cli_state, node_name).await
     }
 
     /// Create a new client to send requests to a running background node
@@ -38,8 +40,8 @@ impl RemoteNode {
         tcp_transport: &TcpTransport,
         cli_state: &CliState,
         node_name: &str,
-    ) -> miette::Result<RemoteNode> {
-        Ok(RemoteNode {
+    ) -> miette::Result<BackgroundNode> {
+        Ok(BackgroundNode {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),

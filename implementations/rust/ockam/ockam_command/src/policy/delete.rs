@@ -3,7 +3,7 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_abac::{Action, Resource};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
@@ -50,7 +50,7 @@ async fn run_impl(
     {
         let policy_path = policy_path(&cmd.resource, &cmd.action);
         let req = Request::delete(&policy_path);
-        let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
         node.tell(ctx, req).await?;
 
         opts.terminal

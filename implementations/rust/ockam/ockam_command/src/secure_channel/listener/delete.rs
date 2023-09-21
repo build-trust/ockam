@@ -3,7 +3,7 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::DeleteSecureChannelListenerResponse;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::Address;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
@@ -45,7 +45,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&at)?;
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let req = api::delete_secure_channel_listener(&cmd.address);
     let response: DeleteSecureChannelListenerResponse = node.ask(ctx, req).await?;
     let addr = response.addr;

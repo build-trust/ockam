@@ -12,7 +12,7 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -88,7 +88,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         cmd.relay_name.clone()
     };
 
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relay_info = async {

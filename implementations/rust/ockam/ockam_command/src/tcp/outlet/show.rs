@@ -4,7 +4,7 @@ use miette::miette;
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 
@@ -45,7 +45,7 @@ pub async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let outlet_status: OutletStatus = node.ask(&ctx, make_api_request(cmd)?).await?;
 
     println!("Outlet:");

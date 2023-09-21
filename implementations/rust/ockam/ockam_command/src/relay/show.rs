@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
@@ -44,7 +44,7 @@ async fn run_impl(
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let relay_info: ForwarderInfo = node
         .ask(
             &ctx,

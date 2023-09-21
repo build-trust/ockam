@@ -8,7 +8,7 @@ use ockam::Context;
 use ockam_api::cloud::subscription::{Subscription, Subscriptions};
 use ockam_api::cloud::Controller;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -56,7 +56,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller = LocalNode::create(&ctx, &opts, None).await?;
+    let controller = InMemoryNode::create(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id,

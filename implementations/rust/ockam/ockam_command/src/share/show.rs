@@ -7,7 +7,7 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cloud::share::Invitations;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -36,7 +36,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = LocalNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts, None).await?;
 
     let get_invitation_with_access = async {
         let invitation_with_access = node.show_invitation(ctx, cmd.invitation_id).await?;

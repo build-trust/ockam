@@ -16,7 +16,7 @@ use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
@@ -103,7 +103,7 @@ async fn rpc(
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
 
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {

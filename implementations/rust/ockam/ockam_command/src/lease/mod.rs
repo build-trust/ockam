@@ -16,7 +16,7 @@ use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::Credentials;
 
 use crate::identity::get_identity_name;
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::CommandGlobalOpts;
 
@@ -70,7 +70,7 @@ async fn authenticate(
     cloud_opts: &CloudOpts,
     trust_opts: &TrustContextOpts,
 ) -> miette::Result<ProjectNode> {
-    let node = LocalNode::create(ctx, opts, Some(trust_opts)).await?;
+    let node = InMemoryNode::create(ctx, opts, Some(trust_opts)).await?;
     let identity = get_identity_name(&opts.state, &cloud_opts.identity);
     let project_info = retrieve_project_info(opts, trust_opts).await?;
     let project_authority = project_info

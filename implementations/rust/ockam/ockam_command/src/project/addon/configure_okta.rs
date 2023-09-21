@@ -15,7 +15,7 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::minicbor_url::Url;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::project::addon::{check_configuration_completion, get_project_id};
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
@@ -118,7 +118,7 @@ async fn run_impl(
     auth0.validate_provider_config().await?;
 
     // Do request
-    let node = LocalNode::create(&ctx, &opts, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts, None).await?;
 
     let response = node
         .configure_okta_addon(&ctx, project_id.clone(), okta_config)

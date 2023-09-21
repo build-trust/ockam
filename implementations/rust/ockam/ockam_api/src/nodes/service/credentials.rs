@@ -16,6 +16,7 @@ use crate::cloud::AuthorityNode;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
+use crate::nodes::BackgroundNode;
 
 use super::NodeManagerWorker;
 
@@ -54,6 +55,14 @@ impl Credentials for AuthorityNode {
             .into_diagnostic()?
             .success()
             .into_diagnostic()
+    }
+}
+
+#[async_trait]
+impl Credentials for BackgroundNode {
+    async fn get_credential(&self, ctx: &Context, overwrite: bool, identity_name: Option<String>) -> miette::Result<CredentialAndPurposeKey> {
+        let b = GetCredentialRequest::new(overwrite, identity_name);
+        self.ask(ctx, Request::post("/node/credentials/actions/get").body(b)).await
     }
 }
 

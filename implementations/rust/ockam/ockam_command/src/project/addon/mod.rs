@@ -23,7 +23,7 @@ use crate::project::addon::list::AddonListSubcommand;
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::{CommandGlobalOpts, Result};
@@ -117,7 +117,7 @@ pub fn get_project_id(cli_state: &CliState, project_name: &str) -> Result<String
 async fn check_configuration_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     project_id: String,
     operation_id: String,
 ) -> Result<()> {
