@@ -55,7 +55,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create an Identity for the edge plane
     let edge_plane = node.create_identity().await?;
 
-    // 2. create a secure channel to the authority node to present the token
+    // 2. create a secure channel to the authority node to
     //    to retrieve the node credential
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
@@ -69,7 +69,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     .await?;
     authority_node.present_token(node.context(), token).await.unwrap();
 
-    // Import the authority identity and route from the information file
     let project = import_project(project_information_path, node.identities()).await?;
 
     // Create a trust context that will be used to authenticate credential exchanges
