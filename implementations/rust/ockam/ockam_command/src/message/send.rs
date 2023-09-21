@@ -87,7 +87,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
-            let node = InMemoryNode::create(ctx, &opts.state, Some(&cmd.trust_context_opts)).await?;
+            let node =
+                InMemoryNode::create(ctx, &opts.state, Some(&cmd.trust_context_opts)).await?;
             let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
