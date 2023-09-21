@@ -37,15 +37,11 @@ async fn main(ctx: Context) -> Result<()> {
     let client = node.import_private_identity(&change_history, &secret).await?;
     println!("issuer identifier {}", client.identifier());
 
-    // Verify that the received credential has indeed be signed by the issuer.
-    // The issuer identity must be provided out-of-band from a trusted source
-    // and match the identity used to start the issuer node
+    // Connect to the authority node and ask that node to create a
+    // credential for the client.
     let issuer_identity = "81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805";
     let issuer = node.import_identity_hex(issuer_identity).await?;
 
-    // Connect to the authority node and ask that node to create a
-    // credential for the client.
-    //
     // The authority node already knows the public identifier of the client
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
