@@ -180,21 +180,6 @@ pub(crate) fn start_okta_service(
     .body(payload)
 }
 
-pub(crate) mod credentials {
-    use ockam_api::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
-
-    use super::*;
-
-    pub(crate) fn present_credential(
-        to: &MultiAddr,
-        oneway: bool,
-    ) -> Request<PresentCredentialRequest> {
-        let b = PresentCredentialRequest::new(to, oneway);
-        Request::post("/node/credentials/actions/present").body(b)
-    }
-
-}
-
 /// Return the path of a service given its name
 fn node_service(service_name: &str) -> String {
     format!("/node/services/{service_name}")
