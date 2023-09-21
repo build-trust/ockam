@@ -261,16 +261,18 @@ impl NodeManager {
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier(identity_name.clone()).await?;
         let credential = if let Some(credential_name) = credential_name {
-            self.cli_state
-                .credentials
-                .get(credential_name)?
-                .config()
-                .credential()?
+            Some(
+                self.cli_state
+                    .credentials
+                    .get(credential_name)?
+                    .config()
+                    .credential()?,
+            )
         } else {
-            self.trust_context()?
-                .authority()?
-                .credential(ctx, &identifier.clone())
-                .await?
+            match self.trust_context().ok().and_then(|tc| tc.authority().ok()) {
+                Some(authority) => authority.credential(ctx, &identifier.clone()).await.ok(),
+                None => None,
+            }
         };
 
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
@@ -280,7 +282,7 @@ impl NodeManager {
                 &addr,
                 Some(identifier.clone()),
                 None,
-                Some(credential.clone()),
+                credential.clone(),
                 None,
             )
             .await?;
@@ -291,7 +293,7 @@ impl NodeManager {
                 &identifier,
                 authorized_identifiers,
                 timeout,
-                Some(credential),
+                credential,
             )
             .await?;
 
