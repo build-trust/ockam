@@ -11,6 +11,7 @@ defmodule Ockam.Services.TokenLeaseManager do
   use Ockam.Services.API.Endpoint
 
   alias Ockam.API.Request
+  alias Ockam.Identity.Identifier
   alias Ockam.Services.TokenLeaseManager.Lease
 
   require Logger
@@ -32,7 +33,7 @@ defmodule Ockam.Services.TokenLeaseManager do
   def authorize(:identity, %Request{} = req, _bindings) do
     case Request.caller_identity_id(req) do
       {:ok, identity_id} ->
-        {true, %{identity_id: identity_id}}
+        {true, %{identity_id: Identifier.to_str(identity_id)}}
 
       :error ->
         false

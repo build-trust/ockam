@@ -4,12 +4,12 @@ defmodule Ockam.Identity do
   """
 
   alias Ockam.Credential.AttributeSet
+  alias Ockam.Identity.Identifier
   alias __MODULE__
 
   @type identity_data() :: binary()
-  @type identity_id() :: String.t()
 
-  defstruct [:identity_id, :data]
+  defstruct [:identifier, :data]
 
   @type t() :: %Identity{}
 
@@ -22,23 +22,23 @@ defmodule Ockam.Identity do
   def create() do
     case Ockly.Native.create_identity() do
       {:error, reason} -> {:error, reason}
-      {id, data} -> {:ok, %Identity{identity_id: id, data: data}}
+      {id, data} -> {:ok, %Identity{identifier: Identifier.from_str(id), data: data}}
     end
   end
 
   @spec create(secret_signing_key :: binary()) ::
-          {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
+          {:ok, identity :: t(), identitfier :: Identifier.t()} | {:error, reason :: any()}
   def create(secret) do
     key_id = Ockly.Native.import_signing_secret(secret)
 
     case Ockly.Native.create_identity(key_id) do
       {:error, reason} -> {:error, reason}
-      {id, data} -> {:ok, %Identity{identity_id: id, data: data}}
+      {id, data} -> {:ok, %Identity{identifier: Identifier.from_str(id), data: data}}
     end
   end
 
   @spec import(contact_data :: binary(), secret_signing_key :: binary()) ::
-          {:ok, identity :: t(), identity_id :: binary()} | {:error, any()}
+          {:ok, identity :: t(), identifier :: Identifier.t()} | {:error, any()}
   def import(contact_data, secret_signing_key) do
     case Ockly.Native.import_signing_secret(secret_signing_key) do
       {:error, error} -> {:error, error}
@@ -47,11 +47,15 @@ defmodule Ockam.Identity do
   end
 
   @spec validate_contact_data(contact_data :: binary()) ::
-          {:ok, identity :: t(), identity_id :: binary()} | {:error, any()}
+          {:ok, identity :: t(), identifier :: Identifier.t()} | {:error, any()}
   def validate_contact_data(contact_data) do
     case Ockly.Native.check_identity(contact_data) do
-      {:error, reason} -> {:error, reason}
-      contact_id -> {:ok, %Identity{identity_id: contact_id, data: contact_data}, contact_id}
+      {:error, reason} ->
+        {:error, reason}
+
+      contact_id ->
+        identifier = Identifier.from_str(contact_id)
+        {:ok, %Identity{identifier: identifier, data: contact_data}, identifier}
     end
   end
 
@@ -60,27 +64,16 @@ defmodule Ockam.Identity do
     data
   end
 
-  @spec get_identifier(t()) :: String.t()
-  def get_identifier(%Identity{identity_id: id}) do
+  @spec get_identifier(t()) :: Identifier.t()
+  def get_identifier(%Identity{identifier: id}) do
     id
-  end
-
-  ## TODO:  this is messy. There are places that expect identifiers as raw, 20-length bytes, others
-  ##        than expect identifiers in a human readable string representation
-  ##        (lowercased hex encoded, with an uppercase "I" prefix)
-  ##        For now we provide this, but even if we keep both versions around the conversion
-  ##        on the other direction would make more sense (keep in binary format, convert to string
-  ##        on request)
-  def get_identifier_bin(%Identity{identity_id: <<"I", hex::binary-size(40)>>}) do
-    {:ok, identifier_binary} = Base.decode16(hex, case: :lower)
-    identifier_binary
   end
 
   # TODO: rename to attest_secure_channel_key
   @spec attest_purpose_key(contact :: t(), secret_key :: %{private: binary(), public: binary()}) ::
           {:ok, proof()} | {:error, any()}
-  def attest_purpose_key(%Identity{identity_id: identifier}, %{private: secret_key, public: _}) do
-    case Ockly.Native.attest_secure_channel_key(identifier, secret_key) do
+  def attest_purpose_key(%Identity{identifier: identifier}, %{private: secret_key, public: _}) do
+    case Ockly.Native.attest_secure_channel_key(Identifier.to_str(identifier), secret_key) do
       {:error, reason} -> {:error, reason}
       attestation -> {:ok, %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}}
     end
@@ -104,19 +97,19 @@ defmodule Ockam.Identity do
   end
 
   # TODO refactor so that subject is an identity instead of identifier
-  def issue_credential(%Identity{data: issuer}, subject, attrs, ttl)
-      when is_map(attrs) and is_binary(subject) do
-    case Ockly.Native.issue_credential(issuer, subject, attrs, ttl) do
+  def issue_credential(%Identity{data: issuer}, %Identifier{} = subject, attrs, ttl)
+      when is_map(attrs) do
+    case Ockly.Native.issue_credential(issuer, Identifier.to_str(subject), attrs, ttl) do
       {:error, reason} -> {:error, reason}
       cred -> {:ok, cred}
     end
   end
 
-  def verify_credential(subject_id, authorities, credential)
-      when is_binary(subject_id) and is_list(authorities) do
+  def verify_credential(%Identifier{} = subject_id, authorities, credential)
+      when is_list(authorities) do
     authorities = Enum.map(authorities, fn a -> a.data end)
 
-    case Ockly.Native.verify_credential(subject_id, authorities, credential) do
+    case Ockly.Native.verify_credential(Identifier.to_str(subject_id), authorities, credential) do
       {:error, reason} ->
         {:error, reason}
 

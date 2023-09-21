@@ -34,6 +34,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
 
   alias Ockam.API.Client
   alias Ockam.Identity
+  alias Ockam.Identity.Identifier
   alias Ockam.SecureChannel
   alias Ockam.Services.TokenLeaseManager
   alias Ockam.Services.TokenLeaseManager.Lease
@@ -107,8 +108,8 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
       short_live_lm: short_live_lm,
       bob_channel: bob_channel,
       alice_channel: alice_channel,
-      bob_id: bob_id,
-      alice_id: alice_id,
+      bob_id: Identifier.to_str(bob_id),
+      alice_id: Identifier.to_str(alice_id),
       listener: listener
     ]
   end
@@ -128,7 +129,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp
-    assert {:ok, %Lease{issued_for: ^bob_id} = bob_lease1} = Lease.decode_strict(body)
+    assert {:ok, %Lease{issued_for: bob_id} = bob_lease1} = Lease.decode_strict(body)
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp

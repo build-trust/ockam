@@ -153,8 +153,15 @@ defmodule Ockam.TypedCBOR do
   def from_cbor_term(:term, any), do: any
 
   def from_cbor_term(schema, data) do
-    Logger.error("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(data)}")
-    raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
+    with true <- is_atom(schema),
+         true <- function_exported?(schema, :from_cbor_term, 1),
+         {:ok, val} <- schema.from_cbor_term(data) do
+      val
+    else
+      _ ->
+        Logger.error("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(data)}")
+        raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
+    end
   end
 
   def from_cbor_fields([], _), do: []
@@ -241,8 +248,15 @@ defmodule Ockam.TypedCBOR do
   def to_cbor_term(:term, any), do: any
 
   def to_cbor_term(schema, val) do
-    Logger.error("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(val)}")
-    raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
+    with true <- is_atom(schema),
+         true <- function_exported?(schema, :to_cbor_term, 1),
+         {:ok, cbor} <- schema.to_cbor_term(val) do
+      cbor
+    else
+      _ ->
+        Logger.error("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(val)}")
+        raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
+    end
   end
 
   def to_cbor_fields([], _), do: []
