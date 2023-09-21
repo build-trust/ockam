@@ -82,7 +82,7 @@ impl Runner {
     }
 
     async fn run(self, ctx: Context) -> miette::Result<()> {
-        let node = InMemoryNode::create(&ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
+        let node = InMemoryNode::create(&ctx, &self.opts.state, Some(&self.cmd.trust_opts)).await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;

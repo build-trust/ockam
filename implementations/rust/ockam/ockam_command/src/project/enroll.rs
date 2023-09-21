@@ -95,7 +95,7 @@ pub async fn project_enroll(
     let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
 
     // Create secure channel to the project's authority node
-    let node = InMemoryNode::create(ctx, opts, Some(&cmd.trust_opts)).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, Some(&cmd.trust_opts)).await?;
     let authority_node: AuthorityNode = node
         .make_authority_node_client(
             project_authority.identity_id(),

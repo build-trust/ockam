@@ -28,10 +28,10 @@ use crate::{CommandGlobalOpts, Result};
 
 pub async fn start_node_manager(
     ctx: &Context,
-    opts: &CommandGlobalOpts,
+    cli_state: &CliState,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<SupervisedNodeManager> {
-    start_node_manager_with_vault_and_identity(ctx, &opts.state, None, None, trust_opts).await
+    start_node_manager_with_vault_and_identity(ctx, cli_state, None, None, trust_opts).await
 }
 
 pub async fn start_node_manager_with_vault_and_identity(
@@ -264,16 +264,16 @@ pub fn run_ockam(
 pub struct InMemoryNode {
     pub(crate) node_manager: SupervisedNodeManager,
     controller: Arc<Controller>,
-    opts: CommandGlobalOpts,
+    cli_state: CliState,
 }
 
 impl InMemoryNode {
     pub async fn create(
         ctx: &Context,
-        opts: &CommandGlobalOpts,
+        cli_state: &CliState,
         trust_opts: Option<&TrustContextOpts>,
     ) -> miette::Result<InMemoryNode> {
-        let node_manager = start_node_manager(ctx, opts, trust_opts).await?;
+        let node_manager = start_node_manager(ctx, &cli_state, trust_opts).await?;
         let controller = node_manager
             .make_controller_node_client()
             .await
@@ -281,7 +281,7 @@ impl InMemoryNode {
         Ok(Self {
             node_manager,
             controller: Arc::new(controller),
-            opts: opts.clone(),
+            cli_state: cli_state.clone(),
         })
     }
 
@@ -361,8 +361,7 @@ impl Deref for InMemoryNode {
 impl Drop for InMemoryNode {
     fn drop(&mut self) {
         let _ = self
-            .opts
-            .state
+            .cli_state
             .nodes
             .delete_sigkill(self.node_manager.node_name().as_str(), false);
     }

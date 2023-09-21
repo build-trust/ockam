@@ -51,7 +51,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-    let node = InMemoryNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
 
     let project = node
         .create_project(ctx, space_id, cmd.project_name, vec![])
