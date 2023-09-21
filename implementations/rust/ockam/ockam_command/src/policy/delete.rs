@@ -3,11 +3,12 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_abac::{Action, Resource};
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
 use crate::policy::policy_path;
-use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::util::{node_rpc, parse_node_name};
 use crate::{fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
@@ -32,15 +33,12 @@ impl DeleteCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
 async fn run_impl(
-    ctx: &mut Context,
+    ctx: &Context,
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
@@ -52,8 +50,8 @@ async fn run_impl(
     {
         let policy_path = policy_path(&cmd.resource, &cmd.action);
         let req = Request::delete(&policy_path);
-        let mut rpc = Rpc::background(ctx, &opts.state, &node_name).await?;
-        rpc.tell(req).await?;
+        let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+        node.tell(ctx, req).await?;
 
         opts.terminal
             .stdout()

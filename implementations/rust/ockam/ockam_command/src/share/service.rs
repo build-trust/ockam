@@ -80,20 +80,20 @@ impl From<ServiceCreateCommand> for CreateServiceInvitation {
 }
 
 async fn rpc(
-    mut ctx: Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ServiceCreateCommand),
 ) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+    run_impl(&ctx, opts, cmd).await
 }
 
 async fn run_impl(
-    ctx: &mut Context,
+    ctx: &Context,
     opts: CommandGlobalOpts,
     cmd: ServiceCreateCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let node = LocalNode::make(ctx, &opts, None).await?;
+    let node = LocalNode::create(ctx, &opts, None).await?;
 
     let get_sent_invitation = async {
         let invitation = node

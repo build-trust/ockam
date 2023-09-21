@@ -29,19 +29,12 @@ impl InfoCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, InfoCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, InfoCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    cmd: InfoCommand,
-) -> miette::Result<()> {
-    let node = LocalNode::make(ctx, &opts, None).await?;
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: InfoCommand) -> miette::Result<()> {
+    let node = LocalNode::create(ctx, &opts, None).await?;
 
     // Lookup project
     let id = match opts.state.projects.get(&cmd.name) {

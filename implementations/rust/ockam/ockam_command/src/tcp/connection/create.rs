@@ -5,12 +5,14 @@ use serde_json::json;
 
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
+use ockam_api::nodes::RemoteNode;
+use ockam_node::Context;
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::is_tty;
 use crate::{
     docs,
-    util::{api, node_rpc, Rpc},
+    util::{api, node_rpc},
     CommandGlobalOpts, OutputFormat,
 };
 
@@ -86,13 +88,13 @@ impl CreateCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     let from = get_node_name(&opts.state, &cmd.node_opts.from);
     let node_name = extract_address_value(&from)?;
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let request = api::create_tcp_connection(&cmd);
-    let transport_status: TransportStatus = rpc.ask(request).await?;
+    let transport_status: TransportStatus = node.ask(&ctx, request).await?;
     cmd.print_output(&opts, &transport_status)
 }

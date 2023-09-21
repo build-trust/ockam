@@ -5,11 +5,12 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
-use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
 use crate::{fmt_ok, Result};
 
@@ -45,8 +46,8 @@ pub async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
 
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
-    let inlet_status: InletStatus = rpc.ask(make_api_request(cmd)?).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let inlet_status: InletStatus = node.ask(&ctx, make_api_request(cmd)?).await?;
 
     let json = serde_json::to_string(&inlet_status).into_diagnostic()?;
     let InletStatus {

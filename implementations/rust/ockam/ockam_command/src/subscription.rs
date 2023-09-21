@@ -56,7 +56,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller = LocalNode::make(&ctx, &opts, None).await?;
+    let controller = LocalNode::create(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id,

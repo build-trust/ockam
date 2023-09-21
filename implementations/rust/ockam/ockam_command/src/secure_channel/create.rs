@@ -101,7 +101,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
     let from = &cmd.parse_from_node();
-    let node = LocalNode::make(&ctx, &opts, None).await?;
+    let node = LocalNode::create(&ctx, &opts, None).await?;
     let to = cmd.parse_to_route(&opts, &ctx, &node).await?;
 
     let authorized_identifiers = cmd.authorized.clone();

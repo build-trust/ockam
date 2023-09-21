@@ -7,12 +7,13 @@ use tokio::try_join;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::OutletList;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -36,7 +37,7 @@ impl ListCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
@@ -82,7 +83,7 @@ pub async fn send_request(
     opts: &CommandGlobalOpts,
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletList> {
-    let to_node = get_node_name(&opts.state, &to_node.into());
-    let mut rpc = Rpc::background(ctx, &opts.state, &to_node).await?;
-    rpc.ask(Request::get("/node/outlet")).await
+    let node_name = get_node_name(&opts.state, &to_node.into());
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    Ok(node.ask(ctx, Request::get("/node/outlet")).await?)
 }

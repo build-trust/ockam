@@ -27,7 +27,7 @@ async fn main(ctx: Context) -> Result<()> {
     let mut vault = Vault::create();
     vault.identity_vault = identity_vault;
 
-    let node = Node::builder().with_vault(vault).build(ctx).await?;
+    let node = Node::builder().with_vault(vault).build(&ctx).await?;
 
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;

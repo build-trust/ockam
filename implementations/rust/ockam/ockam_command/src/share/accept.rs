@@ -29,20 +29,17 @@ impl AcceptCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AcceptCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, AcceptCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
 async fn run_impl(
-    ctx: &mut Context,
+    ctx: &Context,
     opts: CommandGlobalOpts,
     cmd: AcceptCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = LocalNode::make(ctx, &opts, None).await?;
+    let node = LocalNode::create(ctx, &opts, None).await?;
 
     let get_accepted_invitation = async {
         let invitation = node.accept_invitation(ctx, cmd.id).await?;

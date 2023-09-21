@@ -28,7 +28,7 @@ impl AttachKeyCommand {
 }
 
 async fn rpc(
-    mut _ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AttachKeyCommand),
 ) -> miette::Result<()> {
     run_impl(opts, cmd).await

@@ -8,10 +8,11 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
+use ockam_api::nodes::RemoteNode;
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -55,12 +56,12 @@ async fn run_impl(
 
     let mut nodes: Vec<NodeListOutput> = Vec::new();
     for node_name in node_names {
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_node_status = async {
-            let result: Result<NodeStatus> = rpc.ask(api::query_status()).await;
+            let result: miette::Result<NodeStatus> = node.ask(&ctx, api::query_status()).await;
             let node_status = match result {
                 Ok(node_status) => {
                     if let Ok(node_state) = opts.state.nodes.get(&node_name) {

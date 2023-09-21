@@ -3,10 +3,11 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -37,13 +38,13 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = extract_address_value(&node_name)?;
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
-    let transport_status: TransportStatus = rpc
-        .ask(Request::get(format!(
-            "/node/tcp/connection/{}",
-            &cmd.address
-        )))
+    let node_name = extract_address_value(&node_name)?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let transport_status: TransportStatus = node
+        .ask(
+            &ctx,
+            Request::get(format!("/node/tcp/connection/{}", &cmd.address)),
+        )
         .await?;
 
     println!("TCP Connection:");

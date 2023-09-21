@@ -17,6 +17,7 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{NodeManagerTrustOptions, SupervisedNodeManager};
+use ockam_api::nodes::{authority_node, RemoteNode};
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -33,7 +34,7 @@ use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::TrustContextOpts;
-use crate::util::{api, parse_node_name, Rpc};
+use crate::util::{api, parse_node_name};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, shutdown, CommandGlobalOpts, Result};
@@ -200,9 +201,9 @@ pub(crate) async fn background_mode(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let mut rpc = Rpc::background(&ctx, &opts.state, node_name).await?;
+        let mut node = RemoteNode::create(&ctx, &opts.state, node_name).await?;
         spawn_background_node(&opts, cmd.clone()).await?;
-        let is_node_up = is_node_up(&mut rpc, opts.state.clone(), true).await?;
+        let is_node_up = is_node_up(&ctx, &mut node, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;
         Ok(is_node_up)
     };
@@ -246,7 +247,7 @@ fn foreground_mode(opts: CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
 }
 
 async fn run_foreground_node(
-    mut ctx: Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     let node_name = parse_node_name(&cmd.node_name)?;
@@ -338,7 +339,6 @@ async fn run_foreground_node(
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
-            ctx.stop().await.into_diagnostic()?;
             return Err(miette!("Failed to start services"));
         }
     }
@@ -358,7 +358,6 @@ async fn run_foreground_node(
     if let Ok(state) = opts.state.nodes.get(&node_name) {
         let _ = state.kill_process(false);
     }
-    ctx.stop().await.into_diagnostic()?;
     opts.terminal
         .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
         .unwrap();

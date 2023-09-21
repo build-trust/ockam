@@ -9,13 +9,14 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
+use ockam_api::nodes::RemoteNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Address};
 
 use crate::node::get_node_name;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{parse_node_name, Rpc};
+use crate::util::parse_node_name;
 use crate::{
     docs,
     util::{api, node_rpc},
@@ -91,10 +92,11 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     }
 
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
 
     let get_secure_channel_identifiers = async {
-        let secure_channel_identifiers: Vec<String> = rpc.ask(api::list_secure_channels()).await?;
+        let secure_channel_identifiers: Vec<String> =
+            node.ask(&ctx, api::list_secure_channels()).await?;
         *is_finished.lock().await = true;
         Ok(secure_channel_identifiers)
     };
@@ -110,10 +112,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
     for channel_addr in &channel_identifiers {
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_secure_channel_output = async {
-            let request: ockam_core::api::Request<
-                ockam_api::nodes::models::secure_channel::ShowSecureChannelRequest,
-            > = api::show_secure_channel(&Address::from(channel_addr));
-            let show_response: ShowSecureChannelResponse = rpc.ask(request).await?;
+            let request = api::show_secure_channel(&Address::from(channel_addr));
+            let show_response: ShowSecureChannelResponse = node.ask(&ctx, request).await?;
             let secure_channel_output =
                 cmd.build_output(&node_name, channel_addr, show_response)?;
             *is_finished.lock().await = true;

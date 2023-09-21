@@ -4,11 +4,13 @@ use miette::miette;
 
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::ServiceList;
+use ockam_api::nodes::RemoteNode;
 use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
+use ockam_node::Context;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, fmt_err, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -33,7 +35,7 @@ impl ListCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
@@ -43,12 +45,12 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
-    let services: ServiceList = rpc
-        .ask(Request::get(format!(
-            "/node/services/{}",
-            DefaultAddress::KAFKA_CONSUMER
-        )))
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let services: ServiceList = node
+        .ask(
+            &ctx,
+            Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_CONSUMER)),
+        )
         .await?;
     if services.list.is_empty() {
         opts.terminal

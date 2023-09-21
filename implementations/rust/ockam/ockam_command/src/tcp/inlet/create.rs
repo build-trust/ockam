@@ -16,6 +16,7 @@ use ockam_abac::Resource;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
@@ -30,7 +31,6 @@ use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{
     find_available_port, node_rpc, parse_node_name, port_is_free_guard, process_nodes_multiaddr,
-    Rpc,
 };
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
@@ -101,9 +101,9 @@ async fn rpc(
     cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
 
     let node_name = get_node_name(&opts.state, &cmd.at);
-    let node = parse_node_name(&node_name)?;
+    let node_name = parse_node_name(&node_name)?;
 
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {
@@ -112,15 +112,15 @@ async fn rpc(
         let project = opts
             .state
             .nodes
-            .get(&node)?
+            .get(&node_name)?
             .config()
             .setup()
             .project
             .to_owned();
         let resource = Resource::new("tcp-inlet");
         if let Some(p) = project {
-            if !has_policy(&node, &ctx, &opts, &resource).await? {
-                add_default_project_policy(&node, &ctx, &opts, p, &resource).await?;
+            if !has_policy(&node_name, &ctx, &opts, &resource).await? {
+                add_default_project_policy(&node_name, &ctx, &opts, p, &resource).await?;
             }
         }
 
@@ -159,7 +159,7 @@ async fn rpc(
                 Request::post("/node/inlet").body(payload)
             };
 
-            let result: Reply<InletStatus> = rpc.ask_and_get_reply(req).await?;
+            let result: Reply<InletStatus> = node.ask_and_get_reply(&ctx, req).await?;
 
             match result {
                 Reply::Successful(inlet_status) => {
@@ -201,7 +201,9 @@ async fn rpc(
     let progress_messages = vec![
         format!(
             "Creating TCP Inlet on {}...",
-            &node.to_string().color(OckamColor::PrimaryResource.color())
+            &node_name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
         ),
         format!(
             "Hosting TCP Socket at {}...",
@@ -236,7 +238,9 @@ async fn rpc(
                 &cmd.from
                     .to_string()
                     .color(OckamColor::PrimaryResource.color()),
-                &node.to_string().color(OckamColor::PrimaryResource.color())
+                &node_name
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
             ) + &fmt_log!(
                 "to the outlet at {}",
                 &cmd.to

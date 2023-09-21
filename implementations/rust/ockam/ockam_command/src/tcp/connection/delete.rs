@@ -1,11 +1,12 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::nodes::models;
+use ockam_api::nodes::{models, RemoteNode};
 use ockam_core::api::Request;
+use ockam_node::Context;
 
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -33,7 +34,7 @@ impl DeleteCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
     if opts.terminal.confirmed_with_flag_or_prompt(
@@ -42,10 +43,10 @@ async fn run_impl(
     )? {
         let address = cmd.address;
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(address.clone()));
-        rpc.tell(req).await?;
+        node.tell(&ctx, req).await?;
         opts.terminal
             .stdout()
             .plain(fmt_ok!(

@@ -54,7 +54,7 @@ impl TicketCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         initialize_identity_if_default(&options, &self.cloud_opts.identity);
         node_rpc(
-            |ctx, (opts, cmd)| Runner::new(ctx, opts, cmd).run(),
+            |ctx, (opts, cmd)| Runner::new(opts, cmd).run(ctx),
             (options, self),
         );
     }
@@ -72,18 +72,17 @@ impl TicketCommand {
 }
 
 struct Runner {
-    ctx: Context,
     opts: CommandGlobalOpts,
     cmd: TicketCommand,
 }
 
 impl Runner {
-    fn new(ctx: Context, opts: CommandGlobalOpts, cmd: TicketCommand) -> Self {
-        Self { ctx, opts, cmd }
+    fn new(opts: CommandGlobalOpts, cmd: TicketCommand) -> Self {
+        Self { opts, cmd }
     }
 
-    async fn run(self) -> miette::Result<()> {
-        let node = LocalNode::make(&self.ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
+    async fn run(self, ctx: Context) -> miette::Result<()> {
+        let node = LocalNode::create(&ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
@@ -131,11 +130,11 @@ impl Runner {
         // credential.
         if let Some(id) = &self.cmd.member {
             authority_node
-                .add_member(&self.ctx, id.clone(), self.cmd.attributes()?)
+                .add_member(&ctx, id.clone(), self.cmd.attributes()?)
                 .await?
         } else {
             let token = authority_node
-                .create_token(&self.ctx, self.cmd.attributes()?, self.cmd.expires_in)
+                .create_token(&ctx, self.cmd.attributes()?, self.cmd.expires_in)
                 .await?;
 
             let ticket = EnrollmentTicket::new(token, project, trust_context);
