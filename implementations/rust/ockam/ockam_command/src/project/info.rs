@@ -34,7 +34,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, InfoCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: InfoCommand) -> miette::Result<()> {
-    let node = InMemoryNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
 
     // Lookup project
     let id = match opts.state.projects.get(&cmd.name) {
