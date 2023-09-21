@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::{Space, Spaces};
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -44,7 +44,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> m
     let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
 
     // Send request
-    let node = LocalNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts, None).await?;
     let space: Space = node.get_space(ctx, id).await?;
     opts.println(&space)?;
     opts.state

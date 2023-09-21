@@ -3,7 +3,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
@@ -39,7 +39,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = extract_address_value(&node_name)?;
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let transport_status: TransportStatus = node
         .ask(
             &ctx,

@@ -2,7 +2,7 @@ use clap::Args;
 use miette::IntoDiagnostic;
 
 use ockam_api::nodes::models::transport::{CreateTcpListener, TransportStatus};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -39,7 +39,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let transport_status: TransportStatus = node
         .ask(
             &ctx,

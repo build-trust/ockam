@@ -7,7 +7,7 @@ use tokio::try_join;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::OutletList;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
@@ -84,6 +84,6 @@ pub async fn send_request(
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletList> {
     let node_name = get_node_name(&opts.state, &to_node.into());
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     Ok(node.ask(ctx, Request::get("/node/outlet")).await?)
 }

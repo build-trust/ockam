@@ -5,7 +5,7 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
 use ockam_api::nodes::models::services::{StartKafkaProducerRequest, StartServiceRequest};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -47,7 +47,7 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
     let is_finished = Mutex::new(false);
     let send_req = async {
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
         let payload = StartKafkaProducerRequest::new(
             bootstrap_server.to_owned(),

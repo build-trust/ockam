@@ -9,7 +9,7 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cloud::share::{CreateServiceInvitation, Invitations};
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -93,7 +93,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let node = LocalNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts, None).await?;
 
     let get_sent_invitation = async {
         let invitation = node

@@ -7,7 +7,7 @@ use miette::{Context as _, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscriptions;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::output::Output;
 use crate::subscription::get_subscription_by_id_or_space_id;
 use crate::util::api::CloudOpts;
@@ -141,7 +141,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller = LocalNode::create(&ctx, &opts, None).await?;
+    let controller = InMemoryNode::create(&ctx, &opts, None).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,

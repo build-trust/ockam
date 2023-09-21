@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::project::util::refresh_projects;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -41,7 +41,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let node = LocalNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts, None).await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {

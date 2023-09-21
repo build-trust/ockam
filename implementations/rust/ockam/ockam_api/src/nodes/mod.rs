@@ -3,7 +3,7 @@ pub(crate) mod connection;
 pub mod models;
 pub mod registry;
 pub mod service;
-pub use service::remote_node::*;
+pub use service::background_node::*;
 
 /// A const address to bind and send messages to
 pub const NODEMANAGER_ADDR: &str = "_internal.nodemanager";

@@ -8,12 +8,12 @@ use ockam_api::address::extract_address_value;
 use ockam_api::error::ApiError;
 use ockam_api::local_multiaddr_to_route;
 use ockam_api::nodes::service::message::SendMessage;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -82,13 +82,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let response: Vec<u8> = if let Some(node) = &cmd.from {
             let node_name = extract_address_value(node)?;
-            RemoteNode::create(ctx, &opts.state, &node_name)
+            BackgroundNode::create(ctx, &opts.state, &node_name)
                 .await?
                 .set_timeout(cmd.timeout)
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
-            let node = LocalNode::create(ctx, &opts, Some(&cmd.trust_context_opts)).await?;
+            let node = InMemoryNode::create(ctx, &opts, Some(&cmd.trust_context_opts)).await?;
             let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
 
             // Replace `/project/<name>` occurrences with their respective secure channel addresses

@@ -15,7 +15,7 @@ use ockam_api::identity::EnrollmentTicket;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
@@ -95,7 +95,7 @@ pub async fn project_enroll(
     let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
 
     // Create secure channel to the project's authority node
-    let node = LocalNode::create(ctx, opts, Some(&cmd.trust_opts)).await?;
+    let node = InMemoryNode::create(ctx, opts, Some(&cmd.trust_opts)).await?;
     let authority_node: AuthorityNode = node
         .make_authority_node_client(
             project_authority.identity_id(),

@@ -17,7 +17,7 @@ use ockam_core::route;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::{CommandGlobalOpts, Result};
 
 pub fn clean_projects_multiaddr(
@@ -49,7 +49,7 @@ pub fn clean_projects_multiaddr(
 pub async fn get_projects_secure_channels_from_config_lookup(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     meta: &LookupMeta,
     identity_name: Option<String>,
 ) -> Result<Vec<MultiAddr>> {
@@ -102,7 +102,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
 pub async fn check_project_readiness(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
@@ -148,7 +148,7 @@ pub async fn check_project_readiness(
 
 async fn check_project_ready(
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -180,7 +180,7 @@ async fn check_project_ready(
 
 async fn check_project_node_accessible(
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -229,7 +229,7 @@ async fn check_project_node_accessible(
 
 async fn check_authority_node_accessible(
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -260,7 +260,7 @@ async fn check_authority_node_accessible(
 pub async fn refresh_projects(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
 ) -> miette::Result<()> {
     let projects: Vec<Project> = node.list_projects(ctx).await?;
     for project in projects {

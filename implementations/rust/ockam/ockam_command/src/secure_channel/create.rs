@@ -11,7 +11,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -69,7 +69,7 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
         ctx: &Context,
-        node: &LocalNode,
+        node: &InMemoryNode,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
@@ -101,7 +101,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
     let from = &cmd.parse_from_node();
-    let node = LocalNode::create(&ctx, &opts, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts, None).await?;
     let to = cmd.parse_to_route(&opts, &ctx, &node).await?;
 
     let authorized_identifiers = cmd.authorized.clone();

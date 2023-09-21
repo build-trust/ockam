@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Resource};
 use ockam_api::nodes::models::policy::PolicyList;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::{config::lookup::ProjectLookup, nodes::models::policy::Policy};
 use ockam_core::api::Request;
 
@@ -56,7 +56,7 @@ pub(crate) async fn has_policy(
     resource: &Resource,
 ) -> Result<bool> {
     let req = Request::get(format!("/policy/{resource}"));
-    let node = RemoteNode::create(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, node_name).await?;
     let policies: PolicyList = node.ask(ctx, req).await?;
     Ok(!policies.expressions().is_empty())
 }
@@ -75,7 +75,7 @@ pub(crate) async fn add_default_project_policy(
     let bdy = Policy::new(expr);
     let req = Request::post(policy_path(resource, &Action::new("handle_message"))).body(bdy);
 
-    let node = RemoteNode::create(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, node_name).await?;
     node.tell(ctx, req).await?;
     Ok(())
 }
