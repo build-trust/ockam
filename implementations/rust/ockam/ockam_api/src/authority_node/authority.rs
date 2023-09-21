@@ -46,6 +46,11 @@ impl Authority {
         self.identifier.clone()
     }
 
+    /// SecureChannels getter
+    pub fn secure_channels(&self) -> Arc<SecureChannels> {
+        self.secure_channels.clone()
+    }
+
     /// Create an identity for an authority from the configured public identity and configured vault
     /// The list of trusted identities in the configuration is used to pre-populate an attributes storage
     /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
@@ -114,13 +119,13 @@ impl Authority {
         }
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            configuration.clone().project_identifier(),
+            configuration.project_identifier(),
             self.attributes_writer(),
             self.attributes_reader(),
         )
         .await?;
 
-        let name = configuration.clone().authenticator_name();
+        let name = configuration.authenticator_name();
         ctx.flow_controls()
             .add_consumer(name.clone(), secure_channel_flow_control_id);
 
@@ -211,7 +216,7 @@ impl Authority {
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
-        if let Some(okta) = configuration.clone().okta {
+        if let Some(okta) = &configuration.okta {
             let okta_worker = crate::okta::Server::new(
                 self.attributes_writer(),
                 configuration.project_identifier(),
@@ -223,7 +228,7 @@ impl Authority {
             ctx.flow_controls()
                 .add_consumer(okta.address.clone(), secure_channel_flow_control_id);
 
-            ctx.start_worker(okta.address, okta_worker).await?;
+            ctx.start_worker(okta.address.clone(), okta_worker).await?;
         }
         Ok(())
     }
@@ -361,7 +366,7 @@ impl Authority {
         env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));
         env.put(
             "resource.trust_context_id",
-            str(configuration.clone().project_identifier),
+            str(configuration.project_identifier.clone()),
         );
         let abac = Arc::new(AbacAccessControl::new(
             self.identities_repository(),
