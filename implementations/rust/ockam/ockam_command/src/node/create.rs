@@ -17,7 +17,7 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{NodeManagerTrustOptions, SupervisedNodeManager};
-use ockam_api::nodes::{authority_node, RemoteNode};
+use ockam_api::nodes::{authority_node, BackgroundNode};
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -201,7 +201,7 @@ pub(crate) async fn background_mode(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let mut node = RemoteNode::create(&ctx, &opts.state, node_name).await?;
+        let mut node = BackgroundNode::create(&ctx, &opts.state, node_name).await?;
         spawn_background_node(&opts, cmd.clone()).await?;
         let is_node_up = is_node_up(&ctx, &mut node, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;

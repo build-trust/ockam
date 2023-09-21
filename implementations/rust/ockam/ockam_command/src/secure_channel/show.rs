@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::Address;
 
 use crate::node::get_node_name;
@@ -46,7 +46,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
     let node_name = parse_node_name(&at)?;
     let address = &cmd.address;
 
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let response: ShowSecureChannelResponse =
         node.ask(&ctx, api::show_secure_channel(address)).await?;
     opts.println(&response)?;

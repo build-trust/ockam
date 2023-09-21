@@ -8,7 +8,7 @@ use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
@@ -51,7 +51,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let mut node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &ctx, &mut node, false, is_default).await?;
     Ok(())
@@ -174,7 +174,7 @@ fn print_node_info(
 pub async fn print_query_status(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &mut RemoteNode,
+    node: &mut BackgroundNode,
     wait_until_ready: bool,
     is_default: bool,
 ) -> miette::Result<()> {
@@ -261,7 +261,7 @@ pub async fn print_query_status(
 /// allow a node time to start up and become ready.
 pub async fn is_node_up(
     ctx: &Context,
-    node: &mut RemoteNode,
+    node: &mut BackgroundNode,
     cli_state: CliState,
     wait_until_ready: bool,
 ) -> Result<bool> {

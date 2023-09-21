@@ -260,18 +260,19 @@ pub fn run_ockam(
     Ok(())
 }
 
-pub struct LocalNode {
+/// This struct represents a node that lives within the current process
+pub struct InMemoryNode {
     pub(crate) node_manager: SupervisedNodeManager,
     controller: Arc<Controller>,
     opts: CommandGlobalOpts,
 }
 
-impl LocalNode {
+impl InMemoryNode {
     pub async fn create(
         ctx: &Context,
         opts: &CommandGlobalOpts,
         trust_opts: Option<&TrustContextOpts>,
-    ) -> miette::Result<LocalNode> {
+    ) -> miette::Result<InMemoryNode> {
         let node_manager = start_node_manager(ctx, opts, trust_opts).await?;
         let controller = node_manager
             .make_controller_node_client()
@@ -349,7 +350,7 @@ impl LocalNode {
     }
 }
 
-impl Deref for LocalNode {
+impl Deref for InMemoryNode {
     type Target = Arc<Controller>;
 
     fn deref(&self) -> &Self::Target {
@@ -357,7 +358,7 @@ impl Deref for LocalNode {
     }
 }
 
-impl Drop for LocalNode {
+impl Drop for InMemoryNode {
     fn drop(&mut self) {
         let _ = self
             .opts

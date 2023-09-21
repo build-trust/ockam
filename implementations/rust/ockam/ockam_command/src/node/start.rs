@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_node::Context;
 
 use crate::node::show::print_query_status;
@@ -78,7 +78,7 @@ async fn run_impl(
     )?;
 
     // Print node status
-    let mut node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
     print_query_status(&opts, &ctx, &mut node, true, is_default).await?;
 

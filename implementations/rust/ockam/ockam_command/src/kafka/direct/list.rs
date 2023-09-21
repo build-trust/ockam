@@ -4,7 +4,7 @@ use miette::miette;
 
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::ServiceList;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -45,7 +45,7 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let services: ServiceList = node
         .ask(
             &ctx,

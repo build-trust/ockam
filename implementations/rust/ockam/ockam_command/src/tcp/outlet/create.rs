@@ -11,7 +11,7 @@ use ockam_abac::Resource;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default};
@@ -151,7 +151,7 @@ pub async fn send_request(
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletStatus> {
     let node_name = get_node_name(&opts.state, &to_node.into());
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let req = Request::post("/node/outlet").body(payload);
     Ok(node.ask(ctx, req).await?)
 }

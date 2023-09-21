@@ -4,7 +4,7 @@ use miette::miette;
 use minicbor::Encode;
 
 use ockam::Context;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
 
@@ -81,7 +81,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StartCommand)) -> mi
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Hop { addr, .. } => {
@@ -127,7 +127,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> 
 /// Helper function.
 pub(crate) async fn start_service_impl<T>(
     ctx: &Context,
-    node: &RemoteNode,
+    node: &BackgroundNode,
     serv_name: &str,
     req: Request<T>,
 ) -> Result<()>
@@ -140,7 +140,7 @@ where
 }
 
 /// Public so `ockam_command::node::create` can use it.
-pub async fn start_hop_service(ctx: &Context, node: &RemoteNode, serv_addr: &str) -> Result<()> {
+pub async fn start_hop_service(ctx: &Context, node: &BackgroundNode, serv_addr: &str) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
     start_service_impl(ctx, node, "Hop", req).await
 }
@@ -149,7 +149,7 @@ pub async fn start_hop_service(ctx: &Context, node: &RemoteNode, serv_addr: &str
 #[allow(clippy::too_many_arguments)]
 pub async fn start_authenticator_service(
     ctx: &Context,
-    node: &RemoteNode,
+    node: &BackgroundNode,
     serv_addr: &str,
     project: &str,
 ) -> Result<()> {

@@ -8,7 +8,7 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
@@ -56,7 +56,7 @@ async fn run_impl(
 
     let mut nodes: Vec<NodeListOutput> = Vec::new();
     for node_name in node_names {
-        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 

@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::Address;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
@@ -47,7 +47,7 @@ async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let address = &cmd.address;
 
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let req = api::show_secure_channel_listener(address);
     node.tell(ctx, req).await?;
     opts.terminal

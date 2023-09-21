@@ -193,13 +193,6 @@ pub(crate) mod credentials {
         Request::post("/node/credentials/actions/present").body(b)
     }
 
-    pub(crate) fn get_credential(
-        overwrite: bool,
-        identity_name: Option<String>,
-    ) -> Request<GetCredentialRequest> {
-        let b = GetCredentialRequest::new(overwrite, identity_name);
-        Request::post("/node/credentials/actions/get").body(b)
-    }
 }
 
 /// Return the path of a service given its name

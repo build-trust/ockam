@@ -6,13 +6,13 @@ use ockam_api::cloud::operation::Operations;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use ockam_node::Context;
 
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::CommandGlobalOpts;
 
 pub async fn check_for_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     operation_id: &str,
 ) -> miette::Result<()> {
     let retry_strategy =

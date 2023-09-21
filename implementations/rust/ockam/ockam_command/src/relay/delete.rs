@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
@@ -48,7 +48,7 @@ pub async fn run_impl(
         let relay_name = cmd.relay_name.clone();
         let at = get_node_name(&opts.state, &cmd.at);
         let node_name = parse_node_name(&at)?;
-        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         node.tell(
             &ctx,
             Request::delete(format!("/node/forwarder/{relay_name}",)),

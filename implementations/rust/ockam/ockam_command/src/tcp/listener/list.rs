@@ -7,7 +7,7 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::terminal::OckamColor;
@@ -46,7 +46,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> m
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_transports = async {

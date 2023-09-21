@@ -3,7 +3,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_abac::{Action, Expr, Resource};
 use ockam_api::nodes::models::policy::Policy;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
@@ -45,7 +45,7 @@ async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let bdy = Policy::new(cmd.expression);
     let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     node.tell(ctx, req).await?;
     Ok(())
 }

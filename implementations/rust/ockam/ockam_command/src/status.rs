@@ -13,7 +13,7 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
 use ockam_api::cloud::SecureClients;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::route;
 use ockam_node::MessageSendReceiveOptions;
@@ -65,7 +65,7 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     if node_states.is_empty() {
         return Ok(node_details);
     }
-    let mut node = RemoteNode::create(ctx, &opts.state, "default").await?;
+    let mut node = BackgroundNode::create(ctx, &opts.state, "default").await?;
     node.set_timeout(Duration::from_millis(200));
 
     for node_state in &node_states {
@@ -81,7 +81,7 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     Ok(node_details)
 }
 
-async fn get_node_status(ctx: &Context, node: &RemoteNode) -> Result<String> {
+async fn get_node_status(ctx: &Context, node: &BackgroundNode) -> Result<String> {
     let node_status_model: miette::Result<NodeStatusModel> =
         node.ask(ctx, api::query_status()).await;
     Ok(node_status_model

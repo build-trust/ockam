@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::nodes::{models, RemoteNode};
+use ockam_api::nodes::{models, BackgroundNode};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
@@ -36,7 +36,7 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
 
-    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let req = Request::delete("/node/services/kafka_producer").body(
         models::services::DeleteServiceRequest::new(cmd.address.clone()),
     );

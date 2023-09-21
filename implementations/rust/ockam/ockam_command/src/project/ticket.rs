@@ -14,7 +14,7 @@ use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -82,7 +82,7 @@ impl Runner {
     }
 
     async fn run(self, ctx: Context) -> miette::Result<()> {
-        let node = LocalNode::create(&ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
+        let node = InMemoryNode::create(&ctx, &self.opts, Some(&self.cmd.trust_opts)).await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;

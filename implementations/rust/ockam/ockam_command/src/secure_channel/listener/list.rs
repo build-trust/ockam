@@ -9,7 +9,7 @@ use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerResponse,
 };
-use ockam_api::nodes::RemoteNode;
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
 
@@ -57,7 +57,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> m
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_listeners = async {

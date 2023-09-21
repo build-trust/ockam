@@ -19,7 +19,7 @@ use ockam_api::enroll::oidc_service::OidcService;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
-use crate::node::util::LocalNode;
+use crate::node::util::InMemoryNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
@@ -80,7 +80,7 @@ async fn run_impl(
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
-    let node = LocalNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts, None).await?;
 
     enroll_with_node(&node, ctx, token)
         .await
@@ -101,7 +101,7 @@ async fn run_impl(
 pub async fn retrieve_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
 ) -> Result<Identifier> {
     let space = default_space(opts, ctx, node)
         .await
@@ -149,7 +149,7 @@ pub async fn enroll_with_node(
     Ok(())
 }
 
-async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &LocalNode) -> Result<Space> {
+async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &InMemoryNode) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
@@ -231,7 +231,7 @@ async fn default_space(opts: &CommandGlobalOpts, ctx: &Context, node: &LocalNode
 async fn default_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &LocalNode,
+    node: &InMemoryNode,
     space: &Space,
 ) -> Result<Project> {
     // Get available project for the given space
