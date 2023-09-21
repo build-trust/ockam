@@ -52,83 +52,16 @@ defaults:
     shell: nix develop ../../tools/nix#elixir --command bash {0}
 
 jobs:
-  lint:
-    name: Elixir - lint_${{ matrix.mix_project }}
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        mix_project:
-          - ockam
-          - ockam_abac
-          - ockam_cloud_node
-          - ockam_healthcheck
-          - ockam_kafka
-          - ockam_metrics
-          - ockam_services
-          - ockam_typed_cbor
-          - ockly
-    steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/nix_installer
-      - uses: ./.github/actions/elixir_cache
-        with:
-          job_name: lint_${{ matrix.mix_project }}
-      - run: make lint_${{ matrix.mix_project }}
-        working-directory: implementations/elixir
-
-  build:
-    name: Elixir - build_${{ matrix.mix_project }}
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        mix_project:
-          - ockam
-          - ockam_abac
-          - ockam_cloud_node
-          - ockam_healthcheck
-          - ockam_kafka
-          - ockam_metrics
-          - ockam_services
-          - ockam_typed_cbor
-          - ockly
-    steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
-        with:
-          ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/nix_installer
-      - uses: ./.github/actions/elixir_cache
-        with:
-          job_name: build_${{ matrix.mix_project }}
-      - run: make build_${{ matrix.mix_project }}
-        working-directory: implementations/elixir
-
   test:
-    name: Elixir - test_${{ matrix.mix_project }}
+    name: Elixir - test
     runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        mix_project:
-          - ockam
-          - ockam_abac
-          - ockam_cloud_node
-          - ockam_healthcheck
-          - ockam_kafka
-          - ockam_metrics
-          - ockam_services
-          - ockam_typed_cbor
-          - ockly
     steps:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/nix_installer
       - uses: ./.github/actions/elixir_cache
-        with:
-          job_name: test_${{ matrix.mix_project }}
-      - run: make test_${{ matrix.mix_project }}
+      - run: make test
+        working-directory: implementations/elixir
+      - run: make lint
         working-directory: implementations/elixir

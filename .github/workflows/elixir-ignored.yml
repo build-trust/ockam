@@ -21,55 +21,7 @@ on:
 
 jobs:
   lint:
-    name: Elixir - lint_${{ matrix.mix_project }}
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        mix_project:
-          - ockam
-          - ockam_abac
-          - ockam_cloud_node
-          - ockam_healthcheck
-          - ockam_kafka
-          - ockam_metrics
-          - ockam_services
-          - ockam_typed_cbor
-          - ockly
+    name: Elixir - test
+    runs-on: ubuntu-22.04
     steps:
-      - run: 'echo "Elixir - lint_${{ matrix.mix_project }} - Ignored"'
-
-  build:
-    name: Elixir - build_${{ matrix.mix_project }}
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        mix_project:
-          - ockam
-          - ockam_abac
-          - ockam_cloud_node
-          - ockam_healthcheck
-          - ockam_kafka
-          - ockam_metrics
-          - ockam_services
-          - ockam_typed_cbor
-          - ockly
-    steps:
-      - run: 'echo "Elixir - build_${{ matrix.mix_project }} - Ignored"'
-
-  test:
-    name: Elixir - test_${{ matrix.mix_project }}
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        mix_project:
-          - ockam
-          - ockam_abac
-          - ockam_cloud_node
-          - ockam_healthcheck
-          - ockam_kafka
-          - ockam_metrics
-          - ockam_services
-          - ockam_typed_cbor
-          - ockly
-    steps:
-      - run: 'echo "Elixir - test_${{ matrix.mix_project }} - Ignored"'
+      - run: 'echo "Elixir - test - Ignored"'
