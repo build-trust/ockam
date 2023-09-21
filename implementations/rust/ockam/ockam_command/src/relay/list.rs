@@ -9,11 +9,12 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -49,11 +50,12 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {
-        let relay_infos: Vec<ForwarderInfo> = rpc.ask(Request::get("/node/forwarder")).await?;
+        let relay_infos: Vec<ForwarderInfo> =
+            node.ask(&ctx, Request::get("/node/forwarder")).await?;
         *is_finished.lock().await = true;
         Ok(relay_infos)
     };

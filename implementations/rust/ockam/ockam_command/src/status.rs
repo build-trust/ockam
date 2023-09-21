@@ -13,11 +13,12 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
 use ockam_api::cloud::SecureClients;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::route;
 use ockam_node::MessageSendReceiveOptions;
 
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
@@ -40,12 +41,16 @@ impl StatusCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> miette::Result<()> {
-    run_impl(ctx, opts, cmd).await
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> miette::Result<()> {
+async fn run_impl(
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+    cmd: StatusCommand,
+) -> miette::Result<()> {
     let identities_details = get_identities_details(&opts, cmd.all)?;
-    let nodes_details = get_nodes_details(&ctx, &opts).await?;
+    let nodes_details = get_nodes_details(ctx, &opts).await?;
     let orchestrator_version =
         get_orchestrator_version(ctx, &opts, Duration::from_secs(cmd.timeout)).await;
     let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
@@ -60,14 +65,15 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     if node_states.is_empty() {
         return Ok(node_details);
     }
-    let mut rpc = Rpc::background(ctx, &opts.state, "default").await?;
+    let mut node = RemoteNode::create(ctx, &opts.state, "default").await?;
+    node.set_timeout(Duration::from_millis(200));
 
     for node_state in &node_states {
-        rpc.set_node_name(node_state.name());
+        node.set_node_name(node_state.name());
         let node_infos = NodeDetails {
             identifier: node_state.config().identifier()?,
             state: node_state.clone(),
-            status: get_node_status(&mut rpc).await?,
+            status: get_node_status(ctx, &node).await?,
         };
         node_details.push(node_infos);
     }
@@ -75,11 +81,9 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     Ok(node_details)
 }
 
-async fn get_node_status<'a>(rpc: &mut Rpc) -> Result<String> {
-    let node_status_model: Result<NodeStatusModel> = rpc
-        .set_timeout(Duration::from_millis(200))
-        .ask(api::query_status())
-        .await;
+async fn get_node_status(ctx: &Context, node: &RemoteNode) -> Result<String> {
+    let node_status_model: miette::Result<NodeStatusModel> =
+        node.ask(ctx, api::query_status()).await;
     Ok(node_status_model
         .map(|m| m.status)
         .unwrap_or("Stopped".to_string()))
@@ -101,7 +105,7 @@ fn get_identities_details(opts: &CommandGlobalOpts, all: bool) -> Result<Vec<Ide
 }
 
 async fn get_orchestrator_version(
-    ctx: Context,
+    ctx: &Context,
     opts: &CommandGlobalOpts,
     timeout: Duration,
 ) -> Result<OrchestratorVersionInfo> {
@@ -110,7 +114,7 @@ async fn get_orchestrator_version(
     let controller_addr = SecureClients::controller_multiaddr();
     let controller_identifier = SecureClients::load_controller_identifier()?;
     let controller_tcp_addr = controller_addr.to_socket_addr()?;
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(ctx).await?;
     let connection = tcp
         .connect(controller_tcp_addr, TcpConnectionOptions::new())
         .await?;

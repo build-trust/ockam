@@ -8,11 +8,12 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
+use ockam_api::nodes::RemoteNode;
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -50,11 +51,11 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_workers = async {
-        let workers: WorkerList = rpc.ask(api::list_workers()).await?;
+        let workers: WorkerList = node.ask(&ctx, api::list_workers()).await?;
         *is_finished.lock().await = true;
         Ok(workers)
     };

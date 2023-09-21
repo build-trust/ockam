@@ -35,7 +35,7 @@ async fn run_impl(
     let project_name = cmd.project_name;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
-    let node = LocalNode::make(&ctx, &opts, None).await?;
+    let node = LocalNode::create(&ctx, &opts, None).await?;
 
     let addons = node.list_addons(&ctx, project_id).await?;
     opts.println(&addons)?;

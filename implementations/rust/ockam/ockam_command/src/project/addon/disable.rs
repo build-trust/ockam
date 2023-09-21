@@ -48,7 +48,7 @@ async fn run_impl(
         addon_id,
     } = cmd;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
-    let node = LocalNode::make(&ctx, &opts, None).await?;
+    let node = LocalNode::create(&ctx, &opts, None).await?;
 
     let response = node.disable_addon(&ctx, project_id, addon_id).await?;
     let operation_id = response.operation_id;

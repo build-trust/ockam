@@ -2,10 +2,11 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
-use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -46,21 +47,24 @@ pub async fn run_impl(
     {
         let relay_name = cmd.relay_name.clone();
         let at = get_node_name(&opts.state, &cmd.at);
-        let node = parse_node_name(&at)?;
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
-        rpc.tell(Request::delete(format!("/node/forwarder/{relay_name}",)))
-            .await?;
+        let node_name = parse_node_name(&at)?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        node.tell(
+            &ctx,
+            Request::delete(format!("/node/forwarder/{relay_name}",)),
+        )
+        .await?;
 
         opts.terminal
             .stdout()
             .plain(fmt_ok!(
                 "Relay with name {} on Node {} has been deleted.",
                 relay_name,
-                node
+                node_name
             ))
             .machine(&relay_name)
             .json(serde_json::json!({ "forwarder": { "name": relay_name,
-                "node": node } }))
+                "node": node_name } }))
             .write_line()
             .unwrap();
     }

@@ -8,14 +8,16 @@ use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
+use ockam_api::nodes::RemoteNode;
 use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 
 use crate::node::get_node_name;
 use crate::node::util::check_default;
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -45,13 +47,13 @@ impl ShowCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+    let mut node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&opts, &mut rpc, &node_name, false, is_default).await?;
+    print_query_status(&opts, &ctx, &mut node, false, is_default).await?;
     Ok(())
 }
 
@@ -171,14 +173,14 @@ fn print_node_info(
 
 pub async fn print_query_status(
     opts: &CommandGlobalOpts,
-    rpc: &mut Rpc,
-    node_name: &str,
+    ctx: &Context,
+    node: &mut RemoteNode,
     wait_until_ready: bool,
     is_default: bool,
 ) -> miette::Result<()> {
     let cli_state = opts.state.clone();
-    if !is_node_up(rpc, cli_state.clone(), wait_until_ready).await? {
-        let node_state = cli_state.nodes.get(node_name)?;
+    if !is_node_up(ctx, node, cli_state.clone(), wait_until_ready).await? {
+        let node_state = cli_state.nodes.get(node.node_name())?;
         let node_port = node_state
             .config()
             .setup()
@@ -192,7 +194,7 @@ pub async fn print_query_status(
         print_node_info(
             opts,
             node_port,
-            node_name,
+            node.node_name(),
             is_default,
             is_authority_node,
             None,
@@ -202,7 +204,7 @@ pub async fn print_query_status(
             None,
         );
     } else {
-        let node_state = cli_state.nodes.get(node_name)?;
+        let node_state = cli_state.nodes.get(node.node_name())?;
         // Get short id for the node
         let default_id = match node_state.config().identity_config() {
             Ok(resp) => resp.identifier().to_string(),
@@ -210,22 +212,22 @@ pub async fn print_query_status(
         };
 
         // Get list of services for the node
-        let services: ServiceList = rpc.ask(api::list_services()).await?;
+        let services: ServiceList = node.ask(ctx, api::list_services()).await?;
 
         // Get list of TCP listeners for node
-        let tcp_listeners: TransportList = rpc.ask(api::list_tcp_listeners()).await?;
+        let tcp_listeners: TransportList = node.ask(ctx, api::list_tcp_listeners()).await?;
 
         // Get list of Secure Channel Listeners
         let secure_channel_listeners: SecureChannelListenersList =
-            rpc.ask(api::list_secure_channel_listener()).await?;
+            node.ask(ctx, api::list_secure_channel_listener()).await?;
 
         // Get list of inlets
-        let inlets: InletList = rpc.ask(api::list_inlets()).await?;
+        let inlets: InletList = node.ask(ctx, api::list_inlets()).await?;
 
         // Get list of outlets
-        let outlets: OutletList = rpc.ask(api::list_outlets()).await?;
+        let outlets: OutletList = node.ask(ctx, api::list_outlets()).await?;
 
-        let node_state = cli_state.nodes.get(node_name)?;
+        let node_state = cli_state.nodes.get(node.node_name())?;
         let node_port = node_state
             .config()
             .setup()
@@ -236,7 +238,7 @@ pub async fn print_query_status(
         print_node_info(
             opts,
             node_port,
-            node_name,
+            node.node_name(),
             is_default,
             true,
             Some(&default_id),
@@ -258,7 +260,8 @@ pub async fn print_query_status(
 /// a maximum number of retries. A use case for this is to
 /// allow a node time to start up and become ready.
 pub async fn is_node_up(
-    rpc: &mut Rpc,
+    ctx: &Context,
+    node: &mut RemoteNode,
     cli_state: CliState,
     wait_until_ready: bool,
 ) -> Result<bool> {
@@ -271,7 +274,7 @@ pub async fn is_node_up(
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
     let cli_state = cli_state.clone();
-    let node_name = rpc.node_name().to_owned();
+    let node_name = node.node_name().to_owned();
     let now = std::time::Instant::now();
     for timeout_duration in retries {
         let node_state = cli_state.nodes.get(&node_name)?;
@@ -285,9 +288,9 @@ pub async fn is_node_up(
         // Test if node is up
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
-        let result = rpc
+        let result = node
             .set_timeout(timeout_duration)
-            .tell(api::query_status())
+            .tell(ctx, api::query_status())
             .await;
         if result.is_ok() {
             let elapsed = now.elapsed();

@@ -2,12 +2,13 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::fmt_ok;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
-use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -46,18 +47,18 @@ pub async fn run_impl(
     )? {
         let alias = cmd.alias.clone();
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node = parse_node_name(&node_name)?;
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
-        rpc.tell(Request::delete(format!("/node/outlet/{alias}")))
+        let node_name = parse_node_name(&node_name)?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+        node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))
             .await?;
 
         opts.terminal
             .stdout()
             .plain(fmt_ok!(
-                "TCP outlet with alias {alias} on node {node} has been deleted."
+                "TCP outlet with alias {alias} on node {node_name} has been deleted."
             ))
             .machine(&alias)
-            .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node } }))
+            .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node_name } }))
             .write_line()
             .unwrap();
     }

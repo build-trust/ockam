@@ -2,11 +2,13 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use ockam_api::nodes::RemoteNode;
+use ockam_node::Context;
 
 use crate::node::show::print_query_status;
 use crate::node::util::{check_default, spawn_node};
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, fmt_err, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
@@ -37,7 +39,7 @@ impl StartCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (mut opts, cmd): (CommandGlobalOpts, StartCommand),
 ) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
@@ -76,9 +78,9 @@ async fn run_impl(
     )?;
 
     // Print node status
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+    let mut node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&opts, &mut rpc, &node_name, true, is_default).await?;
+    print_query_status(&opts, &ctx, &mut node, true, is_default).await?;
 
     Ok(())
 }

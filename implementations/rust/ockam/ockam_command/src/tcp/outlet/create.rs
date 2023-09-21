@@ -11,14 +11,15 @@ use ockam_abac::Resource;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
+use crate::util::node_rpc;
 use crate::util::parsers::socket_addr_parser;
-use crate::util::{node_rpc, Rpc};
 use crate::{display_parse_logs, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -149,8 +150,8 @@ pub async fn send_request(
     payload: CreateOutlet,
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletStatus> {
-    let to_node = get_node_name(&opts.state, &to_node.into());
-    let mut rpc = Rpc::background(ctx, &opts.state, &to_node).await?;
+    let node_name = get_node_name(&opts.state, &to_node.into());
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
     let req = Request::post("/node/outlet").body(payload);
-    rpc.ask(req).await
+    Ok(node.ask(ctx, req).await?)
 }

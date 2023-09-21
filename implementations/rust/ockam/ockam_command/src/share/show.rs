@@ -30,20 +30,13 @@ impl ShowCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    cmd: ShowCommand,
-) -> miette::Result<()> {
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = LocalNode::make(ctx, &opts, None).await?;
+    let node = LocalNode::create(ctx, &opts, None).await?;
 
     let get_invitation_with_access = async {
         let invitation_with_access = node.show_invitation(ctx, cmd.invitation_id).await?;

@@ -10,12 +10,13 @@ use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::policy::{Expression, PolicyList};
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, parse_node_name, Rpc};
+use crate::util::{node_rpc, parse_node_name};
 use crate::{CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -33,18 +34,11 @@ impl ListCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    cmd: ListCommand,
-) -> miette::Result<()> {
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
     let resource = cmd.resource;
 
     let at = get_node_name(&opts.state, &cmd.at);
@@ -54,12 +48,12 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", &node_name));
     }
 
-    let mut rpc = Rpc::background(ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_policies = async {
         let req = Request::get(format!("/policy/{resource}"));
-        let policies: PolicyList = rpc.ask(req).await?;
+        let policies: PolicyList = node.ask(ctx, req).await?;
         Ok(policies)
     };
 

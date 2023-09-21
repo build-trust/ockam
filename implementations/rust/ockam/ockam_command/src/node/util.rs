@@ -262,7 +262,7 @@ pub struct LocalNode {
 }
 
 impl LocalNode {
-    pub async fn make(
+    pub async fn create(
         ctx: &Context,
         opts: &CommandGlobalOpts,
         trust_opts: Option<&TrustContextOpts>,

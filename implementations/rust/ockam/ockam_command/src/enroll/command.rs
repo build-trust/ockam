@@ -111,7 +111,7 @@ async fn run_impl(
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
-    let node = LocalNode::make(ctx, &opts, None).await?;
+    let node = LocalNode::create(ctx, &opts, None).await?;
 
     enroll_with_node(&node, ctx, token)
         .await

@@ -155,7 +155,7 @@ async fn run_impl(
         admin_access_role,
     );
 
-    let node = LocalNode::make(&ctx, &opts, None).await?;
+    let node = LocalNode::create(&ctx, &opts, None).await?;
 
     let response = node
         .configure_influxdb_addon(&ctx, project_id.clone(), config)

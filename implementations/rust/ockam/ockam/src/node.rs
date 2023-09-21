@@ -10,8 +10,8 @@ use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{
-    Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
-    Routed, Worker,
+    Address, AsyncTryClone, IncomingAccessControl, Message, OutgoingAccessControl, Processor,
+    Result, Route, Routed, Worker,
 };
 use ockam_identity::{PurposeKeys, Vault, VaultStorage};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
@@ -373,9 +373,9 @@ impl NodeBuilder {
     }
 
     /// Build top level services
-    pub async fn build(self, ctx: Context) -> Result<Node> {
+    pub async fn build(self, ctx: &Context) -> Result<Node> {
         Ok(Node {
-            context: ctx,
+            context: ctx.async_try_clone().await?,
             secure_channels: self.builder.build(),
         })
     }
