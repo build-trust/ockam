@@ -7,10 +7,10 @@ use tokio::{sync::Mutex, try_join};
 use ockam::Context;
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
-use crate::util::Rpc;
 use crate::{
     fmt_log, fmt_ok,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
@@ -54,9 +54,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_outlet").body(payload);
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
 
-        start_service_impl(&mut rpc, "KafkaOutlet", req).await?;
+        start_service_impl(&ctx, &node, "KafkaOutlet", req).await?;
         *is_finished.lock().await = true;
 
         Ok::<_, crate::Error>(())

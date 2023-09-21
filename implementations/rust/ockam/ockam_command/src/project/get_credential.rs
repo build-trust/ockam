@@ -30,11 +30,11 @@ impl GetCredentialCommand {
 }
 
 async fn rpc(
-    mut ctx: Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, GetCredentialCommand),
 ) -> miette::Result<()> {
     async fn go(
-        ctx: &mut Context,
+        ctx: &Context,
         opts: &CommandGlobalOpts,
         cmd: &GetCredentialCommand,
     ) -> miette::Result<()> {
@@ -58,7 +58,7 @@ async fn rpc(
         rpc.print_response::<Credential>()?;
         Ok(())
     }
-    let result = go(&mut ctx, &opts, &cmd).await;
+    let result = go(&ctx, &opts, &cmd).await;
     stop_node(ctx).await?;
     result
 }

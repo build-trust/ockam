@@ -5,6 +5,7 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
 use ockam_api::nodes::models::services::{StartKafkaDirectRequest, StartServiceRequest};
+use ockam_api::nodes::RemoteNode;
 use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -12,7 +13,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::node::{get_node_name, NodeOpts};
 use crate::service::start::start_service_impl;
 use crate::terminal::OckamColor;
-use crate::util::{process_nodes_multiaddr, Rpc};
+use crate::util::process_nodes_multiaddr;
 use crate::{display_parse_logs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 pub struct ArgOpts {
@@ -52,7 +53,7 @@ pub async fn start(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> 
     let is_finished = Mutex::new(false);
     let send_req = async {
         let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
 
         let payload = StartKafkaDirectRequest::new(
             bind_address.to_owned(),
@@ -62,7 +63,7 @@ pub async fn start(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> 
         );
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post(endpoint).body(payload);
-        start_service_impl(&mut rpc, &kafka_entity, req).await?;
+        start_service_impl(&ctx, &node, &kafka_entity, req).await?;
 
         *is_finished.lock().await = true;
 

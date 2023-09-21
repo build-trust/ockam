@@ -1,10 +1,11 @@
 use clap::Args;
 
 use ockam::Context;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::Address;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, node_rpc, parse_node_name, Rpc};
+use crate::util::{api, node_rpc, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -46,9 +47,9 @@ async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let address = &cmd.address;
 
-    let mut rpc = Rpc::background(ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
     let req = api::show_secure_channel_listener(address);
-    rpc.tell(req).await?;
+    node.tell(ctx, req).await?;
     opts.terminal
         .stdout()
         .plain(format!("/service/{}", cmd.address.address()))

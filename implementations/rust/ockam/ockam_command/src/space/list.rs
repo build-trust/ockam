@@ -34,20 +34,13 @@ impl ListCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    _cmd: ListCommand,
-) -> miette::Result<()> {
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = LocalNode::make(ctx, &opts, None).await?;
+    let node = LocalNode::create(ctx, &opts, None).await?;
 
     let get_spaces = async {
         let spaces = node.list_spaces(ctx).await?;

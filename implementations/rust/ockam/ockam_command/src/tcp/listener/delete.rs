@@ -2,12 +2,12 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::nodes::models;
+use ockam_api::nodes::{models, RemoteNode};
 use ockam_core::api::Request;
 
 use crate::node::{get_node_name, initialize_node_if_default};
+use crate::util::node_rpc;
 use crate::util::parse_node_name;
-use crate::util::{node_rpc, Rpc};
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -43,18 +43,18 @@ async fn run_impl(
         "Are you sure you want to delete this TCP listener?",
     )? {
         let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node = parse_node_name(&node_name)?;
-        let mut rpc = Rpc::background(&ctx, &opts.state, &node).await?;
+        let node_name = parse_node_name(&node_name)?;
+        let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
         let req = Request::delete("/node/tcp/listener")
             .body(models::transport::DeleteTransport::new(cmd.address.clone()));
-        rpc.tell(req).await?;
+        node.tell(&ctx, req).await?;
 
         opts.terminal
             .stdout()
             .plain(fmt_ok!(
-                "TCP listener {node} has been successfully deleted."
+                "TCP listener {node_name} has been successfully deleted."
             ))
-            .json(serde_json::json!({ "tcp-listener": {"node": node } }))
+            .json(serde_json::json!({ "tcp-listener": {"node": node_name } }))
             .write_line()
             .unwrap();
     }

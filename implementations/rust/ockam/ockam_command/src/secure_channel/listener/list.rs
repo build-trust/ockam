@@ -9,14 +9,15 @@ use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerResponse,
 };
+use ockam_api::nodes::RemoteNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::output::Output;
 use crate::terminal::OckamColor;
+use crate::util::node_rpc;
 use crate::util::{api, parse_node_name};
-use crate::util::{node_rpc, Rpc};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -44,18 +45,11 @@ impl ListCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    cmd: ListCommand,
-) -> miette::Result<()> {
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&at)?;
 
@@ -63,12 +57,12 @@ async fn run_impl(
         return Err(miette!("The node '{}' is not running", node_name));
     }
 
-    let mut rpc = Rpc::background(ctx, &opts.state, &node_name).await?;
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_listeners = async {
         let listeners: SecureChannelListenersList =
-            rpc.ask(api::list_secure_channel_listener()).await?;
+            node.ask(ctx, api::list_secure_channel_listener()).await?;
         *is_finished.lock().await = true;
         Ok(listeners)
     };

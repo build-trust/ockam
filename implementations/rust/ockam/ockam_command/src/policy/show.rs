@@ -4,10 +4,11 @@ use ockam::Context;
 use ockam_abac::{Action, Resource};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::policy::Policy;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::policy::policy_path;
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -28,22 +29,15 @@ impl ShowCommand {
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    run_impl(&mut ctx, opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
+    run_impl(&ctx, opts, cmd).await
 }
 
-async fn run_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    cmd: ShowCommand,
-) -> miette::Result<()> {
-    let node = extract_address_value(&cmd.at)?;
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
+    let node_name = extract_address_value(&cmd.at)?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
-    let mut rpc = Rpc::background(ctx, &opts.state, &node).await?;
-    let policy: Policy = rpc.ask(req).await?;
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
+    let policy: Policy = node.ask(ctx, req).await?;
     println!("{}", policy.expression());
     Ok(())
 }

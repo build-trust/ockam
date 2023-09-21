@@ -22,7 +22,7 @@ async fn main(ctx: Context) -> Result<()> {
     let mut vault = Vault::create();
     vault.identity_vault = identity_vault;
 
-    let node = Node::builder().with_vault(vault).build(ctx).await?;
+    let node = Node::builder().with_vault(vault).build(&ctx).await?;
 
     let issuer_identity = hex::decode("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805").unwrap();
     let issuer = node.import_private_identity(&issuer_identity, &secret).await?;

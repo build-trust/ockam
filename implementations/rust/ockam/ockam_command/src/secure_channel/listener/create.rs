@@ -5,12 +5,12 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
-use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_api::nodes::{RemoteNode, NODEMANAGER_ADDR};
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, exitcode, node_rpc, parse_node_name, Rpc};
+use crate::util::{api, exitcode, node_rpc, parse_node_name};
 use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -57,8 +57,8 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = parse_node_name(&at)?;
-    let mut rpc = Rpc::background(ctx, &opts.state, &node).await?;
+    let node_name = parse_node_name(&at)?;
+    let node = RemoteNode::create(ctx, &opts.state, &node_name).await?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(
             &cmd.address,
@@ -67,7 +67,7 @@ async fn run_impl(
             cmd.identity,
         ),
     );
-    let result = rpc.tell(req).await;
+    let result = node.tell(ctx, req).await;
     match result {
         Ok(_) => {
             let address = format!("/service/{}", cmd.address.address());
@@ -81,7 +81,9 @@ async fn run_impl(
                             .color(OckamColor::PrimaryResource.color())
                     ) + &fmt_log!(
                         "At node /node/{}",
-                        node.to_string().color(OckamColor::PrimaryResource.color())
+                        node_name
+                            .to_string()
+                            .color(OckamColor::PrimaryResource.color())
                     ),
                 )
                 .machine(address.to_string())

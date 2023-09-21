@@ -4,10 +4,11 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
-use crate::util::{node_rpc, Rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,9 +44,12 @@ async fn run_impl(
     let at = get_node_name(&opts.state, &cmd.at);
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
-    let mut rpc = Rpc::background(&ctx, &opts.state, &node_name).await?;
-    let relay_info: ForwarderInfo = rpc
-        .ask(Request::get(format!("/node/forwarder/{remote_address}")))
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
+    let relay_info: ForwarderInfo = node
+        .ask(
+            &ctx,
+            Request::get(format!("/node/forwarder/{remote_address}")),
+        )
         .await?;
 
     println!("Relay:");

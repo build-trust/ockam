@@ -30,13 +30,13 @@ impl VersionCommand {
     }
 }
 
-async fn rpc(mut ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-    run_impl(&mut ctx, opts).await
+async fn rpc(ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    run_impl(&ctx, opts).await
 }
 
-async fn run_impl(ctx: &mut Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     // Send request
-    let node = LocalNode::make(ctx, &opts, None).await?;
+    let node = LocalNode::create(ctx, &opts, None).await?;
     let project_version = node.get_project_version(ctx).await?;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;

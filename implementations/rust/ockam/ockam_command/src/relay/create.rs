@@ -12,6 +12,7 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use ockam_api::nodes::RemoteNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -19,7 +20,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use crate::node::{get_node_name, initialize_node_if_default};
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, process_nodes_multiaddr, Rpc};
+use crate::util::{node_rpc, process_nodes_multiaddr};
 use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, Result};
 
@@ -77,7 +78,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     display_parse_logs(&opts);
 
     let to = get_node_name(&opts.state, &cmd.to);
-    let api_node = extract_address_value(&to)?;
+    let node_name = extract_address_value(&to)?;
     let at_rust_node = is_local_node(&cmd.at).wrap_err("Argument --at is not valid")?;
 
     let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
@@ -87,7 +88,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         cmd.relay_name.clone()
     };
 
-    let mut rpc = Rpc::background(&ctx, &opts.state, &api_node).await?;
+    let node = RemoteNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relay_info = async {
@@ -105,7 +106,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
             Request::post("/node/forwarder").body(body)
         };
 
-        let relay_info: ForwarderInfo = rpc.ask(req).await?;
+        let relay_info: ForwarderInfo = node.ask(&ctx, req).await?;
         *is_finished.lock().await = true;
         Ok(relay_info)
     };
@@ -119,7 +120,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         ),
         format!(
             "Setting up receiving relay mailbox on node {}...",
-            &api_node
+            &node_name
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ),
@@ -141,7 +142,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     .color(OckamColor::PrimaryResource.color());
     let formatted_to = format!(
         "/node/{}{}",
-        &api_node,
+        &node_name,
         &relay.remote_address_ma().into_diagnostic()?.to_string()
     )
     .color(OckamColor::PrimaryResource.color());
