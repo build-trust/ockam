@@ -48,7 +48,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::create(ctx, &opts, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
 
     let get_sent_invitation = async {
         let invitation = node

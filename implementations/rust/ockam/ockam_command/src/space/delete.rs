@@ -53,7 +53,7 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this space?")?
     {
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
-        let node = InMemoryNode::create(ctx, &opts, None).await?;
+        let node = InMemoryNode::create(ctx, &opts.state, None).await?;
         node.delete_space(ctx, space_id).await?;
 
         let _ = opts.state.spaces.delete(&cmd.name);

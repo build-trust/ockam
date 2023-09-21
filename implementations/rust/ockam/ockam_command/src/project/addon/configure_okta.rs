@@ -118,7 +118,7 @@ async fn run_impl(
     auth0.validate_provider_config().await?;
 
     // Do request
-    let node = InMemoryNode::create(&ctx, &opts, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts.state, None).await?;
 
     let response = node
         .configure_okta_addon(&ctx, project_id.clone(), okta_config)
