@@ -30,7 +30,7 @@ pub mod parsers;
 /// eprintln logs.
 ///
 /// TODO: We may want to change this behaviour in the future.
-pub async fn stop_node(mut ctx: Context) {
+pub async fn stop_node(ctx: Context) {
     if let Err(e) = ctx.stop().await {
         eprintln!("an error occurred while shutting down local node: {e}");
     }
@@ -51,7 +51,7 @@ where
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     let res = embedded_node(
-        |ctx, a| async move {
+        |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
                 error!(%e, "Failed to run command");
@@ -100,7 +100,7 @@ where
     Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (mut ctx, mut executor) = NodeBuilder::new().no_logging().build();
+    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor
         .execute(async move {
             let child_ctx = ctx
