@@ -349,116 +349,116 @@ jobs:
         asset_name: ${{ env.ASSET_OCKAM_APP_DEB }}.sig
         asset_content_type: application/octet-stream
 
-  build_elixir_nifs:
-    name: Build Elixir NIFs
-    needs: create_release
-    environment: release
-    permissions:
-      contents: write
+  # build_elixir_nifs:
+  #   name: Build Elixir NIFs
+  #   needs: create_release
+  #   environment: release
+  #   permissions:
+  #     contents: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        build: [macos, linux_x86_64, linux_arm]
-        include:
-        - build: macos
-          os: macos-latest
-          release_path: implementations/elixir/ockam/ockam_vault_software/priv/darwin_universal/native
-          release_asset_name: ockam.darwin_universal_elixir_ffi.so
-        - build: linux_x86_64
-          os: ubuntu-20.04
-          release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
-          release_asset_name: ockam.linux_x86_64_gnu_elixir_ffi.so
-          target: x86_64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder@sha256:4327749693be365d590cd210ef89729b95488005ecff2c9fe7a0fcd8b4c61f87
-        - build: linux_arm
-          os: ubuntu-20.04
-          release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
-          release_asset_name: ockam.linux_aarch64_gnu_elixir_ffi.so
-          target: aarch64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder@sha256:ef3171446e991d8462e88879a8fc9818d9e02b61a720bf96fb5f845b0cae6100
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
-        with:
-          ref: ${{ github.event.inputs.release_branch }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       build: [macos, linux_x86_64, linux_arm]
+  #       include:
+  #       - build: macos
+  #         os: macos-latest
+  #         release_path: implementations/elixir/ockam/ockam_vault_software/priv/darwin_universal/native
+  #         release_asset_name: ockam.darwin_universal_elixir_ffi.so
+  #       - build: linux_x86_64
+  #         os: ubuntu-20.04
+  #         release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
+  #         release_asset_name: ockam.linux_x86_64_gnu_elixir_ffi.so
+  #         target: x86_64-unknown-linux-musl
+  #         container: ghcr.io/build-trust/ockam-builder@sha256:4327749693be365d590cd210ef89729b95488005ecff2c9fe7a0fcd8b4c61f87
+  #       - build: linux_arm
+  #         os: ubuntu-20.04
+  #         release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
+  #         release_asset_name: ockam.linux_aarch64_gnu_elixir_ffi.so
+  #         target: aarch64-unknown-linux-musl
+  #         container: ghcr.io/build-trust/ockam-builder@sha256:ef3171446e991d8462e88879a8fc9818d9e02b61a720bf96fb5f845b0cae6100
+  #   runs-on: ${{ matrix.os }}
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
+  #       with:
+  #         ref: ${{ github.event.inputs.release_branch }}
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+  #     - name: Install Rust
+  #       uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
+  #       with:
+  #         toolchain: stable
+  #         profile: minimal
+  #         override: true
 
-      - name: Install QEMU
-        if: matrix.build == 'linux_arm'
-        run: |
-          sudo apt-get update
-          sudo apt-get install qemu binfmt-support qemu-user-static
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  #     - name: Install QEMU
+  #       if: matrix.build == 'linux_arm'
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install qemu binfmt-support qemu-user-static
+  #         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
-      - name: Build Rust Asset
-        if: matrix.build != 'macos'
-        run: |
-          cargo install --version 0.1.16 cross
-          cross build --release --package ockam-ffi --target ${{ matrix.target }}
-          rm -rf target/release && mv target/${{ matrix.target }}/release target/
+  #     - name: Build Rust Asset
+  #       if: matrix.build != 'macos'
+  #       run: |
+  #         cargo install --version 0.1.16 cross
+  #         cross build --release --package ockam-ffi --target ${{ matrix.target }}
+  #         rm -rf target/release && mv target/${{ matrix.target }}/release target/
 
-      - name: Build NIF For Linux
-        if: matrix.build != 'macos'
-        run: |
-          docker run --rm --user "$(id -u):$(id -g)" --volume $(pwd):/work ${{ matrix.container }} bash -c \
-            "cd implementations/elixir/ockam/ockam_vault_software; mix recompile.native; ";
+  #     - name: Build NIF For Linux
+  #       if: matrix.build != 'macos'
+  #       run: |
+  #         docker run --rm --user "$(id -u):$(id -g)" --volume $(pwd):/work ${{ matrix.container }} bash -c \
+  #           "cd implementations/elixir/ockam/ockam_vault_software; mix recompile.native; ";
 
-      - name: Build NIF For MacOS
-        if: matrix.build == 'macos'
-        working-directory: implementations/elixir/ockam/ockam_vault_software
-        run: |
-          set -x
-          brew install erlang
+  #     - name: Build NIF For MacOS
+  #       if: matrix.build == 'macos'
+  #       working-directory: implementations/elixir/ockam/ockam_vault_software
+  #       run: |
+  #         set -x
+  #         brew install erlang
 
-          rustup target add aarch64-apple-darwin
-          rustup target add x86_64-apple-darwin
+  #         rustup target add aarch64-apple-darwin
+  #         rustup target add x86_64-apple-darwin
 
-          ./build-elixir-universal-lib.sh
+  #         ./build-elixir-universal-lib.sh
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19
-        with:
-          cosign-release: 'v2.0.0'
+  #     - name: Install Cosign
+  #       uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19
+  #       with:
+  #         cosign-release: 'v2.0.0'
 
-      - name: Sign NIFs
-        working-directory: ${{ matrix.release_path }}
-        env:
-          PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
-          COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
-        run: |
-          cosign sign-blob --yes --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig
+  #     - name: Sign NIFs
+  #       working-directory: ${{ matrix.release_path }}
+  #       env:
+  #         PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+  #         COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+  #       run: |
+  #         cosign sign-blob --yes --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig
 
-      - name: Upload Library
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so
-          asset_name: ${{ matrix.release_asset_name }}
-          asset_content_type: application/octet-stream
+  #     - name: Upload Library
+  #       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ needs.create_release.outputs.upload_url }}
+  #         asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so
+  #         asset_name: ${{ matrix.release_asset_name }}
+  #         asset_content_type: application/octet-stream
 
-      - name: Upload Signature
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so.sig
-          asset_name: ${{ matrix.release_asset_name }}.sig
-          asset_content_type: application/octet-stream
+  #     - name: Upload Signature
+  #       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ needs.create_release.outputs.upload_url }}
+  #         asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so.sig
+  #         asset_name: ${{ matrix.release_asset_name }}.sig
+  #         asset_content_type: application/octet-stream
 
   sign_release:
     name: Sign All Assets
-    needs: [build_release, create_release, build_elixir_nifs]
+    needs: [build_release, create_release] #, build_elixir_nifs]
     runs-on: ubuntu-20.04
     environment: release
     permissions:
