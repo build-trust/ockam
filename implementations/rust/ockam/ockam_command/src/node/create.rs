@@ -339,6 +339,7 @@ async fn run_foreground_node(
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
+            ctx.stop().await.into_diagnostic()?;
             return Err(miette!("Failed to start services"));
         }
     }
@@ -358,6 +359,7 @@ async fn run_foreground_node(
     if let Ok(state) = opts.state.nodes.get(&node_name) {
         let _ = state.kill_process(false);
     }
+    ctx.stop().await.into_diagnostic()?;
     opts.terminal
         .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
         .unwrap();
