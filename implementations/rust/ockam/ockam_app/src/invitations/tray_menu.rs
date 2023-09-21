@@ -7,7 +7,6 @@ use tauri::menu::{
     SubmenuBuilder,
 };
 use tauri::{AppHandle, Icon, Manager, Runtime, State};
-use tauri_plugin_positioner::{Position, WindowExt};
 use tracing::{debug, error, trace, warn};
 
 use ockam_api::cloud::share::{ReceivedInvitation, SentInvitation, ServiceAccessDetails};
@@ -300,29 +299,13 @@ fn on_create<R: Runtime>(app: &AppHandle<R>, outlet_socket_addr: &str) -> tauri:
                 &PATH_ENCODING_SET,
             )
             .to_string();
-            let w = tauri::WindowBuilder::new(
+            let builder = tauri::WindowBuilder::new(
                 app,
                 INVITATIONS_WINDOW_ID,
                 tauri::WindowUrl::App(url_path.into()),
             )
-            .always_on_top(true)
-            .visible(false)
-            .title("Invite To Share")
-            .max_inner_size(450.0, 350.0)
-            .resizable(true)
-            .minimizable(false)
-            .build()?;
-            // TODO: ideally we should use Position::TrayCenter, but it's broken on the latest alpha
-            let _ = w.move_window(Position::TopRight);
-            w.show()?;
-
-            #[cfg(debug_assertions)]
-            {
-                let app_state: State<AppState> = app.state();
-                if app_state.browser_dev_tools() {
-                    w.open_devtools();
-                }
-            }
+            .title("Invite To Share");
+            crate::window::create(app, builder, 450.0, 350.0)?;
         }
         Some(w) => w.set_focus()?,
     }

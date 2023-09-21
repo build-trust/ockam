@@ -38,7 +38,7 @@
     <div class="flex-1">
       <input
         type="email"
-        class="w-full border-none bg-transparent px-4 text-right focus:outline-none"
+        class="w-full border-none bg-transparent px-4 text-right text-base focus:outline-none"
         placeholder="user@example.com"
         bind:value={email}
       />
@@ -53,11 +53,11 @@
 {/if}
 <div class="flex justify-end">
   <button
-    class="mr-2 rounded bg-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-400"
+    class="mr-2 rounded bg-gray-300 px-2 py-1 text-base text-gray-700 hover:bg-gray-400"
     on:click={cancel}>Cancel</button
   >
   <button
-    class="rounded bg-blue-500 px-2 py-1 text-white hover:bg-blue-600"
+    class="rounded bg-blue-500 px-2 py-1 text-base text-white hover:bg-blue-600"
     on:click={submit}>Create</button
   >
 </div>
