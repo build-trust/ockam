@@ -18,15 +18,7 @@ impl NodeManagerWorker {
     ) -> Result<Response, Response<Error>> {
         let request: AddConsumer = dec.decode()?;
 
-        let mut route = match local_multiaddr_to_route(request.address()) {
-            None => {
-                return Err(Response::bad_request(
-                    req,
-                    &format!("Invalid address: {}", request.address()),
-                ));
-            }
-            Some(r) => r,
-        };
+        let mut route = local_multiaddr_to_route(request.address())?;
 
         let addr = match route.step() {
             Ok(a) => a,

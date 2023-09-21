@@ -140,7 +140,11 @@ where
 }
 
 /// Public so `ockam_command::node::create` can use it.
-pub async fn start_hop_service(ctx: &Context, node: &BackgroundNode, serv_addr: &str) -> Result<()> {
+pub async fn start_hop_service(
+    ctx: &Context,
+    node: &BackgroundNode,
+    serv_addr: &str,
+) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
     start_service_impl(ctx, node, "Hop", req).await
 }

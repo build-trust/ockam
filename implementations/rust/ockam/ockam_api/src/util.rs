@@ -2,6 +2,7 @@ use miette::miette;
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 use ockam::TcpTransport;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
 use ockam_multiaddr::proto::{
@@ -13,37 +14,64 @@ use ockam_transport_tcp::{TcpConnection, TcpConnectionOptions, TCP};
 use crate::error::ApiError;
 
 /// Try to convert a multi-address to an Ockam route.
-pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
+pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
     let mut rb = Route::new();
     for p in ma.iter() {
         match p.code() {
             // Only hops that are directly translated to existing workers are allowed here
             Worker::CODE => {
-                let local = p.cast::<Worker>()?;
+                let local = p.cast::<Worker>().ok_or(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    format!("incorrect worker address {ma})",),
+                ))?;
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
             Service::CODE => {
-                let local = p.cast::<Service>()?;
+                let local = p.cast::<Service>().ok_or(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    format!("incorrect service address {ma})",),
+                ))?;
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
             Secure::CODE => {
-                let local = p.cast::<Secure>()?;
+                let local = p.cast::<Secure>().ok_or(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    format!("incorrect secure address {ma})",),
+                ))?;
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
 
-            // If your code crashes here then the front-end CLI isn't
-            // properly calling `clean_multiaddr` before passing it to
-            // the backend
-            Node::CODE => unreachable!(),
-            Ip4::CODE | Ip6::CODE | DnsAddr::CODE => unreachable!(),
+            Node::CODE => {
+                return Err(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    "unexpected code: node. clean_multiaddr should have been called",
+                ))
+            }
+
+            code @ (Ip4::CODE | Ip6::CODE | DnsAddr::CODE) => {
+                return Err(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    format!("unexpected code: {code}. The address must be a local address {ma}"),
+                ))
+            }
 
             other => {
                 error!(target: "ockam_api", code = %other, "unsupported protocol");
-                return None;
+                return Err(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    format!("unsupported protocol {other}"),
+                ));
             }
         }
     }
-    Some(rb.into())
+
+    Ok(rb.into())
 }
 
 pub struct MultiAddrToRouteResult {
