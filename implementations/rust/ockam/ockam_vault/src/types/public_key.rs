@@ -1,8 +1,6 @@
 use core::fmt;
 
 use minicbor::{Decode, Encode};
-use ockam_core::compat::string::String;
-use ockam_node::ToStringKey;
 use p256::elliptic_curve::subtle;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -28,13 +26,6 @@ impl PartialEq for PublicKey {
     fn eq(&self, o: &Self) -> bool {
         let choice = subtle::ConstantTimeEq::ct_eq(&self.data[..], &o.data[..]);
         choice.into() && self.stype == o.stype
-    }
-}
-
-/// Instance of ToStringKey to be able to use a PublicKey as a key in a FileKeyValueStorage
-impl ToStringKey for PublicKey {
-    fn to_string_key(&self) -> String {
-        hex::encode(self.data())
     }
 }
 

@@ -12,6 +12,10 @@ use crate::{FileValueStorage, InMemoryKeyValueStorage, KeyValueStorage, ValueSto
 /// Key value storage backed by a file
 /// An additional cache in used to access values in memory and avoid re-reading the file too
 /// frequently
+/// WARNING: This implementation provides limited consistency if the same file is reused from
+/// multiple instances and/or processes. For example, if one process deletes a value, the other
+/// process will still have it in its cache and return it on a Get query.
+/// NOTE: Currently, unused
 pub struct FileKeyValueStorage<K, V> {
     file_storage: FileValueStorage<BTreeMap<String, V>>,
     cache: InMemoryKeyValueStorage<K, V>,
@@ -85,17 +89,14 @@ impl<
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use tempfile::NamedTempFile;
 
-    use ockam_core::compat::rand::{thread_rng, RngCore};
     use ockam_core::Result;
-    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_file_key_value_storage() -> Result<()> {
-        let storage: FileKeyValueStorage<Key, Value> =
-            FileKeyValueStorage::create(create_temp_file().as_path())
-                .await
-                .unwrap();
+        let file = NamedTempFile::new().unwrap();
+        let storage = FileKeyValueStorage::<Key, Value>::create(file.path()).await?;
 
         // persist a new value
         storage.put(Key::new(1, 2), Value(10)).await.unwrap();
@@ -108,15 +109,6 @@ pub(crate) mod tests {
         assert_eq!(updated, Some(Value(10)));
 
         Ok(())
-    }
-
-    pub fn create_temp_file() -> PathBuf {
-        let dir = std::env::temp_dir();
-        let mut rng = thread_rng();
-        let mut bytes = [0u8; 32];
-        rng.fill_bytes(&mut bytes);
-        let file_name = hex::encode(bytes);
-        dir.join(file_name)
     }
 
     #[derive(Serialize, Deserialize, Default, PartialEq, Eq, Clone, Debug, PartialOrd, Ord)]

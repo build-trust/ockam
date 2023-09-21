@@ -40,8 +40,8 @@ impl<V: Default + Serialize + for<'de> Deserialize<'de>> FileValueStorage<V> {
 
     /// Create the file storage but don't initialize it
     fn new(path: &Path) -> Self {
-        let temp_path = Self::path_with_suffix(path, ".tmp");
-        let lock_path = Self::path_with_suffix(path, ".lock");
+        let temp_path = Self::path_with_suffix(path, "tmp");
+        let lock_path = Self::path_with_suffix(path, "lock");
         Self {
             path: path.into(),
             temp_path: temp_path.into(),
@@ -61,7 +61,19 @@ impl<V: Default + Serialize + for<'de> Deserialize<'de>> FileValueStorage<V> {
         lock_file
             .lock_exclusive()
             .map_err(|e| map_io_err(&self.lock_path, e))?;
-        if !self.path.exists() {
+
+        let should_flush_default = if self.path.exists() {
+            let metadata = self
+                .path
+                .metadata()
+                .map_err(|e| map_io_err(&self.path, e))?;
+
+            metadata.len() == 0
+        } else {
+            true
+        };
+
+        if should_flush_default {
             let empty = V::default();
             Self::flush_to_file(&self.path, &self.temp_path, &empty)?;
         }
@@ -114,7 +126,7 @@ impl<V> FileValueStorage<V> {
     fn path_with_suffix(path: &Path, suffix: &str) -> PathBuf {
         match path.extension() {
             None => path.with_extension(suffix),
-            Some(e) => path.with_extension(format!("{}{}", e.to_str().unwrap(), suffix)),
+            Some(e) => path.with_extension(format!("{}.{}", e.to_str().unwrap(), suffix)),
         }
     }
 
@@ -219,15 +231,35 @@ impl From<ValueStorageError> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::file_key_value_storage::tests::create_temp_file;
+    use ockam_core::compat::rand::{thread_rng, Rng};
     use ockam_core::Result;
+    use tempfile::NamedTempFile;
+
+    #[tokio::test]
+    async fn test_empty_file() -> Result<()> {
+        let path = NamedTempFile::new().unwrap();
+
+        let storage = FileValueStorage::<Value>::create(path.path())
+            .await
+            .unwrap();
+
+        storage.update_value(Ok).await?;
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_file_value_storage() -> Result<()> {
-        let storage: FileValueStorage<Value> =
-            FileValueStorage::create(create_temp_file().as_path())
-                .await
-                .unwrap();
+        let file_name = hex::encode(thread_rng().gen::<[u8; 8]>());
+
+        let path = tempfile::tempdir()
+            .unwrap()
+            .into_path()
+            .with_file_name(file_name);
+
+        let storage = FileValueStorage::<Value>::create(path.as_path())
+            .await
+            .unwrap();
 
         let initial = storage.read_value(Ok).await?;
 

@@ -1,6 +1,5 @@
-use crate::{constants, KeyId, Secret, SecretAttributes, SecretType, StoredSecret};
+use crate::{KeyId, Secret, SecretAttributes, StoredSecret};
 
-use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Result};
@@ -12,16 +11,19 @@ use std::path::Path;
 /// Storage for a Vault data backed by a file
 /// The `FileValueStorage` implementation takes care of locking / unlocking the underlying file
 /// in the presence of concurrent accesses
+/// WARNING: This implementation provides limited consistency if the same file is reused from
+/// multiple instances and/or processes. For example, if one process deletes a value, the other
+/// process will still have it in its cache and return it on a Get query.
 pub struct PersistentStorage {
     storage: Arc<FileValueStorage<StoredSecrets>>,
-    cache: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
+    cache: InMemoryKeyValueStorage<KeyId, StoredSecret>,
 }
 
 impl PersistentStorage {
     /// Create a new file storage for a Vault
     pub async fn create(path: &Path) -> Result<Arc<dyn KeyValueStorage<KeyId, StoredSecret>>> {
         let storage = Arc::new(FileValueStorage::create(path).await?);
-        let cache = InMemoryKeyValueStorage::create();
+        let cache = InMemoryKeyValueStorage::new();
         Ok(Arc::new(PersistentStorage { storage, cache }))
     }
 }
@@ -83,84 +85,15 @@ impl<'de> Deserialize<'de> for StoredSecrets {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
-        enum OptionalSecret {
-            Key(Secret),
-            Aws(KeyId),
-        }
-
-        #[derive(Deserialize)]
-        enum SecretPersistence {
-            Ephemeral,
-            Persistent,
-        }
-
-        #[derive(Deserialize)]
-        struct SecretAttributesV1 {
-            stype: SecretType,
-            #[allow(dead_code)]
-            persistence: SecretPersistence,
-            length: u32,
-        }
-
-        #[derive(Deserialize)]
-        struct LegacyVaultEntry {
-            key_id: Option<String>,
-            key_attributes: SecretAttributesV1,
-            key: OptionalSecret,
-        }
-
-        #[derive(Deserialize)]
-        #[serde(tag = "version")]
-        #[non_exhaustive]
-        enum StoredSecretsV1 {
-            V1 {
-                entries: Vec<(usize, LegacyVaultEntry)>,
-                next_id: usize,
-            },
-        }
-
-        #[derive(Deserialize)]
         struct StoredSecretsV2(FileSecrets);
 
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum Secrets {
-            V1(StoredSecretsV1),
             V2(StoredSecretsV2),
         }
-        match Secrets::deserialize(deserializer) {
-            Ok(Secrets::V1(StoredSecretsV1::V1 {
-                entries,
-                next_id: _next_id,
-            })) => {
-                let mut secrets: BTreeMap<KeyId, StoredSecret> = Default::default();
-                for (_, entry) in entries {
-                    if let (Some(key_id), OptionalSecret::Key(s)) = (entry.key_id, entry.key) {
-                        // in principle there should be no elements with no key ids
-                        // and we can skip aws key ids which we don't need to store
 
-                        let attributes = match entry.key_attributes.stype {
-                            SecretType::Buffer => {
-                                SecretAttributes::Buffer(entry.key_attributes.length)
-                            }
-                            SecretType::Aes => {
-                                if entry.key_attributes.length
-                                    == constants::AES128_SECRET_LENGTH_U32
-                                {
-                                    SecretAttributes::Aes128
-                                } else {
-                                    SecretAttributes::Aes256
-                                }
-                            }
-                            SecretType::X25519 => SecretAttributes::X25519,
-                            SecretType::Ed25519 => SecretAttributes::Ed25519,
-                            SecretType::NistP256 => SecretAttributes::NistP256,
-                        };
-                        secrets.insert(key_id, StoredSecret::new(s, attributes));
-                    };
-                }
-                Ok(StoredSecrets { secrets })
-            }
+        match Secrets::deserialize(deserializer) {
             Ok(Secrets::V2(StoredSecretsV2(file_secrets))) => {
                 let mut secrets: BTreeMap<KeyId, StoredSecret> = Default::default();
                 for secret in file_secrets.0 {
@@ -222,16 +155,14 @@ impl KeyValueStorage<KeyId, StoredSecret> for PersistentStorage {
 pub(crate) mod tests {
     use super::*;
     use crate::Secret;
-    use ockam_core::compat::rand::RngCore;
-    use rand::thread_rng;
     use std::fs::File;
     use std::io::Read;
-    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_persistent_storage() -> Result<()> {
-        let temp_file = create_temp_file();
-        let storage = PersistentStorage::create(&temp_file).await?;
+        let temp_file = NamedTempFile::new().unwrap();
+        let storage = PersistentStorage::create(temp_file.path()).await?;
 
         // create and retrieve a persistent secret
         let secret = Secret::new(vec![1; 32]);
@@ -240,7 +171,7 @@ pub(crate) mod tests {
         let stored_secret = StoredSecret::new(secret.clone(), attributes);
         storage.put(key_id.clone(), stored_secret.clone()).await?;
 
-        let mut file = File::open(temp_file).expect("Unable to open file");
+        let mut file = File::open(temp_file.as_ref()).expect("Unable to open file");
         let mut file_contents = String::new();
         file.read_to_string(&mut file_contents)
             .expect("Unable to read file");
@@ -254,42 +185,5 @@ pub(crate) mod tests {
         let actual = storage.get(&key_id).await?;
         assert_eq!(actual, Some(stored_secret));
         Ok(())
-    }
-
-    /// This test check that it is still possible to read the legacy vault file format
-    /// AWS key ids are skipped since we don't need to persist them
-    #[test]
-    fn test_parse_legacy_file_storage() {
-        let json = r#"{
-           "version":"V1",
-           "entries":[
-             [0,{"key_id":"12356789","key_attributes":{"stype":"Ed25519","persistence":"Persistent","length":32},"key":{"Key":"010203"}}],
-             [1,{"key_id":"aws-key","key_attributes":{"stype":"Ed25519","persistence":"Persistent","length":32},"key":{"Aws":"aws-key"}}]
-           ],
-           "next_id":0
-        }"#;
-
-        let stored_secrets: StoredSecrets = serde_json::from_str(json).unwrap();
-
-        assert_eq!(1, stored_secrets.secrets.len());
-        let (key_id, stored_secret) = stored_secrets.secrets.first_key_value().unwrap();
-
-        assert_eq!(key_id, "12356789");
-        assert_eq!(
-            stored_secret.attributes().secret_type(),
-            SecretType::Ed25519
-        );
-        assert_eq!(stored_secret.attributes().length(), 32);
-        let secret_key = Secret::new(vec![1, 2, 3]);
-        assert_eq!(stored_secret.secret(), &secret_key);
-    }
-
-    pub fn create_temp_file() -> PathBuf {
-        let dir = std::env::temp_dir();
-        let mut rng = thread_rng();
-        let mut bytes = [0u8; 32];
-        rng.fill_bytes(&mut bytes);
-        let file_name = hex::encode(bytes);
-        dir.join(file_name)
     }
 }
