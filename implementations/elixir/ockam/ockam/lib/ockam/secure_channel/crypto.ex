@@ -3,10 +3,13 @@ defmodule Ockam.SecureChannel.Crypto do
     Crypto functions used in secure channel
   """
 
+  @type keypair :: %{private: binary(), public: binary()}
+
   def sha256(value) do
     :crypto.hash(:sha256, value)
   end
 
+  @spec generate_dh_keypair() :: {:ok, keypair()}
   def generate_dh_keypair() do
     {pub_key, secret_key} = :crypto.generate_key(:eddh, :x25519)
     {:ok, %{private: secret_key, public: pub_key}}
