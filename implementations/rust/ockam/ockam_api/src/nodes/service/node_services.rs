@@ -2,19 +2,17 @@ use std::net::IpAddr;
 
 use minicbor::Decoder;
 
-use ockam::identity::{identities, AuthorityService, CredentialsIssuer, TrustContext};
+use ockam::identity::{identities, AuthorityService, TrustContext};
 use ockam::{Address, Context, Result};
-use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
+use ockam_abac::expr::{eq, ident, str};
+use ockam_abac::Resource;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{route, IncomingAccessControl};
+use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 
 use crate::auth::Server;
-use crate::authenticator::direct::EnrollmentTokenAuthenticator;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
@@ -26,13 +24,12 @@ use crate::kafka::{OutletManagerService, PrefixForwarderService};
 use crate::nodes::models::portal::CreateInlet;
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
-    StartAuthenticatorRequest, StartCredentialsService, StartEchoerServiceRequest,
-    StartHopServiceRequest, StartKafkaConsumerRequest, StartKafkaDirectRequest,
-    StartKafkaOutletRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
-    StartServiceRequest, StartUppercaseServiceRequest,
+    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
+    StartKafkaConsumerRequest, StartKafkaDirectRequest, StartKafkaOutletRequest,
+    StartKafkaProducerRequest, StartServiceRequest, StartUppercaseServiceRequest,
 };
 use crate::nodes::registry::{
-    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
+    CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -155,195 +152,6 @@ impl NodeManager {
 
         Ok(())
     }
-
-    async fn build_access_control(
-        &self,
-        r: &Resource,
-        a: &Action,
-        project_id: &str,
-        default: &Expr,
-    ) -> Result<Arc<dyn IncomingAccessControl>> {
-        // Populate environment with known attributes:
-        let mut env = Env::new();
-        env.put("resource.id", str(r.as_str()));
-        env.put("action.id", str(a.as_str()));
-        env.put("resource.trust_context_id", str(project_id));
-        // Check if a policy exists for (resource, action) and if not, then
-        // create a default entry:
-        if self.policies.get_policy(r, a).await?.is_none() {
-            self.policies.set_policy(r, a, default).await?
-        }
-        Ok(Arc::new(PolicyAccessControl::new(
-            self.policies.clone(),
-            self.identities_repository(),
-            r.clone(),
-            a.clone(),
-            env,
-        )))
-    }
-
-    pub(super) async fn start_credential_issuer_service_impl(
-        &mut self,
-        ctx: &Context,
-        addr: Address,
-        project: String,
-    ) -> Result<()> {
-        if self.registry.authenticator_service.contains_key(&addr) {
-            return Err(ApiError::core("Credential issuer service already started"));
-        }
-        let action = actions::HANDLE_MESSAGE;
-        let resource = Resource::new(&addr.to_string());
-        let rule = eq([
-            ident("resource.trust_context_id"),
-            ident("subject.trust_context_id"),
-        ]);
-        let abac = self
-            .build_access_control(&resource, &action, project.as_str(), &rule)
-            .await?;
-        let issuer = CredentialsIssuer::new(
-            self.identities().repository(),
-            self.identities().credentials(),
-            &self.identifier,
-            project,
-        );
-        WorkerBuilder::new(issuer)
-            .with_address(addr.clone())
-            .with_incoming_access_control_arc(abac)
-            .start(ctx)
-            .await?;
-        self.registry
-            .authenticator_service
-            .insert(addr, AuthenticatorServiceInfo::default());
-        Ok(())
-    }
-
-    #[cfg(feature = "direct-authenticator")]
-    pub(super) async fn start_direct_authenticator_service_impl(
-        &mut self,
-        ctx: &Context,
-        addr: Address,
-        project: String,
-    ) -> Result<()> {
-        if self.registry.authenticator_service.contains_key(&addr) {
-            return Err(ApiError::core(
-                "Direct Authenticator  service already started",
-            ));
-        }
-        let action = actions::HANDLE_MESSAGE;
-        let resource = Resource::new(&addr.to_string());
-
-        let abac = self
-            .access_control(&resource, &action, Some(project.as_str()), None)
-            .await?;
-
-        let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            project.clone(),
-            self.attributes_writer(),
-            self.attributes_reader(),
-        )
-        .await?;
-
-        WorkerBuilder::new(direct)
-            .with_address(addr.clone())
-            .with_incoming_access_control_arc(abac)
-            .start(ctx)
-            .await?;
-
-        self.registry
-            .authenticator_service
-            .insert(addr, AuthenticatorServiceInfo::default());
-
-        // TODO: remove this once compatibility with old clients is not required anymore
-        let legacy_api = crate::authenticator::direct::LegacyApiConverter::new();
-        ctx.start_worker("authenticator", legacy_api).await?;
-
-        Ok(())
-    }
-
-    pub(super) async fn start_enrollment_token_authenticator_pair(
-        &mut self,
-        ctx: &Context,
-        issuer_addr: Address,
-        acceptor_addr: Address,
-        project: String,
-    ) -> Result<()> {
-        if self
-            .registry
-            .authenticator_service
-            .contains_key(&issuer_addr)
-            || self
-                .registry
-                .authenticator_service
-                .contains_key(&acceptor_addr)
-        {
-            return Err(ApiError::core(
-                "Enrollment token Authenticator service already started",
-            ));
-        }
-        let action = actions::HANDLE_MESSAGE;
-        let resource = Resource::new(&issuer_addr.to_string());
-        let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
-            project.clone(),
-            self.attributes_writer(),
-        );
-        let rule = and([
-            eq([
-                ident("resource.trust_context_id"),
-                ident("subject.trust_context_id"),
-            ]),
-            eq([ident("subject.ockam-role"), str("enroller")]),
-        ]);
-        let abac = self
-            .build_access_control(&resource, &action, project.as_str(), &rule)
-            .await?;
-        WorkerBuilder::new(issuer)
-            .with_address(issuer_addr.clone())
-            .with_incoming_access_control_arc(abac)
-            .start(ctx)
-            .await?;
-        ctx.start_worker(acceptor_addr.clone(), acceptor).await?;
-
-        self.registry
-            .authenticator_service
-            .insert(issuer_addr, AuthenticatorServiceInfo::default());
-        self.registry
-            .authenticator_service
-            .insert(acceptor_addr, AuthenticatorServiceInfo::default());
-        Ok(())
-    }
-
-    pub(super) async fn start_okta_identity_provider_service_impl(
-        &mut self,
-        ctx: &Context,
-        addr: Address,
-        tenant_base_url: &str,
-        certificate: &str,
-        attributes: &[String],
-        project: &str,
-    ) -> Result<()> {
-        use crate::nodes::registry::OktaIdentityProviderServiceInfo;
-        if self
-            .registry
-            .okta_identity_provider_services
-            .contains_key(&addr)
-        {
-            return Err(ApiError::core(
-                "Okta Identity Provider service already started",
-            ));
-        }
-        let au = crate::okta::Server::new(
-            self.attributes_writer(),
-            project.to_string(),
-            tenant_base_url,
-            certificate,
-            attributes,
-        )?;
-        ctx.start_worker(addr.clone(), au).await?;
-        self.registry
-            .okta_identity_provider_services
-            .insert(addr, OktaIdentityProviderServiceInfo::default());
-        Ok(())
-    }
 }
 
 impl NodeManagerWorker {
@@ -401,71 +209,6 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
-    //TODO: split this into the different services it really starts
-    pub(super) async fn start_authenticator_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-        #[cfg(not(feature = "direct-authenticator"))]
-        return Err(ApiError::core("Direct authenticator not available"));
-
-        #[cfg(feature = "direct-authenticator")]
-        {
-            let body: StartAuthenticatorRequest = dec.decode()?;
-            let addr: Address = body.address().into();
-            let project = std::str::from_utf8(body.project()).unwrap();
-
-            node_manager
-                .start_direct_authenticator_service_impl(ctx, addr, project.to_string())
-                .await?;
-
-            node_manager
-                .start_credential_issuer_service_impl(
-                    ctx,
-                    DefaultAddress::CREDENTIAL_ISSUER.into(),
-                    project.to_string(),
-                )
-                .await?;
-            node_manager
-                .start_enrollment_token_authenticator_pair(
-                    ctx,
-                    DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into(),
-                    DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into(),
-                    project.to_string(),
-                )
-                .await?;
-        }
-
-        Ok(Response::ok(req.id()))
-    }
-
-    pub(super) async fn start_okta_identity_provider_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder, ResponseBuilder<Error>> {
-        let mut node_manager = self.node_manager.write().await;
-        let body: StartOktaIdentityProviderRequest = dec.decode()?;
-        let addr: Address = body.address().into();
-        let project = std::str::from_utf8(body.project()).unwrap();
-
-        node_manager
-            .start_okta_identity_provider_service_impl(
-                ctx,
-                addr,
-                body.tenant_base_url(),
-                body.certificate(),
-                body.attributes(),
-                project,
-            )
-            .await?;
-        Ok(Response::ok(req.id()))
-    }
-
     pub(super) async fn start_credentials_service(
         &mut self,
         ctx: &Context,
@@ -500,7 +243,6 @@ impl NodeManagerWorker {
 
         Ok(Response::ok(req.id()))
     }
-
     pub(super) async fn start_kafka_outlet_service(
         &mut self,
         context: &Context,
@@ -961,12 +703,6 @@ impl NodeManagerWorker {
                 },
             ))
         });
-
-        #[cfg(feature = "direct-authenticator")]
-        registry
-            .authenticator_service
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "Authority")));
 
         list
     }

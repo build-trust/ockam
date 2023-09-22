@@ -40,7 +40,7 @@ hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde
 log = { version = "0.4.20", optional = true }
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 ockam = { path = "../ockam", version = "^0.94.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.37.0", features = ["std", "authenticators"] }
+ockam_api = { path = "../ockam_api", version = "0.37.0", features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.85.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.28.0", features = ["cbor", "serde"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.88.0" }

@@ -29,7 +29,7 @@ const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 ///
 /// - `project_id` : bytes
 /// - `role`: b"member"
-pub const LEGACY_MEMBER: &str = "member";
+pub const LEGACY_MEMBER: &str = "member"; // fixme
 
 // This acts as a facade, modifying and forwarding incoming messages from legacy clients
 // to the new endpoints.   It's going to be removed once we don't need to maintain compatibility

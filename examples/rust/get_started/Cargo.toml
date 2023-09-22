@@ -18,7 +18,6 @@ std = [
   "serde_json/default",
   "ockam_multiaddr/std",
   "ockam_api/std",
-  "ockam_api/authenticators",
 ]
 
 # Feature: "no_std" enables functionality required for platforms

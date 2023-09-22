@@ -78,7 +78,7 @@ minicbor = { version = "0.19.0", features = ["derive", "alloc", "half"] }
 nix = "0.27"
 ockam = { path = "../ockam", version = "^0.94.0", features = ["software_vault"] }
 ockam_abac = { path = "../ockam_abac", version = "0.28.0", features = ["std"] }
-ockam_api = { path = "../ockam_api", version = "0.37.0", features = ["std", "authenticators"] }
+ockam_api = { path = "../ockam_api", version = "0.37.0", features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.85.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.28.0", features = ["std"] }
 ockam_node = { path = "../ockam_node", version = "^0.90.0" }
@@ -115,7 +115,6 @@ which = "4.4.0"
 
 [dev-dependencies]
 assert_cmd = "2"
-ockam_api = { path = "../ockam_api", version = "0.37.0", features = ["std", "authenticators"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.31.0" }
 proptest = "1.2.0"
 tempfile = "3.8.0"
