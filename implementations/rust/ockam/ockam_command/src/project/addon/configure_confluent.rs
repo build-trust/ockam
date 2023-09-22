@@ -4,8 +4,8 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::cloud::addon::{Addons, ConfluentConfig};
+use ockam_api::nodes::InMemoryNode;
 
-use crate::node::util::InMemoryNode;
 use crate::project::addon::{check_configuration_completion, get_project_id};
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -57,7 +57,7 @@ async fn run_impl(
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
     let config = ConfluentConfig::new(bootstrap_server);
 
-    let node = InMemoryNode::create(&ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
 
     let response = node
         .configure_confluent_addon(&ctx, project_id.clone(), config)

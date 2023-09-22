@@ -4,8 +4,8 @@ use rand::prelude::random;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
+use ockam_api::nodes::InMemoryNode;
 
-use crate::node::util::InMemoryNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
@@ -51,7 +51,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
 
     let project = node
         .create_project(ctx, space_id, cmd.project_name, vec![])

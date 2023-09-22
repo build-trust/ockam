@@ -7,8 +7,8 @@ use tracing::debug;
 
 use ockam::Context;
 use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
+use ockam_api::nodes::InMemoryNode;
 
-use crate::node::util::InMemoryNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -48,7 +48,7 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
 
     let get_sent_invitation = async {
         let invitation = node

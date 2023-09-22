@@ -3,12 +3,12 @@ use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use rand::prelude::random;
 
-use crate::node::util::InMemoryNode;
 use crate::util::api::{self};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
+use ockam_api::nodes::InMemoryNode;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -53,7 +53,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
     let space = node.create_space(ctx, cmd.name, cmd.admins).await?;
 
     opts.println(&space)?;

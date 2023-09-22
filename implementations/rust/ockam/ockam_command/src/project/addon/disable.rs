@@ -4,8 +4,8 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
+use ockam_api::nodes::InMemoryNode;
 
-use crate::node::util::InMemoryNode;
 use crate::operation::util::check_for_completion;
 use crate::project::addon::get_project_id;
 use crate::util::node_rpc;
@@ -48,7 +48,7 @@ async fn run_impl(
         addon_id,
     } = cmd;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
-    let node = InMemoryNode::create(&ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
 
     let response = node.disable_addon(&ctx, project_id, addon_id).await?;
     let operation_id = response.operation_id;

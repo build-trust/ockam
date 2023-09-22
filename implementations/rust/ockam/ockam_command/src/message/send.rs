@@ -5,13 +5,13 @@ use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::service::message::SendMessage;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::service::message::{MessageSender, SendMessage};
+use ockam_api::nodes::{BackgroundNode, InMemoryNode};
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::InMemoryNode;
+
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -87,8 +87,15 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
-            let node =
-                InMemoryNode::create(ctx, &opts.state, Some(&cmd.trust_context_opts)).await?;
+            let trust_context_config = cmd.trust_context_opts.to_config(&opts.state)?.build();
+            let node = InMemoryNode::create(
+                ctx,
+                &opts.state,
+                cmd.trust_context_opts.project_path.as_ref(),
+                trust_context_config,
+            )
+            .await?;
+
             let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
@@ -100,8 +107,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
-            node.node_manager
-                .send_message(ctx, &to, msg_bytes)
+            node.send_message(ctx, &to, msg_bytes)
                 .await
                 .into_diagnostic()?
         };

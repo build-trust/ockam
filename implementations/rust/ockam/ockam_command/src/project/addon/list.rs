@@ -3,8 +3,8 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
+use ockam_api::nodes::InMemoryNode;
 
-use crate::node::util::InMemoryNode;
 use crate::project::addon::get_project_id;
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
@@ -35,7 +35,7 @@ async fn run_impl(
     let project_name = cmd.project_name;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
-    let node = InMemoryNode::create(&ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
 
     let addons = node.list_addons(&ctx, project_id).await?;
     opts.println(&addons)?;
