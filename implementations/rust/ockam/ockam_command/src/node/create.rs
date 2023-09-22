@@ -29,7 +29,7 @@ use ockam_api::{
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::{route, LOCAL};
 
-use crate::node::util::spawn_node;
+use crate::node::util::{spawn_node, NodeManagerDefaults};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::terminal::OckamColor;
@@ -111,10 +111,11 @@ pub struct CreateCommand {
 
 impl Default for CreateCommand {
     fn default() -> Self {
+        let node_manager_defaults = NodeManagerDefaults::default();
         Self {
-            node_name: hex::encode(random::<[u8; 4]>()),
+            node_name: node_manager_defaults.node_name,
             exit_on_eof: false,
-            tcp_listener_address: "127.0.0.1:0".to_string(),
+            tcp_listener_address: node_manager_defaults.tcp_listener_address,
             foreground: false,
             child_process: false,
             launch_config: None,
@@ -125,7 +126,7 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
-            trust_context_opts: TrustContextOpts::default(),
+            trust_context_opts: node_manager_defaults.trust_context_opts,
         }
     }
 }

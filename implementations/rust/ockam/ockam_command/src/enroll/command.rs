@@ -16,10 +16,10 @@ use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::Controller;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
-use crate::node::util::InMemoryNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
@@ -80,7 +80,7 @@ async fn run_impl(
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
-    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
 
     enroll_with_node(&node, ctx, token)
         .await

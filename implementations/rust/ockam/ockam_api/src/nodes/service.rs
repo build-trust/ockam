@@ -60,6 +60,7 @@ pub(crate) mod background_node;
 pub(crate) mod credentials;
 mod flow_controls;
 mod forwarder;
+pub(crate) mod in_memory_node;
 pub mod message;
 mod node_identities;
 mod node_services;

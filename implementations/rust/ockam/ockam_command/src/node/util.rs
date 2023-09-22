@@ -1,30 +1,41 @@
 use std::env::current_exe;
 use std::fs::OpenOptions;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use rand::random;
 
-use ockam::identity::{Identifier, SecureClient};
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait,
 };
-use ockam_api::cloud::{AuthorityNode, Controller, ProjectNode};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
     SupervisedNodeManager,
 };
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::env::get_env_with_default;
-use ockam_multiaddr::MultiAddr;
 
-use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
 use crate::{CommandGlobalOpts, Result};
+
+pub struct NodeManagerDefaults {
+    pub node_name: String,
+    pub tcp_listener_address: String,
+    pub trust_context_opts: TrustContextOpts,
+}
+
+impl Default for NodeManagerDefaults {
+    fn default() -> Self {
+        Self {
+            node_name: hex::encode(random::<[u8; 4]>()),
+            tcp_listener_address: "127.0.0.1:0".to_string(),
+            trust_context_opts: TrustContextOpts::default(),
+        }
+    }
+}
 
 pub async fn start_node_manager(
     ctx: &Context,
@@ -41,23 +52,24 @@ pub async fn start_node_manager_with_vault_and_identity(
     identity: Option<String>,
     trust_opts: Option<&TrustContextOpts>,
 ) -> Result<SupervisedNodeManager> {
-    let cmd = CreateCommand::default();
+    let defaults = NodeManagerDefaults::default();
 
     init_node_state(
         cli_state,
-        &cmd.node_name,
+        &defaults.node_name,
         vault.as_deref(),
         identity.as_deref(),
     )
     .await?;
 
     if let Some(p) = trust_opts {
-        add_project_info_to_node_state(&cmd.node_name, cli_state, p.project_path.as_ref()).await?;
+        add_project_info_to_node_state(&defaults.node_name, cli_state, p.project_path.as_ref())
+            .await?;
     } else {
         add_project_info_to_node_state(
-            &cmd.node_name,
+            &defaults.node_name,
             cli_state,
-            cmd.trust_context_opts.project_path.as_ref(),
+            defaults.trust_context_opts.project_path.as_ref(),
         )
         .await?;
     };
@@ -68,19 +80,14 @@ pub async fn start_node_manager_with_vault_and_identity(
     };
 
     let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-    let bind = cmd.tcp_listener_address;
+    let bind = defaults.tcp_listener_address;
 
     let options = TcpListenerOptions::new();
     let listener = tcp.listen(&bind, options).await?;
 
     let node_manager = SupervisedNodeManager::create(
         ctx,
-        NodeManagerGeneralOptions::new(
-            cli_state.clone(),
-            cmd.node_name.clone(),
-            cmd.launch_config.is_some(),
-            None,
-        ),
+        NodeManagerGeneralOptions::new(cli_state.clone(), defaults.node_name.clone(), false, None),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
@@ -258,111 +265,4 @@ pub fn run_ockam(
     node_state.set_pid(child.id() as i32)?;
 
     Ok(())
-}
-
-/// This struct represents a node that lives within the current process
-pub struct InMemoryNode {
-    pub(crate) node_manager: SupervisedNodeManager,
-    controller: Arc<Controller>,
-    cli_state: CliState,
-}
-
-impl InMemoryNode {
-    pub async fn create(
-        ctx: &Context,
-        cli_state: &CliState,
-        trust_opts: Option<&TrustContextOpts>,
-    ) -> miette::Result<InMemoryNode> {
-        let node_manager = start_node_manager(ctx, cli_state, trust_opts).await?;
-        let controller = node_manager
-            .make_controller_node_client()
-            .await
-            .into_diagnostic()?;
-        Ok(Self {
-            node_manager,
-            controller: Arc::new(controller),
-            cli_state: cli_state.clone(),
-        })
-    }
-
-    pub async fn make_project_node_client(
-        &self,
-        project_identifier: &Identifier,
-        project_address: &MultiAddr,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<ProjectNode> {
-        self.node_manager
-            .make_project_node_client(
-                project_identifier,
-                project_address,
-                &self
-                    .node_manager
-                    .get_identifier(caller_identity_name)
-                    .await
-                    .into_diagnostic()?,
-            )
-            .await
-            .into_diagnostic()
-    }
-
-    pub async fn make_authority_node_client(
-        &self,
-        authority_identifier: &Identifier,
-        authority_address: &MultiAddr,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<AuthorityNode> {
-        self.node_manager
-            .make_authority_node_client(
-                authority_identifier,
-                authority_address,
-                &self
-                    .node_manager
-                    .get_identifier(caller_identity_name)
-                    .await
-                    .into_diagnostic()?,
-            )
-            .await
-            .into_diagnostic()
-    }
-
-    pub async fn make_secure_client(
-        &self,
-        identifier: &Identifier,
-        address: &MultiAddr,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<SecureClient> {
-        self.node_manager
-            .make_secure_client(
-                identifier,
-                address,
-                &self
-                    .node_manager
-                    .get_identifier(caller_identity_name)
-                    .await
-                    .into_diagnostic()?,
-            )
-            .await
-            .into_diagnostic()
-    }
-
-    pub fn node_name(&self) -> String {
-        self.node_manager.node_name()
-    }
-}
-
-impl Deref for InMemoryNode {
-    type Target = Arc<Controller>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.controller
-    }
-}
-
-impl Drop for InMemoryNode {
-    fn drop(&mut self) {
-        let _ = self
-            .cli_state
-            .nodes
-            .delete_sigkill(self.node_manager.node_name().as_str(), false);
-    }
 }

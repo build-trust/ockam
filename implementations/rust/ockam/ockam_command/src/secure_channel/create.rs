@@ -9,14 +9,14 @@ use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::{BackgroundNode, InMemoryNode};
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::docs;
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::InMemoryNode;
+
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -75,7 +75,7 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         ctx: &Context,
     ) -> miette::Result<MultiAddr> {
-        let node = InMemoryNode::create(ctx, &opts.state, None).await?;
+        let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;

@@ -4,8 +4,8 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cloud::project::Projects;
+use ockam_api::nodes::InMemoryNode;
 
-use crate::node::util::InMemoryNode;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -36,7 +36,7 @@ async fn rpc(ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     // Send request
-    let node = InMemoryNode::create(ctx, &opts.state, None).await?;
+    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
     let project_version = node.get_project_version(ctx).await?;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;

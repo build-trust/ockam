@@ -12,6 +12,7 @@ use miette::Context as _;
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
 use ockam_api::cloud::project::Projects;
+use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
@@ -23,7 +24,6 @@ use crate::project::addon::list::AddonListSubcommand;
 use crate::output::Output;
 use crate::util::api::CloudOpts;
 
-use crate::node::util::InMemoryNode;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::{CommandGlobalOpts, Result};
