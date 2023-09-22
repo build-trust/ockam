@@ -4759,7 +4759,6 @@ dependencies = [
  "arboard",
  "duct",
  "hex",
- "indoc",
  "log",
  "miette",
  "ockam",

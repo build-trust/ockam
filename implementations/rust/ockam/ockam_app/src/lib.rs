@@ -20,13 +20,14 @@ use crate::app::configure_tauri_plugin_log;
 use crate::app::configure_tracing_log;
 use crate::app::{process_application_event, setup, AppState};
 use crate::cli::check_ockam_executable;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use std::process::exit;
 
 mod app;
 mod cli;
 mod enroll;
 mod error;
+pub(crate) mod icons;
 mod invitations;
 mod ockam_url;
 mod options;

@@ -13,6 +13,7 @@ use ockam_api::cloud::share::{ReceivedInvitation, SentInvitation, ServiceAccessD
 
 use super::state::SyncInvitationsState;
 use crate::app::AppState;
+use crate::icons::themed_icon;
 use crate::invitations::state::{AcceptedInvitations, Inlet};
 
 pub const INVITATIONS_WINDOW_ID: &str = "invitations_creation";
@@ -53,17 +54,17 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
     }
 
     builder = builder.item(
-        &MenuItemBuilder::new("Shared services with you")
+        &MenuItemBuilder::new("Services shared with you")
             .enabled(false)
             .build(app_handle),
     );
 
     builder = if menu_items.is_empty() {
-        builder.item(
-            &MenuItemBuilder::new("When they share a service with you they will appear here")
-                .enabled(false)
-                .build(app_handle),
+        builder.items(&[&MenuItemBuilder::new(
+            "When they share a service with you they will appear here",
         )
+        .enabled(false)
+        .build(app_handle)])
     } else {
         menu_items
             .into_iter()
@@ -132,9 +133,7 @@ fn received_invite_menu<R: Runtime>(
                 format!("invitation-received-accept-{}", invitation.id),
                 "Accept invite",
             )
-            .icon(Icon::Raw(
-                include_bytes!("../../icons/check-lg.png").to_vec(),
-            ))
+            .icon(Icon::Raw(themed_icon("check-lg")))
             .build(app_handle),
         ])
         .build()
@@ -207,15 +206,13 @@ fn accepted_invite_menu<R: Runtime>(
                         format!("invitation-accepted-copy-{socket_addr}"),
                         format!("Copy {socket_addr}"),
                     )
-                    .icon(Icon::Raw(
-                        include_bytes!("../../icons/clipboard2.png").to_vec(),
-                    ))
+                    .icon(Icon::Raw(themed_icon("clipboard2")))
                     .build(app_handle),
                     &IconMenuItemBuilder::with_id(
                         format!("invitation-accepted-disconnect-{invitation_id}"),
                         "Disconnect",
                     )
-                    .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
+                    .icon(Icon::Raw(themed_icon("power")))
                     .build(app_handle),
                 ])
             } else {
@@ -228,7 +225,7 @@ fn accepted_invite_menu<R: Runtime>(
                         format!("invitation-accepted-connect-{invitation_id}"),
                         "Connect",
                     )
-                    .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
+                    .icon(Icon::Raw(themed_icon("power")))
                     .build(app_handle),
                 ])
             }

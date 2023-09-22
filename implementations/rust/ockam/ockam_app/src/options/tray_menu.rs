@@ -3,6 +3,7 @@ use tauri::{AppHandle, Icon, Manager, Runtime, State};
 use tracing::error;
 
 use crate::app::AppState;
+use crate::icons::themed_icon;
 use crate::options::reset;
 
 const DOCS_MENU_ID: &str = "options_docs";
@@ -18,19 +19,15 @@ pub(crate) async fn build_options_section<'a, R: Runtime, M: Manager<R>>(
 
     builder = builder.items(&[
         &IconMenuItemBuilder::with_id(DOCS_MENU_ID, "Documentation")
-            .icon(Icon::Raw(
-                include_bytes!("../../icons/file-earmark-text.png").to_vec(),
-            ))
+            .icon(Icon::Raw(themed_icon("file-earmark-text")))
             .accelerator("cmd+/")
             .build(app_handle),
         &IconMenuItemBuilder::with_id(RESET_MENU_ID, "Reset")
-            .icon(Icon::Raw(
-                include_bytes!("../../icons/arrow-repeat.png").to_vec(),
-            ))
+            .icon(Icon::Raw(themed_icon("arrow-repeat")))
             .accelerator("cmd+r")
             .build(app_handle),
         &IconMenuItemBuilder::with_id(QUIT_MENU_ID, "Quit Ockam")
-            .icon(Icon::Raw(include_bytes!("../../icons/power.png").to_vec()))
+            .icon(Icon::Raw(themed_icon("power")))
             .accelerator("cmd+q")
             .build(app_handle),
     ]);
@@ -67,7 +64,7 @@ pub fn process_tray_menu_event<R: Runtime>(
 /// Event listener for the "Documentation" menu item
 /// Open the documentation in the browser
 fn on_docs() -> tauri::Result<()> {
-    let _ = open::that("https://docs.ockam.io/")
+    let _ = open::that_detached("https://docs.ockam.io/")
         .map_err(|e| error!(%e, "Failed to open the documentation in the browser"));
     Ok(())
 }

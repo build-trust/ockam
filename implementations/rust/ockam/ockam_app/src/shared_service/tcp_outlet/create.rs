@@ -6,8 +6,8 @@ use tracing::{debug, error, info};
 
 use crate::app::events::system_tray_on_update;
 use crate::app::AppState;
-use crate::error::Error;
 use crate::invitations::commands::create_service_invitation;
+use crate::Error;
 
 /// The default host to use when creating a TCP outlet if the user doesn't specify one.
 const DEFAULT_HOST: &str = "localhost";

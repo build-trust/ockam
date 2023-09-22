@@ -3,7 +3,7 @@ use tracing::{debug, error, info};
 
 use crate::app::events::system_tray_on_update;
 use crate::app::AppState;
-use crate::error::Error;
+use crate::Error;
 
 /// Delete a TCP outlet from the default node.
 #[tauri::command]

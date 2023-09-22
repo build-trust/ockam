@@ -6,6 +6,7 @@ use tracing::error;
 use crate::app::dev_tools;
 use crate::app::events::SystemTrayOnUpdatePayload;
 use crate::enroll::{build_enroll_section, build_user_info_section};
+use crate::icons::load_system_theme;
 use crate::invitations::{self, build_invitations_section};
 use crate::options::build_options_section;
 use crate::shared_service::build_shared_services_section;
@@ -16,6 +17,7 @@ pub async fn build_tray_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     payload: Option<SystemTrayOnUpdatePayload>,
 ) -> Menu<R> {
+    load_system_theme(app_handle);
     let mut builder = MenuBuilder::new(app_handle);
 
     builder = build_relay_section(app_handle, builder).await;
