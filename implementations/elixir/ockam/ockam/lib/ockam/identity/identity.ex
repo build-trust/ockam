@@ -27,7 +27,7 @@ defmodule Ockam.Identity do
   end
 
   @spec create(secret_signing_key :: binary()) ::
-          {:ok, identity :: t(), identitfier :: Identifier.t()} | {:error, reason :: any()}
+          {:ok, identity :: t()} | {:error, reason :: any()}
   def create(secret) do
     key_id = Ockly.Native.import_signing_secret(secret)
 
