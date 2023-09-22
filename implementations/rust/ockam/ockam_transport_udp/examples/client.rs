@@ -4,7 +4,7 @@ use ockam_node::Context;
 use ockam_transport_udp::{UdpTransport, UDP};
 
 #[ockam_macros::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     let _udp = UdpTransport::create(&ctx).await?;
     let r = route![(UDP, "localhost:8000"), "echoer"];
     // Wait to receive a reply and print it.
