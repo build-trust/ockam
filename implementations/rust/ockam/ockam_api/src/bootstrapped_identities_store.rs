@@ -65,19 +65,11 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
         match self.bootstrapped.get_attributes(sender).await? {
             None => self.repository.put_attributes(sender, entry).await,
             // FIXME: allow overwriting the attributes?
-            Some(_) => Ok(()),
-            /*
-                 * TODO: previous client automatically adds the project admin as a member.
-                 *       that is not needed, as the admin is part of the trusted anchors for the
-                 *       authority already.
-                 *       Remove the Ok() clause and replace by this error once we don't need to
-                 *       support the old cli version anymore.
-                    Err(ockam_core::Error::new(
+            Some(_) => Err(ockam_core::Error::new(
                 Origin::Identity,
                 Kind::AlreadyExists,
                 "cant write attributes for a bootstrapped identity",
             )),
-                */
         }
     }
 
@@ -177,6 +169,7 @@ impl PreTrustedIdentities {
     fn parse(entries: &str) -> Result<HashMap<Identifier, AttributesEntry>> {
         let raw_map = json::from_str::<HashMap<Identifier, HashMap<String, String>>>(entries)
             .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))?;
+        let now = now()?;
         Ok(raw_map
             .into_iter()
             .map(|(identity_id, raw_attrs)| {
@@ -184,10 +177,7 @@ impl PreTrustedIdentities {
                     .into_iter()
                     .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
                     .collect();
-                (
-                    identity_id,
-                    AttributesEntry::new(attrs, now().unwrap(), None, None),
-                )
+                (identity_id, AttributesEntry::new(attrs, now, None, None))
             })
             .collect())
     }
