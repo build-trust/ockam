@@ -20,7 +20,7 @@ jobs:
       run:
         working-directory: ./tools/docker/ockam
     steps:
-    - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
+    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
     - uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
       with:
         registry: ghcr.io
