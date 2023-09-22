@@ -11,13 +11,13 @@ use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::compat::str::FromStr;
 use ockam_core::route;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 
-use crate::node::util::InMemoryNode;
 use crate::{CommandGlobalOpts, Result};
 
 pub fn clean_projects_multiaddr(

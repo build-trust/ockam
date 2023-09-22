@@ -1,6 +1,6 @@
 use minicbor::Decoder;
-use ockam::identity::{AttributesEntry, secure_channel_required};
 use ockam::identity::OneTimeCode;
+use ockam::identity::{secure_channel_required, AttributesEntry};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::errcode::{Kind, Origin};
@@ -93,7 +93,6 @@ impl Worker for EnrollmentTokenIssuer {
     }
 }
 
-
 #[async_trait]
 pub trait Members {
     async fn add_member(
@@ -103,11 +102,7 @@ pub trait Members {
         attributes: HashMap<&str, &str>,
     ) -> miette::Result<()>;
 
-    async fn delete_member(
-        &self,
-        ctx: &Context,
-        identifier: Identifier,
-    ) -> miette::Result<()>;
+    async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>>;
 
@@ -134,11 +129,7 @@ impl Members for AuthorityNode {
             .into_diagnostic()
     }
 
-    async fn delete_member(
-        &self,
-        ctx: &Context,
-        identifier: Identifier,
-    ) -> miette::Result<()> {
+    async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()> {
         let req = Request::delete(format!("/{identifier}"));
         self.0
             .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)

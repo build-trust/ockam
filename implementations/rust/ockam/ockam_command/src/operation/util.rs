@@ -4,9 +4,9 @@ use tokio_retry::Retry;
 
 use ockam_api::cloud::operation::Operations;
 use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
+use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
-use crate::node::util::InMemoryNode;
 use crate::CommandGlobalOpts;
 
 pub async fn check_for_completion(

@@ -10,7 +10,7 @@ use tracing::{debug, info, trace, warn};
 use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::share::{CreateServiceInvitation, Invitations, InvitationWithAccess};
+use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 
 use crate::app::events::system_tray_on_update;
@@ -68,7 +68,9 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
     }
 
     let controller = app_state.controller().await.into_diagnostic()?;
-    let res = controller.accept_invitation(&app_state.context(), id).await?;
+    let res = controller
+        .accept_invitation(&app_state.context(), id)
+        .await?;
 
     // Update the invitation status to Accepted
     {

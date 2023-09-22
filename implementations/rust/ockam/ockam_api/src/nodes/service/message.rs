@@ -6,7 +6,7 @@ use minicbor::Decoder;
 use minicbor::{Decode, Encode};
 
 use ockam_core::api::{RequestHeader, Response};
-use ockam_core::{self, AsyncTryClone, Result};
+use ockam_core::{self, async_trait, AsyncTryClone, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -60,8 +60,9 @@ impl NodeManagerWorker {
     }
 }
 
-impl NodeManager {
-    pub async fn send_message(
+#[async_trait]
+impl MessageSender for NodeManager {
+    async fn send_message(
         &self,
         ctx: &Context,
         addr: &MultiAddr,
@@ -77,4 +78,14 @@ impl NodeManager {
         trace!(target: TARGET, route = %route, msg_l = %msg_length, "sending message");
         ctx.send_and_receive::<Vec<u8>>(route, message).await
     }
+}
+
+#[async_trait]
+pub trait MessageSender {
+    async fn send_message(
+        &self,
+        ctx: &Context,
+        addr: &MultiAddr,
+        message: Vec<u8>,
+    ) -> Result<Vec<u8>>;
 }

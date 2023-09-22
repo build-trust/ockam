@@ -11,10 +11,11 @@ use ockam::Context;
 use ockam_api::authenticator::enrollment_tokens::{Members, TokenIssuer};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
+use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::node::util::InMemoryNode;
+
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -82,7 +83,14 @@ impl Runner {
     }
 
     async fn run(self, ctx: Context) -> miette::Result<()> {
-        let node = InMemoryNode::create(&ctx, &self.opts.state, Some(&self.cmd.trust_opts)).await?;
+        let trust_context_config = self.cmd.trust_opts.to_config(&self.opts.state)?.build();
+        let node = InMemoryNode::create(
+            &ctx,
+            &self.opts.state,
+            self.cmd.trust_opts.project_path.as_ref(),
+            trust_context_config,
+        )
+        .await?;
 
         let mut project: Option<ProjectLookup> = None;
         let mut trust_context: Option<TrustContextConfig> = None;
