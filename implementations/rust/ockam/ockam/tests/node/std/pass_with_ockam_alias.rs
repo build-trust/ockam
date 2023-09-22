@@ -3,6 +3,6 @@
 use ockam::{self as o};
 
 #[ockam::node]
-async fn main(mut c: o::Context) {
+async fn main(c: o::Context) {
     c.stop().await.unwrap();
 }

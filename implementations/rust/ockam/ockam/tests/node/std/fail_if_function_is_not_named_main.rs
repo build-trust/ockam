@@ -1,4 +1,4 @@
 #[ockam::node]
-fn foo(mut c: ockam::Context) {
+fn foo(c: ockam::Context) {
     c.stop().await.unwrap();
 }
