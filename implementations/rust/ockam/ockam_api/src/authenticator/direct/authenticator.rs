@@ -52,18 +52,9 @@ impl DirectAuthenticator {
         self.attributes_writer.put_attributes(id, entry).await
     }
 
-    async fn list_members(
-        &self,
-        enroller: &Identifier,
-    ) -> Result<HashMap<Identifier, AttributesEntry>> {
-        // TODO: move filter to `list` function
+    async fn list_members(&self) -> Result<HashMap<Identifier, AttributesEntry>> {
         let all_attributes = self.attributes_reader.list().await?;
-        let attested_by_me = all_attributes
-            .into_iter()
-            .filter(|(_identifier, attribute_entry)| {
-                attribute_entry.attested_by() == Some(enroller.clone())
-            })
-            .collect();
+        let attested_by_me = all_attributes.into_iter().collect();
         Ok(attested_by_me)
     }
 }
@@ -96,30 +87,20 @@ impl Worker for DirectAuthenticator {
                     Response::ok(req.id()).to_vec()?
                 }
                 (Some(Method::Get), ["member_ids"]) => {
-                    let entries = self.list_members(&from).await?;
+                    let entries = self.list_members().await?;
                     let ids: Vec<Identifier> = entries.into_keys().collect();
                     Response::ok(req.id()).body(ids).to_vec()?
                 }
-                // List members attested by our identity (enroller)
                 (Some(Method::Get), [""]) | (Some(Method::Get), ["members"]) => {
-                    let entries = self.list_members(&from).await?;
+                    let entries = self.list_members().await?;
 
                     Response::ok(req.id()).body(entries).to_vec()?
                 }
-                // Delete member if they were attested by our identity (enroller)
                 (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
                     let identifier = Identifier::try_from(id.to_string())?;
-                    if let Some(entry) = self.attributes_reader.get_attributes(&identifier).await? {
-                        if entry.attested_by() == Some(from) {
-                            self.attributes_writer.delete(&identifier).await?;
-                            Response::ok(req.id()).to_vec()?
-                        } else {
-                            ockam_core::api::forbidden(&req, "not attested by current enroller")
-                                .to_vec()?
-                        }
-                    } else {
-                        Response::ok(req.id()).to_vec()?
-                    }
+                    self.attributes_writer.delete(&identifier).await?;
+
+                    Response::ok(req.id()).to_vec()?
                 }
 
                 _ => ockam_core::api::unknown_path(&req).to_vec()?,
