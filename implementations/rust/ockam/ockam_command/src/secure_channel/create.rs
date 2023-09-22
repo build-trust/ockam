@@ -75,7 +75,7 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         ctx: &Context,
     ) -> miette::Result<MultiAddr> {
-        let node = InMemoryNode::create(&ctx, &opts.state, None).await?;
+        let node = InMemoryNode::create(ctx, &opts.state, None).await?;
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;

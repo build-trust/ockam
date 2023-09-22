@@ -273,7 +273,7 @@ impl InMemoryNode {
         cli_state: &CliState,
         trust_opts: Option<&TrustContextOpts>,
     ) -> miette::Result<InMemoryNode> {
-        let node_manager = start_node_manager(ctx, &cli_state, trust_opts).await?;
+        let node_manager = start_node_manager(ctx, cli_state, trust_opts).await?;
         let controller = node_manager
             .make_controller_node_client()
             .await

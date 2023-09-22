@@ -402,7 +402,7 @@ mod tests {
         assert!(result.is_err());
 
         async fn function_returning_an_error_and_stopping_the_context(
-            mut ctx: Context,
+            ctx: Context,
             _parameter: u8,
         ) -> miette::Result<()> {
             ctx.stop().await.into_diagnostic()?;
