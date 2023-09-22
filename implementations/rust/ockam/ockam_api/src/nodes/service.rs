@@ -8,12 +8,11 @@ use std::path::PathBuf;
 use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
-use ockam::identity::TrustContext;
 use ockam::identity::Vault;
 use ockam::identity::{
-    Credentials, CredentialsServer, CredentialsServerModule, Identities, IdentitiesRepository,
-    IdentityAttributesReader, IdentityAttributesWriter,
+    Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
 };
+use ockam::identity::{CredentialsServerModule, TrustContext};
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
@@ -112,10 +111,6 @@ impl NodeManager {
 
     pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
         self.identities().repository().clone()
-    }
-
-    pub(super) fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
-        self.identities_repository().as_attributes_writer()
     }
 
     pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
@@ -616,17 +611,8 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 encode_request_result(self.start_hop_service(ctx, req, dec).await)?
             }
-            (Post, ["node", "services", DefaultAddress::DIRECT_AUTHENTICATOR]) => {
-                encode_request_result(self.start_authenticator_service(ctx, req, dec).await)?
-            }
             (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
                 encode_request_result(self.start_credentials_service(ctx, req, dec).await)?
-            }
-            (Post, ["node", "services", DefaultAddress::OKTA_IDENTITY_PROVIDER]) => {
-                encode_request_result(
-                    self.start_okta_identity_provider_service(ctx, req, dec)
-                        .await,
-                )?
             }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
                 self.start_kafka_outlet_service(ctx, req, dec).await?

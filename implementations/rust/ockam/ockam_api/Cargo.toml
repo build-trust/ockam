@@ -10,7 +10,7 @@ repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/
 description = "Ockam's request-response API"
 
 [features]
-default = ["std", "direct-authenticator"]
+default = ["std"]
 std = [
   "either/use_std",
   "hex/std",
@@ -27,8 +27,6 @@ std = [
 ]
 tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
 vault-storage = ["ockam_vault/storage"]
-authenticators = ["direct-authenticator"]
-direct-authenticator = ["std"]
 
 [dependencies]
 anyhow = "1"
