@@ -39,7 +39,7 @@ pub struct Node {
 /// use ockam_vault::storage::PersistentStorage;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///   let node = Node::builder().with_vault_storage(PersistentStorage::create(Path::new("vault")).await?).build(ctx).await?;
+///   let node = Node::builder().with_vault_storage(PersistentStorage::create(Path::new("vault")).await?).build(&ctx).await?;
 ///   Ok(node)
 /// }
 ///
@@ -54,7 +54,7 @@ pub struct Node {
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
 ///    let lmdb_storage = Arc::new(LmdbStorage::new("identities").await?);
-///    let node = Node::builder().with_identities_storage(lmdb_storage).build(ctx).await?;
+///    let node = Node::builder().with_identities_storage(lmdb_storage).build(&ctx).await?;
 ///    Ok(node)
 /// }
 /// ```
