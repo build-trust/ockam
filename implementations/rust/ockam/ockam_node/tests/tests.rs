@@ -39,7 +39,7 @@ async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> R
 #[test]
 fn start_and_shutdown_node__many_iterations__should_not_fail() {
     for _ in 0..100 {
-        let (mut ctx, mut executor) = NodeBuilder::new().build();
+        let (ctx, mut executor) = NodeBuilder::new().build();
         executor
             .execute(async move {
                 let res = std::panic::AssertUnwindSafe(async {
