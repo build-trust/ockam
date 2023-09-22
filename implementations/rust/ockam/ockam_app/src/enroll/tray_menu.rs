@@ -5,6 +5,7 @@ use tracing::error;
 use crate::app::events::SystemTrayOnUpdatePayload;
 use crate::app::AppState;
 use crate::enroll::enroll_user::enroll_user;
+use crate::icons::themed_icon;
 
 const ENROLL_MENU_ID: &str = "enroll";
 
@@ -54,9 +55,7 @@ pub(crate) async fn build_enroll_section<'a, R: Runtime, M: Manager<R>>(
                     .build(app_handle),
                 &IconMenuItemBuilder::new("Enroll")
                     .id(ENROLL_MENU_ID)
-                    .icon(Icon::Raw(
-                        include_bytes!("../../icons/box-arrow-in-right.png").to_vec(),
-                    ))
+                    .icon(Icon::Raw(themed_icon("box-arrow-in-right")))
                     .accelerator("cmd+e")
                     .build(app_handle),
             ])

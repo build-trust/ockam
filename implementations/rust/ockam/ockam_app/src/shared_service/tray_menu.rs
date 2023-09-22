@@ -8,6 +8,7 @@ use tracing::error;
 use ockam_api::nodes::models::portal::OutletStatus;
 
 use crate::app::AppState;
+use crate::icons::themed_icon;
 use crate::invitations::pending_invitation_menu;
 use crate::invitations::state::SyncInvitationsState;
 use crate::shared_service::tcp_outlet::tcp_outlet_delete;
@@ -30,9 +31,7 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
             .enabled(false)
             .build(app_handle),
         &IconMenuItemBuilder::with_id(SHARED_SERVICE_CREATE_MENU_ID, "Create service")
-            .icon(Icon::Raw(
-                include_bytes!("../../icons/plus-circle.png").to_vec(),
-            ))
+            .icon(Icon::Raw(themed_icon("plus-circle")))
             .accelerator("cmd+n")
             .build(app_handle),
     ]);
@@ -98,7 +97,7 @@ fn shared_service_submenu<R: Runtime>(
                     "{SHARED_SERVICE_DELETE_MENU_ID_PREFIX}{}",
                     outlet.alias
                 ))
-                .icon(Icon::Raw(include_bytes!("../../icons/x-lg.png").to_vec()))
+                .icon(Icon::Raw(themed_icon("x-lg")))
                 .build(app_handle),
         ])
         .build()

@@ -15,7 +15,7 @@ pub(crate) async fn build_relay_section<'a, R: Runtime, M: Manager<R>>(
         Some(relay) => {
             debug!(relay = %relay.forwarding_route(), "Relay up and running");
             builder = builder.item(
-                &IconMenuItemBuilder::new("Connected to Ockam")
+                &IconMenuItemBuilder::new("Connected to Ockam Orchestrator")
                     .native_icon(NativeIcon::StatusAvailable)
                     .build(app_handle),
             )
@@ -24,7 +24,7 @@ pub(crate) async fn build_relay_section<'a, R: Runtime, M: Manager<R>>(
             debug!("Relay not running");
             if app_state.is_enrolled().await.unwrap_or(false) {
                 builder = builder.item(
-                    &IconMenuItemBuilder::new("Connecting to Ockam...")
+                    &IconMenuItemBuilder::new("Connecting to Ockam Orchestrator...")
                         .native_icon(NativeIcon::StatusPartiallyAvailable)
                         .enabled(false)
                         .build(app_handle),

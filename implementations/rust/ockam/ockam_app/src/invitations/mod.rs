@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 pub(crate) use tray_menu::*;
 
 use crate::app::{AppState, NODE_NAME};
-use crate::error::Error;
+use crate::Error;
 use ockam_api::cli_state::StateDirTrait;
 use ockam_api::cloud::share::CreateServiceInvitation;
 use ockam_api::identity::EnrollmentTicket;
