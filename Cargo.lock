@@ -4654,7 +4654,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.93.0"
+version = "0.94.0"
 dependencies = [
  "arrayref",
  "dyn-clone",
@@ -4678,7 +4678,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_abac"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "either",
  "lmdb-rkv",
@@ -4702,7 +4702,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.36.0"
+version = "0.37.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -4785,7 +4785,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.93.0"
+version = "0.94.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -4898,7 +4898,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.81.0"
+version = "0.82.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -4954,7 +4954,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_multiaddr"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "bincode",
  "minicbor",
@@ -4972,7 +4972,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.89.0"
+version = "0.90.0"
 dependencies = [
  "cddl-cat",
  "cfg-if",
@@ -4998,7 +4998,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_ble"
-version = "0.48.0"
+version = "0.49.0"
 dependencies = [
  "atsame54_xpro",
  "bluenrg",
@@ -5035,7 +5035,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.87.0"
+version = "0.88.0"
 dependencies = [
  "cfg-if",
  "hashbrown 0.14.0",
@@ -5053,7 +5053,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "bytes 1.5.0",
  "futures-util",
@@ -5072,7 +5072,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_uds"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "ockam_core",
  "ockam_macros",
@@ -5086,7 +5086,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.78.0"
+version = "0.79.0"
 dependencies = [
  "futures-util",
  "ockam_core",
@@ -5101,7 +5101,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.82.0"
+version = "0.83.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -5134,7 +5134,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "aws-config",
  "aws-credential-types",
