@@ -313,6 +313,7 @@ fn import_signing_secret(secret: Binary) -> NifResult<String> {
 }
 
 fn load_memory_vault() -> bool {
+    println!("loading memory vault");
     let vault = SoftwareSigningVault::create();
     *SIGNING_MEMORY_VAULT.write().unwrap() = Some(vault.clone());
     let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
@@ -326,6 +327,7 @@ fn load_memory_vault() -> bool {
 }
 
 fn load_aws_vault() -> bool {
+    println!("loading kms vault");
     block_future(async move {
         match AwsSigningVault::create().await {
             Ok(vault) => {

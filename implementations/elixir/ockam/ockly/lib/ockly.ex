@@ -6,7 +6,7 @@ defmodule Ockly do
   def nif_config do
     case Application.fetch_env(:ockly, :aws_vault) do
       {:ok, true} -> :aws_kms
-      _ -> nil
+      _ -> :aws_kms
     end
   end
 end
