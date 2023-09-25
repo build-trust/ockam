@@ -140,7 +140,6 @@ pub mod minicbor_url;
 pub mod nodes;
 pub mod okta;
 pub mod port_range;
-pub mod rpc_proxy_service;
 pub mod trust_context;
 pub mod uppercase;
 
@@ -152,7 +151,6 @@ mod session;
 mod util;
 
 pub use influxdb_token_lease::*;
-pub use rpc_proxy_service::*;
 pub use util::*;
 
 #[macro_use]
@@ -177,7 +175,6 @@ impl DefaultAddress {
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
     pub const KAFKA_DIRECT: &'static str = "kafka_direct";
-    pub const RPC_PROXY: &'static str = "rpc_proxy_service";
 
     pub fn is_valid(name: &str) -> bool {
         matches!(
@@ -198,7 +195,6 @@ impl DefaultAddress {
                 | Self::KAFKA_PRODUCER
                 | Self::KAFKA_OUTLET
                 | Self::KAFKA_DIRECT
-                | Self::RPC_PROXY
         )
     }
 
@@ -220,7 +216,6 @@ impl DefaultAddress {
             Self::KAFKA_PRODUCER,
             Self::KAFKA_OUTLET,
             Self::KAFKA_DIRECT,
-            Self::RPC_PROXY,
         ]
         .iter()
         .copied()
@@ -330,6 +325,5 @@ mod test {
         ));
         assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_CONSUMER));
         assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_PRODUCER));
-        assert!(DefaultAddress::is_valid(DefaultAddress::RPC_PROXY));
     }
 }
