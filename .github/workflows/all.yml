@@ -248,9 +248,12 @@ jobs:
 
       - name: Get Developers List
         run: |
-          curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
-            https://raw.githubusercontent.com/build-trust/ockam-contributors/main/DEVELOPERS.csv \
-            > DEVELOPERS.csv
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /orgs/build-trust/teams/developers/members | jq -r '.[].login' > DEVELOPERS.csv
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check all commits in are Verified by Github (Pull Request)
         if: github.event_name == 'pull_request'
