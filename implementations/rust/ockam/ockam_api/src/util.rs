@@ -379,9 +379,7 @@ pub mod test_utils {
 
     impl Drop for NodeManagerHandle {
         fn drop(&mut self) {
-            self.cli_state
-                .delete(true)
-                .expect("cannot delete cli state");
+            CliState::delete_at(&self.cli_state.dir).expect("cannot delete cli state");
         }
     }
 

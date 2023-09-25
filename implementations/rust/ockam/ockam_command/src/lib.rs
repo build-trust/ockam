@@ -238,7 +238,11 @@ pub struct CommandGlobalOpts {
 
 impl CommandGlobalOpts {
     pub fn new(global_args: GlobalArgs) -> Self {
-        let state = CliState::initialize().expect("Failed to load the local Ockam configuration");
+        let state = CliState::initialize().unwrap_or_else(|_| {
+            CliState::backup_and_reset().expect(
+                "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
+            )
+        });
         let terminal = Terminal::new(
             global_args.quiet,
             global_args.no_color,
