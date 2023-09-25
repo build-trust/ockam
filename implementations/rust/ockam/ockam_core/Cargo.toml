@@ -75,7 +75,7 @@ futures-util = { version = "0.3.17", default-features = false, features = ["allo
 hashbrown = { version = "0.14", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
-minicbor = { version = "0.19.0", features = ["derive"] }
+minicbor = { version = "0.20.0", features = ["derive"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.31.0", default_features = false }
 once_cell = { version = "1", optional = true, default-features = false }
 rand = { version = "0.8", default-features = false }

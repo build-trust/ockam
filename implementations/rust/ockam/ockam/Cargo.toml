@@ -81,7 +81,7 @@ path = "tests/main.rs"
 arrayref = "0.3"
 dyn-clone = "1.0"
 hex = { version = "0.4", default-features = false }
-minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 ockam_abac = { path = "../ockam_abac", version = "^0.28.0", default_features = false, optional = true }
 ockam_core = { path = "../ockam_core", version = "^0.85.0", default-features = false }
 ockam_identity = { path = "../ockam_identity", version = "^0.82.0", default_features = false }
