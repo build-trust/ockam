@@ -52,12 +52,9 @@ pub struct TicketCommand {
 }
 
 impl TicketCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        initialize_identity_if_default(&options, &self.cloud_opts.identity);
-        node_rpc(
-            |ctx, (opts, cmd)| Runner::new(opts, cmd).run(ctx),
-            (options, self),
-        );
+    pub fn run(self, opts: CommandGlobalOpts) {
+        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
+        node_rpc(run_impl, (opts, self));
     }
 
     fn attributes(&self) -> Result<HashMap<&str, &str>> {
@@ -72,91 +69,82 @@ impl TicketCommand {
     }
 }
 
-struct Runner {
-    opts: CommandGlobalOpts,
-    cmd: TicketCommand,
-}
+async fn run_impl(
+    ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, TicketCommand),
+) -> miette::Result<()> {
+    let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();
+    let node = InMemoryNode::create(
+        &ctx,
+        &opts.state,
+        cmd.trust_opts.project_path.as_ref(),
+        trust_context_config,
+    )
+    .await?;
 
-impl Runner {
-    fn new(opts: CommandGlobalOpts, cmd: TicketCommand) -> Self {
-        Self { opts, cmd }
-    }
+    let mut project: Option<ProjectLookup> = None;
+    let mut trust_context: Option<TrustContextConfig> = None;
 
-    async fn run(self, ctx: Context) -> miette::Result<()> {
-        let trust_context_config = self.cmd.trust_opts.to_config(&self.opts.state)?.build();
-        let node = InMemoryNode::create(
-            &ctx,
-            &self.opts.state,
-            self.cmd.trust_opts.project_path.as_ref(),
-            trust_context_config,
-        )
-        .await?;
-
-        let mut project: Option<ProjectLookup> = None;
-        let mut trust_context: Option<TrustContextConfig> = None;
-
-        let authority_node = if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
-            let tc = &self.opts.state.trust_contexts.read_config_from_path(tc)?;
-            trust_context = Some(tc.clone());
-            let cred_retr = tc
-                .authority()
-                .into_diagnostic()?
-                .own_credential()
-                .into_diagnostic()?;
-            let addr = match cred_retr {
-                ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
-                    &c.multiaddr
-                }
-                _ => {
-                    return Err(miette!(
-                        "Trust context must be configured with a credential issuer"
-                    ));
-                }
-            };
-            let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            let authority_identifier = tc
-                .authority()
-                .into_diagnostic()?
-                .identity()
-                .await
-                .into_diagnostic()?
-                .identifier()
-                .clone();
-
-            node.make_authority_node_client(&authority_identifier, addr, Some(identity))
-                .await?
-        } else if let (Some(p), Some(a)) = get_project(&self.opts.state, &self.cmd.to).await? {
-            let identity = get_identity_name(&self.opts.state, &self.cmd.cloud_opts.identity);
-            project = Some(p);
-            node.make_authority_node_client(a.identity_id(), a.address(), Some(identity))
-                .await?
-        } else {
-            return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
+    let authority_node = if let Some(tc) = cmd.trust_opts.trust_context.as_ref() {
+        let tc = &opts.state.trust_contexts.read_config_from_path(tc)?;
+        trust_context = Some(tc.clone());
+        let cred_retr = tc
+            .authority()
+            .into_diagnostic()?
+            .own_credential()
+            .into_diagnostic()?;
+        let addr = match cred_retr {
+            ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
+                &c.multiaddr
+            }
+            _ => {
+                return Err(miette!(
+                    "Trust context must be configured with a credential issuer"
+                ));
+            }
         };
-        // If an identity identifier is given add it as a member, otherwise
-        // request an enrollment token that a future member can use to get a
-        // credential.
-        if let Some(id) = &self.cmd.member {
-            authority_node
-                .add_member(&ctx, id.clone(), self.cmd.attributes()?)
-                .await?
-        } else {
-            let token = authority_node
-                .create_token(&ctx, self.cmd.attributes()?, self.cmd.expires_in)
-                .await?;
+        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        let authority_identifier = tc
+            .authority()
+            .into_diagnostic()?
+            .identity()
+            .await
+            .into_diagnostic()?
+            .identifier()
+            .clone();
 
-            let ticket = EnrollmentTicket::new(token, project, trust_context);
-            let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
-            self.opts
-                .terminal
-                .clone()
-                .stdout()
-                .machine(ticket_serialized)
-                .write_line()?;
-        }
+        node.make_authority_node_client(&authority_identifier, addr, Some(identity))
+            .await?
+    } else if let (Some(p), Some(a)) = get_project(&opts.state, &cmd.to).await? {
+        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        project = Some(p);
+        node.make_authority_node_client(a.identity_id(), a.address(), Some(identity))
+            .await?
+    } else {
+        return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
+    };
+    // If an identity identifier is given add it as a member, otherwise
+    // request an enrollment token that a future member can use to get a
+    // credential.
+    if let Some(id) = &cmd.member {
+        authority_node
+            .add_member(&ctx, id.clone(), cmd.attributes()?)
+            .await?
+    } else {
+        let token = authority_node
+            .create_token(&ctx, cmd.attributes()?, cmd.expires_in)
+            .await?;
 
-        Ok(())
+        let ticket = EnrollmentTicket::new(token, project, trust_context);
+        let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
+        opts.terminal
+            .clone()
+            .stdout()
+            .machine(ticket_serialized)
+            .write_line()?;
     }
+
+    Ok(())
 }
 
 /// Get the project authority from the first address protocol.
