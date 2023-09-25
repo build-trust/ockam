@@ -67,8 +67,11 @@ impl Default for AppState {
 impl AppState {
     /// Create a new AppState
     pub fn new() -> AppState {
-        let cli_state =
-            CliState::initialize().expect("Failed to load the local Ockam configuration");
+        let cli_state = CliState::initialize().unwrap_or_else(|_| {
+            CliState::backup_and_reset().expect(
+                "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
+            )
+        });
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
 

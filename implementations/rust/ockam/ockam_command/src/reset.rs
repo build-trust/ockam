@@ -4,6 +4,7 @@ use crate::{fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use ockam_api::cli_state::CliState;
 
 /// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]
@@ -34,7 +35,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> miette::Result<()> {
             }
         }
     }
-    opts.state.delete(true)?;
+    CliState::delete()?;
     opts.terminal
         .stdout()
         .plain(fmt_ok!("Local Ockam configuration deleted"))

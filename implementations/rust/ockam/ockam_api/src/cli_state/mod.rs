@@ -145,8 +145,31 @@ impl CliState {
 
     /// Reset all directories and return a new CliState
     pub async fn reset(&self) -> Result<CliState> {
-        self.delete(true)?;
+        Self::delete_at(&self.dir)?;
         Self::initialize_cli_state().await
+    }
+
+    pub fn backup_and_reset() -> Result<CliState> {
+        let dir = Self::default_dir()?;
+
+        // Reset backup directory
+        let backup_dir = Self::backup_default_dir()?;
+        if backup_dir.exists() {
+            let _ = std::fs::remove_dir_all(&backup_dir);
+        }
+        std::fs::create_dir_all(&backup_dir)?;
+
+        // Move state to backup directory
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let from = entry.path();
+            let to = backup_dir.join(entry.file_name());
+            std::fs::rename(from, to)?;
+        }
+
+        // Reset state
+        Self::delete_at(&dir)?;
+        Self::initialize()
     }
 
     fn migrate(&self) -> Result<()> {
@@ -173,41 +196,47 @@ impl CliState {
         Ok(())
     }
 
-    pub fn delete(&self, force: bool) -> Result<()> {
-        // Delete all nodes
-        for n in self.nodes.list()? {
-            let _ = n.delete_sigkill(force);
-        }
+    pub fn delete_at(root_path: &PathBuf) -> Result<()> {
+        // Delete nodes' state and processes, if possible
+        let nodes_state = NodesState::new(root_path.clone());
+        let _ = nodes_state.list().map(|nodes| {
+            nodes.iter().for_each(|n| {
+                let _ = n.delete_sigkill(true);
+            });
+        });
 
-        let dir = &self.dir;
+        // Delete all other state directories
         for dir in &[
-            (self.nodes.dir()),
-            self.identities.dir(),
-            self.vaults.dir(),
-            self.spaces.dir(),
-            self.projects.dir(),
-            self.credentials.dir(),
-            self.trust_contexts.dir(),
-            self.users_info.dir(),
-            &dir.join("defaults"),
+            nodes_state.dir(),
+            IdentitiesState::new(root_path.clone()).dir(),
+            VaultsState::new(root_path.clone()).dir(),
+            SpacesState::new(root_path.clone()).dir(),
+            ProjectsState::new(root_path.clone()).dir(),
+            CredentialsState::new(root_path.clone()).dir(),
+            TrustContextsState::new(root_path.clone()).dir(),
+            UsersInfoState::new(root_path.clone()).dir(),
+            &root_path.join("defaults"),
         ] {
-            if dir.exists() {
-                std::fs::remove_dir_all(dir)?
-            };
+            let _ = std::fs::remove_dir_all(dir);
         }
 
-        let config_file = dir.join("config.json");
-        if config_file.exists() {
-            std::fs::remove_file(config_file)?;
-        }
+        // Delete config files located at the root of the state directory
+        let config_file = root_path.join("config.json");
+        let _ = std::fs::remove_file(config_file);
 
-        // If the state directory is now empty, delete it.
-        let is_empty = std::fs::read_dir(dir)?.next().is_none();
+        // If the state directory is now empty, delete it
+        let is_empty = std::fs::read_dir(root_path)
+            .map(|mut d| d.next().is_none())
+            .unwrap_or(false);
         if is_empty {
-            std::fs::remove_dir(dir)?;
+            let _ = std::fs::remove_dir(root_path);
         }
 
         Ok(())
+    }
+
+    pub fn delete() -> Result<()> {
+        Self::delete_at(&Self::default_dir()?)
     }
 
     pub fn delete_identity(&self, identity_state: IdentityState) -> Result<()> {
@@ -234,19 +263,37 @@ impl CliState {
         )?)
     }
 
+    /// Returns the default backup directory for the CLI state.
+    pub fn backup_default_dir() -> Result<PathBuf> {
+        let dir = Self::default_dir()?;
+        let dir_name =
+            dir.file_name()
+                .and_then(|n| n.to_str())
+                .ok_or(CliStateError::InvalidOperation(
+                    "The $OCKAM_HOME directory does not have a valid name".to_string(),
+                ))?;
+        let parent = dir.parent().ok_or(CliStateError::InvalidOperation(
+            "The $OCKAM_HOME directory does not a valid parent directory".to_string(),
+        ))?;
+        Ok(parent.join(format!("{dir_name}.bak")))
+    }
+
     /// Returns the directory where the default objects are stored.
     fn defaults_dir(dir: &Path) -> Result<PathBuf> {
         Ok(dir.join("defaults"))
     }
 
     pub async fn create_vault_state(&self, vault_name: Option<&str>) -> Result<VaultState> {
+        // Try to get the vault with the given name
         let vault_state = if let Some(v) = vault_name {
             self.vaults.get(v)?
         }
         // Or get the default
         else if let Ok(v) = self.vaults.default() {
             v
-        } else {
+        }
+        // Or create a new one with a random name
+        else {
             let n = hex::encode(random::<[u8; 4]>());
             let c = VaultConfig::default();
             self.vaults.create_async(&n, c).await?
