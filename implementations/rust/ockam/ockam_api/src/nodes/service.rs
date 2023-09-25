@@ -52,7 +52,6 @@ use crate::nodes::NODEMANAGER_ADDR;
 use crate::session::sessions::{Key, Session};
 use crate::session::MedicHandle;
 use crate::DefaultAddress;
-use crate::RpcProxyService;
 
 use super::registry::Registry;
 
