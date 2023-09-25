@@ -223,8 +223,10 @@ mod traits {
         const DIR_NAME: &'static str = "identities";
         const HAS_DATA_DIR: bool = true;
 
-        fn new(dir: PathBuf) -> Self {
-            Self { dir }
+        fn new(root_path: &Path) -> Self {
+            Self {
+                dir: Self::build_dir(root_path),
+            }
         }
 
         fn dir(&self) -> &PathBuf {

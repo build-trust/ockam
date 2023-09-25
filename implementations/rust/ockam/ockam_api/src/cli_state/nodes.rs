@@ -451,8 +451,10 @@ mod traits {
         const DIR_NAME: &'static str = "nodes";
         const HAS_DATA_DIR: bool = false;
 
-        fn new(dir: PathBuf) -> Self {
-            Self { dir }
+        fn new(root_path: &Path) -> Self {
+            Self {
+                dir: Self::build_dir(root_path),
+            }
         }
 
         fn dir(&self) -> &PathBuf {
@@ -719,7 +721,7 @@ mod tests {
         std::fs::write(&tmp_file, v1_json_json).unwrap();
 
         // Run migration
-        let nodes_state = NodesState::new(tmp_dir.path().to_path_buf());
+        let nodes_state = NodesState::new(tmp_dir.path());
         nodes_state.migrate(&node_dir).await.unwrap();
 
         // Check migration was done correctly
