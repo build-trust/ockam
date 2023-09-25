@@ -196,7 +196,7 @@ impl TokenIssuer for AuthorityNode {
                 .with_duration(duration),
         );
         self.0
-            .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .ask(ctx, DefaultAddress::ENROLLMENT_TOKEN_ISSUER, req)
             .await
             .into_diagnostic()?
             .success()
