@@ -4,14 +4,13 @@ use std::time::Duration;
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
-use ockam_core::{route, Result, Route};
+use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 use ockam_transport_tcp::TcpTransport;
 
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
-use crate::DefaultAddress;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -154,7 +153,7 @@ impl SecureClients {
         tcp_transport: &TcpTransport,
         multiaddr: &MultiAddr,
     ) -> Result<Route> {
-        let transport_route = multiaddr_to_route(multiaddr, tcp_transport)
+        let secure_route = multiaddr_to_route(multiaddr, tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
@@ -162,10 +161,8 @@ impl SecureClients {
                 ))
             })?
             .route;
-        Ok(route![
-            transport_route,
-            DefaultAddress::SECURE_CHANNEL_LISTENER
-        ])
+        debug!("using the secure route {secure_route}");
+        Ok(secure_route)
     }
 }
 
