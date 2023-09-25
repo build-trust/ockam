@@ -1,7 +1,7 @@
-use crate::app::AppState;
-use tauri::{AppHandle, Manager, Runtime, State, WindowBuilder};
+use tauri::{AppHandle, Runtime, WindowBuilder};
 use tauri_plugin_positioner::{Position, WindowExt};
 
+#[allow(unused_variables)]
 pub(crate) fn create<R: Runtime>(
     app: &AppHandle<R>,
     builder: WindowBuilder<'_, R>,
@@ -21,6 +21,8 @@ pub(crate) fn create<R: Runtime>(
 
     #[cfg(debug_assertions)]
     {
+        use crate::app::AppState;
+        use tauri::{Manager, State};
         let app_state: State<AppState> = app.state();
         if app_state.browser_dev_tools() {
             w.open_devtools();
