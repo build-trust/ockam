@@ -51,6 +51,7 @@ mod traits {
     use crate::cli_state::file_stem;
     use crate::cli_state::traits::*;
     use ockam_core::async_trait;
+    use std::path::Path;
 
     #[async_trait]
     impl StateDirTrait for SpacesState {
@@ -59,8 +60,10 @@ mod traits {
         const DIR_NAME: &'static str = "spaces";
         const HAS_DATA_DIR: bool = false;
 
-        fn new(dir: PathBuf) -> Self {
-            Self { dir }
+        fn new(root_path: &Path) -> Self {
+            Self {
+                dir: Self::build_dir(root_path),
+            }
         }
 
         fn dir(&self) -> &PathBuf {

@@ -198,7 +198,7 @@ impl CliState {
 
     pub fn delete_at(root_path: &PathBuf) -> Result<()> {
         // Delete nodes' state and processes, if possible
-        let nodes_state = NodesState::new(root_path.clone());
+        let nodes_state = NodesState::new(root_path);
         let _ = nodes_state.list().map(|nodes| {
             nodes.iter().for_each(|n| {
                 let _ = n.delete_sigkill(true);
@@ -208,13 +208,13 @@ impl CliState {
         // Delete all other state directories
         for dir in &[
             nodes_state.dir(),
-            IdentitiesState::new(root_path.clone()).dir(),
-            VaultsState::new(root_path.clone()).dir(),
-            SpacesState::new(root_path.clone()).dir(),
-            ProjectsState::new(root_path.clone()).dir(),
-            CredentialsState::new(root_path.clone()).dir(),
-            TrustContextsState::new(root_path.clone()).dir(),
-            UsersInfoState::new(root_path.clone()).dir(),
+            IdentitiesState::new(root_path).dir(),
+            VaultsState::new(root_path).dir(),
+            SpacesState::new(root_path).dir(),
+            ProjectsState::new(root_path).dir(),
+            CredentialsState::new(root_path).dir(),
+            TrustContextsState::new(root_path).dir(),
+            UsersInfoState::new(root_path).dir(),
             &root_path.join("defaults"),
         ] {
             let _ = std::fs::remove_dir_all(dir);

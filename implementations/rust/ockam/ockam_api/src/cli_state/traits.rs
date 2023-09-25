@@ -19,7 +19,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
     const DIR_NAME: &'static str;
     const HAS_DATA_DIR: bool;
 
-    fn new(dir: PathBuf) -> Self;
+    fn new(root_path: &Path) -> Self;
 
     fn default_filename() -> &'static str {
         Self::DEFAULT_FILENAME
@@ -47,8 +47,8 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 
     fn load(root_path: &Path) -> Result<Self> {
-        let dir = Self::create_dirs(root_path)?;
-        Ok(Self::new(dir))
+        Self::create_dirs(root_path)?;
+        Ok(Self::new(root_path))
     }
 
     /// Recreate all the state directories
@@ -267,11 +267,11 @@ pub trait StateItemTrait: Sized + Send {
 #[cfg(test)]
 mod tests {
     use crate::cli_state::{StateDirTrait, StateItemTrait};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn test_is_item_path() {
-        let config = TestConfig::new("dir".into());
+        let config = TestConfig::new(Path::new("dir"));
         let path = config.path("name");
         assert!(config.is_item_path(&path).unwrap())
     }
@@ -286,8 +286,10 @@ mod tests {
         const DIR_NAME: &'static str = "";
         const HAS_DATA_DIR: bool = false;
 
-        fn new(dir: PathBuf) -> Self {
-            Self { dir }
+        fn new(root_path: &Path) -> Self {
+            Self {
+                dir: Self::build_dir(root_path),
+            }
         }
 
         fn dir(&self) -> &PathBuf {
