@@ -52,7 +52,6 @@ use crate::nodes::NODEMANAGER_ADDR;
 use crate::session::sessions::{Key, Session};
 use crate::session::MedicHandle;
 use crate::DefaultAddress;
-use crate::RpcProxyService;
 
 use super::registry::Registry;
 
@@ -860,11 +859,6 @@ impl Worker for NodeManagerWorker {
             .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
         self.node_manager
             .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
-
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::RPC_PROXY, &api_flow_control_id);
-        ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
             .await?;
 
         Ok(())
