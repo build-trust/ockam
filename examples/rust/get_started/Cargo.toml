@@ -31,7 +31,7 @@ alloc = ["ockam/alloc", "serde_json/alloc"]
 [dependencies]
 anyhow = "1"
 hex = "0.4"
-minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 ockam = { path = "../../../implementations/rust/ockam/ockam", default_features = false, features = ["software_vault"] }
 ockam_api = { path = "../../../implementations/rust/ockam/ockam_api" }
 ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
