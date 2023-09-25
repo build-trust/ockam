@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use miette::IntoDiagnostic;
 use rand::random;
@@ -37,6 +38,34 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let node_manager =
             start_node_manager(ctx, cli_state, project_path, trust_context_config).await?;
+        let controller = node_manager
+            .make_controller_node_client()
+            .await
+            .into_diagnostic()?;
+        Ok(Self {
+            cli_state: cli_state.clone(),
+            node_manager,
+            controller: Arc::new(controller),
+        })
+    }
+
+    pub async fn create_with_vault_and_identity(
+        ctx: &Context,
+        cli_state: &CliState,
+        vault: Option<String>,
+        identity: Option<String>,
+        project_path: Option<&PathBuf>,
+        trust_context_config: Option<TrustContextConfig>,
+    ) -> miette::Result<InMemoryNode> {
+        let node_manager = start_node_manager_with_vault_and_identity(
+            ctx,
+            cli_state,
+            vault,
+            identity,
+            project_path,
+            trust_context_config,
+        )
+        .await?;
         let controller = node_manager
             .make_controller_node_client()
             .await
@@ -137,8 +166,11 @@ impl MessageSender for InMemoryNode {
         ctx: &Context,
         addr: &MultiAddr,
         message: Vec<u8>,
+        timeout: Option<Duration>,
     ) -> ockam_core::Result<Vec<u8>> {
-        self.node_manager.send_message(ctx, addr, message).await
+        self.node_manager
+            .send_message(ctx, addr, message, timeout)
+            .await
     }
 }
 

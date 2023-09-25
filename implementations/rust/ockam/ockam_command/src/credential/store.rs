@@ -84,7 +84,7 @@ async fn run_impl(
             Ok(i) => i,
             Err(_) => {
                 *is_finished.lock().await = true;
-                return Err(miette!("Issuer is invalid").into());
+                return Err(miette!("Issuer is invalid {}", &cmd.issuer).into());
             }
         };
 

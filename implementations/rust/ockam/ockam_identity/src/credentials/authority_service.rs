@@ -2,6 +2,7 @@ use crate::credentials::credentials_retriever::CredentialsRetriever;
 use crate::models::{CredentialAndPurposeKey, Identifier, TimestampInSeconds};
 use crate::utils::{add_seconds, now};
 use crate::{Credentials, IdentityError};
+use tracing::debug;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::sync::RwLock;
@@ -62,12 +63,15 @@ impl AuthorityService {
             .clone()
             .ok_or(IdentityError::UnknownAuthority)?;
         let credential = retriever.retrieve(ctx, subject).await?;
+        debug!("retrieved a credential for subject {}", subject);
 
         let credential_data = self
             .credentials
             .credentials_verification()
             .verify_credential(Some(subject), &[self.identifier.clone()], &credential)
             .await?;
+
+        debug!("the retrieved credential is valid");
 
         let mut guard = self.inner_cache.write().unwrap();
         *guard = Some(CachedCredential {

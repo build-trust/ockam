@@ -260,20 +260,9 @@ impl NodeManager {
         timeout: Option<Duration>,
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier(identity_name.clone()).await?;
-        let credential = if let Some(credential_name) = credential_name {
-            Some(
-                self.cli_state
-                    .credentials
-                    .get(credential_name)?
-                    .config()
-                    .credential()?,
-            )
-        } else {
-            match self.trust_context().ok().and_then(|tc| tc.authority().ok()) {
-                Some(authority) => authority.credential(ctx, &identifier.clone()).await.ok(),
-                None => None,
-            }
-        };
+        let credential = self
+            .get_credential(ctx, &identifier, credential_name)
+            .await?;
 
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
         let connection = self
@@ -301,6 +290,34 @@ impl NodeManager {
         Ok(sc)
     }
 
+    pub async fn get_credential(
+        &self,
+        ctx: &Context,
+        identifier: &Identifier,
+        credential_name: Option<String>,
+    ) -> Result<Option<CredentialAndPurposeKey>> {
+        debug!("getting a credential");
+        let credential = if let Some(credential_name) = credential_name {
+            debug!(
+                "get the credential using a credential name {}",
+                &credential_name
+            );
+            Some(
+                self.cli_state
+                    .credentials
+                    .get(credential_name)?
+                    .config()
+                    .credential()?,
+            )
+        } else {
+            match self.trust_context().ok() {
+                Some(tc) => tc.get_credential(ctx, identifier).await,
+                None => None,
+            }
+        };
+        Ok(credential)
+    }
+
     pub(crate) async fn create_secure_channel_internal(
         &self,
         ctx: &Context,
@@ -320,6 +337,8 @@ impl NodeManager {
         };
 
         let options = if let Some(credential) = credential {
+            options.with_credential(credential)
+        } else if let Some(credential) = self.get_credential(ctx, identifier, None).await? {
             options.with_credential(credential)
         } else {
             options

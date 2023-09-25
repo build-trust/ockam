@@ -4,7 +4,7 @@ use ockam_core::{
 };
 
 /// Identity crate error
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum IdentityError {
     /// Invalid key type
     InvalidKeyType = 1,
@@ -42,8 +42,12 @@ pub enum IdentityError {
     UnknownPurposeKeyVersion,
     /// Unknown version of the Identity
     UnknownIdentityVersion,
-    /// SecureChannelVerificationFailed
-    SecureChannelVerificationFailed,
+    /// A credential was rejected by the trust context
+    SecureChannelVerificationFailedIncorrectCredential,
+    /// The trust context was expecting at least one credential
+    SecureChannelVerificationFailedMissingCredential,
+    /// Credentials could not be checked because the trust context is missing
+    SecureChannelVerificationFailedMissingTrustContext,
     /// SecureChannelTrustCheckFailed
     SecureChannelTrustCheckFailed,
     /// Invalid Nonce value

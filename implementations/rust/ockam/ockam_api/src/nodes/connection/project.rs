@@ -69,6 +69,7 @@ impl Instantiator for ProjectInstantiator {
                 ))
             })?;
 
+        debug!("create a secure channel to the project {project_identifier}");
         let sc = node_manager
             .create_secure_channel_internal(
                 &ctx,
