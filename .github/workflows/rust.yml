@@ -272,14 +272,14 @@ jobs:
     name: Rust - test_orchestrator_ockam_command
     runs-on: ubuntu-20.04
     container: ghcr.io/build-trust/artifacts-helper:latest
-    if: github.event_name == 'merge_group'
-    environment: merge_queue
+    environment: ${{ github.event_name == 'merge_group' && 'merge_queue' || '' }}
     permissions:
       contents: read
       packages: read
 
     steps:
       - name: Run Ockam Bats Test On Development Cluster
+        if: github.event_name == 'merge_group'
         uses: build-trust/.github/actions/run_bats_test@custom-actions
         with:
           perform_ockam_enroll: 'true'
