@@ -45,7 +45,7 @@ mod atoms {
     invalid_state,
     invalid_secret,
     no_memory_vault,
-    aws_kms
+    aws_vault_loading_error,
     }
 }
 
@@ -325,7 +325,12 @@ fn load_memory_vault() -> bool {
     true
 }
 
-fn load_aws_vault() -> bool {
+fn load(_env: rustler::Env, _load_data: rustler::Term) -> bool {
+    load_memory_vault()
+}
+
+#[rustler::nif]
+fn setup_aws_kms() -> NifResult<bool> {
     block_future(async move {
         match AwsSigningVault::create().await {
             Ok(vault) => {
@@ -337,20 +342,11 @@ fn load_aws_vault() -> bool {
                     Vault::create_verifying_vault(),
                 ));
                 *IDENTITIES.write().unwrap() = Some(builder.build());
-                true
+                Ok(true)
             }
-            Err(_) => false,
+            Err(err) =>  Err(Error::Term(Box::new(err.to_string()))),
         }
     })
-}
-
-fn load(_env: rustler::Env, load_data: rustler::Term) -> bool {
-    if let Ok(r) = load_data.decode::<Atom>() {
-        if atoms::aws_kms().eq(&r) {
-            return load_aws_vault();
-        }
-    }
-    load_memory_vault()
 }
 
 rustler::init!(
@@ -362,7 +358,8 @@ rustler::init!(
         check_identity,
         issue_credential,
         verify_credential,
-        import_signing_secret
+        import_signing_secret,
+        setup_aws_kms
     ],
     load = load
 );
