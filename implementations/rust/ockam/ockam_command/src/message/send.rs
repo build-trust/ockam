@@ -87,16 +87,18 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
+            let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             let trust_context_config = cmd.trust_context_opts.to_config(&opts.state)?.build();
-            let node = InMemoryNode::create(
+            let node = InMemoryNode::create_with_vault_and_identity(
                 ctx,
                 &opts.state,
+                None,
+                Some(identity_name.clone()),
                 cmd.trust_context_opts.project_path.as_ref(),
                 trust_context_config,
             )
             .await?;
 
-            let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
                 &opts,
@@ -107,7 +109,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
-            node.send_message(ctx, &to, msg_bytes)
+            node.send_message(ctx, &to, msg_bytes, Some(cmd.timeout))
                 .await
                 .into_diagnostic()?
         };

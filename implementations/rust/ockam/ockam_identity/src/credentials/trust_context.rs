@@ -1,8 +1,10 @@
-use ockam_core::compat::string::String;
+use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
+use ockam_node::Context;
+use tracing::{debug, error};
 
-use crate::models::Identifier;
+use crate::models::{CredentialAndPurposeKey, Identifier};
 use crate::{AuthorityService, IdentityError};
 
 /// A trust context defines which authorities are trusted to attest to which attributes, within a context.
@@ -36,5 +38,35 @@ impl TrustContext {
     /// Return the authority identities attached to this trust context
     pub async fn authorities(&self) -> Result<Vec<Identifier>> {
         Ok(vec![self.authority()?.identifier().clone()])
+    }
+
+    /// Return the credential for a given identity if an Authority has been defined
+    /// and can issue a credential for that identity
+    pub async fn get_credential(
+        &self,
+        ctx: &Context,
+        identifier: &Identifier,
+    ) -> Option<CredentialAndPurposeKey> {
+        match self.authority().ok() {
+            Some(authority) => match authority.credential(ctx, identifier).await {
+                Ok(credential) => {
+                    debug!("retrieved a credential using the trust context authority");
+                    Some(credential)
+                }
+                Err(e) => {
+                    error!(
+                        "no credential could be retrieved {}, authority {}, subject {}",
+                        e.to_string(),
+                        authority.identifier(),
+                        identifier
+                    );
+                    None
+                }
+            },
+            None => {
+                debug!("no authority is defined on the trust context");
+                None
+            }
+        }
     }
 }

@@ -594,7 +594,7 @@ impl NodeManager {
             .instantiate(
                 ctx.clone(),
                 self,
-                ProjectInstantiator::new(identifier.clone(), timeout, credential),
+                ProjectInstantiator::new(identifier.clone(), timeout, credential.clone()),
             )
             .await?
             .instantiate(ctx.clone(), self, PlainTcpInstantiator::new())
@@ -602,7 +602,7 @@ impl NodeManager {
             .instantiate(
                 ctx,
                 self,
-                SecureChannelInstantiator::new(&identifier, timeout, authorized),
+                SecureChannelInstantiator::new(&identifier, credential, timeout, authorized),
             )
             .await?
             .build();

@@ -1,9 +1,10 @@
 use minicbor::{Decode, Encode};
+use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Result};
 use ockam_vault::{KeyId, PublicKey, SecretType};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
@@ -183,7 +184,16 @@ impl CommonStateMachine {
         );
 
         if let Some(trust_context) = &self.trust_context {
-            for credential in credentials {
+            if credentials.is_empty() {
+                // if there is a trust context we need to check at least one credential
+                return Err(IdentityError::SecureChannelVerificationFailedMissingCredential.into());
+            };
+
+            debug!(
+                "got a trust context to check the credentials. There are {} credentials to check",
+                credentials.len()
+            );
+            for credential in &credentials {
                 let result = self
                     .identities
                     .credentials()
@@ -191,18 +201,22 @@ impl CommonStateMachine {
                     .receive_presented_credential(
                         their_identifier,
                         &[trust_context.authority()?.identifier().clone()],
-                        &credential,
+                        credential,
                     )
                     .await;
 
-                if let Some(_err) = result.err() {
+                if let Some(err) = result.err() {
+                    warn!("a credential could not be validated {}", err.to_string());
                     // TODO: consider the possibility of keep going when a credential validation fails
-                    return Err(IdentityError::SecureChannelVerificationFailed.into());
+                    return Err(
+                        IdentityError::SecureChannelVerificationFailedIncorrectCredential.into(),
+                    );
                 }
             }
         } else if !credentials.is_empty() {
+            warn!("no credentials have been received");
             // we cannot validate credentials without a trust context
-            return Err(IdentityError::SecureChannelVerificationFailed.into());
+            return Err(IdentityError::SecureChannelVerificationFailedMissingTrustContext.into());
         };
 
         Ok(())

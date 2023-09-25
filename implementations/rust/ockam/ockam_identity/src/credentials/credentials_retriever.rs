@@ -1,6 +1,7 @@
 use ockam_core::api::Request;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
+use tracing::trace;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
@@ -66,14 +67,26 @@ impl RemoteCredentialsRetriever {
         }
     }
 
-    fn make_secure_client(&self, for_identity: &Identifier) -> SecureClient {
-        SecureClient::new(
+    async fn make_secure_client(
+        &self,
+        ctx: &Context,
+        for_identity: &Identifier,
+    ) -> Result<SecureClient> {
+        let resolved_route = ctx
+            .resolve_transport_route(self.issuer.route.clone())
+            .await?;
+        trace!(
+            "Getting credential from resolved route: {}",
+            resolved_route.clone()
+        );
+
+        Ok(SecureClient::new(
             self.secure_channels.clone(),
-            self.issuer.route.clone(),
+            resolved_route,
             &self.issuer.identifier,
             for_identity,
             Duration::from_secs(DEFAULT_TIMEOUT),
-        )
+        ))
     }
 }
 
@@ -84,8 +97,8 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
         ctx: &Context,
         for_identity: &Identifier,
     ) -> Result<CredentialAndPurposeKey> {
-        debug!("Getting credential from : {}", &self.issuer.route);
-        let client = self.make_secure_client(for_identity);
+        debug!("Getting credential from: {}", &self.issuer.route);
+        let client = self.make_secure_client(ctx, for_identity).await?;
         let credential = client
             .ask(ctx, "credential_issuer", Request::post("/"))
             .await?
