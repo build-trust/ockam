@@ -3,7 +3,7 @@ use ockam::identity::utils::now;
 use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
 use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttributesWriter};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{CowStr, Result, Routed, Worker};
 use ockam_node::Context;
@@ -68,7 +68,7 @@ impl Worker for DirectAuthenticator {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
             let from = i.their_identity_id();
             let mut dec = Decoder::new(m.as_body());
-            let req: Request = dec.decode()?;
+            let req: RequestHeader = dec.decode()?;
             trace! {
                 target: "ockam_api::authenticator::direct::direct_authenticator",
                 from   = %from,
@@ -84,26 +84,26 @@ impl Worker for DirectAuthenticator {
                     let add: AddMember = dec.decode()?;
                     self.add_member(&from, add.member(), add.attributes())
                         .await?;
-                    Response::ok(req.id()).to_vec()?
+                    Response::ok(&req).to_vec()?
                 }
                 (Some(Method::Get), ["member_ids"]) => {
                     let entries = self.list_members().await?;
                     let ids: Vec<Identifier> = entries.into_keys().collect();
-                    Response::ok(req.id()).body(ids).to_vec()?
+                    Response::ok(&req).body(ids).to_vec()?
                 }
                 (Some(Method::Get), [""]) | (Some(Method::Get), ["members"]) => {
                     let entries = self.list_members().await?;
 
-                    Response::ok(req.id()).body(entries).to_vec()?
+                    Response::ok(&req).body(entries).to_vec()?
                 }
                 (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
                     let identifier = Identifier::try_from(id.to_string())?;
                     self.attributes_writer.delete(&identifier).await?;
 
-                    Response::ok(req.id()).to_vec()?
+                    Response::ok(&req).to_vec()?
                 }
 
-                _ => ockam_core::api::unknown_path(&req).to_vec()?,
+                _ => Response::unknown_path(&req).to_vec()?,
             };
             c.send(m.return_route(), res).await
         } else {
