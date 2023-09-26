@@ -32,6 +32,7 @@ jobs:
     # https://github.com/build-trust/ockam/commit/2fd0d36fe6ae0c2d527368683ec3a6352617b381
     env:
       FIRST_COMMIT: 2fd0d36fe6ae0c2d527368683ec3a6352617b381
+      CONTRIBUTORS_CSV_PATH: .github/CONTRIBUTORS.csv
 
     steps:
       - name: Checkout
@@ -122,6 +123,21 @@ jobs:
               More about the Ockam Commit Message Convention
               https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages
             ' && exit 1)
+
+      # - name: Check If PR Author Made Changes To CONTRIBUTORS.md
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     if ! git diff --name-only --exit-code ${FIRST_COMMIT}..HEAD $CONTRIBUTORS_CSV_PATH > /dev/null; then
+      #       # It is required that PR authors only make changes to CONTRIBUTORS.md when signing CLA
+      #     fi
+
+      #     if git diff --name-only $FIRST_COMMIT..HEAD | grep -q -iF 'CONTRIBUTING.md'; then
+      #       echo "[✓] Pull Request Author has made changes to CONTRIBUTING.md"
+      #     else
+      #       echo "
+      #         Pull Request Author has not made any changes to CONTRIBUTING.md
+
+      #         Please read the Ockam Contributing Guide at:
 
       - name: Get Contributors List
         run: |
@@ -251,7 +267,7 @@ jobs:
           gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /orgs/build-trust/teams/developers/members | jq -r '.[].login' > DEVELOPERS.csv
+            /orgs/build-trust/members | jq -r '.[].login' > DEVELOPERS.csv
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
