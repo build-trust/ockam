@@ -11,13 +11,13 @@ use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::CredentialsServerModule;
 use ockam::identity::SecureClient;
 use ockam::identity::TrustContext;
 use ockam::identity::Vault;
 use ockam::identity::{
     Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
 };
-use ockam::identity::{CredentialsServerModule};
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,

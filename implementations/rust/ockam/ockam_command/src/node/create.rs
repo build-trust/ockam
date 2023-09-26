@@ -17,7 +17,7 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::{NodeManagerTrustOptions, SupervisedNodeManager};
-use ockam_api::nodes::{authority_node, BackgroundNode};
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},

@@ -143,8 +143,8 @@ pub mod port_range;
 pub mod trust_context;
 pub mod uppercase;
 
-mod influxdb_token_lease;
 pub mod authority_node;
+mod influxdb_token_lease;
 
 mod schema;
 mod session;

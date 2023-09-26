@@ -4,7 +4,7 @@ use ockam::identity::IdentitySecureChannelLocalInfo;
 use ockam::identity::OneTimeCode;
 use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
 use ockam::identity::{AttributesEntry, IdentityAttributesWriter};
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
@@ -26,7 +26,7 @@ impl Worker for EnrollmentTokenAcceptor {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
             let from = i.their_identity_id();
             let mut dec = Decoder::new(m.as_body());
-            let req: Request = dec.decode()?;
+            let req: RequestHeader = dec.decode()?;
             trace! {
                 target: "ockam_api::authenticator::direct::enrollment_token_acceptor",
                 from   = %from,
@@ -44,15 +44,15 @@ impl Worker for EnrollmentTokenAcceptor {
                         Ok(mut r) => {
                             if let Some(tkn) = r.pop(otc.code()) {
                                 if tkn.time.elapsed() > tkn.max_token_duration {
-                                    Err(ockam_core::api::forbidden(&req, "expired token"))
+                                    Err(Response::forbidden(&req, "expired token"))
                                 } else {
                                     Ok(tkn)
                                 }
                             } else {
-                                Err(ockam_core::api::forbidden(&req, "unknown token"))
+                                Err(Response::forbidden(&req, "unknown token"))
                             }
                         }
-                        Err(_) => Err(ockam_core::api::internal_error(
+                        Err(_) => Err(Response::internal_error(
                             &req,
                             "Failed to get read lock on tokens table",
                         )),
@@ -70,12 +70,12 @@ impl Worker for EnrollmentTokenAcceptor {
                             let entry =
                                 AttributesEntry::new(attrs, now()?, None, Some(tkn.generated_by));
                             self.1.put_attributes(&from, entry).await?;
-                            Response::ok(req.id()).to_vec()?
+                            Response::ok(&req).to_vec()?
                         }
                         Err(err) => err.to_vec()?,
                     }
                 }
-                _ => ockam_core::api::unknown_path(&req).to_vec()?,
+                _ => Response::unknown_path(&req).to_vec()?,
             };
             c.send(m.return_route(), res).await
         } else {

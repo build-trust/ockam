@@ -1,8 +1,9 @@
+use miette::IntoDiagnostic;
 use minicbor::Decoder;
-use ockam::identity::{AttributesEntry, secure_channel_required};
 use ockam::identity::OneTimeCode;
+use ockam::identity::{secure_channel_required, AttributesEntry};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{Method, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Result, Routed, Worker};
 use ockam_node::Context;
@@ -10,7 +11,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tracing::trace;
 
-use crate::authenticator::direct::types::CreateToken;
+use crate::authenticator::direct::types::{AddMember, CreateToken};
 use crate::authenticator::enrollment_tokens::authenticator::MAX_TOKEN_DURATION;
 use crate::authenticator::enrollment_tokens::types::Token;
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
@@ -60,7 +61,7 @@ impl Worker for EnrollmentTokenIssuer {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
             let from = i.their_identity_id();
             let mut dec = Decoder::new(m.as_body());
-            let req: Request = dec.decode()?;
+            let req: RequestHeader = dec.decode()?;
             trace! {
                 target: "ockam_api::authenticator::direct::enrollment_token_issuer",
                 from   = %from,
@@ -78,13 +79,13 @@ impl Worker for EnrollmentTokenIssuer {
                         .issue_token(&from, att.into_owned_attributes(), duration)
                         .await
                     {
-                        Ok(otc) => Response::ok(req.id()).body(&otc).to_vec()?,
+                        Ok(otc) => Response::ok(&req).body(&otc).to_vec()?,
                         Err(error) => {
-                            ockam_core::api::internal_error(&req, &error.to_string()).to_vec()?
+                            Response::internal_error(&req, &error.to_string()).to_vec()?
                         }
                     }
                 }
-                _ => ockam_core::api::unknown_path(&req).to_vec()?,
+                _ => Response::unknown_path(&req).to_vec()?,
             };
             c.send(m.return_route(), res).await
         } else {
@@ -92,7 +93,6 @@ impl Worker for EnrollmentTokenIssuer {
         }
     }
 }
-
 
 #[async_trait]
 pub trait Members {
@@ -103,11 +103,7 @@ pub trait Members {
         attributes: HashMap<&str, &str>,
     ) -> miette::Result<()>;
 
-    async fn delete_member(
-        &self,
-        ctx: &Context,
-        identifier: Identifier,
-    ) -> miette::Result<()>;
+    async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>>;
 
@@ -134,11 +130,7 @@ impl Members for AuthorityNode {
             .into_diagnostic()
     }
 
-    async fn delete_member(
-        &self,
-        ctx: &Context,
-        identifier: Identifier,
-    ) -> miette::Result<()> {
+    async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()> {
         let req = Request::delete(format!("/{identifier}"));
         self.0
             .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
