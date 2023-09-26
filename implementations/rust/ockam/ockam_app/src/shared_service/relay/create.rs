@@ -3,7 +3,7 @@ use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
-use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_api::nodes::service::SupervisedNodeManager;
 use ockam_multiaddr::MultiAddr;
 use once_cell::sync::Lazy;
@@ -52,12 +52,14 @@ async fn create_relay_impl(
                 debug!(project = %project.name(), "Creating relay at project");
                 let project_route = format!("/project/{}", project.name());
                 let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
-                let req = CreateForwarder::at_project(
-                    project_address.clone(),
-                    Some(NODE_NAME.to_string()),
-                );
                 let relay = node_manager
-                    .create_forwarder(context, req)
+                    .create_forwarder(
+                        context,
+                        &project_address,
+                        Some(NODE_NAME.to_string()),
+                        false,
+                        None,
+                    )
                     .await
                     .into_diagnostic()?;
                 info!(forwarding_route = %relay.forwarding_route(), "Relay created at project");

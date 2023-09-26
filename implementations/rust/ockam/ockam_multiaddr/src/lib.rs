@@ -537,6 +537,10 @@ impl MultiAddr {
         self.try_extend(iter)?;
         Ok(self)
     }
+    /// Check if the protocol codes starts with the given code.
+    pub fn starts_with<'a>(&self, code: Code) -> bool {
+        self.matches(0, &[code.into()])
+    }
 
     /// Check if the protocol codes match the given sequence.
     pub fn matches<'a, I>(&self, start: usize, codes: I) -> bool

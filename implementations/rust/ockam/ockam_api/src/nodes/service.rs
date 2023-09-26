@@ -58,7 +58,7 @@ use super::registry::Registry;
 pub(crate) mod background_node;
 pub(crate) mod credentials;
 mod flow_controls;
-mod forwarder;
+pub mod forwarder;
 pub(crate) mod in_memory_node;
 pub mod message;
 mod node_identities;
@@ -775,7 +775,9 @@ impl NodeManagerWorker {
             (Delete, ["node", "forwarder", remote_address]) => {
                 encode_request_result(self.delete_forwarder(ctx, req, remote_address).await)?
             }
-            (Post, ["node", "forwarder"]) => self.create_forwarder_response(ctx, req, dec).await?,
+            (Post, ["node", "forwarder"]) => {
+                encode_request_result(self.create_forwarder(ctx, req, dec.decode()?).await)?
+            }
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => self.get_inlets(req).await.to_vec()?,

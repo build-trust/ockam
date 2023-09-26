@@ -23,7 +23,7 @@ use crate::nodes::NODEMANAGER_ADDR;
 
 /// This struct represents a node that lives within the current process
 pub struct InMemoryNode {
-    node_manager: SupervisedNodeManager,
+    pub(crate) node_manager: SupervisedNodeManager,
     controller: Arc<Controller>,
 }
 
