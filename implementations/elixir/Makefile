@@ -13,18 +13,18 @@ build: $(addprefix build_,$(PACKAGES))
 build_release: $(addprefix build_release_,$(PACKAGES))
 
 build_release_%: deps_%
-	cd ockam/$* && MIX_ENV=prod mix compile
+	cd ockam/$* && MIX_ENV=prod MIX_BUILD_ROOT="../_build" mix compile
 
 build_%: deps_%
-	cd ockam/$* && mix compile
+	cd ockam/$* && MIX_BUILD_ROOT="../_build" mix compile
 
 test: $(addprefix test_,$(PACKAGES))
-test_%: build_% deps_%
-	cd ockam/$* && mix test
+test_%: deps_%
+	cd ockam/$* &&  MIX_BUILD_ROOT="../_build" mix test
 
 lint: $(addprefix lint_,$(PACKAGES))
 lint_%: deps_%
-	cd ockam/$* && mix lint
+	cd ockam/$* && MIX_ENV=test MIX_BUILD_ROOT="../_build" mix lint
 
 clean: $(addprefix clean_,$(PACKAGES))
 clean_%:
@@ -32,6 +32,9 @@ clean_%:
 
 very_clean: $(addprefix very_clean_,$(PACKAGES))
 	$(MAKE) -C ../rust very_clean
+	rm -rf ockam/_build
+	rm -rf ockam/_deps
+
 very_clean_%:
 	cd ockam/$* && rm -rf deps && rm -rf _build
 

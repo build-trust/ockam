@@ -5,7 +5,6 @@ defmodule Ockly.Native do
     otp_app: :ockly,
     crate: "ockly",
     load_data_fun: {Ockly, :nif_config},
-    skip_compilation?: System.get_env("OCKLY_PRECOMPILED_LIB", "true") == "true",
     load_from: {:ockly, "priv/native/libockly"}
 
   def create_identity, do: create_identity(nil)
