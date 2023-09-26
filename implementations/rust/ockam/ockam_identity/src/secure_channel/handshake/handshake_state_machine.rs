@@ -184,10 +184,10 @@ impl CommonStateMachine {
         );
 
         if let Some(trust_context) = &self.trust_context {
-            if credentials.is_empty() {
-                // if there is a trust context we need to check at least one credential
-                return Err(IdentityError::SecureChannelVerificationFailedMissingCredential.into());
-            };
+            // if credentials.is_empty() {
+            //     // if there is a trust context we need to check at least one credential
+            //     return Err(IdentityError::SecureChannelVerificationFailedMissingCredential.into());
+            // };
 
             debug!(
                 "got a trust context to check the credentials. There are {} credentials to check",

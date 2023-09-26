@@ -27,7 +27,7 @@ pub struct Connection {
     transport_route: Route,
     /// Resulting [`MultiAddr`] from the normalization, devoid of normalized protocols.
     /// A fully normalized [`MultiAddr`] contains only Service entries.
-    normalized_addr: MultiAddr,
+    pub(crate) normalized_addr: MultiAddr,
     /// The original provided [`MultiAddr`]
     original_addr: MultiAddr,
     /// A list of secure channel encryptors created for the connection.

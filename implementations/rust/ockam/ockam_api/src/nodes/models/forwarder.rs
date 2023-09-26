@@ -15,28 +15,19 @@ use crate::route_to_multiaddr;
 #[cbor(map)]
 pub struct CreateForwarder {
     /// Address to create forwarder at.
-    #[n(1)] address: MultiAddr,
+    #[n(1)] pub(crate) address: MultiAddr,
     /// Forwarder alias.
-    #[n(2)] alias: Option<String>,
+    #[n(2)] pub(crate) alias: Option<String>,
     /// Forwarding service is at rust node.
-    #[n(3)] at_rust_node: bool,
+    #[n(3)] pub(crate) at_rust_node: bool,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] authorized: Option<Identifier>,
+    #[n(4)] pub(crate) authorized: Option<Identifier>,
 }
 
 impl CreateForwarder {
-    pub fn at_project(address: MultiAddr, alias: Option<String>) -> Self {
-        Self {
-            address,
-            alias,
-            at_rust_node: false,
-            authorized: None,
-        }
-    }
-
-    pub fn at_node(
+    pub fn new(
         address: MultiAddr,
         alias: Option<String>,
         at_rust_node: bool,

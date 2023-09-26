@@ -88,19 +88,14 @@ impl NodeManagerForwarderCreator {
         forwarder_service: MultiAddr,
         alias: String,
     ) -> Result<()> {
-        let is_rust = forwarder_service
-            .first()
-            .map(|value| value.cast::<ockam_multiaddr::proto::Project>().is_none())
-            .unwrap_or(true);
-
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/forwarder")
-                    .body(CreateForwarder::at_node(
+                    .body(CreateForwarder::new(
                         forwarder_service,
                         Some(alias),
-                        is_rust,
+                        false,
                         None,
                     ))
                     .to_vec()?,
