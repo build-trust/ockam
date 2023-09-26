@@ -42,18 +42,19 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(&opts, ctx, &node).await?;
+            refresh_projects(&opts, ctx, controller.clone()).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };
 
     // Send request
-    let project = node.get_project(ctx, id).await?;
+    let project = controller.get_project(ctx, id).await?;
 
     opts.println(&project)?;
     opts.state

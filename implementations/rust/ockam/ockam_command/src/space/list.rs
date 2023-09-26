@@ -43,7 +43,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
 
     let get_spaces = async {
-        let spaces = node.list_spaces(ctx).await?;
+        let spaces = node.controller().list_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };

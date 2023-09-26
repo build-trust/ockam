@@ -1,10 +1,10 @@
 use miette::miette;
+use std::sync::Arc;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
 use ockam_api::cloud::operation::Operations;
-use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
-use ockam_api::nodes::InMemoryNode;
+use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use ockam_node::Context;
 
 use crate::CommandGlobalOpts;
@@ -12,7 +12,7 @@ use crate::CommandGlobalOpts;
 pub async fn check_for_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &InMemoryNode,
+    controller: Arc<Controller>,
     operation_id: &str,
 ) -> miette::Result<()> {
     let retry_strategy =
@@ -25,7 +25,7 @@ pub async fn check_for_completion(
     let operation = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the operation show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let result = node.get_operation(ctx, operation_id).await?;
+        let result = controller.get_operation(ctx, operation_id).await?;
 
         match result {
             Some(o) if o.is_completed() => Ok(o),

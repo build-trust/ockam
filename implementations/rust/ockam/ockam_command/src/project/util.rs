@@ -2,13 +2,14 @@ use indicatif::ProgressBar;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use std::iter::Take;
+use std::sync::Arc;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::{Project, Projects};
-use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT_MS;
+use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::InMemoryNode;
@@ -117,7 +118,7 @@ pub async fn check_project_readiness(
     let spinner_option = opts.terminal.progress_spinner();
     let project = check_project_ready(
         ctx,
-        node,
+        node.controller(),
         project,
         retry_strategy.clone(),
         spinner_option.clone(),
@@ -148,7 +149,7 @@ pub async fn check_project_readiness(
 
 async fn check_project_ready(
     ctx: &Context,
-    node: &InMemoryNode,
+    controller: Arc<Controller>,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -166,7 +167,7 @@ async fn check_project_ready(
     let project: Project = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the project show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let project = node.get_project(ctx, project_id.clone()).await?;
+        let project = controller.get_project(ctx, project_id.clone()).await?;
         let result: miette::Result<Project> = if project.is_ready() {
             Ok(project)
         } else {
@@ -260,9 +261,9 @@ async fn check_authority_node_accessible(
 pub async fn refresh_projects(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &InMemoryNode,
+    controller: Arc<Controller>,
 ) -> miette::Result<()> {
-    let projects: Vec<Project> = node.list_projects(ctx).await?;
+    let projects = controller.list_projects(ctx).await?;
     for project in projects {
         opts.state
             .projects

@@ -1,6 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::{IntoDiagnostic, WrapErr};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::info;
@@ -82,7 +83,7 @@ async fn run_impl(
 
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
 
-    enroll_with_node(&node, ctx, token)
+    enroll_with_node(node.controller(), ctx, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -103,7 +104,7 @@ pub async fn retrieve_user_project(
     ctx: &Context,
     node: &InMemoryNode,
 ) -> Result<Identifier> {
-    let space = default_space(opts, ctx, node)
+    let space = default_space(opts, ctx, node.controller())
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
@@ -119,7 +120,7 @@ pub async fn retrieve_user_project(
         ))?;
     info!("Retrieved the user default project {:?}", project);
 
-    let identifier = update_enrolled_identity(&opts.state, node.node_name().as_str())
+    let identifier = update_enrolled_identity(&opts.state, &node.node_name())
         .await
         .wrap_err(format!(
             "Unable to set the local identity as enrolled with project {}",
@@ -135,7 +136,7 @@ pub async fn retrieve_user_project(
 
 /// Enroll a user with a token, using the controller
 pub async fn enroll_with_node(
-    controller: &Controller,
+    controller: Arc<Controller>,
     ctx: &Context,
     token: OidcToken,
 ) -> miette::Result<()> {
@@ -152,14 +153,14 @@ pub async fn enroll_with_node(
 async fn default_space(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &InMemoryNode,
+    controller: Arc<Controller>,
 ) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
-        let spaces: Vec<Space> = node.list_spaces(ctx).await?;
+        let spaces: Vec<Space> = controller.list_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };
@@ -188,7 +189,7 @@ async fn default_space(
         let name = crate::util::random_name();
         let space_name = name.clone();
         let create_space = async {
-            let space = node.create_space(ctx, space_name, vec![]).await?;
+            let space = controller.create_space(ctx, space_name, vec![]).await?;
             *is_finished.lock().await = true;
             Ok(space)
         };
@@ -238,6 +239,8 @@ async fn default_project(
     node: &InMemoryNode,
     space: &Space,
 ) -> Result<Project> {
+    let controller = node.controller();
+
     // Get available project for the given space
     opts.terminal.write_line(&fmt_log!(
         "Getting available projects in space {}...",
@@ -249,7 +252,7 @@ async fn default_project(
 
     let is_finished = Mutex::new(false);
     let get_projects = async {
-        let projects = node.list_projects(ctx).await?;
+        let projects = controller.list_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
@@ -274,7 +277,7 @@ async fn default_project(
         let is_finished = Mutex::new(false);
         let project_name = "default".to_string();
         let get_project = async {
-            let project = node
+            let project = controller
                 .create_project(ctx, space.id.clone(), project_name.clone(), vec![])
                 .await?;
             *is_finished.lock().await = true;
@@ -298,7 +301,7 @@ async fn default_project(
         ))?;
 
         let operation_id = project.operation_id.clone().unwrap();
-        check_for_completion(opts, ctx, node, &operation_id).await?;
+        check_for_completion(opts, ctx, controller, &operation_id).await?;
 
         project.to_owned()
     }

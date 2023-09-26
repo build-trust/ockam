@@ -52,12 +52,13 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
 
-    let project = node
+    let project = controller
         .create_project(ctx, space_id, cmd.project_name, vec![])
         .await?;
     let operation_id = project.operation_id.clone().unwrap();
-    check_for_completion(&opts, ctx, &node, &operation_id).await?;
+    check_for_completion(&opts, ctx, controller, &operation_id).await?;
     let project = check_project_readiness(&opts, ctx, &node, project).await?;
     opts.state
         .projects

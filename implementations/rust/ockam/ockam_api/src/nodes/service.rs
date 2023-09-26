@@ -203,6 +203,14 @@ impl NodeManager {
                 .collect(),
         )
     }
+
+    /// Delete the cli state related to the current node when launched in-memory
+    pub fn delete_node(&self) -> Result<()> {
+        Ok(self
+            .cli_state
+            .nodes
+            .delete_sigkill(self.node_name().as_str(), false)?)
+    }
 }
 
 impl NodeManager {

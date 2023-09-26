@@ -94,9 +94,10 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
 
     let get_sent_invitation = async {
-        let invitation = node
+        let invitation = controller
             .create_service_invitation(
                 ctx,
                 cmd.expires_at,

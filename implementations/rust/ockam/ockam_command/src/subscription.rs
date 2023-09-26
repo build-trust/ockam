@@ -1,4 +1,5 @@
 use core::fmt::Write;
+use std::sync::Arc;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
@@ -56,13 +57,15 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
+
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id,
             space_id,
         } => {
-            match get_subscription_by_id_or_space_id(&controller, &ctx, subscription_id, space_id)
+            match get_subscription_by_id_or_space_id(controller, &ctx, subscription_id, space_id)
                 .await?
             {
                 Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
@@ -76,7 +79,7 @@ async fn run_impl(
 }
 
 pub(crate) async fn get_subscription_by_id_or_space_id(
-    controller: &Controller,
+    controller: Arc<Controller>,
     ctx: &Context,
     subscription_id: Option<String>,
     space_id: Option<String>,
