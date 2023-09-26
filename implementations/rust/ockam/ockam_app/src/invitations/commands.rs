@@ -10,8 +10,8 @@ use tracing::{debug, info, trace, warn};
 use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::share::{CreateServiceInvitation, Invitations, InvitationWithAccess};
-use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
+use ockam_api::cloud::share::InvitationListKind;
+use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 
 use crate::app::events::system_tray_on_update;
 use crate::app::{AppState, PROJECT_NAME};
@@ -175,14 +175,9 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
             debug!("not enrolled, skipping invitations refresh");
             return Ok(());
         }
-        let controller = state.controller().await;
+        let controller = state.controller().await.map_err(|e| e.to_string())?;
         let invitations = controller
-            .list_shares(
-                &state.context(),
-                ListInvitations {
-                    kind: InvitationListKind::All,
-                },
-            )
+            .list_invitations(&state.context(), InvitationListKind::All)
             .await
             .map_err(|e| e.to_string())?;
         debug!("Invitations fetched");
