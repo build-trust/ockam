@@ -1,6 +1,6 @@
 use crate::terminal::ConfirmResult;
 use crate::util::local_cmd;
-use crate::{fmt_ok, CommandGlobalOpts};
+use crate::{fmt_info, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
@@ -20,6 +20,19 @@ impl ResetCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> miette::Result<()> {
+    match opts.state.is_enrolled() {
+        Ok(true) => {}
+        _ => {
+            opts.terminal
+                .stdout()
+                .plain(
+                    fmt_info!("There's no local Ockam configuration to delete. You can enroll using: ockam enroll")
+				)
+				.write_line()?;
+            return Ok(());
+        }
+    }
+
     if !cmd.yes {
         match opts
             .terminal
