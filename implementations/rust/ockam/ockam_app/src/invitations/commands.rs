@@ -177,14 +177,9 @@ pub async fn refresh_invitations<R: Runtime>(app: AppHandle<R>) -> Result<(), St
             debug!("not enrolled, skipping invitations refresh");
             return Ok(());
         }
-        let controller = state.controller().await;
+        let controller = state.controller().await.map_err(|e| e.to_string())?;
         let invitations = controller
-            .list_shares(
-                &state.context(),
-                ListInvitations {
-                    kind: InvitationListKind::All,
-                },
-            )
+            .list_invitations(&state.context(), InvitationListKind::All)
             .await
             .map_err(|e| e.to_string())?;
         debug!("Invitations fetched");
