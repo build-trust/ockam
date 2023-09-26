@@ -36,8 +36,9 @@ async fn run_impl(
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
 
     let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
 
-    let addons = node.list_addons(&ctx, project_id).await?;
+    let addons = controller.list_addons(&ctx, project_id).await?;
     opts.println(&addons)?;
     Ok(())
 }

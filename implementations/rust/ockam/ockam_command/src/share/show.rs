@@ -37,9 +37,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
 
     let get_invitation_with_access = async {
-        let invitation_with_access = node.show_invitation(ctx, cmd.invitation_id).await?;
+        let invitation_with_access = controller.show_invitation(ctx, cmd.invitation_id).await?;
         *is_finished.lock().await = true;
         Ok(invitation_with_access)
     };

@@ -40,9 +40,10 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
 
     let get_accepted_invitation = async {
-        let invitation = node.accept_invitation(ctx, cmd.id).await?;
+        let invitation = controller.accept_invitation(ctx, cmd.id).await?;
         *is_finished.lock().await = true;
         Ok(invitation)
     };

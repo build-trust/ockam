@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -6,7 +5,7 @@ use std::time::Duration;
 use miette::IntoDiagnostic;
 use rand::random;
 
-use ockam::identity::{Identifier, SecureClient};
+use ockam::identity::Identifier;
 use ockam::{Context, TcpListenerOptions, TcpTransport};
 use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
@@ -24,7 +23,6 @@ use crate::nodes::NODEMANAGER_ADDR;
 
 /// This struct represents a node that lives within the current process
 pub struct InMemoryNode {
-    cli_state: CliState,
     node_manager: SupervisedNodeManager,
     controller: Arc<Controller>,
 }
@@ -43,7 +41,6 @@ impl InMemoryNode {
             .await
             .into_diagnostic()?;
         Ok(Self {
-            cli_state: cli_state.clone(),
             node_manager,
             controller: Arc::new(controller),
         })
@@ -71,7 +68,6 @@ impl InMemoryNode {
             .await
             .into_diagnostic()?;
         Ok(Self {
-            cli_state: cli_state.clone(),
             node_manager,
             controller: Arc::new(controller),
         })
@@ -117,24 +113,8 @@ impl InMemoryNode {
             .into_diagnostic()
     }
 
-    pub async fn make_secure_client(
-        &self,
-        identifier: &Identifier,
-        address: &MultiAddr,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<SecureClient> {
-        self.node_manager
-            .make_secure_client(
-                identifier,
-                address,
-                &self
-                    .node_manager
-                    .get_identifier(caller_identity_name)
-                    .await
-                    .into_diagnostic()?,
-            )
-            .await
-            .into_diagnostic()
+    pub fn controller(&self) -> Arc<Controller> {
+        self.controller.clone()
     }
 
     pub fn node_name(&self) -> String {
@@ -142,20 +122,9 @@ impl InMemoryNode {
     }
 }
 
-impl Deref for InMemoryNode {
-    type Target = Arc<Controller>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.controller
-    }
-}
-
 impl Drop for InMemoryNode {
     fn drop(&mut self) {
-        let _ = self
-            .cli_state
-            .nodes
-            .delete_sigkill(self.node_manager.node_name().as_str(), false);
+        let _ = self.node_manager.node_manager.delete_node();
     }
 }
 

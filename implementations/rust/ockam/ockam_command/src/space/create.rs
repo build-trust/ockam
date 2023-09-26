@@ -54,7 +54,10 @@ async fn run_impl(
     cmd: CreateCommand,
 ) -> miette::Result<()> {
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-    let space = node.create_space(ctx, cmd.name, cmd.admins).await?;
+    let space = node
+        .controller()
+        .create_space(ctx, cmd.name, cmd.admins)
+        .await?;
 
     opts.println(&space)?;
     opts.state

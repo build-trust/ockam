@@ -45,7 +45,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> m
 
     // Send request
     let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-    let space: Space = node.get_space(ctx, id).await?;
+    let space: Space = node.controller().get_space(ctx, id).await?;
     opts.println(&space)?;
     opts.state
         .spaces
