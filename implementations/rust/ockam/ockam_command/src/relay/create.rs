@@ -6,14 +6,15 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use tokio::sync::Mutex;
 use tokio::try_join;
+use tracing::info;
 
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
-use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::service::forwarder::Relays;
 use ockam_api::nodes::BackgroundNode;
-use ockam_core::api::Request;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
@@ -88,25 +89,18 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         cmd.relay_name.clone()
     };
 
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relay_info = async {
-        let req = {
-            let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
-                if cmd.authorized.is_some() {
-                    return Err(
-                        miette!("--authorized can not be used with project addresses").into(),
-                    );
-                }
-                CreateForwarder::at_project(ma, Some(alias.clone()))
-            } else {
-                CreateForwarder::at_node(ma, Some(alias.clone()), at_rust_node, cmd.authorized)
+        let relay_info = {
+            if cmd.at.matches(0, &[Project::CODE.into()]) && cmd.authorized.is_some() {
+                return Err(miette!("--authorized can not be used with project addresses").into());
             };
-            Request::post("/node/forwarder").body(body)
+            info!("creating a relay at {} to {node_name}", cmd.at);
+            let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+            node.create_relay(&ctx, &ma, Some(alias.clone()), cmd.authorized)
+                .await?
         };
-
-        let relay_info: ForwarderInfo = node.ask(&ctx, req).await?;
         *is_finished.lock().await = true;
         Ok(relay_info)
     };

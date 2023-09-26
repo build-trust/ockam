@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use minicbor::Decoder;
 use ockam::compat::sync::Mutex;
 use ockam::identity::Identifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::Result;
-use ockam_core::api::{Error, RequestHeader, Response};
-use ockam_core::AsyncTryClone;
-use ockam_multiaddr::MultiAddr;
+use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::{async_trait, AsyncTryClone};
+use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
 
@@ -15,35 +15,36 @@ use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::nodes::service::SupervisedNodeManager;
+use crate::nodes::BackgroundNode;
 use crate::session::sessions::{Replacer, Session};
 use crate::session::sessions::{MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 
 use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    pub(super) async fn create_forwarder_response(
-        &self,
-        ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Vec<u8>> {
-        let req_body: CreateForwarder = dec.decode()?;
-        match self.create_forwarder(ctx, req_body).await {
-            Ok(body) => Ok(Response::ok(req).body(body).to_vec()?),
-            Err(err) => Ok(Response::internal_error(
-                req,
-                &format!("Failed to create forwarder: {}", err),
-            )
-            .to_vec()?),
-        }
-    }
-
     pub async fn create_forwarder(
         &self,
         ctx: &Context,
-        req: CreateForwarder,
-    ) -> Result<ForwarderInfo> {
-        self.node_manager.create_forwarder(ctx, req).await
+        req: &RequestHeader,
+        create_forwarder: CreateForwarder,
+    ) -> Result<Response<ForwarderInfo>, Response<Error>> {
+        let CreateForwarder {
+            address,
+            alias,
+            at_rust_node,
+            authorized,
+        } = create_forwarder;
+        match self
+            .node_manager
+            .create_forwarder(ctx, &address, alias, at_rust_node, authorized)
+            .await
+        {
+            Ok(body) => Ok(Response::ok(&req).body(body)),
+            Err(err) => Err(Response::internal_error(
+                &req,
+                &format!("Failed to create forwarder: {}", err),
+            )),
+        }
     }
 
     pub(super) async fn delete_forwarder(
@@ -96,14 +97,24 @@ impl NodeManager {
         &self,
         ctx: &Context,
         connection: Connection,
+        at_rust_node: bool,
         alias: Option<String>,
     ) -> Result<ForwarderInfo> {
         let route = connection.route()?;
         let options = RemoteForwarderOptions::new();
-        let forwarder = if let Some(alias) = alias {
-            RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, options).await
+
+        let forwarder = if at_rust_node {
+            if let Some(alias) = alias {
+                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, options).await
+            } else {
+                RemoteForwarder::create(ctx, route, options).await
+            }
         } else {
-            RemoteForwarder::create(ctx, route, options).await
+            if let Some(alias) = alias {
+                RemoteForwarder::create_static(ctx, route, alias, options).await
+            } else {
+                RemoteForwarder::create(ctx, route, options).await
+            }
         };
 
         match forwarder {
@@ -190,16 +201,19 @@ impl SupervisedNodeManager {
     pub async fn create_forwarder(
         &self,
         ctx: &Context,
-        req: CreateForwarder,
+        address: &MultiAddr,
+        alias: Option<String>,
+        at_rust_node: bool,
+        authorized: Option<Identifier>,
     ) -> Result<ForwarderInfo> {
-        debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
+        debug!(addr = %address, alias = ?alias, at_rust_node = ?at_rust_node, "Handling CreateForwarder request");
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
         let connection = self
             .make_connection(
                 connection_ctx.clone(),
-                req.address(),
+                &address.clone(),
                 None,
-                req.authorized(),
+                authorized.clone(),
                 None,
                 None,
             )
@@ -214,17 +228,23 @@ impl SupervisedNodeManager {
 
         let forwarder = self
             .node_manager
-            .create_forwarder(ctx, connection.clone(), req.alias().map(|a| a.to_string()))
+            .create_forwarder(
+                ctx,
+                connection.clone(),
+                at_rust_node,
+                alias.clone().map(|a| a.to_string()),
+            )
             .await?;
-        if !req.at_rust_node() && !connection.transport_route().is_empty() {
+
+        if !at_rust_node && !connection.transport_route().is_empty() {
             let ping_route = connection.transport_route().clone();
             let repl = Self::relay_replacer(
                 self.node_manager.clone(),
                 Arc::new(ctx.async_try_clone().await?),
                 connection,
-                req.address().clone(),
-                req.alias().map(|a| a.to_string()),
-                req.authorized(),
+                address.clone(),
+                alias,
+                authorized,
             );
             let mut session = Session::new(ping_route);
             session.set_replacer(repl);
@@ -316,5 +336,32 @@ impl SupervisedNodeManager {
                 }
             })
         })
+    }
+}
+
+#[async_trait]
+pub trait Relays {
+    async fn create_relay(
+        &self,
+        ctx: &Context,
+        address: &MultiAddr,
+        alias: Option<String>,
+        authorized: Option<Identifier>,
+    ) -> miette::Result<ForwarderInfo>;
+}
+
+#[async_trait]
+impl Relays for BackgroundNode {
+    async fn create_relay(
+        &self,
+        ctx: &Context,
+        address: &MultiAddr,
+        alias: Option<String>,
+        authorized: Option<Identifier>,
+    ) -> miette::Result<ForwarderInfo> {
+        let at_rust_node = !address.starts_with(Project::CODE.into());
+        let body = CreateForwarder::new(address.clone(), alias, at_rust_node, authorized);
+        self.ask(ctx, Request::post("/node/forwarder").body(body))
+            .await
     }
 }
