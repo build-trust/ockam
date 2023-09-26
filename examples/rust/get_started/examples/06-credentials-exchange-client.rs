@@ -49,7 +49,7 @@ async fn main(ctx: Context) -> Result<()> {
         &tcp,
         node.secure_channels().clone(),
         issuer.identifier(),
-        &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
+        &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000/secure/api")?,
         client.identifier(),
     )
     .await?;

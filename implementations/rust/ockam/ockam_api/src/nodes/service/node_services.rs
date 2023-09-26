@@ -4,7 +4,7 @@ use minicbor::Decoder;
 
 use ockam::identity::{identities, AuthorityService, TrustContext};
 use ockam::{Address, Context, Result};
-use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Resource;
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::compat::net::SocketAddr;
