@@ -58,6 +58,7 @@ async fn run_impl(
     {
         let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
         let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+        let controller = node.controller();
 
         // Lookup project
         let project_id = match opts.state.projects.get(&cmd.project_name) {
@@ -65,7 +66,7 @@ async fn run_impl(
             Err(_) => {
                 // The project is not in the config file.
                 // Fetch all available projects from the cloud.
-                refresh_projects(&opts, ctx, &node).await?;
+                refresh_projects(&opts, ctx, controller.clone()).await?;
 
                 // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
                 match opts.state.projects.get(&cmd.project_name) {
@@ -78,7 +79,7 @@ async fn run_impl(
         };
 
         // Send request
-        node.delete_project(ctx, space_id, project_id).await?;
+        controller.delete_project(ctx, space_id, project_id).await?;
 
         opts.state.projects.delete(&cmd.project_name)?;
         opts.terminal

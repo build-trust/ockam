@@ -121,8 +121,9 @@ async fn check_configuration_completion(
     project_id: String,
     operation_id: String,
 ) -> Result<()> {
-    check_for_completion(opts, ctx, node, &operation_id).await?;
-    let project = node.get_project(ctx, project_id).await?;
+    let controller = node.controller();
+    check_for_completion(opts, ctx, controller.clone(), &operation_id).await?;
+    let project = controller.get_project(ctx, project_id).await?;
     let _ = check_project_readiness(opts, ctx, node, project).await?;
     Ok(())
 }

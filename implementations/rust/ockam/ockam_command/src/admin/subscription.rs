@@ -141,7 +141,9 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
+    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
+    let controller = node.controller();
+
     match cmd.subcommand {
         SubscriptionSubcommand::Attach {
             json,
@@ -165,8 +167,13 @@ async fn run_impl(
             subscription_id,
             space_id,
         } => {
-            match get_subscription_by_id_or_space_id(&controller, &ctx, subscription_id, space_id)
-                .await?
+            match get_subscription_by_id_or_space_id(
+                controller.clone(),
+                &ctx,
+                subscription_id,
+                space_id,
+            )
+            .await?
             {
                 Some(subscription) => {
                     let response = controller
@@ -192,7 +199,7 @@ async fn run_impl(
                         .into_diagnostic()
                         .context(format!("failed to read {:?}", &json))?;
                     match get_subscription_by_id_or_space_id(
-                        &controller,
+                        controller.clone(),
                         &ctx,
                         subscription_id,
                         space_id,
@@ -217,7 +224,7 @@ async fn run_impl(
                     new_space_id,
                 } => {
                     match get_subscription_by_id_or_space_id(
-                        &controller,
+                        controller.clone(),
                         &ctx,
                         subscription_id,
                         space_id,
