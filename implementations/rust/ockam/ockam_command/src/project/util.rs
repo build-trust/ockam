@@ -12,6 +12,7 @@ use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
+use ockam_api::nodes::service::forwarder::SecureChannelsCreation;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::compat::str::FromStr;
@@ -50,7 +51,7 @@ pub fn clean_projects_multiaddr(
 pub async fn get_projects_secure_channels_from_config_lookup(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &InMemoryNode,
+    node: &impl SecureChannelsCreation,
     meta: &LookupMeta,
     identity_name: Option<String>,
 ) -> Result<Vec<MultiAddr>> {
@@ -76,21 +77,20 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .wrap_err("Invalid project node route")?;
             (node_route, id)
         };
-        let project_node = node
-            .make_project_node_client(
-                &project_identity_id,
+
+        debug!("creating a secure channel to {project_access_route}");
+        let secure_channel = node
+            .create_secure_channel(
+                ctx,
                 &project_access_route,
+                project_identity_id,
                 identity_name.clone(),
+                None,
             )
             .await?;
-        let secure_channel = project_node.create_secure_channel(ctx).await?;
-        let address = route_to_multiaddr(&route![secure_channel.encryptor_address().to_string()])
-            .ok_or_else(|| {
-            ApiError::core(format!(
-                "Invalid route: {}",
-                secure_channel.encryptor_address()
-            ))
-        })?;
+        let address = route_to_multiaddr(&route![secure_channel.to_string()])
+            .ok_or_else(|| ApiError::core(format!("Invalid route: {}", secure_channel)))?;
+        debug!("secure channel created at {address}");
         sc.push(address);
     }
 

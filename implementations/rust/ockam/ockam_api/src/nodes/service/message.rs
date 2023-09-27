@@ -78,7 +78,7 @@ impl MessageSender for NodeManager {
         let connection = self
             .make_connection(connection_ctx, addr, None, None, None, timeout)
             .await?;
-        let route = connection.route()?;
+        let route = connection.route(self.tcp_transport()).await?;
 
         trace!(target: TARGET, route = %route, msg_l = %msg_length, "sending message");
         let options = if let Some(timeout) = timeout {
