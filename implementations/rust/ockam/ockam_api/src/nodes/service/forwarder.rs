@@ -1,3 +1,4 @@
+use miette::IntoDiagnostic;
 use std::sync::Arc;
 
 use ockam::compat::sync::Mutex;
@@ -5,7 +6,7 @@ use ockam::identity::Identifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
-use ockam_core::{async_trait, AsyncTryClone};
+use ockam_core::{async_trait, Address, AsyncTryClone};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio::time::timeout;
@@ -14,8 +15,11 @@ use ockam_node::Context;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use crate::nodes::models::secure_channel::{
+    CreateSecureChannelRequest, CreateSecureChannelResponse,
+};
 use crate::nodes::service::SupervisedNodeManager;
-use crate::nodes::BackgroundNode;
+use crate::nodes::{BackgroundNode, InMemoryNode};
 use crate::session::sessions::{Replacer, Session};
 use crate::session::sessions::{MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 
@@ -100,7 +104,7 @@ impl NodeManager {
         at_rust_node: bool,
         alias: Option<String>,
     ) -> Result<ForwarderInfo> {
-        let route = connection.route()?;
+        let route = connection.route(self.tcp_transport()).await?;
         let options = RemoteForwarderOptions::new();
 
         let forwarder = if at_rust_node {
@@ -313,7 +317,7 @@ impl SupervisedNodeManager {
                     connection.add_default_consumers(ctx.clone());
                     *connection_arc.lock().unwrap() = connection.clone();
 
-                    let route = connection.route()?;
+                    let route = connection.route(node_manager.tcp_transport()).await?;
 
                     let options = RemoteForwarderOptions::new();
                     if let Some(alias) = &alias {
@@ -363,5 +367,65 @@ impl Relays for BackgroundNode {
         let body = CreateForwarder::new(address.clone(), alias, at_rust_node, authorized);
         self.ask(ctx, Request::post("/node/forwarder").body(body))
             .await
+    }
+}
+
+#[async_trait]
+pub trait SecureChannelsCreation {
+    async fn create_secure_channel(
+        &self,
+        ctx: &Context,
+        addr: &MultiAddr,
+        authorized: Identifier,
+        identity_name: Option<String>,
+        credential_name: Option<String>,
+    ) -> miette::Result<Address>;
+}
+
+#[async_trait]
+impl SecureChannelsCreation for InMemoryNode {
+    async fn create_secure_channel(
+        &self,
+        ctx: &Context,
+        addr: &MultiAddr,
+        authorized: Identifier,
+        identity_name: Option<String>,
+        credential_name: Option<String>,
+    ) -> miette::Result<Address> {
+        self.node_manager
+            .create_secure_channel(
+                ctx,
+                addr.clone(),
+                identity_name,
+                Some(vec![authorized]),
+                credential_name,
+                None,
+            )
+            .await
+            .into_diagnostic()
+            .map(|sc| sc.encryptor_address().clone())
+    }
+}
+
+#[async_trait]
+impl SecureChannelsCreation for BackgroundNode {
+    async fn create_secure_channel(
+        &self,
+        ctx: &Context,
+        addr: &MultiAddr,
+        authorized: Identifier,
+        identity_name: Option<String>,
+        credential_name: Option<String>,
+    ) -> miette::Result<Address> {
+        let body = CreateSecureChannelRequest::new(
+            addr,
+            Some(vec![authorized]),
+            identity_name,
+            credential_name,
+        );
+        let response: CreateSecureChannelResponse = self
+            .ask(ctx, Request::post("/node/secure_channel").body(body))
+            .await?;
+        Ok(response.addr)
     }
 }
