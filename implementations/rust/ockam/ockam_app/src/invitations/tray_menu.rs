@@ -14,7 +14,9 @@ use ockam_api::cloud::share::{ReceivedInvitation, SentInvitation, ServiceAccessD
 use super::state::SyncInvitationsState;
 use crate::app::AppState;
 use crate::icons::themed_icon;
-use crate::invitations::state::{AcceptedInvitations, Inlet};
+use crate::invitations::state::{
+    AcceptedInvitations, Inlet, ReceivedInvitationStatus, ReceivedInvitations,
+};
 
 pub const INVITATIONS_WINDOW_ID: &str = "invitations_creation";
 
@@ -44,7 +46,7 @@ pub(crate) async fn build_invitations_section<'a, R: Runtime, M: Manager<R>>(
     let reader = state.read().await;
 
     let mut menu_items = vec![];
-    if !reader.received.is_empty() {
+    if !reader.received.invitations.is_empty() {
         menu_items.push(add_received_menu(app_handle, &reader.received));
     }
     if !reader.accepted.invitations.is_empty() {
@@ -95,23 +97,34 @@ pub(crate) fn pending_invitation_menu<R: Runtime>(
 
 fn add_received_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
-    received: &[ReceivedInvitation],
+    received: &ReceivedInvitations,
 ) -> Submenu<R> {
+    let count = received.invitations.len();
     debug!(
-        count = received.len(),
+        %count,
         "Building menu for received invitations"
     );
 
     let header_text = format!(
-        "{} pending invite{}",
-        received.len(),
-        if received.len() == 1 { "" } else { "s" }
+        "{count} pending invite{}",
+        if count == 1 { "" } else { "s" }
     );
 
     let mut submenu_builder = SubmenuBuilder::new(app_handle, header_text);
     submenu_builder = received
+        .invitations
         .iter()
-        .map(|invitation| received_invite_menu(app_handle, invitation))
+        .map(|invitation| {
+            received_invite_menu(
+                app_handle,
+                invitation,
+                received
+                    .status
+                    .iter()
+                    .find(|x| x.0 == invitation.id)
+                    .map(|x| x.1.clone()),
+            )
+        })
         .fold(submenu_builder, |submenu_builder, submenu| {
             submenu_builder.item(&submenu)
         });
@@ -123,18 +136,30 @@ fn add_received_menu<R: Runtime>(
 fn received_invite_menu<R: Runtime>(
     app_handle: &AppHandle<R>,
     invitation: &ReceivedInvitation,
+    invitation_status: Option<ReceivedInvitationStatus>,
 ) -> Submenu<R> {
+    let state_menu_item = invitation_status
+        .map(|s| match s {
+            ReceivedInvitationStatus::Accepting => {
+                IconMenuItemBuilder::new("Accepting invite").enabled(false)
+            }
+            ReceivedInvitationStatus::Accepted => {
+                IconMenuItemBuilder::new("Invitation accepted").enabled(false)
+            }
+        })
+        .unwrap_or(IconMenuItemBuilder::with_id(
+            format!("invitation-received-accept-{}", invitation.id),
+            "Accept invitation",
+        ))
+        .icon(Icon::Raw(themed_icon("envelope")))
+        .build(app_handle);
+
     SubmenuBuilder::new(app_handle, &invitation.owner_email)
         .items(&[
             &MenuItemBuilder::new(&invitation.target_id)
                 .enabled(false)
                 .build(app_handle),
-            &IconMenuItemBuilder::with_id(
-                format!("invitation-received-accept-{}", invitation.id),
-                "Accept invite",
-            )
-            .icon(Icon::Raw(themed_icon("check-lg")))
-            .build(app_handle),
+            &state_menu_item,
         ])
         .build()
         .expect("cannot build received invitation submenu")

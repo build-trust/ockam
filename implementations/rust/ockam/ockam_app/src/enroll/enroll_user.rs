@@ -24,29 +24,31 @@ use crate::{shared_service, Result};
 ///  - connects to the Orchestrator with the retrieved token to create a project
 pub async fn enroll_user<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     let app_state: State<AppState> = app.state::<AppState>();
-    enroll_with_token(app, &app_state)
-        .await
-        .unwrap_or_else(|e| error!(?e, "Failed to enroll user"));
-    // Reset the node manager to include the project's setup, needed to create the relay.
-    // This is necessary because the project data is used in the worker initialization,
-    // which can't be rerun manually once the worker is started.
-    app_state.reset_node_manager().await?;
-    system_tray_on_update(app);
+    match enroll_with_token(app, &app_state).await {
+        Ok(_) => {
+            // Reset the node manager to include the project's setup, needed to create the relay.
+            // This is necessary because the project data is used in the worker initialization,
+            // which can't be rerun manually once the worker is started.
+            app_state.reset_node_manager().await?;
+            system_tray_on_update(app);
 
-    // Refresh the projects and invitations now that the node has access to the project
-    app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
-    app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
+            // Refresh the projects and invitations now that the node has access to the project
+            app.trigger_global(crate::projects::events::REFRESH_PROJECTS, None);
+            app.trigger_global(crate::invitations::events::REFRESH_INVITATIONS, None);
 
-    // Create the relay
-    shared_service::relay::create_relay(
-        app_state.context(),
-        app_state.state().await,
-        app_state.node_manager_worker().await,
-    )
-    .await;
-    system_tray_on_update(app);
-
-    info!("User enrolled successfully");
+            // Create the relay
+            shared_service::relay::create_relay(
+                app_state.context(),
+                app_state.state().await,
+                app_state.node_manager_worker().await,
+            )
+            .await;
+            system_tray_on_update(app);
+        }
+        Err(e) => {
+            error!(?e, "Failed to enroll user");
+        }
+    }
     Ok(())
 }
 

@@ -12,9 +12,10 @@ use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::{AcceptInvitation, CreateServiceInvitation, InvitationWithAccess};
 use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 
+use crate::app::events::system_tray_on_update;
 use crate::app::{AppState, PROJECT_NAME};
 use crate::background_node::BackgroundNodeClient;
-use crate::invitations::state::Inlet;
+use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
 use crate::projects::commands::{create_enrollment_ticket, SyncAdminProjectsState};
 use crate::shared_service::relay::RELAY_NAME;
 
@@ -30,21 +31,60 @@ pub async fn accept_invitation<R: Runtime>(id: String, app: AppHandle<R>) -> Res
 
 async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> crate::Result<()> {
     debug!(?id, "Accepting invitation");
-    let state: State<'_, AppState> = app.state();
-    if !state.is_enrolled().await? {
+    let app_state: State<'_, AppState> = app.state();
+
+    if !app_state.is_enrolled().await? {
         debug!(?id, "Not enrolled, invitation can't be accepted");
         return Ok(());
     }
 
-    let node_manager_worker = state.node_manager_worker().await;
+    let invitation_state: State<'_, SyncInvitationsState> = app.state();
+    // Update the invitation status to Accepting if it's not already being processed.
+    // Otherwise, return early.
+    {
+        let mut writer = invitation_state.write().await;
+        match writer.received.status.iter_mut().find(|x| x.0 == id) {
+            None => {
+                writer
+                    .received
+                    .status
+                    .push((id.clone(), ReceivedInvitationStatus::Accepting));
+                system_tray_on_update(app);
+            }
+            Some((i, s)) => {
+                return match s {
+                    ReceivedInvitationStatus::Accepting => {
+                        debug!(?i, "Invitation is being processed");
+                        Ok(())
+                    }
+                    ReceivedInvitationStatus::Accepted => {
+                        debug!(?i, "Invitation was already accepted");
+                        Ok(())
+                    }
+                }
+            }
+        }
+    }
+
+    let node_manager_worker = app_state.node_manager_worker().await;
     let res = node_manager_worker
         .accept_invitation(
-            &state.context(),
+            &app_state.context(),
             AcceptInvitation { id: id.clone() },
-            &state.controller_address(),
+            &app_state.controller_address(),
             None,
         )
         .await?;
+
+    // Update the invitation status to Accepted
+    {
+        let mut writer = invitation_state.write().await;
+        if let Some(x) = writer.received.status.iter_mut().find(|x| x.0 == id) {
+            x.1 = ReceivedInvitationStatus::Accepted;
+            system_tray_on_update(app);
+        }
+    }
+
     debug!(?res);
     info!(?id, "Invitation accepted");
     Ok(())
