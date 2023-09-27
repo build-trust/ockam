@@ -14,7 +14,7 @@ defmodule Ockly.Native do
   def verify_credential(_, _, _), do: error()
   def import_signing_secret(_), do: error()
 
-  def setup_aws_kms(), do: error()
+  def setup_aws_kms(_), do: error()
 
   def issue_credential(_, _, _, _), do: error()
 
