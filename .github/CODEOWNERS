@@ -1,6 +1,6 @@
 # Request reviews from the approvers team
 * @build-trust/approvers
-/.github/CONTRIBUTORS.csv @cla-pr-approvers
+/.github/CONTRIBUTORS.csv @build-trust/cla-pr-approvers
 
 # References on updating this file:
 # https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners

@@ -124,26 +124,27 @@ jobs:
               https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages
             ' && exit 1)
 
-      # - name: Check If PR Author Made Changes To CONTRIBUTORS.md
-      #   if: github.event_name == 'pull_request'
-      #   run: |
-      #     if ! git diff --name-only --exit-code ${FIRST_COMMIT}..HEAD $CONTRIBUTORS_CSV_PATH > /dev/null; then
-      #       # It is required that PR authors only make changes to CONTRIBUTORS.md when signing CLA
-      #     fi
+      - name: Check If PR Author Made Changes Only To CONTRIBUTORS.csv
+        run: |
+          paths_updated=$(git diff --name-only origin/develop..HEAD)
 
-      #     if git diff --name-only $FIRST_COMMIT..HEAD | grep -q -iF 'CONTRIBUTING.md'; then
-      #       echo "[✓] Pull Request Author has made changes to CONTRIBUTING.md"
-      #     else
-      #       echo "
-      #         Pull Request Author has not made any changes to CONTRIBUTING.md
-
-      #         Please read the Ockam Contributing Guide at:
+          if echo "$paths_updated" | grep $CONTRIBUTORS_CSV_PATH; then
+            # user has made changes to the CONTRIBUTORS.md file, we need to ensure that PR
+            # is only accepting the CLA
+            no_paths_updated=$(echo $paths_updated | wc -l)
+            if [[ $no_paths_updated -gt 1 ]]; then
+              echo "
+                We require that all contributors have accepted our Contributor License Agreement (CLA).
+                Please read the CLA and create a new pull request to accept the CLA by adding your Github details in a row at the end of the CONTRIBUTORS.csv file.
+                This new pull request must only change the CONTRIBUTORS.csv file.
+                CONTRIBUTORS.csv file is located at: $CONTRIBUTORS_CSV_PATH
+              " && exit 1
+            fi
+          fi
 
       - name: Get Contributors List
         run: |
-          curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
-            https://raw.githubusercontent.com/build-trust/ockam-contributors/main/CONTRIBUTORS.csv \
-            > CONTRIBUTORS.csv
+          mv $CONTRIBUTORS_CSV_PATH CONTRIBUTORS.csv
 
       - name: Split Contributors List
         shell: python
