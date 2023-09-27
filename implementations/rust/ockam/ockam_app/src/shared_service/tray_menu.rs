@@ -55,7 +55,7 @@ pub(crate) async fn build_shared_services_section<'a, R: Runtime, M: Manager<R>>
     builder = if reader.sent.is_empty() {
         builder
     } else {
-        let mut submenu = SubmenuBuilder::new(app_handle, "Pending invitations");
+        let mut submenu = SubmenuBuilder::new(app_handle, "Sent invitations");
         submenu = reader
             .sent
             .iter()

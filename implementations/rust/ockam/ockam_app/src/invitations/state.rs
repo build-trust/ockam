@@ -18,7 +18,7 @@ pub struct InvitationState {
     #[serde(default)]
     pub(crate) sent: Vec<SentInvitation>,
     #[serde(default)]
-    pub(crate) received: Vec<ReceivedInvitation>,
+    pub(crate) received: ReceivedInvitations,
     #[serde(default)]
     pub(crate) accepted: AcceptedInvitations,
 }
@@ -27,9 +27,23 @@ impl InvitationState {
     pub fn replace_by(&mut self, list: InvitationList) {
         debug!("Updating invitations state");
         self.sent = list.sent.unwrap_or_default();
-        self.received = list.received.unwrap_or_default();
+        self.received.invitations = list.received.unwrap_or_default();
         self.accepted.invitations = list.accepted.unwrap_or_default();
     }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct ReceivedInvitations {
+    pub(crate) invitations: Vec<ReceivedInvitation>,
+
+    /// Status of accepted invitations, keyed by invitation id.
+    pub(crate) status: Vec<(String, ReceivedInvitationStatus)>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ReceivedInvitationStatus {
+    Accepting,
+    Accepted,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -84,7 +98,7 @@ mod tests {
     fn test_replace_by() {
         let mut state = InvitationState::default();
         assert!(state.sent.is_empty());
-        assert!(state.received.is_empty());
+        assert!(state.received.invitations.is_empty());
         assert!(state.accepted.invitations.is_empty());
         let list = InvitationList {
             sent: Some(vec![SentInvitation {
@@ -119,7 +133,7 @@ mod tests {
         };
         state.replace_by(list);
         assert_eq!(state.sent.len(), 1);
-        assert_eq!(state.received.len(), 1);
+        assert_eq!(state.received.invitations.len(), 1);
         assert_eq!(state.accepted.invitations.len(), 1);
     }
 }
