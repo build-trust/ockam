@@ -14,7 +14,7 @@ use ockam_identity::{
 };
 use ockam_vault::SecretType;
 use ockam_vault::{PublicKey, Secret, SoftwareSigningVault};
-use ockam_vault_aws::AwsSigningVault;
+use ockam_vault_aws::{AwsSigningVault, AwsKmsConfig, InitialKeysDiscovery};
 use rustler::{Atom, Binary, Env, Error, NewBinary, NifResult};
 use std::clone::Clone;
 use std::collections::HashMap;
@@ -330,9 +330,11 @@ fn load(_env: rustler::Env, _load_data: rustler::Term) -> bool {
 }
 
 #[rustler::nif]
-fn setup_aws_kms() -> NifResult<bool> {
+fn setup_aws_kms(key_ids : Vec<String>) -> NifResult<bool> {
     block_future(async move {
-        match AwsSigningVault::create().await {
+        let config = AwsKmsConfig::default().await.map_err(|e| Error::Term(Box::new(e.to_string())))?
+                                        .with_initial_keys_discovery(InitialKeysDiscovery::Keys(key_ids));
+        match AwsSigningVault::create_with_config(config).await {
             Ok(vault) => {
                 let aws_vault = Arc::new(vault);
                 let builder = ockam_identity::Identities::builder().with_vault(Vault::new(

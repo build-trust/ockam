@@ -30,16 +30,10 @@ impl AwsSigningVault {
     }
 
     /// Create a new AWS security module
-    async fn create_with_config(config: AwsKmsConfig) -> Result<Self> {
+    pub async fn create_with_config(config: AwsKmsConfig) -> Result<Self> {
         let client = AwsKmsClient::new(config).await?;
-
         let mut keys: Vec<AwsKeyPair> = vec![];
-
         // Fetch list of all keys, then fetch the public key for each key
-        // There shouldn't be more than 2-3 active keys in the KMS,
-        // however, technically we have a software limit of 100 keys here
-        // If there are more keys - `list_keys` will return an Error
-        // TODO: Make sure every Vault in AWS account gets its isolated scope
         let key_ids = client.list_keys().await?;
 
         for key_id in key_ids {

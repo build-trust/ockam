@@ -17,11 +17,22 @@ pub struct AwsKmsClient {
     config: AwsKmsConfig,
 }
 
+/// Defines how to populate the initial keys at vault startup
+#[derive(Debug, Clone)]
+pub enum InitialKeysDiscovery {
+    /// Make a list() call to aws kms to obtain the entire set of keys this role as access to
+    ListFromAwsKms,
+
+    /// Use a specific set of key-ids
+    Keys(Vec<String>),
+}
+
 /// AWS KMS configuration.
 #[derive(Debug, Clone)]
 pub struct AwsKmsConfig {
     multi_region: bool,
     sdk_config: SdkConfig,
+    initial_keys_discovery: InitialKeysDiscovery,
 }
 
 impl AwsKmsConfig {
@@ -35,13 +46,21 @@ impl AwsKmsConfig {
         AwsKmsConfig {
             multi_region: false,
             sdk_config,
+            initial_keys_discovery: InitialKeysDiscovery::ListFromAwsKms,
         }
     }
 
     /// Create multi-region keys.
-    pub fn multi_region(mut self, val: bool) -> Self {
+    pub fn multi_region(mut self, val: bool) {
         self.multi_region = val;
-        self
+    }
+
+    /// Configure initial key discovery
+    pub fn with_initial_keys_discovery(self, initial_keys_discovery: InitialKeysDiscovery) -> Self {
+        Self {
+            initial_keys_discovery,
+            ..self
+        }
     }
 }
 
@@ -206,26 +225,34 @@ impl KmsClient for AwsKmsClient {
     }
 
     async fn list_keys(&self) -> Result<Vec<KeyId>> {
-        let output = self.client.list_keys().send().await.map_err(|err| {
-            log::error!(%err, "failed to list all keys");
-            Error::MissingKeys
-        })?;
+        match &self.config.initial_keys_discovery {
+            InitialKeysDiscovery::ListFromAwsKms => {
+                // There shouldn't be more than 2-3 active keys in the KMS,
+                // however, technically we have a software limit of 100 keys here
+                // If there are more keys - `list_keys` will return an Error
+                let output = self.client.list_keys().send().await.map_err(|err| {
+                    log::error!(%err, "failed to list all keys");
+                    Error::MissingKeys
+                })?;
 
-        if output.truncated() {
-            return Err(Error::TruncatedKeysList.into());
-        }
-
-        if let Some(keys) = output.keys() {
-            let mut result = vec![];
-            for key in keys {
-                if let Some(key_id) = key.key_id() {
-                    result.push(key_id.to_string())
+                if output.truncated() {
+                    return Err(Error::TruncatedKeysList.into());
                 }
-            }
-            return Ok(result);
-        }
 
-        Ok(vec![])
+                if let Some(keys) = output.keys() {
+                    let mut result = vec![];
+                    for key in keys {
+                        if let Some(key_id) = key.key_id() {
+                            result.push(key_id.to_string())
+                        }
+                    }
+                    return Ok(result);
+                }
+
+                Ok(vec![])
+            }
+            InitialKeysDiscovery::Keys(key_ids) => Ok(key_ids.clone()),
+        }
     }
 
     async fn public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
