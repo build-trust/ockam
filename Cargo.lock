@@ -4793,6 +4793,7 @@ name = "ockam_command"
 version = "0.95.0"
 dependencies = [
  "anyhow",
+ "arboard",
  "assert_cmd",
  "async-trait",
  "clap 4.4.5",
