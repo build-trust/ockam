@@ -3410,6 +3410,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-range"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21dec9db110f5f872ed9699c3ecf50cf16f423502706ba5c72462e28d3157573"
+
+[[package]]
 name = "httparse"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4774,7 +4780,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-positioner",
  "tauri-plugin-window",
- "tauri-runtime 1.0.0-alpha.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tauri-runtime",
  "thiserror",
  "tokio",
  "tokio-retry",
@@ -7176,8 +7182,9 @@ checksum = "1d2faeef5759ab89935255b1a4cd98e0baf99d1085e37d36599c625dac49ae8e"
 
 [[package]]
 name = "tauri"
-version = "2.0.0-alpha.14"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
+version = "2.0.0-alpha.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fad0a5c32ce9e3e9862fb8cd433abf63e65ffea9b80dcc44d3d991e6794ea9a6"
 dependencies = [
  "anyhow",
  "bytes 1.5.0",
@@ -7211,7 +7218,7 @@ dependencies = [
  "swift-rs",
  "tauri-build",
  "tauri-macros",
- "tauri-runtime 1.0.0-alpha.1 (git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14)",
+ "tauri-runtime",
  "tauri-runtime-wry",
  "tauri-utils",
  "thiserror",
@@ -7227,7 +7234,7 @@ dependencies = [
 [[package]]
 name = "tauri-build"
 version = "2.0.0-alpha.8"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
+source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme#7856354fe16197b270dfa36bc095fec33bec4cff"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -7246,7 +7253,8 @@ dependencies = [
 [[package]]
 name = "tauri-codegen"
 version = "2.0.0-alpha.7"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f98a67c7ef3cb3c25de91fe1fa16cc3681997f6ec99da0a7496d6feae2ea91e"
 dependencies = [
  "base64 0.21.2",
  "brotli",
@@ -7271,7 +7279,8 @@ dependencies = [
 [[package]]
 name = "tauri-macros"
 version = "2.0.0-alpha.7"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b01cb5f945c71e040c5d191c32598565ae26cc266a9d5d4f7dd2dc324c5cfdd0"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
@@ -7283,9 +7292,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-log"
-version = "2.0.0-alpha.2"
+version = "2.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0610baff7e361206c283f1d11b9d0e55ed473a52307ceaa8c9bb2a637b716"
+checksum = "480b3f792fbcf0715d71ec4a987ec71cdade2d4260c493104b9b62f7f071bf4f"
 dependencies = [
  "android_logger",
  "byte-unit",
@@ -7304,9 +7313,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-notification"
-version = "2.0.0-alpha.3"
+version = "2.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae4cb6d22ef490278e5af9d91d09673564f650db9b81ee7e0c150189917d58b"
+checksum = "5dcfe7e72c6c6e27ceb75d6a34f3e9ff9cd748fc0d0cb9288eafbef9a7d6b9cb"
 dependencies = [
  "log",
  "notify-rust",
@@ -7323,9 +7332,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-positioner"
-version = "2.0.0-alpha.2"
+version = "2.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f38792aea90d7a8f79bb87bf2c97bd54fef84b447e51fb56a3aa2c5f3bd9ef98"
+checksum = "cd0160d40ffed7ecd25511accc9c7f514a49b901ef203c639eb73166ec5d95df"
 dependencies = [
  "log",
  "serde",
@@ -7337,9 +7346,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-window"
-version = "2.0.0-alpha.2"
+version = "2.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "646c4d192ac58631b56059b5a3b26b254b42dcae91a455a818a22687bb841c39"
+checksum = "06f3c1d40ae1a1b2b837e7f9b8db80aa2ee8c4594f63d729d2abd69f0741225a"
 dependencies = [
  "serde",
  "tauri",
@@ -7348,31 +7357,13 @@ dependencies = [
 
 [[package]]
 name = "tauri-runtime"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "525c4dea52547a13e58816c655bd0928f6c30026515e7b2a77166bcd984da6d0"
+checksum = "f5ba2ea1c0b7a2c3e53259edc3c78527e9f40fa7b45f73c52ab5165e42f9d18a"
 dependencies = [
  "gtk",
  "http",
- "jni 0.21.1",
- "rand 0.8.5",
- "raw-window-handle",
- "serde",
- "serde_json",
- "tauri-utils",
- "thiserror",
- "url",
- "uuid",
- "windows 0.48.0",
-]
-
-[[package]]
-name = "tauri-runtime"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
-dependencies = [
- "gtk",
- "http",
+ "http-range",
  "jni 0.21.1",
  "rand 0.8.5",
  "raw-window-handle",
@@ -7387,17 +7378,17 @@ dependencies = [
 
 [[package]]
 name = "tauri-runtime-wry"
-version = "1.0.0-alpha.2"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
+version = "1.0.0-alpha.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "095d8a6cb312211bd0ed6b51f078be2e5bba4e3244b5fdbe39fce2ebfc0d7a15"
 dependencies = [
  "cocoa 0.24.1",
  "gtk",
- "http",
  "jni 0.21.1",
  "percent-encoding",
  "rand 0.8.5",
  "raw-window-handle",
- "tauri-runtime 1.0.0-alpha.1 (git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14)",
+ "tauri-runtime",
  "tauri-utils",
  "uuid",
  "webkit2gtk",
@@ -7409,7 +7400,7 @@ dependencies = [
 [[package]]
 name = "tauri-utils"
 version = "2.0.0-alpha.7"
-source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme-alpha14#a18271af96472f7f36dc11c184fbc6c428fcef73"
+source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme#7856354fe16197b270dfa36bc095fec33bec4cff"
 dependencies = [
  "brotli",
  "ctor",
@@ -8810,9 +8801,9 @@ dependencies = [
 
 [[package]]
 name = "wry"
-version = "0.33.0"
+version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf906b43b8042615c85a978dceb4d4b72214d27b850b54abc3edeb7c5a67abab"
+checksum = "07bf838a5430184dfe0b1f568af7998a455c0df75a1df300a3894e0f181e7408"
 dependencies = [
  "base64 0.21.2",
  "block",
@@ -9056,3 +9047,8 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[patch.unused]]
+name = "tauri"
+version = "2.0.0-alpha.12"
+source = "git+https://github.com/build-trust/tauri.git?branch=add-url-scheme#7856354fe16197b270dfa36bc095fec33bec4cff"

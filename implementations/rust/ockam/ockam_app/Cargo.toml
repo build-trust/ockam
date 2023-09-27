@@ -49,12 +49,12 @@ open = "5.0.0"
 percent-encoding = "2.3.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tauri = { version = "=2.0.0-alpha.14", features = ["tray-icon", "icon-png"] }
-tauri-plugin-log = { version = "=2.0.0-alpha.2", optional = true }
-tauri-plugin-notification = "=2.0.0-alpha.3"
-tauri-plugin-positioner = { version = "=2.0.0-alpha.2", features = ["tray-icon"] }
-tauri-plugin-window = "=2.0.0-alpha.2"
-tauri-runtime = "=1.0.0-alpha.1"
+tauri = { version = "=2.0.0-alpha.11", features = ["tray-icon", "icon-png"] }
+tauri-plugin-log = { version = "=2.0.0-alpha.1", optional = true }
+tauri-plugin-notification = "=2.0.0-alpha.1"
+tauri-plugin-positioner = { version = "=2.0.0-alpha.1", features = ["tray-icon"] }
+tauri-plugin-window = "=2.0.0-alpha.1"
+tauri-runtime = "=1.0.0-alpha.0"
 thiserror = "1.0.47 "
 tokio = { version = "1.31.0", features = ["full"] }
 tokio-retry = "0.3"
