@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use std::borrow::Borrow;
 use std::io::stdin;
 
+use arboard::Clipboard;
 use colorful::Colorful;
 use console::Term;
 use miette::{miette, IntoDiagnostic};
@@ -51,6 +52,10 @@ impl OidcServiceExt for OidcService {
     async fn get_token_interactively(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
         let dc = self.device_code().await?;
 
+        // On Linux, the clipboard is cleared when the record goes out of scope, so
+        // declare it up here, in the scope that bounds the entire interaction
+        let mut clipboard;
+
         // If the terminal is quiet, write only the code at stdout so it can be processed
         if opts.terminal.is_quiet() {
             opts.terminal
@@ -61,14 +66,30 @@ impl OidcServiceExt for OidcService {
         }
         // Otherwise, write the instructions at stderr as normal
         else {
+            clipboard = Clipboard::new();
+            let otc_string = clipboard
+                .as_mut()
+                .ok()
+                .and_then(|clip| clip.set_text(dc.user_code.to_string()).ok())
+                .map_or(
+                    fmt_para!(
+                        "First copy this one-time code: {}",
+                        format!(" {} ", dc.user_code).bg_white().black()
+                    ),
+                    |_| {
+                        fmt_para!(
+                            "Your one-time code: {} has been {} 🎉",
+                            format!(" {} ", dc.user_code).bg_white().black(),
+                            "copied to the clipboard".light_green()
+                        )
+                    },
+                );
+
             opts.terminal
                 .write_line(&fmt_log!(
                 "To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
             ))?
-                .write_line(&fmt_para!(
-                    "First copy this one-time code: {}",
-                    format!(" {} ", dc.user_code).bg_white().black()
-                ))?
+                .write_line(&otc_string)?
                 .write(fmt_para!(
                     "Then press {} to open {} in your browser.",
                     " ENTER ↵ ".bg_white().black().blink(),
