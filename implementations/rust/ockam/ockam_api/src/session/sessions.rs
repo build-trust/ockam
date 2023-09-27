@@ -15,7 +15,7 @@ use ockam_core::{Error, Route};
 //fails concurrently, which is the common scenario we need extra time
 //to account for the lock contention
 pub const MAX_RECOVERY_TIME: Duration = Duration::from_secs(30);
-pub const MAX_CONNECT_TIME: Duration = Duration::from_secs(5);
+pub const MAX_CONNECT_TIME: Duration = Duration::from_secs(15);
 
 pub type Replacement = Pin<Box<dyn Future<Output = Result<Route, Error>> + Send>>;
 pub type Replacer = Box<dyn FnMut(Route) -> Replacement + Send>;
