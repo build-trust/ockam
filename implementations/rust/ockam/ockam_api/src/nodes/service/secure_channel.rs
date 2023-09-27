@@ -14,6 +14,7 @@ use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -261,7 +262,7 @@ impl NodeManager {
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier(identity_name.clone()).await?;
         let credential = self
-            .get_credential(ctx, &identifier, credential_name)
+            .get_credential(ctx, &identifier, credential_name, timeout)
             .await?;
 
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
@@ -272,7 +273,7 @@ impl NodeManager {
                 Some(identifier.clone()),
                 None,
                 credential.clone(),
-                None,
+                timeout,
             )
             .await?;
         let sc = self
@@ -295,6 +296,7 @@ impl NodeManager {
         ctx: &Context,
         identifier: &Identifier,
         credential_name: Option<String>,
+        timeout: Option<Duration>,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         debug!("getting a credential");
         let credential = if let Some(credential_name) = credential_name {
@@ -311,7 +313,17 @@ impl NodeManager {
             )
         } else {
             match self.trust_context().ok() {
-                Some(tc) => tc.get_credential(ctx, identifier).await,
+                Some(tc) => {
+                    if let Some(t) = timeout {
+                        ockam_node::compat::timeout(t, tc.get_credential(ctx, identifier))
+                            .await
+                            .map_err(|e| {
+                                ockam_core::Error::new(Origin::Api, Kind::Timeout, e.to_string())
+                            })?
+                    } else {
+                        tc.get_credential(ctx, identifier).await
+                    }
+                }
                 None => None,
             }
         };
@@ -338,7 +350,8 @@ impl NodeManager {
 
         let options = if let Some(credential) = credential {
             options.with_credential(credential)
-        } else if let Some(credential) = self.get_credential(ctx, identifier, None).await? {
+        } else if let Some(credential) = self.get_credential(ctx, identifier, None, timeout).await?
+        {
             options.with_credential(credential)
         } else {
             options

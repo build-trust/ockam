@@ -1,5 +1,6 @@
 use miette::IntoDiagnostic;
 use std::sync::Arc;
+use std::time::Duration;
 
 use ockam::compat::sync::Mutex;
 use ockam::identity::Identifier;
@@ -379,6 +380,7 @@ pub trait SecureChannelsCreation {
         authorized: Identifier,
         identity_name: Option<String>,
         credential_name: Option<String>,
+        timeout: Option<Duration>,
     ) -> miette::Result<Address>;
 }
 
@@ -391,6 +393,7 @@ impl SecureChannelsCreation for InMemoryNode {
         authorized: Identifier,
         identity_name: Option<String>,
         credential_name: Option<String>,
+        timeout: Option<Duration>,
     ) -> miette::Result<Address> {
         self.node_manager
             .create_secure_channel(
@@ -399,7 +402,7 @@ impl SecureChannelsCreation for InMemoryNode {
                 identity_name,
                 Some(vec![authorized]),
                 credential_name,
-                None,
+                timeout,
             )
             .await
             .into_diagnostic()
@@ -416,6 +419,7 @@ impl SecureChannelsCreation for BackgroundNode {
         authorized: Identifier,
         identity_name: Option<String>,
         credential_name: Option<String>,
+        timeout: Option<Duration>,
     ) -> miette::Result<Address> {
         let body = CreateSecureChannelRequest::new(
             addr,
@@ -424,6 +428,7 @@ impl SecureChannelsCreation for BackgroundNode {
             credential_name,
         );
         let response: CreateSecureChannelResponse = self
+            .with_timeout(timeout)
             .ask(ctx, Request::post("/node/secure_channel").body(body))
             .await?;
         Ok(response.addr)
