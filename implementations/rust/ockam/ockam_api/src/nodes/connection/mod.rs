@@ -9,10 +9,11 @@ use ockam_core::{async_trait, route, Address, Route, LOCAL};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
-use ockam_transport_tcp::TcpConnection;
+use ockam_transport_tcp::{TcpConnection, TcpTransport};
 
+use crate::error::ApiError;
 use crate::nodes::NodeManager;
-use crate::{local_multiaddr_to_route, DefaultAddress};
+use crate::{multiaddr_to_route, DefaultAddress};
 pub(crate) use plain_tcp::PlainTcpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
@@ -59,8 +60,16 @@ impl Connection {
         self.transport_route.clone()
     }
 
-    pub fn route(&self) -> Result<Route> {
-        local_multiaddr_to_route(&self.normalized_addr)
+    pub async fn route(&self, tcp_transport: &TcpTransport) -> Result<Route> {
+        multiaddr_to_route(&self.normalized_addr, tcp_transport)
+            .await
+            .map(|r| r.route)
+            .ok_or_else(|| {
+                ApiError::core(format!(
+                    "Couldn't convert MultiAddr to route: normalized_addr={}",
+                    self.normalized_addr
+                ))
+            })
     }
 }
 

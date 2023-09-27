@@ -602,12 +602,13 @@ impl NodeManager {
             .instantiate(ctx.clone(), self, PlainTcpInstantiator::new())
             .await?
             .instantiate(
-                ctx,
+                ctx.clone(),
                 self,
                 SecureChannelInstantiator::new(&identifier, credential, timeout, authorized),
             )
             .await?
             .build();
+        connection.add_default_consumers(ctx);
 
         debug!("connected to {connection:?}");
         Ok(connection)

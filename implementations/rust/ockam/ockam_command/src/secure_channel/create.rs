@@ -9,7 +9,7 @@ use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
-use ockam_api::nodes::{BackgroundNode, InMemoryNode};
+use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -74,8 +74,8 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
         ctx: &Context,
+        node: &BackgroundNode,
     ) -> miette::Result<MultiAddr> {
-        let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
@@ -85,7 +85,7 @@ impl CreateCommand {
         let projects_sc = get_projects_secure_channels_from_config_lookup(
             opts,
             ctx,
-            &node,
+            node,
             &meta,
             Some(identity_name),
         )
@@ -110,7 +110,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let from = cmd.parse_from_node()?;
     let node = BackgroundNode::create(&ctx, &opts.state, &from).await?;
-    let to = cmd.parse_to_route(&opts, &ctx).await?;
+    let to = cmd.parse_to_route(&opts, &ctx, &node).await?;
     let authorized_identifiers = cmd.authorized.clone();
 
     let create_secure_channel = async {

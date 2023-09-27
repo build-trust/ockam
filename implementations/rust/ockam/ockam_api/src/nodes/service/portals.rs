@@ -352,7 +352,7 @@ impl NodeManager {
             }
         }
 
-        let outlet_route = connection.route()?;
+        let outlet_route = connection.route(self.tcp_transport()).await?;
         let outlet_route = route![prefix_route.clone(), outlet_route, suffix_route.clone()];
 
         let projects = self.cli_state.projects.list()?;
@@ -550,7 +550,7 @@ impl SupervisedNodeManager {
                 outlet_addr.clone(),
             )
             .await?;
-        if !connection.route()?.is_empty() {
+        if !connection.route(self.tcp_transport()).await?.is_empty() {
             debug! {
                 %inlet.alias,
                 %inlet.bind_addr,
@@ -656,7 +656,8 @@ impl SupervisedNodeManager {
                         )
                         .await?;
                     *connection_arc.lock().unwrap() = new_connection.clone();
-                    let connection_route = new_connection.route()?;
+                    let connection_route =
+                        new_connection.route(node_manager.tcp_transport()).await?;
 
                     //we expect a fully normalized MultiAddr
                     let normalized_route = route![prefix_route, connection_route, suffix_route];
