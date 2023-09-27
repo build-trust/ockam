@@ -187,7 +187,7 @@ fn build_plain_output(opts: &CommandGlobalOpts, status: &StatusData) -> Result<V
     if status.identities.is_empty() {
         writeln!(
             &mut plain,
-            "No enrolled identities found! Try passing the `--all` argument to see all identities.",
+            "No identities are found. Consider running `ockam enroll` to enroll an identity.",
         )?;
         return Ok(plain);
     }
