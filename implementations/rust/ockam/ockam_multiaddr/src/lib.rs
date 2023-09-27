@@ -538,7 +538,7 @@ impl MultiAddr {
         Ok(self)
     }
     /// Check if the protocol codes starts with the given code.
-    pub fn starts_with<'a>(&self, code: Code) -> bool {
+    pub fn starts_with(&self, code: Code) -> bool {
         self.matches(0, &[code.into()])
     }
 

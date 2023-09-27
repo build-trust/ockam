@@ -44,9 +44,9 @@ impl NodeManagerWorker {
             .create_forwarder(ctx, &address, alias, at_rust_node, authorized)
             .await
         {
-            Ok(body) => Ok(Response::ok(&req).body(body)),
+            Ok(body) => Ok(Response::ok(req).body(body)),
             Err(err) => Err(Response::internal_error(
-                &req,
+                req,
                 &format!("Failed to create forwarder: {}", err),
             )),
         }
@@ -114,12 +114,10 @@ impl NodeManager {
             } else {
                 RemoteForwarder::create(ctx, route, options).await
             }
+        } else if let Some(alias) = alias {
+            RemoteForwarder::create_static(ctx, route, alias, options).await
         } else {
-            if let Some(alias) = alias {
-                RemoteForwarder::create_static(ctx, route, alias, options).await
-            } else {
-                RemoteForwarder::create(ctx, route, options).await
-            }
+            RemoteForwarder::create(ctx, route, options).await
         };
 
         match forwarder {
@@ -364,7 +362,7 @@ impl Relays for BackgroundNode {
         alias: Option<String>,
         authorized: Option<Identifier>,
     ) -> miette::Result<ForwarderInfo> {
-        let at_rust_node = !address.starts_with(Project::CODE.into());
+        let at_rust_node = !address.starts_with(Project::CODE);
         let body = CreateForwarder::new(address.clone(), alias, at_rust_node, authorized);
         self.ask(ctx, Request::post("/node/forwarder").body(body))
             .await
