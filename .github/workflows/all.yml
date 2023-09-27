@@ -137,7 +137,8 @@ jobs:
                 We require that all contributors have accepted our Contributor License Agreement (CLA).
                 Please read the CLA and create a new pull request to accept the CLA by adding your Github details in a row at the end of the CONTRIBUTORS.csv file.
                 This new pull request must only change the CONTRIBUTORS.csv file.
-                CONTRIBUTORS.csv file is located at: $CONTRIBUTORS_CSV_PATH
+                CONTRIBUTORS.csv file is located at: $CONTRIBUTORS_CSV_PATH.
+                If you have any issues, please feel free to ask questions on this discussion thread https://github.com/build-trust/ockam/discussions/6112
               " && exit 1
             fi
           fi
