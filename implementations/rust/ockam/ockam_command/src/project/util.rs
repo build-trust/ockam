@@ -3,6 +3,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use std::iter::Take;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
@@ -54,6 +55,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     node: &impl SecureChannelsCreation,
     meta: &LookupMeta,
     identity_name: Option<String>,
+    timeout: Option<Duration>,
 ) -> Result<Vec<MultiAddr>> {
     let mut sc = Vec::with_capacity(meta.project.len());
 
@@ -86,6 +88,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 project_identity_id,
                 identity_name.clone(),
                 None,
+                timeout,
             )
             .await?;
         let address = route_to_multiaddr(&route![secure_channel.to_string()])

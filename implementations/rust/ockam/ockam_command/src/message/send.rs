@@ -106,6 +106,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 &node,
                 &meta,
                 Some(identity_name),
+                Some(cmd.timeout),
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;

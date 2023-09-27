@@ -65,6 +65,17 @@ impl BackgroundNode {
         self
     }
 
+    /// Use a timeout for making requests
+    pub fn with_timeout(&self, timeout: Option<Duration>) -> Self {
+        Self {
+            cli_state: self.cli_state.clone(),
+            node_name: self.node_name.clone(),
+            to: self.to.clone(),
+            timeout,
+            tcp_transport: self.tcp_transport.clone(),
+        }
+    }
+
     pub fn set_to(&mut self, to: &MultiAddr) -> miette::Result<&Self> {
         self.to = local_multiaddr_to_route(to).into_diagnostic()?;
         Ok(self)

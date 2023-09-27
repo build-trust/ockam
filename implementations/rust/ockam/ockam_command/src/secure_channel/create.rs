@@ -88,6 +88,7 @@ impl CreateCommand {
             node,
             &meta,
             Some(identity_name),
+            None,
         )
         .await?;
         clean_projects_multiaddr(to, projects_sc)
