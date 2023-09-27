@@ -54,6 +54,7 @@ impl From<TungsteniteError> for WebSocketError {
             TungsteniteError::WriteBufferFull(_) => Self::Transport(TransportError::SendBadMessage),
             TungsteniteError::Http(_) => Self::Http,
             TungsteniteError::Tls(_) => Self::Tls,
+            TungsteniteError::AttackAttempt => Self::Transport(TransportError::AttackAttmept),
         }
     }
 }
