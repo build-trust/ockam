@@ -571,7 +571,7 @@ impl NodeManager {
         credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> Result<Connection> {
-        debug!("connecting to {}", &addr);
+        debug!(?timeout, "connecting to {}", &addr);
         let connection = ConnectionBuilder::new(addr.clone())
             .instantiate(
                 ctx.clone(),
