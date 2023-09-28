@@ -17,8 +17,8 @@ use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, Address, Error, Result};
-use ockam_multiaddr::proto::Service;
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::proto::{Project, Service};
+use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::compat::tokio::sync::MutexGuard;
 use ockam_node::Context;
@@ -88,6 +88,8 @@ impl NodeManagerForwarderCreator {
         forwarder_service: MultiAddr,
         alias: String,
     ) -> Result<()> {
+        let is_rust = !forwarder_service.starts_with(Project::CODE);
+
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
@@ -95,7 +97,7 @@ impl NodeManagerForwarderCreator {
                     .body(CreateForwarder::new(
                         forwarder_service,
                         Some(alias),
-                        false,
+                        is_rust,
                         None,
                     ))
                     .to_vec()?,
