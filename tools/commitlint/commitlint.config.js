@@ -59,7 +59,10 @@ module.exports = {
         'style',
 
         // test: add missing tests or correct existing tests
-        'test'
+        'test',
+
+        // cla: accept the Ockam CLA
+        'cla',
       ]
     ],
 
