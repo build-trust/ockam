@@ -4,6 +4,7 @@ use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
+
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::util::refresh_projects;
@@ -57,8 +58,7 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this project?")?
     {
         let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-        let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-        let controller = node.controller();
+        let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
 
         // Lookup project
         let project_id = match opts.state.projects.get(&cmd.project_name) {
@@ -66,7 +66,7 @@ async fn run_impl(
             Err(_) => {
                 // The project is not in the config file.
                 // Fetch all available projects from the cloud.
-                refresh_projects(&opts, ctx, controller.clone()).await?;
+                refresh_projects(&opts, ctx, &controller).await?;
 
                 // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
                 match opts.state.projects.get(&cmd.project_name) {

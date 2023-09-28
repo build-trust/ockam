@@ -3,6 +3,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
+
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::util::refresh_projects;
@@ -41,14 +42,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-    let controller = node.controller();
+    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {
         Ok(state) => state.config().id.clone(),
         Err(_) => {
-            refresh_projects(&opts, ctx, controller.clone()).await?;
+            refresh_projects(&opts, ctx, &controller).await?;
             opts.state.projects.get(&cmd.name)?.config().id.clone()
         }
     };

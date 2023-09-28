@@ -69,7 +69,7 @@ async fn accept_invitation_impl<R: Runtime>(id: String, app: &AppHandle<R>) -> c
 
     let controller = app_state.controller().await.into_diagnostic()?;
     let res = controller
-        .accept_invitation(&app_state.context(), id)
+        .accept_invitation(&app_state.context(), id.clone())
         .await?;
 
     // Update the invitation status to Accepted

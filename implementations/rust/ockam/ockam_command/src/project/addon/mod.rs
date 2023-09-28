@@ -13,6 +13,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
 use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
+
 use ockam_node::Context;
 
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
@@ -121,8 +122,8 @@ async fn check_configuration_completion(
     project_id: String,
     operation_id: String,
 ) -> Result<()> {
-    let controller = node.controller();
-    check_for_completion(opts, ctx, controller.clone(), &operation_id).await?;
+    let controller = node.controller().await?;
+    check_for_completion(opts, ctx, &controller, &operation_id).await?;
     let project = controller.get_project(ctx, project_id).await?;
     let _ = check_project_readiness(opts, ctx, node, project).await?;
     Ok(())

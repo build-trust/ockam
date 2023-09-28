@@ -5,7 +5,6 @@ use std::sync::Arc;
 use clap::Args;
 use colorful::Colorful;
 use miette::{IntoDiagnostic, WrapErr};
-use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::info;
@@ -112,9 +111,10 @@ async fn run_impl(
         .users_info
         .overwrite(&user_info.email, user_info.clone())?;
 
-    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.controller().await?;
 
-    enroll_with_node(node.controller(), ctx, token)
+    enroll_with_node(&controller, ctx, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
@@ -135,7 +135,7 @@ pub async fn retrieve_user_project(
     ctx: &Context,
     node: &InMemoryNode,
 ) -> Result<Identifier> {
-    let space = default_space(opts, ctx, node.controller())
+    let space = default_space(opts, ctx, &node.controller().await?)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
@@ -167,7 +167,7 @@ pub async fn retrieve_user_project(
 
 /// Enroll a user with a token, using the controller
 pub async fn enroll_with_node(
-    controller: Arc<Controller>,
+    controller: &Controller,
     ctx: &Context,
     token: OidcToken,
 ) -> miette::Result<()> {
@@ -184,7 +184,7 @@ pub async fn enroll_with_node(
 async fn default_space(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: Arc<Controller>,
+    controller: &Controller,
 ) -> Result<Space> {
     // Get available spaces for node's identity
     opts.terminal
@@ -270,7 +270,7 @@ async fn default_project(
     node: &InMemoryNode,
     space: &Space,
 ) -> Result<Project> {
-    let controller = node.controller();
+    let controller = node.controller().await?;
 
     // Get available project for the given space
     opts.terminal.write_line(&fmt_log!(
@@ -332,7 +332,7 @@ async fn default_project(
         ))?;
 
         let operation_id = project.operation_id.clone().unwrap();
-        check_for_completion(opts, ctx, controller, &operation_id).await?;
+        check_for_completion(opts, ctx, &controller, &operation_id).await?;
 
         project.to_owned()
     }

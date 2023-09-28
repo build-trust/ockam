@@ -6,7 +6,8 @@ use miette::{Context as _, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::service::message::{MessageSender, SendMessage};
-use ockam_api::nodes::{BackgroundNode, InMemoryNode};
+use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::InMemoryNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
@@ -89,7 +90,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
         } else {
             let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
             let trust_context_config = cmd.trust_context_opts.to_config(&opts.state)?.build();
-            let node = InMemoryNode::create_with_vault_and_identity(
+
+            let node_manager = InMemoryNode::start_node(
                 ctx,
                 &opts.state,
                 None,
@@ -103,14 +105,15 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             let projects_sc = get_projects_secure_channels_from_config_lookup(
                 &opts,
                 ctx,
-                &node,
+                &node_manager,
                 &meta,
                 Some(identity_name),
                 Some(cmd.timeout),
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
-            node.send_message(ctx, &to, msg_bytes, Some(cmd.timeout))
+            node_manager
+                .send_message(ctx, &to, msg_bytes, Some(cmd.timeout))
                 .await
                 .into_diagnostic()?
         };

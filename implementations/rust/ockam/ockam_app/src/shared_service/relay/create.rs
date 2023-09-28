@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
-use ockam_api::nodes::service::SupervisedNodeManager;
+use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 use once_cell::sync::Lazy;
 use std::str::FromStr;
@@ -17,7 +17,7 @@ pub static RELAY_NAME: Lazy<String> = Lazy::new(|| format!("forward_to_{NODE_NAM
 pub async fn create_relay(
     context: Arc<Context>,
     cli_state: CliState,
-    node_manager: Arc<SupervisedNodeManager>,
+    node_manager: Arc<InMemoryNode>,
 ) {
     loop {
         match create_relay_impl(&context, &cli_state, node_manager.clone()).await {
@@ -36,7 +36,7 @@ pub async fn create_relay(
 async fn create_relay_impl(
     context: &Context,
     cli_state: &CliState,
-    node_manager: Arc<SupervisedNodeManager>,
+    node_manager: Arc<InMemoryNode>,
 ) -> Result<Option<ForwarderInfo>> {
     trace!("Creating relay");
     if !cli_state.is_enrolled().unwrap_or(false) {
@@ -73,7 +73,7 @@ async fn create_relay_impl(
     }
 }
 
-pub(crate) async fn get_relay(node_manager: Arc<SupervisedNodeManager>) -> Option<ForwarderInfo> {
+pub(crate) async fn get_relay(node_manager: Arc<InMemoryNode>) -> Option<ForwarderInfo> {
     node_manager
         .get_forwarders()
         .await
