@@ -187,10 +187,9 @@ jobs:
 
               1. Read the CLA at: https://github.com/build-trust/ockam-contributors/blob/main/CLA.md
 
-              2. To accept the CLA, please send a different pull request to our
-              [contributors repository](https://github.com/build-trust/ockam-contributors) indicating
+              2. To accept the CLA, please create a different pull request indicating
               that you accept the CLA by adding your Git/Github details in a row at the end of the
-              [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv)
+              [CONTRIBUTORS.csv](https://github.com/build-trust/ockam/blob/develop/.github/CONTRIBUTORS.csv)
               file.
 
               We look forward to merging your first contribution!
@@ -252,10 +251,9 @@ jobs:
 
                 1. Read the CLA at: https://github.com/build-trust/ockam-contributors/blob/main/CLA.md
 
-                2. To accept the CLA, please send a different pull request to our
-                [contributors repository](https://github.com/build-trust/ockam-contributors) indicating
+                2. To accept the CLA, please create a different pull request indicating
                 that you accept the CLA by adding your Git/Github details in a row at the end of the
-                [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv)
+                [CONTRIBUTORS.csv](https://github.com/build-trust/ockam/blob/develop/.github/CONTRIBUTORS.csv)
                 file.
 
                 We look forward to merging your contribution!
