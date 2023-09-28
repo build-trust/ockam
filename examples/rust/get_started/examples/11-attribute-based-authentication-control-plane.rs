@@ -8,7 +8,7 @@ use ockam::identity::{
 use ockam::remote::RemoteForwarderOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
-use ockam_api::cloud::SecureClients;
+use ockam_api::nodes::NodeManager;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpTransportExtension;
@@ -60,7 +60,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     //    to retrieve the node credential
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
-    let authority_node = SecureClients::authority(
+    let authority_node = NodeManager::authority_node(
         &tcp,
         node.secure_channels().clone(),
         &control_plane,

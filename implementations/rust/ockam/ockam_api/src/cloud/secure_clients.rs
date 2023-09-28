@@ -11,6 +11,7 @@ use ockam_transport_tcp::TcpTransport;
 
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
+use crate::nodes::NodeManager;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -27,36 +28,65 @@ pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
 /// Total time in milliseconds to wait for Orchestrator long-running operations to complete
 pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
 
-pub struct AuthorityNode(pub(crate) SecureClient);
-pub struct ProjectNode(pub(crate) SecureClient);
-pub struct Controller(pub(crate) SecureClient);
-
-pub trait HasSecureClient {
-    fn get_secure_client(&self) -> &SecureClient;
-}
-
-impl HasSecureClient for AuthorityNode {
-    fn get_secure_client(&self) -> &SecureClient {
-        &self.0
+impl NodeManager {
+    pub(crate) async fn create_controller_client(&self) -> Result<Controller> {
+        NodeManager::controller_node(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            &self.get_identifier(None).await?,
+        )
+        .await
     }
-}
 
-impl HasSecureClient for ProjectNode {
-    fn get_secure_client(&self) -> &SecureClient {
-        &self.0
+    pub(crate) async fn make_authority_node_client(
+        &self,
+        authority_identifier: &Identifier,
+        authority_multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
+    ) -> Result<AuthorityNode> {
+        NodeManager::authority_node(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            authority_identifier,
+            authority_multiaddr,
+            caller_identifier,
+        )
+        .await
     }
-}
 
-impl HasSecureClient for Controller {
-    fn get_secure_client(&self) -> &SecureClient {
-        &self.0
+    pub(crate) async fn make_project_node_client(
+        &self,
+        project_identifier: &Identifier,
+        project_multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
+    ) -> Result<ProjectNode> {
+        NodeManager::project_node(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            project_identifier,
+            project_multiaddr,
+            caller_identifier,
+        )
+        .await
     }
-}
 
-pub struct SecureClients;
+    pub async fn make_secure_client(
+        &self,
+        identifier: &Identifier,
+        multiaddr: &MultiAddr,
+        caller_identifier: &Identifier,
+    ) -> Result<SecureClient> {
+        NodeManager::generic(
+            &self.tcp_transport,
+            self.secure_channels.clone(),
+            identifier,
+            multiaddr,
+            caller_identifier,
+        )
+        .await
+    }
 
-impl SecureClients {
-    pub async fn controller(
+    pub async fn controller_node(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         caller_identifier: &Identifier,
@@ -73,7 +103,7 @@ impl SecureClients {
         )))
     }
 
-    pub async fn authority(
+    pub async fn authority_node(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         authority_identifier: &Identifier,
@@ -92,7 +122,7 @@ impl SecureClients {
         )))
     }
 
-    pub async fn project(
+    pub async fn project_node(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         project_identifier: &Identifier,
@@ -163,6 +193,32 @@ impl SecureClients {
             .route;
         debug!("using the secure route {secure_route}");
         Ok(secure_route)
+    }
+}
+
+pub struct AuthorityNode(pub(crate) SecureClient);
+pub struct ProjectNode(pub(crate) SecureClient);
+pub struct Controller(pub(crate) SecureClient);
+
+pub trait HasSecureClient {
+    fn get_secure_client(&self) -> &SecureClient;
+}
+
+impl HasSecureClient for AuthorityNode {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.0
+    }
+}
+
+impl HasSecureClient for ProjectNode {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.0
+    }
+}
+
+impl HasSecureClient for Controller {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.0
     }
 }
 

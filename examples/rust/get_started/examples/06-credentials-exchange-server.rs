@@ -6,8 +6,8 @@ use ockam::access_control::AllowAll;
 use ockam::identity::{AuthorityService, SecureChannelListenerOptions, TrustContext, Vault};
 use ockam::{Context, Result, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
-use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
+use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
@@ -50,7 +50,7 @@ async fn main(ctx: Context) -> Result<()> {
     // The credential issuer already knows the public identifier of this identity
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let authority_node = SecureClients::authority(
+    let authority_node = NodeManager::authority_node(
         &tcp,
         node.secure_channels().clone(),
         issuer.identifier(),

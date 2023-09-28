@@ -126,7 +126,7 @@ impl InMemoryNode {
 
     /// Return a Controller client to send requests to the Controller
     pub async fn controller(&self) -> miette::Result<Controller> {
-        self.make_controller_node_client().await.into_diagnostic()
+        self.create_controller_client().await.into_diagnostic()
     }
 
     pub fn add_session(&self, session: Session) -> Key {

@@ -4,7 +4,8 @@ use ockam::AsyncTryClone;
 use ockam_api::authenticator::enrollment_tokens::Members;
 use ockam_api::authority_node::{Authority, Configuration};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_api::cloud::{AuthorityNode, SecureClients};
+use ockam_api::cloud::AuthorityNode;
+use ockam_api::nodes::NodeManager;
 use ockam_api::{authority_node, DefaultAddress};
 use ockam_core::{Address, Result};
 use ockam_multiaddr::MultiAddr;
@@ -58,7 +59,7 @@ async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<
         .await
         .unwrap();
 
-    let authority_node = SecureClients::authority(
+    let authority_node = NodeManager::authority_node(
         &TcpTransport::create(ctx).await?,
         secure_channels.clone(),
         &admin.identifier,
@@ -411,7 +412,7 @@ async fn setup(
 
     let mut admins = vec![];
     for admin_id in admin_ids {
-        let authority_node = SecureClients::authority(
+        let authority_node = NodeManager::authority_node(
             &TcpTransport::create(ctx).await?,
             secure_channels.clone(),
             &configuration.identifier,
