@@ -1284,7 +1284,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.85.0"
+version = "0.86.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -1307,7 +1307,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.53.0"
+version = "0.54.0"
 dependencies = [
  "crossbeam-queue",
  "futures",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.82.0"
+version = "0.83.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -1357,7 +1357,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.90.0"
+version = "0.91.0"
 dependencies = [
  "cfg-if",
  "fs2",
@@ -1378,7 +1378,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.58.0"
+version = "0.59.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.83.0"
+version = "0.84.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -1411,7 +1411,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "aws-config",
  "aws-sdk-kms",
@@ -1430,6 +1430,7 @@ dependencies = [
 name = "ockly"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "lazy_static",
  "minicbor",
  "ockam_identity",
@@ -2050,18 +2051,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.48"
+version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d6d7a740b8a666a7e828dd00da9c0dc290dff53154ea77ac109281de90589b7"
+checksum = "1177e8c6d7ede7afde3585fd2513e611227efd6481bd78d2e82ba1ce16557ed4"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.48"
+version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49922ecae66cc8a249b77e68d1d0623c1b2c514f0060c27cdc68bd62a1219d35"
+checksum = "10712f02019e9288794769fba95cd6847df9874d49d871d062172f9dd41bc4cc"
 dependencies = [
  "proc-macro2",
  "quote",

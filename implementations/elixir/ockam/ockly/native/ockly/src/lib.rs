@@ -8,13 +8,16 @@ use std::{
 
 use lazy_static::lazy_static;
 use ockam_identity::{
-    models::{PurposeKeyAttestation, PurposePublicKey, SchemaId},
+    models::{CredentialSchemaIdentifier, PurposeKeyAttestation, PurposePublicKey},
     utils::AttributesBuilder,
-    Identifier, Identities, Purpose, Vault,
+    Identifier, Identities, Vault,
 };
-use ockam_vault::SecretType;
-use ockam_vault::{PublicKey, Secret, SoftwareSigningVault};
-use ockam_vault_aws::{AwsSigningVault, AwsKmsConfig, InitialKeysDiscovery};
+use ockam_vault::{
+    EdDSACurve25519SecretKey, HandleToSecret, SigningKeyType, SigningSecret,
+    SigningSecretKeyHandle, SoftwareVaultForSecureChannels, SoftwareVaultForSigning,
+    X25519PublicKey, X25519SecretKey,
+};
+use ockam_vault_aws::{AwsKmsConfig, AwsSigningVault, InitialKeysDiscovery};
 use rustler::{Atom, Binary, Env, Error, NewBinary, NifResult};
 use std::clone::Clone;
 use std::collections::HashMap;
@@ -23,7 +26,10 @@ use tokio::{runtime::Runtime, task};
 lazy_static! {
     static ref RUNTIME: Arc<Runtime> = Arc::new(Runtime::new().unwrap());
     static ref IDENTITIES: RwLock<Option<Arc<Identities>>> = RwLock::new(None);
-    static ref SIGNING_MEMORY_VAULT: RwLock<Option<Arc<SoftwareSigningVault>>> = RwLock::new(None);
+    static ref IDENTITY_MEMORY_VAULT: RwLock<Option<Arc<SoftwareVaultForSigning>>> =
+        RwLock::new(None);
+    static ref SECURE_CHANNEL_MEMORY_VAULT: RwLock<Option<Arc<SoftwareVaultForSecureChannels>>> =
+        RwLock::new(None);
 }
 
 mod atoms {
@@ -44,8 +50,12 @@ mod atoms {
     invalid_attestation,
     invalid_state,
     invalid_secret,
+    invalid_secret_handle,
+    invalid_public_key,
     no_memory_vault,
     aws_vault_loading_error,
+    identities_ref_missing,
+    secure_channel_vault_missing,
     }
 }
 
@@ -65,36 +75,103 @@ where
     })
 }
 
+fn load(_env: rustler::Env, _load_data: rustler::Term) -> bool {
+    load_memory_vault()
+}
+
 fn identities_ref() -> NifResult<Arc<Identities>> {
-    let r = IDENTITIES.read().unwrap(); //TODO
+    let r = IDENTITIES
+        .read()
+        .map_err(|_| Error::Term(Box::new(atoms::identities_ref_missing())))?;
     r.clone()
         .ok_or_else(|| Error::Term(Box::new(atoms::invalid_state())))
+}
+
+fn load_memory_vault() -> bool {
+    let identity_vault = SoftwareVaultForSigning::create();
+    let secure_channel_vault = SoftwareVaultForSecureChannels::create();
+    *IDENTITY_MEMORY_VAULT.write().unwrap() = Some(identity_vault.clone());
+    *SECURE_CHANNEL_MEMORY_VAULT.write().unwrap() = Some(secure_channel_vault.clone());
+    let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
+        identity_vault,
+        secure_channel_vault,
+        Vault::create_credential_vault(),
+        Vault::create_verifying_vault(),
+    ));
+    *IDENTITIES.write().unwrap() = Some(builder.build());
+    true
+}
+
+#[rustler::nif]
+fn setup_aws_kms(key_ids: Vec<String>) -> NifResult<bool> {
+    let secure_channel_vault = match SECURE_CHANNEL_MEMORY_VAULT.read().unwrap().clone() {
+        Some(secure_channel_vault) => secure_channel_vault,
+        None => return Err(Error::Term(Box::new(atoms::attestation_decode_error()))),
+    };
+
+    let key_ids = key_ids
+        .into_iter()
+        .map(|x| {
+            SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(x.as_bytes().to_vec()))
+        })
+        .collect();
+    block_future(async move {
+        let config = AwsKmsConfig::default()
+            .await
+            .map_err(|e| Error::Term(Box::new(e.to_string())))?
+            .with_initial_keys_discovery(InitialKeysDiscovery::Keys(key_ids));
+        match AwsSigningVault::create_with_config(config).await {
+            Ok(vault) => {
+                let aws_vault = Arc::new(vault);
+                let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
+                    aws_vault.clone(),
+                    secure_channel_vault,
+                    aws_vault,
+                    Vault::create_verifying_vault(),
+                ));
+                *IDENTITIES.write().unwrap() = Some(builder.build());
+                Ok(true)
+            }
+            Err(err) => Err(Error::Term(Box::new(err.to_string()))),
+        }
+    })
 }
 
 #[rustler::nif]
 fn create_identity(env: Env, existing_key: Option<String>) -> NifResult<(Binary, Binary)> {
     let identities_ref = identities_ref()?;
-    let secret_type = if SIGNING_MEMORY_VAULT.read().unwrap().is_some() {
-        SecretType::Ed25519
+
+    let (secret_type, existing_key) = if IDENTITY_MEMORY_VAULT.read().unwrap().is_some() {
+        let existing_key = match existing_key {
+            Some(handle) => {
+                // Vault Handle
+                let handle = hex::decode(handle)
+                    .map_err(|_| Error::Term(Box::new(atoms::invalid_secret_handle())))?;
+
+                Some(SigningSecretKeyHandle::EdDSACurve25519(
+                    HandleToSecret::new(handle),
+                ))
+            }
+            None => None,
+        };
+        (SigningKeyType::EdDSACurve25519, existing_key)
     } else {
-        SecretType::NistP256
+        let existing_key = existing_key.map(|x| {
+            // AWS KeyId
+            SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(x.as_bytes().to_vec()))
+        });
+        (SigningKeyType::ECDSASHA256CurveP256, existing_key)
     };
     let identity = block_future(async move {
-        if let Some(key) = existing_key {
-            identities_ref
-                .identities_creation()
-                .identity_builder()
-                .with_existing_key(key, secret_type)
-                .build()
-                .await
-        } else {
-            identities_ref
-                .identities_creation()
-                .identity_builder()
-                .with_random_key(secret_type)
-                .build()
-                .await
-        }
+        let builder = identities_ref.identities_creation().identity_builder();
+
+        let builder = match existing_key {
+            Some(key) => builder.with_existing_key(key),
+
+            None => builder.with_random_key(secret_type),
+        };
+
+        builder.build().await
     })
     .map_err(|_| Error::Term(Box::new(atoms::identity_creation_error())))?;
 
@@ -113,27 +190,28 @@ fn create_identity(env: Env, existing_key: Option<String>) -> NifResult<(Binary,
 fn attest_secure_channel_key<'a>(
     env: Env<'a>,
     identifier: String,
-    secret: Binary,
+    secret: Binary, // TODO: PublicKey is enough here
 ) -> NifResult<Binary<'a>> {
+    let secure_channel_vault = match SECURE_CHANNEL_MEMORY_VAULT.read().unwrap().clone() {
+        Some(secure_channel_vault) => secure_channel_vault,
+        None => return Err(Error::Term(Box::new(atoms::secure_channel_vault_missing()))),
+    };
     let identities_ref = identities_ref()?;
     let identifier = Identifier::from_str(&identifier)
         .map_err(|_| Error::Term(Box::new(atoms::invalid_identifier())))?;
+    let secret = secret
+        .to_vec()
+        .try_into()
+        .map_err(|_| Error::Term(Box::new(atoms::invalid_secret())))?;
     let purpose_key = block_future(async move {
-        let key_id = identities_ref
-            .purpose_keys()
-            .purpose_keys_creation()
-            .vault()
-            .secure_channel_vault
-            .import_static_secret(
-                Secret::new(secret.to_vec()),
-                ockam_vault::SecretAttributes::X25519,
-            )
+        let handle = secure_channel_vault
+            .import_static_x25519_secret(X25519SecretKey::new(secret))
             .await?;
         identities_ref
             .purpose_keys()
             .purpose_keys_creation()
-            .purpose_key_builder(&identifier, Purpose::SecureChannel)
-            .with_existing_key(key_id, SecretType::X25519)
+            .secure_channel_purpose_key_builder(&identifier)
+            .with_existing_key(handle)
             .build()
             .await
     })
@@ -154,7 +232,11 @@ fn verify_secure_channel_key_attestation(
     let identities_ref = identities_ref()?;
     let attestation: PurposeKeyAttestation = minicbor::decode(&attestation)
         .map_err(|_| Error::Term(Box::new(atoms::attestation_decode_error())))?;
-    let k = PublicKey::new(public_key.as_slice().to_vec(), SecretType::X25519);
+    let k = public_key
+        .as_slice()
+        .try_into()
+        .map_err(|_| Error::Term(Box::new(atoms::invalid_public_key())))?;
+    let k = X25519PublicKey(k);
     block_future(async move {
         let identity = identities_ref
             .identities_creation()
@@ -168,8 +250,8 @@ fn verify_secure_channel_key_attestation(
             .await
             .map_err(|_| atoms::attest_error())
             .and_then(|data| {
-                if let PurposePublicKey::SecureChannelStaticKey(x) = data.public_key {
-                    if PublicKey::from(x).eq(&k) {
+                if let PurposePublicKey::SecureChannelStatic(x) = data.public_key {
+                    if x == k {
                         Ok(true)
                     } else {
                         Err(atoms::invalid_attestation())
@@ -216,7 +298,7 @@ fn issue_credential<'a>(
             .import(None, &issuer_identity)
             .await
             .map_err(|_| atoms::identity_import_error())?;
-        let mut attr_builder = AttributesBuilder::with_schema(SchemaId(0));
+        let mut attr_builder = AttributesBuilder::with_schema(CredentialSchemaIdentifier(0));
         for (key, value) in attrs {
             attr_builder = attr_builder.with_attribute(key, value)
         }
@@ -296,58 +378,24 @@ fn verify_credential(
 
 #[rustler::nif]
 fn import_signing_secret(secret: Binary) -> NifResult<String> {
-    let signing_vault = SIGNING_MEMORY_VAULT
+    let signing_vault = IDENTITY_MEMORY_VAULT
         .read()
         .unwrap()
         .clone()
         .ok_or_else(|| Error::Term(Box::new(atoms::no_memory_vault())))?;
+    let secret = secret
+        .to_vec()
+        .try_into()
+        .map_err(|_| Error::Term(Box::new(atoms::invalid_secret())))?;
     block_future(async move {
-        signing_vault
-            .import_key(
-                Secret::new(secret.to_vec()),
-                ockam_vault::SecretAttributes::Ed25519,
-            )
+        let handle = signing_vault
+            .import_key(SigningSecret::EdDSACurve25519(
+                EdDSACurve25519SecretKey::new(secret),
+            ))
             .await
-            .map_err(|_| Error::Term(Box::new(atoms::invalid_secret())))
-    })
-}
+            .map_err(|_| Error::Term(Box::new(atoms::invalid_secret())))?;
 
-fn load_memory_vault() -> bool {
-    let vault = SoftwareSigningVault::create();
-    *SIGNING_MEMORY_VAULT.write().unwrap() = Some(vault.clone());
-    let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
-        vault,
-        Vault::create_secure_channel_vault(),
-        Vault::create_credential_vault(),
-        Vault::create_verifying_vault(),
-    ));
-    *IDENTITIES.write().unwrap() = Some(builder.build());
-    true
-}
-
-fn load(_env: rustler::Env, _load_data: rustler::Term) -> bool {
-    load_memory_vault()
-}
-
-#[rustler::nif]
-fn setup_aws_kms(key_ids : Vec<String>) -> NifResult<bool> {
-    block_future(async move {
-        let config = AwsKmsConfig::default().await.map_err(|e| Error::Term(Box::new(e.to_string())))?
-                                        .with_initial_keys_discovery(InitialKeysDiscovery::Keys(key_ids));
-        match AwsSigningVault::create_with_config(config).await {
-            Ok(vault) => {
-                let aws_vault = Arc::new(vault);
-                let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
-                    aws_vault.clone(),
-                    Vault::create_secure_channel_vault(),
-                    aws_vault,
-                    Vault::create_verifying_vault(),
-                ));
-                *IDENTITIES.write().unwrap() = Some(builder.build());
-                Ok(true)
-            }
-            Err(err) =>  Err(Error::Term(Box::new(err.to_string()))),
-        }
+        Ok(hex::encode(handle.handle().value()))
     })
 }
 

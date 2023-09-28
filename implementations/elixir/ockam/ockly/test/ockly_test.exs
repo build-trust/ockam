@@ -5,6 +5,7 @@ defmodule OcklyTest do
   test "create identity" do
     {id, exported_identity} = Ockly.Native.create_identity()
     {pub_key, secret_key} = :crypto.generate_key(:eddh, :x25519)
+    {pub_key2, secret_key2} = :crypto.generate_key(:eddh, :x25519)
     attestation = Ockly.Native.attest_secure_channel_key(id, secret_key)
 
     assert Ockly.Native.verify_secure_channel_key_attestation(
@@ -14,7 +15,11 @@ defmodule OcklyTest do
            ) == true
 
     # attest for another key
-    assert Ockly.Native.verify_secure_channel_key_attestation(exported_identity, id, attestation) ==
+    assert Ockly.Native.verify_secure_channel_key_attestation(
+             exported_identity,
+             pub_key2,
+             attestation
+           ) ==
              {:error, :invalid_attestation}
 
     # attestation data is junk
