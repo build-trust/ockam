@@ -1,11 +1,9 @@
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use crate::local_multiaddr_to_route;
 use crate::nodes::NODEMANAGER_ADDR;
 use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
 use ockam_core::api::{Reply, Request};
 use ockam_core::{AsyncTryClone, Route};
-use ockam_multiaddr::MultiAddr;
 use ockam_node::api::Client;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpTransport};
@@ -14,6 +12,9 @@ use std::time::Duration;
 
 /// This struct represents a node that has been started
 /// on the same machine with a given node name
+///
+/// The methods on this struct allow a user to send requests containing a value of type `T`
+/// and expect responses with a value of type `R`
 #[derive(Clone)]
 pub struct BackgroundNode {
     cli_state: CliState,
@@ -51,38 +52,19 @@ impl BackgroundNode {
         })
     }
 
-    pub fn node_name(&self) -> &str {
-        &self.node_name
-    }
-
+    // Set a different node name
     pub fn set_node_name(&mut self, node_name: &str) -> &Self {
         self.node_name = node_name.to_string();
         self
     }
 
-    /// Use a timeout for making requests
-    pub fn set_timeout(&mut self, timeout: Duration) -> &mut Self {
+    /// Use a default timeout for making requests
+    pub fn set_timeout(&mut self, timeout: Duration) -> &Self {
         self.timeout = Some(timeout);
         self
     }
 
-    /// Use a timeout for making requests
-    pub fn with_timeout(&self, timeout: Option<Duration>) -> Self {
-        Self {
-            cli_state: self.cli_state.clone(),
-            node_name: self.node_name.clone(),
-            to: self.to.clone(),
-            timeout,
-            tcp_transport: self.tcp_transport.clone(),
-        }
-    }
-
-    pub fn set_to(&mut self, to: &MultiAddr) -> miette::Result<&Self> {
-        self.to = local_multiaddr_to_route(to).into_diagnostic()?;
-        Ok(self)
-    }
-
-    /// Send a request and expects a decodable response
+    /// Send a request and expect a decodable response
     pub async fn ask<T, R>(&self, ctx: &Context, req: Request<T>) -> miette::Result<R>
     where
         T: Encode<()>,
@@ -90,6 +72,26 @@ impl BackgroundNode {
     {
         self.ask_and_get_reply(ctx, req)
             .await?
+            .success()
+            .into_diagnostic()
+    }
+
+    /// Send a request and expect a decodable response and use a specific timeout
+    pub async fn ask_with_timeout<T, R>(
+        &self,
+        ctx: &Context,
+        req: Request<T>,
+        timeout: Duration,
+    ) -> miette::Result<R>
+    where
+        T: Encode<()>,
+        R: for<'b> Decode<'b, ()>,
+    {
+        let client = self.make_client_with_timeout(Some(timeout)).await?;
+        client
+            .ask(ctx, req)
+            .await
+            .into_diagnostic()?
             .success()
             .into_diagnostic()
     }
@@ -108,7 +110,7 @@ impl BackgroundNode {
             .into_diagnostic()
     }
 
-    /// Send a request and expects either a decodable response or an API error.
+    /// Send a request and expect either a decodable response or an API error.
     /// This method returns an error if the request cannot be sent of if there is any decoding error
     pub async fn ask_and_get_reply<T, R>(
         &self,
@@ -123,7 +125,8 @@ impl BackgroundNode {
         client.ask(ctx, req).await.into_diagnostic()
     }
 
-    async fn route_impl(&self) -> miette::Result<Route> {
+    /// Make a route to the node and connect using TCP
+    async fn create_route(&self) -> miette::Result<Route> {
         let mut route = self.to.clone();
         let node_state = self.cli_state.nodes.get(&self.node_name)?;
         let port = node_state.config().setup().api_transport()?.addr.port();
@@ -136,12 +139,22 @@ impl BackgroundNode {
             .sender_address()
             .clone();
         route.modify().prepend(addr);
-        debug!(%route, "Sending request");
+        debug!("Sending requests to {route}");
         Ok(route)
     }
 
+    /// Make a response / request client connected to the node
     pub async fn make_client(&self) -> miette::Result<Client> {
-        let route = self.route_impl().await?;
-        Ok(Client::new(&route, self.timeout))
+        self.make_client_with_timeout(self.timeout).await
+    }
+
+    /// Make a response / request client connected to the node
+    /// and specify a timeout for receiving responses
+    pub async fn make_client_with_timeout(
+        &self,
+        timeout: Option<Duration>,
+    ) -> miette::Result<Client> {
+        let route = self.create_route().await?;
+        Ok(Client::new(&route, timeout))
     }
 }
