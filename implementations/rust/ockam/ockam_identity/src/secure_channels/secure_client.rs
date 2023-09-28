@@ -8,8 +8,8 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{self, route, Result, Route};
-use ockam_node::api::request_with_options;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::api::Client;
+use ockam_node::Context;
 
 /// This client creates a secure channel to a node
 /// and can then send a typed request to that node (and receive a typed response)
@@ -147,12 +147,12 @@ impl SecureClient {
     {
         let sc = self.create_secure_channel(ctx).await?;
         let route = route![sc.clone(), api_service];
-        let options = MessageSendReceiveOptions::new().with_timeout(timeout);
-        let res = request_with_options(ctx, route, req, options).await;
+        let client = Client::new(&route, Some(timeout));
+        let response = client.request(ctx, req).await?;
         self.secure_channels
             .stop_secure_channel(ctx, sc.encryptor_address())
             .await?;
-        res
+        Ok(response)
     }
 
     /// Create a secure channel to the node

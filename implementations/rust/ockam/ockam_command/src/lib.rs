@@ -460,7 +460,7 @@ impl OckamCommand {
             OckamSubcommand::Run(c) => c.run(options),
             OckamSubcommand::Status(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
-            OckamSubcommand::Authenticated(c) => c.run(),
+            OckamSubcommand::Authenticated(c) => c.run(options),
             OckamSubcommand::Configuration(c) => c.run(options),
 
             OckamSubcommand::Completion(c) => c.run(),
