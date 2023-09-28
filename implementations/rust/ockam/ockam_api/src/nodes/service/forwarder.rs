@@ -19,8 +19,8 @@ use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
-use crate::nodes::service::SupervisedNodeManager;
-use crate::nodes::{BackgroundNode, InMemoryNode};
+use crate::nodes::service::in_memory_node::InMemoryNode;
+use crate::nodes::BackgroundNode;
 use crate::session::sessions::{Replacer, Session};
 use crate::session::sessions::{MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 
@@ -200,7 +200,7 @@ impl NodeManager {
     }
 }
 
-impl SupervisedNodeManager {
+impl InMemoryNode {
     pub async fn create_forwarder(
         &self,
         ctx: &Context,

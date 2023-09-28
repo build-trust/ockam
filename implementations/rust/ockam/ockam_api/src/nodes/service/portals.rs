@@ -23,7 +23,8 @@ use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
-use crate::nodes::service::{random_alias, SupervisedNodeManager};
+use crate::nodes::service::random_alias;
+use crate::nodes::InMemoryNode;
 use crate::session::sessions::{Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 use crate::{actions, resources, DefaultAddress};
 
@@ -508,7 +509,7 @@ impl NodeManager {
     }
 }
 
-impl SupervisedNodeManager {
+impl InMemoryNode {
     #[allow(clippy::too_many_arguments)]
     pub async fn create_inlet(
         &self,

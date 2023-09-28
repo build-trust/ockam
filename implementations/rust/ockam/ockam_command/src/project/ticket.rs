@@ -12,6 +12,7 @@ use ockam_api::authenticator::enrollment_tokens::{Members, TokenIssuer};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
 use ockam_api::nodes::InMemoryNode;
+
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
 use crate::identity::{get_identity_name, initialize_identity_if_default};
@@ -74,7 +75,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, TicketCommand),
 ) -> miette::Result<()> {
     let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();
-    let node = InMemoryNode::create(
+    let node = InMemoryNode::start_with_trust_context(
         &ctx,
         &opts.state,
         cmd.trust_opts.project_path.as_ref(),
@@ -113,12 +114,12 @@ async fn run_impl(
             .identifier()
             .clone();
 
-        node.make_authority_node_client(&authority_identifier, addr, Some(identity))
+        node.create_authority_client(&authority_identifier, addr, Some(identity))
             .await?
     } else if let (Some(p), Some(a)) = get_project(&opts.state, &cmd.to).await? {
         let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
         project = Some(p);
-        node.make_authority_node_client(a.identity_id(), a.address(), Some(identity))
+        node.create_authority_client(a.identity_id(), a.address(), Some(identity))
             .await?
     } else {
         return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));

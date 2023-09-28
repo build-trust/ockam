@@ -4,6 +4,7 @@ use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::Spaces;
+
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
@@ -53,8 +54,8 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this space?")?
     {
         let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
-        let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-        node.controller().delete_space(ctx, space_id).await?;
+        let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+        controller.delete_space(ctx, space_id).await?;
 
         let _ = opts.state.spaces.delete(&cmd.name);
         // TODO: remove projects associated to the space.

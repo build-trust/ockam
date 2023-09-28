@@ -57,8 +57,8 @@ async fn run_impl(
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
     let config = ConfluentConfig::new(bootstrap_server);
 
-    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
-    let controller = node.controller();
+    let node = InMemoryNode::start(&ctx, &opts.state).await?;
+    let controller = node.controller().await?;
 
     let response = controller
         .configure_confluent_addon(&ctx, project_id.clone(), config)

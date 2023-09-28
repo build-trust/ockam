@@ -7,19 +7,11 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use rand::random;
 
-use ockam::{Context, TcpListenerOptions, TcpTransport};
-use ockam_api::cli_state::{
-    add_project_info_to_node_state, init_node_state, CliState, StateDirTrait,
-};
-use ockam_api::nodes::service::{
-    NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
-    SupervisedNodeManager,
-};
-use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_api::cli_state::StateDirTrait;
 use ockam_core::env::get_env_with_default;
 
 use crate::util::api::TrustContextOpts;
-use crate::{CommandGlobalOpts, Result};
+use crate::CommandGlobalOpts;
 
 pub struct NodeManagerDefaults {
     pub node_name: String,
@@ -35,66 +27,6 @@ impl Default for NodeManagerDefaults {
             trust_context_opts: TrustContextOpts::default(),
         }
     }
-}
-
-pub async fn start_node_manager(
-    ctx: &Context,
-    cli_state: &CliState,
-    trust_opts: Option<&TrustContextOpts>,
-) -> Result<SupervisedNodeManager> {
-    start_node_manager_with_vault_and_identity(ctx, cli_state, None, None, trust_opts).await
-}
-
-pub async fn start_node_manager_with_vault_and_identity(
-    ctx: &Context,
-    cli_state: &CliState,
-    vault: Option<String>,
-    identity: Option<String>,
-    trust_opts: Option<&TrustContextOpts>,
-) -> Result<SupervisedNodeManager> {
-    let defaults = NodeManagerDefaults::default();
-
-    init_node_state(
-        cli_state,
-        &defaults.node_name,
-        vault.as_deref(),
-        identity.as_deref(),
-    )
-    .await?;
-
-    if let Some(p) = trust_opts {
-        add_project_info_to_node_state(&defaults.node_name, cli_state, p.project_path.as_ref())
-            .await?;
-    } else {
-        add_project_info_to_node_state(
-            &defaults.node_name,
-            cli_state,
-            defaults.trust_context_opts.project_path.as_ref(),
-        )
-        .await?;
-    };
-
-    let trust_context_config = match trust_opts {
-        Some(t) => t.to_config(cli_state)?.build(),
-        None => None,
-    };
-
-    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-    let bind = defaults.tcp_listener_address;
-
-    let options = TcpListenerOptions::new();
-    let listener = tcp.listen(&bind, options).await?;
-
-    let node_manager = SupervisedNodeManager::create(
-        ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), defaults.node_name.clone(), None, true),
-        NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
-        NodeManagerTrustOptions::new(trust_context_config),
-    )
-    .await?;
-    ctx.flow_controls()
-        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
-    Ok(node_manager)
 }
 
 pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette::Result<()> {
