@@ -1,3 +1,7 @@
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use clap::Args;
 use colorful::Colorful;
 use miette::{IntoDiagnostic, WrapErr};
@@ -56,6 +60,32 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> m
     run_impl(&ctx, opts, cmd).await
 }
 
+fn ctrlc_handler(opts: CommandGlobalOpts) {
+    let is_confirmation = Arc::new(AtomicBool::new(false));
+    ctrlc::set_handler(move || {
+        if is_confirmation.load(Ordering::Relaxed) {
+            let _ = opts.terminal.write_line(
+                format!(
+                    "\n{} Received Ctrl+C again. Cancelling {}. Please try again.",
+                    "!".red(), "ockam enroll".bold().light_yellow()
+                )
+                .as_str(),
+            );
+            process::exit(2);
+        } else {
+            let _ = opts.terminal.write_line(
+                format!(
+                    "\n{} {} is still in progress. If you would like to stop the enrollment process, press Ctrl+C again.",
+                    "!".red(), "ockam enroll".bold().light_yellow()
+                )
+                .as_str(),
+            );
+            is_confirmation.store(true, Ordering::Relaxed);
+        }
+    })
+    .expect("Error setting Ctrl-C handler");
+}
+
 async fn run_impl(
     ctx: &Context,
     opts: CommandGlobalOpts,
@@ -65,6 +95,7 @@ async fn run_impl(
         "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
     ))?;
 
+    ctrlc_handler(opts.clone());
     display_parse_logs(&opts);
 
     let oidc_service = OidcService::default();
