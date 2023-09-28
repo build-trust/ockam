@@ -1,12 +1,10 @@
 use async_trait::async_trait;
-use minicbor::Decoder;
 
-use ockam_core::api::{Request, ResponseHeader, Status};
+use ockam_core::api::Request;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, Error, Result, Route};
-use ockam_node::api::{request, request_with_local_info};
+use ockam_core::{Address, Result, Route};
+use ockam_node::api::Client;
 use ockam_node::{Context, WorkerBuilder};
 
 use crate::credentials::credentials_server_worker::CredentialsServerWorker;
@@ -65,33 +63,15 @@ impl CredentialsServer for CredentialsServerModule {
         credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let path = "actions/present_mutual";
-        let (buf, local_info) =
-            request_with_local_info(ctx, route, Request::post(path).body(credential)).await?;
+        let client = Client::new(&route, None);
+        let (reply, local_info) = client
+            .ask_with_local_info(ctx, Request::post(path).body(credential), None)
+            .await?;
 
         let their_id =
             IdentitySecureChannelLocalInfo::find_info_from_list(&local_info)?.their_identity_id();
 
-        let mut dec = Decoder::new(&buf);
-        let res: ResponseHeader = dec.decode()?;
-        match res.status() {
-            Some(Status::Ok) => {}
-            Some(s) => {
-                return Err(Error::new(
-                    Origin::Application,
-                    Kind::Invalid,
-                    format!("credential presentation failed: {}", s),
-                ));
-            }
-            _ => {
-                return Err(Error::new(
-                    Origin::Application,
-                    Kind::Invalid,
-                    "credential presentation failed",
-                ));
-            }
-        }
-
-        let credential_and_purpose_key: CredentialAndPurposeKey = dec.decode()?;
+        let credential_and_purpose_key: CredentialAndPurposeKey = reply.success()?;
         self.credentials
             .credentials_verification()
             .receive_presented_credential(&their_id, authorities, &credential_and_purpose_key)
@@ -107,22 +87,11 @@ impl CredentialsServer for CredentialsServerModule {
         route: Route,
         credential: CredentialAndPurposeKey,
     ) -> Result<()> {
-        let buf = request(
-            ctx,
-            route,
-            Request::post("actions/present").body(credential),
-        )
-        .await?;
-
-        let res: ResponseHeader = minicbor::decode(&buf)?;
-        match res.status() {
-            Some(Status::Ok) => Ok(()),
-            _ => Err(Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                "credential presentation failed",
-            )),
-        }
+        let client = Client::new(&route, None);
+        client
+            .tell(ctx, Request::post("actions/present").body(credential))
+            .await?
+            .success()
     }
 
     /// Start worker that will be available to receive others attributes and put them into storage,
