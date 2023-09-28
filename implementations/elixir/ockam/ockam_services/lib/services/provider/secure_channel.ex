@@ -40,21 +40,29 @@ defmodule Ockam.Services.Provider.SecureChannel do
 
     other_args = Keyword.drop(args, [:trust_policies])
 
-    with {:ok, identity} <- Identity.create(),
-         {:ok, keypair} <- Crypto.generate_dh_keypair(),
-         {:ok, attestation} <- Identity.attest_purpose_key(identity, keypair) do
-      Keyword.merge(
-        [
-          identity: identity,
-          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
-          address: "secure_channel",
-          trust_policies: trust_policies
-        ],
-        other_args
-      )
-    else
-      error ->
-        raise "error starting service options for identity secure channel: #{inspect(error)}"
-    end
+    # Create a identity and purpose key if not provided
+    other_args =
+      Keyword.put_new_lazy(other_args, :identity, fn ->
+        {:ok, identity} = Identity.create()
+        identity
+      end)
+
+    other_args =
+      Keyword.put_new_lazy(other_args, :encryption_options, fn ->
+        {:ok, keypair} = Crypto.generate_dh_keypair()
+
+        {:ok, attestation} =
+          Identity.attest_purpose_key(Keyword.get(other_args, :identity), keypair)
+
+        [static_keypair: keypair, static_key_attestation: attestation]
+      end)
+
+    Keyword.merge(
+      [
+        address: "secure_channel",
+        trust_policies: trust_policies
+      ],
+      other_args
+    )
   end
 end
