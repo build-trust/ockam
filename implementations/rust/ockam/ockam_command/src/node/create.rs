@@ -204,7 +204,7 @@ pub(crate) async fn background_mode(
     let send_req = async {
         let mut node = BackgroundNode::create(&ctx, &opts.state, node_name).await?;
         spawn_background_node(&opts, cmd.clone()).await?;
-        let is_node_up = is_node_up(&ctx, &mut node, opts.state.clone(), true).await?;
+        let is_node_up = is_node_up(&ctx, node_name, &mut node, opts.state.clone(), true).await?;
         *is_finished.lock().await = true;
         Ok(is_node_up)
     };

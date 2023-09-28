@@ -53,7 +53,7 @@ async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&opts, &ctx, &mut node, false, is_default).await?;
+    print_query_status(&opts, &ctx, &node_name, &mut node, false, is_default).await?;
     Ok(())
 }
 
@@ -174,13 +174,14 @@ fn print_node_info(
 pub async fn print_query_status(
     opts: &CommandGlobalOpts,
     ctx: &Context,
+    node_name: &str,
     node: &mut BackgroundNode,
     wait_until_ready: bool,
     is_default: bool,
 ) -> miette::Result<()> {
     let cli_state = opts.state.clone();
-    if !is_node_up(ctx, node, cli_state.clone(), wait_until_ready).await? {
-        let node_state = cli_state.nodes.get(node.node_name())?;
+    if !is_node_up(ctx, node_name, node, cli_state.clone(), wait_until_ready).await? {
+        let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state
             .config()
             .setup()
@@ -194,7 +195,7 @@ pub async fn print_query_status(
         print_node_info(
             opts,
             node_port,
-            node.node_name(),
+            node_name,
             is_default,
             is_authority_node,
             None,
@@ -204,7 +205,7 @@ pub async fn print_query_status(
             None,
         );
     } else {
-        let node_state = cli_state.nodes.get(node.node_name())?;
+        let node_state = cli_state.nodes.get(node_name)?;
         // Get short id for the node
         let default_id = match node_state.config().identity_config() {
             Ok(resp) => resp.identifier().to_string(),
@@ -227,7 +228,7 @@ pub async fn print_query_status(
         // Get list of outlets
         let outlets: OutletList = node.ask(ctx, api::list_outlets()).await?;
 
-        let node_state = cli_state.nodes.get(node.node_name())?;
+        let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state
             .config()
             .setup()
@@ -238,7 +239,7 @@ pub async fn print_query_status(
         print_node_info(
             opts,
             node_port,
-            node.node_name(),
+            node_name,
             is_default,
             true,
             Some(&default_id),
@@ -261,6 +262,7 @@ pub async fn print_query_status(
 /// allow a node time to start up and become ready.
 pub async fn is_node_up(
     ctx: &Context,
+    node_name: &str,
     node: &mut BackgroundNode,
     cli_state: CliState,
     wait_until_ready: bool,
@@ -274,7 +276,6 @@ pub async fn is_node_up(
         FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
     let cli_state = cli_state.clone();
-    let node_name = node.node_name().to_owned();
     let now = std::time::Instant::now();
     for timeout_duration in retries {
         let node_state = cli_state.nodes.get(&node_name)?;

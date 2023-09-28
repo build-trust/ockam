@@ -80,7 +80,7 @@ async fn run_impl(
     // Print node status
     let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let is_default = check_default(&opts, &node_name);
-    print_query_status(&opts, &ctx, &mut node, true, is_default).await?;
+    print_query_status(&opts, &ctx, &node_name, &mut node, true, is_default).await?;
 
     Ok(())
 }
