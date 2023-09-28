@@ -1,12 +1,13 @@
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::local_multiaddr_to_route;
 use crate::nodes::NODEMANAGER_ADDR;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
-use ockam_core::api::{Reply, Request, Response, Status};
+use ockam_core::api::{Reply, Request};
 use ockam_core::{AsyncTryClone, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::api::Client;
+use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpTransport};
 use std::sync::Arc;
 use std::time::Duration;
@@ -81,44 +82,30 @@ impl BackgroundNode {
         Ok(self)
     }
 
-    /// Send a request
-    /// This method waits for a response status but does not expect a response body
-    /// If the status is missing or not, we try to parse an error message and return it
-    pub async fn tell<T>(&self, ctx: &Context, req: Request<T>) -> miette::Result<()>
-    where
-        T: Encode<()>,
-    {
-        let bytes = self.send_request(ctx, req).await?;
-        let (response, decoder) =
-            Response::parse_response_header(bytes.as_slice()).into_diagnostic()?;
-        if !response.is_ok() {
-            Err(miette!(response.parse_err_msg(decoder)))
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Send a request
-    /// This method waits for a response status and returns it if available
-    pub async fn tell_and_get_status<T>(
-        &self,
-        ctx: &Context,
-        req: Request<T>,
-    ) -> miette::Result<Option<Status>>
-    where
-        T: Encode<()>,
-    {
-        self.parse_response_status(self.send_request(ctx, req).await?)
-    }
-
     /// Send a request and expects a decodable response
-    /// This method parses and returns an error message if the request was not successful
     pub async fn ask<T, R>(&self, ctx: &Context, req: Request<T>) -> miette::Result<R>
     where
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
     {
-        self.parse_response_body::<R>(self.send_request(ctx, req).await?)
+        self.ask_and_get_reply(ctx, req)
+            .await?
+            .success()
+            .into_diagnostic()
+    }
+
+    /// Send a request but don't decode the response
+    pub async fn tell<T>(&self, ctx: &Context, req: Request<T>) -> miette::Result<()>
+    where
+        T: Encode<()>,
+    {
+        let client = self.make_client().await?;
+        client
+            .tell(ctx, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 
     /// Send a request and expects either a decodable response or an API error.
@@ -132,29 +119,8 @@ impl BackgroundNode {
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
     {
-        self.parse_response_reply::<R>(self.send_request(ctx, req).await?)
-    }
-
-    /// Make a request and wait for a response
-    /// This method _does not_ check the success of the request
-    async fn send_request<T>(&self, ctx: &Context, req: Request<T>) -> miette::Result<Vec<u8>>
-    where
-        T: Encode<()>,
-    {
-        let route = self.route_impl().await?;
-        let options = self
-            .timeout
-            .map(|t| MessageSendReceiveOptions::new().with_timeout(t))
-            .unwrap_or(MessageSendReceiveOptions::new());
-        Ok(ctx
-            .send_and_receive_extended::<Vec<u8>>(
-                route.clone(),
-                req.to_vec().into_diagnostic()?,
-                options,
-            )
-            .await
-            .into_diagnostic()?
-            .body())
+        let client = self.make_client().await?;
+        client.ask(ctx, req).await.into_diagnostic()
     }
 
     async fn route_impl(&self) -> miette::Result<Route> {
@@ -174,28 +140,8 @@ impl BackgroundNode {
         Ok(route)
     }
 
-    /// Parse the response body and return it
-    /// This function returns an Err with a parsed error message if the response status is not ok
-    fn parse_response_body<T>(&self, bytes: Vec<u8>) -> miette::Result<T>
-    where
-        T: for<'b> Decode<'b, ()>,
-    {
-        Response::parse_response_body(bytes.as_slice()).into_diagnostic()
-    }
-
-    /// Parse the response body and return it
-    /// This function returns an Err with a parsed error message if the response status is not ok
-    fn parse_response_reply<T>(&self, bytes: Vec<u8>) -> miette::Result<Reply<T>>
-    where
-        T: for<'b> Decode<'b, ()>,
-    {
-        Response::parse_response_reply(bytes.as_slice()).map_err(|e| miette!(e))
-    }
-
-    /// Parse a Response and return its status
-    fn parse_response_status(&self, bytes: Vec<u8>) -> miette::Result<Option<Status>> {
-        let (response, _decoder) =
-            Response::parse_response_header(bytes.as_slice()).into_diagnostic()?;
-        Ok(response.status())
+    pub async fn make_client(&self) -> miette::Result<Client> {
+        let route = self.route_impl().await?;
+        Ok(Client::new(&route, self.timeout))
     }
 }

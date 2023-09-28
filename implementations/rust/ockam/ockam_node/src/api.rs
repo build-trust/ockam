@@ -1,6 +1,5 @@
 #![allow(missing_docs)]
 
-use core::fmt::Display;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
