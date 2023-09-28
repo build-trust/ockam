@@ -11,14 +11,30 @@ use ockam_core::{self, route, Result, Route};
 use ockam_node::api::request_with_options;
 use ockam_node::{Context, MessageSendReceiveOptions};
 
-/// This client can create a secure channel to a node
-/// and send request / responses
+/// This client creates a secure channel to a node
+/// and can then send a typed request to that node (and receive a typed response)
+///
+/// Note that a secure channel is created every time a request is made.
+/// There is no attempt to keep the channel alive to send other requests
+///
+/// In order for this client to work:
+///
+///  - the requested node must have started a transport listener
+///  - the requested node must have started a secure channel listener
+///  - the `secure_route` must start with the transport address of a worker connected to the requested node transport listener
+///  - the requested node must have started the services named `api_service` in the `ask/tell` methods
+///
 #[derive(Clone)]
 pub struct SecureClient {
-    pub(crate) secure_channels: Arc<SecureChannels>,
+    // secure_channels is used to create a secure channel before sending a request
+    secure_channels: Arc<SecureChannels>,
+    // destination for the secure channel
     secure_route: Route,
+    // identifier of the secure channel responder
     server_identifier: Identifier,
+    // identifier of the secure channel initiator
     client_identifier: Identifier,
+    // default timeout to use for receiving a reply
     timeout: Duration,
 }
 
@@ -44,6 +60,22 @@ impl SecureClient {
 
 impl SecureClient {
     /// Send a request of type T and receive a reply of type R
+    ///  1. first a secure channel is created
+    ///  2. then a request is sent to a specific service named `api_service`
+    ///  3. when a response is received, it is decoded to the type R
+    ///
+    /// The result is a `Result<Reply<R>>` where `Reply<R>` can contain a value of type `R` but
+    /// might be an error and a status code if the request was not successful.
+    ///
+    /// This allows to distinguish:
+    ///
+    ///  - communication errors
+    ///  - request failures
+    ///  - successes
+    ///
+    /// Note that a `Reply<T>` can be converted in a `Result<T>` by using the `success()?` method
+    /// if one is not interested in request failures.
+    ///
     pub async fn ask<T, R>(
         &self,
         ctx: &Context,
@@ -61,6 +93,7 @@ impl SecureClient {
     }
 
     /// Send a request of type T and don't expect a reply
+    /// See `ask` for more information
     pub async fn tell<T>(
         &self,
         ctx: &Context,
@@ -86,6 +119,7 @@ impl SecureClient {
     }
 
     /// Send a request of type T and expect an untyped reply
+    /// See `ask` for more information
     pub async fn request<T>(
         &self,
         ctx: &Context,
@@ -100,6 +134,7 @@ impl SecureClient {
     }
 
     /// Send a request of type T and expect an untyped reply within a specific timeout
+    /// See `ask` for more information
     pub async fn request_with_timeout<T>(
         &self,
         ctx: &Context,
