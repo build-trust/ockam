@@ -26,7 +26,8 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
             ctx,
             &Identifier::from_str("I124ed0b2e5a2be82e267ead6b3279f683616b66d").unwrap(),
         )
-        .await.unwrap()
+        .await
+        .unwrap()
         .expect("found");
     assert_eq!(
         Some(&b"value"[..].to_vec()),
@@ -43,7 +44,8 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
                 ctx,
                 &Identifier::from_str("I324ed0b2e5a2be82e267ead6b3279f683616b66d").unwrap()
             )
-            .await.unwrap()
+            .await
+            .unwrap()
     );
 
     assert_eq!(2, client.list_identifiers(ctx).await.unwrap().len());
