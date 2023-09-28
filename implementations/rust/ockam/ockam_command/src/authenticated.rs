@@ -92,7 +92,7 @@ async fn make_background_node_client(
     is_local_node(addr).context("The address must point to a local node")?;
     let to = get_node_name(&opts.state, &Some(addr.to_string()));
     let node_name = extract_address_value(&to)?;
-    Ok(BackgroundNode::create(&ctx, &opts.state, &node_name).await?)
+    Ok(BackgroundNode::create(ctx, &opts.state, &node_name).await?)
 }
 
 fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
