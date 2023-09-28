@@ -1,8 +1,8 @@
 use ockam::identity::{AuthorityService, SecureChannelOptions, TrustContext, Vault};
 use ockam::{route, Context, Result, TcpConnectionOptions};
 use ockam::{Node, TcpTransportExtension};
-use ockam_api::cloud::SecureClients;
 use ockam_api::enroll::enrollment::Enrollment;
+use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::{Secret, SecretAttributes, SoftwareSigningVault};
@@ -45,7 +45,7 @@ async fn main(ctx: Context) -> Result<()> {
     // The authority node already knows the public identifier of the client
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let authority_node = SecureClients::authority(
+    let authority_node = NodeManager::authority_node(
         &tcp,
         node.secure_channels().clone(),
         issuer.identifier(),

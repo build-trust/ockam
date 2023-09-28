@@ -11,9 +11,8 @@ use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
 use ockam_api::cli_state::identities::IdentityState;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::cli_state::NodeState;
-use ockam_api::cloud::SecureClients;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::{BackgroundNode, NodeManager};
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::route;
 use ockam_node::MessageSendReceiveOptions;
@@ -111,8 +110,8 @@ async fn get_orchestrator_version(
 ) -> Result<OrchestratorVersionInfo> {
     // for new we get the controller address directly until we
     // access a Controller interface from the NodeManager
-    let controller_addr = SecureClients::controller_multiaddr();
-    let controller_identifier = SecureClients::load_controller_identifier()?;
+    let controller_addr = NodeManager::controller_multiaddr();
+    let controller_identifier = NodeManager::load_controller_identifier()?;
     let controller_tcp_addr = controller_addr.to_socket_addr()?;
     let tcp = TcpTransport::create(ctx).await?;
     let connection = tcp
