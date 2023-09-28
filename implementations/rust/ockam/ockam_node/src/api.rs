@@ -1,22 +1,25 @@
 #![allow(missing_docs)]
 
-use std::time::Duration;
-
 use minicbor::{Decode, Encode};
 
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
+use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{LocalInfo, Result, Route};
 
 use crate::{Context, MessageSendReceiveOptions};
 
+/// This struct provides some support for making requests to another node
+/// and receiving replies
 pub struct Client {
     route: Route,
     timeout: Option<Duration>,
 }
 
 impl Client {
+    /// Create a new client to send messages to a given destination
+    /// A default timeout can be specified
     pub fn new(route: &Route, timeout: Option<Duration>) -> Self {
         Self {
             route: route.clone(),
@@ -24,6 +27,19 @@ impl Client {
         }
     }
 
+    /// Send a request of type T and receive a reply of type R
+    ///
+    /// The result is a `Result<Reply<R>>` where `Reply<R>` can contain a value of type `R` but
+    /// might be an error and a status code if the request was not successful.
+    ///
+    /// This allows to distinguish:
+    ///
+    ///  - communication errors
+    ///  - request failures
+    ///  - successes
+    ///
+    /// Note that a `Reply<T>` can be converted in a `Result<T>` by using the `success()?` method
+    /// if one is not interested in request failures.
     pub async fn ask<T, R>(&self, ctx: &Context, req: Request<T>) -> Result<Reply<R>>
     where
         T: Encode<()>,
