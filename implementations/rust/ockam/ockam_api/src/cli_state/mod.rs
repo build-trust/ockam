@@ -294,7 +294,7 @@ impl CliState {
         }
         // Or create a new one with a random name
         else {
-            let n = hex::encode(random::<[u8; 4]>());
+            let n = random_name();
             let c = VaultConfig::default();
             self.vaults.create_async(&n, c).await?
         };
@@ -319,9 +319,7 @@ impl CliState {
         name: Option<&str>,
     ) -> Result<IdentityState> {
         let identity_config = IdentityConfig::new(identifier).await;
-        let identity_name = name
-            .map(|x| x.to_string())
-            .unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
+        let identity_name = name.map(|x| x.to_string()).unwrap_or_else(random_name);
         self.identities.create(identity_name, identity_config)
     }
 
@@ -439,6 +437,7 @@ mod tests {
     use crate::cloud::enroll::auth0::UserInfo;
     use crate::config::cli::TrustContextConfig;
     use crate::config::lookup::{ConfigLookup, LookupValue, ProjectLookup, SpaceLookup};
+    use ockam_core::compat::rand::random_string;
     use ockam_multiaddr::MultiAddr;
     use std::str::FromStr;
 
@@ -553,7 +552,7 @@ mod tests {
 
         // Vaults
         let vault_name = {
-            let name = hex::encode(random::<[u8; 4]>());
+            let name = random_name();
             let config = VaultConfig::default();
 
             let state = sut.vaults.create_async(&name, config).await.unwrap();
@@ -568,7 +567,7 @@ mod tests {
 
         // Identities
         let identity_name = {
-            let name = hex::encode(random::<[u8; 4]>());
+            let name = random_name();
             let vault_state = sut.vaults.get(&vault_name).unwrap();
             let vault: Vault = vault_state.get().await.unwrap();
             let identities = Identities::builder()
@@ -594,7 +593,7 @@ mod tests {
 
         // Nodes
         let node_name = {
-            let name = hex::encode(random::<[u8; 4]>());
+            let name = random_name();
             let config = NodeConfig::try_from(&sut).unwrap();
 
             let state = sut.nodes.create(&name, config).unwrap();
@@ -609,8 +608,8 @@ mod tests {
 
         // Spaces
         let space_name = {
-            let name = hex::encode(random::<[u8; 4]>());
-            let id = hex::encode(random::<[u8; 4]>());
+            let name = random_name();
+            let id = random_string();
             let config = SpaceConfig {
                 name: name.clone(),
                 id,
@@ -625,7 +624,7 @@ mod tests {
 
         // Projects
         let project_name = {
-            let name = hex::encode(random::<[u8; 4]>());
+            let name = random_name();
             let config = ProjectConfig::default();
 
             let state = sut.projects.create(&name, config).unwrap();
@@ -637,7 +636,7 @@ mod tests {
 
         // Trust Contexts
         let trust_context_name = {
-            let name = hex::encode(random::<[u8; 4]>());
+            let name = random_name();
             let config = TrustContextConfig::new(name.to_string(), None);
 
             let state = sut.trust_contexts.create(&name, config).unwrap();
@@ -649,7 +648,7 @@ mod tests {
 
         // Users Info
         let user_info_email = {
-            let email = hex::encode(random::<[u8; 4]>());
+            let email = random_name();
             let config = UserInfo {
                 email: email.clone(),
                 ..Default::default()
