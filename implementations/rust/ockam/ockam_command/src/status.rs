@@ -4,6 +4,7 @@ use std::time::Duration;
 use clap::Args;
 use miette::miette;
 use minicbor::{Decode, Decoder, Encode};
+use tracing::warn;
 
 use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
 use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
@@ -48,12 +49,8 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> 
     let nodes_details = get_nodes_details(&ctx, &opts).await?;
     let orchestrator_version =
         get_orchestrator_version(ctx, &opts, Duration::from_secs(cmd.timeout)).await;
-    print_output(
-        opts,
-        orchestrator_version,
-        identities_details,
-        nodes_details,
-    )?;
+    let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
+    print_output(opts, cmd, status)?;
     Ok(())
 }
 
@@ -116,22 +113,38 @@ async fn get_orchestrator_version(
     let connection = tcp
         .connect(controller_tcp_addr, TcpConnectionOptions::new())
         .await?;
+
+    // Create node that will be used to send the request
     let node = {
-        let identities_vault = opts.state.vaults.default()?.get().await?;
+        // Get or create a vault to store the identity
+        let vault = match opts.state.vaults.default() {
+            Ok(v) => v,
+            Err(_) => opts.state.create_vault_state(None).await?,
+        }
+        .get()
+        .await?;
         let identities_repository = opts.state.identities.identities_repository().await?;
         Node::builder()
-            .with_vault(identities_vault)
+            .with_vault(vault)
             .with_identities_repository(identities_repository)
             .build(ctx)
             .await?
     };
-    let identifier = opts.state.identities.default()?.identifier();
+
+    // Establish secure channel with controller
+    let node_identity = opts
+        .state
+        .default_identities()
+        .await?
+        .identities_creation()
+        .create_identity()
+        .await?;
     let secure_channel_options = SecureChannelOptions::new()
         .with_trust_policy(TrustIdentifierPolicy::new(controller_identifier))
         .with_timeout(timeout);
     let secure_channel = node
         .create_secure_channel(
-            &identifier,
+            node_identity.identifier(),
             route![connection, "api"],
             secure_channel_options,
         )
@@ -147,6 +160,8 @@ async fn get_orchestrator_version(
         .await?
         .body();
     let mut dec = Decoder::new(&buf);
+
+    // Decode response
     let hdr = dec.decode::<Response>()?;
     if hdr.status() == Some(Status::Ok) {
         Ok(dec.decode::<OrchestratorVersionInfo>()?)
@@ -155,14 +170,8 @@ async fn get_orchestrator_version(
     }
 }
 
-fn print_output(
-    opts: CommandGlobalOpts,
-    orchestrator_version: Result<OrchestratorVersionInfo>,
-    identities_details: Vec<IdentityState>,
-    nodes_details: Vec<NodeDetails>,
-) -> Result<()> {
-    let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
-    let plain = build_plain_output(&opts, &status)?;
+fn print_output(opts: CommandGlobalOpts, cmd: StatusCommand, status: StatusData) -> Result<()> {
+    let plain = build_plain_output(&opts, &cmd, &status)?;
     let json = serde_json::to_string(&status)?;
     opts.terminal
         .stdout()
@@ -172,7 +181,11 @@ fn print_output(
     Ok(())
 }
 
-fn build_plain_output(opts: &CommandGlobalOpts, status: &StatusData) -> Result<Vec<u8>> {
+fn build_plain_output(
+    opts: &CommandGlobalOpts,
+    cmd: &StatusCommand,
+    status: &StatusData,
+) -> Result<Vec<u8>> {
     let mut plain = Vec::new();
     writeln!(
         &mut plain,
@@ -185,10 +198,14 @@ fn build_plain_output(opts: &CommandGlobalOpts, status: &StatusData) -> Result<V
         status.orchestrator_version.project_version
     )?;
     if status.identities.is_empty() {
-        writeln!(
-            &mut plain,
-            "No enrolled identities found! Try passing the `--all` argument to see all identities.",
-        )?;
+        if cmd.all {
+            writeln!(&mut plain, "No identities found!")?;
+        } else {
+            writeln!(
+                &mut plain,
+                "No enrolled identities found! Try passing the `--all` argument to see all identities.",
+            )?;
+        }
         return Ok(plain);
     }
     let default_identity = opts.state.identities.default()?;
@@ -225,10 +242,12 @@ impl StatusData {
         identities_details: Vec<IdentityState>,
         mut nodes_details: Vec<NodeDetails>,
     ) -> Result<Self> {
-        let orchestrator_version = orchestrator_version.unwrap_or(OrchestratorVersionInfo {
-            controller_version: "N/A".to_string(),
-            project_version: "N/A".to_string(),
-        });
+        let orchestrator_version = orchestrator_version
+            .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
+            .unwrap_or(OrchestratorVersionInfo {
+                controller_version: "N/A".to_string(),
+                project_version: "N/A".to_string(),
+            });
         let mut identities = vec![];
         for identity in identities_details.into_iter() {
             let mut identity_status = IdentityWithLinkedNodes {
