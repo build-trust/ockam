@@ -1,3 +1,3 @@
 In Ockam, a space is an infinitely scalable Ockam Node in the cloud that can be created, managed, and scaled by Ockam Orchestrator. Spaces offer services such as creating projects within a space, inviting teammates to it, or attaching payment subscriptions.
 
-When you enroll in Ockam for the first time, a space is created for the user to host their projects.
+When you enroll in Ockam for the first time, a space is created for you to host your projects.
