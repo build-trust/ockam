@@ -17,14 +17,14 @@ use ockam_api::cli_state::{
     add_project_info_to_node_state, init_node_state, CliState, StateDirTrait, StateItemTrait,
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
-use ockam_api::cloud::{Controller, SecureClients};
+use ockam_api::cloud::Controller;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_api::nodes::{InMemoryNode, NodeManager};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
 
@@ -271,7 +271,7 @@ impl AppState {
     }
 
     pub fn controller_address(&self) -> MultiAddr {
-        SecureClients::controller_multiaddr()
+        NodeManager::controller_multiaddr()
     }
 }
 

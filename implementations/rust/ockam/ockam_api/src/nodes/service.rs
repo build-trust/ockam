@@ -12,7 +12,6 @@ use minicbor::{Decoder, Encode};
 pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::CredentialsServerModule;
-use ockam::identity::SecureClient;
 use ockam::identity::TrustContext;
 use ockam::identity::Vault;
 use ockam::identity::{
@@ -35,7 +34,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use crate::cloud::{AuthorityNode, Controller, ProjectNode, SecureClients};
+use crate::cloud::{AuthorityNode, ProjectNode};
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
@@ -201,63 +200,6 @@ impl NodeManager {
         )
         .await
         .into_diagnostic()
-    }
-
-    pub(crate) async fn make_controller_node_client(&self) -> Result<Controller> {
-        SecureClients::controller(
-            &self.tcp_transport,
-            self.secure_channels.clone(),
-            &self.get_identifier(None).await?,
-        )
-        .await
-    }
-
-    async fn make_authority_node_client(
-        &self,
-        authority_identifier: &Identifier,
-        authority_multiaddr: &MultiAddr,
-        caller_identifier: &Identifier,
-    ) -> Result<AuthorityNode> {
-        SecureClients::authority(
-            &self.tcp_transport,
-            self.secure_channels.clone(),
-            authority_identifier,
-            authority_multiaddr,
-            caller_identifier,
-        )
-        .await
-    }
-
-    async fn make_project_node_client(
-        &self,
-        project_identifier: &Identifier,
-        project_multiaddr: &MultiAddr,
-        caller_identifier: &Identifier,
-    ) -> Result<ProjectNode> {
-        SecureClients::project(
-            &self.tcp_transport,
-            self.secure_channels.clone(),
-            project_identifier,
-            project_multiaddr,
-            caller_identifier,
-        )
-        .await
-    }
-
-    pub async fn make_secure_client(
-        &self,
-        identifier: &Identifier,
-        multiaddr: &MultiAddr,
-        caller_identifier: &Identifier,
-    ) -> Result<SecureClient> {
-        SecureClients::generic(
-            &self.tcp_transport,
-            self.secure_channels.clone(),
-            identifier,
-            multiaddr,
-            caller_identifier,
-        )
-        .await
     }
 }
 
