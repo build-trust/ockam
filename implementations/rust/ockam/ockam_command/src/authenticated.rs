@@ -1,15 +1,17 @@
-use crate::docs;
-use crate::util::embedded_node;
+use crate::node::get_node_name;
+use crate::util::node_rpc;
+use crate::util::parsers::identity_identifier_parser;
 use crate::Result;
-use clap::builder::NonEmptyStringValueParser;
+use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 use miette::Context as _;
-use miette::{miette, IntoDiagnostic};
 use ockam::compat::collections::HashMap;
 use ockam::identity::{AttributesEntry, Identifier};
-use ockam::{Context, TcpTransport};
-use ockam_api::auth;
+use ockam::Context;
+use ockam_api::address::extract_address_value;
+use ockam_api::auth::AuthorizationApi;
 use ockam_api::is_local_node;
+use ockam_api::nodes::BackgroundNode;
 use ockam_multiaddr::MultiAddr;
 use termimad::{minimad::TextTemplate, MadSkin};
 
@@ -43,8 +45,8 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
-        id: String,
+        #[arg(long, value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
+        id: Identifier,
     },
 
     List {
@@ -54,34 +56,43 @@ pub enum AuthenticatedSubcommand {
 }
 
 impl AuthenticatedCommand {
-    pub fn run(self) {
-        if let Err(e) = embedded_node(run_impl, self.subcommand) {
-            eprintln!("Ockam node failed: {e:?}",);
-        }
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(run_impl, (opts, self.subcommand))
     }
 }
 
-async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> miette::Result<()> {
+async fn run_impl(
+    ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, AuthenticatedSubcommand),
+) -> miette::Result<()> {
     // FIXME: add support to target remote nodes.
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id } => {
-            is_local_node(addr).context("The address must point to a local node")?;
-            let mut c = client(&ctx, &tcp, addr).await?;
-            if let Some(entry) = c.get(id).await.into_diagnostic()? {
+            let node = make_background_node_client(&ctx, &opts, addr).await?;
+            if let Some(entry) = node.get_attributes(&ctx, id).await? {
                 print_entries(&[(Identifier::try_from(id.to_string()).unwrap(), entry)]);
             } else {
                 println!("Not found");
             }
         }
         AuthenticatedSubcommand::List { addr } => {
-            is_local_node(addr).context("The address must point to a local node")?;
-            let mut c = client(&ctx, &tcp, addr).await?;
-            print_entries(&c.list().await.into_diagnostic()?);
+            let node = make_background_node_client(&ctx, &opts, addr).await?;
+            let entries = node.list_identifiers(&ctx).await?;
+            print_entries(&entries);
         }
     }
-
     Ok(())
+}
+
+async fn make_background_node_client(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    addr: &MultiAddr,
+) -> Result<BackgroundNode> {
+    is_local_node(addr).context("The address must point to a local node")?;
+    let to = get_node_name(&opts.state, &Some(addr.to_string()));
+    let node_name = extract_address_value(&to)?;
+    Ok(BackgroundNode::create(&ctx, &opts.state, &node_name).await?)
 }
 
 fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
@@ -125,14 +136,4 @@ fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
     );
     let skin = MadSkin::default();
     skin.print_expander(expander);
-}
-
-async fn client(ctx: &Context, tcp: &TcpTransport, addr: &MultiAddr) -> Result<auth::Client> {
-    let route = ockam_api::multiaddr_to_route(addr, tcp)
-        .await
-        .ok_or_else(|| miette!("failed to parse address: {}", addr))?;
-    let cl = auth::Client::new(route.route, ctx)
-        .await
-        .into_diagnostic()?;
-    Ok(cl)
 }
