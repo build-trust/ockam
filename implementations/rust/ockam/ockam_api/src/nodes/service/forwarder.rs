@@ -425,10 +425,12 @@ impl SecureChannelsCreation for BackgroundNode {
             identity_name,
             credential_name,
         );
-        let response: CreateSecureChannelResponse = self
-            .with_timeout(timeout)
-            .ask(ctx, Request::post("/node/secure_channel").body(body))
-            .await?;
+        let request = Request::post("/node/secure_channel").body(body);
+        let response: CreateSecureChannelResponse = if let Some(t) = timeout {
+            self.ask_with_timeout(ctx, request, t).await?
+        } else {
+            self.ask(ctx, request).await?
+        };
         Ok(response.addr)
     }
 }
