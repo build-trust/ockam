@@ -1,5 +1,5 @@
 use ockam_core::Result;
-use ockam_identity::identities;
+use ockam_identity::{CredentialPurposeKeyOptions, identities};
 use ockam_vault::{SigningKeyType, VerifyingPublicKey};
 
 #[tokio::test]
@@ -66,9 +66,8 @@ async fn create_custom_type() -> Result<()> {
 
     let _purpose_key = purpose_keys
         .purpose_keys_creation()
-        .credential_purpose_key_builder(identity.identifier())
-        .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
-        .build()
+        .create_credential_purpose_key_for(identity.identifier(), CredentialPurposeKeyOptions::new())
+        // .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .await?;
 
     let purpose_key = purpose_keys

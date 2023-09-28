@@ -4,11 +4,11 @@ use ockam_core::{Error, Result};
 use crate::models::{
     Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
+use crate::purpose_keys::options::{CredentialPurposeKeyOptions, CredentialPurposeKeyOptionsKey, SecureChannelPurposeKeyOptions, SecureChannelPurposeKeyOptionsKey, Ttl};
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
-    CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesKeys, IdentitiesReader, Identity,
-    IdentityError, Purpose, PurposeKeyVerification, SecureChannelPurposeKey,
-    SecureChannelPurposeKeyBuilder, TimestampInSeconds, Vault,
+    CredentialPurposeKey, IdentitiesKeys, IdentitiesReader, Identity, IdentityError, Purpose,
+    PurposeKeyVerification, SecureChannelPurposeKey, TimestampInSeconds, Vault,
 };
 
 /// This struct supports all the services related to identities
@@ -36,54 +36,116 @@ impl PurposeKeyCreation {
         }
     }
 
-    /// Return [`PurposeKeysRepository`] instance
-    pub fn repository(&self) -> Arc<dyn PurposeKeysRepository> {
-        self.repository.clone()
+    pub async fn create_secure_channel_purpose_key_for(
+        &self,
+        identifier: &Identifier,
+        options: SecureChannelPurposeKeyOptions,
+    ) -> Result<SecureChannelPurposeKey> {
+        // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
+        let secret_key = match options.key {
+            SecureChannelPurposeKeyOptionsKey::Generate => {
+                self.vault
+                    .secure_channel_vault
+                    .generate_static_x25519_secret_key()
+                    .await?
+            }
+            SecureChannelPurposeKeyOptionsKey::Existing(key) => key,
+        };
+
+        let public_key = self
+            .vault
+            .secure_channel_vault
+            .get_x25519_public_key(&secret_key)
+            .await?;
+
+        let (attestation, attestation_data) = self
+            .attest_purpose(
+                identifier,
+                PurposePublicKey::SecureChannelStatic(public_key.clone()),
+                Purpose::SecureChannel,
+                options.ttl,
+            )
+            .await?;
+
+        let purpose_key = SecureChannelPurposeKey::new(
+            identifier.clone(),
+            secret_key,
+            public_key,
+            attestation_data,
+            attestation,
+        );
+
+        Ok(purpose_key)
+    }
+
+    pub async fn create_credential_purpose_key_for(
+        &self,
+        identifier: &Identifier,
+        options: CredentialPurposeKeyOptions,
+    ) -> Result<CredentialPurposeKey> {
+        // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
+        let secret_key = match options.key {
+            CredentialPurposeKeyOptionsKey::Generate(stype) => {
+                self.vault
+                    .credential_vault
+                    .generate_signing_secret_key(stype)
+                    .await?
+            }
+            CredentialPurposeKeyOptionsKey::Existing(key) => key,
+        };
+
+        let public_key = self
+            .vault
+            .credential_vault
+            .get_verifying_public_key(&secret_key)
+            .await?;
+
+        let (attestation, attestation_data) = self
+            .attest_purpose(
+                identifier,
+                PurposePublicKey::CredentialSigning(public_key.clone().into()),
+                Purpose::Credentials,
+                options.ttl,
+            )
+            .await?;
+
+        let purpose_key = CredentialPurposeKey::new(
+            identifier.clone(),
+            secret_key,
+            public_key,
+            attestation_data,
+            attestation,
+        );
+
+        Ok(purpose_key)
+    }
+
+    async fn attest_purpose(
+        &self,
+        identifier: &Identifier,
+        key: PurposePublicKey,
+        purpose: Purpose,
+        ttl: Ttl,
+    ) -> Result<(PurposeKeyAttestation, PurposeKeyAttestationData)> {
+        let (created_at, expires_at) = ttl.build()?;
+
+        let (attestation, attestation_data) = self
+            .attest_purpose_key(identifier.clone(), key, created_at, expires_at)
+            .await?;
+
+        self.repository
+            .set_purpose_key(identifier, purpose, &attestation)
+            .await?;
+
+        Ok((attestation, attestation_data))
     }
 
     /// Create [`PurposeKeyVerification`]
-    pub fn purpose_keys_verification(&self) -> Arc<PurposeKeyVerification> {
+    fn purpose_keys_verification(&self) -> Arc<PurposeKeyVerification> {
         Arc::new(PurposeKeyVerification::new(
             self.vault.verifying_vault.clone(),
             self.identities_reader.clone(),
         ))
-    }
-
-    /// Get an instance of [`PurposeKeyBuilder`]
-    pub fn secure_channel_purpose_key_builder(
-        &self,
-        identifier: &Identifier,
-    ) -> SecureChannelPurposeKeyBuilder {
-        SecureChannelPurposeKeyBuilder::new(
-            Arc::new(Self::new(
-                self.vault.clone(),
-                self.identities_reader.clone(),
-                self.identity_keys.clone(),
-                self.repository.clone(),
-            )),
-            identifier.clone(),
-        )
-    }
-
-    /// Get an instance of [`PurposeKeyBuilder`]
-    pub fn credential_purpose_key_builder(
-        &self,
-        identifier: &Identifier,
-    ) -> CredentialPurposeKeyBuilder {
-        CredentialPurposeKeyBuilder::new(
-            Arc::new(Self::new(
-                self.vault.clone(),
-                self.identities_reader.clone(),
-                self.identity_keys.clone(),
-                self.repository.clone(),
-            )),
-            identifier.clone(),
-        )
-    }
-
-    /// Return the [`Vault`]
-    pub fn vault(&self) -> &Vault {
-        &self.vault
     }
 }
 
@@ -93,8 +155,11 @@ impl PurposeKeyCreation {
         &self,
         identifier: &Identifier,
     ) -> Result<SecureChannelPurposeKey> {
-        let builder = self.secure_channel_purpose_key_builder(identifier);
-        builder.build().await
+        self.create_secure_channel_purpose_key_for(
+            identifier,
+            SecureChannelPurposeKeyOptions::new(),
+        )
+        .await
     }
 
     /// Create a [`PurposeKey`]
@@ -102,8 +167,8 @@ impl PurposeKeyCreation {
         &self,
         identifier: &Identifier,
     ) -> Result<CredentialPurposeKey> {
-        let builder = self.credential_purpose_key_builder(identifier);
-        builder.build().await
+        self.create_credential_purpose_key_for(identifier, CredentialPurposeKeyOptions::new())
+            .await
     }
 
     /// Attest a Purpose Key

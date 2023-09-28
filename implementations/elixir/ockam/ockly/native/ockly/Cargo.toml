@@ -12,6 +12,7 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
+hex = { version = "0.4", default-features = false }
 lazy_static = "1.4.0"
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 ockam_identity = { path = "../../../../../rust/ockam/ockam_identity" }

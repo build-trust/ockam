@@ -1,7 +1,7 @@
 use ockam_core::Result;
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::utils::AttributesBuilder;
-use ockam_identity::{Identities, Vault};
+use ockam_identity::{CredentialPurposeKeyOptions, Identities, Vault};
 use ockam_vault::{SigningKeyType, VaultForSigning};
 use ockam_vault_aws::AwsSigningVault;
 use std::sync::Arc;
@@ -86,9 +86,7 @@ async fn create_credential_aws_key() -> Result<()> {
     let purpose_key = identities
         .purpose_keys()
         .purpose_keys_creation()
-        .credential_purpose_key_builder(identity.identifier())
-        .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
-        .build()
+        .create_credential_purpose_key_for(identity.identifier(), CredentialPurposeKeyOptions::new())
         .await?;
 
     identities
