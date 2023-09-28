@@ -8,6 +8,7 @@ use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
+
 use ockam_api::nodes::InMemoryNode;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -53,11 +54,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-    let space = node
-        .controller()
-        .create_space(ctx, cmd.name, cmd.admins)
-        .await?;
+    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let space = controller.create_space(ctx, cmd.name, cmd.admins).await?;
 
     opts.println(&space)?;
     opts.state

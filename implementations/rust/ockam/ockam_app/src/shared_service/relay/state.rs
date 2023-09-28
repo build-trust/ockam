@@ -1,11 +1,11 @@
 use ockam::Context;
 use ockam_api::cli_state::CliState;
-use ockam_api::nodes::service::SupervisedNodeManager;
+use ockam_api::nodes::InMemoryNode;
 use std::sync::Arc;
 
 pub(crate) fn load_model_state(
     context: Arc<Context>,
-    node_manager: Arc<SupervisedNodeManager>,
+    node_manager: Arc<InMemoryNode>,
     cli_state: &CliState,
 ) {
     let cli_state = cli_state.clone();

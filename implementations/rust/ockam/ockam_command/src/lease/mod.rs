@@ -13,7 +13,8 @@ use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::ProjectNode;
 use ockam_api::config::lookup::ProjectLookup;
-use ockam_api::nodes::{Credentials, InMemoryNode};
+use ockam_api::nodes::Credentials;
+use ockam_api::nodes::InMemoryNode;
 
 use crate::identity::get_identity_name;
 
@@ -71,7 +72,7 @@ async fn authenticate(
     trust_opts: &TrustContextOpts,
 ) -> miette::Result<ProjectNode> {
     let trust_context_config = trust_opts.to_config(&opts.state)?.build();
-    let node = InMemoryNode::create(
+    let node = InMemoryNode::start_with_trust_context(
         ctx,
         &opts.state,
         trust_opts.project_path.as_ref(),
@@ -92,7 +93,7 @@ async fn authenticate(
         .ok_or(miette!("Project route is required"))?;
 
     let authority_node = node
-        .make_authority_node_client(
+        .create_authority_client(
             project_authority.identity_id(),
             project_authority.address(),
             Some(identity.clone()),
@@ -102,7 +103,7 @@ async fn authenticate(
     authority_node
         .authenticate(ctx, Some(identity.clone()))
         .await?;
-    node.make_project_node_client(&project_identifier, &project_addr, Some(identity.clone()))
+    node.create_project_client(&project_identifier, &project_addr, Some(identity.clone()))
         .await
 }
 

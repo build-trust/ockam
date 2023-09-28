@@ -6,6 +6,7 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 use ockam_api::cloud::space::Spaces;
+
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
@@ -40,10 +41,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
+    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
 
     let get_spaces = async {
-        let spaces = node.controller().list_spaces(ctx).await?;
+        let spaces = controller.list_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };

@@ -97,7 +97,7 @@ pub async fn project_enroll(
 
     // Create secure channel to the project's authority node
     let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();
-    let node = InMemoryNode::create(
+    let node = InMemoryNode::start_with_trust_context(
         ctx,
         &opts.state,
         cmd.trust_opts.project_path.as_ref(),
@@ -106,7 +106,7 @@ pub async fn project_enroll(
     .await?;
 
     let authority_node: AuthorityNode = node
-        .make_authority_node_client(
+        .create_authority_client(
             project_authority.identity_id(),
             project_authority.address(),
             Some(identity_name),

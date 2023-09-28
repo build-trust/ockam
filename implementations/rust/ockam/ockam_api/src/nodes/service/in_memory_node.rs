@@ -1,52 +1,77 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-
 use miette::IntoDiagnostic;
+use std::ops::Deref;
+use std::path::PathBuf;
+
 use rand::random;
 
-use ockam::identity::Identifier;
-use ockam::{Context, TcpListenerOptions, TcpTransport};
-use ockam_core::async_trait;
-use ockam_multiaddr::MultiAddr;
+use ockam::{Context, Result, TcpTransport};
+use ockam_core::compat::{string::String, sync::Arc};
+use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::{add_project_info_to_node_state, init_node_state, CliState};
-use crate::cloud::{AuthorityNode, Controller, ProjectNode};
+use crate::cloud::Controller;
 use crate::config::cli::TrustContextConfig;
-
-use crate::nodes::service::message::MessageSender;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
-    SupervisedNodeManager,
 };
-use crate::nodes::NODEMANAGER_ADDR;
+use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
+use crate::session::sessions::{Key, Session};
+use crate::session::MedicHandle;
+use crate::DefaultAddress;
 
-/// This struct represents a node that lives within the current process
+/// An `InMemoryNode` represents a full running node
+/// In addition to a `NodeManager`, which is used to handle all the entities related to a node
+/// (inlet/outlet, secure channels, etc...)
+/// the in memory node also handles the supervisions of the node with other nodes
+///
+/// You need to use an InMemoryNode if:
+///
+///  - you want to start a full node in the current process with services: inlets, outlets, secure channels etc...
+///  - you want to create a client to send requests to the controller, with the `create_controller` method
+///  - you want to create a client to send requests to the project node, with the `create_project_client` method
+///  - you want to create a client to send requests to the authority node, with the `create_authority_client` method
+///
+///
 pub struct InMemoryNode {
-    pub(crate) node_manager: SupervisedNodeManager,
-    controller: Arc<Controller>,
+    pub(crate) node_manager: Arc<NodeManager>,
+    pub(crate) medic_handle: MedicHandle,
+}
+
+/// This Deref instance makes it easy to access the NodeManager functions from an InMemoryNode
+impl Deref for InMemoryNode {
+    type Target = Arc<NodeManager>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node_manager
+    }
 }
 
 impl InMemoryNode {
-    pub async fn create(
+    /// Start an in memory node
+    pub async fn start(ctx: &Context, cli_state: &CliState) -> miette::Result<Self> {
+        Self::start_with_trust_context(ctx, cli_state, None, None).await
+    }
+
+    /// Start an in memory node with some project and trust context data
+    pub async fn start_with_trust_context(
         ctx: &Context,
         cli_state: &CliState,
         project_path: Option<&PathBuf>,
         trust_context_config: Option<TrustContextConfig>,
-    ) -> miette::Result<InMemoryNode> {
-        let node_manager =
-            start_node_manager(ctx, cli_state, project_path, trust_context_config).await?;
-        let controller = node_manager
-            .make_controller_node_client()
-            .await
-            .into_diagnostic()?;
-        Ok(Self {
-            node_manager,
-            controller: Arc::new(controller),
-        })
+    ) -> miette::Result<Self> {
+        Self::start_node(
+            ctx,
+            cli_state,
+            None,
+            None,
+            project_path,
+            trust_context_config,
+        )
+        .await
     }
 
-    pub async fn create_with_vault_and_identity(
+    /// Start an in memory node
+    pub async fn start_node(
         ctx: &Context,
         cli_state: &CliState,
         vault: Option<String>,
@@ -54,92 +79,83 @@ impl InMemoryNode {
         project_path: Option<&PathBuf>,
         trust_context_config: Option<TrustContextConfig>,
     ) -> miette::Result<InMemoryNode> {
-        let node_manager = start_node_manager_with_vault_and_identity(
-            ctx,
+        let defaults = NodeManagerDefaults::default();
+
+        init_node_state(
             cli_state,
-            vault,
-            identity,
-            project_path,
-            trust_context_config,
+            &defaults.node_name,
+            vault.as_deref(),
+            identity.as_deref(),
         )
         .await?;
-        let controller = node_manager
-            .make_controller_node_client()
-            .await
-            .into_diagnostic()?;
-        Ok(Self {
-            node_manager,
-            controller: Arc::new(controller),
-        })
+
+        add_project_info_to_node_state(&defaults.node_name, cli_state, project_path).await?;
+
+        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let bind = defaults.tcp_listener_address;
+
+        let options = TcpListenerOptions::new();
+        let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
+
+        let node_manager = Self::new(
+            ctx,
+            NodeManagerGeneralOptions::new(
+                cli_state.clone(),
+                defaults.node_name.clone(),
+                false,
+                None,
+            ),
+            NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
+            NodeManagerTrustOptions::new(trust_context_config),
+        )
+        .await
+        .into_diagnostic()?;
+        ctx.flow_controls()
+            .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+        Ok(node_manager)
     }
 
-    pub async fn make_project_node_client(
-        &self,
-        project_identifier: &Identifier,
-        project_address: &MultiAddr,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<ProjectNode> {
-        self.node_manager
-            .make_project_node_client(
-                project_identifier,
-                project_address,
-                &self
-                    .node_manager
-                    .get_identifier(caller_identity_name)
-                    .await
-                    .into_diagnostic()?,
-            )
-            .await
-            .into_diagnostic()
-    }
-
-    pub async fn make_authority_node_client(
-        &self,
-        authority_identifier: &Identifier,
-        authority_address: &MultiAddr,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<AuthorityNode> {
-        self.node_manager
-            .make_authority_node_client(
-                authority_identifier,
-                authority_address,
-                &self
-                    .node_manager
-                    .get_identifier(caller_identity_name)
-                    .await
-                    .into_diagnostic()?,
-            )
-            .await
-            .into_diagnostic()
-    }
-
-    pub fn controller(&self) -> Arc<Controller> {
-        self.controller.clone()
-    }
-
-    pub fn node_name(&self) -> String {
-        self.node_manager.node_name()
-    }
-}
-
-impl Drop for InMemoryNode {
-    fn drop(&mut self) {
-        let _ = self.node_manager.node_manager.delete_node();
-    }
-}
-
-#[async_trait]
-impl MessageSender for InMemoryNode {
-    async fn send_message(
-        &self,
+    /// Create an in memory node and return its controller
+    pub async fn create_controller(
         ctx: &Context,
-        addr: &MultiAddr,
-        message: Vec<u8>,
-        timeout: Option<Duration>,
-    ) -> ockam_core::Result<Vec<u8>> {
-        self.node_manager
-            .send_message(ctx, addr, message, timeout)
-            .await
+        cli_state: &CliState,
+    ) -> miette::Result<Controller> {
+        let node = Self::start_node(ctx, cli_state, None, None, None, None).await?;
+        node.controller().await
+    }
+
+    /// Return a Controller client to send requests to the Controller
+    pub async fn controller(&self) -> miette::Result<Controller> {
+        self.make_controller_node_client().await.into_diagnostic()
+    }
+
+    pub fn add_session(&self, session: Session) -> Key {
+        self.medic_handle.add_session(session)
+    }
+
+    pub async fn stop(&self, ctx: &Context) -> Result<()> {
+        self.medic_handle.stop_medic(ctx).await?;
+        for addr in DefaultAddress::iter() {
+            ctx.stop_worker(addr).await?;
+        }
+        Ok(())
+    }
+
+    /// Create a new in memory node with various options
+    pub async fn new(
+        ctx: &Context,
+        general_options: NodeManagerGeneralOptions,
+        transport_options: NodeManagerTransportOptions,
+        trust_options: NodeManagerTrustOptions,
+    ) -> Result<Self> {
+        let node_manager =
+            NodeManager::create(general_options, transport_options, trust_options).await?;
+        debug!("start the Medic");
+        let medic_handle = MedicHandle::start_medic(ctx).await?;
+        Ok(Self {
+            node_manager: Arc::new(node_manager),
+            medic_handle,
+        })
     }
 }
 
@@ -155,60 +171,4 @@ impl Default for NodeManagerDefaults {
             tcp_listener_address: "127.0.0.1:0".to_string(),
         }
     }
-}
-
-pub async fn start_node_manager(
-    ctx: &Context,
-    cli_state: &CliState,
-    project_path: Option<&PathBuf>,
-    trust_context_config: Option<TrustContextConfig>,
-) -> miette::Result<SupervisedNodeManager> {
-    start_node_manager_with_vault_and_identity(
-        ctx,
-        cli_state,
-        None,
-        None,
-        project_path,
-        trust_context_config,
-    )
-    .await
-}
-
-pub async fn start_node_manager_with_vault_and_identity(
-    ctx: &Context,
-    cli_state: &CliState,
-    vault: Option<String>,
-    identity: Option<String>,
-    project_path: Option<&PathBuf>,
-    trust_context_config: Option<TrustContextConfig>,
-) -> miette::Result<SupervisedNodeManager> {
-    let defaults = NodeManagerDefaults::default();
-
-    init_node_state(
-        cli_state,
-        &defaults.node_name,
-        vault.as_deref(),
-        identity.as_deref(),
-    )
-    .await?;
-
-    add_project_info_to_node_state(&defaults.node_name, cli_state, project_path).await?;
-
-    let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-    let bind = defaults.tcp_listener_address;
-
-    let options = TcpListenerOptions::new();
-    let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
-
-    let node_manager = SupervisedNodeManager::create(
-        ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), defaults.node_name.clone(), false, None),
-        NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
-        NodeManagerTrustOptions::new(trust_context_config),
-    )
-    .await
-    .into_diagnostic()?;
-    ctx.flow_controls()
-        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
-    Ok(node_manager)
 }

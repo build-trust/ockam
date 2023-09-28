@@ -1,5 +1,4 @@
 use miette::miette;
-use std::sync::Arc;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
@@ -12,7 +11,7 @@ use crate::CommandGlobalOpts;
 pub async fn check_for_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: Arc<Controller>,
+    controller: &Controller,
     operation_id: &str,
 ) -> miette::Result<()> {
     let retry_strategy =

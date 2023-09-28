@@ -2,7 +2,6 @@ use indicatif::ProgressBar;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use std::iter::Take;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
@@ -15,6 +14,7 @@ use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::service::forwarder::SecureChannelsCreation;
 use ockam_api::nodes::InMemoryNode;
+
 use ockam_api::route_to_multiaddr;
 use ockam_core::compat::str::FromStr;
 use ockam_core::route;
@@ -121,7 +121,7 @@ pub async fn check_project_readiness(
     let spinner_option = opts.terminal.progress_spinner();
     let project = check_project_ready(
         ctx,
-        node.controller(),
+        &node.controller().await?,
         project,
         retry_strategy.clone(),
         spinner_option.clone(),
@@ -152,7 +152,7 @@ pub async fn check_project_readiness(
 
 async fn check_project_ready(
     ctx: &Context,
-    controller: Arc<Controller>,
+    controller: &Controller,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -195,7 +195,7 @@ async fn check_project_node_accessible(
         .as_ref()
         .ok_or(miette!("Project identity is not set."))?;
     let project_node = node
-        .make_project_node_client(project_identity, &project_route, None)
+        .create_project_client(project_identity, &project_route, None)
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
@@ -244,7 +244,7 @@ async fn check_authority_node_accessible(
         .ok_or(miette!("Project does not have an authority defined."))?;
 
     let authority_node = node
-        .make_authority_node_client(authority.identity_id(), authority.address(), None)
+        .create_authority_client(authority.identity_id(), authority.address(), None)
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
@@ -264,7 +264,7 @@ async fn check_authority_node_accessible(
 pub async fn refresh_projects(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: Arc<Controller>,
+    controller: &Controller,
 ) -> miette::Result<()> {
     let projects = controller.list_projects(ctx).await?;
     for project in projects {

@@ -278,7 +278,7 @@ pub async fn is_node_up(
     let cli_state = cli_state.clone();
     let now = std::time::Instant::now();
     for timeout_duration in retries {
-        let node_state = cli_state.nodes.get(&node_name)?;
+        let node_state = cli_state.nodes.get(node_name)?;
         // The node is down if it has not stored its default tcp listener in its state file.
         if node_state.config().setup().api_transport().is_err() {
             trace!(%node_name, "node has not been initialized");

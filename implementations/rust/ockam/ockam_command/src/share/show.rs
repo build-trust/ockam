@@ -6,6 +6,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::cloud::share::Invitations;
+
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
@@ -36,8 +37,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::create(ctx, &opts.state, None, None).await?;
-    let controller = node.controller();
+    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
 
     let get_invitation_with_access = async {
         let invitation_with_access = controller.show_invitation(ctx, cmd.invitation_id).await?;

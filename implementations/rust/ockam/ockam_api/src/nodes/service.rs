@@ -1,9 +1,9 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
+use miette::IntoDiagnostic;
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::net::SocketAddr;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -48,9 +48,7 @@ use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
-use crate::nodes::NODEMANAGER_ADDR;
-use crate::session::sessions::{Key, Session};
-use crate::session::MedicHandle;
+use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
 use crate::DefaultAddress;
 
 use super::registry::Registry;
@@ -89,56 +87,11 @@ pub(crate) fn encode_request_result<T: Encode<()>>(
     Ok(v)
 }
 
-/// Node manager provides a messaging API to interact with the current node
-pub struct SupervisedNodeManager {
-    node_manager: Arc<NodeManager>,
-    medic_handle: MedicHandle,
-}
-
-impl Deref for SupervisedNodeManager {
-    type Target = Arc<NodeManager>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.node_manager
-    }
-}
-
-impl SupervisedNodeManager {
-    /// Create a new NodeManager with the node name from the ockam CLI
-    pub async fn create(
-        ctx: &Context,
-        general_options: NodeManagerGeneralOptions,
-        transport_options: NodeManagerTransportOptions,
-        trust_options: NodeManagerTrustOptions,
-    ) -> Result<Self> {
-        let node_manager =
-            NodeManager::create(general_options, transport_options, trust_options).await?;
-        debug!("start the Medic");
-        let medic_handle = MedicHandle::start_medic(ctx).await?;
-        Ok(Self {
-            node_manager: Arc::new(node_manager),
-            medic_handle,
-        })
-    }
-
-    pub fn node_manager(&self) -> Arc<NodeManager> {
-        self.node_manager.clone()
-    }
-
-    pub fn add_session(&self, session: Session) -> Key {
-        self.medic_handle.add_session(session)
-    }
-
-    pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        self.medic_handle.stop_medic(ctx).await?;
-        for addr in DefaultAddress::iter() {
-            ctx.stop_worker(addr).await?;
-        }
-        Ok(())
-    }
-}
-
-/// Node manager provides a messaging API to interact with the current node
+/// Node manager provides high-level operations to
+///  - send messages
+///  - create secure channels, inlet, outlet
+///  - configure the trust context
+///  - manage persistent data
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
@@ -214,7 +167,43 @@ impl NodeManager {
 }
 
 impl NodeManager {
-    pub async fn make_controller_node_client(&self) -> Result<Controller> {
+    pub async fn create_authority_client(
+        &self,
+        authority_identifier: &Identifier,
+        authority_multiaddr: &MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<AuthorityNode> {
+        self.make_authority_node_client(
+            authority_identifier,
+            authority_multiaddr,
+            &self
+                .get_identifier(caller_identity_name)
+                .await
+                .into_diagnostic()?,
+        )
+        .await
+        .into_diagnostic()
+    }
+
+    pub async fn create_project_client(
+        &self,
+        project_identifier: &Identifier,
+        project_multiaddr: &MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<ProjectNode> {
+        self.make_project_node_client(
+            project_identifier,
+            project_multiaddr,
+            &self
+                .get_identifier(caller_identity_name)
+                .await
+                .into_diagnostic()?,
+        )
+        .await
+        .into_diagnostic()
+    }
+
+    pub(crate) async fn make_controller_node_client(&self) -> Result<Controller> {
         SecureClients::controller(
             &self.tcp_transport,
             self.secure_channels.clone(),
@@ -223,7 +212,7 @@ impl NodeManager {
         .await
     }
 
-    pub async fn make_authority_node_client(
+    async fn make_authority_node_client(
         &self,
         authority_identifier: &Identifier,
         authority_multiaddr: &MultiAddr,
@@ -239,7 +228,7 @@ impl NodeManager {
         .await
     }
 
-    pub async fn make_project_node_client(
+    async fn make_project_node_client(
         &self,
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
@@ -274,11 +263,11 @@ impl NodeManager {
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
-    pub node_manager: Arc<SupervisedNodeManager>,
+    pub node_manager: Arc<InMemoryNode>,
 }
 
 impl NodeManagerWorker {
-    pub fn new(node_manager: Arc<SupervisedNodeManager>) -> Self {
+    pub fn new(node_manager: Arc<InMemoryNode>) -> Self {
         NodeManagerWorker { node_manager }
     }
 
@@ -286,10 +275,6 @@ impl NodeManagerWorker {
         self.node_manager.stop(ctx).await?;
         ctx.stop_worker(NODEMANAGER_ADDR).await?;
         Ok(())
-    }
-
-    pub async fn make_controller_node_client(&self) -> Result<Controller> {
-        self.node_manager.make_controller_node_client().await
     }
 }
 

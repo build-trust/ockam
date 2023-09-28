@@ -1,5 +1,4 @@
 use core::fmt::Write;
-use std::sync::Arc;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
@@ -8,6 +7,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cloud::subscription::{Subscription, Subscriptions};
 use ockam_api::cloud::Controller;
+
 use ockam_api::nodes::InMemoryNode;
 
 use crate::output::Output;
@@ -57,15 +57,14 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let node = InMemoryNode::create(&ctx, &opts.state, None, None).await?;
-    let controller = node.controller();
+    let controller = InMemoryNode::create_controller(&ctx, &opts.state).await?;
 
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id,
             space_id,
         } => {
-            match get_subscription_by_id_or_space_id(controller, &ctx, subscription_id, space_id)
+            match get_subscription_by_id_or_space_id(&controller, &ctx, subscription_id, space_id)
                 .await?
             {
                 Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
@@ -79,7 +78,7 @@ async fn run_impl(
 }
 
 pub(crate) async fn get_subscription_by_id_or_space_id(
-    controller: Arc<Controller>,
+    controller: &Controller,
     ctx: &Context,
     subscription_id: Option<String>,
     space_id: Option<String>,

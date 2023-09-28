@@ -22,8 +22,8 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
-    SupervisedNodeManager,
 };
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
@@ -48,7 +48,7 @@ pub const PROJECT_NAME: &str = "default";
 pub struct AppState {
     context: Arc<Context>,
     state: Arc<RwLock<CliState>>,
-    node_manager: Arc<RwLock<Arc<SupervisedNodeManager>>>,
+    node_manager: Arc<RwLock<Arc<InMemoryNode>>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
     event_manager: StdRwLock<EventManager>,
@@ -178,7 +178,7 @@ impl AppState {
     }
 
     /// Return the node manager
-    pub async fn node_manager(&self) -> Arc<SupervisedNodeManager> {
+    pub async fn node_manager(&self) -> Arc<InMemoryNode> {
         let node_manager = self.node_manager.read().await;
         node_manager.clone()
     }
@@ -186,10 +186,7 @@ impl AppState {
     /// Return a client to access the Controller
     pub async fn controller(&self) -> Result<Controller> {
         let node_manager = self.node_manager.read().await;
-        Ok(node_manager
-            .make_controller_node_client()
-            .await
-            .into_diagnostic()?)
+        Ok(node_manager.controller().await?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
@@ -279,7 +276,7 @@ impl AppState {
 }
 
 /// Create a node manager
-fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> SupervisedNodeManager {
+fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> InMemoryNode {
     match block_on(async { make_node_manager(ctx.clone(), cli_state).await }) {
         Ok(w) => w,
         Err(e) => {
@@ -293,7 +290,7 @@ fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> SupervisedNod
 pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
-) -> miette::Result<SupervisedNodeManager> {
+) -> miette::Result<InMemoryNode> {
     init_node_state(cli_state, NODE_NAME, None, None).await?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
@@ -318,7 +315,7 @@ pub(crate) async fn make_node_manager(
     )?;
     let trust_context_config = TrustContextConfigBuilder::new(cli_state).build();
 
-    let node_manager = SupervisedNodeManager::create(
+    let node_manager = InMemoryNode::new(
         &ctx,
         NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), false, None),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
@@ -350,7 +347,7 @@ fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateReposito
 /// Load a previously persisted ModelState
 fn load_model_state(
     model_state_repository: Arc<dyn ModelStateRepository>,
-    node_manager: Arc<SupervisedNodeManager>,
+    node_manager: Arc<InMemoryNode>,
     context: Arc<Context>,
     cli_state: &CliState,
 ) -> ModelState {
