@@ -5,10 +5,11 @@ use tracing::trace;
 
 use crate::nodes::BackgroundNode;
 use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesReader};
-use ockam_core::api::{Request, Response};
 use ockam_core::api::{Method, RequestHeader};
+use ockam_core::api::{Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, async_trait, Result, Routed, Worker};
+use ockam_node::api::Client;
 use ockam_node::Context;
 
 pub mod types;
@@ -79,7 +80,10 @@ pub trait AuthorizationApi {
         identifier: &Identifier,
     ) -> miette::Result<Option<AttributesEntry>>;
 
-    async fn list_identifiers(&self, ctx: &Context) -> miette::Result<Vec<(Identifier, AttributesEntry)>>;
+    async fn list_identifiers(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<Vec<(Identifier, AttributesEntry)>>;
 }
 
 #[async_trait]
@@ -89,11 +93,43 @@ impl AuthorizationApi for BackgroundNode {
         ctx: &Context,
         identifier: &Identifier,
     ) -> miette::Result<Option<AttributesEntry>> {
-        let req = Request::get(format!("/{identifier}"));
-        self.ask_and_get_reply(ctx, req).await?.found().into_diagnostic()
+        self.make_client()
+            .await?
+            .get_attributes(ctx, identifier)
+            .await
     }
 
-    async fn list_identifiers(&self, ctx: &Context) -> miette::Result<Vec<(Identifier, AttributesEntry)>> {
-        self.ask::<(), Vec<(Identifier, AttributesEntry)>>(ctx, Request::get("/")).await
+    async fn list_identifiers(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<Vec<(Identifier, AttributesEntry)>> {
+        self.make_client().await?.list_identifiers(ctx).await
+    }
+}
+
+#[async_trait]
+impl AuthorizationApi for Client {
+    async fn get_attributes(
+        &self,
+        ctx: &Context,
+        identifier: &Identifier,
+    ) -> miette::Result<Option<AttributesEntry>> {
+        let req = Request::get(format!("/{identifier}"));
+        self.ask(ctx, req)
+            .await
+            .into_diagnostic()?
+            .found()
+            .into_diagnostic()
+    }
+
+    async fn list_identifiers(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<Vec<(Identifier, AttributesEntry)>> {
+        self.ask::<(), Vec<(Identifier, AttributesEntry)>>(ctx, Request::get("/"))
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
     }
 }
