@@ -4,6 +4,7 @@ use crate::{error::*, AsyncDropSender, NodeMessage};
 use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::time::Duration;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{async_trait, Address, Mailboxes, RelayMessage, Result, TransportType};
@@ -13,7 +14,7 @@ use core::fmt::{Debug, Formatter};
 use ockam_transport_core::Transport;
 
 /// A default timeout in seconds
-pub const DEFAULT_TIMEOUT: u64 = 30;
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
