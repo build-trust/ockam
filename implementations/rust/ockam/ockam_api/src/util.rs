@@ -444,7 +444,7 @@ pub mod test_utils {
 
         let node_manager = NodeManager::create(
             context,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, None, true),
             NodeManagerTransportOptions::new(
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,

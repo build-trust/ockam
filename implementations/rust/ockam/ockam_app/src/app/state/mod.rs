@@ -314,7 +314,7 @@ pub(crate) async fn make_node_manager_worker(
 
     let node_manager = NodeManager::create(
         &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), false, None),
+        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )

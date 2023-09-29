@@ -90,7 +90,6 @@ pub struct NodeManager {
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: Identifier,
-    skip_defaults: bool,
     enable_credential_checks: bool,
     identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
@@ -224,22 +223,22 @@ impl NodeManager {
 pub struct NodeManagerGeneralOptions {
     cli_state: CliState,
     node_name: String,
-    skip_defaults: bool,
     pre_trusted_identities: Option<PreTrustedIdentities>,
+    start_default_services: bool,
 }
 
 impl NodeManagerGeneralOptions {
     pub fn new(
         cli_state: CliState,
         node_name: String,
-        skip_defaults: bool,
         pre_trusted_identities: Option<PreTrustedIdentities>,
+        start_default_services: bool,
     ) -> Self {
         Self {
             cli_state,
             node_name,
-            skip_defaults,
             pre_trusted_identities,
+            start_default_services,
         }
     }
 }
@@ -339,7 +338,6 @@ impl NodeManager {
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identifier()?,
-            skip_defaults: general_options.skip_defaults,
             enable_credential_checks: trust_options.trust_context_config.is_some()
                 && trust_options
                     .trust_context_config
@@ -355,13 +353,13 @@ impl NodeManager {
             policies,
         };
 
-        if !general_options.skip_defaults {
-            debug!("starting default services");
-            if let Some(tc) = trust_options.trust_context_config {
-                debug!("configuring trust context");
-                s.configure_trust_context(&tc).await?;
-            }
+        if let Some(tc) = trust_options.trust_context_config {
+            debug!("configuring trust context");
+            s.configure_trust_context(&tc).await?;
         }
+
+        s.initialize_services(ctx, general_options.start_default_services)
+            .await?;
         info!("created a node manager for the node: {}", s.node_name);
 
         Ok(s)
@@ -381,7 +379,7 @@ impl NodeManager {
         Ok(())
     }
 
-    async fn initialize_defaults(
+    async fn initialize_default_services(
         &mut self,
         ctx: &Context,
         api_flow_control_id: &FlowControlId,
@@ -420,6 +418,33 @@ impl NodeManager {
             )
             .await?;
         }
+
+        Ok(())
+    }
+
+    async fn initialize_services(
+        &mut self,
+        ctx: &Context,
+        start_default_services: bool,
+    ) -> Result<()> {
+        let api_flow_control_id = self.api_transport_flow_control_id.clone();
+
+        if start_default_services {
+            self.initialize_default_services(ctx, &api_flow_control_id)
+                .await?;
+        }
+
+        // Always start the echoer service as ockam_api::Medic assumes it will be
+        // started unconditionally on every node. It's used for liveliness checks.
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
+        self.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
+
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::RPC_PROXY, &api_flow_control_id);
+        ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
+            .await?;
 
         Ok(())
     }
@@ -829,32 +854,6 @@ impl NodeManagerWorker {
 impl Worker for NodeManagerWorker {
     type Message = Vec<u8>;
     type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let mut node_manager = self.node_manager.write().await;
-        let api_flow_control_id = node_manager.api_transport_flow_control_id.clone();
-
-        if !node_manager.skip_defaults {
-            node_manager
-                .initialize_defaults(ctx, &api_flow_control_id)
-                .await?;
-        }
-
-        // Always start the echoer service as ockam_api::Medic assumes it will be
-        // started unconditionally on every node. It's used for liveliness checks.
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
-        node_manager
-            .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
-
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::RPC_PROXY, &api_flow_control_id);
-        ctx.start_worker(DefaultAddress::RPC_PROXY, RpcProxyService::new())
-            .await?;
-
-        Ok(())
-    }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         let node_manager = self.node_manager.read().await;
