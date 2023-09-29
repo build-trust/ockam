@@ -47,3 +47,20 @@ teardown() {
   run_success "$OCKAM" node delete "${n}" --yes
   run_success "$OCKAM" identity delete "${i}" --yes
 }
+
+@test "identity - set default" {
+  i=$(random_str)
+
+  run_success "$OCKAM" identity create "${i}"
+
+  run_success "$OCKAM" identity default
+  assert_output --partial "The name of the default identity is '${i}'"
+
+  run_failure "$OCKAM" identity default "${i}"
+  assert_output --partial "The identity named '${i}' is already the default"
+
+  i=$(random_str)
+  run_success "$OCKAM" identity create "${i}"
+  run_success "$OCKAM" identity default "${i}"
+  assert_output "${i}"
+}
