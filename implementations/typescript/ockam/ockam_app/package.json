@@ -14,7 +14,7 @@
     "@sveltejs/adapter-static": "2.0.3",
     "@sveltejs/kit": "^1.25.1",
     "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.30",
+    "postcss": "^8.4.31",
     "prettier": "^3.0.3",
     "prettier-plugin-svelte": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.4",
