@@ -307,8 +307,8 @@ async fn run_foreground_node(
         NodeManagerGeneralOptions::new(
             opts.state.clone(),
             cmd.node_name.clone(),
-            cmd.launch_config.is_some(),
             pre_trusted_identities,
+            cmd.launch_config.is_none(),
         ),
         NodeManagerTransportOptions::new(
             listener.flow_control_id().clone(),
@@ -318,8 +318,8 @@ async fn run_foreground_node(
     )
     .await
     .into_diagnostic()?;
-    let node_manager_worker = NodeManagerWorker::new(node_man);
 
+    let node_manager_worker = NodeManagerWorker::new(node_man);
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)

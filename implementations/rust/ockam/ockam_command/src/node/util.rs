@@ -73,12 +73,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     let node_man = NodeManager::create(
         ctx,
-        NodeManagerGeneralOptions::new(
-            cli_state.clone(),
-            cmd.node_name.clone(),
-            cmd.launch_config.is_some(),
-            None,
-        ),
+        NodeManagerGeneralOptions::new(cli_state.clone(), cmd.node_name.clone(), None, true),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
