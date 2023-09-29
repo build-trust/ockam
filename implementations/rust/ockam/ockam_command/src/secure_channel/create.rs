@@ -4,6 +4,7 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
+use ockam::identity::DEFAULT_TIMEOUT;
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::{
@@ -88,7 +89,7 @@ impl CreateCommand {
             node,
             &meta,
             Some(identity_name),
-            None,
+            Some(DEFAULT_TIMEOUT),
         )
         .await?;
         clean_projects_multiaddr(to, projects_sc)

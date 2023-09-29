@@ -11,7 +11,8 @@ use core::fmt;
 use core::fmt::Formatter;
 use core::time::Duration;
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
+/// This is the default timeout for creating a secure channel
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Trust options for a Secure Channel
 pub struct SecureChannelOptions {
