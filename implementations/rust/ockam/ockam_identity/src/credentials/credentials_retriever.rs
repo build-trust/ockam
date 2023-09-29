@@ -5,7 +5,6 @@ use tracing::trace;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::time::Duration;
 use ockam_core::{async_trait, Address, Result, Route};
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 
@@ -85,7 +84,7 @@ impl RemoteCredentialsRetriever {
             resolved_route,
             &self.issuer.identifier,
             for_identity,
-            Duration::from_secs(DEFAULT_TIMEOUT),
+            DEFAULT_TIMEOUT,
         ))
     }
 }

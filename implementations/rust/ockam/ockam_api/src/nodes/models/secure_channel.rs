@@ -3,7 +3,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
-use ockam::identity::Identifier;
+use ockam::identity::{Identifier, DEFAULT_TIMEOUT};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
@@ -35,7 +35,7 @@ impl CreateSecureChannelRequest {
             addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
-            timeout: None,
+            timeout: Some(DEFAULT_TIMEOUT),
             identity_name,
             credential_name,
         }

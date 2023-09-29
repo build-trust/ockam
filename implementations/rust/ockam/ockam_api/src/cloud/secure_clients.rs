@@ -1,12 +1,12 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient};
+use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient, DEFAULT_TIMEOUT};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, DEFAULT_TIMEOUT};
+use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
 
 use crate::error::ApiError;
@@ -118,7 +118,7 @@ impl NodeManager {
             authority_route,
             authority_identifier,
             caller_identifier,
-            Duration::from_secs(DEFAULT_TIMEOUT),
+            DEFAULT_TIMEOUT,
         )))
     }
 
@@ -136,7 +136,7 @@ impl NodeManager {
             project_route,
             project_identifier,
             caller_identifier,
-            Duration::from_secs(DEFAULT_TIMEOUT),
+            DEFAULT_TIMEOUT,
         )))
     }
 
@@ -154,7 +154,7 @@ impl NodeManager {
             route,
             identifier,
             caller_identifier,
-            Duration::from_secs(DEFAULT_TIMEOUT),
+            DEFAULT_TIMEOUT,
         ))
     }
 
