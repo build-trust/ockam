@@ -153,13 +153,6 @@ impl PreTrustedIdentities {
         PreTrustedIdentities::Fixed(entries)
     }
 
-    pub fn get_trusted_identities(self) -> Result<HashMap<Identifier, AttributesEntry>> {
-        match self {
-            PreTrustedIdentities::Fixed(identities) => Ok(identities),
-            PreTrustedIdentities::ReloadFrom(path) => Self::parse_from_disk(&path),
-        }
-    }
-
     fn parse_from_disk(path: &PathBuf) -> Result<HashMap<Identifier, AttributesEntry>> {
         let contents = std::fs::read_to_string(path)
             .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
