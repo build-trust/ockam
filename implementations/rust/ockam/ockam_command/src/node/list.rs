@@ -2,6 +2,8 @@ use clap::Args;
 use colorful::Colorful;
 use indoc::formatdoc;
 use miette::Context as _;
+use miette::IntoDiagnostic;
+use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -100,13 +102,22 @@ async fn run_impl(
         ));
     }
 
-    let list = opts
+    let plain = opts
         .terminal
         .build_list(&nodes, "Nodes", "No nodes found on this system.")?;
-    opts.terminal.stdout().plain(list).write_line()?;
+
+    let json = serde_json::to_string_pretty(&nodes).into_diagnostic()?;
+
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
+
     Ok(())
 }
 
+#[derive(Serialize)]
 pub struct NodeListOutput {
     pub node_name: String,
     pub status: String,
