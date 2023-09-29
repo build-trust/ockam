@@ -29,3 +29,10 @@ impl core::ops::Sub<TimestampInSeconds> for TimestampInSeconds {
         TimestampInSeconds(self.0 - rhs.0)
     }
 }
+
+impl TimestampInSeconds {
+    /// Calculate absolute difference between the two values.
+    pub fn abs_diff(self, other: Self) -> Self {
+        Self(self.0.abs_diff(other.0))
+    }
+}

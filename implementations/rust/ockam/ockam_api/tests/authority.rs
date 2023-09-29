@@ -95,7 +95,7 @@ async fn one_admin_test_api(ctx: &mut Context) -> Result<()> {
     assert_eq!(members.len(), 1);
     let attrs = members.get(&admin.identifier).unwrap();
 
-    assert!(attrs.added() - now < 5.into());
+    assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert!(attrs.attested_by().is_none());
 
@@ -157,7 +157,7 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
         Some(&b"value".to_vec())
     );
 
-    assert!(attrs.added() - now < 5.into());
+    assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin.identifier.clone()));
 
@@ -249,7 +249,7 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
         attrs.attrs().get("key1".as_bytes()),
         Some(&b"value1".to_vec())
     );
-    assert!(attrs.added() - now < 5.into());
+    assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin1.identifier.clone()));
 
@@ -263,7 +263,7 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
         attrs.attrs().get("key2".as_bytes()),
         Some(&b"value2".to_vec())
     );
-    assert!(attrs.added() - now < 5.into());
+    assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin2.identifier.clone()));
 
