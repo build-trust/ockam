@@ -309,7 +309,7 @@ impl Projects for Controller {
         trace!(target: TARGET, %space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
         self.0
-            .ask(ctx, "projects", req)
+            .tell(ctx, "projects", req)
             .await
             .into_diagnostic()?
             .success()
