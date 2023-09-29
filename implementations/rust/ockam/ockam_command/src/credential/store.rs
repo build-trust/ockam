@@ -1,20 +1,15 @@
-use std::path::PathBuf;
-
+use crate::credential::{identities, identity};
 use crate::{
-    credential::validate_encoded_cred,
-    fmt_log, fmt_ok,
-    terminal::OckamColor,
-    util::{node_rpc, random_name},
-    vault::default_vault_name,
-    CommandGlobalOpts,
+    credential::validate_encoded_cred, fmt_log, fmt_ok, terminal::OckamColor, util::node_rpc,
+    vault::default_vault_name, CommandGlobalOpts,
 };
+use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-
-use crate::credential::{identities, identity};
-use clap::Args;
 use ockam::Context;
+use ockam_api::cli_state::random_name;
 use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
+use std::path::PathBuf;
 use tokio::{sync::Mutex, try_join};
 
 #[derive(Clone, Debug, Args)]

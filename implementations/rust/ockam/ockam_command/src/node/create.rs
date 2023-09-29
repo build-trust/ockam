@@ -13,7 +13,7 @@ use tokio::try_join;
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state};
+use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state, random_name};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
 use ockam_api::{
@@ -110,7 +110,7 @@ pub struct CreateCommand {
 impl Default for CreateCommand {
     fn default() -> Self {
         Self {
-            node_name: hex::encode(random::<[u8; 4]>()),
+            node_name: random_name(),
             exit_on_eof: false,
             tcp_listener_address: "127.0.0.1:0".to_string(),
             foreground: false,

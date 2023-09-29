@@ -419,7 +419,7 @@ impl CliState {
 }
 
 pub fn random_name() -> String {
-    hex::encode(random::<[u8; 4]>())
+    petname::petname(2, "-").unwrap_or(hex::encode(random::<[u8; 4]>()))
 }
 
 fn file_stem(path: &Path) -> Result<String> {
