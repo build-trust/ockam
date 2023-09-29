@@ -180,3 +180,4 @@ gen_from_impl!(ockam_api::error::ApiError, SOFTWARE);
 gen_from_impl!(ockam_multiaddr::Error, SOFTWARE);
 gen_from_impl!(miette::ErrReport, SOFTWARE);
 gen_from_impl!(time::error::Parse, DATAERR);
+gen_from_impl!(dialoguer::Error, DATAERR);

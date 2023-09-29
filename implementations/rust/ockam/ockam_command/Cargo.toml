@@ -64,7 +64,7 @@ colorful = "0.2"
 colors-transform = "0.2.11"
 console = "0.15.7"
 ctrlc = { version = "3.4.1", features = ["termination"] }
-dialoguer = "0.10"
+dialoguer = "0.11.0"
 duct = "0.13"
 flate2 = "1.0.27"
 hex = "0.4"
