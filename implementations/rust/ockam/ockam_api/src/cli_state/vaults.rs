@@ -34,7 +34,7 @@ impl VaultsState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct VaultState {
     name: String,
     path: PathBuf,
