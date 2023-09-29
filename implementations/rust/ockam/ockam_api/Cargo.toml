@@ -44,6 +44,7 @@ minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 nix = { version = "0.27", features = ["signal"] }
 once_cell = { version = "1", optional = true, default-features = false }
 open = "5.0.0"
+petname = { version = "2.0.0-beta.2", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.188", features = ["derive"] }

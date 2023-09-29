@@ -4737,6 +4737,7 @@ dependencies = [
  "ockam_vault_aws",
  "once_cell",
  "open",
+ "petname",
  "quickcheck",
  "rand 0.8.5",
  "reqwest",
@@ -5340,6 +5341,17 @@ name = "percent-encoding"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
+
+[[package]]
+name = "petname"
+version = "2.0.0-beta.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27039152ff4715ef8e4c40056ed5fd0152f362c662168906994182cde8b66232"
+dependencies = [
+ "anyhow",
+ "itertools 0.11.0",
+ "rand 0.8.5",
+]
 
 [[package]]
 name = "phf"

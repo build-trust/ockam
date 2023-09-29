@@ -357,7 +357,9 @@ pub mod test_utils {
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
-    use crate::cli_state::{traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::cli_state::{
+        random_name, traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig,
+    };
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -392,7 +394,7 @@ pub mod test_utils {
         let tcp = TcpTransport::create(context).await?;
         let cli_state = CliState::test()?;
 
-        let vault_name = hex::encode(rand::random::<[u8; 4]>());
+        let vault_name = random_name();
         let vault = cli_state
             .vaults
             .create_async(&vault_name.clone(), VaultConfig::default())
@@ -400,7 +402,7 @@ pub mod test_utils {
             .get()
             .await?;
 
-        let identity_name = hex::encode(rand::random::<[u8; 4]>());
+        let identity_name = random_name();
 
         // Premise: we need an identity and a credential before the node manager starts.
         // Since the LMDB can trigger some race conditions, we first use the memory storage
@@ -438,7 +440,7 @@ pub mod test_utils {
         let config = IdentityConfig::new(identity.identifier()).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
-        let node_name = hex::encode(rand::random::<[u8; 4]>());
+        let node_name = random_name();
         let node_config = NodeConfig::try_from(&cli_state).unwrap();
         cli_state.nodes.create(&node_name, node_config)?;
 

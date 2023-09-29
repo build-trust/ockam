@@ -9,7 +9,7 @@ use tracing::log::warn;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::{update_enrolled_identity, SpaceConfig};
+use ockam_api::cli_state::{random_name, update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
@@ -193,7 +193,7 @@ async fn default_space<'a>(opts: &CommandGlobalOpts, rpc: &mut Rpc) -> Result<Sp
         ))?;
 
         let is_finished = Mutex::new(false);
-        let name = crate::util::random_name();
+        let name = random_name();
         let create_space = async {
             let cmd = crate::space::CreateCommand {
                 name: name.to_string(),

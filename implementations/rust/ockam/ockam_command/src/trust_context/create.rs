@@ -1,13 +1,9 @@
 use crate::util::local_cmd;
-use crate::{
-    docs,
-    util::{api::TrustContextOpts, random_name},
-    CommandGlobalOpts,
-};
+use crate::{docs, util::api::TrustContextOpts, CommandGlobalOpts};
 use clap::Args;
 use indoc::formatdoc;
 use miette::{miette, IntoDiagnostic};
-use ockam_api::cli_state::StateDirTrait;
+use ockam_api::cli_state::{random_name, StateDirTrait};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
