@@ -1,5 +1,6 @@
-use miette::miette;
 use std::net::{SocketAddrV4, SocketAddrV6};
+
+use miette::miette;
 
 use ockam::TcpTransport;
 use ockam_core::errcode::{Kind, Origin};
@@ -49,7 +50,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Origin::Api,
                     Kind::Invalid,
                     "unexpected code: node. clean_multiaddr should have been called",
-                ))
+                ));
             }
 
             code @ (Ip4::CODE | Ip6::CODE | DnsAddr::CODE) => {
@@ -57,7 +58,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Origin::Api,
                     Kind::Invalid,
                     format!("unexpected code: {code}. The address must be a local address {ma}"),
-                ))
+                ));
             }
 
             other => {
@@ -381,7 +382,6 @@ pub mod test_utils {
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
@@ -473,7 +473,7 @@ pub mod test_utils {
 
         let node_manager = InMemoryNode::new(
             context,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, false, None),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, None),
             NodeManagerTransportOptions::new(
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
@@ -491,6 +491,7 @@ pub mod test_utils {
         .await?;
         let node_manager = Arc::new(node_manager);
         let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
+        node_manager.initialize_services(context, false).await?;
         let secure_channels = node_manager.secure_channels.clone();
 
         // Import identity, since it doesn't exist in the LMDB storage

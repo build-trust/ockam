@@ -1,7 +1,7 @@
-use miette::IntoDiagnostic;
 use std::ops::Deref;
 use std::path::PathBuf;
 
+use miette::IntoDiagnostic;
 use rand::random;
 
 use ockam::{Context, Result, TcpTransport};
@@ -99,12 +99,7 @@ impl InMemoryNode {
 
         let node_manager = Self::new(
             ctx,
-            NodeManagerGeneralOptions::new(
-                cli_state.clone(),
-                defaults.node_name.clone(),
-                false,
-                None,
-            ),
+            NodeManagerGeneralOptions::new(cli_state.clone(), defaults.node_name.clone(), None),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
             NodeManagerTrustOptions::new(trust_context_config),
         )

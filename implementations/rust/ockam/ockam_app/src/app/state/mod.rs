@@ -8,9 +8,6 @@ use tauri::async_runtime::{block_on, spawn, RwLock};
 use tauri::{AppHandle, Manager, Runtime};
 use tracing::{error, info, trace, warn};
 
-pub(crate) use crate::app::state::model::ModelState;
-pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
-use crate::background_node::{BackgroundNodeClient, Cli};
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{
@@ -28,6 +25,9 @@ use ockam_api::nodes::{InMemoryNode, NodeManager};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
 
+pub(crate) use crate::app::state::model::ModelState;
+pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
+use crate::background_node::{BackgroundNodeClient, Cli};
 use crate::Result;
 
 mod model;
@@ -317,7 +317,7 @@ pub(crate) async fn make_node_manager(
 
     let node_manager = InMemoryNode::new(
         &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), false, None),
+        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
@@ -379,6 +379,7 @@ fn load_model_state(
 
 pub type EventName = String;
 type IsProcessing = AtomicBool;
+
 struct Event {
     name: EventName,
     is_processing: IsProcessing,

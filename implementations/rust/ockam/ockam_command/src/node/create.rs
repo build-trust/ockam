@@ -306,12 +306,11 @@ async fn run_foreground_node(
 
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
-    let node_man = InMemoryNode::new(
+    let node_manager = InMemoryNode::new(
         &ctx,
         NodeManagerGeneralOptions::new(
             opts.state.clone(),
             cmd.node_name.clone(),
-            cmd.launch_config.is_some(),
             pre_trusted_identities,
         ),
         NodeManagerTransportOptions::new(
@@ -322,7 +321,12 @@ async fn run_foreground_node(
     )
     .await
     .into_diagnostic()?;
-    let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
+    let node_manager = Arc::new(node_manager);
+    let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
+    node_manager
+        .initialize_services(&ctx, cmd.launch_config.is_none())
+        .await
+        .into_diagnostic()?;
 
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());

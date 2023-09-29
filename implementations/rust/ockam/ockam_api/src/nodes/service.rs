@@ -96,7 +96,6 @@ pub struct NodeManager {
     node_name: String,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
-    skip_defaults: bool,
     enable_credential_checks: bool,
     identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
@@ -162,6 +161,23 @@ impl NodeManager {
             .cli_state
             .nodes
             .delete_sigkill(self.node_name().as_str(), false)?)
+    }
+
+    pub async fn initialize_services(&self, ctx: &Context, skip_defaults: bool) -> Result<()> {
+        let api_flow_control_id = self.api_transport_flow_control_id.clone();
+
+        if !skip_defaults {
+            self.initialize_defaults_services(ctx, &api_flow_control_id)
+                .await?;
+        }
+
+        // Always start the echoer service as ockam_api::Medic assumes it will be
+        // started unconditionally on every node. It's used for liveliness checks.
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
+        self.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
+        Ok(())
     }
 }
 
@@ -275,7 +291,6 @@ impl NodeManager {
 pub struct NodeManagerGeneralOptions {
     cli_state: CliState,
     node_name: String,
-    skip_defaults: bool,
     pre_trusted_identities: Option<PreTrustedIdentities>,
 }
 
@@ -283,13 +298,11 @@ impl NodeManagerGeneralOptions {
     pub fn new(
         cli_state: CliState,
         node_name: String,
-        skip_defaults: bool,
         pre_trusted_identities: Option<PreTrustedIdentities>,
     ) -> Self {
         Self {
             cli_state,
             node_name,
-            skip_defaults,
             pre_trusted_identities,
         }
     }
@@ -385,7 +398,6 @@ impl NodeManager {
             node_name: general_options.node_name,
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
-            skip_defaults: general_options.skip_defaults,
             enable_credential_checks: trust_options.trust_context_config.is_some()
                 && trust_options
                     .trust_context_config
@@ -400,12 +412,9 @@ impl NodeManager {
             policies,
         };
 
-        if !general_options.skip_defaults {
-            debug!("starting default services");
-            if let Some(tc) = trust_options.trust_context_config {
-                debug!("configuring trust context");
-                s.configure_trust_context(&tc).await?;
-            }
+        if let Some(tc) = trust_options.trust_context_config {
+            debug!("configuring trust context");
+            s.configure_trust_context(&tc).await?;
         }
         info!("created a node manager for the node: {}", s.node_name);
 
@@ -426,7 +435,7 @@ impl NodeManager {
         Ok(())
     }
 
-    async fn initialize_defaults(
+    async fn initialize_defaults_services(
         &self,
         ctx: &Context,
         api_flow_control_id: &FlowControlId,
@@ -781,26 +790,6 @@ impl NodeManagerWorker {
 impl Worker for NodeManagerWorker {
     type Message = Vec<u8>;
     type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let api_flow_control_id = self.node_manager.api_transport_flow_control_id.clone();
-
-        if !self.node_manager.skip_defaults {
-            self.node_manager
-                .initialize_defaults(ctx, &api_flow_control_id)
-                .await?;
-        }
-
-        // Always start the echoer service as ockam_api::Medic assumes it will be
-        // started unconditionally on every node. It's used for liveliness checks.
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
-        self.node_manager
-            .start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
-
-        Ok(())
-    }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.node_manager.medic_handle.stop_medic(ctx).await
