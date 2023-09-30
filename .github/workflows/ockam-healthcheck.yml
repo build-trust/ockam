@@ -11,7 +11,7 @@ on:
 
 permissions:
   contents: read
-  packages: write
+
 
 env:
   ARTIFACT_NAME: ockam-healthcheck
@@ -29,6 +29,8 @@ jobs:
   build_ockam_healthcheck:
     name: "Build And Publish Ockam Healthcheck Container"
     runs-on: ubuntu-20.04
+    permissions:
+      packages: write
     environment: release
 
     steps:
