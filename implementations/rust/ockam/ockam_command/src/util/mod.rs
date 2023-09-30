@@ -34,6 +34,8 @@ use crate::{CommandGlobalOpts, Result};
 pub mod api;
 pub mod duration;
 pub mod exitcode;
+pub mod github;
+pub mod installer;
 pub mod orchestrator_api;
 pub mod parsers;
 

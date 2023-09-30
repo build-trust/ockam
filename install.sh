@@ -250,7 +250,7 @@ add_to_path() {
   local _ockam_env="$install_path/env"
 
   sub_path_home "$_ockam_env"
-  local _ockam_env_sub_home="$return_value"
+  local _ockam_env_sub_home="\$OCKAM_HOME/env"
   local _source_cmd=". \"$_ockam_env_sub_home\""
 
   local _rcfiles=('.profile' '.bash_profile' '.bash_login' '.bashrc' '.zshenv')
@@ -276,6 +276,7 @@ add_to_path() {
 
     info "Adding source command to $_rcpath"
     echo >>"$_rcpath"
+    echo "export OCKAM_HOME=\"$install_path\"" >>"$_rcpath"
     echo "$_source_cmd" >>"$_rcpath"
   done
 }
