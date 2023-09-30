@@ -9,13 +9,14 @@ on:
       - 'tools/docker/ockam'
 permissions:
   contents: read
-  packages: write
 env:
   ARTIFACT_NAME: ockam-artifact
   ORGANIZATION: ${{ github.repository_owner }}
 jobs:
   build_artifact:
     runs-on: ubuntu-20.04
+    permissions:
+      packages: write
     defaults:
       run:
         working-directory: ./tools/docker/ockam
