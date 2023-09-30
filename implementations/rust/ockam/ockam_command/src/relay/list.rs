@@ -12,7 +12,7 @@ use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -35,6 +35,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
+        initialize_node_if_default(&options, &self.to);
         node_rpc(run_impl, (options, self));
     }
 }
