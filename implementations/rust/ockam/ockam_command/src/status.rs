@@ -207,7 +207,9 @@ fn build_plain_output(
         } else {
             writeln!(
                 &mut plain,
-                "No enrolled identities found! Try passing the `--all` argument to see all identities.",
+                "No enrolled identities could be found. \
+                Try passing the `--all` argument to see all identities, and not just the enrolled ones. \
+                Also consider running `ockam enroll` to enroll an identity.",
             )?;
         }
         return Ok(plain);
