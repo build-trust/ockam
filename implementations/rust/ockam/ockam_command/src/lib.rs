@@ -167,6 +167,8 @@ pub struct GlobalArgs {
     global = true,
     long,
     short,
+    long_help("Increase verbosity of trace messages by repeating the flag. Use `-v` to show \
+    info messages, `-vv` to show debug messages, and `-vvv` to show trace messages"),
     action = ArgAction::Count
     )]
     verbose: u8,
