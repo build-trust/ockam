@@ -185,7 +185,7 @@ jobs:
 
               Before we can merge, please accept our Contributor License Agreement (CLA).
 
-              1. Read the CLA at: https://github.com/build-trust/ockam-contributors/blob/main/CLA.md
+              1. Read the CLA at: https://github.com/build-trust/.github/blob/main/CLA.md
 
               2. To accept the CLA, please create a different pull request indicating
               that you accept the CLA by adding your Git/Github details in a row at the end of the
@@ -249,7 +249,7 @@ jobs:
               echo "
                 Before we can merge, please accept our Contributor License Agreement (CLA).
 
-                1. Read the CLA at: https://github.com/build-trust/ockam-contributors/blob/main/CLA.md
+                1. Read the CLA at: https://github.com/build-trust/.github/blob/main/CLA.md
 
                 2. To accept the CLA, please create a different pull request indicating
                 that you accept the CLA by adding your Git/Github details in a row at the end of the
