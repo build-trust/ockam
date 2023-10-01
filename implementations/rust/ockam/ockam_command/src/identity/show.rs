@@ -23,7 +23,7 @@ pub struct ShowCommand {
     #[arg()]
     name: Option<String>,
 
-    /// Show the full identity history, and not just the identifier or the nameq
+    /// Show the full identity history, and not just the identifier or the name
     #[arg(short, long)]
     full: bool,
 
