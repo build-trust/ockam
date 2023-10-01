@@ -23,7 +23,7 @@ pub struct ShowCommand {
     #[arg()]
     name: Option<String>,
 
-    #[arg(short, long, docs = "Show the full identity history, and not just the identifier or the name.")]
+    #[arg(short, long, doc = "Show the full identity history, and not just the identifier or the name.")]
     full: bool,
 
     //TODO: see if it make sense to have a --encoding argument shared across commands.
