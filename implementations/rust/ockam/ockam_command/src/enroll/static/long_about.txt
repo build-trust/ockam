@@ -1,3 +1,3 @@
-When you run this command for the first time, it creates a space for you to host your projects, as well as a default project for you within this space.
+When you run this command for the first time, it creates a space for you in Ockam Orchestrator, the SaaS service. This is where you host your projects, as well as a default project for you within this space.
 
 It also generates a unique cryptographically provable identity and saves the corresponding key in a vault. This identity is issued a membership credential that will be used to manage the resources in your project. Optionally, you can pass an existing identity.
