@@ -1,0 +1,15 @@
+name: OSV-Scanner
+
+# Default branch is "develop"
+on:
+  pull_request:
+  push:
+    branches: [ develop ]
+  merge_group:
+
+# Declaring default permissions as read only.
+permissions: read-all
+
+jobs:
+  scan-pr:
+    uses: "google/osv-scanner/.github/workflows/osv-scanner-reusable-pr.yml@12331be44c5c3d32b59eb006e8613bc53c3317a5"
