@@ -55,7 +55,7 @@ impl NodeManager {
 
         // Check that there is no entry in the registry with the same alias
         if self.registry.outlets.contains_key(&alias) {
-            let message = format!("A TCP outlet with alias '{alias}' already exists");
+            let message = format!("A service with alias '{alias}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
                 Kind::AlreadyExists,
@@ -112,7 +112,7 @@ impl NodeManager {
             }
             Err(e) => {
                 warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
-                let message = format!("Failed to create outlet: {}", e);
+                let message = format!("{}", e);
                 return Err(ockam_core::Error::new(
                     Origin::Node,
                     Kind::Internal,

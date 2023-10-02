@@ -65,7 +65,7 @@ async fn tcp_outlet_create_impl<R: Runtime>(
             system_tray_on_update(&app);
             Ok(())
         }
-        Err(_) => Err(Error::App("Failed to create outlet".to_string())),
+        Err(e) => Err(Error::App(format!("Failed to create service: {}", e))),
     }?;
 
     if let Some(email) = email {
