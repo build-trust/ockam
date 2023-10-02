@@ -340,6 +340,7 @@ impl NodeManagerTrustOptions {
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
+        ctx: &Context,
         general_options: NodeManagerGeneralOptions,
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,

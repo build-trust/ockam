@@ -10,8 +10,8 @@ use tracing::{debug, info, trace, warn};
 use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
+use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
-use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
 
 use crate::app::events::system_tray_on_update;
 use crate::app::{AppState, PROJECT_NAME};
