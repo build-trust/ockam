@@ -148,11 +148,13 @@ impl SecureClient {
         let sc = self.create_secure_channel(ctx).await?;
         let route = route![sc.clone(), api_service];
         let client = Client::new(&route, Some(timeout));
-        let response = client.request(ctx, req).await?;
+        let response = client.request(ctx, req).await;
         self.secure_channels
             .stop_secure_channel(ctx, sc.encryptor_address())
             .await?;
-        Ok(response)
+        // we delay the unwrapping of the response to make sure that the secure channel is
+        // properly stopped first
+        response
     }
 
     /// Create a secure channel to the node
