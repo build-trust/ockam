@@ -102,8 +102,8 @@ impl InMemoryNode {
             NodeManagerGeneralOptions::new(
                 cli_state.clone(),
                 defaults.node_name.clone(),
-                false,
                 None,
+                false,
             ),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
             NodeManagerTrustOptions::new(trust_context_config),
@@ -149,7 +149,7 @@ impl InMemoryNode {
         trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
         let node_manager =
-            NodeManager::create(general_options, transport_options, trust_options).await?;
+            NodeManager::create(ctx, general_options, transport_options, trust_options).await?;
         debug!("start the Medic");
         let medic_handle = MedicHandle::start_medic(ctx).await?;
         Ok(Self {
