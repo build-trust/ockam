@@ -13,7 +13,7 @@
 
 <!--
 To help us review and merge this pull request quickly, please confirm the following
-by replaceing the [ ] in front of each bullet point below with [x]
+by replacing the [ ] in front of each bullet point below with [x]
 -->
 
 - [ ] All commits in this Pull Request are [signed](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) and Verified by Github.
