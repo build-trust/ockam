@@ -233,15 +233,14 @@ impl CommonStateMachine {
 /// This internal structure is used as a payload in the XX protocol
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
-#[cbor(map)]
 pub(super) struct IdentityAndCredentials {
     /// Exported identity
-    #[n(1)] pub(super) change_history: ChangeHistory,
+    #[n(0)] pub(super) change_history: ChangeHistory,
     /// The Purpose Key guarantees that the other end has access to the private key of the identity
     /// The Purpose Key here is also the static key of the noise ('x') and is issued with the static
     /// key of the identity
-    #[n(2)] pub(super) purpose_key_attestation: PurposeKeyAttestation,
+    #[n(1)] pub(super) purpose_key_attestation: PurposeKeyAttestation,
     /// Credentials associated to the identity along with corresponding Credentials Purpose Keys
     /// to verify those Credentials
-    #[n(3)] pub(super) credentials: Vec<CredentialAndPurposeKey>,
+    #[n(2)] pub(super) credentials: Vec<CredentialAndPurposeKey>,
 }
