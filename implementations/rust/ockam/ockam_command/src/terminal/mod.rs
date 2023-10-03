@@ -304,7 +304,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
 
     pub fn build_list(
         &self,
-        items: &Vec<impl crate::output::Output>,
+        items: &[impl crate::output::Output],
         header: &str,
         empty_message: &str,
     ) -> Result<String> {

@@ -57,9 +57,11 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
 
     let (spaces, _) = try_join!(get_spaces, progress_output)?;
 
-    let plain = opts
-        .terminal
-        .build_list(&spaces, "Spaces", "No spaces found.")?;
+    let plain = opts.terminal.build_list(
+        &spaces,
+        "Spaces",
+        "No spaces found. Run 'ockam enroll' to get a space and a project",
+    )?;
     let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
 
     for space in spaces {
