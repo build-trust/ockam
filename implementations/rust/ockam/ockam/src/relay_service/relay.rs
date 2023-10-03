@@ -8,7 +8,7 @@ use ockam_core::{
 use ockam_node::WorkerBuilder;
 use tracing::info;
 
-pub(super) struct Forwarder {
+pub(super) struct Relay {
     forward_route: Route,
     // this option will be `None` after this worker is initialized, because
     // while initializing, the worker will send the payload contained in this
@@ -16,7 +16,7 @@ pub(super) struct Forwarder {
     payload: Option<Vec<u8>>,
 }
 
-impl Forwarder {
+impl Relay {
     pub(super) async fn create(
         ctx: &Context,
         address: Address,
@@ -35,12 +35,12 @@ impl Forwarder {
             Arc::new(AllowOnwardAddress(next_hop))
         };
 
-        let forwarder = Self {
+        let relay = Self {
             forward_route,
             payload: Some(registration_payload.clone()),
         };
 
-        WorkerBuilder::new(forwarder)
+        WorkerBuilder::new(relay)
             .with_address(address)
             .with_incoming_access_control_arc(incoming_access_control)
             .with_outgoing_access_control_arc(outgoing_access_control)
@@ -52,7 +52,7 @@ impl Forwarder {
 }
 
 #[crate::worker]
-impl Worker for Forwarder {
+impl Worker for Relay {
     type Context = Context;
     type Message = Any;
 

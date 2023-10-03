@@ -1,5 +1,5 @@
-use crate::forwarding_service::forwarder::Forwarder;
-use crate::{Context, ForwardingServiceOptions};
+use crate::relay_service::relay::Relay;
+use crate::{Context, RelayServiceOptions};
 use core::str::from_utf8;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Any, DenyAll, Result, Routed, Worker};
@@ -8,23 +8,23 @@ use ockam_node::WorkerBuilder;
 /// Alias worker to register remote workers under local names.
 ///
 /// To talk with this worker, you can use the
-/// [`RemoteForwarder`](crate::remote::RemoteForwarder) which is a
+/// [`RemoteRelay`](crate::remote::RemoteRelay) which is a
 /// compatible client for this server.
 #[non_exhaustive]
-pub struct ForwardingService {
-    options: ForwardingServiceOptions,
+pub struct RelayService {
+    options: RelayServiceOptions,
 }
 
-impl ForwardingService {
+impl RelayService {
     /// Start a forwarding service
     pub async fn create(
         ctx: &Context,
         address: impl Into<Address>,
-        options: ForwardingServiceOptions,
+        options: RelayServiceOptions,
     ) -> Result<()> {
         let address = address.into();
 
-        options.setup_flow_control_for_forwarding_service(ctx.flow_controls(), &address);
+        options.setup_flow_control_for_relay_service(ctx.flow_controls(), &address);
 
         let service_incoming_access_control = options.service_incoming_access_control.clone();
 
@@ -42,7 +42,7 @@ impl ForwardingService {
 }
 
 #[crate::worker]
-impl Worker for ForwardingService {
+impl Worker for RelayService {
     type Context = Context;
     type Message = Any;
 
@@ -54,7 +54,7 @@ impl Worker for ForwardingService {
         let forward_route = msg.return_route();
         let payload = msg.into_transport_message().payload;
 
-        let random_address = Address::random_tagged("Forwarder.service");
+        let random_address = Address::random_tagged("Relay.service");
 
         // TODO: assume that the first byte is length, ignore it.
         // We have to improve this actually parse the payload.
@@ -67,14 +67,14 @@ impl Worker for ForwardingService {
         };
 
         self.options
-            .setup_flow_control_for_forwarder(ctx.flow_controls(), &address);
+            .setup_flow_control_for_relay(ctx.flow_controls(), &address);
 
-        Forwarder::create(
+        Relay::create(
             ctx,
             address,
             forward_route,
             payload,
-            self.options.forwarders_incoming_access_control.clone(),
+            self.options.relays_incoming_access_control.clone(),
         )
         .await?;
 

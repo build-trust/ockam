@@ -13,7 +13,7 @@ mod secure_channel_map;
 
 pub(crate) use inlet_controller::KafkaInletController;
 use ockam_core::Address;
-pub(crate) use outlet_service::prefix_forwarder::PrefixForwarderService;
+pub(crate) use outlet_service::prefix_relay::PrefixRelayService;
 pub(crate) use outlet_service::OutletManagerService;
 pub(crate) use portal_listener::KafkaPortalListener;
 pub(crate) use secure_channel_map::ConsumerNodeAddr;

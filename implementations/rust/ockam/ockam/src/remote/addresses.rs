@@ -1,4 +1,4 @@
-use crate::remote::lifecycle::ForwardType;
+use crate::remote::lifecycle::RelayType;
 use ockam_core::Address;
 
 #[derive(Clone, Debug)]
@@ -14,15 +14,14 @@ pub(super) struct Addresses {
 }
 
 impl Addresses {
-    pub(super) fn generate(ftype: ForwardType) -> Self {
+    pub(super) fn generate(ftype: RelayType) -> Self {
         let type_str = ftype.str();
-        let main_remote =
-            Address::random_tagged(&format!("RemoteForwarder.{}.main_remote", type_str));
+        let main_remote = Address::random_tagged(&format!("RemoteRelay.{}.main_remote", type_str));
         let main_internal =
-            Address::random_tagged(&format!("RemoteForwarder.{}.main_internal", type_str));
-        let heartbeat = Address::random_tagged(&format!("RemoteForwarder.{}.heartbeat", type_str));
+            Address::random_tagged(&format!("RemoteRelay.{}.main_internal", type_str));
+        let heartbeat = Address::random_tagged(&format!("RemoteRelay.{}.heartbeat", type_str));
         let completion_callback =
-            Address::random_tagged(&format!("RemoteForwarder.{}.child", type_str));
+            Address::random_tagged(&format!("RemoteRelay.{}.child", type_str));
 
         Self {
             main_remote,

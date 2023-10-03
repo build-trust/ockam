@@ -3,7 +3,7 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
@@ -45,7 +45,7 @@ async fn run_impl(
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-    let relay_info: ForwarderInfo = node
+    let relay_info: RelayInfo = node
         .ask(
             &ctx,
             Request::get(format!("/node/forwarder/{remote_address}")),

@@ -3,7 +3,7 @@ use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
-use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 use once_cell::sync::Lazy;
@@ -37,7 +37,7 @@ async fn create_relay_impl(
     context: &Context,
     cli_state: &CliState,
     node_manager: Arc<InMemoryNode>,
-) -> Result<Option<ForwarderInfo>> {
+) -> Result<Option<RelayInfo>> {
     trace!("Creating relay");
     if !cli_state.is_enrolled().unwrap_or(false) {
         trace!("Not enrolled, skipping relay creation");
@@ -53,7 +53,7 @@ async fn create_relay_impl(
                 let project_route = format!("/project/{}", project.name());
                 let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
                 let relay = node_manager
-                    .create_forwarder(
+                    .create_relay(
                         context,
                         &project_address,
                         Some(NODE_NAME.to_string()),
@@ -73,9 +73,9 @@ async fn create_relay_impl(
     }
 }
 
-pub(crate) async fn get_relay(node_manager: Arc<InMemoryNode>) -> Option<ForwarderInfo> {
+pub(crate) async fn get_relay(node_manager: Arc<InMemoryNode>) -> Option<RelayInfo> {
     node_manager
-        .get_forwarders()
+        .get_relays()
         .await
         .into_iter()
         .find(|r| r.remote_address() == *RELAY_NAME)

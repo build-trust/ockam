@@ -5,9 +5,9 @@
 pub mod base;
 pub mod credentials;
 pub mod flow_controls;
-pub mod forwarder;
 pub mod policy;
 pub mod portal;
+pub mod relay;
 pub mod secure_channel;
 pub mod services;
 pub mod transport;

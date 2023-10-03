@@ -160,7 +160,7 @@ pub struct DefaultAddress;
 
 impl DefaultAddress {
     pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
-    pub const FORWARDING_SERVICE: &'static str = "forwarding_service";
+    pub const RELAY_SERVICE: &'static str = "forwarding_service";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
@@ -180,7 +180,7 @@ impl DefaultAddress {
         matches!(
             name,
             Self::AUTHENTICATED_SERVICE
-                | Self::FORWARDING_SERVICE
+                | Self::RELAY_SERVICE
                 | Self::UPPERCASE_SERVICE
                 | Self::ECHO_SERVICE
                 | Self::HOP_SERVICE
@@ -201,7 +201,7 @@ impl DefaultAddress {
     pub fn iter() -> impl Iterator<Item = &'static str> {
         [
             Self::AUTHENTICATED_SERVICE,
-            Self::FORWARDING_SERVICE,
+            Self::RELAY_SERVICE,
             Self::UPPERCASE_SERVICE,
             Self::ECHO_SERVICE,
             Self::HOP_SERVICE,
@@ -300,7 +300,7 @@ mod test {
         assert!(DefaultAddress::is_valid(
             DefaultAddress::AUTHENTICATED_SERVICE
         ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::FORWARDING_SERVICE));
+        assert!(DefaultAddress::is_valid(DefaultAddress::RELAY_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::UPPERCASE_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::ECHO_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::HOP_SERVICE));
