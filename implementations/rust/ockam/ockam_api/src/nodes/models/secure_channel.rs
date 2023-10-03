@@ -77,7 +77,7 @@ pub struct CreateSecureChannelListenerRequest {
     #[n(1)] pub addr: String,
     #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
     #[n(3)] pub vault: Option<String>,
-    #[n(4)] pub identity: Option<String>,
+    #[n(4)] pub identity_name: Option<String>,
 }
 
 impl CreateSecureChannelListenerRequest {
@@ -85,14 +85,14 @@ impl CreateSecureChannelListenerRequest {
         addr: &Address,
         authorized_identifiers: Option<Vec<Identifier>>,
         vault: Option<String>,
-        identity: Option<String>,
+        identity_name: Option<String>,
     ) -> Self {
         Self {
             addr: addr.to_string(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
             vault,
-            identity,
+            identity_name,
         }
     }
 }
