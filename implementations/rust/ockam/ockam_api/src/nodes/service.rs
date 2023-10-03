@@ -720,7 +720,7 @@ impl NodeManagerWorker {
             (Get, ["node", "forwarder", remote_address]) => {
                 encode_request_result(self.show_forwarder(req, remote_address).await)?
             }
-            (Get, ["node", "forwarder"]) => self.get_forwarders_response(req).await.to_vec()?,
+            (Get, ["node", "forwarder"]) => encode_request_result(self.get_forwarders(req).await)?,
             (Delete, ["node", "forwarder", remote_address]) => {
                 encode_request_result(self.delete_forwarder(ctx, req, remote_address).await)?
             }
