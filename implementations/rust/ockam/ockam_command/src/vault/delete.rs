@@ -4,7 +4,8 @@ use colorful::Colorful;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 
-use crate::util::node_rpc;
+use crate::output::OutputFormat;
+use crate::util::{exitcode, is_tty, node_rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -41,6 +42,19 @@ async fn run_impl(
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
     let DeleteCommand { name, yes } = cmd;
+
+    if !yes && opts.global_args.output_format == OutputFormat::Json {
+        // return the exitcode::USAGE since json output is meant to be run
+        // in an automated environment without confirmation
+
+        // if stderr is interactive/tty and we haven't been asked to be quiet
+        if is_tty(std::io::stderr()) && !opts.global_args.quiet {
+            eprintln!("Must use --yes with --output=json");
+        }
+
+        std::process::exit(exitcode::USAGE);
+    }
+
     if opts
         .terminal
         .confirmed_with_flag_or_prompt(yes, "Are you sure you want to delete this vault?")?
