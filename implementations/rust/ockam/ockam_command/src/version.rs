@@ -12,6 +12,13 @@ impl Version {
         Box::leak(message.into_boxed_str())
     }
 
+    pub(crate) fn version() -> &'static str {
+        let crate_version = crate_version!();
+        let git_hash = env!("GIT_HASH");
+        let message = format!("{crate_version}");
+        Box::leak(message.into_boxed_str())
+    }
+
     pub(crate) fn short() -> &'static str {
         let crate_version = crate_version!();
         let git_hash = env!("GIT_HASH");
