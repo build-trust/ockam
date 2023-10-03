@@ -1,24 +1,26 @@
 use clap::Args;
-use colorful::Colorful;
+use miette::IntoDiagnostic;
+use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
+use ockam_api::nodes::models::services::ServiceList;
+use ockam_api::nodes::models::transport::TransportList;
+use ockam_api::nodes::BackgroundNode;
+use ockam_node::Context;
 use tokio_retry::strategy::FixedInterval;
 use tracing::{info, trace, warn};
 
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
-use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
-use ockam_api::nodes::models::services::ServiceList;
-use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::nodes::BackgroundNode;
-use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
-use ockam_core::Route;
-use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
-use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 
 use crate::node::get_node_name;
 use crate::node::util::check_default;
 use crate::util::{api, node_rpc};
-use crate::{docs, CommandGlobalOpts, OutputFormat, Result};
+use crate::{docs, CommandGlobalOpts, Result};
+
+use super::models::portal::{ShowInletStatus, ShowOutletStatus};
+use super::models::secure_channel::ShowSecureChannelListener;
+use super::models::services::ShowServiceStatus;
+use super::models::show::ShowNodeResponse;
+use super::models::transport::ShowTransportStatus;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -57,120 +59,6 @@ async fn run_impl(
     Ok(())
 }
 
-// TODO: This function should be replaced with a better system of
-// printing the node state in the future but for now we can just tell
-// clippy to stop complaining about it.
-#[allow(clippy::too_many_arguments)]
-fn print_node_info(
-    opts: &CommandGlobalOpts,
-    node_port: Option<u16>,
-    node_name: &str,
-    is_default: bool,
-    status_is_up: bool,
-    default_id: Option<&str>,
-    services: Option<&ServiceList>,
-    tcp_listeners: Option<&TransportList>,
-    secure_channel_listeners: Option<&SecureChannelListenersList>,
-    inlets_outlets: Option<(&InletList, &OutletList)>,
-) {
-    if opts.global_args.output_format == OutputFormat::Json {
-        opts.terminal
-            .clone()
-            .stdout()
-            .json(serde_json::json!({ "name": &node_name }))
-            .write_line()
-            .expect("Failed to write to stdout.");
-        return;
-    }
-    println!();
-    println!("Node:");
-    if is_default {
-        println!("  Name: {node_name} (Default)");
-    } else {
-        println!("  Name: {node_name}");
-    }
-    println!(
-        "  Status: {}",
-        match status_is_up {
-            true => "UP".light_green(),
-            false => "DOWN".light_red(),
-        }
-    );
-
-    println!("  Route To Node:");
-    let mut m = MultiAddr::default();
-    if m.push_back(Node::new(node_name)).is_ok() {
-        println!("    Short: {m}");
-    }
-
-    if let Some(port) = node_port {
-        let mut m = MultiAddr::default();
-        if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(port)).is_ok() {
-            println!("    Verbose: {m}");
-        }
-    }
-
-    if let Some(id) = default_id {
-        println!("  Identity: {id}");
-    }
-
-    if let Some(list) = tcp_listeners {
-        println!("  Transports:");
-        for e in &list.list {
-            println!("    Transport:");
-            println!("      Type: {}", e.tt);
-            println!("      Mode: {}", e.tm);
-            println!("      Socket: {}", e.socket_addr);
-            println!("      Worker: {}", e.worker_addr);
-            println!("      FlowControlId: {}", e.flow_control_id);
-        }
-    }
-
-    if let Some(list) = secure_channel_listeners {
-        println!("  Secure Channel Listeners:");
-        for e in &list.list {
-            println!("    Listener:");
-            if let Some(ma) = addr_to_multiaddr(e.addr.clone()) {
-                println!("      Address: {ma}");
-                println!("      FlowControlId: {}", &e.flow_control_id);
-            }
-        }
-    }
-
-    if let Some((inlets, outlets)) = inlets_outlets {
-        println!("  Inlets:");
-        for e in &inlets.list {
-            println!("    Inlet:");
-            println!("      Listen Address: {}", e.bind_addr);
-            if let Some(r) = Route::parse(&e.outlet_route) {
-                if let Some(ma) = route_to_multiaddr(&r) {
-                    println!("      Route To Outlet: {ma}");
-                }
-            }
-        }
-        println!("  Outlets:");
-        for e in &outlets.list {
-            println!("    Outlet:");
-            println!("      Forward Address: {}", e.socket_addr);
-
-            if let Some(ma) = addr_to_multiaddr(e.worker_addr.to_string()) {
-                println!("      Address: {ma}");
-            }
-        }
-    }
-
-    if let Some(list) = services {
-        println!("  Services:");
-        for e in &list.list {
-            println!("    Service:");
-            println!("      Type: {}", e.service_type);
-            if let Some(ma) = addr_to_multiaddr(e.addr.as_str()) {
-                println!("      Address: {ma}");
-            }
-        }
-    }
-}
-
 pub async fn print_query_status(
     opts: &CommandGlobalOpts,
     ctx: &Context,
@@ -180,75 +68,85 @@ pub async fn print_query_status(
     is_default: bool,
 ) -> miette::Result<()> {
     let cli_state = opts.state.clone();
-    if !is_node_up(ctx, node_name, node, cli_state.clone(), wait_until_ready).await? {
-        let node_state = cli_state.nodes.get(node_name)?;
-        let node_port = node_state
-            .config()
-            .setup()
-            .api_transport()
-            .ok()
-            .map(|listener| listener.addr.port());
 
-        // it is expected to not be able to open an arbitrary TCP connection on an authority node
-        // so in that case we display an UP status
-        let is_authority_node = node_state.config().setup().authority_node.unwrap_or(false);
-        print_node_info(
-            opts,
-            node_port,
-            node_name,
-            is_default,
-            is_authority_node,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-    } else {
-        let node_state = cli_state.nodes.get(node_name)?;
-        // Get short id for the node
-        let default_id = match node_state.config().identity_config() {
-            Ok(resp) => resp.identifier().to_string(),
-            Err(_) => String::from("None"),
+    let node_info =
+        if !is_node_up(ctx, node_name, node, cli_state.clone(), wait_until_ready).await? {
+            let node_state = cli_state.nodes.get(node_name)?;
+            let node_port = node_state
+                .config()
+                .setup()
+                .api_transport()
+                .ok()
+                .map(|listener| listener.addr.port());
+
+            // it is expected to not be able to open an arbitrary TCP connection on an authority node
+            // so in that case we display an UP status
+            let is_authority_node = node_state.config().setup().authority_node.unwrap_or(false);
+
+            ShowNodeResponse::new(is_default, node_name, is_authority_node, node_port)
+        } else {
+            let node_state = cli_state.nodes.get(node_name)?;
+            let node_port = node_state
+                .config()
+                .setup()
+                .api_transport()
+                .ok()
+                .map(|listener| listener.addr.port());
+
+            let mut node_info = ShowNodeResponse::new(is_default, node_name, true, node_port);
+
+            // Get short id for the node
+            node_info.identity = Some(match node_state.config().identity_config() {
+                Ok(resp) => resp.identifier().to_string(),
+                Err(_) => String::from("None"),
+            });
+
+            // Get list of services for the node
+            let services: ServiceList = node.ask(ctx, api::list_services()).await?;
+            node_info.services = services
+                .list
+                .into_iter()
+                .map(ShowServiceStatus::from)
+                .collect();
+
+            // Get list of TCP listeners for node
+            let transports: TransportList = node.ask(ctx, api::list_tcp_listeners()).await?;
+            node_info.transports = transports
+                .list
+                .into_iter()
+                .map(ShowTransportStatus::from)
+                .collect();
+
+            // Get list of Secure Channel Listeners
+            let listeners: SecureChannelListenersList =
+                node.ask(ctx, api::list_secure_channel_listener()).await?;
+            node_info.secure_channel_listeners = listeners
+                .list
+                .into_iter()
+                .map(ShowSecureChannelListener::from)
+                .collect();
+
+            // Get list of inlets
+            let inlets: InletList = node.ask(ctx, api::list_inlets()).await?;
+            node_info.inlets = inlets.list.into_iter().map(ShowInletStatus::from).collect();
+
+            // Get list of outlets
+            let outlets: OutletList = node.ask(ctx, api::list_outlets()).await?;
+            node_info.outlets = outlets
+                .list
+                .into_iter()
+                .map(ShowOutletStatus::from)
+                .collect();
+
+            node_info
         };
 
-        // Get list of services for the node
-        let services: ServiceList = node.ask(ctx, api::list_services()).await?;
-
-        // Get list of TCP listeners for node
-        let tcp_listeners: TransportList = node.ask(ctx, api::list_tcp_listeners()).await?;
-
-        // Get list of Secure Channel Listeners
-        let secure_channel_listeners: SecureChannelListenersList =
-            node.ask(ctx, api::list_secure_channel_listener()).await?;
-
-        // Get list of inlets
-        let inlets: InletList = node.ask(ctx, api::list_inlets()).await?;
-
-        // Get list of outlets
-        let outlets: OutletList = node.ask(ctx, api::list_outlets()).await?;
-
-        let node_state = cli_state.nodes.get(node_name)?;
-        let node_port = node_state
-            .config()
-            .setup()
-            .api_transport()
-            .ok()
-            .map(|listener| listener.addr.port());
-
-        print_node_info(
-            opts,
-            node_port,
-            node_name,
-            is_default,
-            true,
-            Some(&default_id),
-            Some(&services),
-            Some(&tcp_listeners),
-            Some(&secure_channel_listeners),
-            Some((&inlets, &outlets)),
-        );
-    }
+    opts.terminal
+        .clone()
+        .stdout()
+        .plain(&node_info)
+        .json(serde_json::to_string_pretty(&node_info).into_diagnostic()?)
+        .write_line()?;
 
     Ok(())
 }
