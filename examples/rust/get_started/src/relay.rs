@@ -1,9 +1,9 @@
 use ockam::{Address, Any, Context, LocalMessage, Result, Routed, Worker};
 
-pub struct Forwarder(pub Address);
+pub struct Relay(pub Address);
 
 #[ockam::worker]
-impl Worker for Forwarder {
+impl Worker for Relay {
     type Context = Context;
     type Message = Any;
 

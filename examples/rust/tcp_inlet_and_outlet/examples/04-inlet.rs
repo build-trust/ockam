@@ -13,7 +13,7 @@ async fn main(ctx: Context) -> Result<()> {
     // TCP Transport Outlet.
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
-    // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
+    // through a Remote Relay at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
     let e = node.create_identity().await?;
 

@@ -17,7 +17,7 @@ use ockam_identity::{PurposeKeys, Vault, VaultStorage};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_vault::KeyId;
 
-use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
+use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
 use crate::stream::Stream;
 use crate::OckamError;
 
@@ -81,23 +81,23 @@ impl Node {
         Stream::new(self.get_context()).await
     }
 
-    /// Create a new forwarder
-    pub async fn create_forwarder(
+    /// Create a new relay
+    pub async fn create_relay(
         &self,
         orchestrator_route: impl Into<Route>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        RemoteForwarder::create(self.get_context(), orchestrator_route, options).await
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        RemoteRelay::create(self.get_context(), orchestrator_route, options).await
     }
 
-    /// Create a new static forwarder
-    pub async fn create_static_forwarder(
+    /// Create a new static relay
+    pub async fn create_static_relay(
         &self,
         orchestrator_route: impl Into<Route>,
         alias: impl Into<String>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        RemoteForwarder::create_static(self.get_context(), orchestrator_route, alias, options).await
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        RemoteRelay::create_static(self.get_context(), orchestrator_route, alias, options).await
     }
 
     /// Create an Identity

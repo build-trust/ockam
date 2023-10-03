@@ -1,20 +1,20 @@
 use ockam::identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
-use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
+use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::workers::Echoer;
-use ockam::{ForwardingService, ForwardingServiceOptions};
+use ockam::{RelayService, RelayServiceOptions};
 use ockam_core::{route, AllowAll, Result};
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
 use std::time::Duration;
 
-// Node creates a Forwarding service and a Remote Forwarder, Echoer is reached through the Forwarder. No flow control
+// Node creates a Relay service and a Remote Relay, Echoer is reached through the Relay. No flow control
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    ForwardingService::create(ctx, "forwarding_service", ForwardingServiceOptions::new()).await?;
+    RelayService::create(ctx, "forwarding_service", RelayServiceOptions::new()).await?;
 
     ctx.start_worker("echoer", Echoer).await?;
 
-    let remote_info = RemoteForwarder::create(ctx, route![], RemoteForwarderOptions::new()).await?;
+    let remote_info = RemoteRelay::create(ctx, route![], RemoteRelayOptions::new()).await?;
 
     let resp = ctx
         .send_and_receive::<String>(
@@ -28,16 +28,16 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
-// Cloud: Hosts a Forwarding service and listens on a tcp port. No flow control
-// Server: Connects to a Cloud using tcp and creates a dynamic Forwarder. Using flow control
+// Cloud: Hosts a Relay service and listens on a tcp port. No flow control
+// Server: Connects to a Cloud using tcp and creates a dynamic Relay. Using flow control
 // Client: Connects to a Cloud using tcp and reaches to the Server's Echoer. Using flow control
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
     let tcp_listener_options = TcpListenerOptions::new();
-    let options = ForwardingServiceOptions::new()
+    let options = RelayServiceOptions::new()
         .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
-        .forwarder_as_consumer(&tcp_listener_options.spawner_flow_control_id());
-    ForwardingService::create(ctx, "forwarding_service", options).await?;
+        .relay_as_consumer(&tcp_listener_options.spawner_flow_control_id());
+    RelayService::create(ctx, "forwarding_service", options).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
 
     let cloud_listener = cloud_tcp
@@ -56,8 +56,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let remote_info =
-        RemoteForwarder::create(ctx, cloud_connection.clone(), RemoteForwarderOptions::new())
-            .await?;
+        RemoteRelay::create(ctx, cloud_connection.clone(), RemoteRelayOptions::new()).await?;
 
     let client_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = client_tcp
@@ -76,15 +75,15 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
-// Server: Connects to a Cloud using tcp and creates a dynamic Forwarder. Using flow control
-// Cloud: Hosts a Forwarding service and sends replies to the Client with and without a flow control
+// Server: Connects to a Cloud using tcp and creates a dynamic Relay. Using flow control
+// Cloud: Hosts a Relay service and sends replies to the Client with and without a flow control
 #[ockam_macros::test]
 async fn test3(ctx: &mut Context) -> Result<()> {
     let tcp_listener_options = TcpListenerOptions::new();
-    let options = ForwardingServiceOptions::new()
+    let options = RelayServiceOptions::new()
         .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
-        .forwarder_as_consumer(&tcp_listener_options.spawner_flow_control_id());
-    ForwardingService::create(ctx, "forwarding_service", options).await?;
+        .relay_as_consumer(&tcp_listener_options.spawner_flow_control_id());
+    RelayService::create(ctx, "forwarding_service", options).await?;
     let cloud_tcp = TcpTransport::create(ctx).await?;
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
@@ -99,8 +98,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let remote_info =
-        RemoteForwarder::create(ctx, cloud_connection.clone(), RemoteForwarderOptions::new())
-            .await?;
+        RemoteRelay::create(ctx, cloud_connection.clone(), RemoteRelayOptions::new()).await?;
 
     let mut child_ctx = ctx.new_detached("ctx", AllowAll, AllowAll).await?;
     ctx.send(
@@ -138,21 +136,21 @@ async fn test3(ctx: &mut Context) -> Result<()> {
 }
 
 // Cloud:
-//  - Hosts a Forwarding service
+//  - Hosts a Relay service
 //  - Listens on a tcp port without a flow control
 //  - Runs a secure channel listener
 //
 // Server:
 //  - Connects to the Cloud using tcp with a flow control
 //  - Creates a secure channel to the Cloud with a flow control
-//  - Creates a dynamic Forwarder. Using flow control
+//  - Creates a dynamic Relay. Using flow control
 //  - Runs a Secure Channel listener with a flow control
 //  - Runs an Echoer
 //
 // Client:
 //  - Connects to a Cloud using tcp with a flow control
 //  - Creates a secure channel to the Cloud with a flow control
-//  - Creates a tunneled secure channel to the server using Forwarder's address
+//  - Creates a tunneled secure channel to the server using Relay's address
 //  - Reaches Server's Echoer using a flow control
 #[ockam_macros::test]
 async fn test4(ctx: &mut Context) -> Result<()> {
@@ -161,10 +159,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_secure_channel_listener_options = SecureChannelListenerOptions::new()
         .as_consumer(&cloud_tcp_listener_options.spawner_flow_control_id());
 
-    let options = ForwardingServiceOptions::new()
+    let options = RelayServiceOptions::new()
         .service_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id())
-        .forwarder_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id());
-    ForwardingService::create(ctx, "forwarding_service", options).await?;
+        .relay_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id());
+    RelayService::create(ctx, "forwarding_service", options).await?;
 
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
@@ -216,12 +214,8 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let remote_info = RemoteForwarder::create(
-        ctx,
-        cloud_server_channel.clone(),
-        RemoteForwarderOptions::new(),
-    )
-    .await?;
+    let remote_info =
+        RemoteRelay::create(ctx, cloud_server_channel.clone(), RemoteRelayOptions::new()).await?;
 
     // Client
     let client_tcp = TcpTransport::create(ctx).await?;

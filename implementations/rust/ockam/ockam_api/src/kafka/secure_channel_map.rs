@@ -1,5 +1,5 @@
 use crate::kafka::KAFKA_OUTLET_CONSUMERS;
-use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use crate::nodes::models::relay::{CreateRelay, RelayInfo};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse, DeleteSecureChannelRequest,
     DeleteSecureChannelResponse,
@@ -62,10 +62,10 @@ pub(crate) trait KafkaSecureChannelController: Send + Sync {
         encrypted_content: Vec<u8>,
     ) -> Result<Vec<u8>>;
 
-    /// Starts forwarders in the orchestrator for each {topic_name}_{partition} combination
+    /// Starts relays in the orchestrator for each {topic_name}_{partition} combination
     /// should be used only by the consumer.
     /// does nothing if they were already created, but fails it they already exist.
-    async fn start_forwarders_for(
+    async fn start_relays_for(
         &self,
         context: &mut Context,
         topic_id: &str,
@@ -74,32 +74,27 @@ pub(crate) trait KafkaSecureChannelController: Send + Sync {
 }
 
 #[async_trait]
-pub(crate) trait ForwarderCreator: Send + Sync + 'static {
-    async fn create_forwarder(&self, context: &Context, alias: String) -> Result<()>;
+pub(crate) trait RelayCreator: Send + Sync + 'static {
+    async fn create_relay(&self, context: &Context, alias: String) -> Result<()>;
 }
 
-pub(crate) struct NodeManagerForwarderCreator {
+pub(crate) struct NodeManagerRelayCreator {
     orchestrator_multiaddr: MultiAddr,
 }
 
-impl NodeManagerForwarderCreator {
-    async fn request_forwarder_creation(
+impl NodeManagerRelayCreator {
+    async fn request_relay_creation(
         context: &Context,
-        forwarder_service: MultiAddr,
+        relay_service: MultiAddr,
         alias: String,
     ) -> Result<()> {
-        let is_rust = !forwarder_service.starts_with(Project::CODE);
+        let is_rust = !relay_service.starts_with(Project::CODE);
 
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/forwarder")
-                    .body(CreateForwarder::new(
-                        forwarder_service,
-                        Some(alias),
-                        is_rust,
-                        None,
-                    ))
+                    .body(CreateRelay::new(relay_service, Some(alias), is_rust, None))
                     .to_vec()?,
             )
             .await?;
@@ -112,39 +107,38 @@ impl NodeManagerForwarderCreator {
             return Err(Error::new(
                 Origin::Transport,
                 Kind::Invalid,
-                format!("cannot create forwarder: {}", status),
+                format!("cannot create relay: {}", status),
             ));
         }
         if !response.has_body() {
             Err(Error::new(
                 Origin::Transport,
                 Kind::Unknown,
-                "invalid create forwarder response",
+                "invalid create relay response",
             ))
         } else {
-            let remote_forwarder_information: ForwarderInfo = decoder.decode()?;
-            trace!("remote forwarder created: {remote_forwarder_information:?}");
+            let remote_relay_information: RelayInfo = decoder.decode()?;
+            trace!("remote relay created: {remote_relay_information:?}");
             Ok(())
         }
     }
 }
 
 #[async_trait]
-impl ForwarderCreator for NodeManagerForwarderCreator {
-    async fn create_forwarder(&self, context: &Context, alias: String) -> Result<()> {
-        trace!("creating remote forwarder for: {alias}");
-        Self::request_forwarder_creation(context, self.orchestrator_multiaddr.clone(), alias)
-            .await?;
+impl RelayCreator for NodeManagerRelayCreator {
+    async fn create_relay(&self, context: &Context, alias: String) -> Result<()> {
+        trace!("creating remote relay for: {alias}");
+        Self::request_relay_creation(context, self.orchestrator_multiaddr.clone(), alias).await?;
         Ok(())
     }
 }
 
-pub(crate) struct KafkaSecureChannelControllerImpl<F: ForwarderCreator> {
+pub(crate) struct KafkaSecureChannelControllerImpl<F: RelayCreator> {
     inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
 }
 
 //had to manually implement since #[derive(Clone)] doesn't work well in this situation
-impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
+impl<F: RelayCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -153,7 +147,7 @@ impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
 }
 
 /// Describe to reach the consumer node:
-/// either directly or through a relay with a forwarder
+/// either directly or through a relay with a relay
 #[derive(Clone)]
 pub(crate) enum ConsumerNodeAddr {
     Direct(Option<MultiAddr>),
@@ -161,31 +155,31 @@ pub(crate) enum ConsumerNodeAddr {
 }
 
 type TopicPartition = (String, i32);
-struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
+struct InnerSecureChannelControllerImpl<F: RelayCreator> {
     // we identity the secure channel instance by using the decryptor of the consumer
     // which is known to both parties
     topic_encryptor_map: HashMap<TopicPartition, Address>,
     // describes how to reach the consumer node
     consumer_node_multiaddr: ConsumerNodeAddr,
-    topic_forwarder_set: HashSet<TopicPartition>,
-    forwarder_creator: Option<F>,
+    topic_relay_set: HashSet<TopicPartition>,
+    relay_creator: Option<F>,
     secure_channels: Arc<SecureChannels>,
     access_control: AbacAccessControl,
 }
 
-impl KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
+impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
         consumer_node_multiaddr: ConsumerNodeAddr,
         trust_context_id: String,
-    ) -> KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
-        let forwarder_creator = match consumer_node_multiaddr.clone() {
+    ) -> KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
+        let relay_creator = match consumer_node_multiaddr.clone() {
             ConsumerNodeAddr::Direct(_) => None,
             ConsumerNodeAddr::Relay(mut orchestrator_multiaddr) => {
                 orchestrator_multiaddr
                     .push_back(Service::new(KAFKA_OUTLET_CONSUMERS))
                     .unwrap();
-                Some(NodeManagerForwarderCreator {
+                Some(NodeManagerRelayCreator {
                     orchestrator_multiaddr,
                 })
             }
@@ -193,18 +187,18 @@ impl KafkaSecureChannelControllerImpl<NodeManagerForwarderCreator> {
         Self::new_extended(
             secure_channels,
             consumer_node_multiaddr,
-            forwarder_creator,
+            relay_creator,
             trust_context_id,
         )
     }
 }
 
-impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
-    /// to manually specify `ForwarderCreator`, for testing purposes
+impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
+    /// to manually specify `RelayCreator`, for testing purposes
     pub(crate) fn new_extended(
         secure_channels: Arc<SecureChannels>,
         consumer_node_multiaddr: ConsumerNodeAddr,
-        forwarder_creator: Option<F>,
+        relay_creator: Option<F>,
         trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
@@ -216,9 +210,9 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
                 topic_encryptor_map: Default::default(),
-                topic_forwarder_set: Default::default(),
+                topic_relay_set: Default::default(),
                 secure_channels,
-                forwarder_creator,
+                relay_creator,
                 consumer_node_multiaddr,
                 access_control,
             })),
@@ -230,7 +224,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     }
 }
 
-impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
+impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
     async fn request_secure_channel_creation(
         context: &Context,
         destination: MultiAddr,
@@ -315,7 +309,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
         topic_name: &str,
         partition: i32,
     ) -> Result<SecureChannelRegistryEntry> {
-        // here we should have the orchestrator address and expect forwarders to be
+        // here we should have the orchestrator address and expect relays to be
         // present in the orchestrator with the format "consumer__{topic_name}_{partition}"
 
         let mut inner = self.inner.lock().await;
@@ -469,7 +463,7 @@ impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
 }
 
 #[async_trait]
-impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelControllerImpl<F> {
+impl<F: RelayCreator> KafkaSecureChannelController for KafkaSecureChannelControllerImpl<F> {
     async fn encrypt_content_for(
         &self,
         context: &mut Context,
@@ -534,31 +528,31 @@ impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelCon
         Ok(decrypted_content)
     }
 
-    async fn start_forwarders_for(
+    async fn start_relays_for(
         &self,
         context: &mut Context,
         topic_name: &str,
         partitions: Vec<i32>,
     ) -> Result<()> {
         let mut inner = self.inner.lock().await;
-        // when using direct mode there is no need to create a forwarder
-        if inner.forwarder_creator.is_none() {
+        // when using direct mode there is no need to create a relay
+        if inner.relay_creator.is_none() {
             return Ok(());
         }
 
         for partition in partitions {
             let topic_key: TopicPartition = (topic_name.to_string(), partition);
-            if inner.topic_forwarder_set.contains(&topic_key) {
+            if inner.topic_relay_set.contains(&topic_key) {
                 continue;
             }
             let alias = format!("{topic_name}_{partition}");
             inner
-                .forwarder_creator
+                .relay_creator
                 .as_ref()
                 .unwrap()
-                .create_forwarder(context, alias)
+                .create_relay(context, alias)
                 .await?;
-            inner.topic_forwarder_set.insert(topic_key);
+            inner.topic_relay_set.insert(topic_key);
         }
         Ok(())
     }

@@ -1,7 +1,7 @@
 use minicbor::{Decode, Encode};
 
 use ockam::identity::Identifier;
-use ockam::remote::RemoteForwarderInfo;
+use ockam::remote::RemoteRelayInfo;
 use ockam::route;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
@@ -9,14 +9,14 @@ use ockam_multiaddr::MultiAddr;
 use crate::error::ApiError;
 use crate::route_to_multiaddr;
 
-/// Request body when instructing a node to create a forwarder
+/// Request body when instructing a node to create a relay
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateForwarder {
-    /// Address to create forwarder at.
+pub struct CreateRelay {
+    /// Address to create relay at.
     #[n(1)] pub(crate) address: MultiAddr,
-    /// Forwarder alias.
+    /// Relay alias.
     #[n(2)] pub(crate) alias: Option<String>,
     /// Forwarding service is at rust node.
     #[n(3)] pub(crate) at_rust_node: bool,
@@ -26,7 +26,7 @@ pub struct CreateForwarder {
     #[n(4)] pub(crate) authorized: Option<Identifier>,
 }
 
-impl CreateForwarder {
+impl CreateRelay {
     pub fn new(
         address: MultiAddr,
         alias: Option<String>,
@@ -58,18 +58,18 @@ impl CreateForwarder {
     }
 }
 
-/// Response body when creating a forwarder
+/// Response body when creating a relay
 #[derive(Debug, Clone, Decode, Encode, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ForwarderInfo {
+pub struct RelayInfo {
     #[n(1)] forwarding_route: String,
     #[n(2)] remote_address: String,
     #[n(3)] worker_address: String,
     #[n(4)] flow_control_id: Option<FlowControlId>,
 }
 
-impl ForwarderInfo {
+impl RelayInfo {
     pub fn forwarding_route(&self) -> &str {
         &self.forwarding_route
     }
@@ -93,8 +93,8 @@ impl ForwarderInfo {
     }
 }
 
-impl From<RemoteForwarderInfo> for ForwarderInfo {
-    fn from(inner: RemoteForwarderInfo) -> Self {
+impl From<RemoteRelayInfo> for RelayInfo {
+    fn from(inner: RemoteRelayInfo) -> Self {
         Self {
             forwarding_route: inner.forwarding_route().to_string(),
             remote_address: inner.remote_address().into(),

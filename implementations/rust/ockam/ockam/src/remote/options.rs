@@ -3,16 +3,16 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, AllowAll, OutgoingAccessControl};
 
-/// Trust options for [`RemoteForwarder`](super::RemoteForwarder)
-pub struct RemoteForwarderOptions {}
+/// Trust options for [`RemoteRelay`](super::RemoteRelay)
+pub struct RemoteRelayOptions {}
 
-impl RemoteForwarderOptions {
+impl RemoteRelayOptions {
     /// Usually [`FlowControlId`] should be shared with the Producer that was used to create this
-    /// forwarder (probably Secure Channel), since [`RemoteForwarder`](super::RemoteForwarder)
+    /// relay (probably Secure Channel), since [`RemoteRelay`](super::RemoteRelay)
     /// doesn't imply any new "trust" context, it's just a Message Routing helper.
     /// Therefore, workers that are allowed to receive messages from the corresponding
     /// Secure Channel should as well be allowed to receive messages
-    /// through the [`RemoteForwarder`](super::RemoteForwarder) through the same Secure Channel.
+    /// through the [`RemoteRelay`](super::RemoteRelay) through the same Secure Channel.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {}

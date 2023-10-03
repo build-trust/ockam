@@ -1,4 +1,4 @@
-use crate::remote::{RemoteForwarder, RemoteForwarderInfo};
+use crate::remote::{RemoteRelay, RemoteRelayInfo};
 use crate::{Context, OckamError};
 use ockam_core::compat::{
     boxed::Box,
@@ -9,12 +9,12 @@ use ockam_core::{Any, Decodable, Result, Routed, Worker};
 use tracing::{debug, info};
 
 #[crate::worker]
-impl Worker for RemoteForwarder {
+impl Worker for RemoteRelay {
     type Context = Context;
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        debug!("RemoteForwarder registration...");
+        debug!("RemoteRelay registration...");
 
         ctx.send_from_address(
             self.registration_route.clone(),
@@ -55,7 +55,7 @@ impl Worker for RemoteForwarder {
 
             match transport_message.onward_route.next() {
                 Err(_) => {
-                    debug!("RemoteForwarder received service message");
+                    debug!("RemoteRelay received service message");
 
                     let payload = Vec::<u8>::decode(&transport_message.payload)
                         .map_err(|_| OckamError::InvalidHubResponse)?;
@@ -67,7 +67,7 @@ impl Worker for RemoteForwarder {
                     }
 
                     if !self.completion_msg_sent {
-                        info!("RemoteForwarder registered with route: {}", return_route);
+                        info!("RemoteRelay registered with route: {}", return_route);
                         let address = match return_route.recipient()?.to_string().strip_prefix("0#")
                         {
                             Some(addr) => addr.to_string(),
@@ -76,7 +76,7 @@ impl Worker for RemoteForwarder {
 
                         ctx.send_from_address(
                             self.addresses.completion_callback.clone(),
-                            RemoteForwarderInfo::new(
+                            RemoteRelayInfo::new(
                                 return_route,
                                 address,
                                 self.addresses.main_remote.clone(),
@@ -103,7 +103,7 @@ impl Worker for RemoteForwarder {
                 }
                 Ok(_) => {
                     // Forwarding the message
-                    debug!("RemoteForwarder received payload message");
+                    debug!("RemoteRelay received payload message");
 
                     // Send the message on its onward_route
                     ctx.forward_from_address(message, self.addresses.main_internal.clone())

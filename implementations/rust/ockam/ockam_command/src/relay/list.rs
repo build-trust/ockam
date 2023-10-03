@@ -8,7 +8,7 @@ use tracing::trace;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
@@ -54,8 +54,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {
-        let relay_infos: Vec<ForwarderInfo> =
-            node.ask(&ctx, Request::get("/node/forwarder")).await?;
+        let relay_infos: Vec<RelayInfo> = node.ask(&ctx, Request::get("/node/forwarder")).await?;
         *is_finished.lock().await = true;
         Ok(relay_infos)
     };

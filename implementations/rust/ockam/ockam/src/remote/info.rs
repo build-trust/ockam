@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 
 /// Information about a remotely forwarded worker.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Message)]
-pub struct RemoteForwarderInfo {
+pub struct RemoteRelayInfo {
     forwarding_route: Route,
     remote_address: String,
     worker_address: Address,
     flow_control_id: Option<FlowControlId>,
 }
 
-impl RemoteForwarderInfo {
+impl RemoteRelayInfo {
     /// Constructor
     pub fn new(
         forwarding_route: Route,

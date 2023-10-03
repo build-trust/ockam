@@ -5,7 +5,7 @@ use ockam::identity::{
     AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelListenerOptions,
     SecureChannelOptions, TrustContext, TrustMultiIdentifiersPolicy,
 };
-use ockam::remote::RemoteForwarderOptions;
+use ockam::remote::RemoteRelayOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::nodes::NodeManager;
@@ -16,14 +16,14 @@ use std::sync::Arc;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
-/// The connections go through the Ockam Orchestrator, via a Forwarder, and a secure channel
+/// The connections go through the Ockam Orchestrator, via a Relay, and a secure channel
 /// can be established to forward messages to an outlet going to a local Python webserver.
 ///
 ///
 /// This example shows how to:
 ///
 ///   - retrieve credentials from an authority
-///   - create a Forwarder on the Ockam Orchestrator
+///   - create a Relay on the Ockam Orchestrator
 ///   - create a TCP outlet with some access control checking the authenticated attributes of the caller
 ///
 /// The node needs to be started with:
@@ -118,7 +118,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     )
     .await?;
 
-    // 5. create a forwarder on the Ockam orchestrator
+    // 5. create a relay on the Ockam orchestrator
 
     let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
     let project_options =
@@ -140,11 +140,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         )
         .await?;
 
-    // finally create a forwarder using the secure channel to the project
-    let forwarder = node
-        .create_static_forwarder(secure_channel_address, "control_plane1", RemoteForwarderOptions::new())
+    // finally create a relay using the secure channel to the project
+    let relay = node
+        .create_static_relay(secure_channel_address, "control_plane1", RemoteRelayOptions::new())
         .await?;
-    println!("forwarder is {forwarder:?}");
+    println!("relay is {relay:?}");
 
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready

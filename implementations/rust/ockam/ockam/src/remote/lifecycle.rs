@@ -1,4 +1,4 @@
-use crate::remote::{Addresses, RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
+use crate::remote::{Addresses, RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
 use crate::Context;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
@@ -15,23 +15,23 @@ use ockam_node::{DelayedEvent, WorkerBuilder};
 use tracing::debug;
 
 #[derive(Clone, Copy)]
-pub(super) enum ForwardType {
+pub(super) enum RelayType {
     Static,
     Ephemeral,
     StaticWithoutHeartbeats,
 }
 
-impl ForwardType {
+impl RelayType {
     pub fn str(&self) -> &'static str {
         match self {
-            ForwardType::Static => "static",
-            ForwardType::Ephemeral => "ephemeral",
-            ForwardType::StaticWithoutHeartbeats => "static_w/o_heartbeats",
+            RelayType::Static => "static",
+            RelayType::Ephemeral => "ephemeral",
+            RelayType::StaticWithoutHeartbeats => "static_w/o_heartbeats",
         }
     }
 }
 
-impl RemoteForwarder {
+impl RemoteRelay {
     fn mailboxes(
         addresses: Addresses,
         heartbeat_source_address: Option<Address>,
@@ -64,7 +64,7 @@ impl RemoteForwarder {
     }
 }
 
-impl RemoteForwarder {
+impl RemoteRelay {
     fn new(
         addresses: Addresses,
         registration_route: Route,
@@ -84,14 +84,14 @@ impl RemoteForwarder {
         }
     }
 
-    /// Create and start static RemoteForwarder at predefined address with given Ockam Orchestrator route
+    /// Create and start static RemoteRelay at predefined address with given Ockam Orchestrator route
     pub async fn create_static(
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        let addresses = Addresses::generate(ForwardType::Static);
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        let addresses = Addresses::generate(RelayType::Static);
 
         let mut child_ctx = ctx
             .new_detached_with_mailboxes(Mailboxes::main(
@@ -111,7 +111,7 @@ impl RemoteForwarder {
         let outgoing_access_control =
             options.create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
-        let forwarder = Self::new(
+        let relay = Self::new(
             addresses.clone(),
             registration_route,
             alias.into(),
@@ -120,32 +120,29 @@ impl RemoteForwarder {
             Duration::from_secs(5),
         );
 
-        debug!(
-            "Starting static RemoteForwarder at {}",
-            &addresses.heartbeat
-        );
+        debug!("Starting static RemoteRelay at {}", &addresses.heartbeat);
         let mailboxes = Self::mailboxes(
             addresses,
             Some(heartbeat_source_address),
             outgoing_access_control,
         );
-        WorkerBuilder::new(forwarder)
+        WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
-        let resp = child_ctx.receive::<RemoteForwarderInfo>().await?.body();
+        let resp = child_ctx.receive::<RemoteRelayInfo>().await?.body();
 
         Ok(resp)
     }
 
-    /// Create and start new ephemeral RemoteForwarder at random address with given Ockam Hub route
+    /// Create and start new ephemeral RemoteRelay at random address with given Ockam Hub route
     pub async fn create(
         ctx: &Context,
         hub_route: impl Into<Route>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        let addresses = Addresses::generate(ForwardType::Ephemeral);
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        let addresses = Addresses::generate(RelayType::Ephemeral);
 
         let mut callback_ctx = ctx
             .new_detached_with_mailboxes(Mailboxes::main(
@@ -162,7 +159,7 @@ impl RemoteForwarder {
         let outgoing_access_control =
             options.create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
-        let forwarder = Self::new(
+        let relay = Self::new(
             addresses.clone(),
             registration_route,
             "register".to_string(),
@@ -172,31 +169,31 @@ impl RemoteForwarder {
         );
 
         debug!(
-            "Starting ephemeral RemoteForwarder at {}",
+            "Starting ephemeral RemoteRelay at {}",
             &addresses.main_internal
         );
         let mailboxes = Self::mailboxes(addresses, None, outgoing_access_control);
-        WorkerBuilder::new(forwarder)
+        WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
-        let resp = callback_ctx.receive::<RemoteForwarderInfo>().await?.body();
+        let resp = callback_ctx.receive::<RemoteRelayInfo>().await?.body();
 
         Ok(resp)
     }
 
-    /// Create and start new static RemoteForwarder without heart beats
-    /// This is a temporary kind of RemoteForwarder that will only run on
-    /// rust nodes (hence the `forwarding_service` addr to create static forwarders).
+    /// Create and start new static RemoteRelay without heart beats
+    /// This is a temporary kind of RemoteRelay that will only run on
+    /// rust nodes (hence the `forwarding_service` addr to create static relays).
     /// We will use it while we don't have heartbeats implemented on rust nodes.
     pub async fn create_static_without_heartbeats(
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        let addresses = Addresses::generate(ForwardType::StaticWithoutHeartbeats);
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        let addresses = Addresses::generate(RelayType::StaticWithoutHeartbeats);
 
         let mut callback_ctx = ctx
             .new_detached_with_mailboxes(Mailboxes::main(
@@ -213,7 +210,7 @@ impl RemoteForwarder {
         let outgoing_access_control =
             options.create_access_control(ctx.flow_controls(), flow_control_id.clone());
 
-        let forwarder = Self::new(
+        let relay = Self::new(
             addresses.clone(),
             registration_route,
             alias.into(),
@@ -223,16 +220,16 @@ impl RemoteForwarder {
         );
 
         debug!(
-            "Starting static RemoteForwarder without heartbeats at {}",
+            "Starting static RemoteRelay without heartbeats at {}",
             &addresses.main_internal
         );
         let mailboxes = Self::mailboxes(addresses, None, outgoing_access_control);
-        WorkerBuilder::new(forwarder)
+        WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
             .start(ctx)
             .await?;
 
-        let resp = callback_ctx.receive::<RemoteForwarderInfo>().await?.body();
+        let resp = callback_ctx.receive::<RemoteRelayInfo>().await?.body();
 
         Ok(resp)
     }

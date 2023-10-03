@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use ockam::compat::sync::Mutex;
 use ockam::identity::Identifier;
-use ockam::remote::{RemoteForwarder, RemoteForwarderOptions};
+use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::{async_trait, Address, AsyncTryClone};
@@ -15,7 +15,7 @@ use ockam_node::Context;
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
-use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use crate::nodes::models::relay::{CreateRelay, RelayInfo};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
@@ -27,189 +27,192 @@ use crate::session::sessions::{MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    pub async fn create_forwarder(
+    pub async fn create_relay(
         &self,
         ctx: &Context,
         req: &RequestHeader,
-        create_forwarder: CreateForwarder,
-    ) -> Result<Response<ForwarderInfo>, Response<Error>> {
-        let CreateForwarder {
+        create_relay: CreateRelay,
+    ) -> Result<Response<RelayInfo>, Response<Error>> {
+        let CreateRelay {
             address,
             alias,
             at_rust_node,
             authorized,
-        } = create_forwarder;
+        } = create_relay;
         match self
             .node_manager
-            .create_forwarder(ctx, &address, alias, at_rust_node, authorized)
+            .create_relay(ctx, &address, alias, at_rust_node, authorized)
             .await
         {
             Ok(body) => Ok(Response::ok(req).body(body)),
             Err(err) => Err(Response::internal_error(
                 req,
-                &format!("Failed to create forwarder: {}", err),
+                &format!("Failed to create relay: {}", err),
             )),
         }
     }
 
-    pub(super) async fn delete_forwarder(
-        &mut self,
-        ctx: &mut Context,
+    pub async fn delete_relay(
+        &self,
+        ctx: &Context,
         req: &RequestHeader,
         remote_address: &str,
-    ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
+    ) -> Result<Response<Option<RelayInfo>>, Response<Error>> {
         self.node_manager
-            .delete_forwarder(ctx, req, remote_address)
+            .delete_relay(ctx, req, remote_address)
             .await
     }
 
-    pub(super) async fn show_forwarder(
-        &mut self,
-        req: &RequestHeader,
-        remote_address: &str,
-    ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
-        self.node_manager.show_forwarder(req, remote_address).await
-    }
-
-    pub async fn get_forwarders(&self) -> Vec<ForwarderInfo> {
-        self.node_manager.get_forwarders().await
-    }
-
-    pub(super) async fn get_forwarders_response(
+    pub async fn show_relay(
         &self,
         req: &RequestHeader,
-    ) -> Response<Vec<ForwarderInfo>> {
-        debug!("Handling ListForwarders request");
-        Response::ok(req).body(self.get_forwarders().await)
+        remote_address: &str,
+    ) -> Result<Response<Option<RelayInfo>>, Response<Error>> {
+        self.node_manager.show_relay(req, remote_address).await
+    }
+
+    pub async fn get_relays(
+        &self,
+        req: &RequestHeader,
+    ) -> Result<Response<Vec<RelayInfo>>, Response<Error>> {
+        debug!("Handling GetRelays request");
+        Ok(Response::ok(req).body(self.node_manager.get_relays().await))
     }
 }
 
 impl NodeManager {
-    pub async fn get_forwarders(&self) -> Vec<ForwarderInfo> {
-        let forwarders = self
+    /// This function returns a representation of the relays currently
+    /// registered on this node
+    pub async fn get_relays(&self) -> Vec<RelayInfo> {
+        let relays = self
             .registry
-            .forwarders
+            .relays
             .entries()
             .await
             .iter()
-            .map(|(_, registry_info)| ForwarderInfo::from(registry_info.to_owned()))
+            .map(|(_, registry_info)| RelayInfo::from(registry_info.to_owned()))
             .collect();
-        trace!(?forwarders, "Forwarders retrieved");
-        forwarders
+        trace!(?relays, "Relays retrieved");
+        relays
     }
 
-    pub async fn create_forwarder(
+    /// Create a new Relay
+    /// The Connection encapsulates the list of workers required on the relay route.
+    /// This route is monitored in the `InMemoryNode` and the workers are restarted if necessary
+    /// when the route is unresponsive
+    pub async fn create_relay(
         &self,
         ctx: &Context,
         connection: Connection,
         at_rust_node: bool,
         alias: Option<String>,
-    ) -> Result<ForwarderInfo> {
+    ) -> Result<RelayInfo> {
         let route = connection.route(self.tcp_transport()).await?;
-        let options = RemoteForwarderOptions::new();
+        let options = RemoteRelayOptions::new();
 
-        let forwarder = if at_rust_node {
+        let relay = if at_rust_node {
             if let Some(alias) = alias {
-                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias, options).await
+                RemoteRelay::create_static_without_heartbeats(ctx, route, alias, options).await
             } else {
-                RemoteForwarder::create(ctx, route, options).await
+                RemoteRelay::create(ctx, route, options).await
             }
         } else if let Some(alias) = alias {
-            RemoteForwarder::create_static(ctx, route, alias, options).await
+            RemoteRelay::create_static(ctx, route, alias, options).await
         } else {
-            RemoteForwarder::create(ctx, route, options).await
+            RemoteRelay::create(ctx, route, options).await
         };
 
-        match forwarder {
+        match relay {
             Ok(info) => {
                 let registry_info = info.clone();
                 let registry_remote_address = registry_info.remote_address().to_string();
-                let forwarder_info = ForwarderInfo::from(info);
+                let relay_info = RelayInfo::from(info);
                 self.registry
-                    .forwarders
+                    .relays
                     .insert(registry_remote_address, registry_info)
                     .await;
 
                 debug!(
-                    forwarding_route = %forwarder_info.forwarding_route(),
-                    remote_address = %forwarder_info.remote_address_ma()?,
-                    "CreateForwarder request processed, sending back response"
+                    forwarding_route = %relay_info.forwarding_route(),
+                    remote_address = %relay_info.remote_address_ma()?,
+                    "CreateRelay request processed, sending back response"
                 );
-                Ok(forwarder_info)
+                Ok(relay_info)
             }
             Err(err) => {
-                error!(?err, "Failed to create forwarder");
+                error!(?err, "Failed to create relay");
                 Err(err)
             }
         }
     }
 
-    pub(super) async fn delete_forwarder(
+    /// This function removes an existing relay based on its remote address
+    pub async fn delete_relay(
         &self,
-        ctx: &mut Context,
+        ctx: &Context,
         req: &RequestHeader,
         remote_address: &str,
-    ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
-        debug!(%remote_address , "Handling DeleteForwarder request");
+    ) -> Result<Response<Option<RelayInfo>>, Response<Error>> {
+        debug!(%remote_address , "Handling DeleteRelay request");
 
-        if let Some(forwarder_to_delete) = self.registry.forwarders.remove(remote_address).await {
-            debug!(%remote_address, "Successfully removed forwarder from node registry");
+        if let Some(relay_to_delete) = self.registry.relays.remove(remote_address).await {
+            debug!(%remote_address, "Successfully removed relay from node registry");
 
             match ctx
-                .stop_worker(forwarder_to_delete.worker_address().clone())
+                .stop_worker(relay_to_delete.worker_address().clone())
                 .await
             {
                 Ok(_) => {
-                    debug!(%remote_address, "Successfully stopped forwarder");
-                    Ok(Response::ok(req)
-                        .body(Some(ForwarderInfo::from(forwarder_to_delete.to_owned()))))
+                    debug!(%remote_address, "Successfully stopped relay");
+                    Ok(Response::ok(req).body(Some(RelayInfo::from(relay_to_delete.to_owned()))))
                 }
                 Err(err) => {
-                    error!(%remote_address, ?err, "Failed to delete forwarder from node registry");
+                    error!(%remote_address, ?err, "Failed to delete relay from node registry");
                     Err(Response::internal_error(
                         req,
-                        &format!("Failed to delete forwarder at {}: {}", remote_address, err),
+                        &format!("Failed to delete relay at {}: {}", remote_address, err),
                     ))
                 }
             }
         } else {
-            error!(%remote_address, "Forwarder not found in the node registry");
+            error!(%remote_address, "Relay not found in the node registry");
             Err(Response::not_found(
                 req,
-                &format!("Forwarder with address {} not found.", remote_address),
+                &format!("Relay with address {} not found.", remote_address),
             ))
         }
     }
 
-    pub(super) async fn show_forwarder(
+    /// This function finds an existing relay and returns its configuration
+    pub(super) async fn show_relay(
         &self,
         req: &RequestHeader,
         remote_address: &str,
-    ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
-        debug!("Handling ShowForwarder request");
-        if let Some(forwarder_to_show) = self.registry.forwarders.get(remote_address).await {
-            debug!(%remote_address, "Forwarder not found in node registry");
-            Ok(Response::ok(req).body(Some(ForwarderInfo::from(forwarder_to_show.to_owned()))))
+    ) -> Result<Response<Option<RelayInfo>>, Response<Error>> {
+        debug!("Handling ShowRelay request");
+        if let Some(relay) = self.registry.relays.get(remote_address).await {
+            debug!(%remote_address, "Relay not found in node registry");
+            Ok(Response::ok(req).body(Some(RelayInfo::from(relay.to_owned()))))
         } else {
-            error!(%remote_address, "Forwarder not found in the node registry");
+            error!(%remote_address, "Relay not found in the node registry");
             Err(Response::not_found(
                 req,
-                &format!("Forwarder with address {} not found.", remote_address),
+                &format!("Relay with address {} not found.", remote_address),
             ))
         }
     }
 }
 
 impl InMemoryNode {
-    pub async fn create_forwarder(
+    pub async fn create_relay(
         &self,
         ctx: &Context,
         address: &MultiAddr,
         alias: Option<String>,
         at_rust_node: bool,
         authorized: Option<Identifier>,
-    ) -> Result<ForwarderInfo> {
-        debug!(addr = %address, alias = ?alias, at_rust_node = ?at_rust_node, "Handling CreateForwarder request");
+    ) -> Result<RelayInfo> {
+        debug!(addr = %address, alias = ?alias, at_rust_node = ?at_rust_node, "Handling CreateRelay request");
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
         let connection = self
             .make_connection(
@@ -229,9 +232,9 @@ impl InMemoryNode {
             connection.add_consumer(connection_ctx.clone(), &hop);
         }
 
-        let forwarder = self
+        let relay = self
             .node_manager
-            .create_forwarder(
+            .create_relay(
                 ctx,
                 connection.clone(),
                 at_rust_node,
@@ -253,7 +256,7 @@ impl InMemoryNode {
             session.set_replacer(repl);
             self.add_session(session);
         };
-        Ok(forwarder)
+        Ok(relay)
     }
 
     /// Create a session replacer.
@@ -281,7 +284,7 @@ impl InMemoryNode {
             let node_manager = node_manager.clone();
 
             Box::pin(async move {
-                debug!(%prev_route, %addr, "creating new remote forwarder");
+                debug!(%prev_route, %addr, "creating new remote relay");
 
                 let f = async {
                     for encryptor in &previous_connection.secure_channel_encryptors {
@@ -318,21 +321,21 @@ impl InMemoryNode {
 
                     let route = connection.route(node_manager.tcp_transport()).await?;
 
-                    let options = RemoteForwarderOptions::new();
+                    let options = RemoteRelayOptions::new();
                     if let Some(alias) = &alias {
-                        RemoteForwarder::create_static(&ctx, route, alias, options).await?;
+                        RemoteRelay::create_static(&ctx, route, alias, options).await?;
                     } else {
-                        RemoteForwarder::create(&ctx, route, options).await?;
+                        RemoteRelay::create(&ctx, route, options).await?;
                     }
                     Ok(connection.transport_route())
                 };
                 match timeout(MAX_RECOVERY_TIME, f).await {
                     Err(_) => {
-                        warn!(%addr, "timeout creating new remote forwarder");
+                        warn!(%addr, "timeout creating new remote relay");
                         Err(ApiError::core("timeout"))
                     }
                     Ok(Err(e)) => {
-                        warn!(%addr, err = %e, "error creating new remote forwarder");
+                        warn!(%addr, err = %e, "error creating new remote relay");
                         Err(e)
                     }
                     Ok(Ok(a)) => Ok(a),
@@ -350,7 +353,7 @@ pub trait Relays {
         address: &MultiAddr,
         alias: Option<String>,
         authorized: Option<Identifier>,
-    ) -> miette::Result<ForwarderInfo>;
+    ) -> miette::Result<RelayInfo>;
 }
 
 #[async_trait]
@@ -361,9 +364,9 @@ impl Relays for BackgroundNode {
         address: &MultiAddr,
         alias: Option<String>,
         authorized: Option<Identifier>,
-    ) -> miette::Result<ForwarderInfo> {
+    ) -> miette::Result<RelayInfo> {
         let at_rust_node = !address.starts_with(Project::CODE);
-        let body = CreateForwarder::new(address.clone(), alias, at_rust_node, authorized);
+        let body = CreateRelay::new(address.clone(), alias, at_rust_node, authorized);
         self.ask(ctx, Request::post("/node/forwarder").body(body))
             .await
     }
