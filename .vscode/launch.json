@@ -1,0 +1,3167 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'file_transfer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=file_transfer"
+                ],
+                "filter": {
+                    "name": "file_transfer",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'sender'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=sender",
+                    "--package=file_transfer"
+                ],
+                "filter": {
+                    "name": "sender",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'sender'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=sender",
+                    "--package=file_transfer"
+                ],
+                "filter": {
+                    "name": "sender",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'receiver'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=receiver",
+                    "--package=file_transfer"
+                ],
+                "filter": {
+                    "name": "receiver",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'receiver'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=receiver",
+                    "--package=file_transfer"
+                ],
+                "filter": {
+                    "name": "receiver",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=file_transfer"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "ockam",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'forwarder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=forwarder",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "forwarder",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'macro_expand_playground'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=macro_expand_playground",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "macro_expand_playground",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'channel'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=channel",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "channel",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'system'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=system",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "system",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'node_test'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=node_test",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "node_test",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'pipe'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=pipe",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "pipe",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'pipe2'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=pipe2",
+                    "--package=ockam"
+                ],
+                "filter": {
+                    "name": "pipe2",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_abac'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_abac"
+                ],
+                "filter": {
+                    "name": "ockam_abac",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'repl'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=repl",
+                    "--package=ockam_abac"
+                ],
+                "filter": {
+                    "name": "repl",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'repl'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=repl",
+                    "--package=ockam_abac"
+                ],
+                "filter": {
+                    "name": "repl",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_core'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_core"
+                ],
+                "filter": {
+                    "name": "ockam_core",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_executor'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_executor"
+                ],
+                "filter": {
+                    "name": "ockam_executor",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_identity'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "ockam_identity",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'purpose_key_creation'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=purpose_key_creation",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "purpose_key_creation",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'ciphertext_message_flow_auth'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=ciphertext_message_flow_auth",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "ciphertext_message_flow_auth",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'credentials'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=credentials",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "credentials",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'purpose_key_verification'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=purpose_key_verification",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "purpose_key_verification",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'channel'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=channel",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "channel",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'identity_verification'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=identity_verification",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "identity_verification",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'aws'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=aws",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "aws",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'identity_creation'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=identity_creation",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "identity_creation",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'plaintext_message_flow_auth'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=plaintext_message_flow_auth",
+                    "--package=ockam_identity"
+                ],
+                "filter": {
+                    "name": "plaintext_message_flow_auth",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_node"
+                ],
+                "filter": {
+                    "name": "ockam_node",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=ockam_node"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_transport_core'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_transport_core"
+                ],
+                "filter": {
+                    "name": "ockam_transport_core",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_vault'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_vault"
+                ],
+                "filter": {
+                    "name": "ockam_vault",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_transport_tcp'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_transport_tcp"
+                ],
+                "filter": {
+                    "name": "ockam_transport_tcp",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'keepalive'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=keepalive",
+                    "--package=ockam_transport_tcp"
+                ],
+                "filter": {
+                    "name": "keepalive",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'send_receive'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=send_receive",
+                    "--package=ockam_transport_tcp"
+                ],
+                "filter": {
+                    "name": "send_receive",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'lifecycle'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=lifecycle",
+                    "--package=ockam_transport_tcp"
+                ],
+                "filter": {
+                    "name": "lifecycle",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'portal'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=portal",
+                    "--package=ockam_transport_tcp"
+                ],
+                "filter": {
+                    "name": "portal",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_vault_aws'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_vault_aws"
+                ],
+                "filter": {
+                    "name": "ockam_vault_aws",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=ockam_vault_aws"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'example_test_helper'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=example_test_helper"
+                ],
+                "filter": {
+                    "name": "example_test_helper",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'hello_ockam'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "hello_ockam",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-routing-over-transport-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-routing-over-transport-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-routing-over-transport-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-routing-over-transport-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '01-node'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=01-node",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "01-node",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '01-node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=01-node",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "01-node",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-udp-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-udp-transport-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-udp-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-udp-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-udp-transport-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-udp-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-udp-transport-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-udp-transport-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-udp-transport-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-udp-transport-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-udp-transport-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-udp-transport-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-unix-domain-socket-transport-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-unix-domain-socket-transport-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-unix-domain-socket-transport-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-unix-domain-socket-transport-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-unix-domain-socket-transport-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-unix-domain-socket-transport-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '05-secure-channel-over-two-transport-hops-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=05-secure-channel-over-two-transport-hops-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-two-transport-hops-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '05-secure-channel-over-two-transport-hops-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=05-secure-channel-over-two-transport-hops-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-two-transport-hops-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '11-attribute-based-authentication'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=11-attribute-based-authentication",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "11-attribute-based-authentication",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '11-attribute-based-authentication'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=11-attribute-based-authentication",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "11-attribute-based-authentication",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'hello'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=hello",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "hello",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'hello'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=hello",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "hello",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '10-secure-channel-via-streams-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=10-secure-channel-via-streams-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "10-secure-channel-via-streams-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '10-secure-channel-via-streams-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=10-secure-channel-via-streams-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "10-secure-channel-via-streams-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '05-secure-channel-over-two-transport-hops-middle'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=05-secure-channel-over-two-transport-hops-middle",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-two-transport-hops-middle",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '05-secure-channel-over-two-transport-hops-middle'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=05-secure-channel-over-two-transport-hops-middle",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-two-transport-hops-middle",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '03-routing'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=03-routing",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "03-routing",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '03-routing'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=03-routing",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "03-routing",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'bob'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=bob",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "bob",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'bob'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=bob",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "bob",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-routing-over-transport-two-hops-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-routing-over-transport-two-hops-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-two-hops-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-routing-over-transport-two-hops-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-routing-over-transport-two-hops-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-two-hops-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-routing-over-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-routing-over-transport-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-routing-over-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-routing-over-transport-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-routing-over-transport-two-hops-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-routing-over-transport-two-hops-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-two-hops-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-routing-over-transport-two-hops-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-routing-over-transport-two-hops-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-two-hops-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '11-attribute-based-authentication-control-plane'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=11-attribute-based-authentication-control-plane",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "11-attribute-based-authentication-control-plane",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '11-attribute-based-authentication-control-plane'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=11-attribute-based-authentication-control-plane",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "11-attribute-based-authentication-control-plane",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'alice'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=alice",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "alice",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'alice'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=alice",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "alice",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '09-streams-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=09-streams-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "09-streams-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '09-streams-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=09-streams-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "09-streams-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '03-routing-many-hops'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=03-routing-many-hops",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "03-routing-many-hops",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '03-routing-many-hops'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=03-routing-many-hops",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "03-routing-many-hops",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '10-secure-channel-via-streams-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=10-secure-channel-via-streams-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "10-secure-channel-via-streams-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '10-secure-channel-via-streams-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=10-secure-channel-via-streams-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "10-secure-channel-via-streams-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '06-credentials-exchange-server'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=06-credentials-exchange-server",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "06-credentials-exchange-server",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '06-credentials-exchange-server'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=06-credentials-exchange-server",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "06-credentials-exchange-server",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '02-worker'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=02-worker",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "02-worker",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '02-worker'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=02-worker",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "02-worker",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '09-streams-responder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=09-streams-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "09-streams-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '09-streams-responder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=09-streams-responder",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "09-streams-responder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'vault-and-identities'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=vault-and-identities",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "vault-and-identities",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'vault-and-identities'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=vault-and-identities",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "vault-and-identities",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '11-attribute-based-authentication-edge-plane'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=11-attribute-based-authentication-edge-plane",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "11-attribute-based-authentication-edge-plane",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '11-attribute-based-authentication-edge-plane'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=11-attribute-based-authentication-edge-plane",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "11-attribute-based-authentication-edge-plane",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '06-credentials-exchange-client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=06-credentials-exchange-client",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "06-credentials-exchange-client",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '06-credentials-exchange-client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=06-credentials-exchange-client",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "06-credentials-exchange-client",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-routing-over-transport-two-hops-middle'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-routing-over-transport-two-hops-middle",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-two-hops-middle",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-routing-over-transport-two-hops-middle'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-routing-over-transport-two-hops-middle",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-routing-over-transport-two-hops-middle",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '05-secure-channel-over-two-transport-hops-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=05-secure-channel-over-two-transport-hops-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-two-transport-hops-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '05-secure-channel-over-two-transport-hops-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=05-secure-channel-over-two-transport-hops-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-two-transport-hops-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-unix-domain-socket-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-unix-domain-socket-transport-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-unix-domain-socket-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-unix-domain-socket-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-unix-domain-socket-transport-initiator",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "04-unix-domain-socket-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '06-credentials-exchange-issuer'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=06-credentials-exchange-issuer",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "06-credentials-exchange-issuer",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '06-credentials-exchange-issuer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=06-credentials-exchange-issuer",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "06-credentials-exchange-issuer",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=hello_ockam"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_api'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_api"
+                ],
+                "filter": {
+                    "name": "ockam_api",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'authority'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=authority",
+                    "--package=ockam_api"
+                ],
+                "filter": {
+                    "name": "authority",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'identity'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=identity",
+                    "--package=ockam_api"
+                ],
+                "filter": {
+                    "name": "identity",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'credential_issuer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=credential_issuer",
+                    "--package=ockam_api"
+                ],
+                "filter": {
+                    "name": "credential_issuer",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'auth_smoke'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=auth_smoke",
+                    "--package=ockam_api"
+                ],
+                "filter": {
+                    "name": "auth_smoke",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_multiaddr'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_multiaddr"
+                ],
+                "filter": {
+                    "name": "ockam_multiaddr",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'bench'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=bench",
+                    "--package=ockam_multiaddr"
+                ],
+                "filter": {
+                    "name": "bench",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'id'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=id",
+                    "--package=ockam_multiaddr"
+                ],
+                "filter": {
+                    "name": "id",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_transport_udp'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "ockam_transport_udp",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=client",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "client",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=client",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "client",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'echo_server'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=echo_server",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "echo_server",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'echo_server'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=echo_server",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "echo_server",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'rendezvous_server'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=rendezvous_server",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "rendezvous_server",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'rendezvous_server'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=rendezvous_server",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "rendezvous_server",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'puncher'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=puncher",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "puncher",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'puncher'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=puncher",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "puncher",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'utils'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=utils",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "utils",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=ockam_transport_udp"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_transport_uds'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_transport_uds"
+                ],
+                "filter": {
+                    "name": "ockam_transport_uds",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_transport_websocket'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_transport_websocket"
+                ],
+                "filter": {
+                    "name": "ockam_transport_websocket",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'send_receive'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=send_receive",
+                    "--package=ockam_transport_websocket"
+                ],
+                "filter": {
+                    "name": "send_receive",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_kafka'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_kafka"
+                ],
+                "filter": {
+                    "name": "ockam_kafka",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'ockam_kafka_alice'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=ockam_kafka_alice",
+                    "--package=ockam_kafka"
+                ],
+                "filter": {
+                    "name": "ockam_kafka_alice",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'ockam_kafka_alice'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=ockam_kafka_alice",
+                    "--package=ockam_kafka"
+                ],
+                "filter": {
+                    "name": "ockam_kafka_alice",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'ockam_kafka_bob'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=ockam_kafka_bob",
+                    "--package=ockam_kafka"
+                ],
+                "filter": {
+                    "name": "ockam_kafka_bob",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'ockam_kafka_bob'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=ockam_kafka_bob",
+                    "--package=ockam_kafka"
+                ],
+                "filter": {
+                    "name": "ockam_kafka_bob",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=ockam_kafka"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '01-inlet-outlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=01-inlet-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "01-inlet-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '01-inlet-outlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=01-inlet-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "01-inlet-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '03-outlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=03-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "03-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '03-outlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=03-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "03-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '03-inlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=03-inlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "03-inlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '03-inlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=03-inlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "03-inlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '02-inlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=02-inlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "02-inlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '02-inlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=02-inlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "02-inlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-outlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "04-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-outlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "04-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-inlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-inlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "04-inlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-inlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-inlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "04-inlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '02-outlet'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=02-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "02-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '02-outlet'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=02-outlet",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "02-outlet",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'tests'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=tests",
+                    "--package=tcp_inlet_and_outlet"
+                ],
+                "filter": {
+                    "name": "tests",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'mitm_node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=mitm_node"
+                ],
+                "filter": {
+                    "name": "mitm_node",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'tcp_mitm'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=tcp_mitm",
+                    "--package=mitm_node"
+                ],
+                "filter": {
+                    "name": "tcp_mitm",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'tcp_mitm'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=tcp_mitm",
+                    "--package=mitm_node"
+                ],
+                "filter": {
+                    "name": "tcp_mitm",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_app_lib'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_app"
+                ],
+                "filter": {
+                    "name": "ockam_app_lib",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'ockam_app'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ockam_app",
+                    "--package=ockam_app"
+                ],
+                "filter": {
+                    "name": "ockam_app",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'ockam_app'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=ockam_app",
+                    "--package=ockam_app"
+                ],
+                "filter": {
+                    "name": "ockam_app",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_command'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "ockam_command",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'ockam'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ockam",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "ockam",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'ockam'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=ockam",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "ockam",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cmd_node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cmd_node",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "cmd_node",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cmd_project'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cmd_project",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "cmd_project",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cmd_enroll'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cmd_enroll",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "cmd_enroll",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cmd_space'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cmd_space",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "cmd_space",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cmd_authenticated'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cmd_authenticated",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "cmd_authenticated",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'cmd_relay'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=cmd_relay",
+                    "--package=ockam_command"
+                ],
+                "filter": {
+                    "name": "cmd_relay",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'ockam_transport_ble'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=ockam_transport_ble"
+                ],
+                "filter": {
+                    "name": "ockam_transport_ble",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '04-routing-over-ble-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=04-routing-over-ble-transport-initiator",
+                    "--package=ockam_transport_ble"
+                ],
+                "filter": {
+                    "name": "04-routing-over-ble-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '04-routing-over-ble-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=04-routing-over-ble-transport-initiator",
+                    "--package=ockam_transport_ble"
+                ],
+                "filter": {
+                    "name": "04-routing-over-ble-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example '05-secure-channel-over-ble-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=05-secure-channel-over-ble-transport-initiator",
+                    "--package=ockam_transport_ble"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-ble-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example '05-secure-channel-over-ble-transport-initiator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=05-secure-channel-over-ble-transport-initiator",
+                    "--package=ockam_transport_ble"
+                ],
+                "filter": {
+                    "name": "05-secure-channel-over-ble-transport-initiator",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'example_blocks'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=example_blocks",
+                    "--package=example_blocks"
+                ],
+                "filter": {
+                    "name": "example_blocks",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'example_blocks'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=example_blocks",
+                    "--package=example_blocks"
+                ],
+                "filter": {
+                    "name": "example_blocks",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
