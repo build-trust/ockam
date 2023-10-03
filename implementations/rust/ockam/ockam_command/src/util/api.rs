@@ -91,13 +91,13 @@ pub(crate) fn show_secure_channel(
 pub(crate) fn create_secure_channel_listener(
     addr: &Address,
     authorized_identifiers: Option<Vec<Identifier>>,
-    identity: Option<String>,
+    identity_name: Option<String>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
         addr,
         authorized_identifiers,
         None,
-        identity,
+        identity_name,
     );
 
     let mut buf = vec![];
