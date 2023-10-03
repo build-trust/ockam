@@ -97,6 +97,10 @@ impl NodeManager {
         forwarders
     }
 
+    /// Create a new Relay
+    /// The Connection encapsulates the list of workers required on the relay route.
+    /// This route is monitored in the `InMemoryNode` and the workers are restarted if necessary
+    /// when the route is unresponsive
     pub async fn create_forwarder(
         &self,
         ctx: &Context,
@@ -143,9 +147,10 @@ impl NodeManager {
         }
     }
 
-    pub(super) async fn delete_forwarder(
+    /// This function removes an existing relay based on its remote address
+    pub async fn delete_forwarder(
         &self,
-        ctx: &mut Context,
+        ctx: &Context,
         req: &RequestHeader,
         remote_address: &str,
     ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
@@ -180,6 +185,7 @@ impl NodeManager {
         }
     }
 
+    /// This function finds an existing relay and returns its configuration
     pub(super) async fn show_forwarder(
         &self,
         req: &RequestHeader,
