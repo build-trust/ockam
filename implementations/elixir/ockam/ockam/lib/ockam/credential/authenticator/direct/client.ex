@@ -6,7 +6,11 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.AddMemberRequest do
 
   typedstruct do
     plugin(Ockam.TypedCBOR.Plugin)
-    field(:identity_id, binary(), minicbor: [key: 1])
+
+    field(:identity_id, Ockam.Identity.Identifier.t(),
+      minicbor: [key: 1, schema: Ockam.Identity.Identifier]
+    )
+
     field(:attributes, %{String.t() => String.t()}, minicbor: [key: 2])
   end
 end
@@ -17,13 +21,16 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.AttributesEntry do
   """
   use TypedStruct
 
+  alias Ockam.Identity.Identifier
+
   typedstruct do
     plugin(Ockam.TypedCBOR.Plugin)
     ## Rust encodes attribute values as a list of bytes
     field(:attributes, %{{:list, :integer} => {:list, :integer}}, minicbor: [key: 1])
     field(:added_at, integer(), minicbor: [key: 2])
     field(:expires, integer() | nil, minicbor: [key: 3])
-    field(:attested_by, binary() | nil, minicbor: [key: 4])
+
+    field(:attested_by, Identifier.t() | nil, minicbor: [key: 4, schema: Identifier])
   end
 end
 
@@ -35,8 +42,9 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.ListMembersResponse do
   """
 
   alias Ockam.Credential.Authenticator.Direct.Client.AttributesEntry
+  alias Ockam.Identity.Identifier
 
-  @schema {:map, :string, AttributesEntry.minicbor_schema()}
+  @schema {:map, :binary, AttributesEntry.minicbor_schema()}
 
   def decode_strict(data) do
     with {:ok, decoded} <- Ockam.TypedCBOR.decode_strict(@schema, data) do
@@ -50,7 +58,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client.ListMembersResponse do
              {:erlang.list_to_binary(key), :erlang.list_to_binary(val)}
            end)
 
-         {id, Map.put(entry, :attributes, attributes)}
+         {%Identifier{id: id}, Map.put(entry, :attributes, attributes)}
        end)}
     end
   end
@@ -70,7 +78,11 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
   alias Ockam.Credential.Authenticator.Direct.Client.AttributesEntry
   alias Ockam.Credential.Authenticator.Direct.Client.ListMembersResponse
 
-  @spec add_member(String.t(), %{String.t() => String.t()}, Ockam.Address.route()) ::
+  @spec add_member(
+          Ockam.Identity.Identifier.t(),
+          %{String.t() => String.t()},
+          Ockam.Address.route()
+        ) ::
           :ok | {:error, any()}
   def add_member(identity_id, attributes, api_route) do
     request =
@@ -106,7 +118,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
   end
 
   @spec list_members(Ockam.Address.route()) ::
-          {:ok, %{String.t() => AttributesEntry.t()}} | {:error, any()}
+          {:ok, %{Ockam.Identity.Identifier.t() => AttributesEntry.t()}} | {:error, any()}
   def list_members(api_route) do
     with {:ok, %ApiResponse{status: 200, body: response}} <-
            ApiClient.sync_request(:get, "/", "", api_route),
