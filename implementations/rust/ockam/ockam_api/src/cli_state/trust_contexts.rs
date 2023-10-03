@@ -1,11 +1,38 @@
-use super::Result;
+use super::{Result, StateItemTrait};
 use crate::config::cli::TrustContextConfig;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 
+use crate::cli_state::traits::{StateDirTrait, StateItemFileTrait};
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TrustContextsState {
     dir: PathBuf,
+}
+
+impl TrustContextsState {
+    pub fn read_config_from_path(&self, path: &str) -> Result<TrustContextConfig> {
+        let tcc = match std::fs::read_to_string(path) {
+            Ok(contents) => {
+                let mut tc = serde_json::from_str::<TrustContextConfig>(&contents)?;
+                tc.set_path(PathBuf::from(path));
+                tc
+            }
+            Err(_) => {
+                let state = self.get(path)?;
+                let mut tcc = state.config().clone();
+                tcc.set_path(state.path().clone());
+                tcc
+            }
+        };
+        Ok(tcc)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TrustContextFileInfo {
+    name: String,
+    path: PathBuf,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -23,7 +50,7 @@ impl TrustContextState {
 
 impl Display for TrustContextState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Name: {}", self.name)?;
+        writeln!(f, "Name: {}", self.name())?;
         Ok(())
     }
 }
@@ -53,22 +80,9 @@ mod traits {
         }
     }
 
-    impl TrustContextsState {
-        pub fn read_config_from_path(&self, path: &str) -> Result<TrustContextConfig> {
-            let tcc = match std::fs::read_to_string(path) {
-                Ok(contents) => {
-                    let mut tc = serde_json::from_str::<TrustContextConfig>(&contents)?;
-                    tc.set_path(PathBuf::from(path));
-                    tc
-                }
-                Err(_) => {
-                    let state = self.get(path)?;
-                    let mut tcc = state.config().clone();
-                    tcc.set_path(state.path().clone());
-                    tcc
-                }
-            };
-            Ok(tcc)
+    impl StateItemFileTrait for TrustContextState {
+        fn path(&self) -> &PathBuf {
+            &self.path
         }
     }
 
@@ -86,12 +100,10 @@ mod traits {
         fn load(path: PathBuf) -> Result<Self> {
             let name = file_stem(&path)?;
             let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
-            Ok(Self { name, path, config })
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
+            match serde_json::from_str(&contents) {
+                Ok(config) => Ok(Self { name, path, config }),
+                Err(source) => Err(source.handle_file_parse_error(path))
+            }
         }
 
         fn config(&self) -> &Self::Config {

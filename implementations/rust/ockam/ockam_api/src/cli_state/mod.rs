@@ -41,6 +41,13 @@ pub enum CliStateError {
     #[diagnostic(code("OCK500"))]
     Serde(#[from] serde_json::Error),
 
+    #[error("A file is invalid")]
+    #[diagnostic(code("OCK500"))]
+    InvalidFile{
+        source: serde_json::Error,
+        file: Box<dyn StateItemFileTrait>
+    },
+
     #[error(transparent)]
     #[diagnostic(code("OCK500"))]
     Ockam(#[from] ockam_core::Error),
@@ -96,6 +103,18 @@ impl From<CliStateError> for ockam_core::Error {
                 e,
             ),
         }
+    }
+}
+
+// Default Invalid File struct
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct InvalidItem {
+    path: PathBuf
+}
+
+impl StateItemFileTrait for InvalidItem {
+    fn path(&self) -> &PathBuf {
+        &self.path
     }
 }
 
@@ -242,7 +261,12 @@ impl CliState {
     pub fn delete_identity(&self, identity_state: IdentityState) -> Result<()> {
         // Abort if identity is being used by some running node.
         for node in self.nodes.list()? {
-            if node.config().identity_config()?.identifier() == identity_state.identifier() {
+            if node
+                .config()
+                .identity_config()?
+                .identifier()
+                == identity_state.identifier()
+            {
                 return Err(CliStateError::InvalidOperation(format!(
                     "Can't delete identity '{}' as it's being used by node '{}'",
                     &identity_state.name(),
@@ -342,6 +366,7 @@ impl CliState {
     /// This project should be the project that is created at the end of the enrollment procedure
     pub fn is_enrolled(&self) -> Result<bool> {
         let identity_state = self.identities.default()?;
+
         if !identity_state.is_enrolled() {
             return Ok(false);
         }
@@ -570,6 +595,7 @@ mod tests {
             let name = random_name();
             let vault_state = sut.vaults.get(&vault_name).unwrap();
             let vault: Vault = vault_state.get().await.unwrap();
+
             let identities = Identities::builder()
                 .with_vault(vault)
                 .with_identities_repository(sut.identities.identities_repository().await?)

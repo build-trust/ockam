@@ -1,7 +1,8 @@
-use crate::cli_state::{file_stem, CliState, CliStateError};
+use crate::cli_state::{file_stem, CliState, CliStateError, InvalidItem};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 use super::Result;
@@ -238,10 +239,22 @@ pub trait StateDirTrait: Sized + Send + Sync {
     }
 }
 
+/// This trait defines the methods to retrieve an file from a state directory,
+/// but does not validate if it's a correct config.
+/// Provides a way to delete invalid files gracefully.
+#[async_trait]
+pub trait StateItemFileTrait: Send + Sync + Debug {
+    fn delete(&self) -> Result<()> {
+        std::fs::remove_file(self.path())?;
+        Ok(())
+    }
+    fn path(&self) -> &PathBuf;
+}
+
 /// This trait defines the methods to retrieve an item from a state directory.
 /// The details of the item are defined in the `Config` type.
 #[async_trait]
-pub trait StateItemTrait: Sized + Send {
+pub trait StateItemTrait: Sized + Send + StateItemFileTrait {
     type Config: Serialize + for<'a> Deserialize<'a> + Send;
 
     /// Create a new item with the given config.
@@ -256,18 +269,28 @@ pub trait StateItemTrait: Sized + Send {
         std::fs::write(self.path(), contents)?;
         Ok(())
     }
-    fn delete(&self) -> Result<()> {
-        std::fs::remove_file(self.path())?;
-        Ok(())
-    }
-    fn path(&self) -> &PathBuf;
     fn config(&self) -> &Self::Config;
+}
+
+pub trait HandleFileParseError {
+    fn handle_file_parse_error(self, path: PathBuf) -> CliStateError;
+}
+
+impl HandleFileParseError for serde_json::Error {
+    fn handle_file_parse_error(self, path: PathBuf) -> CliStateError {
+        CliStateError::InvalidFile {
+            source: self,
+            file: Box::new(InvalidItem { path }),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::cli_state::{StateDirTrait, StateItemTrait};
     use std::path::{Path, PathBuf};
+
+    use super::StateItemFileTrait;
 
     #[test]
     fn test_is_item_path() {
@@ -297,10 +320,18 @@ mod tests {
         }
     }
 
+    #[derive(Debug)]
     struct TestConfigItem {
         path: PathBuf,
         config: String,
     }
+
+    impl StateItemFileTrait for TestConfigItem {
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
     impl StateItemTrait for TestConfigItem {
         type Config = String;
 
@@ -313,10 +344,6 @@ mod tests {
                 path,
                 config: "config".into(),
             })
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
         }
 
         fn config(&self) -> &Self::Config {

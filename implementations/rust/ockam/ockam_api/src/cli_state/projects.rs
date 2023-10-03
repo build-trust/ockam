@@ -142,6 +142,12 @@ mod traits {
         }
     }
 
+    impl StateItemFileTrait for ProjectState {
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
     #[async_trait]
     impl StateItemTrait for ProjectState {
         type Config = ProjectConfig;
@@ -156,12 +162,10 @@ mod traits {
         fn load(path: PathBuf) -> Result<Self> {
             let name = file_stem(&path)?;
             let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
-            Ok(Self { name, path, config })
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
+            match serde_json::from_str(&contents) {
+                Ok(config) => Ok(Self { name, path, config }),
+                Err(source) => Err(source.handle_file_parse_error(path))
+            }
         }
 
         fn config(&self) -> &Self::Config {

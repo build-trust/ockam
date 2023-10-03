@@ -35,12 +35,18 @@ impl VaultsState {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct InvalidVaultState {
+    path: PathBuf,
+    data_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultState {
     name: String,
     path: PathBuf,
     /// The path to the vault's storage config file, contained in the data directory
     data_path: PathBuf,
-    config: VaultConfig,
+    config: VaultConfig
 }
 
 impl VaultState {
@@ -164,7 +170,32 @@ mod traits {
         }
     }
 
-    #[async_trait]
+    impl StateItemFileTrait for VaultState {
+        fn delete(&self) -> Result<()> {
+            std::fs::remove_file(&self.path)?;
+            std::fs::remove_file(&self.data_path)?;
+            std::fs::remove_file(self.data_path.with_extension("json.lock"))?;
+            Ok(())
+        }
+
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
+    impl StateItemFileTrait for InvalidVaultState {
+        fn delete(&self) -> Result<()> {
+            std::fs::remove_file(&self.path)?;
+            std::fs::remove_file(&self.data_path)?;
+            std::fs::remove_file(self.data_path.with_extension("json.lock"))?;
+            Ok(())
+        }
+
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
     impl StateItemTrait for VaultState {
         type Config = VaultConfig;
 
@@ -185,25 +216,22 @@ mod traits {
         fn load(path: PathBuf) -> Result<Self> {
             let name = file_stem(&path)?;
             let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
             let data_path = VaultState::build_data_path(&name, &path);
-            Ok(Self {
-                name,
-                path,
-                data_path,
-                config,
-            })
-        }
-
-        fn delete(&self) -> Result<()> {
-            std::fs::remove_file(&self.path)?;
-            std::fs::remove_file(&self.data_path)?;
-            std::fs::remove_file(self.data_path.with_extension("json.lock"))?;
-            Ok(())
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
+            match serde_json::from_str(&contents) {
+                Ok(config) => Ok(Self {
+                    name,
+                    path,
+                    data_path,
+                    config,
+                }),
+                Err(source) => Err(CliStateError::InvalidFile {
+                    source,
+                    file: Box::new(InvalidVaultState {
+                        path,
+                        data_path,
+                    })
+                })
+            }
         }
 
         fn config(&self) -> &Self::Config {

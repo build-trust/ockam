@@ -1,7 +1,7 @@
 use super::Result;
 use crate::cli_state::{
     CliState, CliStateError, IdentityConfig, IdentityState, ProjectConfig, ProjectConfigCompact,
-    StateDirTrait, StateItemTrait, VaultState,
+    StateDirTrait, StateItemFileTrait, StateItemTrait, VaultState,
 };
 use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::CreateTransportJson;
@@ -53,6 +53,19 @@ impl NodesState {
         }
         // Remove node directory
         node.delete_sigkill(sigkill)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct InvalidNodeState {
+    path: PathBuf,
+}
+
+impl InvalidNodeState {
+    fn _delete(&self) -> Result<()> {
+        std::fs::remove_dir_all(&self.path)?;
+        std::fs::remove_dir(&self.path)?;
         Ok(())
     }
 }
@@ -508,6 +521,26 @@ mod traits {
         }
     }
 
+    impl StateItemFileTrait for NodeState {
+        fn delete(&self) -> Result<()> {
+            self._delete(false)
+        }
+
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
+    impl StateItemFileTrait for InvalidNodeState {
+        fn delete(&self) -> Result<()> {
+            self._delete()
+        }
+
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
     #[async_trait]
     impl StateItemTrait for NodeState {
         type Config = NodeConfig;
@@ -535,10 +568,18 @@ mod traits {
         fn load(path: PathBuf) -> Result<Self> {
             let paths = NodePaths::new(&path);
             let name = file_stem(&path)?;
-            let setup = {
+            let (path, setup) = {
                 let contents = std::fs::read_to_string(paths.setup())?;
-                serde_json::from_str(&contents)?
-            };
+
+                // I may be going overkill with trying to avoid temporarys, please forgive this humble new rustatcan
+                match serde_json::from_str(&contents) {
+                    Ok(config) => Ok((path, config)),
+                    Err(source) => Err(CliStateError::InvalidFile {
+                        source,
+                        file: Box::new(InvalidNodeState { path })
+                    })
+                }
+            }?;
             let version = {
                 let contents = std::fs::read_to_string(paths.version())?;
                 contents.parse::<ConfigVersion>()?
@@ -555,14 +596,6 @@ mod traits {
                 paths,
                 config,
             })
-        }
-
-        fn delete(&self) -> Result<()> {
-            self._delete(false)
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
         }
 
         fn config(&self) -> &Self::Config {

@@ -47,6 +47,12 @@ mod traits {
         }
     }
 
+    impl StateItemFileTrait for UserInfoState {
+        fn path(&self) -> &PathBuf {
+            &self.path
+        }
+    }
+
     #[async_trait]
     impl StateItemTrait for UserInfoState {
         type Config = UserInfoConfig;
@@ -59,12 +65,10 @@ mod traits {
 
         fn load(path: PathBuf) -> Result<Self> {
             let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
-            Ok(Self { path, config })
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
+            match serde_json::from_str(&contents) {
+                Ok(config) => Ok(Self { path, config }),
+                Err(source) => Err(source.handle_file_parse_error(path))
+            }
         }
 
         fn config(&self) -> &Self::Config {
