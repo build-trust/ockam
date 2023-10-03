@@ -133,7 +133,7 @@ fn spawn_default_node(opts: &CommandGlobalOpts) {
 mod tests {
     use super::*;
     use crate::GlobalArgs;
-    use ockam_api::cli_state::StateItemTrait;
+    use ockam_api::cli_state::StateItemFileTrait;
 
     #[test]
     fn test_initialize() {

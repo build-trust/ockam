@@ -109,7 +109,7 @@ pub fn create_default_identity(opts: &CommandGlobalOpts) {
 mod tests {
     use super::*;
     use crate::GlobalArgs;
-    use ockam_api::cli_state::StateItemTrait;
+    use ockam_api::cli_state::StateItemFileTrait;
 
     #[test]
     fn test_initialize() {
