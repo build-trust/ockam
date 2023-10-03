@@ -52,8 +52,8 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn delete_forwarder(
-        &mut self,
+    pub async fn delete_forwarder(
+        &self,
         ctx: &mut Context,
         req: &RequestHeader,
         remote_address: &str,
@@ -63,28 +63,27 @@ impl NodeManagerWorker {
             .await
     }
 
-    pub(super) async fn show_forwarder(
-        &mut self,
+    pub async fn show_forwarder(
+        &self,
         req: &RequestHeader,
         remote_address: &str,
     ) -> Result<Response<Option<ForwarderInfo>>, Response<Error>> {
         self.node_manager.show_forwarder(req, remote_address).await
     }
 
-    pub async fn get_forwarders(&self) -> Vec<ForwarderInfo> {
-        self.node_manager.get_forwarders().await
-    }
-
-    pub(super) async fn get_forwarders_response(
+    pub async fn get_forwarders(
         &self,
         req: &RequestHeader,
-    ) -> Response<Vec<ForwarderInfo>> {
+    ) -> Result<Response<Vec<ForwarderInfo>>, Response<Error>> {
         debug!("Handling ListForwarders request");
-        Response::ok(req).body(self.get_forwarders().await)
+        Ok(Response::ok(req).body(self.node_manager.get_forwarders().await))
     }
 }
 
 impl NodeManager {
+
+    /// This function returns a representation of the relays currently
+    /// registered on this node
     pub async fn get_forwarders(&self) -> Vec<ForwarderInfo> {
         let forwarders = self
             .registry
