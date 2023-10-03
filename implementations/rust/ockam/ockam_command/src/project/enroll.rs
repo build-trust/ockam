@@ -5,7 +5,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemFileTrait, StateItemTrait};
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::AuthorityNode;
 use ockam_api::enroll::enrollment::Enrollment;

@@ -10,7 +10,7 @@ pub use show::ShowCommand;
 use clap::{Args, Subcommand};
 use miette::{miette, Context, IntoDiagnostic};
 
-use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemFileTrait};
 use ockam_api::cloud::ProjectNode;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::Credentials;

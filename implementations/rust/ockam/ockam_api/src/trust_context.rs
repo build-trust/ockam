@@ -1,4 +1,4 @@
-use crate::cli_state::{CliState, ProjectConfigCompact, StateDirTrait, StateItemTrait};
+use crate::cli_state::{CliState, ProjectConfigCompact, StateDirTrait, StateItemFileTrait, StateItemTrait};
 use crate::cloud::project::Project;
 use crate::config::cli::TrustContextConfig;
 use miette::{IntoDiagnostic, WrapErr};
