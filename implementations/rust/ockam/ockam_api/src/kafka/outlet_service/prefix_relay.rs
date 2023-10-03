@@ -10,11 +10,11 @@ use ockam_core::{Address, AllowAll, AllowOnwardAddress};
 /// This service applies a prefix to the provided static forwarding address.
 /// This service was created mainly to keep full compatibility with the existing
 /// erlang implementation.
-pub struct PrefixForwarderService {
+pub struct PrefixRelayService {
     prefix: String,
     secure_channel_listener_flow_control_id: FlowControlId,
 }
-impl PrefixForwarderService {
+impl PrefixRelayService {
     pub async fn create(
         context: &Context,
         secure_channel_listener_flow_control_id: FlowControlId,
@@ -36,14 +36,14 @@ impl PrefixForwarderService {
                 worker_address,
                 worker,
                 AllowAll,
-                AllowOnwardAddress(DefaultAddress::FORWARDING_SERVICE.into()),
+                AllowOnwardAddress(DefaultAddress::RELAY_SERVICE.into()),
             )
             .await
     }
 }
 
 #[ockam::worker]
-impl Worker for PrefixForwarderService {
+impl Worker for PrefixRelayService {
     type Message = Vec<u8>;
     type Context = Context;
 
@@ -75,10 +75,7 @@ impl Worker for PrefixForwarderService {
 
         let new_address = format!("{}_{}", &self.prefix, address);
 
-        debug!(
-            "prefix forwarder, renamed from {} to {}",
-            address, new_address
-        );
+        debug!("prefix relay, renamed from {} to {}", address, new_address);
 
         let mut bytes = new_address.clone().into_bytes();
         let mut new_payload: Vec<u8> = vec![bytes.len() as u8];
@@ -94,7 +91,7 @@ impl Worker for PrefixForwarderService {
 
         ctx.forward(message).await?;
 
-        // The new forwarder needs to be reachable by the default secure channel listener
+        // The new relay needs to be reachable by the default secure channel listener
         ctx.flow_controls().add_consumer(
             Address::from_string(new_address),
             &self.secure_channel_listener_flow_control_id,

@@ -45,7 +45,7 @@
 ///              |               +-------------------------------------+
 ///              |                   |                           |
 ///              |                   |                           | create secure channel to control
-///              |                   |                           | via the forwarder
+///              |                   |                           | via the relay
 ///              v                   v                           |
 ///      +--------------+        +-------------------------------+-------+
 ///      | Authority    |        |                               |       |
@@ -67,10 +67,10 @@
 ///   - we create initially some secure channels to the Authority in order to retrieve credential
 ///     based on a one-time token generated with `ockam project ticket --attribute component=<name of node>`
 ///
-///   - then the control node creates a forwarder on the Orchestrator in order to accept TCP traffic without
+///   - then the control node creates a relay on the Orchestrator in order to accept TCP traffic without
 ///     having to open a port to the internet. It also starts a channel listener ("untrusted", accept all incoming requests for now)
 ///
-///   - on its side the edge node starts a secure channel via forwarder (named "forward_to_control_plane1"), to the "untrusted" listener
+///   - on its side the edge node starts a secure channel via relay (named "forward_to_control_plane1"), to the "untrusted" listener
 ///     with the secure channel address it creates an Inlet which will direct TCP traffic via the secure channel to get to the
 ///     control node and then to the "outlet" worker to reach the Python webserver
 ///

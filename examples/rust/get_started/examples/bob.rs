@@ -1,5 +1,5 @@
 use ockam::identity::SecureChannelListenerOptions;
-use ockam::remote::RemoteForwarderOptions;
+use ockam::remote::RemoteRelayOptions;
 use ockam::{node, Routed, TcpConnectionOptions, Worker};
 use ockam::{Context, Result};
 use ockam_transport_tcp::TcpTransportExtension;
@@ -48,19 +48,17 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // To allow Alice and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
-    // service on that node to create a forwarder for us.
+    // service on that node to create a relay for us.
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = node
-        .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
-        .await?;
-    println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
+    let relay = node.create_relay(node_in_hub, RemoteRelayOptions::new()).await?;
+    println!("\n[✓] RemoteRelay was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
-    println!("{}", forwarder.remote_address());
+    println!("{}", relay.remote_address());
 
     // We won't call ctx.stop() here, this program will run until you stop it with Ctrl-C
     Ok(())

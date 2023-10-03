@@ -12,7 +12,7 @@ use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::service::forwarder::SecureChannelsCreation;
+use ockam_api::nodes::service::relay::SecureChannelsCreation;
 use ockam_api::nodes::InMemoryNode;
 
 use ockam_api::route_to_multiaddr;

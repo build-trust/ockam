@@ -12,8 +12,8 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
-use ockam_api::nodes::models::forwarder::ForwarderInfo;
-use ockam_api::nodes::service::forwarder::Relays;
+use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::service::relay::Relays;
 use ockam_api::nodes::BackgroundNode;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -43,7 +43,7 @@ pub struct CreateCommand {
     to: Option<String>,
 
     /// Route to the node at which to create the relay
-    #[arg(long, id = "ROUTE", display_order = 900, value_parser = parse_at, default_value_t = default_forwarder_at())]
+    #[arg(long, id = "ROUTE", display_order = 900, value_parser = parse_at, default_value_t = default_relay_at())]
     at: MultiAddr,
 
     /// Authorized identity for secure channel connection
@@ -69,7 +69,7 @@ fn parse_at(input: &str) -> Result<MultiAddr> {
     Ok(ma)
 }
 
-pub fn default_forwarder_at() -> MultiAddr {
+pub fn default_relay_at() -> MultiAddr {
     MultiAddr::from_str("/project/default").expect("Default relay address is invalid")
 }
 
@@ -107,7 +107,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let output_messages = vec![
         format!(
-            "Creating relay forwarding service at {}...",
+            "Creating relay relay service at {}...",
             &cmd.at
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
@@ -155,7 +155,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     Ok(())
 }
 
-impl Output for ForwarderInfo {
+impl Output for RelayInfo {
     fn output(&self) -> Result<String> {
         let output = format!(
             r#"

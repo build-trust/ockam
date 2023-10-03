@@ -19,8 +19,7 @@ use ockam::identity::{
 };
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
-    Address, Context, ForwardingService, ForwardingServiceOptions, Result, Routed, TcpTransport,
-    Worker,
+    Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
@@ -55,13 +54,13 @@ use super::registry::Registry;
 pub(crate) mod background_node;
 pub(crate) mod credentials;
 mod flow_controls;
-pub mod forwarder;
 pub(crate) mod in_memory_node;
 pub mod message;
 mod node_identities;
 mod node_services;
 mod policy;
 mod portals;
+pub mod relay;
 mod secure_channel;
 mod transport;
 
@@ -436,12 +435,12 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
-        ForwardingService::create(
+        RelayService::create(
             ctx,
-            DefaultAddress::FORWARDING_SERVICE,
-            ForwardingServiceOptions::new()
+            DefaultAddress::RELAY_SERVICE,
+            RelayServiceOptions::new()
                 .service_as_consumer(api_flow_control_id)
-                .forwarder_as_consumer(api_flow_control_id),
+                .relay_as_consumer(api_flow_control_id),
         )
         .await?;
 
@@ -689,21 +688,17 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }
-            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
-                encode_response(
-                    self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
-                        .await,
-                )?
-            }
+            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
+                self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Consumer)
+                    .await,
+            )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
                 self.start_kafka_producer_service(ctx, req, dec).await?
             }
-            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
-                encode_response(
-                    self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
-                        .await,
-                )?
-            }
+            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
+                self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Producer)
+                    .await,
+            )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => {
                 self.start_kafka_direct_service(ctx, req, dec).await?
             }
@@ -716,30 +711,27 @@ impl NodeManagerWorker {
                 self.list_services_of_type(req, service_type).await?
             }
 
-            // ==*== Forwarder commands ==*==
+            // ==*== Relay commands ==*==
+            // TODO: change the path to 'relay' instead of 'forwarder'
             (Get, ["node", "forwarder", remote_address]) => {
-                encode_response(self.show_forwarder(req, remote_address).await)?
+                encode_response(self.show_relay(req, remote_address).await)?
             }
-            (Get, ["node", "forwarder"]) => encode_response(self.get_forwarders(req).await)?,
+            (Get, ["node", "forwarder"]) => encode_response(self.get_relays(req).await)?,
             (Delete, ["node", "forwarder", remote_address]) => {
-                encode_response(self.delete_forwarder(ctx, req, remote_address).await)?
+                encode_response(self.delete_relay(ctx, req, remote_address).await)?
             }
             (Post, ["node", "forwarder"]) => {
-                encode_response(self.create_forwarder(ctx, req, dec.decode()?).await)?
+                encode_response(self.create_relay(ctx, req, dec.decode()?).await)?
             }
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => self.get_inlets(req).await.to_vec()?,
-            (Get, ["node", "inlet", alias]) => {
-                encode_response(self.show_inlet(req, alias).await)?
-            }
+            (Get, ["node", "inlet", alias]) => encode_response(self.show_inlet(req, alias).await)?,
             (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
             (Get, ["node", "outlet", alias]) => {
                 encode_response(self.show_outlet(req, alias).await)?
             }
-            (Post, ["node", "inlet"]) => {
-                encode_response(self.create_inlet(req, dec, ctx).await)?
-            }
+            (Post, ["node", "inlet"]) => encode_response(self.create_inlet(req, dec, ctx).await)?,
             (Post, ["node", "outlet"]) => {
                 encode_response(self.create_outlet(ctx, req, dec.decode()?).await)?
             }

@@ -83,7 +83,7 @@ fn run_04_inlet_outlet_seperate_processes_secure_channel_via_ockam_hub() -> Resu
     let port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up, grab dynamic forwarding address
     let outlet = CmdBuilder::new("cargo run --example 04-outlet ockam.io:80").spawn()?;
-    outlet.match_stdout(r"(?i)RemoteForwarder was created on the node")?;
+    outlet.match_stdout(r"(?i)RemoteRelay was created on the node")?;
     let fwd_address = outlet.match_stdout(r"(?m)^FWD_(\w+)$")?.swap_remove(0).unwrap();
     println!("Forwarding address: {fwd_address}");
 

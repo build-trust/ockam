@@ -41,7 +41,7 @@ mod test {
 
     use crate::hop::Hop;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::secure_channel_map::ForwarderCreator;
+    use crate::kafka::secure_channel_map::RelayCreator;
     use crate::kafka::{
         ConsumerNodeAddr, KafkaInletController, KafkaPortalListener,
         KafkaSecureChannelControllerImpl,
@@ -51,12 +51,12 @@ mod test {
     //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
 
-    struct HopForwarderCreator {}
+    struct HopRelayCreator {}
 
     #[async_trait]
-    impl ForwarderCreator for HopForwarderCreator {
-        async fn create_forwarder(&self, context: &Context, alias: String) -> ockam::Result<()> {
-            trace!("creating mock forwarder for: {alias}");
+    impl RelayCreator for HopRelayCreator {
+        async fn create_relay(&self, context: &Context, alias: String) -> ockam::Result<()> {
+            trace!("creating mock relay for: {alias}");
             //replicating the same logic of the orchestrator by adding consumer__
             context
                 .start_worker(Address::from_string(format!("consumer__{alias}")), Hop)
@@ -74,7 +74,7 @@ mod test {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::try_from("/service/api")?),
-            Some(HopForwarderCreator {}),
+            Some(HopRelayCreator {}),
             "test_trust_context_id".to_string(),
         );
 
@@ -133,7 +133,7 @@ mod test {
         .await?;
 
         //before produce a new key, the consumer has to issue a Fetch request
-        // so the sidecar can react by creating the forwarder for the partition 1 of 'my-topic'
+        // so the sidecar can react by creating the relay for the partition 1 of 'my-topic'
         {
             let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
             handler
@@ -316,7 +316,7 @@ mod test {
         send_kafka_request(stream, header, request, ApiKey::ProduceKey).await;
     }
 
-    //this is needed in order to make the consumer create the forwarders to the secure
+    //this is needed in order to make the consumer create the relays to the secure
     //channel
     async fn simulate_first_kafka_consumer_empty_reply_and_ignore_result(
         consumer_bootstrap_port: u16,
@@ -328,7 +328,7 @@ mod test {
                 .unwrap();
         send_kafka_fetch_request(&mut kafka_client_connection).await;
         //we don't want the answer, but we need to be sure the
-        // message passed through and the forwarder had been created
+        // message passed through and the relay had been created
         mock_kafka_connection
             .stream
             .read_exact(&mut [0; 4])

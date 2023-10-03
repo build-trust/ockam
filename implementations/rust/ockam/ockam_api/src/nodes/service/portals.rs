@@ -524,7 +524,7 @@ impl InMemoryNode {
     ) -> Result<InletStatus> {
         // The addressing scheme is very flexible. Typically the node connects to
         // the cloud via secure channel and the with another secure channel via
-        // forwarder to the actual outlet on the target node. However it is also
+        // relay to the actual outlet on the target node. However it is also
         // possible that there is just a single secure channel used to go directly
         // to another node.
         let duration = wait_for_outlet_duration.unwrap_or(Duration::from_secs(5));

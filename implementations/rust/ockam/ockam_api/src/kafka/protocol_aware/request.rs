@@ -108,7 +108,7 @@ impl InletInterceptorImpl {
         let request: FetchRequest = decode_body(buffer, header.request_api_version)?;
 
         //we intercept every partition interested by the kafka client
-        //and create a forwarder for each
+        //and create a relay for each
         for topic in &request.topics {
             let topic_id = if header.request_api_version <= 12 {
                 topic.topic.0.to_string()
@@ -135,7 +135,7 @@ impl InletInterceptorImpl {
                 .collect();
 
             self.secure_channel_controller
-                .start_forwarders_for(context, &topic_id, partitions)
+                .start_relays_for(context, &topic_id, partitions)
                 .await
                 .map_err(InterceptError::Ockam)?
         }
