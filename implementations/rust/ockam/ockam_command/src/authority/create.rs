@@ -96,8 +96,8 @@ pub struct CreateCommand {
     #[arg(long = "vault", value_name = "VAULT")]
     vault: Option<String>,
 
-    /// Authority Identity
-    #[arg(long = "identity", value_name = "IDENTITY")]
+    /// Name of the Identity that the authority will use
+    #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 }
 
