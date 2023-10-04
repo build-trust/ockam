@@ -185,11 +185,11 @@ mod tests {
     #[tokio::test]
     async fn test_display() {
         let identities = identities();
-        let data = hex::decode("81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820b23304f9473622847ca80dfda0d10f12eebc03f4041a64c956a9051a64c956a9028201815840c1598a6f85215c118a4744310bebfae71ec19353e1ede1582787592013d65a70c80aa4a4855d16d9b696a887be9bd97b2271245124857d67c07e0203564c3706").unwrap();
+        let data = hex::decode("818258368201583285f68200815820a70967ee615d475107970f7da3c8e73c49845144050be85d505ef7ed4cff420af41a651d5c721a77e95f72820081584080b92b8209ccd69fd83dc8b896fc1828533bd8af205c49d31d230a2d2997be783ac95199e147a1600f5f1a0aa659dbe22f2102e5e13762e41e302f4f9d754700").unwrap();
         let identifier = identities
             .identities_creation()
             .import(
-                Some(&Identifier::from_str("Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f").unwrap()),
+                Some(&Identifier::from_str("I085f2aaa8b8f5a6f7523feedc3335af1778384aa").unwrap()),
                 &data,
             )
             .await
@@ -197,8 +197,8 @@ mod tests {
         let identity = identities.get_identity(&identifier).await.unwrap();
 
         let actual = format!("{identity}");
-        let expected = r#"Identifier:     Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f
-Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820b23304f9473622847ca80dfda0d10f12eebc03f4041a64c956a9051a64c956a9028201815840c1598a6f85215c118a4744310bebfae71ec19353e1ede1582787592013d65a70c80aa4a4855d16d9b696a887be9bd97b2271245124857d67c07e0203564c3706
+        let expected = r#"Identifier:     I085f2aaa8b8f5a6f7523feedc3335af1778384aa
+Change history: 818258368201583285f68200815820a70967ee615d475107970f7da3c8e73c49845144050be85d505ef7ed4cff420af41a651d5c721a77e95f72820081584080b92b8209ccd69fd83dc8b896fc1828533bd8af205c49d31d230a2d2997be783ac95199e147a1600f5f1a0aa659dbe22f2102e5e13762e41e302f4f9d754700
 "#;
         assert_eq!(actual, expected)
     }

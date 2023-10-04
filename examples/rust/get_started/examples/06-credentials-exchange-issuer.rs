@@ -26,15 +26,15 @@ async fn main(ctx: Context) -> Result<()> {
 
     let node = Node::builder().with_vault(vault).build(&ctx).await?;
 
-    let issuer_identity = hex::decode("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805").unwrap();
+    let issuer_identity = hex::decode("818258368201583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a651d4a0e1a77e94d0e8200815840c2a890d8282a63f7145e6c931b179df88af6d5d3d055b48e5064921ad5812c740ead074e296ce401d74f71ba8b108e3953ad8b05e481da953be6cc2896575b01").unwrap();
     let issuer = node.import_private_identity(None, &issuer_identity, &secret).await?;
     println!("issuer identifier {}", issuer);
 
     // Tell the credential issuer about a set of public identifiers that are
     // known, in advance, to be members of the production cluster.
     let known_identifiers = vec![
-        "I6342c580429b9a0733880bea4fa18f8055871130".try_into()?, // Client Identifier
-        "I2c3b0ef15c12fe43d405497fcfc46318da46d0f5".try_into()?, // Server Identifier
+        "I23cd53431a11c85ce75892f575718041ff7d1f56".try_into()?, // Client Identifier
+        "I4eecb209a3f9db547fb552c1e48d8e741d56ebfe".try_into()?, // Server Identifier
     ];
 
     // Tell this credential issuer about the attributes to include in credentials
