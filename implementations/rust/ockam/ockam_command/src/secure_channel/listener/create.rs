@@ -37,7 +37,8 @@ pub struct CreateCommand {
     #[arg(value_name = "VAULT", long, requires = "identity")]
     vault: Option<String>,
 
-    #[arg(value_name = "IDENTITY", long)]
+    /// Name of the Identity that the secure-channel listener will use
+    #[arg(value_name = "IDENTITY_NAME", long)]
     identity: Option<String>,
 }
 
