@@ -35,21 +35,15 @@ impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(run_impl, (options, self))
     }
-    Ok(())
-}
 }
 
-    
 pub fn check_relay_existence(relay_infos: &Vec<RelayInfo>, relay_name: &str) -> miette::Result<()> {
 // Iterate through the relay_infos vector and check if relay_name exists
 let relay_exists = relay_infos.iter().any(|relay_info| relay_info.name == relay_name);
-
-if relay_exists {
-    println!("Relay with name '{}' exists.", relay_name);
-} else {
+    
+if !relay_exists {
     return Err(miette!("Relay with name '{}' does not exist.", relay_name));
 }
-
 Ok(())
 }
 
