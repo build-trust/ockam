@@ -59,7 +59,6 @@ impl SoftwareVaultForSecureChannels {
         Ok(handle)
     }
 
-    // TODO: Do we really need it?
     /// Return Secret Buffer.
     pub fn get_secret_buffer(&self, handle: &SecretBufferHandle) -> Option<Vec<u8>> {
         self.ephemeral_buffer_secrets

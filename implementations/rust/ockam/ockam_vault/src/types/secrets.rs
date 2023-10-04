@@ -1,6 +1,7 @@
 use ockam_core::compat::vec::Vec;
 
-/// A handle to a secret inside a vault.
+/// Implementation-specific arbitrary vector of bytes that allows a concrete Vault implementation
+/// to address a specific secret that it stores.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct HandleToSecret(Vec<u8>);
 
