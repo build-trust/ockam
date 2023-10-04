@@ -354,7 +354,7 @@ impl Handshake {
 
 cfg_if! {
     if #[cfg(any(not(feature = "disable_default_noise_protocol"), feature = "OCKAM_XX_25519_AES256_GCM_SHA256"))] {
-        pub const PROTOCOL_NAME: &[u8; 32] = b"OCKAM_XX_25519_AES256_GCM_SHA256";
+        pub const PROTOCOL_NAME: &[u8; 32] = b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
     } else if #[cfg(feature = "OCKAM_XX_25519_AES128_GCM_SHA256")] {
         pub const PROTOCOL_NAME: &[u8; 32] = b"OCKAM_XX_25519_AES128_GCM_SHA256";
     } else if #[cfg(feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s")] {
