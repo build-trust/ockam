@@ -36,14 +36,14 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create an Identity representing the server
     // Load an identity corresponding to the following public identifier
-    // I2c3b0ef15c12fe43d405497fcfc46318da46d0f5
+    // I4eecb209a3f9db547fb552c1e48d8e741d56ebfe
     //
     // We're hard coding this specific identity because its public identifier is known
     // to the credential issuer as a member of the production cluster.
-    let change_history = hex::decode("81a201583ba20101025835a40282018158201d387ce453816d91159740a55e9a62ad3b58be9ecf7ef08760c42c0d885b6c2e03f4041a64dd4074051a77a9437402820181584053de69d82c9c4b12476c889b437be1d9d33bd0041655c4836a3a57ac5a67703e7f500af5bacaed291cfd6783d255fe0f0606638577d087a5612bfb4671f2b70a").unwrap();
+    let change_history = hex::decode("818258368201583285f682008158201d387ce453816d91159740a55e9a62ad3b58be9ecf7ef08760c42c0d885b6c2ef41a651d4a3b1a77e94d3b8200815840b2d831d21875fe428c600e071feaa6781393bcba6d0a769d9fe7b1ff0c961399d39f517508662de5806fa57ec1fd5c13e03bd27cd9c0cf047402271edc945808").unwrap();
     let server = node.import_private_identity(None, &change_history, &secret).await?;
 
-    let issuer_identity = "81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805";
+    let issuer_identity = "818258368201583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a651d4a0e1a77e94d0e8200815840c2a890d8282a63f7145e6c931b179df88af6d5d3d055b48e5064921ad5812c740ead074e296ce401d74f71ba8b108e3953ad8b05e481da953be6cc2896575b01";
     let issuer = node.import_identity_hex(None, issuer_identity).await?;
 
     // Connect with the credential issuer and authenticate using the latest private

@@ -55,8 +55,8 @@ force_kill_node() {
   run_failure "$OCKAM" service start authenticated --addr my_authenticated --at n1
 
   # Check we can start service, but only once with the same name
-  run_success "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81a201583ba20101025835a4028201815820984249b1a11c6933002d02019f408ec0bdb7f3058068227a472986ea588ec67003f4041a64e49a5e051a77b09d5e02820181584002c2cc20acf3d7d59d67c420c3c29d4ebb1ebe483bfaba7fb046f59de96284ebfb570d17539e5d4989b74f22af12261b9c1d5eecf731e2d19907b092f6c47d04
-  run_failure "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81a201583ba20101025835a4028201815820984249b1a11c6933002d02019f408ec0bdb7f3058068227a472986ea588ec67003f4041a64e49a5e051a77b09d5e02820181584002c2cc20acf3d7d59d67c420c3c29d4ebb1ebe483bfaba7fb046f59de96284ebfb570d17539e5d4989b74f22af12261b9c1d5eecf731e2d19907b092f6c47d04
+  run_success "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 818258368201583285f68200815820530d1c2e9822433b679a66a60b9c2ed47c370cd0ce51cbe1a7ad847b5835a963f41a651d4a5c1a77e94d5c820081584022a2ec3a3c1b46c0dd90310bc0bed34ddf77dcb01fea0bf738f689fd195e45dfee58bf5e0d9a46f7f2bbb1a737858d4cb669728f0e63f98da87eecfc2cfe8a00
+  run_failure "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 818258368201583285f68200815820530d1c2e9822433b679a66a60b9c2ed47c370cd0ce51cbe1a7ad847b5835a963f41a651d4a5c1a77e94d5c820081584022a2ec3a3c1b46c0dd90310bc0bed34ddf77dcb01fea0bf738f689fd195e45dfee58bf5e0d9a46f7f2bbb1a737858d4cb669728f0e63f98da87eecfc2cfe8a00
 }
 
 @test "node - is restarted with default services" {
