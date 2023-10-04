@@ -77,7 +77,6 @@ ockam_core = { path = "../ockam_core", version = "^0.86.0", default_features = f
 ockam_executor = { path = "../ockam_executor", version = "^0.54.0", default-features = false, optional = true }
 ockam_macros = { path = "../ockam_macros", version = "^0.31.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.59.0", default-features = false, optional = true }
-once_cell = { version = "1", optional = true, default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
 serde_json = { version = "1", optional = true }
@@ -87,7 +86,5 @@ tracing-error = { version = "0.2", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
 
 [dev-dependencies]
-cddl-cat = { version = "0.6.1" }
 hex = { version = "0.4", default-features = false }
-once_cell = { version = "1", default-features = false }
 tempfile = { version = "3.8.0" }

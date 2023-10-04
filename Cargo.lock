@@ -4982,7 +4982,6 @@ dependencies = [
 name = "ockam_node"
 version = "0.91.0"
 dependencies = [
- "cddl-cat",
  "cfg-if",
  "fs2",
  "futures 0.3.28",
@@ -4993,7 +4992,6 @@ dependencies = [
  "ockam_executor",
  "ockam_macros",
  "ockam_transport_core",
- "once_cell",
  "serde",
  "serde_bare",
  "serde_json",
