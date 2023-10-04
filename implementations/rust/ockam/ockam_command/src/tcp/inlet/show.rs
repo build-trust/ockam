@@ -17,7 +17,7 @@ use crate::{fmt_ok, Result};
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
-/// Delete a TCP Inlet
+/// Show a TCP Inlet's details
 #[derive(Clone, Debug, Args)]
 #[command(
 before_help = docs::before_help(PREVIEW_TAG),
