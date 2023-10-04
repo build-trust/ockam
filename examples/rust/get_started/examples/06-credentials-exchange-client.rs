@@ -30,18 +30,18 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create an Identity representing the client
     // We preload the client vault with a change history and secret key corresponding to the identity identifier
-    // I6342c580429b9a0733880bea4fa18f8055871130
+    // I23cd53431a11c85ce75892f575718041ff7d1f56
     // which is an identifier known to the credential issuer, with some preset attributes
     //
     // We're hard coding this specific identity because its public identifier is known
     // to the credential issuer as a member of the production cluster.
-    let change_history = hex::decode("81a201583ba20101025835a4028201815820530d1c2e9822433b679a66a60b9c2ed47c370cd0ce51cbe1a7ad847b5835a96303f4041a64dd4060051a77a94360028201815840042fff8f6c80603fb1cec4a3cf1ff169ee36889d3ed76184fe1dfbd4b692b02892df9525c61c2f1286b829586d13d5abf7d18973141f734d71c1840520d40a0e").unwrap();
+    let change_history = hex::decode("818258368201583285f68200815820530d1c2e9822433b679a66a60b9c2ed47c370cd0ce51cbe1a7ad847b5835a963f41a651d4a5c1a77e94d5c820081584022a2ec3a3c1b46c0dd90310bc0bed34ddf77dcb01fea0bf738f689fd195e45dfee58bf5e0d9a46f7f2bbb1a737858d4cb669728f0e63f98da87eecfc2cfe8a00").unwrap();
     let client = node.import_private_identity(None, &change_history, &secret).await?;
     println!("issuer identifier {}", client);
 
     // Connect to the authority node and ask that node to create a
     // credential for the client.
-    let issuer_identity = "81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805";
+    let issuer_identity = "818258368201583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a651d4a0e1a77e94d0e8200815840c2a890d8282a63f7145e6c931b179df88af6d5d3d055b48e5064921ad5812c740ead074e296ce401d74f71ba8b108e3953ad8b05e481da953be6cc2896575b01";
     let issuer = node.import_identity_hex(None, issuer_identity).await?;
 
     // The authority node already knows the public identifier of the client
