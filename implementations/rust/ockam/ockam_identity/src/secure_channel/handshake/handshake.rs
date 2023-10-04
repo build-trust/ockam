@@ -123,7 +123,12 @@ impl Handshake {
         // decrypt rs.pubKey
         let rs_pub_key = Self::read_message2_encrypted_key(message)?;
         let rs_pub_key = self.hash_and_decrypt(&mut state, rs_pub_key).await?;
-        state.rs = Some(X25519PublicKey(rs_pub_key.try_into().unwrap())); // FIXME
+        let rs_pub_key = X25519PublicKey(
+            rs_pub_key
+                .try_into()
+                .map_err(|_| XXError::MessageLenMismatch)?,
+        );
+        state.rs = Some(rs_pub_key);
 
         // ck, k = HKDF(ck, DH(e, rs), 2)
         let dh = self.dh(state.e()?, state.rs()?).await?;
@@ -165,7 +170,12 @@ impl Handshake {
         // decrypt rs key
         let rs_pub_key = Self::read_message3_encrypted_key(message)?;
         let rs_pub_key = self.hash_and_decrypt(&mut state, rs_pub_key).await?;
-        state.rs = Some(X25519PublicKey(rs_pub_key.try_into().unwrap())); // FIXME
+        let rs_pub_key = X25519PublicKey(
+            rs_pub_key
+                .try_into()
+                .map_err(|_| XXError::MessageLenMismatch)?,
+        );
+        state.rs = Some(rs_pub_key);
 
         // ck, k = HKDF(ck, DH(e, rs), 2), n = 0
         let dh = self.dh(state.e()?, state.rs()?).await?;

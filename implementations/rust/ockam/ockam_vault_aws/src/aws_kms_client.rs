@@ -178,8 +178,12 @@ impl AwsKmsClient {
             let k = p256::ecdsa::VerifyingKey::from_public_key_der(k.as_ref())
                 .map_err(|_| Error::InvalidPublicKeyDer)?;
             let public_key = k.to_sec1_bytes().to_vec();
-            let public_key = ECDSASHA256CurveP256PublicKey(public_key.try_into().unwrap());
-            return Ok(VerifyingPublicKey::ECDSASHA256CurveP256(public_key)); // FIXME
+            let public_key = ECDSASHA256CurveP256PublicKey(
+                public_key
+                    .try_into()
+                    .map_err(|_| Error::InvalidPublicKeyDer)?,
+            );
+            return Ok(VerifyingPublicKey::ECDSASHA256CurveP256(public_key));
         }
         log::error!(%key, "key type not supported to get a public key");
         Err(Error::UnsupportedKeyType.into())
@@ -207,7 +211,11 @@ impl AwsKmsClient {
             log::debug!(%key, "signed message");
             let sig = p256::ecdsa::Signature::from_der(sig.as_ref())
                 .map_err(|_| Error::InvalidSignatureDer)?;
-            let sig = ECDSASHA256CurveP256Signature(sig.to_vec().try_into().unwrap()); //FIXME
+            let sig = ECDSASHA256CurveP256Signature(
+                sig.to_vec()
+                    .try_into()
+                    .map_err(|_| Error::InvalidSignatureDer)?,
+            );
             return Ok(Signature::ECDSASHA256CurveP256(sig));
         }
         log::error!(%key, "no signature received from aws");
