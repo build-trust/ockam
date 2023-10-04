@@ -22,10 +22,6 @@ pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     name: String,
 
-    /// Path to the Vault storage file
-    #[arg(short, long)]
-    path: Option<String>,
-
     #[arg(long, default_value = "false")]
     aws_kms: bool,
 }
