@@ -65,13 +65,13 @@ impl TicketCommand {
         node_rpc(run_impl, (opts, self));
     }
 
-    fn attributes(&self) -> Result<HashMap<&str, &str>> {
+    fn attributes(&self) -> Result<HashMap<String, String>> {
         let mut attributes = HashMap::new();
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
             let key = parts.next().ok_or(miette!("key expected"))?;
             let value = parts.next().ok_or(miette!("value expected)"))?;
-            attributes.insert(key, value);
+            attributes.insert(key.to_string(), value.to_string());
         }
         Ok(attributes)
     }

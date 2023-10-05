@@ -1,18 +1,17 @@
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
-use ockam_core::CowStr;
 use std::collections::HashMap;
 use std::time::Duration;
 
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct AddMember<'a> {
+pub struct AddMember {
     #[n(1)] member: Identifier,
-    #[b(2)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
+    #[b(2)] attributes: HashMap<String, String>,
 }
 
-impl<'a> AddMember<'a> {
+impl AddMember {
     pub fn new(member: Identifier) -> Self {
         AddMember {
             member,
@@ -20,11 +19,8 @@ impl<'a> AddMember<'a> {
         }
     }
 
-    pub fn with_attributes<S: Into<CowStr<'a>>>(mut self, attributes: HashMap<S, S>) -> Self {
-        self.attributes = attributes
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect();
+    pub fn with_attributes(mut self, attributes: HashMap<String, String>) -> Self {
+        self.attributes = attributes;
         self
     }
 
@@ -32,7 +28,7 @@ impl<'a> AddMember<'a> {
         &self.member
     }
 
-    pub fn attributes(&self) -> &HashMap<CowStr, CowStr> {
+    pub fn attributes(&self) -> &HashMap<String, String> {
         &self.attributes
     }
 }
@@ -40,13 +36,13 @@ impl<'a> AddMember<'a> {
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateToken<'a> {
-    #[b(1)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
+pub struct CreateToken {
+    #[b(1)] attributes: HashMap<String, String>,
     #[n(2)] ttl_secs: Option<u64>,
     #[n(3)] ttl_count: Option<u64>,
 }
 
-impl<'a> CreateToken<'a> {
+impl CreateToken {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         CreateToken {
@@ -56,11 +52,8 @@ impl<'a> CreateToken<'a> {
         }
     }
 
-    pub fn with_attributes<S: Into<CowStr<'a>>>(mut self, attributes: HashMap<S, S>) -> Self {
-        self.attributes = attributes
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect();
+    pub fn with_attributes(mut self, attributes: HashMap<String, String>) -> Self {
+        self.attributes = attributes;
         self
     }
 
@@ -74,11 +67,8 @@ impl<'a> CreateToken<'a> {
         self
     }
 
-    pub fn into_owned_attributes(self) -> HashMap<String, String> {
+    pub fn attributes(self) -> HashMap<String, String> {
         self.attributes
-            .into_iter()
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
-            .collect()
     }
 
     pub fn ttl_count(&self) -> Option<u64> {

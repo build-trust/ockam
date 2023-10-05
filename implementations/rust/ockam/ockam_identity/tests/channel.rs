@@ -190,14 +190,14 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     //FIXME: only the last credential is kept around in the storage
     // assert_eq!(
     //     "true".as_bytes(),
-    //     alice_attributes.attrs().get("is_alice").unwrap()
+    //     alice_attributes.attrs().get(&"is_alice").unwrap()
     // );
     assert_eq!(
-        "true".as_bytes(),
-        alice_attributes.attrs().get("alice_2".as_bytes()).unwrap()
+        alice_attributes.get(&"alice_2".into()).unwrap(),
+        &"true".into()
     );
-    assert!(alice_attributes.attrs().get("is_bob".as_bytes()).is_none());
-    assert!(alice_attributes.attrs().get("bob_2".as_bytes()).is_none());
+    assert!(alice_attributes.get(&"is_bob".into()).is_none());
+    assert!(alice_attributes.get(&"bob_2".into()).is_none());
 
     let bob_attributes = secure_channels
         .identities()
@@ -206,17 +206,14 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .await?
         .unwrap();
 
-    assert!(bob_attributes.attrs().get("is_alice".as_bytes()).is_none());
-    assert!(bob_attributes.attrs().get("alice_2".as_bytes()).is_none());
+    assert!(bob_attributes.get(&"is_alice".into()).is_none());
+    assert!(bob_attributes.get(&"alice_2".into()).is_none());
     //FIXME: only the last credential is kept around in the storage
     // assert_eq!(
     //     "true".as_bytes(),
-    //     bob_attributes.attrs().get("is_bob").unwrap()
+    //     bob_attributes.attrs().get(&"is_bob").unwrap()
     // );
-    assert_eq!(
-        "true".as_bytes(),
-        bob_attributes.attrs().get("bob_2".as_bytes()).unwrap()
-    );
+    assert_eq!(bob_attributes.get(&"bob_2".into()).unwrap(), &"true".into());
 
     context.stop().await
 }

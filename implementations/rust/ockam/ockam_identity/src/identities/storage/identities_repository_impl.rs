@@ -1,6 +1,5 @@
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -11,8 +10,8 @@ use crate::models::{ChangeHistory, Identifier};
 use crate::storage::{InMemoryStorage, Storage};
 use crate::utils::now;
 use crate::{
-    AttributesEntry, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
-    IdentityAttributesReader, IdentityAttributesWriter,
+    AttributeName, AttributeValue, AttributesEntry, IdentitiesReader, IdentitiesRepository,
+    IdentitiesWriter, IdentityAttributesReader, IdentityAttributesWriter,
 };
 
 /// Implementation of `IdentityAttributes` trait based on an underlying `Storage`
@@ -112,16 +111,15 @@ impl IdentityAttributesWriter for IdentitiesStorage {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: Vec<u8>,
-        attribute_value: Vec<u8>,
+        attribute_name: AttributeName,
+        attribute_value: AttributeValue,
     ) -> Result<()> {
         let mut attributes = match self.get_attributes(subject).await? {
-            Some(entry) => (*entry.attrs()).clone(),
-            None => BTreeMap::new(),
+            Some(entry) => entry,
+            None => AttributesEntry::empty_attested_by(subject.clone())?,
         };
         attributes.insert(attribute_name, attribute_value);
-        let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.clone()));
-        self.put_attributes(subject, entry).await
+        self.put_attributes(subject, attributes).await
     }
 
     async fn delete(&self, identity: &Identifier) -> Result<()> {

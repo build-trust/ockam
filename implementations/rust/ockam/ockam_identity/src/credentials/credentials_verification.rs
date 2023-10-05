@@ -6,9 +6,7 @@ use crate::{
     TimestampInSeconds,
 };
 
-use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::VaultForVerifyingSignatures;
 
@@ -177,12 +175,7 @@ impl CredentialsVerification {
                 credential_and_purpose_key_attestation,
             )
             .await?;
-
         let map = credential_data.credential_data.subject_attributes.map;
-        let map: BTreeMap<_, _> = map
-            .into_iter()
-            .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
-            .collect();
 
         self.identities_repository
             .put_attributes(

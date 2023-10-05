@@ -1,3 +1,4 @@
+use crate::{AttributeName, AttributeValue};
 use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::IncomingAccessControl;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
@@ -10,14 +11,14 @@ use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
 /// Access control checking that message senders have a specific set of attributes
 #[derive(Clone)]
 pub struct CredentialAccessControl {
-    required_attributes: Vec<(Vec<u8>, Vec<u8>)>,
+    required_attributes: Vec<(AttributeName, AttributeValue)>,
     storage: Arc<dyn IdentitiesRepository>,
 }
 
 impl CredentialAccessControl {
     /// Create a new credential access control
     pub fn new(
-        required_attributes: &[(Vec<u8>, Vec<u8>)],
+        required_attributes: &[(AttributeName, AttributeValue)],
         storage: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {
@@ -53,7 +54,7 @@ impl IncomingAccessControl for CredentialAccessControl {
             };
 
             for required_attribute in self.required_attributes.iter() {
-                let attr_val = match attributes.attrs().get(&required_attribute.0) {
+                let attr_val = match attributes.get(&required_attribute.0) {
                     Some(v) => v,
                     None => return Ok(false), // No required key
                 };

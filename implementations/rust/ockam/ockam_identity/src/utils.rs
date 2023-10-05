@@ -1,10 +1,8 @@
-use minicbor::bytes::ByteVec;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 use crate::models::{Attributes, CredentialSchemaIdentifier, TimestampInSeconds};
-use crate::IdentityError;
+use crate::{AttributeName, AttributeValue, IdentityError};
 
 /// Create a new timestamp using the system time
 #[cfg(feature = "std")]
@@ -30,7 +28,7 @@ pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInS
 /// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
     schema_id: CredentialSchemaIdentifier,
-    map: BTreeMap<ByteVec, ByteVec>,
+    map: BTreeMap<AttributeName, AttributeValue>,
 }
 
 impl AttributesBuilder {
@@ -43,9 +41,8 @@ impl AttributesBuilder {
     }
 
     /// Add an attributes to the [`Attributes`]
-    pub fn with_attribute(mut self, key: impl Into<Vec<u8>>, value: impl Into<Vec<u8>>) -> Self {
-        self.map.insert(key.into().into(), value.into().into());
-
+    pub fn with_attribute(mut self, key: &str, value: &str) -> Self {
+        self.map.insert(key.into(), value.into());
         self
     }
 

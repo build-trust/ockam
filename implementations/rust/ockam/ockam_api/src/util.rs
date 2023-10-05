@@ -452,7 +452,7 @@ pub mod test_utils {
             .export()?;
 
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
+            .with_attribute(TRUST_CONTEXT_ID, "test_trust_context_id")
             .build();
 
         let credential = secure_channels

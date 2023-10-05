@@ -6,7 +6,7 @@ use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
 /// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CredentialAndPurposeKeyData {
     /// [`CredentialData`]
     pub credential_data: CredentialData,
@@ -72,9 +72,7 @@ impl Credentials {
 mod tests {
     use crate::identities::identities;
     use crate::models::CredentialSchemaIdentifier;
-    use crate::Attributes;
-    use minicbor::bytes::ByteVec;
-    use ockam_core::compat::collections::BTreeMap;
+    use crate::utils::AttributesBuilder;
     use ockam_core::Result;
     use std::time::Duration;
 
@@ -87,12 +85,9 @@ mod tests {
         let subject = creation.create_identity().await?;
         let credentials = identities.credentials();
 
-        let mut map: BTreeMap<ByteVec, ByteVec> = Default::default();
-        map.insert(b"key".to_vec().into(), b"value".to_vec().into());
-        let subject_attributes = Attributes {
-            schema: CredentialSchemaIdentifier(1),
-            map,
-        };
+        let subject_attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
+            .with_attribute("key", "value")
+            .build();
 
         let credential = credentials
             .credentials_creation()

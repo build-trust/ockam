@@ -81,7 +81,7 @@ impl Worker for EnrollmentTokenIssuer {
                     let ttl_count = att.ttl_count();
                     // TODO: Use ttl_duration
                     match self
-                        .issue_token(&from, att.into_owned_attributes(), duration, ttl_count)
+                        .issue_token(&from, att.attributes(), duration, ttl_count)
                         .await
                     {
                         Ok(otc) => Response::ok(&req).body(&otc).to_vec()?,
@@ -105,7 +105,7 @@ pub trait Members {
         &self,
         ctx: &Context,
         identifier: Identifier,
-        attributes: HashMap<&str, &str>,
+        attributes: HashMap<String, String>,
     ) -> miette::Result<()>;
 
     async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
@@ -124,7 +124,7 @@ impl Members for AuthorityNode {
         &self,
         ctx: &Context,
         identifier: Identifier,
-        attributes: HashMap<&str, &str>,
+        attributes: HashMap<String, String>,
     ) -> miette::Result<()> {
         let req = Request::post("/").body(AddMember::new(identifier).with_attributes(attributes));
         self.secure_client
@@ -174,7 +174,7 @@ pub trait TokenIssuer {
     async fn create_token(
         &self,
         ctx: &Context,
-        attributes: HashMap<&str, &str>,
+        attributes: HashMap<String, String>,
         duration: Option<Duration>,
         ttl_count: Option<u64>,
     ) -> miette::Result<OneTimeCode>;
@@ -185,7 +185,7 @@ impl TokenIssuer for AuthorityNode {
     async fn create_token(
         &self,
         ctx: &Context,
-        attributes: HashMap<&str, &str>,
+        attributes: HashMap<String, String>,
         duration: Option<Duration>,
         ttl_count: Option<u64>,
     ) -> miette::Result<OneTimeCode> {

@@ -93,15 +93,8 @@ impl Output for IdentifierWithAttributes {
         let mut output = String::new();
         let attrs: Vec<String> = self
             .entry
-            .attrs()
             .iter()
-            .map(|(k, v)| {
-                format!(
-                    "{}: {}",
-                    String::from_utf8_lossy(k),
-                    String::from_utf8_lossy(v)
-                )
-            })
+            .map(|(k, v)| format!("{}: {}", k.to_string(), v.to_string()))
             .collect();
         let attrs_str = attrs.join(", ");
         writeln!(output, "Identifier: {}", self.identifier)?;

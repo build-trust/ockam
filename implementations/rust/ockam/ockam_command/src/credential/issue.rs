@@ -78,12 +78,11 @@ async fn run_impl(
 
     let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
         .with_attribute(
-            TRUST_CONTEXT_ID.to_vec(),
-            auth_identity_identifier.to_string(),
+            TRUST_CONTEXT_ID,
+            auth_identity_identifier.to_string().as_str(),
         );
     for (key, value) in cmd.attributes()? {
-        attributes_builder =
-            attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());
+        attributes_builder = attributes_builder.with_attribute(&key, value.as_str());
     }
 
     let credential = identities

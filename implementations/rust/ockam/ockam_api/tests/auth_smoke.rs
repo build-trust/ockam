@@ -29,10 +29,7 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
         .await
         .unwrap()
         .expect("found");
-    assert_eq!(
-        Some(&b"value"[..].to_vec()),
-        entry.attrs().get("attr".as_bytes())
-    );
+    assert_eq!(Some(&"value".into()), entry.get(&"attr".into()));
     assert_eq!(None, entry.attested_by());
     assert_eq!(None, entry.expires());
 

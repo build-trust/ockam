@@ -48,8 +48,7 @@ async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<
         .create_identity()
         .await?;
 
-    let mut attributes = HashMap::<&str, &str>::default();
-    attributes.insert("key", "value");
+    let attributes = HashMap::from([("key".to_string(), "value".to_string())]);
 
     admin
         .client
@@ -139,8 +138,7 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
         .create_identity()
         .await?;
 
-    let mut attributes = HashMap::<&str, &str>::default();
-    attributes.insert("key", "value");
+    let attributes = HashMap::from([("key".to_string(), "value".to_string())]);
 
     admin
         .client
@@ -160,15 +158,12 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
 
     let attrs = members.get(&member).unwrap();
 
-    assert_eq!(attrs.attrs().len(), 2);
+    assert_eq!(attrs.len(), 2);
     assert_eq!(
-        attrs.attrs().get("trust_context_id".as_bytes()),
-        Some(&b"123456".to_vec())
+        attrs.get(&"trust_context_id".into()),
+        Some(&"123456".into())
     );
-    assert_eq!(
-        attrs.attrs().get("key".as_bytes()),
-        Some(&b"value".to_vec())
-    );
+    assert_eq!(attrs.get(&"key".into()), Some(&"value".into()));
 
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
@@ -215,11 +210,8 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
         .create_identity()
         .await?;
 
-    let mut attributes1 = HashMap::<&str, &str>::default();
-    attributes1.insert("key1", "value1");
-
-    let mut attributes2 = HashMap::<&str, &str>::default();
-    attributes2.insert("key2", "value2");
+    let attributes1 = HashMap::from([("key1".to_string(), "value1".to_string())]);
+    let attributes2 = HashMap::from([("key2".to_string(), "value2".to_string())]);
 
     let now = now()?;
 
@@ -255,29 +247,23 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
     assert!(members1.get(&admin1.identifier).is_some());
     assert!(members1.get(&admin2.identifier).is_some());
     let attrs = members1.get(&member1).unwrap();
-    assert_eq!(attrs.attrs().len(), 2);
+    assert_eq!(attrs.len(), 2);
     assert_eq!(
-        attrs.attrs().get("trust_context_id".as_bytes()),
-        Some(&b"123456".to_vec())
+        attrs.get(&"trust_context_id".into()),
+        Some(&"123456".into())
     );
-    assert_eq!(
-        attrs.attrs().get("key1".as_bytes()),
-        Some(&b"value1".to_vec())
-    );
+    assert_eq!(attrs.get(&"key1".into()), Some(&"value1".into()));
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin1.identifier.clone()));
 
     let attrs = members1.get(&member2).unwrap();
-    assert_eq!(attrs.attrs().len(), 2);
+    assert_eq!(attrs.len(), 2);
     assert_eq!(
-        attrs.attrs().get("trust_context_id".as_bytes()),
-        Some(&b"123456".to_vec())
+        attrs.get(&"trust_context_id".into()),
+        Some(&"123456".into())
     );
-    assert_eq!(
-        attrs.attrs().get("key2".as_bytes()),
-        Some(&b"value2".to_vec())
-    );
+    assert_eq!(attrs.get(&"key2".into()), Some(&"value2".into()));
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin2.identifier.clone()));
@@ -375,9 +361,10 @@ async fn setup(
 
     let mut trusted_identities = HashMap::<Identifier, AttributesEntry>::new();
 
-    let mut attrs = BTreeMap::<Vec<u8>, Vec<u8>>::new();
-    attrs.insert(b"ockam-role".to_vec(), b"enroller".to_vec());
-    attrs.insert(b"trust_context_id".to_vec(), b"123456".to_vec());
+    let attrs = BTreeMap::from([
+        ("ockam-role".into(), "enroller".into()),
+        ("trust_context_id".into(), "123456".into()),
+    ]);
 
     for _ in 0..number_of_admins {
         let admin = secure_channels

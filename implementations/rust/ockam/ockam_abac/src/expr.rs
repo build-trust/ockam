@@ -9,6 +9,7 @@ use core::fmt;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::{vec, Vec};
+use ockam_identity::AttributeValue;
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
@@ -195,6 +196,16 @@ pub fn seq<T: IntoIterator<Item = Expr>>(xs: T) -> Expr {
 
 pub fn str<S: Into<String>>(s: S) -> Expr {
     Expr::Str(s.into())
+}
+
+pub fn attribute_value(s: AttributeValue) -> Expr {
+    match s {
+        AttributeValue::Str(v) => Expr::Str(v),
+        AttributeValue::Int(v) => Expr::Int(v),
+        AttributeValue::Float(v) => Expr::Float(v),
+        AttributeValue::Bool(v) => Expr::Bool(v),
+        AttributeValue::Seq(v) => Expr::Seq(v.into_iter().map(attribute_value).collect()),
+    }
 }
 
 pub fn and<I>(exprs: I) -> Expr

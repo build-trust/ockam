@@ -5,7 +5,7 @@ use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttribu
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{CowStr, Result, Routed, Worker};
+use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 use std::collections::HashMap;
 use tracing::trace;
@@ -31,22 +31,16 @@ impl DirectAuthenticator {
         })
     }
 
-    async fn add_member<'a>(
+    async fn add_member(
         &self,
         enroller: &Identifier,
         id: &Identifier,
-        attrs: &HashMap<CowStr<'a>, CowStr<'a>>,
+        attrs: &HashMap<String, String>,
     ) -> Result<()> {
         let auth_attrs = attrs
             .iter()
-            .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-            .chain(
-                [(
-                    TRUST_CONTEXT_ID.to_owned(),
-                    self.trust_context.as_bytes().to_vec(),
-                )]
-                .into_iter(),
-            )
+            .map(|(k, v)| (k.clone().into(), v.clone().into()))
+            .chain([(TRUST_CONTEXT_ID.into(), self.trust_context.clone().into())].into_iter())
             .collect();
         let entry = AttributesEntry::new(auth_attrs, now()?, None, Some(enroller.clone()));
         self.attributes_writer.put_attributes(id, entry).await

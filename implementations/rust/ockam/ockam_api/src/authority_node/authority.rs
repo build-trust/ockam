@@ -195,7 +195,7 @@ impl Authority {
             self.secure_channels.identities().repository(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
-            configuration.project_identifier(),
+            configuration.project_identifier().as_str(),
         );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
