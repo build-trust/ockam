@@ -1,6 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::trace;
@@ -48,7 +48,10 @@ async fn run_impl(
     let node_name = extract_address_value(&to)?;
 
     if !opts.state.nodes.get(&node_name)?.is_running() {
-        return Err(miette!("The node '{}' is not running", node_name));
+        opts.terminal
+            .write_line("There are no relays available. Create one with 'ockam relay create'.")?;
+
+        return Ok(());
     }
 
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
