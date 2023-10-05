@@ -288,7 +288,7 @@ async fn start_authority_node(
                 Ok(state) => state.config().identifier(),
                 Err(_) => {
                     debug!("creating default identity");
-                    let cmd = identity::CreateCommand::new("authority".into(), None);
+                    let cmd = identity::CreateCommand::new("authority".into(), None, None);
                     cmd.create_identity(opts.clone()).await?
                 }
             }
