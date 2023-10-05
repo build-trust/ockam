@@ -56,72 +56,39 @@ pub async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
-    // Construct a request to delete the relay
-    let delete_relay_request = Request::delete(format!("/node/forwarder/{relay_name}",));
+    // Check if relay exists
+    node.ask_and_get_reply::<_, ()>(&ctx, Request::get(format!("/node/forwarder/{relay_name}")))
+        .await?
+        .found()
+        .into_diagnostic()?
+        .ok_or(miette!("Relay with name '{}' does not exist", relay_name))?;
+    
+    if opts
+        .terminal
+        .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this relay?")?
+    {
+        let relay_name = cmd.relay_name.clone();
+        let at = get_node_name(&opts.state, &cmd.at);
+        let node_name = parse_node_name(&at)?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        node.tell(
+            &ctx,
+            Request::delete(format!("/node/forwarder/{relay_name}",)),
+        )
+        .await?;
 
-    // Send the request to delete the relay
-    let delete_response = node.ask_and_get_reply::<()>(&ctx, delete_relay_request.clone()).await?;
-
-    match delete_response.status() {
-        reqwest::StatusCode::OK => {
-            // Deletion was successful
-            if opts
-                .terminal
-                .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this relay?")?
-            {
-                opts.terminal
-                    .stdout()
-                    .plain(fmt_ok!(
-                        "Relay with name {} on Node {} has been deleted.",
-                        relay_name,
-                        node_name
-                    ))
-                    .machine(&relay_name)
-                    .json(serde_json::json!({ "relay": { "name": relay_name,
-                        "node": node_name } }))
-                    .write_line()
-                    .unwrap();
-            }
-        }
-        reqwest::StatusCode::NOT_FOUND => {
-            // Relay not found, handle this case as needed
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!(
-                    "Relay with name {} on Node {} was not found.",
-                    relay_name,
-                    node_name
-                ))
-                .machine(&relay_name)
-                .json(serde_json::json!({ "relay": { "name": relay_name,
-                    "node": node_name } }))
-                .write_line()
-                .unwrap();
-        }
-        _ => {
-            // Handle other status codes as needed
-            // For example, you can log an error message
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!(
-                    "Unexpected status code: {:?}",
-                    delete_response.status()
-                ))
-                .write_line()
-                .unwrap();
-        }
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!(
+                "Relay with name {} on Node {} has been deleted.",
+                relay_name,
+                node_name
+            ))
+            .machine(&relay_name)
+            .json(serde_json::json!({ "relay": { "name": relay_name,
+                "node": node_name } }))
+            .write_line()
+            .unwrap();
     }
-
-    // Construct a request to get relay information after deletion
-    let relay_info_request = Request::get(format!("/node/forwarder/{relay_name}",));
-
-    // Send the request and await the response
-    let relay_info: RelayInfo = node.ask_and_get_reply(&ctx, relay_info_request).await?;
-
-    let relay_infos: Vec<RelayInfo> = get_relays.await?;
-
-    // Pass relay_infos to check_relay_existence
-    check_relay_existence(&relay_infos, &relay_name)?;
-
     Ok(())
 }
