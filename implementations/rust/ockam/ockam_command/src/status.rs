@@ -20,6 +20,8 @@ use ockam_node::MessageSendReceiveOptions;
 use crate::util::{api, node_rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
+use crate::version::Version;
+
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
@@ -190,11 +192,12 @@ fn build_plain_output(
     cmd: &StatusCommand,
     status: &StatusData,
 ) -> Result<Vec<u8>> {
+    let controller_version = Version::version();
     let mut plain = Vec::new();
     writeln!(
         &mut plain,
         "Controller version: {}",
-        status.orchestrator_version.controller_version
+        controller_version
     )?;
     writeln!(
         &mut plain,
