@@ -101,7 +101,7 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
             1
 
           _other ->
-            Logger.warn(
+            Logger.warning(
               "Configured TCP port listener is not running: #{inspect(port)} - #{inspect(status)}"
             )
 

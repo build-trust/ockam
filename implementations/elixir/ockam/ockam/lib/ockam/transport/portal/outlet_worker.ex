@@ -109,7 +109,7 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   ## Linked processes terminating normally should not stop the outlet.
   ## Technically this should not happen
   def handle_info({:EXIT, from, :normal}, state) do
-    Logger.warn("Received exit :normal signal from #{inspect(from)}")
+    Logger.warning("Received exit :normal signal from #{inspect(from)}")
     {:noreply, state}
   end
 

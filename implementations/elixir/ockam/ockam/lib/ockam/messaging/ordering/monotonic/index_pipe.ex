@@ -44,7 +44,7 @@ defmodule Ockam.Messaging.Ordering.Monotonic.IndexPipe.Receiver do
             {:ok, Map.put(state, :current_index, index)}
 
           false ->
-            Logger.warn(
+            Logger.warning(
               "Cannot send message #{inspect(message)} with index #{inspect(index)}. Current index: #{inspect(current_index(state))}"
             )
 

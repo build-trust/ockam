@@ -237,7 +237,7 @@ defmodule Ockam.Node do
     case Message.onward_route(message) do
       [] ->
         report_message(:unsent, nil, message)
-        # Logger.warn("Routing message with no onward_route: #{inspect(message)}")
+        # Logger.warning("Routing message with no onward_route: #{inspect(message)}")
         :ok
 
       [first | _rest] ->

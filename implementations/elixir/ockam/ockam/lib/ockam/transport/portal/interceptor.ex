@@ -196,7 +196,7 @@ defmodule Ockam.Transport.Portal.Interceptor do
 
       {:error, reason} ->
         ## TODO: should we return error here?
-        Logger.warn("Cannot parse tunnel message #{inspect(reason)}, ignoring")
+        Logger.warning("Cannot parse tunnel message #{inspect(reason)}, ignoring")
         {:ok, payload, state}
     end
   end
