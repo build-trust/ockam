@@ -255,6 +255,20 @@ pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
     s.is_terminal()
 }
 
+pub fn is_enrolled_guard(cli_state: &CliState, identity_name: Option<&str>) -> miette::Result<()> {
+    if !cli_state
+        .identities
+        .get_or_default(identity_name)
+        .map(|s| s.is_enrolled())
+        .unwrap_or(false)
+    {
+        return Err(miette!(
+            "Please enroll using 'ockam enroll' before using this command"
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use ockam_api::address::extract_address_value;
