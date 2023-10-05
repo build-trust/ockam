@@ -198,6 +198,7 @@ fn build_plain_output(
         &mut plain,
         "Controller version: {}",
         controller_version
+
     )?;
     writeln!(
         &mut plain,
