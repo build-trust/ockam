@@ -196,7 +196,7 @@ defmodule Ockam.Healthcheck do
 
   defp log_healthcheck_error(reason, duration, target) do
     log_message = log_message("Healthcheck ERROR: #{inspect(reason)}", duration, target)
-    Logger.warn(log_message)
+    Logger.warning(log_message)
   end
 
   defp log_message(message, duration, target) do

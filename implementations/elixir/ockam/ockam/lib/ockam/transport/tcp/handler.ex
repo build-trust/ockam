@@ -110,13 +110,13 @@ defmodule Ockam.Transport.TCP.Handler do
         {:noreply, state}
 
       {:error, reason} ->
-        Logger.warn("Unauthorized message #{inspect(reason)}")
+        Logger.warning("Unauthorized message #{inspect(reason)}")
         {:noreply, state}
     end
   end
 
   def handle_info(other, state) do
-    Logger.warn("TCP HANDLER Received unknown message #{inspect(other)} #{inspect(state)}")
+    Logger.warning("TCP HANDLER Received unknown message #{inspect(other)} #{inspect(state)}")
     {:noreply, state}
   end
 

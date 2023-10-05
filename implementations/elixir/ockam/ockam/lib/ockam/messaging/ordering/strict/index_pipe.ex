@@ -46,11 +46,11 @@ defmodule Ockam.Messaging.Ordering.Strict.IndexPipe.Receiver do
       {:ok, index, message} ->
         case compare_index(index, state) do
           :low ->
-            Logger.warn("Ignoring message #{inspect(message)} with index: #{inspect(index)}")
+            Logger.warning("Ignoring message #{inspect(message)} with index: #{inspect(index)}")
             {:ok, state}
 
           :high ->
-            Logger.warn("Enqueue message #{inspect(message)} with index: #{inspect(index)}")
+            Logger.warning("Enqueue message #{inspect(message)} with index: #{inspect(index)}")
             {:ok, enqueue_message(index, message, state)}
 
           :next ->
