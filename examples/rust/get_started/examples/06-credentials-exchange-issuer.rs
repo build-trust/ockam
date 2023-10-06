@@ -1,11 +1,14 @@
-use ockam::access_control::AllowAll;
-use ockam::access_control::IdentityIdAccessControl;
+use ockam::identity::utils::now;
 use ockam::identity::SecureChannelListenerOptions;
-use ockam::identity::{CredentialsIssuer, Vault};
+use ockam::identity::Vault;
 use ockam::{Context, Result, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
+use ockam_api::authenticator::credentials_issuer::CredentialsIssuer;
+use ockam_api::authenticator::{InMemoryMembersStorage, Member, MembersStorage};
 use ockam_api::DefaultAddress;
 use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -37,6 +40,9 @@ async fn main(ctx: Context) -> Result<()> {
         "I2c3b0ef15c12fe43d405497fcfc46318da46d0f5".try_into()?, // Server Identifier
     ];
 
+    let now = now()?;
+    let members_storage = Arc::new(InMemoryMembersStorage::new());
+
     // Tell this credential issuer about the attributes to include in credentials
     // that will be issued to each of the above known_identifiers, after and only
     // if, they authenticate with their corresponding latest private key.
@@ -47,16 +53,16 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // For a different application this attested attribute set can be different and
     // distinct for each identifier, but for this example we'll keep things simple.
-    let credential_issuer = CredentialsIssuer::new(
-        node.identities().repository(),
-        node.credentials(),
-        issuer.identifier(),
-        "trust_context".into(),
-    );
-    for identifier in known_identifiers.iter() {
-        node.identities()
-            .repository()
-            .put_attribute_value(identifier, b"cluster".to_vec(), b"production".to_vec())
+    let credential_issuer = CredentialsIssuer::new(members_storage.clone(), node.credentials(), issuer.identifier());
+    for identifier in known_identifiers {
+        members_storage
+            .add_member(Member::new(
+                identifier,
+                BTreeMap::from([(b"cluster".to_vec(), b"production".to_vec())]),
+                None,
+                now,
+                false,
+            ))
             .await?;
     }
 
@@ -76,17 +82,11 @@ async fn main(ctx: Context) -> Result<()> {
     .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
-    // authenticated secure channels with our known public identifiers.
-    let allow_known = IdentityIdAccessControl::new(known_identifiers);
+    // authenticated secure channels.
     node.flow_controls()
         .add_consumer(DefaultAddress::CREDENTIAL_ISSUER, &sc_listener_flow_control_id);
-    node.start_worker_with_access_control(
-        DefaultAddress::CREDENTIAL_ISSUER,
-        credential_issuer,
-        allow_known,
-        AllowAll,
-    )
-    .await?;
+    node.start_worker(DefaultAddress::CREDENTIAL_ISSUER, credential_issuer)
+        .await?;
 
     // Initialize TCP Transport, create a TCP listener, and wait for connections.
     let tcp = node.create_tcp_transport().await?;

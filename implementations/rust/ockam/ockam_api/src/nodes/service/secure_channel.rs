@@ -318,17 +318,21 @@ impl NodeManager {
                     .credential()?,
             )
         } else {
-            match self.trust_context().ok() {
-                Some(tc) => {
-                    if let Some(t) = timeout {
-                        ockam_node::compat::timeout(t, tc.get_credential(ctx, identifier))
-                            .await
-                            .map_err(|e| {
-                                ockam_core::Error::new(Origin::Api, Kind::Timeout, e.to_string())
-                            })?
+            match self.credential_retriever().ok() {
+                Some(credential_retriever) => {
+                    let credential = if let Some(t) = timeout {
+                        ockam_node::compat::timeout(
+                            t,
+                            credential_retriever.retrieve(ctx, identifier),
+                        )
+                        .await
+                        .map_err(|e| {
+                            ockam_core::Error::new(Origin::Api, Kind::Timeout, e.to_string())
+                        })??
                     } else {
-                        tc.get_credential(ctx, identifier).await
-                    }
+                        credential_retriever.retrieve(ctx, identifier).await?
+                    };
+                    Some(credential)
                 }
                 None => None,
             }
@@ -354,11 +358,13 @@ impl NodeManager {
             options
         };
 
+        // TODO: Replace with CredentialsRetriever implementation and let SecureChannel retrieve
+        //  credentials itself
         let options = if let Some(credential) = credential {
-            options.with_credential(credential)
+            options.with_credential(credential)?
         } else if let Some(credential) = self.get_credential(ctx, identifier, None, timeout).await?
         {
-            options.with_credential(credential)
+            options.with_credential(credential)?
         } else {
             options
         };
@@ -368,8 +374,8 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let options = match self.trust_context.clone() {
-            Some(trust_context) => options.with_trust_context(trust_context),
+        let options = match self.authority_identifier.clone() {
+            Some(authority_identifier) => options.with_authority(authority_identifier),
             None => options,
         };
 
@@ -432,11 +438,20 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let options = if let Ok(trust_context) = self.trust_context() {
-            options.with_trust_context(trust_context.clone())
+        let options = if let Ok(authority_identifier) = self.authority_identifier() {
+            options.with_authority(authority_identifier.clone())
         } else {
             options
         };
+
+        // TODO: Replace with CredentialsRetriever implementation and let SecureChannelListener
+        //  retrieve credentials itself
+        let options =
+            if let Some(credential) = self.get_credential(ctx, &identifier, None, None).await? {
+                options.with_credential(credential)?
+            } else {
+                options
+            };
 
         let listener = secure_channels
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
@@ -457,11 +472,6 @@ impl NodeManager {
 
         ctx.flow_controls().add_consumer(
             DefaultAddress::UPPERCASE_SERVICE,
-            listener.flow_control_id(),
-        );
-
-        ctx.flow_controls().add_consumer(
-            DefaultAddress::CREDENTIALS_SERVICE,
             listener.flow_control_id(),
         );
 

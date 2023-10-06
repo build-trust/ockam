@@ -1,6 +1,6 @@
 use anyhow::anyhow;
-use ockam::identity::OneTimeCode;
 use ockam::Result;
+use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::identity::EnrollmentTicket;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;

@@ -1,8 +1,8 @@
-use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::DefaultAddress;
 
+use crate::authenticator::PreTrustedIdentities;
 use ockam::identity::utils::now;
-use ockam::identity::{AttributesEntry, Identifier, TRUST_CONTEXT_ID};
+use ockam::identity::{AttributesEntry, Identifier};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
@@ -139,25 +139,12 @@ impl TrustedIdentity {
         self.identifier.clone()
     }
 
-    pub fn attributes_entry(
-        &self,
-        project_identifier: String,
-        authority_identifier: &Identifier,
-    ) -> AttributesEntry {
+    pub fn attributes_entry(&self) -> AttributesEntry {
         let mut map: BTreeMap<Vec<u8>, Vec<u8>> = BTreeMap::new();
         for (name, value) in self.attributes.clone().iter() {
             map.insert(name.as_bytes().to_vec(), value.as_bytes().to_vec());
         }
 
-        map.insert(
-            TRUST_CONTEXT_ID.to_vec(),
-            project_identifier.as_bytes().to_vec(),
-        );
-        AttributesEntry::new(
-            map,
-            now().unwrap(),
-            None,
-            Some(authority_identifier.clone()),
-        )
+        AttributesEntry::new(map, now().unwrap(), None, None)
     }
 }

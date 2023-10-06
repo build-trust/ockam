@@ -1,1 +1,0 @@
-This command will change the default trust context. The default trust context is used when creating a node if not specified otherwise.

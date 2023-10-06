@@ -181,16 +181,18 @@ async fn retrieve_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Resu
         &project.name
     };
 
-    if !cmd.force {
-        if let Ok(trust_context) = opts.state.trust_contexts.get(trust_context_name) {
-            if trust_context.config().id() != project.id {
-                return Err(miette!(
-                    "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
-                    trust_context_name
-                ).into());
-            }
-        }
-    }
+    // FIXME: Check if Identity matches
+    // if !cmd.force {
+    //     if let Ok(trust_context) = opts.state.trust_contexts.get(trust_context_name) {
+    //         if trust_context.config().authority().unwrap().identity() != project.authority_identity
+    //         {
+    //             return Err(miette!(
+    //                 "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
+    //                 trust_context_name
+    //             ).into());
+    //         }
+    //     }
+    // }
 
     opts.state
         .projects

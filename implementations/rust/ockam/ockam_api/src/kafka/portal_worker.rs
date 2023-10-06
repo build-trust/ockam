@@ -745,7 +745,7 @@ mod test {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(MultiAddr::default()),
-            "test_trust_context_id".to_string(),
+            "authority_id".to_string(),
         )
         .into_trait();
 
@@ -800,7 +800,7 @@ mod test {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handler.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::default()),
-            "test_trust_context_id".to_string(),
+            "authority_id".to_string(),
         )
         .into_trait();
 

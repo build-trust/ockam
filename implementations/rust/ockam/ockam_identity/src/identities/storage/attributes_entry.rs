@@ -1,7 +1,6 @@
-use crate::models::{Identifier, TimestampInSeconds};
+use crate::models::TimestampInSeconds;
 use minicbor::{Decode, Encode};
-use ockam_core::compat::borrow::ToOwned;
-use ockam_core::compat::{collections::BTreeMap, vec::Vec};
+use ockam_core::compat::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 
 /// An entry on the AuthenticatedIdentities table.
@@ -13,7 +12,7 @@ pub struct AttributesEntry {
     #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
     #[n(2)] added: TimestampInSeconds,
     #[n(3)] expires: Option<TimestampInSeconds>,
-    #[n(4)] attested_by: Option<Identifier>,
+    #[n(4)] attested_by: Option<String>,
 }
 
 impl AttributesEntry {
@@ -26,7 +25,7 @@ impl AttributesEntry {
         attrs: BTreeMap<Vec<u8>, Vec<u8>>,
         added: TimestampInSeconds,
         expires: Option<TimestampInSeconds>,
-        attested_by: Option<Identifier>,
+        attested_by: Option<String>,
     ) -> Self {
         Self {
             attrs,
@@ -52,7 +51,7 @@ impl AttributesEntry {
     }
 
     /// Who attested this attributes for this identity identifier
-    pub fn attested_by(&self) -> Option<Identifier> {
-        self.attested_by.to_owned()
+    pub fn attested_by(&self) -> Option<String> {
+        self.attested_by.clone()
     }
 }

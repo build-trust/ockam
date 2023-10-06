@@ -1,8 +1,8 @@
 use crate::identities::{IdentitiesKeys, IdentitiesRepository};
 use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
 use crate::{
-    Credentials, CredentialsServer, CredentialsServerModule, Identifier, IdentitiesBuilder,
-    IdentitiesCreation, IdentitiesReader, IdentitiesStorage, Identity, PurposeKeys, Vault,
+    Credentials, Identifier, IdentitiesBuilder, IdentitiesCreation, IdentitiesReader,
+    IdentitiesStorage, Identity, PurposeKeys, Vault,
 };
 
 use ockam_core::compat::sync::Arc;
@@ -89,11 +89,6 @@ impl Identities {
             self.purpose_keys(),
             self.identities_repository.clone(),
         ))
-    }
-
-    /// Return the identities credentials server
-    pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-        Arc::new(CredentialsServerModule::new(self.credentials()))
     }
 }
 

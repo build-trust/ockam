@@ -50,6 +50,12 @@ pub enum IdentityError {
     InvalidHex,
     /// Secret Key doesn't correspond to the Identity
     WrongSecretKey,
+    /// CredentialsRetriever returned more than 1 Credential
+    OnlyOneCredentialShouldBePresent,
+    /// Zero credentials were returned by CredentialsRetriever
+    EmptyCredentials,
+    /// CredentialsRetriever was already set
+    CredentialsRetrieverAlreadySet,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

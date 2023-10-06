@@ -69,8 +69,8 @@ pub(crate) async fn add_default_project_policy(
     resource: &Resource,
 ) -> miette::Result<()> {
     let expr = eq([
-        ident("subject.trust_context_id"),
-        str(project.id.to_string()),
+        ident("subject.authority"),
+        str(project.authority.unwrap().identity_id().to_string()), // FIXME
     ]);
     let bdy = Policy::new(expr);
     let req = Request::post(policy_path(resource, &Action::new("handle_message"))).body(bdy);

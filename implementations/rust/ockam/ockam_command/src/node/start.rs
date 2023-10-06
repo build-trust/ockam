@@ -66,9 +66,6 @@ async fn run_impl(
         &node_name,                                    // The selected node name
         &node_setup.api_transport()?.addr.to_string(), // The selected node api address
         None,                                          // No project information available
-        None,                                          // No trusted identities
-        None,                                          // "
-        None,                                          // "
         None,                                          // Launch config
         None,                                          // Authority Identity
         None,                                          // Credential

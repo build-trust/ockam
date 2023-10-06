@@ -1,4 +1,0 @@
-```sh
-# To delete a trust context given its name
-$ ockam trust-context delete t
-```

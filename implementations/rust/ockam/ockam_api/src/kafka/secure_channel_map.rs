@@ -9,8 +9,9 @@ use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID_UTF8,
+    SecureChannelRegistryEntry, SecureChannels,
 };
+use ockam_abac::attribute_access_control::AUTHORITY_ATTRIBUTE_KEY;
 use ockam_abac::AbacAccessControl;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
@@ -171,7 +172,7 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
         consumer_node_multiaddr: ConsumerNodeAddr,
-        trust_context_id: String,
+        authority_identifier: String,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         let relay_creator = match consumer_node_multiaddr.clone() {
             ConsumerNodeAddr::Direct(_) => None,
@@ -188,7 +189,7 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
             secure_channels,
             consumer_node_multiaddr,
             relay_creator,
-            trust_context_id,
+            authority_identifier,
         )
     }
 }
@@ -199,12 +200,12 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         secure_channels: Arc<SecureChannels>,
         consumer_node_multiaddr: ConsumerNodeAddr,
         relay_creator: Option<F>,
-        trust_context_id: String,
+        authority_identifier: String,
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
             secure_channels.identities().repository(),
-            TRUST_CONTEXT_ID_UTF8,
-            &trust_context_id,
+            AUTHORITY_ATTRIBUTE_KEY,
+            &authority_identifier,
         );
 
         Self {

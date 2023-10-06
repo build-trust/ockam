@@ -1,7 +1,6 @@
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
-use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttributesWriter};
+use ockam::identity::AttributesEntry;
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
@@ -11,24 +10,15 @@ use std::collections::HashMap;
 use tracing::trace;
 
 use crate::authenticator::direct::types::AddMember;
+use crate::authenticator::{secure_channel_required, Member, MembersStorage};
 
 pub struct DirectAuthenticator {
-    trust_context: String,
-    attributes_writer: Arc<dyn IdentityAttributesWriter>,
-    attributes_reader: Arc<dyn IdentityAttributesReader>,
+    members_storage: Arc<dyn MembersStorage>,
 }
 
 impl DirectAuthenticator {
-    pub async fn new(
-        trust_context: String,
-        attributes_writer: Arc<dyn IdentityAttributesWriter>,
-        attributes_reader: Arc<dyn IdentityAttributesReader>,
-    ) -> Result<Self> {
-        Ok(Self {
-            trust_context,
-            attributes_writer,
-            attributes_reader,
-        })
+    pub async fn new(members_storage: Arc<dyn MembersStorage>) -> Result<Self> {
+        Ok(Self { members_storage })
     }
 
     async fn add_member<'a>(
@@ -40,22 +30,35 @@ impl DirectAuthenticator {
         let auth_attrs = attrs
             .iter()
             .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-            .chain(
-                [(
-                    TRUST_CONTEXT_ID.to_owned(),
-                    self.trust_context.as_bytes().to_vec(),
-                )]
-                .into_iter(),
-            )
             .collect();
-        let entry = AttributesEntry::new(auth_attrs, now()?, None, Some(enroller.clone()));
-        self.attributes_writer.put_attributes(id, entry).await
+
+        let member = Member::new(
+            id.clone(),
+            auth_attrs,
+            Some(enroller.clone()),
+            now()?,
+            false,
+        );
+        self.members_storage.add_member(member).await
     }
 
     async fn list_members(&self) -> Result<HashMap<Identifier, AttributesEntry>> {
-        let all_attributes = self.attributes_reader.list().await?;
-        let attested_by_me = all_attributes.into_iter().collect();
-        Ok(attested_by_me)
+        let members = self.members_storage.get_members().await?;
+
+        let mut res = HashMap::<Identifier, AttributesEntry>::new();
+        for member in members {
+            res.insert(
+                member.identifier().clone(),
+                AttributesEntry::new(
+                    member.attributes().clone(),
+                    member.added_at(),
+                    None,
+                    member.added_by().clone().map(|x| x.to_string()),
+                ),
+            );
+        }
+
+        Ok(res)
     }
 }
 
@@ -98,7 +101,7 @@ impl Worker for DirectAuthenticator {
                 }
                 (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
                     let identifier = Identifier::try_from(id.to_string())?;
-                    self.attributes_writer.delete(&identifier).await?;
+                    self.members_storage.delete_member(&identifier).await?;
 
                     Response::ok(&req).to_vec()?
                 }

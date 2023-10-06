@@ -528,7 +528,8 @@ impl InletDataFromInvitation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam::identity::{Identifier, OneTimeCode};
+    use ockam::identity::Identifier;
+    use ockam_api::authenticator::one_time_code::OneTimeCode;
     use ockam_api::cloud::share::{
         ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };

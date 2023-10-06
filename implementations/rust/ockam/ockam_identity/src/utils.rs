@@ -22,11 +22,6 @@ pub fn now() -> Result<TimestampInSeconds> {
     Err(IdentityError::UnknownTimestamp.into())
 }
 
-/// Add a number of seconds to the [`TimestampInSeconds`]
-pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInSeconds {
-    TimestampInSeconds(timestamp.saturating_add(seconds))
-}
-
 /// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
     schema_id: CredentialSchemaIdentifier,

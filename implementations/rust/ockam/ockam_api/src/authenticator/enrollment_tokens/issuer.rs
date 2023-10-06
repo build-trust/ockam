@@ -1,7 +1,6 @@
 use miette::IntoDiagnostic;
 use minicbor::Decoder;
-use ockam::identity::OneTimeCode;
-use ockam::identity::{secure_channel_required, AttributesEntry};
+use ockam::identity::AttributesEntry;
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
@@ -15,10 +14,14 @@ use crate::authenticator::direct::types::{AddMember, CreateToken};
 use crate::authenticator::enrollment_tokens::authenticator::MAX_TOKEN_DURATION;
 use crate::authenticator::enrollment_tokens::types::Token;
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
+use crate::authenticator::one_time_code::OneTimeCode;
+use crate::authenticator::secure_channel_required;
 use crate::cloud::AuthorityNode;
 use crate::DefaultAddress;
 
-pub struct EnrollmentTokenIssuer(pub(super) EnrollmentTokenAuthenticator);
+pub struct EnrollmentTokenIssuer {
+    pub(super) authenticator: EnrollmentTokenAuthenticator,
+}
 
 impl EnrollmentTokenIssuer {
     async fn issue_token(
@@ -38,7 +41,7 @@ impl EnrollmentTokenIssuer {
             ttl: max_token_duration,
             ttl_count,
         };
-        self.0
+        self.authenticator
             .tokens
             .write()
             .map(|mut r| {
@@ -52,6 +55,9 @@ impl EnrollmentTokenIssuer {
                     "failed to get read lock on tokens table",
                 )
             })
+    }
+    pub fn new(authenticator: EnrollmentTokenAuthenticator) -> Self {
+        Self { authenticator }
     }
 }
 

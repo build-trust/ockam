@@ -18,6 +18,9 @@ use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_identity::{Identifier, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
+/// Attribute key for which we'll put the Identifier that shows who attests given attributes
+pub const AUTHORITY_ATTRIBUTE_KEY: &str = "authority";
+
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
 /// A similar access control policy is available as [`crate::policy::PolicyAccessControl`] where
@@ -56,8 +59,7 @@ impl AbacAccessControl {
         repository: Arc<dyn IdentitiesRepository>,
         attribute_name: &str,
         attribute_value: &str,
-    ) -> AbacAccessControl
-where {
+    ) -> AbacAccessControl {
         let expression = List(vec![
             Ident("=".into()),
             Ident(format!("subject.{attribute_name}")),
@@ -74,6 +76,14 @@ impl AbacAccessControl {
 
         // Get identity attributes and populate the environment:
         if let Some(attrs) = self.repository.get_attributes(&id).await? {
+            // add the authority identifier as a subject parameter
+            if let Some(attested_by) = attrs.attested_by() {
+                environment.put(
+                    format!("subject.{}", AUTHORITY_ATTRIBUTE_KEY),
+                    str(attested_by.to_string()),
+                );
+            }
+
             for (key, value) in attrs.attrs() {
                 let key = match from_utf8(key) {
                     Ok(key) => key,

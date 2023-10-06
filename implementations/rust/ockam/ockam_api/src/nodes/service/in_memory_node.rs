@@ -116,7 +116,6 @@ impl InMemoryNode {
             NodeManagerGeneralOptions::new(
                 cli_state.clone(),
                 defaults.node_name.clone(),
-                None,
                 false,
                 false,
             ),

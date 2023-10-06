@@ -97,6 +97,13 @@ impl SecureChannels {
         options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
         let access_control = options.create_access_control(ctx.flow_controls());
 
+        let credentials = match &options.credential_retriever {
+            Some(credential_retriever) => {
+                vec![credential_retriever.retrieve(ctx, identifier).await?]
+            }
+            None => vec![],
+        };
+
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
             .identities
@@ -113,8 +120,8 @@ impl SecureChannels {
             purpose_key,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            options.credentials,
-            options.trust_context,
+            credentials,
+            options.authority,
             Some(route),
             Some(options.timeout),
             Role::Initiator,

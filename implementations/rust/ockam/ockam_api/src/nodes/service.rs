@@ -11,13 +11,10 @@ use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::CredentialsServerModule;
-use ockam::identity::TrustContext;
+use ockam::identity::CredentialsRetriever;
 use ockam::identity::Vault;
-use ockam::identity::{
-    Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
-};
 use ockam::identity::{Identifier, SecureChannels};
+use ockam::identity::{Identities, IdentitiesRepository};
 use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
@@ -30,8 +27,6 @@ use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 
-use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
-use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use crate::cloud::{AuthorityNode, ProjectNode};
 use crate::config::cli::TrustContextConfig;
@@ -98,7 +93,8 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
-    trust_context: Option<TrustContext>,
+    authority_identifier: Option<Identifier>,
+    credential_retriever: Option<Arc<dyn CredentialsRetriever>>,
     pub(crate) registry: Registry,
     policies: Arc<dyn PolicyStorage>,
 }
@@ -118,18 +114,6 @@ impl NodeManager {
 
     pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
         self.identities().repository().clone()
-    }
-
-    pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
-        self.identities_repository().as_attributes_reader()
-    }
-
-    pub(super) fn credentials(&self) -> Arc<Credentials> {
-        self.identities().credentials()
-    }
-
-    pub(super) fn credentials_service(&self) -> Arc<dyn CredentialsServer> {
-        Arc::new(CredentialsServerModule::new(self.credentials()))
     }
 
     pub(super) fn secure_channels_vault(&self) -> Vault {
@@ -228,25 +212,22 @@ impl NodeManager {
         &self,
         r: &Resource,
         a: &Action,
-        trust_context_id: Option<&str>,
+        authority: Option<Identifier>,
         custom_default: Option<&Expr>,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
-        if let Some(tcid) = trust_context_id {
+        if let Some(authority) = authority {
             // Populate environment with known attributes:
             let mut env = Env::new();
             env.put("resource.id", str(r.as_str()));
             env.put("action.id", str(a.as_str()));
-            env.put("resource.trust_context_id", str(tcid));
+            env.put("resource.authority", str(authority.to_string()));
 
             // Check if a policy exists for (resource, action) and if not, then
             // create or use a default entry:
             if self.policies.get_policy(r, a).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
-                    None => eq([
-                        ident("resource.trust_context_id"),
-                        ident("subject.trust_context_id"),
-                    ]),
+                    None => eq([ident("resource.authority"), ident("subject.authority")]),
                 };
                 self.policies.set_policy(r, a, &fallback).await?
             }
@@ -263,17 +244,22 @@ impl NodeManager {
         }
     }
 
-    pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
-        self.trust_context
+    pub(crate) fn authority_identifier(&self) -> Result<&Identifier> {
+        self.authority_identifier
             .as_ref()
-            .ok_or_else(|| ApiError::core("Trust context doesn't exist"))
+            .ok_or_else(|| ApiError::core("Authority Identifier doesn't exist"))
+    }
+
+    pub(crate) fn credential_retriever(&self) -> Result<Arc<dyn CredentialsRetriever>> {
+        self.credential_retriever
+            .clone()
+            .ok_or_else(|| ApiError::core("CredentialsRetriever doesn't exist"))
     }
 }
 
 pub struct NodeManagerGeneralOptions {
     cli_state: CliState,
     node_name: String,
-    pre_trusted_identities: Option<PreTrustedIdentities>,
     start_default_services: bool,
     persistent: bool,
 }
@@ -282,14 +268,12 @@ impl NodeManagerGeneralOptions {
     pub fn new(
         cli_state: CliState,
         node_name: String,
-        pre_trusted_identities: Option<PreTrustedIdentities>,
         start_default_services: bool,
         persistent: bool,
     ) -> Self {
         Self {
             cli_state,
             node_name,
-            pre_trusted_identities,
             start_default_services,
             persistent,
         }
@@ -359,25 +343,13 @@ impl NodeManager {
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let repository: Arc<dyn IdentitiesRepository> =
-            cli_state.identities.identities_repository().await?;
-
-        //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
-        //trait instead),  or pass it from the general_options always.
+        let repository = cli_state.identities.identities_repository().await?;
         let vault: Vault = node_state.config().vault().await?;
-        let identities_repository: Arc<dyn IdentitiesRepository> =
-            Arc::new(match general_options.pre_trusted_identities {
-                None => BootstrapedIdentityStore::new(
-                    Arc::new(PreTrustedIdentities::new_from_string("{}")?),
-                    repository.clone(),
-                ),
-                Some(f) => BootstrapedIdentityStore::new(Arc::new(f), repository.clone()),
-            });
 
         debug!("create the secure channels service");
         let secure_channels = SecureChannels::builder()
             .with_vault(vault)
-            .with_identities_repository(identities_repository.clone())
+            .with_identities_repository(repository)
             .build();
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
@@ -396,7 +368,8 @@ impl NodeManager {
                     .is_ok(),
             identifier: node_state.config().identifier()?,
             secure_channels,
-            trust_context: None,
+            authority_identifier: None,
+            credential_retriever: None,
             registry: Default::default(),
             policies,
         };
@@ -414,13 +387,14 @@ impl NodeManager {
     }
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
-        self.trust_context = Some(
-            tc.to_trust_context(
+        let (authority_identifier, credential_retriever) = tc
+            .to_trust_context(
                 self.secure_channels.clone(),
                 Some(self.tcp_transport.async_try_clone().await?),
             )
-            .await?,
-        );
+            .await?;
+        self.authority_identifier = Some(authority_identifier);
+        self.credential_retriever = credential_retriever;
 
         info!("NodeManager::configure_trust_context: trust context configured");
 
@@ -455,17 +429,6 @@ impl NodeManager {
             ctx,
         )
         .await?;
-
-        // If we've been configured with a trust context, we can start Credential Exchange service
-        if let Ok(tc) = self.trust_context() {
-            self.start_credentials_service_impl(
-                ctx,
-                tc.clone(),
-                DefaultAddress::CREDENTIALS_SERVICE.into(),
-                false,
-            )
-            .await?;
-        }
 
         Ok(())
     }
@@ -636,9 +599,6 @@ impl NodeManagerWorker {
                 .get_credential(req, dec, ctx)
                 .await?
                 .either(Response::to_vec, Response::to_vec)?,
-            (Post, ["node", "credentials", "actions", "present"]) => {
-                encode_response(self.present_credential(req, dec, ctx).await)?
-            }
 
             // ==*== Secure channels ==*==
             (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).await.to_vec()?,
@@ -666,9 +626,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Services ==*==
-            (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => {
-                encode_response(self.start_authenticated_service(ctx, req, dec).await)?
-            }
             (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => {
                 encode_response(self.start_uppercase_service(ctx, req, dec).await)?
             }
@@ -677,9 +634,6 @@ impl NodeManagerWorker {
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 encode_response(self.start_hop_service(ctx, req, dec).await)?
-            }
-            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
-                encode_response(self.start_credentials_service(ctx, req, dec).await)?
             }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
                 self.start_kafka_outlet_service(ctx, req, dec).await?

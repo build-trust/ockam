@@ -65,9 +65,6 @@ pub fn spawn_node(
     name: &str,
     address: &str,
     project: Option<&PathBuf>,
-    trusted_identities: Option<&String>,
-    trusted_identities_file: Option<&PathBuf>,
-    reload_from_trusted_identities_file: Option<&PathBuf>,
     launch_config: Option<String>,
     authority_identity: Option<&String>,
     credential: Option<&String>,
@@ -103,25 +100,6 @@ pub fn spawn_node(
     if let Some(l) = launch_config {
         args.push("--launch-config".to_string());
         args.push(l);
-    }
-
-    if let Some(t) = trusted_identities {
-        args.push("--trusted-identities".to_string());
-        args.push(t.to_string())
-    } else if let Some(t) = trusted_identities_file {
-        args.push("--trusted-identities-file".to_string());
-        args.push(
-            t.to_str()
-                .unwrap_or_else(|| panic!("unsupported path {t:?}"))
-                .to_string(),
-        );
-    } else if let Some(t) = reload_from_trusted_identities_file {
-        args.push("--reload-from-trusted-identities-file".to_string());
-        args.push(
-            t.to_str()
-                .unwrap_or_else(|| panic!("unsupported path {t:?}"))
-                .to_string(),
-        );
     }
 
     if let Some(ai) = authority_identity {

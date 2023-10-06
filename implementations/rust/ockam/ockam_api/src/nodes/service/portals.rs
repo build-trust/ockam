@@ -203,14 +203,19 @@ impl NodeManager {
         }
 
         let check_credential = self.enable_credential_checks;
-        let trust_context_id = if check_credential {
-            Some(self.trust_context()?.id())
+        let authority_identifier = if check_credential {
+            Some(self.authority_identifier()?.clone())
         } else {
             None
         };
 
         let access_control = self
-            .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
+            .access_control(
+                &resource,
+                &actions::HANDLE_MESSAGE,
+                authority_identifier,
+                None,
+            )
             .await?;
 
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
@@ -365,13 +370,12 @@ impl NodeManager {
             let pid = outlet_addr
                 .first()
                 .and_then(|p| {
-                    if let Some(p) = p.cast::<Project>() {
-                        projects.get(&*p).map(|info| &*info.id)
-                    } else {
-                        None
-                    }
+                    let p = p.cast::<Project>()?;
+                    let p = projects.get(&*p)?;
+                    let authority = p.authority.as_ref()?;
+                    Some(authority.identity_id().clone())
                 })
-                .or_else(|| Some(self.trust_context().ok()?.id()));
+                .or_else(|| Some(self.authority_identifier().ok()?.clone()));
             if pid.is_none() {
                 let message = "Credential check requires a project or trust context";
                 return Err(ockam_core::Error::new(Origin::Node, Kind::Invalid, message));

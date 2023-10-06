@@ -1,9 +1,7 @@
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::OneTimeCode;
-use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
-use ockam::identity::{AttributesEntry, IdentityAttributesWriter};
-use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::Identifier;
+use ockam::identity::IdentitySecureChannelLocalInfo;
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Routed, Worker};
@@ -11,11 +9,25 @@ use ockam_node::Context;
 use tracing::trace;
 
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
+use crate::authenticator::one_time_code::OneTimeCode;
+use crate::authenticator::{secure_channel_required, Member, MembersStorage};
 
-pub struct EnrollmentTokenAcceptor(
-    pub(super) EnrollmentTokenAuthenticator,
-    pub(super) Arc<dyn IdentityAttributesWriter>,
-);
+pub struct EnrollmentTokenAcceptor {
+    pub(super) authenticator: EnrollmentTokenAuthenticator,
+    pub(super) members_storage: Arc<dyn MembersStorage>,
+}
+
+impl EnrollmentTokenAcceptor {
+    pub fn new(
+        authenticator: EnrollmentTokenAuthenticator,
+        members_storage: Arc<dyn MembersStorage>,
+    ) -> Self {
+        Self {
+            authenticator,
+            members_storage,
+        }
+    }
+}
 
 impl EnrollmentTokenAcceptor {
     async fn accept_token(
@@ -25,7 +37,7 @@ impl EnrollmentTokenAcceptor {
         from: &Identifier,
     ) -> Result<Vec<u8>> {
         let token = {
-            let mut tokens = match self.0.tokens.write() {
+            let mut tokens = match self.authenticator.tokens.write() {
                 Ok(tokens) => tokens,
                 Err(_) => {
                     return Ok(Response::internal_error(
@@ -56,18 +68,22 @@ impl EnrollmentTokenAcceptor {
         };
 
         //TODO: fixme:  unify use of hashmap vs btreemap
-        let trust_context = self.0.trust_context.as_bytes().to_vec();
         let attrs = token
             .attrs
             .iter()
             .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-            .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)])
             .collect();
-        let entry =
-            AttributesEntry::new(attrs, now().unwrap(), None, Some(token.issued_by.clone()));
 
-        if let Err(_err) = self.1.put_attributes(from, entry).await {
-            return Ok(Response::internal_error(req, "attributes storage error").to_vec()?);
+        let member = Member::new(
+            from.clone(),
+            attrs,
+            Some(token.issued_by),
+            now().unwrap(),
+            false,
+        );
+
+        if let Err(_err) = self.members_storage.add_member(member).await {
+            return Ok(Response::internal_error(req, "members storage error").to_vec()?);
         }
 
         Ok(Response::ok(req).to_vec()?)
