@@ -57,7 +57,8 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> miette::Result<()> {
-    let controller = InMemoryNode::create_controller(&ctx, &opts.state).await?;
+    let node = InMemoryNode::start(&ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     match cmd.subcommand {
         SubscriptionSubcommand::Show {

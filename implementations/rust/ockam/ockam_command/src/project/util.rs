@@ -121,7 +121,7 @@ pub async fn check_project_readiness(
     let spinner_option = opts.terminal.progress_spinner();
     let project = check_project_ready(
         ctx,
-        &node.controller().await?,
+        &node.create_controller().await?,
         project,
         retry_strategy.clone(),
         spinner_option.clone(),

@@ -58,7 +58,8 @@ async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this project?")?
     {
         let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
-        let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
         // Lookup project
         let project_id = match opts.state.projects.get(&cmd.project_name) {

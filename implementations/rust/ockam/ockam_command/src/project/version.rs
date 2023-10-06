@@ -36,7 +36,8 @@ async fn rpc(ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     // Send request
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
     let project_version = controller.get_project_version(ctx).await?;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;

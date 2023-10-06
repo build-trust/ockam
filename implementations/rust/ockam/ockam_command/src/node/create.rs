@@ -313,6 +313,7 @@ async fn run_foreground_node(
             cmd.node_name.clone(),
             pre_trusted_identities,
             cmd.launch_config.is_none(),
+            true,
         ),
         NodeManagerTransportOptions::new(
             listener.flow_control_id().clone(),

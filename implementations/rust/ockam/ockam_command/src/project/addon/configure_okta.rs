@@ -119,7 +119,7 @@ async fn run_impl(
 
     // Do request
     let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.controller().await?;
+    let controller = node.create_controller().await?;
 
     let response = controller
         .configure_okta_addon(&ctx, project_id.clone(), okta_config)
