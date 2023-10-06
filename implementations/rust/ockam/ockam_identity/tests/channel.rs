@@ -5,10 +5,9 @@ use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
-    AuthorityService, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    IdentityAccessControlBuilder, IdentitySecureChannelLocalInfo, SecureChannelListenerOptions,
-    SecureChannelOptions, SecureChannels, TrustContext, TrustEveryonePolicy, TrustIdentifierPolicy,
-    Vault,
+    DecryptionResponse, EncryptionRequest, EncryptionResponse, IdentityAccessControlBuilder,
+    IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannels, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use ockam_vault::{
@@ -90,28 +89,31 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
-    let authority = identities_creation.create_identity().await?;
+    let authority = identities_creation
+        .create_identity()
+        .await?
+        .identifier()
+        .clone();
 
-    let alice = identities_creation.create_identity().await?;
+    let alice = identities_creation
+        .create_identity()
+        .await?
+        .identifier()
+        .clone();
 
-    let bob = identities_creation.create_identity().await?;
-
-    let trust_context = TrustContext::new(
-        "test".to_string(),
-        Some(AuthorityService::new(
-            secure_channels.identities().credentials(),
-            authority.identifier().clone(),
-            None,
-        )),
-    );
+    let bob = identities_creation
+        .create_identity()
+        .await?
+        .identifier()
+        .clone();
 
     let _bob_credential_1st = secure_channels
         .identities()
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            bob.identifier(),
+            &authority,
+            &bob,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_bob", "true")
                 .build(),
@@ -124,8 +126,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            bob.identifier(),
+            &authority,
+            &bob,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("bob_2", "true")
                 .build(),
@@ -136,11 +138,11 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             context,
-            bob.identifier(),
+            &bob,
             "bob_listener",
             SecureChannelListenerOptions::new()
-                .with_trust_context(trust_context.clone())
-                .with_credential(bob_credential_2),
+                .with_authority(authority.clone())
+                .with_credential(bob_credential_2)?,
         )
         .await?;
 
@@ -149,8 +151,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            alice.identifier(),
+            &authority,
+            &alice,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_alice", "true")
                 .build(),
@@ -163,8 +165,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            alice.identifier(),
+            &authority,
+            &alice,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("alice_2", "true")
                 .build(),
@@ -175,11 +177,11 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let _alice_channel = secure_channels
         .create_secure_channel(
             context,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new()
-                .with_trust_context(trust_context)
-                .with_credential(alice_credential_2),
+                .with_authority(authority.clone())
+                .with_credential(alice_credential_2)?,
         )
         .await?;
 
@@ -188,7 +190,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let alice_attributes = secure_channels
         .identities()
         .repository()
-        .get_attributes(alice.identifier())
+        .get_attributes(&alice)
         .await?
         .unwrap();
 
@@ -207,7 +209,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let bob_attributes = secure_channels
         .identities()
         .repository()
-        .get_attributes(bob.identifier())
+        .get_attributes(&bob)
         .await?
         .unwrap();
 

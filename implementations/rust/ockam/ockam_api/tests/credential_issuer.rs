@@ -1,15 +1,12 @@
 use minicbor::bytes::ByteSlice;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::utils::now;
-use ockam::identity::{identities, AttributesEntry};
-use ockam::identity::{
-    CredentialsIssuer, Identities, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannels,
-};
+use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions, SecureChannels};
 use ockam::route;
-use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
+use ockam_api::authenticator::credentials_issuer::CredentialsIssuer;
+use ockam_api::authenticator::{InMemoryMembersStorage, Member, MembersStorage};
 use ockam_core::api::Request;
-use ockam_core::compat::collections::{BTreeMap, HashMap};
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 use ockam_node::api::Client;
@@ -20,40 +17,26 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let api_worker_addr = Address::random_local();
     let auth_worker_addr = Address::random_local();
 
+    let secure_channels = SecureChannels::builder().build();
+    let identities = secure_channels.identities();
+    let identities_creation = identities.identities_creation();
+
     // create 2 identities to populate the trusted identities
-    let identities = identities();
-    let auth_identity = identities.identities_creation().create_identity().await?;
-    let member_identity = identities.identities_creation().create_identity().await?;
+    let auth_identity = identities_creation.create_identity().await?;
+    let member_identity = identities_creation.create_identity().await?;
 
     let now = now().unwrap();
 
-    let pre_trusted = HashMap::from([(
+    let members_storage = Arc::new(InMemoryMembersStorage::new());
+
+    let member = Member::new(
         member_identity.identifier().clone(),
-        AttributesEntry::new(
-            BTreeMap::from([(b"attr".to_vec(), b"value".to_vec())]),
-            now,
-            None,
-            None,
-        ),
-    )]);
-
-    let bootstrapped = BootstrapedIdentityStore::new(
-        Arc::new(PreTrustedIdentities::from(pre_trusted)),
-        identities.repository(),
+        BTreeMap::from([(b"attr".to_vec(), b"value".to_vec())]),
+        None,
+        now,
+        true,
     );
-
-    // Now recreate the identities services with the previous vault
-    // (so that the authority can verify its signature)
-    // and the repository containing the trusted identities
-    let identities = Identities::builder()
-        .with_identities_repository(Arc::new(bootstrapped))
-        .with_vault(identities.vault())
-        .with_purpose_keys_repository(identities.purpose_keys_repository())
-        .build();
-    let secure_channels = SecureChannels::builder()
-        .with_identities(identities.clone())
-        .build();
-    let identities_creation = identities.identities_creation();
+    members_storage.add_member(member).await?;
 
     // Create the CredentialIssuer:
     let options = SecureChannelListenerOptions::new();
@@ -69,10 +52,9 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     ctx.flow_controls()
         .add_consumer(auth_worker_addr.clone(), &sc_flow_control_id);
     let auth = CredentialsIssuer::new(
-        identities.repository(),
+        members_storage,
         identities.credentials(),
         auth_identity.identifier(),
-        "project42".into(),
     );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 
@@ -106,13 +88,6 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             &credential,
         )
         .await?;
-    assert_eq!(
-        Some(&b"project42".to_vec().into()),
-        data.credential_data
-            .subject_attributes
-            .map
-            .get::<ByteSlice>(b"trust_context_id".as_slice().into())
-    );
     assert_eq!(
         Some(&b"value".to_vec().into()),
         data.credential_data

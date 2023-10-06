@@ -6,51 +6,23 @@ use tracing::trace;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, Result, Route};
+use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::{Context, DEFAULT_TIMEOUT};
 
 use crate::models::CredentialAndPurposeKey;
-use crate::{Identifier, SecureChannels, SecureClient};
+use crate::utils::now;
+use crate::{CredentialsRetriever, Identifier, SecureChannels, SecureClient, TimestampInSeconds};
 
-/// Trait for retrieving a credential for a given identity
-#[async_trait]
-pub trait CredentialsRetriever: Send + Sync + 'static {
-    /// Retrieve a credential for an identity
-    async fn retrieve(
-        &self,
-        ctx: &Context,
-        for_identity: &Identifier,
-    ) -> Result<CredentialAndPurposeKey>;
-}
-
-/// Credentials retriever that retrieves a credential from memory
-pub struct CredentialsMemoryRetriever {
-    credential_and_purpose_key: CredentialAndPurposeKey,
-}
-
-impl CredentialsMemoryRetriever {
-    /// Create a new CredentialsMemoryRetriever
-    pub fn new(credential_and_purpose_key: CredentialAndPurposeKey) -> Self {
-        Self {
-            credential_and_purpose_key,
-        }
-    }
-}
-
-#[async_trait]
-impl CredentialsRetriever for CredentialsMemoryRetriever {
-    /// Retrieve a credential stored in memory
-    async fn retrieve(
-        &self,
-        _ctx: &Context,
-        _for_identity: &Identifier,
-    ) -> Result<CredentialAndPurposeKey> {
-        Ok(self.credential_and_purpose_key.clone())
-    }
+#[derive(Clone)]
+struct CachedCredential {
+    credential: CredentialAndPurposeKey,
+    valid_until: TimestampInSeconds,
 }
 
 /// Credentials retriever for credentials located on a different node
 pub struct RemoteCredentialsRetriever {
     secure_channels: Arc<SecureChannels>,
+    inner_cache: Arc<Mutex<Option<CachedCredential>>>,
     issuer: RemoteCredentialsRetrieverInfo,
 }
 
@@ -62,6 +34,7 @@ impl RemoteCredentialsRetriever {
     ) -> Self {
         Self {
             secure_channels,
+            inner_cache: Default::default(),
             issuer,
         }
     }
@@ -96,12 +69,47 @@ impl CredentialsRetriever for RemoteCredentialsRetriever {
         ctx: &Context,
         for_identity: &Identifier,
     ) -> Result<CredentialAndPurposeKey> {
+        debug!("Requested credential for: {}", for_identity);
+
+        // check if we have a valid cached credential
+        let mut guard = self.inner_cache.lock().await;
+        let now = now()?;
+        if let Some(cache) = guard.as_ref() {
+            // add an extra minute to have a bit of leeway for clock skew
+            if cache.valid_until > now + TimestampInSeconds(60) {
+                debug!("Found valid cached credential for: {}", for_identity);
+                return Ok(cache.credential.clone());
+            }
+        }
+
         debug!("Getting credential from: {}", &self.issuer.route);
         let client = self.make_secure_client(ctx, for_identity).await?;
         let credential = client
             .ask(ctx, "credential_issuer", Request::post("/"))
             .await?
             .success()?;
+
+        debug!("Retrieved a credential for subject {}", for_identity);
+
+        let credential_data = self
+            .secure_channels
+            .identities()
+            .credentials()
+            .credentials_verification()
+            .verify_credential(
+                Some(for_identity),
+                &[self.issuer.identifier.clone()],
+                &credential,
+            )
+            .await?;
+
+        debug!("The retrieved credential is valid");
+
+        *guard = Some(CachedCredential {
+            credential: credential.clone(),
+            valid_until: credential_data.credential_data.expires_at,
+        });
+
         Ok(credential)
     }
 }

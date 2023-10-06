@@ -120,7 +120,7 @@ impl IdentityAttributesWriter for IdentitiesStorage {
             None => BTreeMap::new(),
         };
         attributes.insert(attribute_name, attribute_value);
-        let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.clone()));
+        let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.to_string()));
         self.put_attributes(subject, entry).await
     }
 

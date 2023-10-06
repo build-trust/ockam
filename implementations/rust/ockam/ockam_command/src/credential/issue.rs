@@ -12,9 +12,11 @@ use crate::output::{CredentialAndPurposeKeyDisplay, EncodeFormat};
 use miette::{miette, IntoDiagnostic};
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
-use ockam::identity::{MAX_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
 use ockam::Context;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam_api::authenticator::credentials_issuer::{
+    MAX_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA,
+};
+use ockam_api::cli_state::traits::StateDirTrait;
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -66,7 +68,6 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let identity_name = get_identity_name(&opts.state, &cmd.as_identity);
     let ident_state = opts.state.identities.get(&identity_name)?;
-    let auth_identity_identifier = ident_state.config().identifier().clone();
 
     let vault_name = cmd
         .vault
@@ -76,11 +77,7 @@ async fn run_impl(
     let identities = opts.state.get_identities(vault).await?;
     let issuer = ident_state.identifier();
 
-    let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-        .with_attribute(
-            TRUST_CONTEXT_ID.to_vec(),
-            auth_identity_identifier.to_string(),
-        );
+    let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA);
     for (key, value) in cmd.attributes()? {
         attributes_builder =
             attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());

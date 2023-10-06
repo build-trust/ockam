@@ -19,7 +19,6 @@ use ockam_api::nodes::service::NodeManagerTrustOptions;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::{
-    bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
         service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
@@ -86,13 +85,6 @@ pub struct CreateCommand {
     #[arg(long, hide = true, value_parser = parse_launch_config)]
     pub launch_config: Option<Config>,
 
-    #[arg(long, group = "trusted")]
-    pub trusted_identities: Option<String>,
-    #[arg(long, group = "trusted")]
-    pub trusted_identities_file: Option<PathBuf>,
-    #[arg(long, group = "trusted")]
-    pub reload_from_trusted_identities_file: Option<PathBuf>,
-
     /// Name of the Vault that the node will use.
     #[arg(long = "vault", value_name = "VAULT_NAME")]
     vault: Option<String>,
@@ -123,9 +115,6 @@ impl Default for CreateCommand {
             launch_config: None,
             vault: None,
             identity: None,
-            trusted_identities: None,
-            trusted_identities_file: None,
-            reload_from_trusted_identities_file: None,
             authority_identity: None,
             credential: None,
             trust_context_opts: node_manager_defaults.trust_context_opts,
@@ -305,14 +294,11 @@ async fn run_foreground_node(
             ),
     )?;
 
-    let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
-
     let node_man = InMemoryNode::new(
         &ctx,
         NodeManagerGeneralOptions::new(
             opts.state.clone(),
             cmd.node_name.clone(),
-            pre_trusted_identities,
             cmd.launch_config.is_none(),
             true,
         ),
@@ -369,21 +355,6 @@ async fn run_foreground_node(
         .unwrap();
 
     Ok(())
-}
-
-pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrustedIdentities>> {
-    let command = cmd.clone();
-    let pre_trusted_identities = match (
-        command.trusted_identities,
-        command.trusted_identities_file,
-        command.reload_from_trusted_identities_file,
-    ) {
-        (Some(val), _, _) => Some(PreTrustedIdentities::new_from_string(&val)?),
-        (_, Some(val), _) => Some(PreTrustedIdentities::new_from_disk(val, false)?),
-        (_, _, Some(val)) => Some(PreTrustedIdentities::new_from_disk(val, true)?),
-        _ => None,
-    };
-    Ok(pre_trusted_identities)
 }
 
 async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
@@ -466,9 +437,6 @@ pub async fn spawn_background_node(
         &node_name,
         &cmd.tcp_listener_address,
         cmd.trust_context_opts.project_path.as_ref(),
-        cmd.trusted_identities.as_ref(),
-        cmd.trusted_identities_file.as_ref(),
-        cmd.reload_from_trusted_identities_file.as_ref(),
         cmd.launch_config
             .as_ref()
             .map(|config| serde_json::to_string(config).unwrap()),

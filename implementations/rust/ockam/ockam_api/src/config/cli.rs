@@ -6,9 +6,8 @@ use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
 use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
 use ockam::identity::{
-    identities, AuthorityService, CredentialsMemoryRetriever, CredentialsRetriever, Identifier,
-    Identities, Identity, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo,
-    SecureChannels, TrustContext,
+    identities, CredentialsMemoryRetriever, CredentialsRetriever, Identifier, Identities, Identity,
+    RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannels,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Route};
@@ -77,22 +76,16 @@ impl LegacyCliConfig {
 /// used within the ockam CLI and ockam node
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TrustContextConfig {
-    id: String,
     authority: Option<TrustAuthorityConfig>,
     path: Option<PathBuf>,
 }
 
 impl TrustContextConfig {
-    pub fn new(id: String, authority: Option<TrustAuthorityConfig>) -> Self {
+    pub fn new(authority: Option<TrustAuthorityConfig>) -> Self {
         Self {
-            id,
             authority,
             path: None,
         }
-    }
-
-    pub fn id(&self) -> &str {
-        &self.id
     }
 
     pub fn path(&self) -> Option<&PathBuf> {
@@ -113,30 +106,26 @@ impl TrustContextConfig {
         &self,
         secure_channels: Arc<SecureChannels>,
         tcp_transport: Option<TcpTransport>,
-    ) -> Result<TrustContext> {
-        let authority = if let Some(authority_config) = self.authority.as_ref() {
-            let identity = authority_config.identity().await?;
-            let credential_retriever =
-                if let Some(retriever_type) = &authority_config.own_credential {
-                    Some(
-                        retriever_type
-                            .to_credential_retriever(secure_channels.clone(), tcp_transport)
-                            .await?,
-                    )
-                } else {
-                    None
-                };
-
-            Some(AuthorityService::new(
-                secure_channels.identities().credentials(),
-                identity.identifier().clone(),
-                credential_retriever,
-            ))
+    ) -> Result<(Identifier, Option<Arc<dyn CredentialsRetriever>>)> {
+        let authority_config = self
+            .authority
+            .as_ref()
+            .ok_or(ApiError::core("authority config missing"))?;
+        let authority_identity = authority_config.identity().await?;
+        let credential_retriever = if let Some(retriever_type) = &authority_config.own_credential {
+            Some(
+                retriever_type
+                    .to_credential_retriever(secure_channels.clone(), tcp_transport)
+                    .await?,
+            )
         } else {
             None
         };
 
-        Ok(TrustContext::new(self.id.to_string(), authority))
+        Ok((
+            authority_identity.identifier().clone(),
+            credential_retriever,
+        ))
     }
 
     pub fn from_authority_identity(
@@ -144,13 +133,10 @@ impl TrustContextConfig {
         credential: Option<CredentialState>,
     ) -> Result<Self> {
         let own_cred = credential.map(CredentialRetrieverConfig::FromPath);
-        let trust_context = TrustContextConfig::new(
+        let trust_context = TrustContextConfig::new(Some(TrustAuthorityConfig::new(
             authority_identity.to_string(),
-            Some(TrustAuthorityConfig::new(
-                authority_identity.to_string(),
-                own_cred,
-            )),
-        );
+            own_cred,
+        )));
 
         Ok(trust_context)
     }
@@ -161,10 +147,9 @@ impl TryFrom<CredentialState> for TrustContextConfig {
 
     fn try_from(state: CredentialState) -> std::result::Result<Self, Self::Error> {
         let issuer = hex::encode(&state.config().encoded_issuer_change_history);
-        let identifier = state.config().issuer_identifier.clone().to_string();
         let retriever = CredentialRetrieverConfig::FromPath(state);
         let authority = TrustAuthorityConfig::new(issuer, Some(retriever));
-        Ok(TrustContextConfig::new(identifier, Some(authority)))
+        Ok(TrustContextConfig::new(Some(authority)))
     }
 }
 
@@ -188,7 +173,7 @@ impl TryFrom<Project> for TrustContextConfig {
             _ => None,
         };
 
-        Ok(TrustContextConfig::new(project_info.id, authority))
+        Ok(TrustContextConfig::new(authority))
     }
 }
 
@@ -211,10 +196,7 @@ impl TryFrom<ProjectLookup> for TrustContextConfig {
             Some(authority)
         };
 
-        Ok(TrustContextConfig::new(
-            project_lookup.id.clone(),
-            authority,
-        ))
+        Ok(TrustContextConfig::new(authority))
     }
 }
 

@@ -2,7 +2,6 @@ use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::TRUST_CONTEXT_ID;
 use ockam::identity::{
     AttributesEntry, Identifier, IdentityAttributesWriter, IdentitySecureChannelLocalInfo,
 };
@@ -90,13 +89,6 @@ impl Server {
                             attrs
                                 .into_iter()
                                 .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-                                .chain(
-                                    [(
-                                        TRUST_CONTEXT_ID.to_owned(),
-                                        self.project.as_bytes().to_vec(),
-                                    )]
-                                    .into_iter(),
-                                )
                                 .collect(),
                             now().unwrap(),
                             None,

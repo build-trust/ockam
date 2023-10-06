@@ -35,8 +35,8 @@ teardown() {
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   # For the first test we start the node with no direct authentication service nor token enrollment
-  trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"trust_context_id\": \"1\", \"ockam-role\": \"enroller\"}}"
-  run "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --no-token-enrollment
+  trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"ockam-role\": \"enroller\"}}"
+  run "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   assert_success
   sleep 1 # wait for authority to start TCP listener
 
@@ -53,13 +53,6 @@ teardown() {
   run "$OCKAM" project enroll --project-path "$PROJECT_JSON_PATH" --identity m1
   assert_success
   assert_output --partial "sample_val"
-
-  echo "$trusted" >"$OCKAM_HOME/trusted-anchors.json"
-  # Restart the authority node with a trusted identities file and check that m1 can still enroll
-  run "$OCKAM" node delete authority --yes
-  run "$OCKAM" authority create --tcp-listener-address=127.0.0.1:$port --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
-  assert_success
-  sleep 1 # wait for authority to start TCP listener
 
   run "$OCKAM" project ticket --identity enroller --project "$PROJECT_NAME" --member $m2_identifier --attribute sample_attr=m2_member
   assert_success

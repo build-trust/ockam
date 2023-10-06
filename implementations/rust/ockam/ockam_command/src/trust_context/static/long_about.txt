@@ -1,3 +1,0 @@
-An Ockam Trust Context defines which authorities are trusted to attest to which attributes.
-
-Trust Contexts can be defined when creating a new node and resources, by supplying the given name or path. A default trust context can be created and will be used when an explicit trust context is not provided.

@@ -637,7 +637,7 @@ mod tests {
         // Trust Contexts
         let trust_context_name = {
             let name = random_name();
-            let config = TrustContextConfig::new(name.to_string(), None);
+            let config = TrustContextConfig::new(None);
 
             let state = sut.trust_contexts.create(&name, config).unwrap();
             let got = sut.trust_contexts.get(&name).unwrap();

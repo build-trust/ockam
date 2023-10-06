@@ -2,14 +2,14 @@ use crate::node::util::run_ockam;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, identity, CommandGlobalOpts, Result};
-use clap::{ArgGroup, Args};
+use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
+use ockam_api::authenticator::PreTrustedIdentities;
 use ockam_api::authority_node;
 use ockam_api::authority_node::{OktaConfiguration, TrustedIdentity};
-use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cli_state::init_node_state;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
@@ -18,7 +18,6 @@ use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
 use tracing::debug;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -32,7 +31,6 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     before_help = docs::before_help(PREVIEW_TAG),
     after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
-#[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
     /// Name of the node
     #[arg(default_value = "authority")]
@@ -68,13 +66,8 @@ pub struct CreateCommand {
 
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
     /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
-    #[arg(group = "trusted", long, value_name = "JSON_OBJECT", value_parser = parse_trusted_identities)]
-    trusted_identities: Option<TrustedIdentities>,
-
-    /// Path of a file containing trusted identities and their attributes encoded as a JSON object.
-    /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
-    #[arg(group = "trusted", long, value_name = "PATH")]
-    reload_from_trusted_identities_file: Option<PathBuf>,
+    #[arg(long, value_name = "JSON_OBJECT", value_parser = parse_trusted_identities)]
+    trusted_identities: TrustedIdentities,
 
     /// Okta: URL used for accessing the Okta API
     #[arg(long, value_name = "URL", default_value = None)]
@@ -131,6 +124,8 @@ async fn spawn_background_node(
         cmd.tcp_listener_address.clone(),
         "--foreground".to_string(),
         "--child-process".to_string(),
+        "--trusted-identities".to_string(),
+        cmd.trusted_identities.to_string(),
     ];
 
     if cmd.logging_to_file() || !opts.terminal.is_tty() {
@@ -143,20 +138,6 @@ async fn spawn_background_node(
 
     if cmd.no_token_enrollment {
         args.push("--no-token-enrollment".to_string());
-    }
-
-    if let Some(trusted_identities) = &cmd.trusted_identities {
-        args.push("--trusted-identities".to_string());
-        args.push(trusted_identities.to_string());
-    }
-
-    if let Some(reload_from_trusted_identities_file) = &cmd.reload_from_trusted_identities_file {
-        args.push("--reload-from-trusted-identities-file".to_string());
-        args.push(
-            reload_from_trusted_identities_file
-                .to_string_lossy()
-                .to_string(),
-        );
     }
 
     if let Some(tenant_base_url) = &cmd.tenant_base_url {
@@ -207,24 +188,8 @@ impl CreateCommand {
     /// Return a source of pre trusted identities and their attributes
     /// This is either a file which is used as the backend of the AttributesStorage
     /// or an explicit list of identities passed on the command line
-    pub(crate) fn trusted_identities(
-        &self,
-        authority_identifier: &Identifier,
-    ) -> Result<PreTrustedIdentities> {
-        match (
-            &self.reload_from_trusted_identities_file,
-            &self.trusted_identities,
-        ) {
-            (Some(path), None) => Ok(PreTrustedIdentities::ReloadFrom(path.clone())),
-            (None, Some(trusted)) => Ok(PreTrustedIdentities::Fixed(trusted.to_map(
-                self.project_identifier.to_string(),
-                authority_identifier,
-            ))),
-            _ => Err(crate::Error::new(
-                exitcode::CONFIG,
-                miette!("Exactly one of 'reload-from-trusted-identities-file' or 'trusted-identities' must be defined"),
-            )),
-        }
+    pub(crate) fn trusted_identities(&self) -> Result<PreTrustedIdentities> {
+        Ok(PreTrustedIdentities::new(self.trusted_identities.to_map()))
     }
 
     pub fn logging_to_file(&self) -> bool {
@@ -328,7 +293,7 @@ async fn start_authority_node(
             ),
     )?;
 
-    let trusted_identities = cmd.trusted_identities(&identifier)?;
+    let trusted_identities = cmd.trusted_identities()?;
 
     let configuration = authority_node::Configuration {
         identifier,
@@ -364,24 +329,23 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 mod tests {
     use super::*;
     use ockam::identity::Identifier;
+    use ockam_api::authenticator::access_control::{ENROLLER_ROLE, OCKAM_ROLE};
     use ockam_core::compat::collections::HashMap;
+    use std::str::from_utf8;
 
     #[test]
     fn test_parse_trusted_identities() {
         let identity1 = Identifier::try_from("Ie86be15e83d1c93e24dd1967010b01b6df491b45").unwrap();
         let identity2 = Identifier::try_from("I6c20e814b56579306f55c64e8747e6c1b4a53d9a").unwrap();
 
-        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\"}}, \"{identity2}\": {{\"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
-        let attributes1 = HashMap::from([
-            ("name".into(), "value".into()),
-            ("trust_context_id".into(), "1".into()),
-        ]);
-        let attributes2 = HashMap::from([
-            ("trust_context_id".into(), "1".into()),
-            ("ockam-role".into(), "enroller".into()),
-        ]);
+        let attributes1 = HashMap::from([("name".into(), "value".into())]);
+        let attributes2 = HashMap::from([(
+            from_utf8(OCKAM_ROLE).unwrap().to_string(),
+            from_utf8(ENROLLER_ROLE).unwrap().to_string(),
+        )]);
         let expected = vec![
             TrustedIdentity::new(&identity2, &attributes2),
             TrustedIdentity::new(&identity1, &attributes1),
@@ -404,17 +368,12 @@ impl TrustedIdentities {
     /// Return a map from Identifier to AttributesEntry and:
     ///   - add the project identifier as an attribute
     ///   - use the authority identifier an the attributes issuer
-    pub(crate) fn to_map(
-        &self,
-        project_identifier: String,
-        authority_identifier: &Identifier,
-    ) -> HashMap<Identifier, AttributesEntry> {
-        HashMap::from_iter(self.trusted_identities().iter().map(|t| {
-            (
-                t.identifier(),
-                t.attributes_entry(project_identifier.clone(), authority_identifier),
-            )
-        }))
+    pub(crate) fn to_map(&self) -> HashMap<Identifier, AttributesEntry> {
+        HashMap::from_iter(
+            self.trusted_identities()
+                .iter()
+                .map(|t| (t.identifier(), t.attributes_entry())),
+        )
     }
 }
 

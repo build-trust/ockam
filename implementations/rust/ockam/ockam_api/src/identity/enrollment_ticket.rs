@@ -1,4 +1,4 @@
-use ockam::identity::OneTimeCode;
+use crate::authenticator::one_time_code::OneTimeCode;
 use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 

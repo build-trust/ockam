@@ -29,6 +29,7 @@ mod test {
     use uuid::Uuid;
 
     use ockam::compat::tokio::io::DuplexStream;
+    use ockam::identity::Identifier;
     use ockam::Context;
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
@@ -70,12 +71,13 @@ mod test {
         handler: &NodeManagerHandle,
         listener_address: Address,
         outlet_address: Address,
+        authority_identifier: Identifier,
     ) -> ockam::Result<u16> {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::try_from("/service/api")?),
             Some(HopRelayCreator {}),
-            "test_trust_context_id".to_string(),
+            authority_identifier.to_string(),
         );
 
         let mut interceptor_multiaddr = MultiAddr::default();
@@ -121,6 +123,7 @@ mod test {
             &handler,
             "kafka_consumer_listener".into(),
             "kafka_consumer_outlet".into(),
+            handler.identifier.clone(),
         )
         .await?;
 
@@ -129,6 +132,7 @@ mod test {
             &handler,
             "kafka_producer_listener".into(),
             "kafka_producer_outlet".into(),
+            handler.identifier.clone(),
         )
         .await?;
 

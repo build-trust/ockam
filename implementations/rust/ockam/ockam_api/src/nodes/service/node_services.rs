@@ -2,7 +2,6 @@ use std::net::IpAddr;
 
 use minicbor::Decoder;
 
-use ockam::identity::{identities, AuthorityService, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Resource;
@@ -12,7 +11,6 @@ use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
 
-use crate::auth::Server;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
@@ -22,14 +20,12 @@ use crate::kafka::{
 };
 use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::services::{
-    DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
-    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartKafkaConsumerRequest, StartKafkaDirectRequest, StartKafkaOutletRequest,
-    StartKafkaProducerRequest, StartServiceRequest, StartUppercaseServiceRequest,
+    DeleteServiceRequest, ServiceList, ServiceStatus, StartEchoerServiceRequest,
+    StartHopServiceRequest, StartKafkaConsumerRequest, StartKafkaDirectRequest,
+    StartKafkaOutletRequest, StartKafkaProducerRequest, StartServiceRequest,
+    StartUppercaseServiceRequest,
 };
-use crate::nodes::registry::{
-    CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
-};
+use crate::nodes::registry::{KafkaServiceInfo, KafkaServiceKind, Registry};
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
@@ -39,62 +35,6 @@ use crate::{actions, resources};
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn start_credentials_service_impl<'a>(
-        &self,
-        ctx: &Context,
-        trust_context: TrustContext,
-        addr: Address,
-        oneway: bool,
-    ) -> Result<()> {
-        if self.registry.credentials_services.contains_key(&addr).await {
-            return Err(ApiError::core("Credentials service exists at this address"));
-        }
-
-        self.credentials_service()
-            .start(
-                ctx,
-                trust_context,
-                self.identifier().clone(),
-                addr.clone(),
-                !oneway,
-            )
-            .await?;
-
-        self.registry
-            .credentials_services
-            .insert(addr.clone(), CredentialsServiceInfo::default())
-            .await;
-
-        Ok(())
-    }
-
-    pub(super) async fn start_authenticated_service_impl(
-        &self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
-        if self
-            .registry
-            .authenticated_services
-            .contains_key(&addr)
-            .await
-        {
-            return Err(ApiError::core(
-                "Authenticated service exists at this address",
-            ));
-        }
-
-        let server = Server::new(self.attributes_reader());
-        ctx.start_worker(addr.clone(), server).await?;
-
-        self.registry
-            .authenticated_services
-            .insert(addr, Default::default())
-            .await;
-
-        Ok(())
-    }
-
     pub(super) async fn start_uppercase_service_impl(
         &self,
         ctx: &Context,
@@ -123,13 +63,12 @@ impl NodeManager {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
 
-        let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id());
         let resource = Resource::assert_inline(addr.address());
         let ac = self
             .access_control(
                 &resource,
                 &actions::HANDLE_MESSAGE,
-                maybe_trust_context_id,
+                self.authority_identifier.clone(),
                 None,
             )
             .await?;
@@ -168,20 +107,6 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn start_authenticated_service(
-        &self,
-        ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Response, Response<Error>> {
-        let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        self.node_manager
-            .start_authenticated_service_impl(ctx, addr)
-            .await?;
-        Ok(Response::ok(req))
-    }
-
     pub(super) async fn start_uppercase_service(
         &self,
         ctx: &Context,
@@ -222,39 +147,6 @@ impl NodeManagerWorker {
         Ok(Response::ok(req))
     }
 
-    pub(super) async fn start_credentials_service(
-        &self,
-        ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Response, Response<Error>> {
-        let body: StartCredentialsService = dec.decode()?;
-        let addr: Address = body.address().into();
-        let oneway = body.oneway();
-        let encoded_identity = body.public_identity();
-
-        let decoded_identity =
-            &hex::decode(encoded_identity).map_err(|_| ApiError::core("Unable to decode trust context's public identity when starting credential service."))?;
-        let i = identities()
-            .identities_creation()
-            .import(None, decoded_identity)
-            .await?;
-
-        let trust_context = TrustContext::new(
-            encoded_identity.to_string(),
-            Some(AuthorityService::new(
-                self.node_manager.identities().credentials(),
-                i.identifier().clone(),
-                None,
-            )),
-        );
-
-        self.node_manager
-            .start_credentials_service_impl(ctx, trust_context, addr, oneway)
-            .await?;
-
-        Ok(Response::ok(req))
-    }
     pub(super) async fn start_kafka_outlet_service(
         &self,
         context: &Context,
@@ -280,7 +172,7 @@ impl NodeManagerWorker {
             OutletManagerService::create(
                 context,
                 self.node_manager.secure_channels.clone(),
-                self.node_manager.trust_context()?.id(),
+                self.node_manager.authority_identifier()?.clone(),
                 default_secure_channel_listener_flow_control_id,
             )
             .await?;
@@ -371,7 +263,7 @@ impl NodeManagerWorker {
             OutletManagerService::create(
                 context,
                 self.node_manager.secure_channels.clone(),
-                self.node_manager.trust_context()?.id(),
+                self.node_manager.authority_identifier()?.clone(),
                 default_secure_channel_listener_flow_control_id,
             )
             .await?;
@@ -387,17 +279,17 @@ impl NodeManagerWorker {
             )
             .await?;
 
-        let trust_context_id;
+        let authority_identifier;
         let secure_channels;
         {
-            trust_context_id = self.node_manager.trust_context()?.id().to_string();
+            authority_identifier = self.node_manager.authority_identifier()?.clone();
             secure_channels = self.node_manager.secure_channels.clone();
         }
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Direct(consumer_route.clone()),
-            trust_context_id,
+            authority_identifier.to_string(),
         );
 
         let inlet_controller = KafkaInletController::new(
@@ -523,10 +415,10 @@ impl NodeManagerWorker {
             outlet_node_multiaddr.to_string()
         );
 
-        let trust_context_id;
+        let authority_identifier;
         let secure_channels;
         {
-            trust_context_id = self.node_manager.trust_context()?.id().to_string();
+            authority_identifier = self.node_manager.authority_identifier()?.clone();
             secure_channels = self.node_manager.secure_channels.clone();
 
             if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
@@ -551,7 +443,7 @@ impl NodeManagerWorker {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(outlet_node_multiaddr.clone()),
-            trust_context_id,
+            authority_identifier.to_string(),
         );
 
         let inlet_controller = KafkaInletController::new(
@@ -680,17 +572,6 @@ impl NodeManagerWorker {
     async fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
         registry
-            .authenticated_services
-            .keys()
-            .await
-            .iter()
-            .for_each(|addr| {
-                list.push(ServiceStatus::new(
-                    addr.address(),
-                    DefaultAddress::AUTHENTICATED_SERVICE,
-                ))
-            });
-        registry
             .uppercase_services
             .keys()
             .await
@@ -718,17 +599,6 @@ impl NodeManagerWorker {
                 DefaultAddress::HOP_SERVICE,
             ))
         });
-        registry
-            .credentials_services
-            .keys()
-            .await
-            .iter()
-            .for_each(|addr| {
-                list.push(ServiceStatus::new(
-                    addr.address(),
-                    DefaultAddress::CREDENTIALS_SERVICE,
-                ))
-            });
         registry
             .kafka_services
             .entries()

@@ -5,6 +5,7 @@ use crate::{
     CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeyVerification,
     TimestampInSeconds,
 };
+use ockam_core::compat::string::ToString;
 
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
@@ -191,7 +192,7 @@ impl CredentialsVerification {
                     map,
                     now()?,
                     Some(credential_data.credential_data.expires_at),
-                    Some(credential_data.purpose_key_data.subject),
+                    Some(credential_data.purpose_key_data.subject.to_string()),
                 ),
             )
             .await?;

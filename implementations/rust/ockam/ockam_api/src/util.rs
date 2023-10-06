@@ -375,13 +375,16 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 pub mod test_utils {
     use ockam::identity::storage::InMemoryStorage;
     use ockam::identity::utils::AttributesBuilder;
-    use ockam::identity::{Identifier, Identity, MAX_CREDENTIAL_VALIDITY};
-    use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
+    use ockam::identity::SecureChannels;
+    use ockam::identity::{Identifier, Identity};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
 
+    use crate::authenticator::credentials_issuer::{
+        MAX_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA,
+    };
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
@@ -447,9 +450,7 @@ pub mod test_utils {
 
         let exported_identity = identity.export()?;
 
-        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
-            .build();
+        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build();
 
         let credential = secure_channels
             .identities()
@@ -475,20 +476,19 @@ pub mod test_utils {
 
         let node_manager = InMemoryNode::new(
             context,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, None, true, false),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, false),
             NodeManagerTransportOptions::new(
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
-                "test_trust_context".to_string(),
-                Some(TrustAuthorityConfig::new(
+            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(Some(
+                TrustAuthorityConfig::new(
                     hex::encode(&identity.export().unwrap()),
                     Some(CredentialRetrieverConfig::FromMemory(minicbor::to_vec(
                         &credential,
                     )?)),
-                )),
-            ))),
+                ),
+            )))),
         )
         .await?;
         let node_manager = Arc::new(node_manager);

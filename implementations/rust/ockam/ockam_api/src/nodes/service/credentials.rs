@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use either::Either;
 use miette::IntoDiagnostic;
 use minicbor::Decoder;
@@ -13,8 +11,6 @@ use ockam_node::Context;
 
 use crate::cli_state::traits::StateDirTrait;
 use crate::cloud::AuthorityNode;
-use crate::error::ApiError;
-use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
 use crate::nodes::BackgroundNode;
 
@@ -131,13 +127,20 @@ impl NodeManagerWorker {
             self.node_manager.identifier().clone()
         };
 
-        match self
-            .node_manager
-            .trust_context()?
-            .authority()?
-            .credential(ctx, &identifier)
-            .await
-        {
+        let credential_retriever =
+            if let Some(credential_retriever) = self.node_manager.credential_retriever.as_ref() {
+                credential_retriever
+            } else {
+                return Ok(Either::Left(Response::internal_error(
+                    req,
+                    &format!(
+                        "Error retrieving credential for {}: No Retriever",
+                        identifier,
+                    ),
+                )));
+            };
+
+        match credential_retriever.retrieve(ctx, &identifier).await {
             Ok(c) => Ok(Either::Right(Response::ok(req).body(c))),
             Err(e) => Ok(Either::Left(Response::internal_error(
                 req,
@@ -147,54 +150,5 @@ impl NodeManagerWorker {
                 ),
             ))),
         }
-    }
-
-    pub(super) async fn present_credential(
-        &self,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-        ctx: &Context,
-    ) -> Result<Response, Response<Error>> {
-        let request: PresentCredentialRequest = dec.decode()?;
-
-        // TODO: Replace with self.connect?
-        let route = MultiAddr::from_str(&request.route).map_err(|_| {
-            ApiError::core(format!(
-                "Couldn't convert String to MultiAddr: {}",
-                &request.route
-            ))
-        })?;
-        let route = local_multiaddr_to_route(&route)?;
-
-        let credential = self
-            .node_manager
-            .trust_context()?
-            .authority()?
-            .credential(ctx, self.node_manager.identifier())
-            .await?;
-
-        if request.oneway {
-            self.node_manager
-                .credentials_service()
-                .present_credential(ctx, route, credential)
-                .await?;
-        } else {
-            self.node_manager
-                .credentials_service()
-                .present_credential_mutual(
-                    ctx,
-                    route,
-                    self.node_manager
-                        .trust_context()?
-                        .authorities()
-                        .await?
-                        .as_slice(),
-                    credential,
-                )
-                .await?;
-        }
-
-        let response = Response::ok(req);
-        Ok(response)
     }
 }

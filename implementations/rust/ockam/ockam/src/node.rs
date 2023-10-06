@@ -1,9 +1,9 @@
 use crate::identity::models::Identifier;
 use crate::identity::storage::Storage;
 use crate::identity::{
-    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
-    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
+    secure_channels, Credentials, Identities, IdentitiesCreation, IdentitiesKeys,
+    IdentitiesRepository, SecureChannel, SecureChannelListener, SecureChannelRegistry,
+    SecureChannels, SecureChannelsBuilder,
 };
 use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_core::compat::string::String;
@@ -302,11 +302,6 @@ impl Node {
     /// Return the vault used by secure channels
     pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
         self.secure_channels.identities().purpose_keys()
-    }
-
-    /// Return services to serve credentials
-    pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-        self.secure_channels.identities().credentials_server()
     }
 
     /// Return the repository used to store identities data

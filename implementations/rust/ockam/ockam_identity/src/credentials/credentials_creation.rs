@@ -1,8 +1,8 @@
 use crate::models::{
     Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier, VersionedData,
 };
-use crate::utils::{add_seconds, now};
-use crate::{IdentitiesRepository, Identity, PurposeKeyCreation};
+use crate::utils::now;
+use crate::{IdentitiesRepository, Identity, PurposeKeyCreation, TimestampInSeconds};
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
@@ -63,7 +63,7 @@ impl CredentialsCreation {
         .await?;
 
         let created_at = now()?;
-        let expires_at = add_seconds(&created_at, ttl.as_secs());
+        let expires_at = created_at + TimestampInSeconds(ttl.as_secs());
 
         let credential_data = CredentialData {
             subject: Some(subject.clone()),

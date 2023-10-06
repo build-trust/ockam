@@ -1,3 +1,4 @@
+use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
@@ -5,7 +6,10 @@ use ockam_core::{Address, OutgoingAccessControl, Result};
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::Addresses;
-use crate::{TrustContext, TrustEveryonePolicy, TrustPolicy};
+use crate::{
+    CredentialsMemoryRetriever, CredentialsRetriever, Identifier, IdentityError,
+    TrustEveryonePolicy, TrustPolicy,
+};
 
 use core::fmt;
 use core::fmt::Formatter;
@@ -18,8 +22,10 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 pub struct SecureChannelOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
-    pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) credentials: Vec<CredentialAndPurposeKey>,
+    // To verify other's party credentials
+    pub(crate) authority: Option<Identifier>,
+    // To obtain our credentials
+    pub(crate) credential_retriever: Option<Box<dyn CredentialsRetriever>>,
     pub(crate) timeout: Duration,
 }
 
@@ -40,8 +46,8 @@ impl SecureChannelOptions {
         Self {
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
-            trust_context: None,
-            credentials: vec![],
+            authority: None,
+            credential_retriever: None,
             timeout: DEFAULT_TIMEOUT,
         }
     }
@@ -52,21 +58,30 @@ impl SecureChannelOptions {
         self
     }
 
-    /// Adds provided credentials
-    pub fn with_credentials(mut self, credentials: Vec<CredentialAndPurposeKey>) -> Self {
-        self.credentials.extend(credentials);
-        self
+    /// Set credential
+    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Result<Self> {
+        if self.credential_retriever.is_some() {
+            return Err(IdentityError::CredentialsRetrieverAlreadySet.into());
+        }
+        self.credential_retriever = Some(Box::new(CredentialsMemoryRetriever::new(credential)));
+        Ok(self)
     }
 
-    /// Adds a single credential
-    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Self {
-        self.credentials.push(credential);
-        self
+    /// Set [`CredentialsRetriever`]
+    pub fn with_credential_retriever(
+        mut self,
+        credential_retriever: Box<dyn CredentialsRetriever>,
+    ) -> Result<Self> {
+        if self.credential_retriever.is_some() {
+            return Err(IdentityError::CredentialsRetrieverAlreadySet.into());
+        }
+        self.credential_retriever = Some(credential_retriever);
+        Ok(self)
     }
 
     /// Sets trust context
-    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
-        self.trust_context = Some(trust_context);
+    pub fn with_authority(mut self, authority: Identifier) -> Self {
+        self.authority = Some(authority);
         self
     }
 
@@ -128,8 +143,10 @@ pub struct SecureChannelListenerOptions {
     pub(crate) consumer: Vec<FlowControlId>,
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
-    pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) credentials: Vec<CredentialAndPurposeKey>,
+    // To verify other's party credentials
+    pub(crate) authority: Option<Identifier>,
+    // To obtain our credentials
+    pub(crate) credential_retriever: Option<Box<dyn CredentialsRetriever>>,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -148,8 +165,8 @@ impl SecureChannelListenerOptions {
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
-            trust_context: None,
-            credentials: vec![],
+            authority: None,
+            credential_retriever: None,
         }
     }
 
@@ -162,21 +179,30 @@ impl SecureChannelListenerOptions {
         self
     }
 
-    /// Adds provided credentials
-    pub fn with_credentials(mut self, credentials: Vec<CredentialAndPurposeKey>) -> Self {
-        self.credentials.extend(credentials);
-        self
+    /// Set credential
+    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Result<Self> {
+        if self.credential_retriever.is_some() {
+            return Err(IdentityError::CredentialsRetrieverAlreadySet.into());
+        }
+        self.credential_retriever = Some(Box::new(CredentialsMemoryRetriever::new(credential)));
+        Ok(self)
     }
 
-    /// Adds a single credential
-    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Self {
-        self.credentials.push(credential);
-        self
+    /// Set [`CredentialsRetriever`]
+    pub fn with_credential_retriever(
+        mut self,
+        credential_retriever: Box<dyn CredentialsRetriever>,
+    ) -> Result<Self> {
+        if self.credential_retriever.is_some() {
+            return Err(IdentityError::CredentialsRetrieverAlreadySet.into());
+        }
+        self.credential_retriever = Some(credential_retriever);
+        Ok(self)
     }
 
     /// Sets trust context
-    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
-        self.trust_context = Some(trust_context);
+    pub fn with_authority(mut self, authority: Identifier) -> Self {
+        self.authority = Some(authority);
         self
     }
 
