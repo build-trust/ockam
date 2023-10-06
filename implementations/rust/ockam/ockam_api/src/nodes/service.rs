@@ -275,6 +275,7 @@ pub struct NodeManagerGeneralOptions {
     node_name: String,
     pre_trusted_identities: Option<PreTrustedIdentities>,
     start_default_services: bool,
+    persistent: bool,
 }
 
 impl NodeManagerGeneralOptions {
@@ -283,12 +284,14 @@ impl NodeManagerGeneralOptions {
         node_name: String,
         pre_trusted_identities: Option<PreTrustedIdentities>,
         start_default_services: bool,
+        persistent: bool,
     ) -> Self {
         Self {
             cli_state,
             node_name,
             pre_trusted_identities,
             start_default_services,
+            persistent,
         }
     }
 }

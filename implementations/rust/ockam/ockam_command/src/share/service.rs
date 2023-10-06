@@ -93,7 +93,8 @@ async fn run_impl(
     cmd: ServiceCreateCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     let get_sent_invitation = async {
         let invitation = controller
