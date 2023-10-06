@@ -23,7 +23,7 @@ defmodule Ockam.Session.Spawner do
   {:ok, spawner} = Ockam.Session.Spawner.create(worker_mod: MyWorker, worker_options: [key: "val"])
 
   ## Sending init message
-  Ockam.Router.route(%{onward_route: [spawner], return_route: ["me"], payload: "HI!"})
+  Ockam.Worker.route(%{onward_route: [spawner], return_route: ["me"], payload: "HI!"}, state)
 
   ## Is equivalent to calling:
   MyWorker.create(key: "val", init_message: %{onward_route: [spawner], return_route: ["me"], payload: "HI!"})
@@ -32,7 +32,7 @@ defmodule Ockam.Session.Spawner do
   {:ok, spawner} = Ockam.Session.Spawner.create(worker_mod: MyWorker, message_parser: fn(msg) -> [pl: Ockam.Message.payload(msg)] end)
 
   ## Sending init message
-  Ockam.Router.route(%{onward_route: [spawner], return_route: ["me"], payload: "HI!"})
+  Ockam.Worker.route(%{onward_route: [spawner], return_route: ["me"], payload: "HI!"}, state)
 
   ## Is equivalent to calling:
   MyWorker.create(pl: "HI!")

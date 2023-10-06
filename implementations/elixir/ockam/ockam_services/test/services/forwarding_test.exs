@@ -19,7 +19,7 @@ defmodule Test.Services.ForwardingTest do
       payload: ""
     }
 
-    Ockam.Router.route(register_message)
+    Router.route(register_message)
 
     assert_receive(%{onward_route: [^me], return_route: forwarder_route}, 5_000)
 

@@ -103,11 +103,14 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
     {ref, state} = bump_send_ref(state)
     {:ok, wrapped_message} = Wrapper.wrap_message(forwarded_message, ref)
 
-    Ockam.Router.route(%{
-      onward_route: receiver_route,
-      return_route: [state.inner_address],
-      payload: wrapped_message
-    })
+    Ockam.Worker.route(
+      %{
+        onward_route: receiver_route,
+        return_route: [state.inner_address],
+        payload: wrapped_message
+      },
+      state
+    )
 
     {:ok, Map.put(state, :waiting_confirm, true)}
   end

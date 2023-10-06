@@ -41,3 +41,14 @@ By default this repo provides pre-build NIF files for MacOS (universal) and Linu
 To build Ockam Elixir implementation on other architectures, Rust implementation should also be built.
 
 Please see `ockam_vault_software/README.md` for more information.
+
+## asdf
+
+If you happen to use asdf to control your elixir and erlang versions, there are some inconsistencies in this project (some mix.exs files use elixir 1.10, others have 1.12).
+
+Using the following to make sure everything builds correctly at the implementations level (`implementations/elixir`):
+```bash
+asdf install elixir 1.13.4
+asdf local elixir 1.13.4
+asdf install erlang 24.3.4.13
+asdf local erlang 24.3.4.13

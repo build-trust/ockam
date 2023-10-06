@@ -33,7 +33,7 @@ defmodule Ockam.Services.Proxy do
 
   alias Ockam.Address
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   alias Ockam.Transport.TCP.RecoverableClient
   alias Ockam.Transport.TCPAddress
@@ -61,7 +61,7 @@ defmodule Ockam.Services.Proxy do
             ## Only authorize inner address to accept messages from proxy client
             ## TODO: we need better authorization mechanism
             state =
-              Ockam.Worker.update_authorization_state(state, inner_address,
+              Worker.update_authorization_state(state, inner_address,
                 from_addresses: [:message, [client_address]]
               )
 
@@ -102,7 +102,7 @@ defmodule Ockam.Services.Proxy do
     forwarded_message =
       Message.set_onward_route(message, forward_route) |> Message.trace(inner_address)
 
-    Router.route(forwarded_message)
+    Worker.route(forwarded_message, state)
     {:ok, state}
   end
 
@@ -113,7 +113,7 @@ defmodule Ockam.Services.Proxy do
 
     forwarded_message = Message.forward(message) |> Map.put(:return_route, return_route)
 
-    Router.route(forwarded_message)
+    Worker.route(forwarded_message, state)
     {:ok, state}
   end
 end

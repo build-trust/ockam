@@ -267,7 +267,7 @@ defmodule Ockam.SecureChannel.Tests do
              SecureChannel.get_remote_identity_with_id(channel)
 
     {:ok, me} = Ockam.Node.register_random_address()
-    Ockam.Router.route("PING!", [channel, me], [me])
+    Router.route("PING!", [channel, me], [me])
 
     assert_receive %Ockam.Message{
       onward_route: [^me],
@@ -284,7 +284,7 @@ defmodule Ockam.SecureChannel.Tests do
     receiver_pid = Ockam.Node.whereis(receiver_addr)
     ref2 = Process.monitor(receiver_pid)
 
-    Ockam.Router.route("PONG!", return_route, [me])
+    Router.route("PONG!", return_route, [me])
 
     assert_receive %Ockam.Message{
       onward_route: [^me],
@@ -313,7 +313,7 @@ defmodule Ockam.SecureChannel.Tests do
 
     {:ok, me} = Ockam.Node.register_random_address()
 
-    Ockam.Router.route("PING!", [bob_inner_address, me], [me])
+    Router.route("PING!", [bob_inner_address, me], [me])
 
     refute_receive %Ockam.Message{
       onward_route: [^me],
@@ -326,7 +326,7 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, channel} = create_secure_channel([listener], bob, %{bar: :foo})
 
     {:ok, me} = Ockam.Node.register_random_address()
-    Ockam.Router.route("PING!", [channel, me], [me])
+    Router.route("PING!", [channel, me], [me])
 
     assert_receive %Ockam.Message{
       onward_route: [^me],
@@ -340,7 +340,7 @@ defmodule Ockam.SecureChannel.Tests do
       }
     }
 
-    Ockam.Router.route("PONG!", return_route, [me])
+    Router.route("PONG!", return_route, [me])
 
     assert_receive %Ockam.Message{
       onward_route: [^me],
@@ -389,7 +389,7 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, channel} = create_secure_channel([listener], bob, %{bar: :foo})
 
     {:ok, me} = Ockam.Node.register_random_address()
-    Ockam.Router.route("PING!", [channel, me], [me])
+    Router.route("PING!", [channel, me], [me])
 
     refute_receive %Ockam.Message{
       onward_route: [^me],
@@ -439,7 +439,7 @@ defmodule Ockam.SecureChannel.Tests do
 
     {:ok, me} = Ockam.Node.register_random_address()
 
-    Ockam.Router.route("PING!", [channel, me], [me])
+    Router.route("PING!", [channel, me], [me])
 
     # This to make sure receiver end has fully completed the handshake, and so processes our
     # credentials.
@@ -476,7 +476,7 @@ defmodule Ockam.SecureChannel.Tests do
         1000
       )
 
-    # Ockam.Router.route("PING!", [channel, me], [me])
+    # Router.route("PING!", [channel, me], [me])
 
     # refute_receive %Ockam.Message{
     #  onward_route: [^me],
@@ -501,7 +501,7 @@ defmodule Ockam.SecureChannel.Tests do
         1000
       )
 
-    Ockam.Router.route("PING!", [channel, me], [me])
+    Router.route("PING!", [channel, me], [me])
 
     refute_receive %Ockam.Message{
       onward_route: [^me],

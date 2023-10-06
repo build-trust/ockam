@@ -9,7 +9,7 @@ defmodule Ockam.Kafka.Interceptor.Test.FakeOutlet do
   alias Ockam.Kafka.Interceptor.Protocol.ResponseHeader
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   alias Ockam.Transport.Portal.TunnelProtocol
 
@@ -23,7 +23,7 @@ defmodule Ockam.Kafka.Interceptor.Test.FakeOutlet do
       {:ok, :ping} ->
         tunnel_message
         |> Message.reply(state.address, TunnelProtocol.encode(:pong))
-        |> Router.route()
+        |> Worker.route(state)
 
         {:ok, Map.put(state, :peer_route, Message.return_route(tunnel_message))}
 
@@ -33,10 +33,13 @@ defmodule Ockam.Kafka.Interceptor.Test.FakeOutlet do
       {:ok, {:payload, data}} ->
         response = make_response(data)
 
-        Router.route(%Message{
-          onward_route: Map.get(state, :peer_route),
-          payload: TunnelProtocol.encode({:payload, response})
-        })
+        Worker.route(
+          %Message{
+            onward_route: Map.get(state, :peer_route),
+            payload: TunnelProtocol.encode({:payload, response})
+          },
+          state
+        )
 
         {:ok, state}
     end

@@ -1,6 +1,7 @@
 defmodule Ockam.Worker do
   @moduledoc false
 
+  alias Ockam.Message
   alias Ockam.Node
   alias Ockam.Telemetry
   alias Ockam.Worker.Authorization
@@ -415,6 +416,30 @@ defmodule Ockam.Worker do
       {:error, {:already_registered, _pid}} -> register_random_extra_address(module, state)
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  ## Add Worker Route with state data (https://github.com/build-trust/ockam/issues/3654)
+  def route(message) do
+    Ockam.Router.route(message)
+  end
+
+  def route(message, _state) do
+    route(message)
+  end
+
+  @doc """
+  Routes a message with given payload, onward_route and return_route
+  """
+  def route(payload, onward_route, return_route \\ [], local_metadata \\ %{}, state) do
+    route(
+      %Message{
+        onward_route: onward_route,
+        return_route: return_route,
+        payload: payload,
+        local_metadata: local_metadata
+      },
+      state
+    )
   end
 
   ## Metrics functions

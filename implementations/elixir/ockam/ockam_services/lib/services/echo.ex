@@ -4,7 +4,7 @@ defmodule Ockam.Services.Echo do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -20,7 +20,7 @@ defmodule Ockam.Services.Echo do
 
     log_level = Map.get(state, :log_level, :info)
     Logger.log(log_level, "\nECHO\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
-    Router.route(reply)
+    Worker.route(reply, state)
 
     {:ok, state}
   end

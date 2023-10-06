@@ -135,7 +135,7 @@ defmodule Ockam.Session.Pluggable do
       {:ok, data_state} ->
         case message do
           nil -> :ok
-          %{} -> Ockam.Router.route(message)
+          %{} -> Ockam.Worker.route(message, base_state)
         end
 
         state =

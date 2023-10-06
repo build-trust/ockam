@@ -5,8 +5,8 @@ defmodule Ockam.Transport.Portal.OutletWorker do
 
   use Ockam.Worker
   alias Ockam.Message
-  alias Ockam.Router
   alias Ockam.Transport.Portal.TunnelProtocol
+  alias Ockam.Worker
 
   require Logger
 
@@ -33,7 +33,7 @@ defmodule Ockam.Transport.Portal.OutletWorker do
            :gen_tcp.connect(target_host, target_port, [{:active, :once}, :binary], timeout),
          {:ok, socket} <- maybe_upgrade_to_ssl(socket, ssl, ssl_options, timeout) do
       Process.flag(:trap_exit, true)
-      :ok = Router.route(Message.reply(msg, state.address, TunnelProtocol.encode(:pong)))
+      :ok = Worker.route(Message.reply(msg, state.address, TunnelProtocol.encode(:pong)), state)
 
       protocol =
         case ssl do
@@ -66,7 +66,13 @@ defmodule Ockam.Transport.Portal.OutletWorker do
     else
       error ->
         Logger.error("Error starting outlet: #{inspect(options)} : #{inspect(error)}")
-        :ok = Router.route(Message.reply(msg, state.address, TunnelProtocol.encode(:disconnect)))
+
+        :ok =
+          Worker.route(
+            Message.reply(msg, state.address, TunnelProtocol.encode(:disconnect)),
+            state
+          )
+
         {:error, :normal}
     end
   end
@@ -84,7 +90,10 @@ defmodule Ockam.Transport.Portal.OutletWorker do
         %{peer: peer, protocol: %{data_tag: data_tag, inet_mod: inet_mod}} = state
       ) do
     :ok =
-      Router.route(%Message{payload: TunnelProtocol.encode({:payload, data}), onward_route: peer})
+      Worker.route(
+        %Message{payload: TunnelProtocol.encode({:payload, data}), onward_route: peer},
+        state
+      )
 
     inet_mod.setopts(socket, active: :once)
     {:noreply, state}
@@ -118,9 +127,14 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   end
 
   @impl true
-  def terminate(reason, %{peer: peer, connected: true} = _state) do
+  def terminate(reason, %{peer: peer, connected: true} = state) do
     Logger.info("Outlet terminated with reason: #{inspect(reason)}, disconnecting")
-    :ok = Router.route(%Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer})
+
+    :ok =
+      Worker.route(
+        %Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer},
+        state
+      )
   end
 
   def terminate(reason, _state) do
