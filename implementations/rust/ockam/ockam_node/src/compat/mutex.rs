@@ -177,6 +177,15 @@ unsafe impl<T> Send for Mutex<T> {}
 #[allow(unsafe_code)]
 unsafe impl<T> Sync for Mutex<T> {}
 
+impl<T> Default for Mutex<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self::new(T::default())
+    }
+}
+
 impl<T> Mutex<T> {
     /// Creates a new mutex
     pub fn new(t: T) -> Self {
