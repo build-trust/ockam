@@ -1,12 +1,17 @@
+use std::fmt::Display;
+
 use crate::identity::{get_identity_name, initialize_identity_if_default};
-use crate::output::{EncodeFormat, IdentifierDisplay, IdentityDisplay};
+use crate::output::{EncodeFormat, IdentifierDisplay, Output, VerifyingPublicKeyDisplay};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam::identity::{Identity, Vault};
+use ockam::identity::verified_change::VerifiedChange;
+use ockam::identity::{Identifier, Identity, Vault};
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_node::Context;
+use serde::Serialize;
+use serde_json::{json, to_string_pretty};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -49,7 +54,7 @@ impl ShowCommand {
         let name = get_identity_name(&opts.state, &cmd.name);
         let state = opts.state.identities.get(&name)?;
         let identifier = state.config().identifier();
-        if cmd.full {
+        let (plain, json) = if cmd.full {
             let change_history = opts
                 .state
                 .identities
@@ -60,23 +65,95 @@ impl ShowCommand {
                 .into_diagnostic()?;
 
             if Some(EncodeFormat::Hex) == cmd.encoding {
-                opts.println(&hex::encode(change_history.export().into_diagnostic()?))?;
+                let encoded = hex::encode(change_history.export().into_diagnostic()?);
+                let json = to_string_pretty(&json!({"encoded": &encoded}));
+                (encoded, json)
             } else {
-                let identity = Identity::import_from_change_history(
+                let identity: ShowIdentity = Identity::import_from_change_history(
                     Some(&identifier),
                     change_history,
                     Vault::create_verifying_vault(),
                 )
                 .await
-                .into_diagnostic()?;
+                .into_diagnostic()?
+                .into();
 
-                let identity_display = IdentityDisplay(identity);
-                opts.println(&identity_display)?;
+                (identity.to_string(), to_string_pretty(&identity))
             }
         } else {
             let identifier_display = IdentifierDisplay(identifier);
-            opts.println(&identifier_display)?;
+            (
+                identifier_display.to_string(),
+                to_string_pretty(&json!({"identifier": &identifier_display})),
+            )
+        };
+
+        opts.terminal
+            .stdout()
+            .plain(&plain)
+            .json(json.into_diagnostic()?)
+            .machine(&plain)
+            .write_line()?;
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize)]
+struct ShowIdentity {
+    identifier: Identifier,
+    changes: Vec<Change>,
+}
+
+impl From<Identity> for ShowIdentity {
+    fn from(value: Identity) -> Self {
+        Self {
+            identifier: value.identifier().to_owned(),
+            changes: value.changes().iter().cloned().map(Change::from).collect(),
+        }
+    }
+}
+
+impl Display for ShowIdentity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Identifier: {}", self.identifier)?;
+        for (i_num, change) in self.changes.iter().enumerate() {
+            writeln!(f, "  Change[{}]:", i_num)?;
+            writeln!(f, "    identifier:              {}", change.identifier)?;
+            writeln!(
+                f,
+                "    primary_public_key:      {}",
+                change.primary_public_key
+            )?;
+            writeln!(
+                f,
+                "    revoke_all_purpose_keys: {}",
+                change.revoke_all_purpose_keys
+            )?;
         }
         Ok(())
+    }
+}
+
+impl Output for ShowIdentity {
+    fn output(&self) -> crate::error::Result<String> {
+        Ok(self.to_string())
+    }
+}
+
+#[derive(Serialize)]
+struct Change {
+    pub identifier: String,
+    pub primary_public_key: VerifyingPublicKeyDisplay,
+    pub revoke_all_purpose_keys: bool,
+}
+
+impl From<VerifiedChange> for Change {
+    fn from(value: VerifiedChange) -> Self {
+        Self {
+            identifier: hex::encode(value.change_hash()),
+            primary_public_key: VerifyingPublicKeyDisplay(value.primary_public_key().to_owned()),
+            revoke_all_purpose_keys: value.data().revoke_all_purpose_keys,
+        }
     }
 }

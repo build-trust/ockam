@@ -678,6 +678,22 @@ impl fmt::Display for VerifyingPublicKeyDisplay {
     }
 }
 
+impl Serialize for VerifyingPublicKeyDisplay {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&match &self.0 {
+            VerifyingPublicKey::EdDSACurve25519(value) => {
+                format!("EdDSACurve25519: {}", hex::encode(value.0))
+            }
+            VerifyingPublicKey::ECDSASHA256CurveP256(value) => {
+                format!("ECDSASHA256CurveP256: {}", hex::encode(value.0))
+            }
+        })
+    }
+}
+
 impl fmt::Display for IdentityDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "Identifier: {}", self.0.identifier())?;
