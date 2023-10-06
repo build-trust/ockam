@@ -38,6 +38,7 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.ServiceMessage
   alias Ockam.Session.Spawner
   alias Ockam.Wire
+  alias Ockam.Worker
 
   alias __MODULE__
 
@@ -495,7 +496,7 @@ defmodule Ockam.SecureChannel.Channel do
         return_route: [state.inner_address]
       }
 
-      Router.route(msg)
+      Worker.route(msg, state)
       next_handshake_state(next, state)
     end
   end
@@ -546,7 +547,7 @@ defmodule Ockam.SecureChannel.Channel do
     message
     |> attach_metadata(state.additional_metadata, e)
     |> Message.trace(state.address)
-    |> Router.route()
+    |> Worker.route(state)
 
     {:ok, state}
   end

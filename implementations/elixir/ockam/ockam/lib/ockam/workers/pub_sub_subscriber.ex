@@ -18,7 +18,7 @@ defmodule Ockam.Workers.PubSubSubscriber do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -63,7 +63,7 @@ defmodule Ockam.Workers.PubSubSubscriber do
         :ok
 
       route ->
-        Router.route(Message.set_onward_route(message, route))
+        Worker.route(Message.set_onward_route(message, route), state)
     end
 
     {:ok, state}
@@ -80,11 +80,14 @@ defmodule Ockam.Workers.PubSubSubscriber do
     name = Map.fetch!(state, :name)
     interval = Map.fetch!(state, :interval)
 
-    Router.route(%{
-      onward_route: pub_sub_route,
-      return_route: [state.address],
-      payload: :bare.encode(name <> ":" <> topic, :string)
-    })
+    Worker.route(
+      %{
+        onward_route: pub_sub_route,
+        return_route: [state.address],
+        payload: :bare.encode(name <> ":" <> topic, :string)
+      },
+      state
+    )
 
     Process.send_after(self(), :refresh, interval)
     state

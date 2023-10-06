@@ -15,11 +15,14 @@ defmodule Ockam.Examples.Session.CountTo.DataWorker do
   def handle_message(message, state) do
     return_route = Message.return_route(message)
 
-    Ockam.Router.route(%{
-      onward_route: return_route,
-      return_route: [state.address],
-      payload: "#{state.count}"
-    })
+    Ockam.Worker.route(
+      %{
+        onward_route: return_route,
+        return_route: [state.address],
+        payload: "#{state.count}"
+      },
+      state
+    )
 
     {:ok, state}
   end

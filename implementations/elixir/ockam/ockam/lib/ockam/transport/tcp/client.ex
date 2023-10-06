@@ -97,7 +97,7 @@ defmodule Ockam.Transport.TCP.Client do
           message
           |> Message.trace(state.address)
 
-        Ockam.Router.route(forwarded_message)
+        Ockam.Worker.route(forwarded_message, state)
 
       {:error, %Wire.DecodeError{} = e} ->
         raise e

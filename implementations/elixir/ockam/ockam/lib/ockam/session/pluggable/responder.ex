@@ -123,7 +123,7 @@ defmodule Ockam.Session.Pluggable.Responder do
       {:next, response, handshake_state} ->
         case response do
           nil -> :ok
-          %{} -> Ockam.Router.route(response)
+          %{} -> Ockam.Worker.route(response, handshake_state)
         end
 
         {:ok, Session.update_handshake_state(state, handshake_state)}

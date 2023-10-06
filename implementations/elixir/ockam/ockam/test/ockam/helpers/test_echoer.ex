@@ -3,7 +3,7 @@ defmodule Ockam.Tests.Helpers.Echoer do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -11,7 +11,7 @@ defmodule Ockam.Tests.Helpers.Echoer do
   def handle_message(message, state) do
     reply = Message.reply(message, state.address, Message.payload(message))
 
-    Router.route(reply)
+    Worker.route(reply, state)
     {:ok, state}
   end
 end

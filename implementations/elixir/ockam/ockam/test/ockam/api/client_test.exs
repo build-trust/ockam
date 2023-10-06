@@ -5,13 +5,13 @@ defmodule Ockam.API.Tests.EchoAPI do
   alias Ockam.API.Request
   alias Ockam.API.Response
 
-  alias Ockam.Router
+  alias Ockam.Worker
 
   @impl true
   def handle_message(message, state) do
     {:ok, request} = Request.from_message(message)
     response = Response.reply_to(request, 200, request.body)
-    Router.route(Response.to_message(response, [state.address]))
+    Worker.route(Response.to_message(response, [state.address]), state)
     {:ok, state}
   end
 end

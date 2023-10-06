@@ -23,7 +23,7 @@ defmodule Ockam.Workers.RemoteForwarder do
   forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 
   Send messages from another node:
-  Ockam.Router.route(%{onward_route: cloud_route ++ [forwarder_address], ...})
+  Ockam.Worker.route(%{onward_route: cloud_route ++ [forwarder_address], ...})
 
   Messages will be delivered through the cloud forwarder
   to the remote forwarder on the first node
@@ -34,6 +34,7 @@ defmodule Ockam.Workers.RemoteForwarder do
 
   alias Ockam.Message
   alias Ockam.Router
+  alias Ockam.Worker
 
   @doc """
   Get the remote forwarder address to send messages to this worker
@@ -67,7 +68,7 @@ defmodule Ockam.Workers.RemoteForwarder do
 
     forward_to = Map.get(state, :forward_to)
 
-    Router.route(Message.set_onward_route(message, forward_to ++ onward_route))
+    Worker.route(Message.set_onward_route(message, forward_to ++ onward_route), state)
 
     {:ok, state}
   end

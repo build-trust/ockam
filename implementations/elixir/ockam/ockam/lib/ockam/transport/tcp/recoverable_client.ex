@@ -16,7 +16,7 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
   alias Ockam.Transport.TCPAddress
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -46,7 +46,7 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
           |> Message.forward()
           |> Message.set_return_route([state.address | return_route])
 
-        Router.route(forwarded_message)
+        Worker.route(forwarded_message, state)
 
         {:ok, state}
 
@@ -61,9 +61,10 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
     [_me | onward_route] = Message.onward_route(message)
 
     ## TODO: forward_through and trace
-    Router.route(
+    Worker.route(
       Message.set_onward_route(message, [client | onward_route])
-      |> Message.trace(state.inner_address)
+      |> Message.trace(state.inner_address),
+      state
     )
 
     {:ok, state}
