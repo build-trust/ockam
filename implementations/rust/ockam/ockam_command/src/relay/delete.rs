@@ -56,6 +56,7 @@ pub async fn run_impl(
     let node_name = parse_node_name(&at)?;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
+
     // Check if relay exists
     node.ask_and_get_reply::<_, ()>(&ctx, Request::get(format!("/node/forwarder/{relay_name}")))
         .await?
@@ -89,6 +90,19 @@ pub async fn run_impl(
                 "node": node_name } }))
             .write_line()
             .unwrap();
+
     }
+
+    // Construct a request to get relay information after deletion
+    let relay_info_request = Request::get(format!("/node/forwarder/{relay_name}",));
+
+    // Send the request and await the response
+    let relay_info: RelayInfo = node.ask_and_get_reply(&ctx, relay_info_request).await?;
+
+    let relay_infos: Vec<RelayInfo> = get_relays.await?;
+
+    // Pass relay_infos to check_relay_existence
+    check_relay_existence(&relay_infos, &relay_name)?;
+
     Ok(())
 }
