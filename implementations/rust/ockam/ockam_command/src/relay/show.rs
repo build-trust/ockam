@@ -1,13 +1,18 @@
 use clap::Args;
-use miette::IntoDiagnostic;
+use indoc::formatdoc;
+use miette::{IntoDiagnostic, Report};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
+use ockam_multiaddr::MultiAddr;
+
+use serde::Serialize;
 
 use crate::node::get_node_name;
+use crate::output::Output;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
@@ -37,6 +42,29 @@ impl ShowCommand {
     }
 }
 
+#[derive(Serialize)]
+struct RelayShowOutput<'a> {
+    pub relay_route: &'a str,
+    pub remote_address: MultiAddr,
+    pub worker_address: MultiAddr,
+}
+
+impl<'a> Output for RelayShowOutput<'_> {
+    fn output(&self) -> crate::error::Result<String> {
+        Ok(formatdoc!(
+            r#"
+        Relay:
+            Relay Route: {route}
+            Remote Address: {remote_addr}
+            Worker Address: {worker_addr}
+        "#,
+            route = self.relay_route,
+            remote_addr = self.remote_address,
+            worker_addr = self.worker_address,
+        ))
+    }
+}
+
 async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
@@ -52,16 +80,21 @@ async fn run_impl(
         )
         .await?;
 
-    println!("Relay:");
-    println!("  Relay Route: {}", relay_info.forwarding_route());
-    println!(
-        "  Remote Address: {}",
-        relay_info.remote_address_ma().into_diagnostic()?
-    );
-    println!(
-        "  Worker Address: {}",
-        relay_info.worker_address_ma().into_diagnostic()?
-    );
+    let output = RelayShowOutput {
+        relay_route: relay_info.forwarding_route(),
+        remote_address: relay_info.remote_address_ma().into_diagnostic()?,
+        worker_address: relay_info.worker_address_ma().into_diagnostic()?,
+    };
+
+    opts.terminal
+        .stdout()
+        .plain(output.output()?)
+        .json(
+            serde_json::to_string(&output).map_err(|e| {
+                Report::msg(format!("Can't serialize the relay type, because: {e}"))
+            })?,
+        )
+        .write_line()?;
 
     Ok(())
 }
