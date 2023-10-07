@@ -41,14 +41,19 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
+    let alias = cmd.alias.clone();
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&node_name)?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+
+    // Check if alias exists
+    node.tell(&ctx, Request::get(format!("/node/outlet/{alias}")))
+        .await?;
+
     if opts.terminal.confirmed_with_flag_or_prompt(
         cmd.yes,
         "Are you sure you want to delete this TCP outlet?",
     )? {
-        let alias = cmd.alias.clone();
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node_name = parse_node_name(&node_name)?;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))
             .await?;
 
