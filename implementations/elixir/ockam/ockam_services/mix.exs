@@ -46,6 +46,7 @@ defmodule Ockam.Services.MixProject do
 
   defp deps do
     [
+      {:assert_eventually, "~>1.0.0", only: [:test], runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},

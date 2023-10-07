@@ -57,7 +57,7 @@ defmodule Ockam.Services.API.Endpoint do
   end
 
   @type routes() :: [
-          {auth_type :: any(), method :: atom(), path :: String.t(), handler :: atom()}
+          {auth_type :: any(), method :: atom(), path :: String.t(), handler :: fun()}
         ]
 
   @callback authorize(auth_type :: any(), req :: %Ockam.API.Request{}, bindings :: map()) ::

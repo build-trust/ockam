@@ -198,7 +198,9 @@ defmodule Ockam.Session.Pluggable do
     all_addresses = Map.get(state, :all_addresses, [])
 
     Enum.each(all_addresses, fn address ->
-      Ockam.Node.set_address_module(address, module)
+      Ockam.Node.update_address_metadata(address, fn _prev ->
+        %{module: module, attributes: %{}}
+      end)
     end)
   end
 

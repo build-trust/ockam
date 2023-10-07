@@ -8,7 +8,9 @@ defmodule Ockam.Worker do
   require Logger
 
   @callback setup(options :: Keyword.t(), initial_state :: map()) ::
-              {:ok, state :: map()} | {:error, reason :: any()}
+              {:ok, state :: map()}
+              | {:ok, registry_attributes :: map(), state :: map()}
+              | {:error, reason :: any()}
 
   @callback handle_message(message :: Ockam.Message.t(), state :: map()) ::
               {:ok, state :: map()}
@@ -213,8 +215,6 @@ defmodule Ockam.Worker do
   end
 
   def handle_post_init(module, options) do
-    Node.set_address_module(Keyword.fetch!(options, :address), module)
-
     return_value =
       with_init_metric(module, options, fn ->
         with {:ok, address} <- Keyword.fetch(options, :address),
@@ -242,7 +242,7 @@ defmodule Ockam.Worker do
                    Keyword.get(options, :extra_addresses, []),
                    base_state
                  ) do
-            module.setup(options, state)
+            complete_setup(module, options, state)
           end
         else
           :error ->
@@ -262,6 +262,27 @@ defmodule Ockam.Worker do
 
       {:error, reason} ->
         {:stop, reason, {:post_init, options}}
+    end
+  end
+
+  defp complete_setup(module, options, state) do
+    case module.setup(options, state) do
+      {:ok, state} ->
+        Node.update_address_metadata(Keyword.fetch!(options, :address), fn _prev ->
+          %{module: module, attributes: %{}}
+        end)
+
+        {:ok, state}
+
+      {:ok, attrs, state} ->
+        Node.update_address_metadata(Keyword.fetch!(options, :address), fn _prev ->
+          %{module: module, attributes: attrs}
+        end)
+
+        {:ok, state}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
