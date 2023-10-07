@@ -47,7 +47,6 @@ pub async fn run_impl(
 
     // Check if the alias exists
     let alias_exists = check_alias_existence(&ctx, &opts.state, &node_name, &alias).await?;
-    
     if alias_exists {
         if opts.terminal.confirmed_with_flag_or_prompt(
             cmd.yes,
@@ -56,7 +55,6 @@ pub async fn run_impl(
             let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
             node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))
                 .await?;
-    
             opts.terminal
                 .stdout()
                 .plain(fmt_ok!(
@@ -75,7 +73,6 @@ pub async fn run_impl(
             .write_line()
             .unwrap();
     }
-    
     Ok(())
 }
 
