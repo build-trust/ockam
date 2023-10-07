@@ -73,7 +73,23 @@ async fn run_impl(
         &format!("Outlets on Node {node_name}"),
         &format!("No TCP Outlets found on node {node_name}."),
     )?;
-    opts.terminal.stdout().plain(list).write_line()?;
+    let json: Vec<_> = outlets
+        .list
+        .iter()
+        .map(|outlet| {
+            Ok(serde_json::json!({
+                "alias": outlet.alias,
+                "from": outlet.worker_address()?,
+                "to": outlet.socket_addr,
+            }))
+        })
+        .flat_map(|res: Result<_, ockam_core::Error>| res.ok())
+        .collect();
+    opts.terminal
+        .stdout()
+        .plain(list)
+        .json(serde_json::json!(json))
+        .write_line()?;
 
     Ok(())
 }
