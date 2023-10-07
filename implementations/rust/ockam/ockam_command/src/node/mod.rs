@@ -77,6 +77,7 @@ impl NodeCommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
+    /// Perform the command on the given NODE_NAME
     #[arg(global = true, id = "at", value_name = "NODE_NAME", long)]
     pub at_node: Option<String>,
 }
