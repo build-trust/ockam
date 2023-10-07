@@ -18,6 +18,7 @@ mod default;
 mod delete;
 mod list;
 mod logs;
+mod models;
 mod show;
 mod start;
 mod stop;

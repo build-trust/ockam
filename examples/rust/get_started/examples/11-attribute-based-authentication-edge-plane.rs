@@ -17,7 +17,7 @@ use ockam_transport_tcp::{TcpInletOptions, TcpTransportExtension};
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
 ///
-/// The connections go through the Ockam Orchestrator, via the control node Forwarder.
+/// The connections go through the Ockam Orchestrator, via the control node Relay.
 ///
 /// This example shows how to:
 ///
@@ -131,7 +131,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         )
         .await?;
 
-    // 4.3 then create a secure channel to the control node (via its forwarder)
+    // 4.3 then create a secure channel to the control node (via its relay)
     let secure_channel_listener_route = route![secure_channel_address, "forward_to_control_plane1", "untrusted"];
     let secure_channel_to_control = node
         .create_secure_channel(

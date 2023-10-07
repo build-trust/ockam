@@ -52,7 +52,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.controller().await?;
+    let controller = node.create_controller().await?;
 
     let project = controller
         .create_project(ctx, space_id, cmd.project_name, vec![])

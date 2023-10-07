@@ -2,7 +2,7 @@ use crate::models::{CredentialData, PurposeKeyAttestationData};
 use crate::{CredentialsCreation, CredentialsVerification, IdentitiesRepository, PurposeKeys};
 
 use ockam_core::compat::sync::Arc;
-use ockam_vault::{SigningVault, VerifyingVault};
+use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
 /// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
@@ -16,8 +16,8 @@ pub struct CredentialAndPurposeKeyData {
 
 /// Service for managing [`Credential`]s
 pub struct Credentials {
-    credential_vault: Arc<dyn SigningVault>,
-    verifying_vault: Arc<dyn VerifyingVault>,
+    credential_vault: Arc<dyn VaultForSigning>,
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     purpose_keys: Arc<PurposeKeys>,
     identities_repository: Arc<dyn IdentitiesRepository>,
 }
@@ -25,8 +25,8 @@ pub struct Credentials {
 impl Credentials {
     ///Constructor
     pub fn new(
-        credential_vault: Arc<dyn SigningVault>,
-        verifying_vault: Arc<dyn VerifyingVault>,
+        credential_vault: Arc<dyn VaultForSigning>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
         purpose_keys: Arc<PurposeKeys>,
         identities_repository: Arc<dyn IdentitiesRepository>,
     ) -> Self {
@@ -71,7 +71,7 @@ impl Credentials {
 #[cfg(test)]
 mod tests {
     use crate::identities::identities;
-    use crate::models::SchemaId;
+    use crate::models::CredentialSchemaIdentifier;
     use crate::Attributes;
     use minicbor::bytes::ByteVec;
     use ockam_core::compat::collections::BTreeMap;
@@ -90,7 +90,7 @@ mod tests {
         let mut map: BTreeMap<ByteVec, ByteVec> = Default::default();
         map.insert(b"key".to_vec().into(), b"value".to_vec().into());
         let subject_attributes = Attributes {
-            schema: SchemaId(1),
+            schema: CredentialSchemaIdentifier(1),
             map,
         };
 

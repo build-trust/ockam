@@ -17,7 +17,8 @@ pub struct StoreCommand {
     #[arg(hide_default_value = true, default_value_t = random_name())]
     pub credential_name: String,
 
-    #[arg(long = "issuer")]
+    /// The full hex-encoded Identity that was used to issue the credential
+    #[arg(long = "issuer", value_name = "HEX_ENCODED_FULL_IDENTITY")]
     pub issuer: String,
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]

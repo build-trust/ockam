@@ -67,15 +67,15 @@ pub use ockam_node::{
 
 mod delay;
 mod error;
-mod forwarding_service;
 mod metadata;
 mod monotonic;
+mod relay_service;
 mod system;
 mod unique;
 
 pub use error::OckamError;
-pub use forwarding_service::{ForwardingService, ForwardingServiceOptions};
 pub use metadata::OckamMessage;
+pub use relay_service::{RelayService, RelayServiceOptions};
 pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;
 

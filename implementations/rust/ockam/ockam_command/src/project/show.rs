@@ -42,7 +42,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     // Lookup project
     let id = match &opts.state.projects.get(&cmd.name) {

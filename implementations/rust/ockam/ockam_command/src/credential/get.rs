@@ -15,7 +15,8 @@ pub struct GetCommand {
     #[arg(long)]
     pub overwrite: bool,
 
-    #[arg(long = "identity", value_name = "IDENTITY")]
+    /// Name of the Identity for which the credential was issued.
+    #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 }
 

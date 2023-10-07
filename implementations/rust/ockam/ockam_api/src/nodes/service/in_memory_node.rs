@@ -35,6 +35,7 @@ use crate::DefaultAddress;
 pub struct InMemoryNode {
     pub(crate) node_manager: Arc<NodeManager>,
     pub(crate) medic_handle: MedicHandle,
+    persistent: bool,
 }
 
 /// This Deref instance makes it easy to access the NodeManager functions from an InMemoryNode
@@ -43,6 +44,19 @@ impl Deref for InMemoryNode {
 
     fn deref(&self) -> &Self::Target {
         &self.node_manager
+    }
+}
+
+impl Drop for InMemoryNode {
+    fn drop(&mut self) {
+        // Most of the InMemoryNodes should clean-up their resources when their process
+        // stops. Except if they have been started with the `ockam node create` command
+        // because in that case they can be restarted
+        if !self.persistent {
+            self.node_manager
+                .delete_node()
+                .unwrap_or_else(|_| panic!("cannot delete the node {}", self.node_name));
+        }
     }
 }
 
@@ -104,6 +118,7 @@ impl InMemoryNode {
                 defaults.node_name.clone(),
                 None,
                 false,
+                false,
             ),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
             NodeManagerTrustOptions::new(trust_context_config),
@@ -115,17 +130,8 @@ impl InMemoryNode {
         Ok(node_manager)
     }
 
-    /// Create an in memory node and return its controller
-    pub async fn create_controller(
-        ctx: &Context,
-        cli_state: &CliState,
-    ) -> miette::Result<Controller> {
-        let node = Self::start_node(ctx, cli_state, None, None, None, None).await?;
-        node.controller().await
-    }
-
     /// Return a Controller client to send requests to the Controller
-    pub async fn controller(&self) -> miette::Result<Controller> {
+    pub async fn create_controller(&self) -> miette::Result<Controller> {
         self.create_controller_client().await.into_diagnostic()
     }
 
@@ -148,6 +154,7 @@ impl InMemoryNode {
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
     ) -> Result<Self> {
+        let persistent = general_options.persistent;
         let node_manager =
             NodeManager::create(ctx, general_options, transport_options, trust_options).await?;
         debug!("start the Medic");
@@ -155,6 +162,7 @@ impl InMemoryNode {
         Ok(Self {
             node_manager: Arc::new(node_manager),
             medic_handle,
+            persistent,
         })
     }
 }

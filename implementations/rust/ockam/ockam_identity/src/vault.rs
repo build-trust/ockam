@@ -1,8 +1,9 @@
 use ockam_core::compat::sync::Arc;
 use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
+use ockam_vault::legacy::{KeyId, StoredSecret};
 use ockam_vault::{
-    KeyId, SecureChannelVault, SigningVault, SoftwareSecureChannelVault, SoftwareSigningVault,
-    SoftwareVerifyingVault, StoredSecret, VerifyingVault,
+    SoftwareVaultForSecureChannels, SoftwareVaultForSigning, SoftwareVaultForVerifyingSignatures,
+    VaultForSecureChannels, VaultForSigning, VaultForVerifyingSignatures,
 };
 
 /// Storage for Vault persistent values
@@ -12,22 +13,22 @@ pub type VaultStorage = Arc<dyn KeyValueStorage<KeyId, StoredSecret>>;
 #[derive(Clone)]
 pub struct Vault {
     /// Vault used for Identity Keys
-    pub identity_vault: Arc<dyn SigningVault>,
+    pub identity_vault: Arc<dyn VaultForSigning>,
     /// Vault used for Secure Channels
-    pub secure_channel_vault: Arc<dyn SecureChannelVault>,
+    pub secure_channel_vault: Arc<dyn VaultForSecureChannels>,
     /// Vault used for signing Credentials
-    pub credential_vault: Arc<dyn SigningVault>,
+    pub credential_vault: Arc<dyn VaultForSigning>,
     /// Vault used for verifying signature and sha256
-    pub verifying_vault: Arc<dyn VerifyingVault>,
+    pub verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
 }
 
 impl Vault {
     /// Constructor
     pub fn new(
-        identity_vault: Arc<dyn SigningVault>,
-        secure_channel_vault: Arc<dyn SecureChannelVault>,
-        credential_vault: Arc<dyn SigningVault>,
-        verifying_vault: Arc<dyn VerifyingVault>,
+        identity_vault: Arc<dyn VaultForSigning>,
+        secure_channel_vault: Arc<dyn VaultForSecureChannels>,
+        credential_vault: Arc<dyn VaultForSigning>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Self {
         Self {
             identity_vault,
@@ -47,26 +48,30 @@ impl Vault {
         )
     }
 
-    /// Create [`SoftwareSigningVault`] with [`InMemoryKeyVaultStorage`]
-    pub fn create_identity_vault() -> Arc<dyn SigningVault> {
-        Arc::new(SoftwareSigningVault::new(InMemoryKeyValueStorage::create()))
-    }
-
-    /// Create [`SoftwareSecureChannelVault`] with [`InMemoryKeyVaultStorage`]
-    pub fn create_secure_channel_vault() -> Arc<dyn SecureChannelVault> {
-        Arc::new(SoftwareSecureChannelVault::new(
+    /// Create [`SoftwareVaultForSigning`] with [`InMemoryKeyVaultStorage`]
+    pub fn create_identity_vault() -> Arc<dyn VaultForSigning> {
+        Arc::new(SoftwareVaultForSigning::new(
             InMemoryKeyValueStorage::create(),
         ))
     }
 
-    /// Create [`SoftwareSigningVault`] with [`InMemoryKeyVaultStorage`]
-    pub fn create_credential_vault() -> Arc<dyn SigningVault> {
-        Arc::new(SoftwareSigningVault::new(InMemoryKeyValueStorage::create()))
+    /// Create [`SoftwareSecureChannelVault`] with [`InMemoryKeyVaultStorage`]
+    pub fn create_secure_channel_vault() -> Arc<dyn VaultForSecureChannels> {
+        Arc::new(SoftwareVaultForSecureChannels::new(
+            InMemoryKeyValueStorage::create(),
+        ))
     }
 
-    /// Create [`SoftwareVerifyingVault`]
-    pub fn create_verifying_vault() -> Arc<dyn VerifyingVault> {
-        Arc::new(SoftwareVerifyingVault {})
+    /// Create [`SoftwareVaultForSigning`] with [`InMemoryKeyVaultStorage`]
+    pub fn create_credential_vault() -> Arc<dyn VaultForSigning> {
+        Arc::new(SoftwareVaultForSigning::new(
+            InMemoryKeyValueStorage::create(),
+        ))
+    }
+
+    /// Create [`SoftwareVaultForVerifyingSignatures`]
+    pub fn create_verifying_vault() -> Arc<dyn VaultForVerifyingSignatures> {
+        Arc::new(SoftwareVaultForVerifyingSignatures {})
     }
 }
 
@@ -83,10 +88,10 @@ impl Vault {
     /// Create Software Vaults with a given [`VaultStorage`]r
     pub fn create_with_persistent_storage(storage: VaultStorage) -> Vault {
         Self::new(
-            Arc::new(SoftwareSigningVault::new(storage.clone())),
-            Arc::new(SoftwareSecureChannelVault::new(storage.clone())),
-            Arc::new(SoftwareSigningVault::new(storage)),
-            Arc::new(SoftwareVerifyingVault {}),
+            Arc::new(SoftwareVaultForSigning::new(storage.clone())),
+            Arc::new(SoftwareVaultForSecureChannels::new(storage.clone())),
+            Arc::new(SoftwareVaultForSigning::new(storage)),
+            Arc::new(SoftwareVaultForVerifyingSignatures {}),
         )
     }
 }

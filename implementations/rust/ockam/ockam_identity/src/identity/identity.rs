@@ -9,7 +9,7 @@ use core::fmt::{Display, Formatter};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_vault::{PublicKey, VerifyingVault};
+use ockam_vault::{VaultForVerifyingSignatures, VerifyingPublicKey};
 
 /// Verified Identity
 #[derive(Clone, Debug)]
@@ -80,7 +80,7 @@ impl Identity {
     pub async fn import_from_change_history(
         expected_identifier: Option<&Identifier>,
         change_history: ChangeHistory,
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<Identity> {
         let verified_changes =
             Self::check_entire_consistency(&change_history.0, vault.clone()).await?;
@@ -107,7 +107,7 @@ impl Identity {
     pub async fn import(
         expected_identifier: Option<&Identifier>,
         data: &[u8],
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<Identity> {
         let change_history = ChangeHistory::import(data)?;
 
@@ -117,7 +117,7 @@ impl Identity {
 
 impl Identity {
     /// Get latest public key
-    pub fn get_latest_public_key(&self) -> Result<PublicKey> {
+    pub fn get_latest_public_key(&self) -> Result<VerifyingPublicKey> {
         if let Some(last_change) = self.changes().last() {
             Ok(last_change.primary_public_key().clone())
         } else {
@@ -138,7 +138,7 @@ impl Identity {
     pub async fn add_change(
         self,
         change: Change,
-        vault: Arc<dyn VerifyingVault>,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<Identity> {
         // TODO: Optimize
         let mut change_history = self.change_history;
@@ -179,7 +179,7 @@ mod tests {
     use crate::{identities, Identities, Vault};
     use core::str::FromStr;
     use ockam_core::compat::rand::RngCore;
-    use ockam_vault::{Secret, SecretAttributes, SecretType, SoftwareSigningVault};
+    use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
     use rand::thread_rng;
 
     #[tokio::test]
@@ -203,21 +203,27 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
 
     #[tokio::test]
     async fn test_compare() -> Result<()> {
-        let signing_vault0 = SoftwareSigningVault::create();
-        let signing_vault01 = SoftwareSigningVault::create();
-        let signing_vault02 = SoftwareSigningVault::create();
+        let signing_vault0 = SoftwareVaultForSigning::create();
+        let signing_vault01 = SoftwareVaultForSigning::create();
+        let signing_vault02 = SoftwareVaultForSigning::create();
 
         let mut key0_bin = [0u8; 32];
         thread_rng().fill_bytes(&mut key0_bin);
 
         let key0 = signing_vault0
-            .import_key(Secret::new(key0_bin.to_vec()), SecretAttributes::Ed25519)
+            .import_key(SigningSecret::EdDSACurve25519(
+                EdDSACurve25519SecretKey::new(key0_bin),
+            ))
             .await?;
         let key01 = signing_vault01
-            .import_key(Secret::new(key0_bin.to_vec()), SecretAttributes::Ed25519)
+            .import_key(SigningSecret::EdDSACurve25519(
+                EdDSACurve25519SecretKey::new(key0_bin),
+            ))
             .await?;
         let key02 = signing_vault02
-            .import_key(Secret::new(key0_bin.to_vec()), SecretAttributes::Ed25519)
+            .import_key(SigningSecret::EdDSACurve25519(
+                EdDSACurve25519SecretKey::new(key0_bin),
+            ))
             .await?;
 
         let identities0 = Identities::builder()
@@ -232,7 +238,7 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
         let identity0 = identities0
             .identities_creation()
             .identity_builder()
-            .with_existing_key(key0, SecretType::Ed25519)
+            .with_existing_key(key0)
             .build()
             .await?;
         let identifier = identity0.identifier().clone();

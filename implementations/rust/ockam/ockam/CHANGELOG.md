@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.97.0 - 2023-10-07
+
+### Changed
+
+- Move the rpc to ockam api as remote node
+- Rename forwarder to relay
+- Improve `Vault` type-safety
+- Updated dependencies
+
+### Fixed
+
+- Fix some doc tests
+
+## 0.96.0 - 2023-10-05
+
+### Changed
+
+- Move the rpc to ockam api as remote node
+- Rename forwarder to relay
+- Improve `Vault` type-safety
+- Updated dependencies
+
+### Fixed
+
+- Fix some doc tests
+
 ## 0.95.0 - 2023-09-28
 
 ### Changed

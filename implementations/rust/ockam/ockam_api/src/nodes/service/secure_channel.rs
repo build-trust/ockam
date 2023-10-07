@@ -149,7 +149,7 @@ impl NodeManagerWorker {
             addr,
             authorized_identifiers,
             vault,
-            identity,
+            identity_name,
             ..
         } = dec.decode()?;
 
@@ -174,7 +174,7 @@ impl NodeManagerWorker {
         }
 
         self.node_manager
-            .create_secure_channel_listener(addr, authorized_identifiers, vault, identity, ctx)
+            .create_secure_channel_listener(addr, authorized_identifiers, vault, identity_name, ctx)
             .await?;
 
         Ok(Response::ok(req))

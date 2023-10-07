@@ -41,7 +41,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     let get_spaces = async {
         let spaces = controller.list_spaces(ctx).await?;
@@ -57,9 +58,11 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
 
     let (spaces, _) = try_join!(get_spaces, progress_output)?;
 
-    let plain = opts
-        .terminal
-        .build_list(&spaces, "Spaces", "No spaces found.")?;
+    let plain = opts.terminal.build_list(
+        &spaces,
+        "Spaces",
+        "No spaces found. Run 'ockam enroll' to get a space and a project",
+    )?;
     let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
 
     for space in spaces {

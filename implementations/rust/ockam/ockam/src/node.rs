@@ -2,7 +2,7 @@ use crate::identity::models::Identifier;
 use crate::identity::storage::Storage;
 use crate::identity::{
     secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, Purpose, SecureChannel, SecureChannelListener,
+    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
     SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
 };
 use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
@@ -15,9 +15,9 @@ use ockam_core::{
 };
 use ockam_identity::{PurposeKeys, Vault, VaultStorage};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
-use ockam_vault::KeyId;
+use ockam_vault::SigningSecretKeyHandle;
 
-use crate::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
+use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
 use crate::stream::Stream;
 use crate::OckamError;
 
@@ -81,23 +81,23 @@ impl Node {
         Stream::new(self.get_context()).await
     }
 
-    /// Create a new forwarder
-    pub async fn create_forwarder(
+    /// Create a new relay
+    pub async fn create_relay(
         &self,
         orchestrator_route: impl Into<Route>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        RemoteForwarder::create(self.get_context(), orchestrator_route, options).await
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        RemoteRelay::create(self.get_context(), orchestrator_route, options).await
     }
 
-    /// Create a new static forwarder
-    pub async fn create_static_forwarder(
+    /// Create a new static relay
+    pub async fn create_static_relay(
         &self,
         orchestrator_route: impl Into<Route>,
         alias: impl Into<String>,
-        options: RemoteForwarderOptions,
-    ) -> Result<RemoteForwarderInfo> {
-        RemoteForwarder::create_static(self.get_context(), orchestrator_route, alias, options).await
+        options: RemoteRelayOptions,
+    ) -> Result<RemoteRelayInfo> {
+        RemoteRelay::create_static(self.get_context(), orchestrator_route, alias, options).await
     }
 
     /// Create an Identity
@@ -116,7 +116,7 @@ impl Node {
             .identities()
             .purpose_keys()
             .purpose_keys_creation()
-            .create_purpose_key(identifier, Purpose::SecureChannel)
+            .create_secure_channel_purpose_key(identifier)
             .await?;
 
         Ok(())
@@ -127,10 +127,10 @@ impl Node {
     pub async fn import_private_identity(
         &self,
         identity_change_history: &[u8],
-        key_id: &KeyId,
+        key: &SigningSecretKeyHandle,
     ) -> Result<Identity> {
         self.identities_creation()
-            .import_private_identity(identity_change_history, key_id)
+            .import_private_identity(identity_change_history, key)
             .await
     }
 

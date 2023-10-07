@@ -1,4 +1,8 @@
+use std::fmt::Write;
+
 use clap::Args;
+use miette::IntoDiagnostic;
+
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::util::local_cmd;
@@ -31,9 +35,24 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
         .name
         .unwrap_or(opts.state.vaults.default()?.name().to_string());
     let state = opts.state.vaults.get(name)?;
-    println!("Vault:");
-    for line in state.to_string().lines() {
-        println!("{:2}{}", "", line)
-    }
+
+    let json = serde_json::to_string_pretty(&state).into_diagnostic()?;
+
+    let plain = {
+        let mut buf = String::new();
+
+        writeln!(buf, "Vault:").into_diagnostic()?;
+        for line in state.to_string().lines() {
+            writeln!(buf, "{:2}{}", "", line).into_diagnostic()?;
+        }
+        buf
+    };
+
+    opts.terminal
+        .stdout()
+        .json(json)
+        .plain(plain)
+        .write_line()?;
+
     Ok(())
 }

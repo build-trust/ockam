@@ -8,11 +8,11 @@ use tracing::trace;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::StateDirTrait;
-use ockam_api::nodes::models::forwarder::ForwarderInfo;
+use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
-use crate::node::get_node_name;
+use crate::node::{get_node_name, initialize_node_if_default};
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -35,6 +35,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
+        initialize_node_if_default(&options, &self.to);
         node_rpc(run_impl, (options, self));
     }
 }
@@ -54,8 +55,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {
-        let relay_infos: Vec<ForwarderInfo> =
-            node.ask(&ctx, Request::get("/node/forwarder")).await?;
+        let relay_infos: Vec<RelayInfo> = node.ask(&ctx, Request::get("/node/forwarder")).await?;
         *is_finished.lock().await = true;
         Ok(relay_infos)
     };

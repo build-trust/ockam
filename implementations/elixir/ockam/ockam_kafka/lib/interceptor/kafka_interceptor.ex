@@ -148,7 +148,7 @@ defmodule Ockam.Kafka.Interceptor do
   end
 
   defp handle_error(reason, message, type, state) do
-    Logger.warn(
+    Logger.warning(
       "Kafka interceptor processing error for type: #{inspect(type)} : #{inspect(reason)}"
     )
 

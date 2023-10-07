@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.93.0 - 2023-10-07
+
+### Changed
+
+- Use better names for request / response headers
+- Move the secure client close to secure channels
+- Adjust the code after rebase
+- Package all reply / response methods into a client
+- Use the client in the background node
+- Updated dependencies
+
+### Fixed
+
+- Fix some clippy warnings
+- Fix a no std warning
+
+### Removed
+
+- Remove two parameters from requests to the controller
+
+## 0.92.0 - 2023-10-05
+
+### Changed
+
+- Use better names for request / response headers
+- Move the secure client close to secure channels
+- Adjust the code after rebase
+- Package all reply / response methods into a client
+- Use the client in the background node
+- Updated dependencies
+
+### Fixed
+
+- Fix some clippy warnings
+- Fix a no std warning
+
+### Removed
+
+- Remove two parameters from requests to the controller
+
 ## 0.91.0 - 2023-09-28
 
 ### Changed

@@ -156,7 +156,7 @@ async fn run_impl(
     );
 
     let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.controller().await?;
+    let controller = node.create_controller().await?;
 
     let response = controller
         .configure_influxdb_addon(&ctx, project_id.clone(), config)

@@ -1,4 +1,5 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam_api::cli_state::traits::StateDirTrait;
 
@@ -26,9 +27,17 @@ impl ListCommand {
 
 fn run_impl(opts: CommandGlobalOpts) -> miette::Result<()> {
     let vaults = opts.state.vaults.list()?;
-    let list = opts
+    let plain = opts
         .terminal
         .build_list(&vaults, "Vaults", "No vaults found on this system.")?;
-    opts.terminal.stdout().plain(list).write_line()?;
+
+    let json = serde_json::to_string_pretty(&vaults).into_diagnostic()?;
+
+    opts.terminal
+        .stdout()
+        .plain(plain)
+        .json(json)
+        .write_line()?;
+
     Ok(())
 }

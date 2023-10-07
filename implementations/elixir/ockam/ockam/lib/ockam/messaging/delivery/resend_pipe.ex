@@ -160,7 +160,7 @@ defmodule Ockam.Messaging.Delivery.ResendPipe.Sender do
         true
 
       other_ref ->
-        Logger.warn(
+        Logger.warning(
           "Received confirm for ref #{inspect(ref)}, current ref is #{inspect(other_ref)}"
         )
 

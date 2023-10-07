@@ -524,7 +524,7 @@ defmodule Ockam.SecureChannel.Channel do
     else
       # The message couldn't be decrypted.  State remains unchanged
       error ->
-        Logger.warn("Failed to decrypt message, discarded: #{inspect(error)}")
+        Logger.warning("Failed to decrypt message, discarded: #{inspect(error)}")
         {:ok, state}
     end
   end
@@ -570,7 +570,7 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_outer_message_impl(message, state) do
-    Logger.warn("discarding message, secure channel not yet established: #{inspect(message)}")
+    Logger.warning("discarding message, secure channel not yet established: #{inspect(message)}")
     {:ok, state}
   end
 

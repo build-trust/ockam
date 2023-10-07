@@ -4,6 +4,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.97.0 - 2023-10-07
+
+### Changed
+
+- Move the controller address to the node manager
+- Implement subscriptions directly on the node manager
+- Start the node manager worker for remaining rpc calls
+- Extract an interface for subscriptions
+- Use better names for request / response headers
+- Use a more precise interface for the subscriptions trait
+- Introduce a secure client for the controller
+- Use a secure client to enroll
+- Use controller, authority and project nodes
+- Simplify the creation of a local node
+- Move the secure client close to secure channels
+- Reduce the dependencies of rpc
+- Move the rpc to ockam api as remote node
+- Rename local/remote node to in memory/background
+- Use only cli state to create a background node
+- Move the in memory node to the ockam api crate
+- Make the use of the controller client more explicit
+- Package all reply / response methods into a client
+- Use the client in the background node
+- Improve help of global verbose flag in ockam command
+- Improve `feedback` section of the `help` text
+- Improve cli "learn more" section from the help text
+- Updated dependencies
+
+### Fixed
+
+- Breaking changes in upgrading dialoguer crate to 0.11.0
+- Fix a test argument
+- Drop the in memory node and delete its node manager
+
+### Removed
+
+- Remove the unused tag feature
+- Remove the supervised node manager
+- Remove the secure clients struct
+
+## 0.96.0 - 2023-10-05
+
+### Changed
+
+- Move the controller address to the node manager
+- Implement subscriptions directly on the node manager
+- Start the node manager worker for remaining rpc calls
+- Extract an interface for subscriptions
+- Use better names for request / response headers
+- Use a more precise interface for the subscriptions trait
+- Introduce a secure client for the controller
+- Use a secure client to enroll
+- Use controller, authority and project nodes
+- Simplify the creation of a local node
+- Move the secure client close to secure channels
+- Reduce the dependencies of rpc
+- Move the rpc to ockam api as remote node
+- Rename local/remote node to in memory/background
+- Use only cli state to create a background node
+- Move the in memory node to the ockam api crate
+- Make the use of the controller client more explicit
+- Package all reply / response methods into a client
+- Use the client in the background node
+- Improve help of global verbose flag in ockam command
+- Improve `feedback` section of the `help` text
+- Improve cli "learn more" section from the help text
+- Updated dependencies
+
+### Fixed
+
+- Breaking changes in upgrading dialoguer crate to 0.11.0
+- Fix a test argument
+
+### Removed
+
+- Remove the unused tag feature
+- Remove the supervised node manager
+- Remove the secure clients struct
+
 ## 0.95.0 - 2023-09-28
 
 ### Changed

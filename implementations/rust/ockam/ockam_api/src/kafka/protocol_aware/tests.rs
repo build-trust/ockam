@@ -43,7 +43,7 @@ mod test {
             Ok(encrypted_content)
         }
 
-        async fn start_forwarders_for(
+        async fn start_relays_for(
             &self,
             _context: &mut Context,
             _topic_id: &str,

@@ -1,29 +1,28 @@
 use crate::models::{
-    Attributes, Credential, CredentialAndPurposeKey, CredentialData, CredentialSignature,
-    Identifier, VersionedData,
+    Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier, VersionedData,
 };
 use crate::utils::{add_seconds, now};
-use crate::{IdentitiesRepository, Identity, Purpose, PurposeKeysCreation};
+use crate::{IdentitiesRepository, Identity, PurposeKeyCreation};
 
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{SigningVault, VerifyingVault};
+use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
 
 /// Service for managing [`Credential`]s
 pub struct CredentialsCreation {
-    purpose_keys_creation: Arc<PurposeKeysCreation>,
-    credential_vault: Arc<dyn SigningVault>,
-    verifying_vault: Arc<dyn VerifyingVault>,
+    purpose_keys_creation: Arc<PurposeKeyCreation>,
+    credential_vault: Arc<dyn VaultForSigning>,
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     identities_repository: Arc<dyn IdentitiesRepository>,
 }
 
 impl CredentialsCreation {
     ///Constructor
     pub fn new(
-        purpose_keys_creation: Arc<PurposeKeysCreation>,
-        credential_vault: Arc<dyn SigningVault>,
-        verifying_vault: Arc<dyn VerifyingVault>,
+        purpose_keys_creation: Arc<PurposeKeyCreation>,
+        credential_vault: Arc<dyn VaultForSigning>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
         identities_repository: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {
@@ -52,7 +51,7 @@ impl CredentialsCreation {
         // TODO: Allow manual PurposeKey management
         let issuer_purpose_key = self
             .purpose_keys_creation
-            .get_or_create_purpose_key(issuer, Purpose::Credentials)
+            .get_or_create_credential_purpose_key(issuer)
             .await?;
 
         let subject_change_history = self.identities_repository.get_identity(subject).await?;
@@ -85,10 +84,9 @@ impl CredentialsCreation {
 
         let signature = self
             .credential_vault
-            .sign(issuer_purpose_key.key_id(), &versioned_data_hash)
+            .sign(issuer_purpose_key.key(), &versioned_data_hash.0)
             .await?;
-        let signature =
-            CredentialSignature::try_from_signature(signature, issuer_purpose_key.stype())?;
+        let signature = signature.into();
 
         let credential = Credential {
             data: versioned_data,

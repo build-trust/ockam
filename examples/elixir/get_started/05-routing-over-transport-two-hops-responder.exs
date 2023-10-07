@@ -5,3 +5,5 @@
 
 # Start the TCP Transport Add-on for Ockam Routing and a TCP listener on port 4000.
 Ockam.Transport.TCP.start(listen: [port: 4000])
+
+Process.sleep(:infinity)

@@ -96,8 +96,8 @@ pub struct CreateCommand {
     #[arg(long = "vault", value_name = "VAULT")]
     vault: Option<String>,
 
-    /// Authority Identity
-    #[arg(long = "identity", value_name = "IDENTITY")]
+    /// Name of the Identity that the authority will use
+    #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 }
 
@@ -288,7 +288,7 @@ async fn start_authority_node(
                 Ok(state) => state.config().identifier(),
                 Err(_) => {
                     debug!("creating default identity");
-                    let cmd = identity::CreateCommand::new("authority".into(), None);
+                    let cmd = identity::CreateCommand::new("authority".into(), None, None);
                     cmd.create_identity(opts.clone()).await?
                 }
             }

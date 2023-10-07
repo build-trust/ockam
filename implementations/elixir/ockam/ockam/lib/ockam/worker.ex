@@ -275,7 +275,7 @@ defmodule Ockam.Worker do
         state
 
       other ->
-        Logger.warn("Invalid idle timeout configuration: #{inspect(other)}")
+        Logger.warning("Invalid idle timeout configuration: #{inspect(other)}")
         state
     end
   end
@@ -283,7 +283,7 @@ defmodule Ockam.Worker do
   def handle_idle_timeout(state) do
     case is_idle?(state) do
       true ->
-        Logger.warn("Worker #{state.address} is idle. Terminating.")
+        Logger.warning("Worker #{state.address} is idle. Terminating.")
         {:stop, {:shutdown, :idle_timeout}, state}
 
       false ->
@@ -305,7 +305,7 @@ defmodule Ockam.Worker do
           value
 
         other ->
-          Logger.warn("Invalid last_message_ts state: #{inspect(other)}")
+          Logger.warning("Invalid last_message_ts state: #{inspect(other)}")
           Map.get(state, :started_at)
       end
 
@@ -317,7 +317,7 @@ defmodule Ockam.Worker do
         now > last_activity + idle_timeout
 
       other ->
-        Logger.warn("Invalid idle timeout configuration: #{inspect(other)}")
+        Logger.warning("Invalid idle timeout configuration: #{inspect(other)}")
         false
     end
   end
@@ -344,7 +344,7 @@ defmodule Ockam.Worker do
         {:stop, reason, returned_state}
 
       {:error, reason} ->
-        Logger.warn("Worker #{module} handle_message failed. Reason: #{inspect(reason)}")
+        Logger.warning("Worker #{module} handle_message failed. Reason: #{inspect(reason)}")
         {:noreply, Map.put(state, :last_message_ts, last_message_ts)}
     end
   end

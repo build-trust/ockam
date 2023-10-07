@@ -26,8 +26,8 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    IdentityError, PurposeKey, SecureChannelRegistryEntry, SecureChannels, TrustContext,
-    TrustPolicy,
+    IdentityError, SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannels,
+    TrustContext, TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -154,7 +154,7 @@ impl HandshakeWorker {
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
         identifier: Identifier,
-        purpose_key: PurposeKey,
+        purpose_key: SecureChannelPurposeKey,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<CredentialAndPurposeKey>,

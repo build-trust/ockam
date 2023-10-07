@@ -37,7 +37,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     let get_invitations = async {
         let invitations = controller

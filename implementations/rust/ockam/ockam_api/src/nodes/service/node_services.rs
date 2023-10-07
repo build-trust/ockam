@@ -20,7 +20,7 @@ use crate::kafka::{
     ConsumerNodeAddr, KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
-use crate::kafka::{OutletManagerService, PrefixForwarderService};
+use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -270,7 +270,7 @@ impl NodeManagerWorker {
                 ApiError::core("Unable to get flow control for secure channel listener")
             })?;
 
-        PrefixForwarderService::create(
+        PrefixRelayService::create(
             context,
             default_secure_channel_listener_flow_control_id.clone(),
         )

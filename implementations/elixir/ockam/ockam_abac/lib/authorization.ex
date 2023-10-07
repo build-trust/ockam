@@ -29,7 +29,7 @@ defmodule Ockam.ABAC.Authorization do
         with_policy_check(message, state, policy_storage)
 
       {:error, reason} ->
-        Logger.warn("Policy storage error: #{inspect(reason)}")
+        Logger.warning("Policy storage error: #{inspect(reason)}")
         {:error, :abac_policy_missing}
     end
   end

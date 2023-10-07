@@ -58,6 +58,6 @@ teardown() {
   assert_output --regexp "Worker Address: /service/.*"
 
   # Test showing non-existing with no relay
-  run_failure "$OCKAM" relay show forwarder_blank --at /node/n2
+  run_failure "$OCKAM" relay show relay_blank --at /node/n2
   assert_output --partial "not found"
 }

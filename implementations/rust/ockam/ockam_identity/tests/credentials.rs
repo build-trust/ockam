@@ -4,7 +4,7 @@ use std::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
-use ockam_identity::models::SchemaId;
+use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
@@ -71,7 +71,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             client.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_superuser", "true")
                 .build(),
             Duration::from_secs(60),
@@ -112,7 +112,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             client1.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_admin", "true")
                 .build(),
             Duration::from_secs(60),
@@ -153,7 +153,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             client2.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_user", "true")
                 .build(),
             Duration::from_secs(60),
@@ -260,7 +260,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .issue_credential(
             authority.identifier(),
             client.identifier(),
-            AttributesBuilder::with_schema(SchemaId(0))
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_superuser", "true")
                 .build(),
             Duration::from_secs(60),

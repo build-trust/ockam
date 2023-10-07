@@ -4,6 +4,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.40.0 - 2023-10-07
+
+### Changed
+
+- Make `Timestamp` arithmetic operations usage safer
+- Cli's `random_name` function now returns human-readable two-word strings like 'fit-lark'
+- Move the controller address to the node manager
+- Use better names for request / response headers
+- Introduce a secure client for the controller
+- Use controller, authority and project nodes
+- Simplify connections
+- Introduce a supervised node manager to support connection replacements
+- Adjust the code after rebase
+- Move the in memory node to the ockam api crate
+- Package all reply / response methods into a client
+- Use the client in the background node
+- Put back the is_rust check to create forwarders
+- Rename forwarder to relay
+- Updated dependencies
+
+### Fixed
+
+- Fix the sending of messages
+- Fix the code after rebasing
+- Drop the in memory node and delete its node manager
+
+### Removed
+
+- Remove an unused method
+- Remove the need to keep a flag to skip defaults
+- Remove two parameters from requests to the controller
+- Remove the unused tag feature
+- Remove the unused rpc proxy service
+- Remove the supervised node manager
+- Remove the secure clients struct
+
+## 0.39.0 - 2023-10-05
+
+### Changed
+
+- Make `Timestamp` arithmetic operations usage safer
+- Cli's `random_name` function now returns human-readable two-word strings like 'fit-lark'
+- Move the controller address to the node manager
+- Use better names for request / response headers
+- Introduce a secure client for the controller
+- Use controller, authority and project nodes
+- Simplify connections
+- Introduce a supervised node manager to support connection replacements
+- Adjust the code after rebase
+- Move the in memory node to the ockam api crate
+- Package all reply / response methods into a client
+- Use the client in the background node
+- Put back the is_rust check to create forwarders
+- Rename forwarder to relay
+- Updated dependencies
+
+### Fixed
+
+- Fix the sending of messages
+- Fix the code after rebasing
+
+### Removed
+
+- Remove an unused method
+- Remove the need to keep a flag to skip defaults
+- Remove two parameters from requests to the controller
+- Remove the unused tag feature
+- Remove the unused rpc proxy service
+- Remove the supervised node manager
+- Remove the secure clients struct
+
 ## 0.38.0 - 2023-09-28
 
 ### Added

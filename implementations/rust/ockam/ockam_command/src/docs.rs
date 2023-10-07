@@ -17,7 +17,9 @@ const FOOTER: &str = "
 Learn More:
 
 Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
-Learn more at https://docs.ockam.io/reference/command
+Where <SUBCOMMAND> might be: 'node', 'status', 'enroll', etc.
+Learn more about Command: https://command.ockam.io/manual/
+Learn more about Ockam: https://docs.ockam.io/reference/command
 
 Feedback:
 

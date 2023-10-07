@@ -1,19 +1,17 @@
 use crate::identity::Identity;
-use crate::models::{
-    Change, ChangeData, ChangeHash, ChangeHistory, ChangeSignature, VersionedData,
-};
+use crate::models::{Change, ChangeData, ChangeHash, ChangeHistory, VersionedData};
 use crate::{IdentityError, IdentityOptions};
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
-use ockam_vault::{KeyId, SecretType, SigningVault, VerifyingVault};
 
+use ockam_vault::{SigningSecretKeyHandle, VaultForSigning, VaultForVerifyingSignatures};
 use tracing::error;
 
 /// This module supports the key operations related to identities
 pub struct IdentitiesKeys {
-    identity_vault: Arc<dyn SigningVault>,
-    verifying_vault: Arc<dyn VerifyingVault>,
+    identity_vault: Arc<dyn VaultForSigning>,
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
 }
 
 impl IdentitiesKeys {
@@ -36,8 +34,8 @@ impl IdentitiesKeys {
 impl IdentitiesKeys {
     /// Create a new identities keys module
     pub fn new(
-        identity_vault: Arc<dyn SigningVault>,
-        verifying_vault: Arc<dyn VerifyingVault>,
+        identity_vault: Arc<dyn VaultForSigning>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Self {
         Self {
             identity_vault,
@@ -71,7 +69,7 @@ impl IdentitiesKeys {
 
         if self
             .identity_vault
-            .delete_key(last_secret_key)
+            .delete_signing_secret_key(last_secret_key)
             .await
             .is_err()
         {
@@ -85,10 +83,10 @@ impl IdentitiesKeys {
     }
 
     /// Return the secret key of an identity
-    pub async fn get_secret_key(&self, identity: &Identity) -> Result<KeyId> {
+    pub async fn get_secret_key(&self, identity: &Identity) -> Result<SigningSecretKeyHandle> {
         if let Some(last_change) = identity.changes().last() {
             self.identity_vault
-                .get_key_id(last_change.primary_public_key())
+                .get_secret_key_handle(last_change.primary_public_key())
                 .await
         } else {
             Err(IdentityError::EmptyIdentity.into())
@@ -102,25 +100,17 @@ impl IdentitiesKeys {
     async fn make_change(
         &self,
         identity_options: IdentityOptions,
-        previous: Option<(ChangeHash, KeyId)>,
+        previous: Option<(ChangeHash, SigningSecretKeyHandle)>,
     ) -> Result<Change> {
-        match identity_options.stype {
-            SecretType::Ed25519 | SecretType::NistP256 => {}
-
-            SecretType::Buffer | SecretType::Aes | SecretType::X25519 => {
-                return Err(IdentityError::InvalidKeyType.into());
-            }
-        }
-
-        let secret_key = identity_options.key;
-        let public_key = self.identity_vault.get_public_key(&secret_key).await?;
-        let stype = public_key.stype();
-
-        let primary_public_key = public_key.try_into()?;
+        let secret_key = identity_options.signing_secret_key_handle;
+        let public_key = self
+            .identity_vault
+            .get_verifying_public_key(&secret_key)
+            .await?;
 
         let change_data = ChangeData {
             previous_change: previous.as_ref().map(|x| x.0.clone()),
-            primary_public_key,
+            primary_public_key: public_key.into(),
             revoke_all_purpose_keys: identity_options.revoke_all_purpose_keys,
             created_at: identity_options.created_at,
             expires_at: identity_options.expires_at,
@@ -137,25 +127,16 @@ impl IdentitiesKeys {
 
         let hash = self.verifying_vault.sha256(&versioned_data).await?;
 
-        let self_signature = self.identity_vault.sign(&secret_key, hash.as_ref()).await?;
-        let self_signature = ChangeSignature::try_from_signature(self_signature, stype)?;
+        let self_signature = self.identity_vault.sign(&secret_key, &hash.0).await?;
+        let self_signature = self_signature.into();
 
         // If we have previous_key passed we should sign using it
         // If there is no previous_key - we're creating new identity, so we just generated the key
         let previous_signature = match previous.map(|x| x.1) {
             Some(previous_key) => {
-                let previous_signature = self
-                    .identity_vault
-                    .sign(&previous_key, hash.as_ref())
-                    .await?;
-                // TODO: Optimize
-                let previous_public_key = self.identity_vault.get_public_key(&previous_key).await?;
-                let previous_signature = ChangeSignature::try_from_signature(
-                    previous_signature,
-                    previous_public_key.stype(),
-                )?;
+                let previous_signature = self.identity_vault.sign(&previous_key, &hash.0).await?;
 
-                Some(previous_signature)
+                Some(previous_signature.into())
             }
             None => None,
         };
@@ -180,7 +161,7 @@ mod test {
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;
     use ockam_node::Context;
-    use ockam_vault::{SecretAttributes, SecretType};
+    use ockam_vault::SigningKeyType;
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
@@ -193,20 +174,14 @@ mod test {
 
         let key1 = identities_keys
             .identity_vault
-            .generate_key(SecretAttributes::Ed25519)
+            .generate_signing_secret_key(SigningKeyType::EdDSACurve25519)
             .await?;
 
         let now = now()?;
         let created_at1 = now;
         let expires_at1 = created_at1 + 120.into();
 
-        let options1 = IdentityOptions::new(
-            key1.clone(),
-            SecretType::Ed25519,
-            false,
-            created_at1,
-            expires_at1,
-        );
+        let options1 = IdentityOptions::new(key1.clone(), false, created_at1, expires_at1);
         let identity1 = identities_keys.create_initial_key(options1).await?;
 
         // Identifier should not match
@@ -232,18 +207,12 @@ mod test {
 
         let key2 = identities_keys
             .identity_vault
-            .generate_key(SecretAttributes::Ed25519)
+            .generate_signing_secret_key(SigningKeyType::EdDSACurve25519)
             .await?;
 
         let created_at2 = now + 10.into();
         let expires_at2 = created_at2 + 120.into();
-        let options2 = IdentityOptions::new(
-            key2.clone(),
-            SecretType::Ed25519,
-            false,
-            created_at2,
-            expires_at2,
-        );
+        let options2 = IdentityOptions::new(key2.clone(), false, created_at2, expires_at2);
         let identity2 = identities_keys
             .rotate_key_with_options(identity1, options2)
             .await?;
@@ -281,14 +250,14 @@ mod test {
         assert!(identities
             .vault()
             .identity_vault
-            .get_public_key(&secret1)
+            .get_verifying_public_key(&secret1)
             .await
             .is_err());
         // New key should exist
         assert!(identities
             .vault()
             .identity_vault
-            .get_public_key(&secret2)
+            .get_verifying_public_key(&secret2)
             .await
             .is_ok());
 

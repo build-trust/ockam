@@ -1,7 +1,7 @@
 use crate::nodes::service::Alias;
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
-use ockam::remote::RemoteForwarderInfo;
+use ockam::remote::RemoteRelayInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
 use ockam_node::compat::asynchronous::RwLock;
@@ -205,7 +205,7 @@ pub(crate) struct Registry {
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
     pub(crate) credentials_services: RegistryOf<Address, CredentialsServiceInfo>,
-    pub(crate) forwarders: RegistryOf<String, RemoteForwarderInfo>,
+    pub(crate) relays: RegistryOf<String, RemoteRelayInfo>,
     pub(crate) inlets: RegistryOf<Alias, InletInfo>,
     pub(crate) outlets: RegistryOf<Alias, OutletInfo>,
 }

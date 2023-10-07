@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.38.0"
+version = "0.40.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
@@ -36,7 +36,7 @@ either = { version = "1.9.0", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
 kafka-protocol = "0.7.0"
-lru = "0.11.1"
+lru = "0.12.0"
 miette = "5.10.0"
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 nix = { version = "0.27", features = ["signal"] }
@@ -57,23 +57,23 @@ tokio-retry = "0.3.0"
 tracing = { version = "0.1", default-features = false }
 url = "2.4.1"
 
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.29.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.89.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.31.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.91.0" }
 
 [dependencies.ockam_core]
-version = "0.86.0"
+version = "0.88.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.91.0"
+version = "0.93.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.84.0"
+version = "0.86.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -81,19 +81,19 @@ default-features = false
 features = ["std"]
 
 [dependencies.ockam_vault_aws]
-version = "0.9.0"
+version = "0.11.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.95.0"
+version = "^0.97.0"
 path = "../ockam"
 default-features = false
 features = ["ockam_transport_tcp", "software_vault_storage"]
 
 [dependencies.ockam_abac]
-version = "0.29.0"
+version = "0.31.0"
 path = "../ockam_abac"
 default-features = false
 
@@ -101,7 +101,7 @@ default-features = false
 cddl-cat = "0.6.1"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
-indexmap = "2.0.1"
+indexmap = "2.0.2"
 mockall = "0.11"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
