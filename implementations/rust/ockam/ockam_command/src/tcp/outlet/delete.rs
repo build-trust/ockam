@@ -41,26 +41,52 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    if opts.terminal.confirmed_with_flag_or_prompt(
-        cmd.yes,
-        "Are you sure you want to delete this TCP outlet?",
-    )? {
-        let alias = cmd.alias.clone();
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node_name = parse_node_name(&node_name)?;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-        node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))
-            .await?;
+    let alias = cmd.alias.clone();
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&node_name)?;
 
+    // Check if the alias exists
+    let alias_exists = check_alias_existence(&ctx, &opts.state, &node_name, &alias).await?;
+    if alias_exists {
+        if opts.terminal.confirmed_with_flag_or_prompt(
+            cmd.yes,
+            "Are you sure you want to delete this TCP outlet?",
+        )? {
+            let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+            node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))
+                .await?;
+            opts.terminal
+                .stdout()
+                .plain(fmt_ok!(
+                    "TCP outlet with alias {alias} on node {node_name} has been deleted."
+                ))
+                .machine(&alias)
+                .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node_name } }))
+                .write_line()
+                .unwrap();
+        }
+    } else {
         opts.terminal
-            .stdout()
-            .plain(fmt_ok!(
-                "TCP outlet with alias {alias} on node {node_name} has been deleted."
-            ))
+            .stderr()
+            .plain(fmt_err!("TCP outlet with alias {alias} does not exist."))
             .machine(&alias)
-            .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node_name } }))
             .write_line()
             .unwrap();
     }
     Ok(())
+}
+
+// Helper function to check alias existence
+async fn check_alias_existence(
+    ctx: &Context,
+    state: &State,
+    node_name: &str,
+    alias: &str,
+) -> Result<bool, miette::Error> {
+    let node = BackgroundNode::create(ctx, state, node_name).await?;
+    let response = node
+        .tell(ctx, Request::get(format!("/node/outlet/{alias}")))
+        .await?;
+
+    Ok(response.status().is_success())
 }
