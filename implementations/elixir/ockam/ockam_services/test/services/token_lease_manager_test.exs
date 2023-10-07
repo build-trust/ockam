@@ -129,7 +129,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp
-    assert {:ok, %Lease{issued_for: bob_id} = bob_lease1} = Lease.decode_strict(body)
+    assert {:ok, %Lease{issued_for: ^bob_id} = bob_lease1} = Lease.decode_strict(body)
 
     {:ok, resp} = Client.sync_request(:post, "/", nil, [bob_channel, lm])
     assert %{status: 200, body: body} = resp

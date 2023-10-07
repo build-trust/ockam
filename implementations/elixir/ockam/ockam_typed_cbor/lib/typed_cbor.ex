@@ -154,6 +154,7 @@ defmodule Ockam.TypedCBOR do
 
   def from_cbor_term(schema, data) do
     with true <- is_atom(schema),
+         {:module, ^schema} <- Code.ensure_loaded(schema),
          true <- function_exported?(schema, :from_cbor_term, 1),
          {:ok, val} <- schema.from_cbor_term(data) do
       val
@@ -249,12 +250,12 @@ defmodule Ockam.TypedCBOR do
 
   def to_cbor_term(schema, val) do
     with true <- is_atom(schema),
+         {:module, ^schema} <- Code.ensure_loaded(schema),
          true <- function_exported?(schema, :to_cbor_term, 1),
          {:ok, cbor} <- schema.to_cbor_term(val) do
       cbor
     else
       _ ->
-        Logger.error("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(val)}")
         raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
     end
   end

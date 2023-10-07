@@ -11,14 +11,6 @@ defmodule Test.Services.ForwardingTest do
     {:ok, _service_pid, service_address} =
       ForwardingService.start_link(address: "forwarding_address")
 
-    on_exit(fn ->
-      ## TODO: implement Worker.stop
-      case Node.whereis(service_address) do
-        nil -> :ok
-        pid -> GenServer.stop(pid)
-      end
-    end)
-
     {:ok, me} = Node.register_random_address()
 
     register_message = %Ockam.Message{
@@ -34,10 +26,9 @@ defmodule Test.Services.ForwardingTest do
     forwarder_address = List.last(forwarder_route)
 
     on_exit(fn ->
-      case Node.whereis(forwarder_address) do
-        nil -> :ok
-        pid -> GenServer.stop(pid)
-      end
+      Node.stop(service_address)
+      Node.stop(forwarder_address)
+      Node.unregister_address(me)
     end)
 
     msg = %{onward_route: [forwarder_address], return_route: [me], payload: "HI!"}
@@ -60,12 +51,8 @@ defmodule Test.Services.ForwardingTest do
     forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 
     on_exit(fn ->
-      case Node.whereis(service_address) do
-        nil -> :ok
-        pid -> GenServer.stop(pid)
-      end
-
-      Node.stop(forwarder)
+      Node.stop(service_address)
+      Node.stop(forwarder_address)
       Node.unregister_address(me)
     end)
 
