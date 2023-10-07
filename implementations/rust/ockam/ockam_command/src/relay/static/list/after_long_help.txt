@@ -1,3 +1,3 @@
 ```sh
-$ ockam relay list --at n2
+$ ockam relay list --to n2
 ```
