@@ -48,7 +48,8 @@ async fn run_impl(
         addon_id,
     } = cmd;
     let project_id = get_project_id(&opts.state, project_name.as_str())?;
-    let controller = InMemoryNode::create_controller(&ctx, &opts.state).await?;
+    let node = InMemoryNode::start(&ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     let response = controller.disable_addon(&ctx, project_id, addon_id).await?;
     let operation_id = response.operation_id;

@@ -57,7 +57,8 @@ async fn run_impl(
         "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
     ))?;
 
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
     let space = controller.create_space(ctx, cmd.name, cmd.admins).await?;
 
     opts.println(&space)?;

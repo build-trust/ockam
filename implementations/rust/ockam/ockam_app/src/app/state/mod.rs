@@ -186,7 +186,7 @@ impl AppState {
     /// Return a client to access the Controller
     pub async fn controller(&self) -> Result<Controller> {
         let node_manager = self.node_manager.read().await;
-        Ok(node_manager.controller().await?)
+        Ok(node_manager.create_controller().await?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
@@ -317,7 +317,7 @@ pub(crate) async fn make_node_manager(
 
     let node_manager = InMemoryNode::new(
         &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true),
+        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, false),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )

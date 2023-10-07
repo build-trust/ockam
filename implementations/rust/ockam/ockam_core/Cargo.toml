@@ -1,6 +1,6 @@
 [package]
 name = "ockam_core"
-version = "0.87.0"
+version = "0.88.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",

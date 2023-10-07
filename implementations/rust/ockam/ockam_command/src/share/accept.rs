@@ -40,7 +40,8 @@ async fn run_impl(
     cmd: AcceptCommand,
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let controller = InMemoryNode::create_controller(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let controller = node.create_controller().await?;
 
     let get_accepted_invitation = async {
         let invitation = controller.accept_invitation(ctx, cmd.id).await?;
