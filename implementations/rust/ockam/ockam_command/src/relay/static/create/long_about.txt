@@ -1,0 +1,1 @@
+Create a Relay. If no arguments are passed in, and you are enrolled in Orchestrator, then it creates a Relay at the default Orchestrator project, to the local default node.
