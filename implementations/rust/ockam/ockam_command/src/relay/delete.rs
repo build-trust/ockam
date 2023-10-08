@@ -1,7 +1,9 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
+use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
@@ -41,14 +43,26 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
+    let relay_name = cmd.relay_name.clone();
+    let at = get_node_name(&opts.state, &cmd.at);
+    let node_name = parse_node_name(&at)?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+
+    // Check if relay exists
+    node.ask_and_get_reply::<_, RelayInfo>(
+        &ctx,
+        Request::get(format!("/node/forwarder/{relay_name}")),
+    )
+    .await?
+    .found()
+    .into_diagnostic()?
+    .ok_or(miette!("Relay with name '{}' does not exist", relay_name))?;
+
+    // Proceed with the deletion
     if opts
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this relay?")?
     {
-        let relay_name = cmd.relay_name.clone();
-        let at = get_node_name(&opts.state, &cmd.at);
-        let node_name = parse_node_name(&at)?;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         node.tell(
             &ctx,
             Request::delete(format!("/node/forwarder/{relay_name}",)),
