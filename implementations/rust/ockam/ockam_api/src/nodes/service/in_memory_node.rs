@@ -2,12 +2,11 @@ use miette::IntoDiagnostic;
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use rand::random;
-
 use ockam::{Context, Result, TcpTransport};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_transport_tcp::TcpListenerOptions;
 
+use crate::cli_state::random_name;
 use crate::cli_state::{add_project_info_to_node_state, init_node_state, CliState};
 use crate::cloud::Controller;
 use crate::config::cli::TrustContextConfig;
@@ -175,7 +174,7 @@ pub struct NodeManagerDefaults {
 impl Default for NodeManagerDefaults {
     fn default() -> Self {
         Self {
-            node_name: hex::encode(random::<[u8; 4]>()),
+            node_name: random_name(),
             tcp_listener_address: "127.0.0.1:0".to_string(),
         }
     }
