@@ -12,7 +12,8 @@ use super::CredentialOutput;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    #[arg()]
+    /// Name of the Vault from which to retrieve the credentials
+    #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 }
 
