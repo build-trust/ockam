@@ -16,7 +16,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CompletionCommand {
-    /// The type of shell (bash, zsh, fish)
+    /// The type of shell
     #[arg(display_order = 900, long, short)]
     shell: Shell,
 }
