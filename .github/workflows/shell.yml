@@ -54,7 +54,14 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer
+        uses: ./.github/actions/nix_installer_and_cache
+        with:
+          cache-unique-id: shell
+        id: nix-installer
 
       - name: Run Shfmt Check
         run:  nix run ./tools/nix#shfmt-all
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
