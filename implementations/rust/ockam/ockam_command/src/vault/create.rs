@@ -1,9 +1,9 @@
 use clap::Args;
 use colorful::Colorful;
-use rand::prelude::random;
 
 use ockam::Context;
 use ockam_api::cli_state;
+use ockam_api::cli_state::random_name;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::util::node_rpc;
@@ -19,7 +19,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = random_name())]
     name: String,
 
     #[arg(long, default_value = "false")]
