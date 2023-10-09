@@ -1,1 +1,1 @@
-A TCP Outlet is a portal that makes a TCP service available on a worker address. The outlet receives Ockam Routing messages, unwraps them to extract TCP data and sends that data along to the target service.
+A TCP Outlet makes a TCP service available on a worker address (allows data to be transmitted to a listener on a TCP address). It is one end of a portal (tcp-inlet being the other), which receives Ockam Routing messages, unwraps them to extract TCP data and sends that data along to the target service.
