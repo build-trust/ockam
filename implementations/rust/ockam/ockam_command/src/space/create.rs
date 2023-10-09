@@ -8,6 +8,7 @@ use crate::util::{is_enrolled_guard, node_rpc};
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
+use ockam_api::cli_state::random_name;
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -22,8 +23,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 )]
 pub struct CreateCommand {
     /// Name of the space - must be unique across all Ockam Orchestrator users.
-    #[arg(display_order = 1001, value_name = "SPACE_NAME", default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_space_name)]
-    pub name: String,
+    #[arg(display_order = 1001, value_name = "SPACE_NAME", default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_space_name)] 
+    pub name: String, 
 
     /// Administrators for this space
     #[arg(display_order = 1100, last = true)]
