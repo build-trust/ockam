@@ -6,7 +6,6 @@ use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decoder, Encode};
-use rand::prelude::random;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
@@ -54,7 +53,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the node.
-    #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
+    #[arg(hide_default_value = true, default_value_t = random_name())]
     pub node_name: String,
 
     /// Run the node in foreground.
