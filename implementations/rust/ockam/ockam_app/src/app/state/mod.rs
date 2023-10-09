@@ -317,7 +317,7 @@ pub(crate) async fn make_node_manager(
 
     let node_manager = InMemoryNode::new(
         &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, false),
+        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, true),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
