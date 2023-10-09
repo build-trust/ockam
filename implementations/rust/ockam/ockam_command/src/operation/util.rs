@@ -1,3 +1,4 @@
+use colorful::Colorful;
 use miette::miette;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
@@ -6,6 +7,8 @@ use ockam_api::cloud::operation::Operations;
 use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
 use ockam_node::Context;
 
+use crate::fmt_para;
+use crate::terminal::OckamColor;
 use crate::CommandGlobalOpts;
 
 pub async fn check_for_completion(
@@ -19,7 +22,17 @@ pub async fn check_for_completion(
 
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {
-        spinner.set_message("Configuring project...");
+        let message = format!(
+            "Configuring project...\n{}\n{}",
+            fmt_para!("This takes about 2 minutes."),
+            fmt_para!(
+                "{}",
+                "Do not press Ctrl+C or exit the terminal process until this is complete."
+                    .to_string()
+                    .color(OckamColor::FmtWARNBackground.color())
+            ),
+        );
+        spinner.set_message(message);
     }
     let operation = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the operation show request result
