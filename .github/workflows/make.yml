@@ -45,7 +45,12 @@ jobs:
       - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/nix_installer
+      - uses: ./.github/actions/nix_installer_and_cache
+        with:
+          cache-unique-id: full_build
+        id: nix-installer
       - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
       - uses: ./.github/actions/elixir_cache
       - run: make
+      - uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
