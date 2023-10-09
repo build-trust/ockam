@@ -6,9 +6,9 @@ use colorful::Colorful;
 use miette::miette;
 use ockam::identity::Identifier;
 use ockam::Context;
+use ockam_api::cli_state::random_name;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
-use rand::prelude::random;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -22,7 +22,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    #[arg(hide_default_value = true, default_value_t = hex::encode(& random::< [u8; 4] > ()))]
+    #[arg(hide_default_value = true, default_value_t = random_name())]
     name: String,
 
     /// Vault name to store the identity key
