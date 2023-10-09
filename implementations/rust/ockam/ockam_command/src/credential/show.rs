@@ -15,7 +15,8 @@ pub struct ShowCommand {
     #[arg()]
     pub credential_name: String,
 
-    #[arg()]
+    /// Name of the Vault from which to retrieve the credential
+    #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 }
 
