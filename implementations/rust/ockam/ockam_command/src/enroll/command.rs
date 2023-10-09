@@ -40,6 +40,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
+    /// Run the command as the given identity name
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,
 
