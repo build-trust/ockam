@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::io::Write;
 use std::time::Duration;
 
@@ -17,9 +18,12 @@ use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::route;
 use ockam_node::MessageSendReceiveOptions;
 
+use crate::error::Error;
 use crate::util::{api, node_rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
+
+const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
@@ -186,22 +190,34 @@ fn print_output(opts: CommandGlobalOpts, cmd: StatusCommand, status: StatusData)
     Ok(())
 }
 
-fn build_plain_output(
-    opts: &CommandGlobalOpts,
-    cmd: &StatusCommand,
+fn confirm_emoji(condition: bool) -> String {
+    if condition {
+        "✔️️".to_string()
+    } else {
+        "✖️".to_string()
+    }
+}
+
+fn linked_nodes_with_status(nodes: &[NodeStatus]) -> String {
+    nodes
+        .iter()
+        .map(|node| {
+            let emoji = match node.status.as_str() {
+                "Running" => "🟢",
+                "Stopped" => "🔴",
+                _ => "❓",
+            };
+            format!("       - {} {} ({})", emoji, node.name, node.status)
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+fn return_if_no_identities_or_no_enrolled(
     status: &StatusData,
+    cmd: &StatusCommand,
+    mut plain: Vec<u8>,
 ) -> Result<Vec<u8>> {
-    let mut plain = Vec::new();
-    writeln!(
-        &mut plain,
-        "Controller version: {}",
-        status.orchestrator_version.controller_version
-    )?;
-    writeln!(
-        &mut plain,
-        "Project version: {}",
-        status.orchestrator_version.project_version
-    )?;
     if status.identities.is_empty() {
         if cmd.all {
             writeln!(&mut plain, "No identities found!")?;
@@ -215,24 +231,73 @@ fn build_plain_output(
         }
         return Ok(plain);
     }
+    Ok(plain)
+}
+
+fn build_plain_output(
+    opts: &CommandGlobalOpts,
+    cmd: &StatusCommand,
+    status: &StatusData,
+) -> Result<Vec<u8>> {
+    let mut plain = return_if_no_identities_or_no_enrolled(status, cmd, Vec::new())?;
     let default_identity = opts.state.identities.default()?;
-    for (i_idx, i) in status.identities.iter().enumerate() {
-        writeln!(&mut plain, "Identity[{i_idx}]")?;
-        if default_identity.config().identifier() == i.identity.config().identifier() {
-            writeln!(&mut plain, "{:2}Default: yes", "")?;
+
+    let has_credentials = {
+        if opts.state.credentials.default().is_ok() {
+            let default_credentials = opts.state.credentials.default().unwrap();
+            let default_credential_identifier = &default_credentials.config().issuer_identifier;
+            default_credential_identifier == &default_identity.identifier()
+        } else {
+            false
         }
-        for line in i.identity.to_string().lines() {
-            writeln!(&mut plain, "{:2}{}", "", line)?;
-        }
-        if !i.nodes.is_empty() {
-            writeln!(&mut plain, "{:2}Linked Nodes:", "")?;
-            for (n_idx, node) in i.nodes.iter().enumerate() {
-                writeln!(&mut plain, "{:4}Node[{}]:", "", n_idx)?;
-                writeln!(&mut plain, "{:6}Name: {}", "", node.name)?;
-                writeln!(&mut plain, "{:6}Status: {}", "", node.status)?;
-            }
-        }
-    }
+    };
+
+    let Ok(default_user) = opts.state.users_info.default() else {
+        return Err(Error::InternalError {error_message: "Default user is required".to_string(), exit_code: 0})
+    };
+
+    // --- INFORMATION TO PRINT ---
+
+    let header = opts.terminal.build_header("Status", String::new())?;
+
+    // NOTE: I'm not sure there is any way to know the email associated
+    // with an enrollment, this is only the email of the default user
+    let default_user_email = &default_user.config().email;
+    let trust_context_name = opts
+        .state
+        .trust_contexts
+        .default()
+        .map_or("No trust context".to_string(), |context| {
+            context.name().to_string()
+        });
+    let default_identity_name = default_identity.name();
+    let is_enrolled_emoji = confirm_emoji(default_identity.is_enrolled());
+    let has_credential_emoji = confirm_emoji(has_credentials);
+
+    let Some(identity) = status
+        .identities
+        .iter()
+        .find(|identity| identity.identity.name() == default_identity_name) else {
+        return Err(Error::InternalError {error_message: "".to_string(), exit_code: 0})
+    };
+
+    let linked_nodes = linked_nodes_with_status(&identity.nodes);
+
+    // --- INFORMATION TO PRINT ---
+
+    writeln!(&mut plain, "{header}")?;
+    writeln!(&mut plain, "Ockam Command V{}", PKG_VERSION)?;
+    writeln!(&mut plain, "Default User Email: {default_user_email}")?;
+    writeln!(&mut plain, "Trust Context: {trust_context_name}")?;
+    writeln!(
+        &mut plain,
+        r#"Default Identity Information:
+    Name: {default_identity_name}
+    Is enrolled: {is_enrolled_emoji}
+    Has credential: {has_credential_emoji}
+    Linked nodes:
+{linked_nodes}"#
+    )?;
     Ok(plain)
 }
 
@@ -289,7 +354,7 @@ struct IdentityWithLinkedNodes {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct IdentityStatus {}
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct NodeStatus {
     name: String,
     status: String,
