@@ -93,7 +93,7 @@ pub struct CreateCommand {
     foreground: bool,
 
     /// Vault that authority will use
-    #[arg(long = "vault", value_name = "VAULT")]
+    #[arg(long = "vault", value_name = "VAULT_NAME")]
     vault: Option<String>,
 
     /// Name of the Identity that the authority will use
