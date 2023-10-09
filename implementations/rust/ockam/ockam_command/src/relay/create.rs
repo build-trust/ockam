@@ -76,6 +76,12 @@ pub fn default_relay_at() -> MultiAddr {
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
 
+    if cmd.at == default_relay_at() && !opts.state.is_enrolled().unwrap_or(false) {
+        return Err(miette!(
+            "Without being enrolled, it is not possible to create a Relay in the default project in Orchestrator. \
+             To enroll please run 'ockam enroll'"));
+    }
+
     display_parse_logs(&opts);
 
     let to = get_node_name(&opts.state, &cmd.to);
