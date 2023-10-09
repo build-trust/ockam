@@ -28,7 +28,8 @@ pub struct IssueCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     pub attributes: Vec<String>,
 
-    #[arg()]
+    /// Name of the Vault that will be used to issue the credential.
+    #[arg(name = "VAULT_NAME")]
     pub vault: Option<String>,
 
     /// Encoding Format
