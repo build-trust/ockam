@@ -102,6 +102,8 @@ jobs:
             make_name: 'build_examples'
           - build_projects: nightly
             make_name: 'build'
+          - build_projects: release
+            make_name: 'build_release'
 
     defaults:
       run:
