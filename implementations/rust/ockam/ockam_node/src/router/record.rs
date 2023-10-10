@@ -323,7 +323,7 @@ impl AddressRecord {
 pub enum AddressState {
     /// The runner is looping in its main body (either handling messages or a manual run-loop)
     Running,
-    /// The runner was signalled to shut-down (running `shutdown()`)
+    /// The runner was signaled to shut-down (running `shutdown()`)
     Stopping,
     /// The runner has experienced an error and is waiting for supervisor intervention
     #[allow(unused)]

@@ -192,7 +192,7 @@ pub enum ShutdownType {
     /// * Signal worker clusters in reverse-creation order to stop
     /// * Wait for shutdown ACK hooks from each cluster before moving onto the
     ///   next
-    /// * All shutdown-signalled workers may process their entire mailbox,
+    /// * All shutdown-signaled workers may process their entire mailbox,
     ///   while not allowing new messages to be queued
     ///
     /// Graceful shutdown procedure will be pre-maturely terminated
