@@ -3,7 +3,7 @@ use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use rand::prelude::random;
 
-use crate::util::api::{self};
+use crate::util::api::{self, CloudOpts};
 use crate::util::{is_enrolled_guard, node_rpc};
 use crate::{docs, CommandGlobalOpts};
 use colorful::Colorful;
@@ -28,6 +28,9 @@ pub struct CreateCommand {
     /// Administrators for this space
     #[arg(display_order = 1100, last = true)]
     pub admins: Vec<String>,
+
+    #[command(flatten)]
+    pub cloud_opts: CloudOpts,
 }
 
 impl CreateCommand {
