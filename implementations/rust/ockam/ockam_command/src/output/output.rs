@@ -375,26 +375,6 @@ impl Output for VaultState {
         )?;
         Ok(output)
     }
-
-    fn list_output(&self) -> Result<String> {
-        let mut output = String::new();
-        writeln!(
-            output,
-            "Vault {}",
-            self.name().color(OckamColor::PrimaryResource.color())
-        )?;
-        write!(
-            output,
-            "Type {}",
-            match self.config().is_aws() {
-                true => "AWS KMS",
-                false => "OCKAM",
-            }
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
-        )?;
-        Ok(output)
-    }
 }
 
 fn human_readable_time(time: TimestampInSeconds) -> String {
