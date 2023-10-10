@@ -9,6 +9,8 @@ use colorful::Colorful;
 use ockam_api::cli_state::traits::StateDirTrait;
 
 use ockam_node::Context;
+use serde::Serialize;
+use serde_json::json;
 use std::fmt::Write;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -71,11 +73,16 @@ impl ListCommand {
             "No identities found on this system.",
         )?;
 
-        opts.terminal.stdout().plain(list).write_line()?;
+        opts.terminal
+            .stdout()
+            .plain(list)
+            .json(json!({"identities": &identities}))
+            .write_line()?;
         Ok(())
     }
 }
 
+#[derive(Serialize)]
 pub struct IdentityListOutput {
     pub name: String,
     pub identifier: String,
