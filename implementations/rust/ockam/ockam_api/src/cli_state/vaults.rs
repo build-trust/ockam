@@ -80,6 +80,10 @@ impl VaultState {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn is_aws(&self) -> bool {
+        self.config.is_aws()
+    }
 }
 
 impl Display for VaultState {
