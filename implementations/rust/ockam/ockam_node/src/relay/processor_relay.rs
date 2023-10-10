@@ -88,7 +88,7 @@ where
             Err(err) => error!("processor run loop aborted with error: {:?}", err),
         };
 
-        // If we reach this point the router has signalled us to shut down
+        // If we reach this point the router has signaled us to shut down
         match processor.shutdown(&mut ctx).await {
             Ok(()) => {}
             Err(e) => {

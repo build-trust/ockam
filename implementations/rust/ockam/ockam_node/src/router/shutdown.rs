@@ -105,7 +105,7 @@ pub(super) async fn graceful(
 /// Implement the immediate shutdown strategy
 ///
 /// When triggering an `immediate` shutdown, all worker handles are
-/// signalled to terminate, allowing workers to run their `async fn
+/// signaled to terminate, allowing workers to run their `async fn
 /// shutdown(...)` hook.  However: the router will not wait for them!
 /// Messages sent during the shutdown phase may not be delivered and
 /// shutdown hooks may be suddenly interrupted by thread-deallocation.
