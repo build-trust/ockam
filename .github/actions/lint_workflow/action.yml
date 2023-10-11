@@ -1,41 +1,308 @@
 name: 'Lint Commits'
+inputs:
+  github_token:
+    description: 'Github Token'
+    required: true
 runs:
   using: 'composite'
   steps:
       - name: Checkout
         if: github.event_name != 'pull_request'
-        uses: actions/checkout@$CHECKOUT_VERSION 
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
         with:
           fetch-depth: 0 # checkout full tree
 
       - name: Checkout (Pull Request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@$CHECKOUT_VERSION 
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
         with:
           fetch-depth: 0 # checkout full tree
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get commit information from Github (Pull Request)
         if: github.event_name == 'pull_request'
-        run: gh api repos/${REPO_NAME}/pulls/${{ github.event.number }}/commits > commits.json
+        shell: bash
+        run: gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/commits > commits.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ inputs.github_token }}
 
       - name: Set FIRST_COMMIT To Begin Linting (Pull Request)
         if: github.event_name == 'pull_request'
+        shell: bash
         run: |
           pull_request_commits_length=$(cat commits.json | jq '. | length')
           echo "Number of commits in pull requests are $pull_request_commits_length"
           echo "FIRST_COMMIT=HEAD~${pull_request_commits_length}" >> $GITHUB_ENV
-      
+
+      - name: Get Default Branch
+        shell: bash
+        run: |
+          default_branch=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${{ github.repository }} | jq -r '.default_branch')
+          echo "DEFAULT_BRANCH=${default_branch}" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ inputs.github_token }}
+
+      - name: Check FIRST_COMMIT is ancestor of HEAD
+        shell: bash
+        run: |
+          git merge-base --is-ancestor $FIRST_COMMIT HEAD || \
+          (echo "
+            This workflow checks that all commits follow the Ockam Commit Message Convention
+            https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages
+
+            We check all commits from HEAD backwards till the commit with commit hash: ${FIRST_COMMIT}.
+
+            ERROR:
+            For this to work the commit with commit hash: ${FIRST_COMMIT} should be an ancestor of HEAD
+            but it seems this is not the case with the current HEAD.
+
+            Try rebasing to the ${DEFAULT_BRANCH} branch of this repository.
+            https://github.com/${{ github.repository }}/tree/${DEFAULT_BRANCH}
+          " && exit 1)
+
       - name: Check no merge commits
+        shell: bash
         run: |
           merge_commit_count=$(git rev-list --no-walk --count --merges $FIRST_COMMIT..HEAD)
           if [ "$merge_commit_count" != "0" ]; then
             echo "
-              Our develop branch follows a linear history and cannot have merge commits.
-              Please rebase to develop.
+              Our ${DEFAULT_BRANCH} branch follows a linear history and cannot have merge commits.
+              Please rebase to ${DEFAULT_BRANCH}.
             " && exit 1
           fi
 
-      
+      - name: Install Commitlint
+        shell: bash
+        run: npm install --location=global @commitlint/cli@17.1.1 # TODO: move to ockam-builder docker image.
+
+      - name: Download Commitlint Config
+        shell: bash
+        run: |
+          if [[ -z ${COMMITLINT_CONFIG_PATH} ]]; then
+            echo "COMMITLINT_CONFIG_PATH is not set, using default commitlint from the ockam repository"
+            curl -s https://raw.githubusercontent.com/build-trust/ockam/develop/tools/commitlint/commitlint.config.js > commitlint.config.js
+          else
+            if ! ls | grep commitlint.config.js; then
+              mv $COMMITLINT_CONFIG_PATH commitlint.config.js
+            fi
+          fi
+
+
+      - name: Lint Commit Messages
+        shell: bash
+        run: |
+          npx commitlint \
+            --config commitlint.config.js \
+            --from $FIRST_COMMIT \
+            --to HEAD \
+            --help-url https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages || \
+            (echo '
+              The commit with the above commit message does not follow the Ockam Commit Message Convention
+              https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages
+
+              Our commits should have the following structure.
+
+                <type>(<scope>): <subject>
+                <BLANK LINE>
+                <body>
+                <BLANK LINE>
+                <footer>
+
+              Common errors to avoid:
+              1. The commit header <type>(<scope>): <subject> must be in lower case.
+              2. Allowed type values are: build, chore, ci, docs, feat, fix, refactor, style, test.
+              3. Allowed scope values are: c, elixir, typescript, rust.
+              4. Use the chore type as a last resort, prefer a more meaningful type.
+              5. Only feat, fix, refactor type commits are included in our changelog.
+
+              The linting rules are defined in:
+              https://github.com/build-trust/ockam/blob/develop/tools/commitlint/commitlint.config.js
+
+              More about the Ockam Commit Message Convention
+              https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#commit-messages
+            ' && exit 1)
+
+      - name: Check If PR Author Made Changes Only To CONTRIBUTORS.csv
+        shell: bash
+        if: ${{ env.CONTRIBUTORS_CSV_PATH != '' }}
+        run: |
+          set -e
+          paths_updated=$(git diff --name-only "origin/${DEFAULT_BRANCH}..HEAD")
+
+          if echo "$paths_updated" | grep $CONTRIBUTORS_CSV_PATH; then
+            # user has made changes to the CONTRIBUTORS.md file, we need to ensure that PR
+            # is only accepting the CLA
+            no_paths_updated=$(echo $paths_updated | wc -l)
+            if [[ $no_paths_updated -gt 1 ]]; then
+              echo "
+                We require that all contributors have accepted our Contributor License Agreement (CLA).
+                Please read the CLA and create a new pull request to accept the CLA by adding your Github details in a row at the end of the CONTRIBUTORS.csv file.
+                This new pull request must only change the CONTRIBUTORS.csv file.
+                CONTRIBUTORS.csv file is located at: $CONTRIBUTORS_CSV_PATH.
+                If you have any issues, please feel free to ask questions on this discussion thread https://github.com/build-trust/ockam/discussions/6112
+              " && exit 1
+            fi
+          fi
+
+      - name: Get Contributors List
+        shell: bash
+        run: |
+          if [[ -z "${CONTRIBUTORS_CSV_PATH}" ]]; then
+            # Download CSV file from ockam repository
+            curl -s https://raw.githubusercontent.com/build-trust/ockam/develop/.github/CONTRIBUTORS.csv > CONTRIBUTORS.csv
+          else
+            mv "$CONTRIBUTORS_CSV_PATH" CONTRIBUTORS.csv
+          fi
+
+      - name: Split Contributors List
+        shell: python
+        run: |
+          import csv
+          import re
+          import sys
+
+          contributors_github_usernames = []
+          contributors_emails = []
+          email_pattern = re.compile("<([^>]+)>")
+
+          with open('CONTRIBUTORS.csv', 'r') as f:
+            reader = csv.reader(f)
+            # skip the first row of headers
+            next(reader)
+            for line in reader:
+              contributors_github_usernames = contributors_github_usernames + line[1].split()
+              contributors_emails = contributors_emails + email_pattern.findall(line[3])
+
+          with open('CONTRIBUTORS_GITHUB_USERNAMES.txt', 'w') as f:
+            print('\n'.join(contributors_github_usernames), file=f)
+
+          with open('CONTRIBUTORS_EMAILS.txt', 'w') as f:
+            print('\n'.join(contributors_emails), file=f)
+
+      - name: Check Pull Request Sender has accepted Ockam CLA.
+        if: github.event_name == 'pull_request'
+        env:
+          PR_SENDER: ${{ github.event.pull_request.user.login }}
+        shell: bash
+        run: |
+          if grep -q -iF "$PR_SENDER" 'CONTRIBUTORS_GITHUB_USERNAMES.txt'; then
+            echo "[✓] Pull Request Sender $PR_SENDER has accepted the CLA."
+          else
+            echo "
+              $PR_SENDER, welcome to the Ockam community and thank you for sending this pull request ❤️.
+
+              Before we can merge, please accept our Contributor License Agreement (CLA).
+
+              1. Read the CLA at: https://github.com/build-trust/.github/blob/main/CLA.md
+
+              2. To accept the CLA, please create a different pull request indicating
+              that you accept the CLA by adding your Git/Github details in a row at the end of the
+              [CONTRIBUTORS.csv](https://github.com/build-trust/ockam/blob/develop/.github/CONTRIBUTORS.csv)
+              file.
+
+              We look forward to merging your first contribution!
+            "
+            exit 1
+          fi
+
+      - name: Check all commit authors co-authors and committers have accepted Ockam CLA.
+        shell: bash
+        run: |
+          set -x
+          commits=$(git rev-list --reverse $FIRST_COMMIT..HEAD)
+          commits=($FIRST_COMMIT ${commits[@]})
+          err=false
+
+          for commit in "${commits[@]}"
+          do
+            echo -e "\n---\nCommit: $commit"
+
+            author=$(git show -s --format='%ae' $commit)
+            echo "Author: $author"
+            co_authors=$(git show -s --format='%(trailers:key=Co-authored-by)' | grep -o -E '<[^>]+>' | sed 's/<//;s/>//' | tr '\n' ' ') || echo ''
+            if [ -n "$co_authors" ]; then
+              co_authors=($co_authors)
+              echo "Co-Authors: $co_authors"
+            fi
+
+            committer=$(git show -s --format='%ce' $commit)
+            echo "Committer: $committer"
+
+            if grep -q -iF "$author" 'CONTRIBUTORS_EMAILS.txt'; then
+              echo "[✓] $commit author $author has accepted the CLA."
+            else
+              echo -e "$commit commit author $author has not accepted the CLA."
+              err=true
+            fi
+
+            if [ -n "$co_authors" ]; then
+              for co_author in "${co_authors[@]}"
+              do
+                if grep -q -iF "$co_author" 'CONTRIBUTORS_EMAILS.txt'; then
+                  echo "[✓] $commit co-author $co_author has accepted the CLA."
+                else
+                  echo -e "$commit commit co-author $co_author has not accepted the CLA."
+                  err=true
+                fi
+              done
+            fi
+
+            if grep -q -iF "$committer" 'CONTRIBUTORS_EMAILS.txt'; then
+              echo "[✓] $commit committer $committer has accepted the CLA."
+            else
+              echo -r "\nERROR:\n$commit committer $committer has not accepted the CLA"
+              err=true
+            fi
+
+            if [ "$err" = true ]; then
+              echo "
+                Before we can merge, please accept our Contributor License Agreement (CLA).
+
+                1. Read the CLA at: https://github.com/build-trust/.github/blob/main/CLA.md
+
+                2. To accept the CLA, please create a different pull request indicating
+                that you accept the CLA by adding your Git/Github details in a row at the end of the
+                [CONTRIBUTORS.csv](https://github.com/build-trust/ockam/blob/develop/.github/CONTRIBUTORS.csv)
+                file.
+
+                We look forward to merging your contribution!
+              "
+              exit 1
+            fi
+          done
+
+      - name: Get Developers List
+        shell: bash
+        run: |
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /orgs/build-trust/members | jq -r '.[].login' > DEVELOPERS.csv
+        env:
+          GITHUB_TOKEN: ${{ inputs.github_token }}
+
+      - name: Check all commits in are Verified by Github (Pull Request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          PR_SENDER: ${{ github.event.pull_request.user.login }}
+        run: |
+          unverified=$(cat commits.json | jq --raw-output '.[] | [.sha, .commit.verification.verified] | @csv' | grep false || echo '')
+
+          if [ -z "$unverified" ]; then
+            echo '[✓] All commits in this pull request are Verified by Github.'
+          elif grep -q -i ^"$PR_SENDER"$ 'DEVELOPERS.csv'; then
+            echo "::warning:: [!] Some commits are unverified, ignoring them since pull request sender is a developer."
+            echo "$unverified"
+          else
+            echo '
+              We require that all commits in a pull request are signed and Verified by Github
+
+              Please read about signing commits at:
+              https://docs.github.com/en/authentication/managing-commit-signature-verification
+
+              ERROR: The following commits are not Verified by Github.
+            '
+            echo "$unverified"
+            exit 1
+          fi
