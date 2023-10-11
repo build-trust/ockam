@@ -1217,9 +1217,9 @@ checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
 
 [[package]]
 name = "cddl-cat"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "259c8f43c4c804869941ba6869864ccd8283fd23beb13b328a65dd77ff780cf6"
+checksum = "14dcdd952770356f68a42f67366d8633f388a5388793fc8b5e6e23fb42a1d943"
 dependencies = [
  "base64 0.13.1",
  "escape8259",

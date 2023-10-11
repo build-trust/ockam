@@ -87,7 +87,7 @@ tracing-error = { version = "0.2", default-features = false, optional = true }
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-cddl-cat = { version = "0.6.1" }
+cddl-cat = { version = "0.6.2" }
 quickcheck = "1.0.1"
 serde_cbor = { version = "0.11.2" }
 tokio = { version = "1.33.0", features = ["full"] }

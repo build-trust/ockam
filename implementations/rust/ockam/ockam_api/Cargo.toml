@@ -98,7 +98,7 @@ path = "../ockam_abac"
 default-features = false
 
 [dev-dependencies]
-cddl-cat = "0.6.1"
+cddl-cat = "0.6.2"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
 indexmap = "2.0.2"
