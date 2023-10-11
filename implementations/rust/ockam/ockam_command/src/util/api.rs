@@ -204,7 +204,7 @@ pub struct CloudOpts {
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct TrustContextOpts {
-    /// Project config file (DEPRECATED)
+    /// Project config file
     #[arg(global = true, long = "project-path", value_name = "PROJECT_JSON_PATH")]
     pub project_path: Option<PathBuf>,
 
