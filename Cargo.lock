@@ -4845,7 +4845,6 @@ dependencies = [
  "strip-ansi-escapes",
  "syntect",
  "tempfile",
- "termcolor",
  "termimad",
  "thiserror",
  "time",
