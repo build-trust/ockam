@@ -1,7 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
+
+use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_api::nodes::{models, BackgroundNode};
 use ockam_core::api::Request;
 
@@ -38,21 +41,36 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&node_name)?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+
+    // Check if there an TCP listener with the provided address exists
+    let address = cmd.address;
+    node.ask_and_get_reply::<_, TransportStatus>(
+        &ctx,
+        Request::get(format!("/node/tcp/listener/{address}")),
+    )
+    .await?
+    .found()
+    .into_diagnostic()?
+    .ok_or(miette!(
+        "TCP listener with address {address} was not found on Node {node_name}"
+    ))?;
+
+    // Proceed with the deletion
     if opts.terminal.confirmed_with_flag_or_prompt(
         cmd.yes,
         "Are you sure you want to delete this TCP listener?",
     )? {
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node_name = parse_node_name(&node_name)?;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let req = Request::delete("/node/tcp/listener")
-            .body(models::transport::DeleteTransport::new(cmd.address.clone()));
+            .body(models::transport::DeleteTransport::new(address.clone()));
         node.tell(&ctx, req).await?;
 
         opts.terminal
             .stdout()
             .plain(fmt_ok!(
-                "TCP listener {node_name} has been successfully deleted."
+                "TCP listener with address {address} on Node {node_name} has been deleted"
             ))
             .json(serde_json::json!({ "tcp-listener": {"node": node_name } }))
             .write_line()
