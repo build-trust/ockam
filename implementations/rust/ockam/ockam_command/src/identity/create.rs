@@ -1,6 +1,6 @@
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, OutputFormat};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
@@ -55,7 +55,16 @@ impl CreateCommand {
     }
 
     pub async fn create_identity(&self, opts: CommandGlobalOpts) -> miette::Result<Identifier> {
-        opts.terminal.write_line(&fmt_log!(
+        // The process bar is not to be displayed if the --output flag is json.
+        // The process bar is controlled by the terminal quiet option.
+        // A quiet terminal does not dislay the progress bar.
+        let mut myterm = opts.terminal;
+        if opts.global_args.output_format == OutputFormat::Json && !myterm.is_quiet() {
+            // set_quiet() returns a clone of the terminal
+            myterm = myterm.set_quiet();
+        }
+
+        myterm.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self
                 .name
@@ -70,7 +79,7 @@ impl CreateCommand {
                 self.vault.is_none() && opts.state.vaults.default().is_err();
             let vault_state = opts.state.create_vault_state(self.vault.as_deref()).await?;
             if default_vault_created {
-                opts.terminal.write_line(&fmt_log!(
+                myterm.write_line(&fmt_log!(
                     "Default vault created: {}\n",
                     &vault_state
                         .name()
@@ -122,13 +131,12 @@ impl CreateCommand {
 
         let output_messages = vec![format!("Creating identity...")];
 
-        let progress_output = opts
-            .terminal
+        let progress_output = myterm // if quiet, no progress bar.
             .progress_output(&output_messages, &is_finished);
 
         let (identifier, _) = try_join!(send_req, progress_output)?;
 
-        opts.terminal
+        myterm
             .stdout()
             .plain(
                 fmt_ok!(
