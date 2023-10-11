@@ -1,7 +1,9 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
+use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
@@ -41,21 +43,32 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = parse_node_name(&node_name)?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+
+    // Check if there an outlet with the provided alias/name exists
+    let alias = cmd.alias;
+    node.ask_and_get_reply::<_, OutletStatus>(&ctx, Request::get(format!("/node/outlet/{alias}")))
+        .await?
+        .found()
+        .into_diagnostic()?
+        .ok_or(miette!(
+            "TCP outlet with alias {alias} was not found on Node {node_name}"
+        ))?;
+
+    // Proceed with the deletion
     if opts.terminal.confirmed_with_flag_or_prompt(
         cmd.yes,
         "Are you sure you want to delete this TCP outlet?",
     )? {
-        let alias = cmd.alias.clone();
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node_name = parse_node_name(&node_name)?;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))
             .await?;
 
         opts.terminal
             .stdout()
             .plain(fmt_ok!(
-                "TCP outlet with alias {alias} on node {node_name} has been deleted."
+                "TCP outlet with alias {alias} on Node {node_name} has been deleted"
             ))
             .machine(&alias)
             .json(serde_json::json!({ "tcp-outlet": { "alias": alias, "node": node_name } }))
