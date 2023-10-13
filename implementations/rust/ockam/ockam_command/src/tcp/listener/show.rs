@@ -47,12 +47,10 @@ async fn run_impl(
         )
         .await?;
 
-    println!("TCP Listener:");
-    println!("  Type: {}", transport_status.tt);
-    println!("  Mode: {}", transport_status.tm);
-    println!("  Socket address: {}", transport_status.socket_addr);
-    println!("  Worker address: {}", transport_status.processor_address);
-    println!("  Flow Control Id: {}", transport_status.flow_control_id);
+    opts.terminal
+    .stdout()
+    .plain(plain)
+    .write_line()?;
 
     Ok(())
 }
