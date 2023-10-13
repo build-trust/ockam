@@ -25,11 +25,6 @@ repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/oc
 rust-version = "1.58.1"
 description = "End-to-end encryption and mutual authentication for distributed applications."
 
-[lib]
-name = "ockam_app_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
-path = "src/lib.rs"
-
 [build-dependencies]
 tauri-build = { version = "=2.0.0-alpha.8", features = [] }
 
