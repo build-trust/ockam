@@ -63,7 +63,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                 .stdout()
                 .plain(fmt_ok!("Node with name '{}' has been deleted", &node_name))
                 .machine(&node_name)
-                .json(serde_json::json!({ "node": { "name": &node_name } }))
+                .json(serde_json::json!({ "name": &node_name }))
                 .write_line()?;
         }
     }
