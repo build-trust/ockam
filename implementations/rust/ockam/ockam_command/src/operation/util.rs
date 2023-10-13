@@ -27,7 +27,7 @@ pub async fn check_for_completion(
             fmt_para!("This takes about 2 minutes."),
             fmt_para!(
                 "{}",
-                "Do not press Ctrl+C or exit the terminal process until this is complete."
+                "Please do not press Ctrl+C or exit the terminal process until this is complete."
                     .to_string()
                     .color(OckamColor::FmtWARNBackground.color())
             ),
