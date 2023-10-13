@@ -53,9 +53,9 @@ teardown() {
   run_success "$OCKAM" relay create blue --at /node/n1 --to /node/n2
 
   run_success "$OCKAM" relay show forward_to_blue --at /node/n2
-  assert_output --regexp "Relay Route:.* => 0#forward_to_blue"
-  assert_output --partial "Remote Address: /service/forward_to_blue"
-  assert_output --regexp "Worker Address: /service/.*"
+  assert_output --regexp "\"relay_route\".* => 0#forward_to_blue"
+  assert_output --partial "\"remote_address\":\"/service/forward_to_blue\""
+  assert_output --regexp "\"worker_address\":\"/service/.*"
 
   # Test showing non-existing with no relay
   run_failure "$OCKAM" relay show relay_blank --at /node/n2
