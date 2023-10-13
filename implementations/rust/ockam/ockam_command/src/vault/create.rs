@@ -57,7 +57,7 @@ async fn run_impl(
         .stdout()
         .plain(fmt_ok!("Vault created with name '{name}'!"))
         .machine(&name)
-        .json(serde_json::json!({ "vault": { "name": &name } }))
+        .json(serde_json::json!({ "name": &name }))
         .write_line()?;
     Ok(())
 }
