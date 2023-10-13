@@ -45,7 +45,7 @@ defmodule Ockam.Messaging.Ordering.Tests do
   end)
 
   Enum.each(monotonic_pipes, fn pipe ->
-    test "Pipe #{pipe} is monotinically ordered" do
+    test "Pipe #{pipe} is monotonically ordered" do
       pipe_mod = unquote(pipe)
       {:ok, me} = Ockam.Node.register_random_address()
 
