@@ -1,0 +1,16 @@
+name: Rust Cache
+description: Rust Cache
+
+inputs:
+  job_name:
+    description: Extra key to use for restoring and saving the cache
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      with:
+        prefix-key: ${{ inputs.job_name }}
+        # Only save if the workflow is running on the develop branch (cron job)
+        save-if: ${{ github.event_name == 'schedule' }}
