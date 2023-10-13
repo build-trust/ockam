@@ -1,0 +1,37 @@
+[package]
+name = "ockam_app_lib"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
+homepage = "https://github.com/ockam-network/ockam"
+license = "Apache-2.0"
+publish = true
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_app_lib"
+description = "Ockam's desktop application library"
+
+[lib]
+name = "ockam_app_lib"
+crate-type = ["staticlib"]
+path = "src/lib.rs"
+
+[dependencies]
+duct = "0.13.6"
+hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
+libc = "0.2"
+miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
+ockam = { path = "../ockam", version = "^0.97.0", features = ["software_vault"] }
+ockam_api = { path = "../ockam_api", version = "0.40.0", features = ["std"] }
+ockam_core = { path = "../ockam_core", version = "^0.88.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.31.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.91.0" }
+once_cell = "1.18"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0 "
+tokio = { version = "1.31.0", features = ["full"] }
+tokio-retry = "0.3"
+tracing = { version = "0.1", features = ["attributes"] }
+tracing-subscriber = { version = "0.3.17", features = ["json"] }
+
+[build-dependencies]
+cbindgen = "0.26"

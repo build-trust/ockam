@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use ockam::{Context, Result, TcpTransport};
 use ockam_core::compat::{string::String, sync::Arc};
+use ockam_core::errcode::Kind;
 use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::random_name;
@@ -141,7 +142,15 @@ impl InMemoryNode {
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.medic_handle.stop_medic(ctx).await?;
         for addr in DefaultAddress::iter() {
-            ctx.stop_worker(addr).await?;
+            let result = ctx.stop_worker(addr).await;
+            // when stopping we can safely ignore missing services
+            if let Err(err) = result {
+                if err.code().kind == Kind::NotFound {
+                    continue;
+                } else {
+                    return Err(err);
+                }
+            }
         }
         Ok(())
     }

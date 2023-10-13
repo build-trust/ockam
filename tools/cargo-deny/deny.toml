@@ -30,6 +30,9 @@ exceptions = [
   { allow = ["MPL-2.0"], name = "selectors", version = "*" },
   { allow = ["MPL-2.0"], name = "thin-slice", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "target-lexicon", version = "*" },
+
+  # used by ockam_app_lib only as a build dependency
+  { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },
 ]
 
 [[licenses.clarify]]
@@ -65,9 +68,11 @@ ignore = [
   # CDDL schema conformance in tests.
   "RUSTSEC-2021-0127",
 
-  # `kuchiki` dependency of tauri, html/css parser, unmaintened
-  # (https://rustsec.org/advisories/RUSTSEC-2023-0019.html)
-  "RUSTSEC-2023-0019",
+
+  # cbindgen (used to generate C header at build time)
+  # may dereference unaligned pointer access on windows
+  # under special conditions
+  "RUSTSEC-2021-0145",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still

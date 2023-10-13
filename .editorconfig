@@ -15,7 +15,7 @@ indent_style = space
 indent_size = 2
 
 # Let the corresponding language formatters deal with indent size
-[{{*.{ex,exs,erl,c,h,rs,cmake,cmake.in,stderr,ts,md},CMakeLists.txt,Cargo.lock}}]
+[{{*.{ex,exs,erl,c,h,rs,cmake,cmake.in,stderr,ts,md},CMakeLists.txt,Cargo.lock,Info.plist}}]
 indent_size = unset
 
 [*.{drawio,svg}]
@@ -31,6 +31,14 @@ indent_size = unset
 
 # Ignore paths
 [/implementations/rust/ockam/ockam_command/static/**]
+charset = ""
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
+
+[implementations/swift/ockam/ockam_app/Ockam.xcodeproj/**]
 charset = ""
 end_of_line = unset
 insert_final_newline = unset
