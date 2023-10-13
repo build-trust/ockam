@@ -61,7 +61,17 @@ defmodule Ockam.Services.Relay.StaticForwarding do
       {:ok, req} ->
         return_route = Message.return_route(message)
         target_identifier = Message.local_metadata_value(message, :identity_id)
-        _ignored = subscribe(req.alias, req.tags, return_route, target_identifier, true, state)
+
+        case subscribe(req.alias, req.tags, return_route, target_identifier, true, state) do
+          {:ok, _addr} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning(
+              "Error creating/updating relay (alias #{req.alias}) (caller identifier #{inspect(target_identifier)})  #{inspect(reason)}"
+            )
+        end
+
         {:ok, state}
 
       {:error, reason} ->
