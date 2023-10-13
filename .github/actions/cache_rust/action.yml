@@ -5,6 +5,9 @@ inputs:
   job_name:
     description: Extra key to use for restoring and saving the cache
     required: true
+  directory_to_cache:
+    description: Directory to cache
+    required: false
 
 runs:
   using: composite
@@ -14,3 +17,4 @@ runs:
         prefix-key: ${{ inputs.job_name }}
         # Only save if the workflow is running on the develop branch (cron job)
         save-if: ${{ github.event_name == 'schedule' }}
+        workspaces: "${{ inputs.directory_to_cache != '' && format('{0} -> target', inputs.directory_to_cache) || '' }}"
