@@ -5,7 +5,6 @@ $ ockam node create green
 
 # Create a relay to node blue at node green
 $ ockam relay create blue --at /node/green --to /node/blue
-/service/forward_to_blue
 
 # Send a message to the uppercase service on blue via its relay on green
 $ ockam message send hello --to /node/green/service/forward_to_blue/service/uppercase
