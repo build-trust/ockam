@@ -1,5 +1,3 @@
-# Note this composite action is meant to be obsolete after all workflows use
-# the new cache_nix action
 name: Nix Installer
 description: Nix Installer
 
