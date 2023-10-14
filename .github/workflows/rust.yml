@@ -400,6 +400,7 @@ jobs:
           nix develop ./tools/nix#rust --keep CI --ignore-environment --command cargo install --path ./tools/docs/example_blocks
 
       - name: Check Rust Documentation
+        if: github.event_name == 'merge_group'
         run: |
           CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
 
