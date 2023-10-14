@@ -76,7 +76,7 @@ impl ListCommand {
         opts.terminal
             .stdout()
             .plain(list)
-            .json(json!({"identities": &identities}))
+            .json(json!(&identities))
             .write_line()?;
         Ok(())
     }
