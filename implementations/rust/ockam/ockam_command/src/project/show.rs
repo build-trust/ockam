@@ -6,6 +6,7 @@ use ockam_api::cloud::project::Projects;
 
 use ockam_api::nodes::InMemoryNode;
 
+use crate::output::output::Output;
 use crate::project::util::refresh_projects;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -57,7 +58,11 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> m
     // Send request
     let project = controller.get_project(ctx, id).await?;
 
-    opts.println(&project)?;
+    opts.terminal
+        .stdout()
+        .plain(project.output()?)
+        .json(serde_json::to_string_pretty(&project).unwrap())
+        .write_line()?;
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
