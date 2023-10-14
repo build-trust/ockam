@@ -1,4 +1,4 @@
-name: Nix Installer
+name: cache_nix
 description: Nix Installer
 
 inputs:
