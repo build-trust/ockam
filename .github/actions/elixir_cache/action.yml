@@ -3,6 +3,7 @@
 name: Elixir Cache
 description: Elixir Cache
 
+
 inputs:
   job_name:
     description: Extra key to use for restoring and saving the cache
@@ -11,11 +12,22 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
+    - name: Restore and save cache
+      if: ${{ github.event_name == 'schedule' }}
+      uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
       with:
         path: |
           **/deps
           **/_build
-        key: cache-elixir-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
-        restore-keys: |
-          cache-elixir-${{ github.workflow }}-${{ github.job }}-
+        key: cache-elixir-${{ github.workflow }}-${{ github.job }}-${{ inputs.job_name }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: cache-elixir-${{ github.workflow }}-${{ github.job }}-${{ inputs.job_name }}-
+
+    - name: Restore Cache
+      if: ${{ github.event_name != 'schedule' }}
+      uses: actions/cache/restore@67b839edb68371cc5014f6cea11c9aa77238de78
+      with:
+        path: |
+          **/deps
+          **/_build
+        key: cache-elixir-${{ github.workflow }}-${{ github.job }}-${{ inputs.job_name }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: cache-elixir-${{ github.workflow }}-${{ github.job }}-${{ inputs.job_name }}-
