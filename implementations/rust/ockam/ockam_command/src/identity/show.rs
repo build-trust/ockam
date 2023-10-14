@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
+use crate::identity::get_identity_name;
+use crate::identity::list::IdentityListOutput;
 use crate::output::{EncodeFormat, IdentifierDisplay, Output, VerifyingPublicKeyDisplay};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -42,7 +43,6 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.name);
         node_rpc(Self::run_impl, (opts, self))
     }
 
@@ -51,10 +51,59 @@ impl ShowCommand {
         options: (CommandGlobalOpts, ShowCommand),
     ) -> miette::Result<()> {
         let (opts, cmd) = options;
-        let name = get_identity_name(&opts.state, &cmd.name);
-        let state = opts.state.identities.get(&name)?;
+
+        if cmd.name.is_some() || !opts.terminal.can_ask_for_user_input() {
+            let name = get_identity_name(&opts.state, &cmd.name);
+            Self::show_single_identity(&opts, &name, cmd.full, cmd.encoding).await?;
+            return Ok(());
+        }
+
+        let id_names: Vec<String> = opts.state.identities.list_items_names()?;
+        match id_names.len() {
+            0 => {
+                opts.terminal
+                    .stdout()
+                    .plain("There are no nodes to show")
+                    .write_line()?;
+            }
+            1 => {
+                Self::show_single_identity(&opts, &id_names[0], cmd.full, cmd.encoding).await?;
+            }
+            _ => {
+                let selected_names = opts.terminal.select_multiple(
+                    "Select one or more identities that you want to show".to_string(),
+                    id_names,
+                );
+
+                if selected_names.is_empty() {
+                    opts.terminal
+                        .stdout()
+                        .plain("No identities selected")
+                        .write_line()?;
+                    return Ok(());
+                }
+
+                if opts.terminal.confirm_interactively(format!(
+                    "Would you like to show these items : {:?}?",
+                    selected_names
+                )) {
+                    Self::show_identity_list(&opts, selected_names).await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn show_single_identity(
+        opts: &CommandGlobalOpts,
+        name: &str,
+        full: bool,
+        encoding: Option<EncodeFormat>,
+    ) -> miette::Result<()> {
+        let state = opts.state.identities.get(name)?;
         let identifier = state.config().identifier();
-        let (plain, json) = if cmd.full {
+        let (plain, json) = if full {
             let change_history = opts
                 .state
                 .identities
@@ -64,7 +113,7 @@ impl ShowCommand {
                 .await
                 .into_diagnostic()?;
 
-            if Some(EncodeFormat::Hex) == cmd.encoding {
+            if Some(EncodeFormat::Hex) == encoding {
                 let encoded = hex::encode(change_history.export().into_diagnostic()?);
                 let json = to_string_pretty(&json!({"encoded": &encoded}));
                 (encoded, json)
@@ -89,12 +138,41 @@ impl ShowCommand {
         };
 
         opts.terminal
+            .clone()
             .stdout()
             .plain(&plain)
             .json(json.into_diagnostic()?)
             .machine(&plain)
             .write_line()?;
+        Ok(())
+    }
 
+    async fn show_identity_list(
+        opts: &CommandGlobalOpts,
+        selected_names: Vec<String>,
+    ) -> miette::Result<()> {
+        let mut identities: Vec<IdentityListOutput> = Vec::new();
+
+        for name in selected_names {
+            let state = opts.state.identities.get(&name)?;
+            let identifier = state.config().identifier().to_string();
+            let is_default = opts.state.identities.is_default(&name)?;
+            let identity = IdentityListOutput::new(name, identifier, is_default);
+            identities.push(identity);
+        }
+
+        let list = opts.terminal.build_list(
+            &identities,
+            "Identities",
+            "No identities found on this system.",
+        )?;
+
+        opts.terminal
+            .clone()
+            .stdout()
+            .plain(list)
+            .json(json!(&identities))
+            .write_line()?;
         Ok(())
     }
 }
