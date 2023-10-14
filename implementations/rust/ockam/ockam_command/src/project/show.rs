@@ -63,6 +63,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> m
         .plain(project.output()?)
         .json(serde_json::to_string_pretty(&project).unwrap())
         .write_line()?;
+    
     opts.state
         .projects
         .overwrite(&project.name, project.clone())?;
