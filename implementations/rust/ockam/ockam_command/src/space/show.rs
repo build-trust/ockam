@@ -1,10 +1,12 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::nodes::InMemoryNode;
 
+use crate::output::Output;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -47,7 +49,13 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> m
     let node = InMemoryNode::start(ctx, &opts.state).await?;
     let controller = node.create_controller().await?;
     let space: Space = controller.get_space(ctx, id).await?;
-    opts.println(&space)?;
+
+    opts.terminal
+        .stdout()
+        .plain(space.output()?)
+        .json(serde_json::to_string(&space).into_diagnostic()?)
+        .write_line()?;
+
     opts.state
         .spaces
         .overwrite(&cmd.name, SpaceConfig::from(&space))?;
