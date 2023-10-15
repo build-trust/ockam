@@ -27,7 +27,8 @@ pub struct StoreCommand {
     #[arg(group = "credential_value", value_name = "CREDENTIAL_FILE", long)]
     pub credential_path: Option<PathBuf>,
 
-    #[arg()]
+    /// Name of the Vault that was used to issue the credential
+    #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 }
 
