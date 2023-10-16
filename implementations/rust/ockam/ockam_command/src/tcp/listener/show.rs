@@ -47,6 +47,15 @@ async fn run_impl(
         )
         .await?;
 
+    let plain = formatdoc! {r#"
+        TCP Listener:
+          Type: {tt}
+          Mode: {tm}
+          Socket address: {socket_addr}
+          Worker address: {processor_address}
+          Flow Control Id: {flow_control_id}
+    "#};
+
     opts.terminal
     .stdout()
     .plain(plain)
