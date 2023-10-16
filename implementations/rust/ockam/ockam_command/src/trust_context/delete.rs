@@ -44,7 +44,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                 "The trust context with name '{name}' has been deleted"
             ))
             .machine(&name)
-            .json(serde_json::json!({ "trust-context": { "name": &name } }))
+            .json(serde_json::json!({ "name": &name }))
             .write_line()?;
     }
     Ok(())
