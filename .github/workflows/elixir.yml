@@ -63,7 +63,7 @@ jobs:
         with:
           cache-unique-id: elixir
         id: nix-installer
-      - uses: ./.github/actions/elixir_cache
+      - uses: ./.github/actions/cache_elixir
       - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
         with:
           key: "elixir-cache"
