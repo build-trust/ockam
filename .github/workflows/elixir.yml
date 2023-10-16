@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
-      - uses: ./.github/actions/nix_installer_and_cache
+      - uses: ./.github/actions/cache_nix
         with:
           cache-unique-id: elixir
         id: nix-installer
