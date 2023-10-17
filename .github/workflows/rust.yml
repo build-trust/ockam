@@ -240,9 +240,10 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
 
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./ockam_bats/.github/actions/cache_rust
         with:
-          workspaces: "ockam_cli -> target"
+          directory_to_cache: "ockam_cli"
+          job_name: ${{ github.job }}
 
       - name: Install Nix
         uses: ./ockam_bats/.github/actions/nix_installer_and_cache
