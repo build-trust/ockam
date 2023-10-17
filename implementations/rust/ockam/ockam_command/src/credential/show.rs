@@ -3,6 +3,7 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
+use indoc::formatdoc;
 
 use crate::credential::identities;
 use crate::output::CredentialAndPurposeKeyDisplay;
@@ -67,8 +68,18 @@ pub(crate) async fn display_credential(
     };
 
     let cred = cred_config.credential()?;
-    println!("Credential: {cred_name} {is_verified}");
-    println!("{}", CredentialAndPurposeKeyDisplay(cred));
+    let output = formatdoc!(r#" 
+        Credential: 
+            Name: {cred_name} 
+            ID: {is_verified} 
+            Authority: {} 
+        "#, 
+        cmd.name, 
+        c.id(), 
+        auth 
+    ); 
+
+    opts.terminal.stdout().plain(plain).write_line()?;
 
     Ok(())
 }
