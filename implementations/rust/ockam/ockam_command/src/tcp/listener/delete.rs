@@ -72,7 +72,7 @@ async fn run_impl(
             .plain(fmt_ok!(
                 "TCP listener with address {address} on Node {node_name} has been deleted"
             ))
-            .json(serde_json::json!({ "tcp-listener": {"node": node_name } }))
+            .json(serde_json::json!({"node": node_name }))
             .write_line()
             .unwrap();
     }
