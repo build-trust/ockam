@@ -71,7 +71,7 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer_and_cache
+        uses: ./.github/actions/cache_nix
         with:
           cache-unique-id: ${{ matrix.lint_projects }}
         id: nix-installer
@@ -115,7 +115,7 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer_and_cache
+        uses: ./.github/actions/cache_nix
         with:
           cache-unique-id: ${{ matrix.build_projects }}
         id: nix-installer
@@ -156,7 +156,7 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer_and_cache
+        uses: ./.github/actions/cache_nix
         with:
           cache-unique-id: ${{ matrix.test_projects }}
         id: nix-installer
@@ -197,7 +197,7 @@ jobs:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer_and_cache
+        uses: ./.github/actions/cache_nix
         with:
           cache-unique-id: ${{ matrix.check_projects }}
         id: nix-installer
@@ -245,7 +245,7 @@ jobs:
           workspaces: "ockam_cli -> target"
 
       - name: Install Nix
-        uses: ./ockam_bats/.github/actions/nix_installer_and_cache
+        uses: ./ockam_bats/.github/actions/cache_nix
         with:
           cache-unique-id: test_ockam_command
         id: nix-installer
@@ -348,7 +348,7 @@ jobs:
           path: ockam_library
 
       - name: Install Nix
-        uses: ./ockam_library/.github/actions/nix_installer_and_cache
+        uses: ./ockam_library/.github/actions/cache_nix
         with:
           cache-unique-id: test_docs_rust_library_examples
         id: nix-installer
@@ -389,7 +389,7 @@ jobs:
           path: ockam-documentation
 
       - name: Install Nix
-        uses: ./ockam/.github/actions/nix_installer_and_cache
+        uses: ./ockam/.github/actions/cache_nix
         with:
           cache-unique-id: lint_docs_ockam_io_rust_examples
         id: nix-installer
