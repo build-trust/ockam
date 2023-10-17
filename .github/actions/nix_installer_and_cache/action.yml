@@ -11,21 +11,31 @@ inputs:
 outputs:
   cache-hit:
     description: Whether the cache was restored or not
-    value: ${{ steps.nix-cache.outputs.cache-hit }}
+    value: ${{ steps.nix-restore-and-save.outputs.cache-hit == 'true' || steps.nix-restore.outputs.cache-hit == 'true' }}
 
 runs:
   using: composite
   steps:
-    - name: Cache
-      id: nix-cache
+    - name: Restore and Save Cache
+      id: nix-restore-and-save
+      if: ${{ github.event_name == 'schedule' }}
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84
       with:
         path: |
           /tmp/nix-cache
         key: nix-cache-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ inputs.cache-unique-id }}-${{ hashFiles('**/flake.lock') }}
 
-    - name: cache hit
-      if: steps.nix-cache.outputs.cache-hit == 'true'
+    - name: Restore Cache
+      id: nix-restore
+      if: ${{ github.event_name != 'schedule' }}
+      uses: actions/cache/restore@704facf57e6136b1bc63b828d79edcd491f0ee84
+      with:
+        path: |
+          /tmp/nix-cache
+        key: nix-cache-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ inputs.cache-unique-id }}-${{ hashFiles('**/flake.lock') }}
+
+    - name: Restore Cached Path
+      if: ${{ steps.nix-restore-and-save.outputs.cache-hit == 'true' || steps.nix-restore.outputs.cache-hit == 'true' }}
       shell: bash
       run: |
         set -ex
@@ -45,6 +55,6 @@ runs:
 
         sudo chown -R "${USER}:" /nix
 
-    - name: Install Nix
-      if: steps.nix-cache.outputs.cache-hit != 'true'
+    - name: Install Nix If There Is No Cache
+      if: ${{ steps.nix-restore-and-save.outputs.cache-hit != 'true' && steps.nix-restore.outputs.cache-hit != 'true' }}
       uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
