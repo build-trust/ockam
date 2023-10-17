@@ -183,7 +183,7 @@ enum OrchestratorStatus: Int {
     case RetrievingProject
 }
 
-class ApplicationState: ObservableObject {
+class ApplicationState: ObservableObject, CustomDebugStringConvertible {
     @Published var enrolled: Bool
     @Published var orchestrator_status: OrchestratorStatus
     @Published var enrollmentName: String?
@@ -192,6 +192,7 @@ class ApplicationState: ObservableObject {
     @Published var enrollmentGithubUser: String?
     @Published var localServices: [LocalService]
     @Published var groups: [ServiceGroup]
+    @Published var sent_invitations: [Invitee]
 
     init(
         enrolled: Bool,
@@ -201,7 +202,8 @@ class ApplicationState: ObservableObject {
         enrollmentImage: String?,
         enrollmentGithubUser: String?,
         localServices: [LocalService],
-        groups: [ServiceGroup]
+        groups: [ServiceGroup],
+        sent_invitations: [Invitee]
     ) {
         self.enrolled = enrolled
         self.orchestrator_status = orchestrator_status
@@ -211,6 +213,7 @@ class ApplicationState: ObservableObject {
         self.enrollmentGithubUser = enrollmentGithubUser
         self.localServices = localServices
         self.groups = groups
+        self.sent_invitations = sent_invitations
     }
 
     func getLocalService(_ localServiceId: String) -> LocalService? {
@@ -311,6 +314,13 @@ func convertApplicationState(cState: C_ApplicationState) -> ApplicationState {
         i += 1
     }
 
+    var sent_invitations: [Invitee] = []
+    i = 0
+    while let cInvitee = cState.sent_invitations[i] {
+        sent_invitations.append(convertInvitee(cInvitee: cInvitee))
+        i += 1
+    }
+
     return ApplicationState(
         enrolled: cState.enrolled != 0,
         orchestrator_status: OrchestratorStatus(rawValue: Int(cState.orchestrator_status.rawValue))!,
@@ -319,7 +329,8 @@ func convertApplicationState(cState: C_ApplicationState) -> ApplicationState {
         enrollmentImage: enrollmentImage,
         enrollmentGithubUser: enrollmentGithubUser,
         localServices: localServices,
-        groups: groups
+        groups: groups,
+        sent_invitations: sent_invitations
     )
 }
 
@@ -350,7 +361,7 @@ func convertLocalService(cLocalService: UnsafePointer<C_LocalService>) -> LocalS
 func convertInvitee(cInvitee: UnsafePointer<C_Invitee>) -> Invitee {
     let cRecord = cInvitee.pointee
 
-    let name = String(cString: cRecord.name)
+    let name = optional_string(str: cRecord.name)
     let email = String(cString: cRecord.email)
 
     return Invitee(name: name, email: email)
@@ -416,4 +427,45 @@ func convertService(cService: UnsafePointer<C_Service>) -> Service {
         id: id
     )
 
+}
+
+extension Invitee: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\" }"
+    }
+}
+
+extension Invitation: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
+    }
+}
+
+extension LocalService: CustomDebugStringConvertible {
+    var debugDescription: String {
+        let sharedWithJsonStrings = sharedWith.map { $0.debugDescription }.joined(separator: ", ")
+        return "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
+    }
+}
+
+extension Service: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
+    }
+}
+
+extension ServiceGroup: CustomDebugStringConvertible {
+    var debugDescription: String {
+        let invitationsStrings = invitations.map { $0.debugDescription }.joined(separator: ", ")
+        let incomingServicesStrings = incomingServices.map { $0.debugDescription }.joined(separator: ", ")
+        return "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
+    }
+}
+
+extension ApplicationState {
+    var debugDescription: String {
+        let localServicesStrings = localServices.map { $0.debugDescription }.joined(separator: ", ")
+        let groupsStrings = groups.map { $0.debugDescription }.joined(separator: ", ")
+        return "{ \"enrolled\": \(enrolled), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
+    }
 }

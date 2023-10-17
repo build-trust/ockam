@@ -10,7 +10,7 @@ struct EmailListView: View {
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
-                TextField("Enter email", text: $emailInput)
+                TextField("Type an email address, then press Enter to add it", text: $emailInput)
                     .onSubmit {
                         if validateEmail(email: self.emailInput) {
                             self.emailList.insert(self.emailInput)

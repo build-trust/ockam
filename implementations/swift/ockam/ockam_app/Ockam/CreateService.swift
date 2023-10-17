@@ -2,13 +2,13 @@ import SwiftUI
 
 struct CreateServiceView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    @FocusState private var isFocused: Bool
 
     @State var isProcessing = false
     @State var errorMessage = ""
     @State var serviceName = ""
     @State var serviceAddress = "localhost:10000"
     @State var emails = Set<String>()
-    @State var share = false
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -19,6 +19,10 @@ struct CreateServiceView: View {
                         Text(verbatim: "Name of the service you want to share").font(.caption)
                     }
                     TextField("Name", text: $serviceName)
+                        .focused($isFocused)
+                        .onAppear(perform: {
+                            isFocused = true
+                        })
                 }
                 GridRow{
                     VStack(alignment: .leading) {
@@ -32,13 +36,10 @@ struct CreateServiceView: View {
                         Text(verbatim: "Share")
                         Text(verbatim: "Optionally, send an invitation to share this service").font(.caption)
                     }
-
-                    Toggle(isOn: $share) {
-                    }.toggleStyle(SwitchToggleStyle())
                 }
             }
 
-            EmailListView(emailList: $emails).disabled(!self.share)
+            EmailListView(emailList: $emails)
 
             //use opacity to pre-allocate the space for this component
             Text("Error: \(errorMessage)")
@@ -55,11 +56,7 @@ struct CreateServiceView: View {
                 Button(action: {
                     let emails: String;
 
-                    if self.share {
-                        emails = Array(self.emails).joined(separator: ";")
-                    } else {
-                        emails = ""
-                    }
+                    emails = Array(self.emails).joined(separator: ";")
                     self.errorMessage = ""
 
                     isProcessing = true
@@ -74,14 +71,13 @@ struct CreateServiceView: View {
                         self.errorMessage = ""
                         self.serviceName = ""
                         self.emails = Set<String>()
-                        self.share = false
                         self.serviceAddress = "localhost:10000"
                         self.closeWindow()
                     } else {
                         self.errorMessage = String(cString: error.unsafelyUnwrapped)
                     }
                 }, label: {
-                    Text("Create")
+                    Text("Create and Share")
                 })
                 .disabled(!canCreateService() && !isProcessing)
             }
