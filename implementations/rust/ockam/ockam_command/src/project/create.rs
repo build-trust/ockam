@@ -66,7 +66,11 @@ async fn run_impl(
     opts.state
         .trust_contexts
         .overwrite(&project.name, project.clone().try_into()?)?;
-    opts.println(&project)?;
+    opts.terminal
+    .stdout()
+    .plain(project.output()?)
+    .json(serde_json::to_string_pretty(&project).into_diagnostic()?)
+    .write_line()?;
     Ok(())
 }
 
