@@ -6,8 +6,10 @@ struct ClickableMenuEntry: View {
     @State private var isHovered = false
 
     @State var text: String
+    @State var clicked: String = ""
     @State var icon: String = ""
     @State var action: (() -> Void)? = nil
+    @State var isDown = false
 
     var body: some View {
         HStack {
@@ -15,7 +17,7 @@ struct ClickableMenuEntry: View {
                 Image(systemName: icon)
                     .frame(minWidth: 16, maxWidth: 16)
             }
-            Text(verbatim: text)
+            Text(verbatim: isDown ? (clicked.isEmpty ? text : clicked) : text)
             Spacer()
         }
         .padding(.horizontal, 8)
@@ -24,13 +26,21 @@ struct ClickableMenuEntry: View {
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)
         .contentShape(Rectangle())
+        .modifier(PressActions(
+            onPress: {
+                isDown = true
+            },
+            onRelease: {
+                if isDown {
+                    isDown = false
+                    if let action = action {
+                        action()
+                    }
+                }
+            }
+        ))
         .onHover { hover in
             isHovered = hover
-        }
-        .onTapGesture {
-            if let action = action {
-                action()
-            }
         }
     }
 }

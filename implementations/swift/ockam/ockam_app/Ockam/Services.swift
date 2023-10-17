@@ -60,6 +60,11 @@ struct RemoteServiceView: View {
     @State private var isOpen = false
     @ObservedObject var service: Service
 
+    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    func closeWindow() {
+        self.presentationMode.wrappedValue.dismiss()
+    }
+
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
@@ -68,7 +73,7 @@ struct RemoteServiceView: View {
                     .frame(maxWidth: 16, maxHeight: 16)
 
                 VStack(alignment: .leading) {
-                    Text(service.sourceName).font(.title3)
+                    Text(service.sourceName).font(.title3).lineLimit(1)
                     if service.available {
                         let address = if let scheme = service.scheme {
                             scheme + "://" + service.address.unsafelyUnwrapped + ":" + String(service.port.unsafelyUnwrapped)
@@ -114,8 +119,9 @@ struct RemoteServiceView: View {
                                     }
                                 })
                             }
-                            ClickableMenuEntry(text: "Copy " + address, action: {
+                            ClickableMenuEntry(text: "Copy " + address, clicked: "Copied!", action: {
                                 copyToClipboard(address)
+                                self.closeWindow()
                             })
                             ClickableMenuEntry(text: "Disconnect", action: {
                                 disable_accepted_service(service.id)
@@ -133,12 +139,16 @@ struct RemoteServiceView: View {
 }
 
 struct LocalServiceView: View {
-    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @Environment(\.openWindow) private var openWindow
 
     @State private var isHovered = false
     @State private var isOpen = false
     @ObservedObject var localService: LocalService
+
+    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    func closeWindow() {
+        self.presentationMode.wrappedValue.dismiss()
+    }
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -147,7 +157,7 @@ struct LocalServiceView: View {
                     .foregroundColor(localService.available ? .green : .red)
                     .frame(maxWidth: 16, maxHeight: 16)
                 VStack(alignment: .leading) {
-                    Text(verbatim: localService.name).font(.title3)
+                    Text(verbatim: localService.name).font(.title3).lineLimit(1)
                     let address = if let scheme = localService.scheme {
                         scheme + "://" + localService.address + ":" + String(localService.port)
                     } else {
@@ -179,11 +189,13 @@ struct LocalServiceView: View {
                         ClickableMenuEntry(text: "Open "+url, action: {
                             if let url = URL(string: url) {
                                 NSWorkspace.shared.open(url)
+                                self.closeWindow()
                             }
                         })
                     }
-                    ClickableMenuEntry(text: "Copy " + address, action: {
+                    ClickableMenuEntry(text: "Copy " + address, clicked: "Copied!", action: {
                         copyToClipboard(address)
+                        self.closeWindow()
                     })
                     ClickableMenuEntry(text: "Share", action: {
                         openWindow(id:"share-service", value: localService.id)
@@ -196,10 +208,6 @@ struct LocalServiceView: View {
                 }
             }
         }
-    }
-
-    func closeWindow() {
-        self.presentationMode.wrappedValue.dismiss()
     }
 }
 
@@ -214,7 +222,7 @@ struct IncomingInvite: View {
                 Image(systemName: invite.accepting ? "envelope.open" : "envelope")
                     .frame(maxWidth: 16, maxHeight: 16)
                 VStack(alignment: .leading) {
-                    Text(verbatim: invite.serviceName).font(.title3)
+                    Text(verbatim: invite.serviceName).font(.title3).lineLimit(1)
                     if invite.accepting {
                         Text(verbatim: "Accepting...").font(.caption)
                     } else {
@@ -250,6 +258,42 @@ struct IncomingInvite: View {
                         accept_invitation(invite.id)
                         isOpen = false
                     })
+                }
+            }
+        }
+    }
+}
+
+
+struct SentInvitations: View {
+    @State private var isHovered = false
+    @State private var isOpen = false
+    @ObservedObject var state: ApplicationState
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            HStack {
+                Text("Sent Invitations")
+                    .font(.body).bold().foregroundColor(.primary.opacity(0.7))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .rotationEffect(isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
+            }
+            .padding(3)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation {
+                    isOpen = !isOpen
+                }            }
+            .onHover { hover in
+                isHovered = hover
+            }
+            .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
+            .cornerRadius(4)
+
+            if isOpen {
+                ForEach(state.sent_invitations){ invitation in
+                    Text(invitation.email)
                 }
             }
         }

@@ -18,6 +18,7 @@
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D520822ADD5CAE00F36B64 /* Helpers.swift */; };
 		78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA02AD4354400574AE9 /* CreateService.swift */; };
 		78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA22AD4501200574AE9 /* ShareService.swift */; };
 		78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F5F3032AD4127C00B8D18E /* EmailInput.swift */; };
@@ -39,6 +40,7 @@
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
 		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		78D520822ADD5CAE00F36B64 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		78ED0DA02AD4354400574AE9 /* CreateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateService.swift; sourceTree = "<group>"; };
 		78ED0DA22AD4501200574AE9 /* ShareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareService.swift; sourceTree = "<group>"; };
 		78F5F3032AD4127C00B8D18E /* EmailInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailInput.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 				78ED0DA22AD4501200574AE9 /* ShareService.swift */,
 				7827D5062AD93EE700F7A20F /* ProfilePicture.swift */,
 				7827D5082AD93F1700F7A20F /* ClickableMenuEntry.swift */,
+				78D520822ADD5CAE00F36B64 /* Helpers.swift */,
 			);
 			path = Ockam;
 			sourceTree = "<group>";
@@ -190,6 +193,7 @@
 				7827D5092AD93F1700F7A20F /* ClickableMenuEntry.swift in Sources */,
 				782D5B4B2AC1D3D700D1B27F /* MainView.swift in Sources */,
 				78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */,
+				78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */,
 				78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */,
 				781D00042AD05D26009848FE /* Services.swift in Sources */,
 				7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */,

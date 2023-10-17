@@ -137,6 +137,7 @@ pub mod rust {
         pub enrollment_github_user: Option<String>,
         pub local_services: Vec<LocalService>,
         pub groups: Vec<ServiceGroup>,
+        pub sent_invitations: Vec<Invitee>,
     }
 
     #[derive(Clone)]
@@ -229,6 +230,7 @@ pub mod c {
 
         pub(super) local_services: *const *const LocalService,
         pub(super) groups: *const *const ServiceGroup,
+        pub(super) sent_invitations: *const *const Invitee,
     }
 }
 
@@ -326,5 +328,12 @@ pub(crate) fn convert_to_c(state: rust::ApplicationState) -> c::ApplicationState
         ),
 
         groups: append_c_terminator(state.groups.into_iter().map(group_to_c).collect::<Vec<_>>()),
+        sent_invitations: append_c_terminator(
+            state
+                .sent_invitations
+                .into_iter()
+                .map(invitee_to_c)
+                .collect::<Vec<_>>(),
+        ),
     }
 }

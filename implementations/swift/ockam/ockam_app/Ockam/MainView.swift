@@ -69,6 +69,13 @@ struct MainView: View {
             }
 
             if state.enrolled {
+                if !state.sent_invitations.isEmpty {
+                    Group {
+                        Divider()
+                        SentInvitations(state: self.state)
+                    }
+                }
+
                 Group {
                     Divider()
                     Text("Your services")

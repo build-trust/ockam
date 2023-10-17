@@ -22,11 +22,12 @@ class StateContainer {
         enrollmentImage: nil,
         enrollmentGithubUser: nil,
         localServices: [],
-        groups: []
+        groups: [],
+        sent_invitations: []
     )
 
     func update(state: ApplicationState) {
-        print("update: \(state)")
+        debugPrint("update: ", state)
         self.state = state
         if let callback = self.callback {
             callback(state)
@@ -38,18 +39,6 @@ class StateContainer {
         self.callback = callback
         callback(state)
     }
-}
-
-// Helper function to move the application windows to the front
-func bringInFront() {
-    NSApplication.shared.activate(ignoringOtherApps: true)
-}
-
-// Helper function to copy the text into the clipboard
-func copyToClipboard(_ text: String) {
-    let pasteboard = NSPasteboard.general
-    pasteboard.declareTypes([.string], owner: nil)
-    pasteboard.setString(text, forType: .string)
 }
 
 @main
@@ -90,8 +79,8 @@ struct OckamApp: App {
         Window("Create a service", id: "create-service") {
             CreateServiceView()
         }
-        .commandsRemoved()
         .windowResizability(.contentSize)
+        .commandsRemoved()
 
         // Declare a "template" of windows, dependent on the LocalService.ID, not open by default
         WindowGroup("Share a service", id: "share-service", for: LocalService.ID.self) { $localServiceId in

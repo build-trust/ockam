@@ -107,6 +107,7 @@ typedef struct C_ApplicationState {
   const char *enrollment_github_user;
   const struct C_LocalService *const *local_services;
   const struct C_ServiceGroup *const *groups;
+  const struct C_Invitee *const *sent_invitations;
 } C_ApplicationState;
 
 typedef struct C_Notification {

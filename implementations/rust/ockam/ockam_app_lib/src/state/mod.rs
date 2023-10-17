@@ -348,6 +348,7 @@ impl AppState {
         let enrollment_github_user;
         let mut local_services: Vec<LocalService>;
         let mut groups: Vec<ServiceGroup>;
+        let mut sent_invitations: Vec<Invitee>;
         let invitation_state = self.invitations().read().await.clone();
 
         // we want to sort everything to avoid having to deal with ordering in the UI
@@ -361,27 +362,23 @@ impl AppState {
                     address: outlet.socket_addr.ip().to_string(),
                     port: outlet.socket_addr.port(),
                     scheme: None,
-                    shared_with: {
-                        let mut shared_with: Vec<Invitee> = invitation_state
-                            .sent
-                            .iter()
-                            .filter(|invitation| {
-                                invitation.target_id == *outlet.worker_addr.address()
-                            })
-                            .map(|invitation| Invitee {
-                                name: Some(invitation.recipient_email.clone()),
-                                email: invitation.recipient_email.clone(),
-                            })
-                            .collect();
-                        shared_with.sort();
-                        shared_with
-                    },
+                    shared_with: vec![],
                     available: true,
                 })
                 .collect();
 
             local_services.sort();
             let mut group_names = Vec::new();
+
+            sent_invitations = invitation_state
+                .sent
+                .iter()
+                .map(|invitation| Invitee {
+                    name: Some(invitation.recipient_email.clone()),
+                    email: invitation.recipient_email.clone(),
+                })
+                .collect();
+            sent_invitations.sort();
 
             invitation_state
                 .accepted
@@ -492,6 +489,7 @@ impl AppState {
             enrollment_github_user = None;
             local_services = vec![];
             groups = vec![];
+            sent_invitations = vec![];
         }
 
         Ok(api::state::rust::ApplicationState {
@@ -503,6 +501,7 @@ impl AppState {
             enrollment_github_user,
             local_services,
             groups,
+            sent_invitations,
         })
     }
 }
