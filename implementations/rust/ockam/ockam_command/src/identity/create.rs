@@ -145,7 +145,7 @@ impl CreateCommand {
                 ),
             )
             .machine(identifier.clone())
-            .json(serde_json::json!({ "identity": { "identifier": &identifier } }))
+            .json(serde_json::json!({ "identifier": &identifier }))
             .write_line()?;
         Ok(identifier.clone())
     }
