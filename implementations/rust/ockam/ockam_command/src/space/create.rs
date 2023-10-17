@@ -2,6 +2,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 
+use crate::output::Output;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{is_enrolled_guard, node_rpc};
 use crate::{docs, CommandGlobalOpts};
@@ -63,7 +64,11 @@ async fn run_impl(
     let controller = node.create_controller().await?;
     let space = controller.create_space(ctx, cmd.name, cmd.admins).await?;
 
-    opts.println(&space)?;
+    opts.terminal
+        .stdout()
+        .plain(space.output()?)
+        .json(serde_json::json!(&space))
+        .write_line()?;
     opts.state
         .spaces
         .overwrite(&space.name, SpaceConfig::from(&space))?;
