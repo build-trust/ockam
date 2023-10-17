@@ -54,7 +54,7 @@ jobs:
       image: ghcr.io/build-trust/ockam-builder@sha256:b7790a79e5fd4265d8333bb882010e5d4326778f270bd49693fa35763865df82
     steps:
       - name: Checkout Ockam
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0
 
