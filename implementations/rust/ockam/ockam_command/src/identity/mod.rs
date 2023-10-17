@@ -4,15 +4,13 @@ mod delete;
 mod list;
 mod show;
 
-use colorful::Colorful;
 pub use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
 use crate::identity::default::DefaultCommand;
-use crate::terminal::OckamColor;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, PARSER_LOGS};
+use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::CliState;
@@ -82,27 +80,6 @@ pub fn create_default_identity(opts: &CommandGlobalOpts) {
     let default = "default";
     let create_command = CreateCommand::new(default.into(), None, None);
     create_command.run(opts.clone().set_quiet());
-
-    // Retrieve the identifier if available
-    // Otherwise, use the name of the identity
-    let identifier = match opts.state.identities.get(default) {
-        Ok(i) => i.identifier().to_string(),
-        Err(_) => default.to_string(),
-    };
-
-    if let Ok(mut logs) = PARSER_LOGS.lock() {
-        logs.push(fmt_log!(
-            "There is no identity, on this machine, marked as your default."
-        ));
-        logs.push(fmt_log!("Creating a new Ockam identity for you..."));
-        logs.push(fmt_ok!(
-            "Created: {}",
-            identifier.color(OckamColor::PrimaryResource.color())
-        ));
-        logs.push(fmt_log!(
-            "Marked this new identity as your default, on this machine.\n"
-        ));
-    }
 }
 
 #[cfg(test)]
