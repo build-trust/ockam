@@ -202,9 +202,9 @@ jobs:
           cache-unique-id: ${{ matrix.check_projects }}
         id: nix-installer
 
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./.github/actions/cache_rust
         with:
-          key: "${{ github.job }}-${{ matrix.check_projects }}"
+          job_name: "${{ github.job }}-${{ matrix.check_projects }}"
 
       - name: Run check on ${{ matrix.check_projects }}
         run:  make -f implementations/rust/Makefile check${{ matrix.check_projects != 'nightly' && format('_{0}', matrix.check_projects) || '' }}
