@@ -52,7 +52,7 @@ async fn run_impl(
             .plain(fmt_ok!(
                 "TCP connection {address} has been successfully deleted"
             ))
-            .json(serde_json::json!({ "tcp-connection": {"address": address } }))
+            .json(serde_json::json!({ "address": address }))
             .write_line()
             .unwrap();
     }
