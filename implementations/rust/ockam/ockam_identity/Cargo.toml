@@ -40,6 +40,7 @@ std = [
   "ockam_macros/std",
   "ockam_node/std",
   "ockam_vault/std",
+  "ockam_vault/storage",
   "hex/std",
   "serde_bare/std",
   "minicbor/std",

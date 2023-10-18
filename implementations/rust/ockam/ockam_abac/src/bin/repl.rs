@@ -27,7 +27,7 @@ fn main() -> Result<()> {
         .build();
 
     let mut env = Env::new();
-    let mut repl = Editor::<ReplHelper>::with_config(c)?;
+    let mut repl = Editor::<ReplHelper, _>::with_config(c)?;
     repl.set_helper(Some(ReplHelper {
         highlighter: MatchingBracketHighlighter::new(),
         validator: MatchingBracketValidator::new(),
