@@ -18,6 +18,13 @@ on:
       - "**.bash"
     branches:
       - develop
+  schedule:
+    # We only save cache when a cron job is started, this is to ensure
+    # that we don't save cache on every push causing excessive caching
+    # and github deleting useful caches we use in our workflows, we now
+    # run a cron job every 2 hours so as to update the cache store with the
+    # latest data so that we don't have stale cache.
+    - cron: "0 */2 * * *"
   workflow_dispatch:
     inputs:
       commit_sha:
