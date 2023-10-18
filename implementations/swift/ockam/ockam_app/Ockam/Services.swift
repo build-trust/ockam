@@ -6,10 +6,17 @@ import SwiftUI
 
 struct ServiceGroupView: View {
     @ObservedObject var group: ServiceGroup
+    @State var back: (() -> Void)? = nil
+    @State private var isPictureHovered = false
 
     var body: some View {
         VStack {
             HStack {
+                Image(systemName: "chevron.backward")
+                    .frame(width: 32, height: 32)
+                    //use opacity to account for space
+                    .opacity(isPictureHovered ? 1 : 0)
+
                 Spacer()
                 ProfilePicture(url: group.imageUrl, size: 32)
                 VStack(alignment: .leading) {
@@ -19,7 +26,23 @@ struct ServiceGroupView: View {
                     Text(verbatim: group.email)
                 }
                 Spacer()
+                // to match the 32px icon on the left and keep the content centered
+                Spacer().frame(width: 32, height: 32)
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(isPictureHovered ? Color.gray.opacity(0.25) : Color.clear)
+            .buttonStyle(PlainButtonStyle())
+            .cornerRadius(4)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if let back = self.back {
+                    back()
+                }
+            }
+            .onHover(perform: { hovering in
+                isPictureHovered = hovering
+            })
             ForEach(group.invitations) { invite in
                 IncomingInvite(invite: invite)
             }
@@ -33,23 +56,33 @@ struct ServiceGroupView: View {
 struct ServiceGroupButton: View {
     @State private var isHovered = false
     @ObservedObject var group: ServiceGroup
+    @State var action: (() -> Void)? = nil
 
     var body: some View {
         HStack {
             ProfilePicture(url: group.imageUrl, size: 32)
             VStack(alignment: .leading) {
                 if let name = group.name {
-                    Text(verbatim: name)
+                    Text(verbatim: name).lineLimit(1)
                 }
-                Text(verbatim: group.email)
+                Text(verbatim: group.email).lineLimit(1)
             }
             Spacer()
             Image(systemName: "chevron.right")
+                .frame(width: 32, height: 32)
         }.onHover { hover in
             isHovered = hover
         }
         .padding(3)
         .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
+        .onTapGesture {
+            if let action = self.action {
+                action()
+            }
+            // for some reason hover doesn't change back to false
+            // when out of view
+            isHovered = false
+        }
         .contentShape(Rectangle())
         .cornerRadius(4)
     }
@@ -80,7 +113,7 @@ struct RemoteServiceView: View {
                         } else {
                             service.address.unsafelyUnwrapped + ":" + String(service.port.unsafelyUnwrapped)
                         }
-                        Text(verbatim: address).font(.caption)
+                        Text(verbatim: address).font(.caption).lineLimit(1)
                     } else {
                         Text(verbatim: "Connecting...").font(.caption)
                     }
@@ -88,6 +121,7 @@ struct RemoteServiceView: View {
                 Spacer()
                 if service.available {
                     Image(systemName: "chevron.right")
+                        .frame(width: 32, height: 32)
                         .rotationEffect(isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
                 }
             }
@@ -163,10 +197,11 @@ struct LocalServiceView: View {
                     } else {
                         localService.address + ":" + String(localService.port)
                     }
-                    Text(verbatim: address).font(.caption)
+                    Text(verbatim: address).font(.caption).lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
+                    .frame(width: 32, height: 32)
                     .rotationEffect(isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
             }
             .padding(3)
@@ -235,6 +270,7 @@ struct IncomingInvite: View {
                 if !invite.accepting {
                     Image(systemName: "chevron.right")
                         .rotationEffect(isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
+                        .padding([.trailing], 10)
                 }
             }
             .padding(3)
@@ -278,13 +314,15 @@ struct SentInvitations: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .rotationEffect(isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
+                    .padding([.trailing], 10)
             }
             .padding(3)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation {
                     isOpen = !isOpen
-                }            }
+                }
+            }
             .onHover { hover in
                 isHovered = hover
             }

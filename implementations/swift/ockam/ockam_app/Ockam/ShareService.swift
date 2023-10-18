@@ -44,10 +44,12 @@ struct ShareServiceView: View {
                     Text("Share")
                 })
                 .disabled(!canShareService() && !isProcessing)
+                .keyboardShortcut(.defaultAction)
+                .padding(10)
             }
+            .background(.black.opacity(0.1))
         }
         .frame(width: 600)
-        .padding(10)
     }
 
     func closeWindow(){

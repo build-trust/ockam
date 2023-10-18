@@ -128,7 +128,7 @@ void initialize_application(void (*application_state_callback)(struct C_Applicat
 void accept_invitation(const char *id);
 
 /**
- * Initiate and wait for graceful shutdown of the application.
+ * Initiate graceful shutdown of the application, exit process when complete.
  */
 void shutdown_application(void);
 

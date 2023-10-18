@@ -38,6 +38,7 @@ struct CreateServiceView: View {
                     }
                 }
             }
+            .padding(10)
 
             EmailListView(emailList: $emails)
 
@@ -45,6 +46,7 @@ struct CreateServiceView: View {
             Text("Error: \(errorMessage)")
                 .opacity(errorMessage.isEmpty ? 0 : 1)
                 .foregroundColor(.red)
+                .padding(10)
 
             HStack {
                 Spacer()
@@ -80,10 +82,12 @@ struct CreateServiceView: View {
                     Text("Create and Share")
                 })
                 .disabled(!canCreateService() && !isProcessing)
+                .keyboardShortcut(.defaultAction)
+                .padding(10)
             }
+            .background(.black.opacity(0.1))
         }
         .frame(width: 600)
-        .padding(10)
     }
 
     func closeWindow(){
