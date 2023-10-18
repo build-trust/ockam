@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_tcp"
-version = "0.91.0"
+version = "0.92.0"
 authors = ["Ockam Developers"]
 autoexamples = false
 categories = [
@@ -31,10 +31,10 @@ alloc = []
 [dependencies]
 cfg-if = "1.0.0"
 hashbrown = { version = "0.14", default-features = false }
-ockam_core = { path = "../ockam_core", version = "^0.88.0" }
-ockam_macros = { path = "../ockam_macros", version = "^0.31.0" }
-ockam_node = { path = "../ockam_node", version = "^0.93.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.61.0" }
+ockam_core = { path = "../ockam_core", version = "^0.89.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.32.0" }
+ockam_node = { path = "../ockam_node", version = "^0.94.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.62.0" }
 rand = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = { version = "0.5.4", features = ["all"] }

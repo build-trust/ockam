@@ -17,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_uds = "0.20.0"
+ockam_transport_uds = "0.21.0"
 ```
 
 ## License

@@ -1,6 +1,6 @@
 [package]
 name = "ockam_core"
-version = "0.88.0"
+version = "0.89.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -73,7 +73,7 @@ hashbrown = { version = "0.14", default-features = false, features = ["ahash", "
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
 minicbor = { version = "0.20.0", features = ["derive"] }
-ockam_macros = { path = "../ockam_macros", version = "^0.31.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.32.0", default_features = false }
 once_cell = { version = "1", optional = true, default-features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
