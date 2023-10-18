@@ -19,7 +19,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct DeleteCommand {
-    /// Delete the outlet with this alias name
+    /// Delete the outlet with this alias
     #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]
     alias: String,
 
