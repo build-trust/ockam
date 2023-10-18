@@ -120,9 +120,9 @@ jobs:
           cache-unique-id: ${{ matrix.build_projects }}
         id: nix-installer
 
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./.github/actions/cache_rust
         with:
-          key: "${{ github.job }}-${{ matrix.build_projects }}"
+          job_name: "${{ github.job }}-${{ matrix.build_projects }}"
 
       - name: Run build ${{ matrix.build_projects }}
         run:  make -f implementations/rust/Makefile ${{ matrix.make_name }}
