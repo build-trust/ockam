@@ -36,6 +36,7 @@ jobs:
     environment: release
     permissions:
       actions: read
+      contents: write
       packages: write
 
     steps:
