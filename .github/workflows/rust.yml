@@ -354,9 +354,10 @@ jobs:
           cache-unique-id: test_docs_rust_library_examples
         id: nix-installer
 
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./ockam_library/.github/actions/cache_rust
         with:
-          workspaces: "ockam_examples -> target"
+          directory_to_cache: "ockam_examples"
+          job_name: ${{ github.job }}
 
       - name: Move Implementation Directory From Ockam Library To Ockam Examples
         run: |
