@@ -64,9 +64,9 @@ jobs:
           cache-unique-id: elixir
         id: nix-installer
       - uses: ./.github/actions/cache_elixir
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./.github/actions/cache_rust
         with:
-          key: "elixir-cache"
+          job_name: "elixir-cache"
       - run: make test
         working-directory: implementations/elixir
       - run: make lint
