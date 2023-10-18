@@ -1,4 +1,5 @@
 use miette::Diagnostic;
+use ockam::compat::tokio::task::JoinError;
 use thiserror::Error;
 
 pub type Result<T> = miette::Result<T, Error>;
@@ -22,6 +23,12 @@ pub enum Error {
 
     #[error(transparent)]
     CliState(#[from] ockam_api::cli_state::CliStateError),
+}
+
+impl From<JoinError> for Error {
+    fn from(e: JoinError) -> Self {
+        Error::Internal(e.into())
+    }
 }
 
 impl From<miette::Report> for Error {

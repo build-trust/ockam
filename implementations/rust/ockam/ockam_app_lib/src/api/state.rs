@@ -6,7 +6,7 @@
 //! When the rust structure needs to be send to the C API, it is converted to the C structure
 //! through the `convert_to_c` function.
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[repr(C)]
 pub enum OrchestratorStatus {
     #[default]
@@ -127,7 +127,7 @@ pub mod rust {
         }
     }
 
-    #[derive(Default, Clone, Debug)]
+    #[derive(Default, Clone, Debug, PartialEq)]
     pub struct ApplicationState {
         pub enrolled: bool,
         pub orchestrator_status: OrchestratorStatus,

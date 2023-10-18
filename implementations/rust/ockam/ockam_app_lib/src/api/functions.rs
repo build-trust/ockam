@@ -90,12 +90,14 @@ extern "C" fn accept_invitation(id: *const c_char) {
     });
 }
 
-/// Initiate and wait for graceful shutdown of the application.
+/// Initiate graceful shutdown of the application, exit process when complete.
 #[no_mangle]
 extern "C" fn shutdown_application() {
     let app_state = unsafe { APPLICATION_STATE.take() };
     if let Some(app_state) = app_state {
         app_state.shutdown();
+    } else {
+        std::process::exit(0);
     }
 }
 

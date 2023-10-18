@@ -13,6 +13,7 @@ mod enroll;
 mod error;
 mod invitations;
 mod projects;
+mod scheduler;
 mod shared_service;
 mod state;
 

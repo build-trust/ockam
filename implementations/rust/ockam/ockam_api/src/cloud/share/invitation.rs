@@ -89,7 +89,7 @@ impl PartialEq for InvitationWithAccess {
 
 impl Eq for InvitationWithAccess {}
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ReceivedInvitation {
@@ -107,7 +107,7 @@ impl ReceivedInvitation {
     }
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct SentInvitation {

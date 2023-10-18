@@ -8,6 +8,7 @@ struct MainView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @Binding var state : ApplicationState
     @Environment(\.openWindow) var openWindow
+    @State private var selectedGroup: String = ""
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -84,28 +85,36 @@ struct MainView: View {
                         openWindow(id: "create-service")
                         self.closeWindow()
                         bringInFront()
-                    })
+                    })        .buttonStyle(PlainButtonStyle())
                     ForEach(state.localServices){ localService in
                         LocalServiceView(localService: localService)
                     }
                 }
 
                 if !state.groups.isEmpty {
-
                     Divider()
                     Text("Services shared with you")
                         .font(.body).bold().foregroundColor(.primary.opacity(0.7))
 
-                    NavigationStack {
-                        ForEach(state.groups) { group in
-                            NavigationLink {
-                                ServiceGroupView(group: group)
-                                    .padding([.top], 5)
-                            } label: {
-                                ServiceGroupButton(group: group)
+                    ForEach(state.groups) { group in
+                        if selectedGroup == group.id {
+                            ServiceGroupView(group: group, back: {
+                                selectedGroup = ""
+                            })
+                            .padding([.top], 5)
+                        }
+                    }
+
+                    if selectedGroup == "" {
+                        VStack {
+                            ForEach(state.groups) { group in
+                                ServiceGroupButton(group: group, action: {
+                                    selectedGroup = group.id
+                                })
                             }
                         }
-                    }.buttonStyle(.plain)
+                        .padding([.top], 5)
+                    }
                 }
             }
 
@@ -129,7 +138,6 @@ struct MainView: View {
                         //by closing the window first
                         self.closeWindow()
                         shutdown_application();
-                        NSApplication.shared.terminate(self);
                     })
                 }
             }

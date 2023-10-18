@@ -1,4 +1,4 @@
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use ockam_api::cloud::project::Projects;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
@@ -39,7 +39,7 @@ impl AppState {
     }
 
     pub(crate) async fn refresh_projects(&self) -> Result<()> {
-        debug!("Refreshing projects");
+        info!("Refreshing projects");
         if !self.is_enrolled().await.unwrap_or(false) {
             return Ok(());
         }

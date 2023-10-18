@@ -1,8 +1,11 @@
+use futures::future::join_all;
 use miette::IntoDiagnostic;
+use ockam::compat::tokio::spawn;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
 use ockam_api::address::get_free_address;
@@ -35,9 +38,7 @@ impl AppState {
         // Otherwise, return early.
         {
             let invitations = self.invitations();
-            debug!("locking...");
             let mut writer = invitations.write().await;
-            debug!("locked!");
             match writer.received.status.iter_mut().find(|x| x.0 == id) {
                 None => {
                     writer
@@ -60,7 +61,6 @@ impl AppState {
                 }
             }
         }
-        debug!("unlocked!");
         self.publish_state().await;
 
         let controller = self.controller().await?;
@@ -71,6 +71,7 @@ impl AppState {
         debug!(?res);
         self.publish_state().await;
         info!(?id, "Invitation accepted");
+        self.schedule_invitations_refresh_now();
         Ok(())
     }
 
@@ -176,11 +177,13 @@ impl AppState {
             .await
             .map_err(|e| e.to_string())?;
         debug!(?res, "invitation sent");
+        self.schedule_invitations_refresh_now();
         Ok(())
     }
 
+    /// Fetch received, accept and sent invitations from the orchestrator
     pub async fn refresh_invitations(&self) -> Result<(), String> {
-        debug!("Refreshing invitations");
+        info!("Refreshing invitations");
         let invitations = {
             if !self.is_enrolled().await.unwrap_or(false) {
                 debug!("not enrolled, skipping invitations refresh");
@@ -196,91 +199,149 @@ impl AppState {
             invitations
         };
 
-        self.invitations().write().await.replace_by(invitations);
-        self.publish_state().await;
+        let changed = {
+            let invitations_arc = self.invitations();
+            let mut guard = invitations_arc.write().await;
+            guard.replace_by(invitations)
+        };
+
+        if changed {
+            self.publish_state().await;
+            self.schedule_inlets_refresh_now();
+        }
+
         Ok(())
     }
 
     pub(crate) async fn refresh_inlets(&self) -> crate::Result<()> {
-        debug!("Refreshing inlets");
+        info!("Refreshing inlets");
 
-        let mut running_inlets = vec![];
-        let invitations = self.invitations();
-        {
-            let invitation_guard = invitations.read().await;
-            if invitation_guard.accepted.invitations.is_empty() {
-                debug!("No accepted invitations, skipping inlets refresh");
-                return Ok(());
-            }
+        // for each invitation it checks if the relative node is running
+        // if not, it deletes the node and re-create the inlet
 
-            let cli_state = self.state().await;
-            let background_node_client = self.background_node_client().await;
-            for invitation in &invitation_guard.accepted.invitations {
-                match InletDataFromInvitation::new(
-                    &cli_state,
-                    invitation,
-                    &invitation_guard.accepted.inlets,
-                ) {
-                    Ok(i) => match i {
-                        Some(mut i) => {
-                            if !i.enabled {
-                                debug!(node = %i.local_node_name, "TCP inlet is disabled by the user, skipping");
-                                continue;
-                            }
+        let invitations_arc = self.invitations();
+        let invitations = {
+            // reduce locking as much as possible to make UI consistently responsive
+            invitations_arc.read().await.clone()
+        };
+        if invitations.accepted.invitations.is_empty() {
+            debug!("No accepted invitations, skipping inlets refresh");
+            return Ok(());
+        }
 
-                            debug!(node = %i.local_node_name, "Checking node status");
-                            if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
-                                if node.is_running() {
-                                    debug!(node = %i.local_node_name, "Node already running");
-                                    if let Ok(inlet) = background_node_client
-                                        .inlets()
-                                        .show(&i.local_node_name, &i.service_name)
-                                        .await
-                                    {
-                                        i.socket_addr = Some(inlet.bind_addr.parse()?);
-                                        running_inlets.push((invitation.invitation.id.clone(), i));
-                                        continue;
+        let cli_state = self.state().await;
+        let background_node_client = self.background_node_client().await;
+        let mut futures = vec![];
+        for invitation in invitations.accepted.invitations {
+            match InletDataFromInvitation::new(
+                &cli_state,
+                &invitation,
+                &invitations.accepted.inlets,
+            ) {
+                Ok(inlet_data) => match inlet_data {
+                    Some(inlet_data) => {
+                        let invitations_arc = invitations_arc.clone();
+                        let background_node_client = background_node_client.clone();
+                        let cli_state = cli_state.clone();
+                        let self_cloned = self.clone();
+                        let future = spawn(async move {
+                            let result = self_cloned
+                                .refresh_inlet(
+                                    cli_state.clone(),
+                                    background_node_client.clone(),
+                                    inlet_data,
+                                )
+                                .await;
+
+                            {
+                                let mut guard = invitations_arc.write().await;
+                                match result {
+                                    Ok(value) => {
+                                        if let Some(inlet) = value {
+                                            guard
+                                                .accepted
+                                                .inlets
+                                                .insert(invitation.invitation.id.clone(), inlet);
+                                        } else {
+                                            // disabled inlet
+                                            guard.accepted.inlets.remove(&invitation.invitation.id);
+                                        }
+                                    }
+                                    Err(err) => {
+                                        warn!(%err, "Failed to refresh TCP inlet for accepted invitation");
+                                        guard.accepted.inlets.remove(&invitation.invitation.id);
                                     }
                                 }
                             }
-                            background_node_client
-                                .nodes()
-                                .delete(&i.local_node_name)
-                                .await?;
-                            match self.create_inlet(background_node_client.clone(), &i).await {
-                                Ok(socket_addr) => {
-                                    i.socket_addr = Some(socket_addr);
-                                    running_inlets.push((invitation.invitation.id.clone(), i));
-                                }
-                                Err(err) => {
-                                    warn!(%err, node = %i.local_node_name, "Failed to create TCP inlet for accepted invitation");
-                                }
-                            }
-                        }
-                        None => {
-                            warn!("Invalid invitation data");
-                        }
-                    },
-                    Err(err) => {
-                        warn!(%err, "Failed to parse invitation data");
+                            self_cloned.publish_state().await;
+                        });
+                        futures.push(future);
                     }
+                    None => {
+                        warn!("Invalid invitation data");
+                    }
+                },
+                Err(err) => {
+                    warn!(%err, "Failed to parse invitation data");
                 }
             }
         }
 
-        {
-            let mut invitation_guard = invitations.write().await;
-            for (invitation_id, i) in running_inlets {
-                invitation_guard
-                    .accepted
-                    .inlets
-                    .insert(invitation_id, Inlet::new(i)?);
+        // waits for all the futures _concurrently_
+        let _ = join_all(futures).await;
+
+        info!("Inlets refreshed");
+        Ok(())
+    }
+
+    async fn refresh_inlet(
+        &self,
+        cli_state: CliState,
+        background_node_client: Arc<dyn BackgroundNodeClient>,
+        mut inlet_data: InletDataFromInvitation,
+    ) -> crate::Result<Option<Inlet>> {
+        debug!(node = %inlet_data.local_node_name, "Checking node status");
+        if !inlet_data.enabled {
+            debug!(node = %inlet_data.local_node_name, "TCP inlet is disabled by the user, just deleting the node");
+            background_node_client
+                .nodes()
+                .delete(&inlet_data.local_node_name)
+                .await?;
+            // we want to keep the entry to store the attribute `enabled = false`
+            return Inlet::new(inlet_data).map(Some);
+        }
+
+        // if disabled it'll be deleted
+        if let Ok(node) = cli_state.nodes.get(&inlet_data.local_node_name) {
+            if node.is_running() {
+                debug!(node = %inlet_data.local_node_name, "Node already running");
+                if let Ok(inlet) = background_node_client
+                    .inlets()
+                    .show(&inlet_data.local_node_name, &inlet_data.service_name)
+                    .await
+                {
+                    inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
+                    return Inlet::new(inlet_data).map(Some);
+                }
             }
         }
 
-        self.publish_state().await;
-        info!("Inlets refreshed");
-        Ok(())
+        background_node_client
+            .nodes()
+            .delete(&inlet_data.local_node_name)
+            .await?;
+
+        if !inlet_data.enabled {
+            debug!(node = %inlet_data.local_node_name, "TCP inlet is disabled by the user, skipping");
+            return Ok(None);
+        }
+
+        let socket_addr = self
+            .create_inlet(background_node_client.clone(), &inlet_data)
+            .await?;
+
+        inlet_data.socket_addr = Some(socket_addr);
+        Inlet::new(inlet_data).map(Some)
     }
 
     /// Create the tcp-inlet for the accepted invitation
@@ -298,6 +359,7 @@ impl AppState {
             service_route,
             enrollment_ticket_hex,
             socket_addr,
+            ..
         } = inlet_data;
         if !enabled {
             return Err("TCP inlet is disabled by the user".into());
@@ -316,6 +378,9 @@ impl AppState {
             .nodes()
             .create(local_node_name)
             .await?;
+
+        // give time for the node to spawn up
+        tokio::time::sleep(Duration::from_millis(250)).await;
         background_node_client
             .inlets()
             .create(local_node_name, &from, service_route, service_name)
@@ -355,12 +420,14 @@ impl AppState {
         let changed = {
             let invitations = self.invitations();
             let mut writer = invitations.write().await;
-            if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
+            if let Some(inlet) = writer.accepted.inlets.get(invitation_id).cloned() {
                 if inlet.enabled {
                     debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already enabled");
                     return Ok(());
                 }
-                inlet.enable();
+                // refresh will re-create the structure in the meantime it'll be seen in
+                // 'connecting' status
+                writer.accepted.inlets.remove(invitation_id);
                 info!(node = %inlet.node_name, alias = %inlet.alias, "Enabled TCP inlet");
                 true
             } else {

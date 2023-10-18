@@ -1,7 +1,8 @@
 mod model;
 mod repository;
+mod tasks;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use miette::{IntoDiagnostic, WrapErr};
@@ -10,7 +11,8 @@ use tracing::{error, info, warn};
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{
-    ApplicationStateCallback, Invitation, Invitee, LocalService, Service, ServiceGroup,
+    ApplicationState, ApplicationStateCallback, Invitation, Invitee, LocalService, Service,
+    ServiceGroup,
 };
 use crate::background_node::{BackgroundNodeClient, Cli};
 use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
@@ -29,10 +31,12 @@ use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, Tr
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{InMemoryNode, NODEMANAGER_ADDR};
+use ockam_api::nodes::{InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 
 use crate::api::state::OrchestratorStatus;
+use crate::scheduler::Scheduler;
+use crate::state::tasks::{RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask};
 use crate::{api, Result};
 
 pub const NODE_NAME: &str = "ockam_app";
@@ -60,6 +64,10 @@ pub struct AppState {
     application_state_callback: ApplicationStateCallback,
     notification_callback: NotificationCallback,
     node_manager: Arc<RwLock<Arc<InMemoryNode>>>,
+    refresh_project_scheduler: Arc<OnceLock<Scheduler>>,
+    refresh_invitations_scheduler: Arc<OnceLock<Scheduler>>,
+    refresh_inlets_scheduler: Arc<OnceLock<Scheduler>>,
+    last_published_snapshot: Arc<Mutex<Option<ApplicationState>>>,
 }
 
 impl AppState {
@@ -81,7 +89,7 @@ impl AppState {
                 runtime.spawn(async move { executor.start_router().await });
 
                 // create the application state and its dependencies
-                let node_manager = Arc::new(create_node_manager(context.clone(), &cli_state).await);
+                let node_manager = create_node_manager(context.clone(), &cli_state).await;
                 let model_state_repository = create_model_state_repository(&cli_state).await;
 
                 info!("AppState initialized");
@@ -98,6 +106,10 @@ impl AppState {
                     background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
                     projects: Arc::new(Default::default()),
                     invitations: Arc::new(RwLock::new(InvitationState::default())),
+                    refresh_project_scheduler: Arc::new(OnceLock::new()),
+                    refresh_invitations_scheduler: Arc::new(OnceLock::new()),
+                    refresh_inlets_scheduler: Arc::new(OnceLock::new()),
+                    last_published_snapshot: Arc::new(Mutex::new(None)),
                 }
             }
         };
@@ -119,35 +131,34 @@ impl AppState {
                 self.load_outlet_model_state(&model_state, &cli_state).await;
                 self.publish_state().await;
 
-                self.context.runtime().spawn(async move {
-                    loop {
-                        let result = self.refresh_projects().await;
-                        if let Err(e) = result {
-                            warn!(%e, "Failed to refresh projects");
-                        }
-                        tokio::time::sleep(Duration::from_secs(30)).await;
-                    }
-                });
+                let runtime = self.context.runtime();
 
-                self.context.runtime().spawn(async move {
-                    loop {
-                        let result = self.refresh_invitations().await;
-                        if let Err(e) = result {
-                            warn!(%e, "Failed to refresh invitations");
-                        }
-                        tokio::time::sleep(Duration::from_secs(30)).await;
-                    }
-                });
+                self.refresh_project_scheduler
+                    .set(Scheduler::create(
+                        Arc::new(RefreshProjectsTask::new(self.clone())),
+                        Duration::from_secs(30),
+                        runtime,
+                    ))
+                    .map_err(|_| "already set")
+                    .unwrap();
 
-                self.context.runtime().spawn(async move {
-                    loop {
-                        let result = self.refresh_inlets().await;
-                        if let Err(e) = result {
-                            warn!(%e, "Failed to refresh inlets");
-                        }
-                        tokio::time::sleep(Duration::from_secs(15)).await;
-                    }
-                });
+                self.refresh_invitations_scheduler
+                    .set(Scheduler::create(
+                        Arc::new(RefreshInvitationsTask::new(self.clone())),
+                        Duration::from_secs(30),
+                        runtime,
+                    ))
+                    .map_err(|_| "already set")
+                    .unwrap();
+
+                self.refresh_inlets_scheduler
+                    .set(Scheduler::create(
+                        Arc::new(RefreshInletsTask::new(self.clone())),
+                        Duration::from_secs(10),
+                        runtime,
+                    ))
+                    .map_err(|_| "already set")
+                    .unwrap();
 
                 model_state
             }
@@ -159,9 +170,10 @@ impl AppState {
     }
 
     /// Asynchronously shutdown the application
-    pub fn shutdown(&self) {
+    pub fn shutdown(self) {
         let context = self.context();
-        let runtime = self.context.runtime();
+        let runtime = self.context.runtime().clone();
+
         let this = self.clone();
         runtime.spawn(async move {
             let result = this.node_manager.write().await.stop(&context).await;
@@ -169,6 +181,53 @@ impl AppState {
                 error!(?e, "Failed to shutdown the node manager")
             }
         });
+
+        // delete every other app-related node, then exit
+        runtime.spawn(async move {
+            let inlets: Vec<String> = {
+                let invitation_state = self.invitations().read().await.clone();
+                invitation_state
+                    .accepted
+                    .inlets
+                    .values()
+                    .map(|inlet| inlet.node_name.clone())
+                    .collect()
+            };
+
+            for node_name in inlets {
+                let _ = self
+                    .background_node_client
+                    .read()
+                    .await
+                    .nodes()
+                    .delete(&node_name)
+                    .await;
+            }
+
+            std::process::exit(0);
+        });
+    }
+
+    /// Starts the refresh of projects without waiting for the scheduler
+    #[allow(dead_code)]
+    pub fn schedule_projects_refresh_now(&self) {
+        if let Some(scheduler) = self.refresh_project_scheduler.get() {
+            scheduler.schedule_now();
+        }
+    }
+
+    /// Starts the refresh of invitations without waiting for the scheduler
+    pub fn schedule_invitations_refresh_now(&self) {
+        if let Some(scheduler) = self.refresh_invitations_scheduler.get() {
+            scheduler.schedule_now();
+        }
+    }
+
+    /// Starts the refresh of inlets without waiting for the scheduler
+    pub fn schedule_inlets_refresh_now(&self) {
+        if let Some(scheduler) = self.refresh_inlets_scheduler.get() {
+            scheduler.schedule_now();
+        }
     }
 
     pub async fn reset(&self) -> miette::Result<()> {
@@ -227,7 +286,7 @@ impl AppState {
         info!("stopped all the ctx workers");
 
         let new_node_manager = make_node_manager(self.context.clone(), &self.state().await).await?;
-        *node_manager = Arc::new(new_node_manager);
+        *node_manager = new_node_manager;
         info!("set a new node manager");
         Ok(())
     }
@@ -330,6 +389,16 @@ impl AppState {
         let result = self.snapshot().await;
         match result {
             Ok(state) => {
+                {
+                    // avoid publishing the same state multiple times
+                    let mut guard = self.last_published_snapshot.lock().unwrap();
+                    if let Some(previous) = &*guard {
+                        if previous == &state {
+                            return;
+                        }
+                    }
+                    guard.replace(state.clone());
+                }
                 self.application_state_callback.call(state);
             }
             Err(e) => {
@@ -349,7 +418,7 @@ impl AppState {
         let mut local_services: Vec<LocalService>;
         let mut groups: Vec<ServiceGroup>;
         let mut sent_invitations: Vec<Invitee>;
-        let invitation_state = self.invitations().read().await.clone();
+        let invitation_state = { self.invitations().read().await.clone() };
 
         // we want to sort everything to avoid having to deal with ordering in the UI
         if enrolled {
@@ -492,7 +561,7 @@ impl AppState {
             sent_invitations = vec![];
         }
 
-        Ok(api::state::rust::ApplicationState {
+        Ok(ApplicationState {
             enrolled,
             orchestrator_status,
             enrollment_name,
@@ -506,7 +575,7 @@ impl AppState {
     }
 }
 
-async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> InMemoryNode {
+async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
     match make_node_manager(ctx.clone(), cli_state).await {
         Ok(w) => w,
         Err(e) => {
@@ -520,7 +589,7 @@ async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> InMemor
 pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
-) -> miette::Result<InMemoryNode> {
+) -> miette::Result<Arc<InMemoryNode>> {
     init_node_state(cli_state, NODE_NAME, None, None).await?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
@@ -545,14 +614,27 @@ pub(crate) async fn make_node_manager(
     )?;
     let trust_context_config = TrustContextConfigBuilder::new(cli_state).build();
 
-    let node_manager = InMemoryNode::new(
-        &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, true),
-        NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
-        NodeManagerTrustOptions::new(trust_context_config),
-    )
-    .await
-    .into_diagnostic()?;
+    let node_manager = Arc::new(
+        InMemoryNode::new(
+            &ctx,
+            NodeManagerGeneralOptions::new(
+                cli_state.clone(),
+                NODE_NAME.to_string(),
+                None,
+                true,
+                true,
+            ),
+            NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
+            NodeManagerTrustOptions::new(trust_context_config),
+        )
+        .await
+        .into_diagnostic()?,
+    );
+
+    let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
+        .await
+        .into_diagnostic()?;
 
     ctx.flow_controls()
         .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());

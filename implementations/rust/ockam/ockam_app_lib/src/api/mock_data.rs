@@ -38,6 +38,18 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
         ],
         groups: vec![
             rust::ServiceGroup {
+                email: "mrinal@ockam.io".to_string(),
+                name: Some("Mrinal Wadhwa".into()),
+                image_url: Some("https://avatars.githubusercontent.com/u/159583?v=4".into()),
+                invitations: vec![rust::Invitation {
+                    id: "5373".into(),
+                    service_name: "New Concept".into(),
+                    service_scheme: Some("http".into()),
+                    accepting: false,
+                }],
+                incoming_services: vec![],
+            },
+            rust::ServiceGroup {
                 name: Some("Adrian Benavides".into()),
                 email: "adrian@ockam.io".into(),
                 image_url: Some("https://avatars.githubusercontent.com/u/12375782?v=4".into()),
