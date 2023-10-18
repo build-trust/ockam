@@ -49,7 +49,9 @@ jobs:
         with:
           cache-unique-id: full_build
         id: nix-installer
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./.github/actions/cache_rust
+        with:
+          job_name: ${{ github.job }}
       - uses: ./.github/actions/elixir_cache
       - run: make
       - uses: ./.github/actions/nix_upload_store
