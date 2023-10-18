@@ -25,7 +25,6 @@ elixir 01-puncher.exs my_name their_name rendezvous_host:port
 
 - Generally unresilient
     - doesn't handle address changes
-    - doesn't ensure both sides intend to connect to the other
     - doesn't implement keep alives
     - doesn't handle multi hop
 - Hard coded rendezvous node name

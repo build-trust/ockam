@@ -9,13 +9,16 @@ defmodule RendezvousWorker do
 
   alias Ockam.{Message, Router}
 
-  @impl true
-  def handle_message(%{payload: "ping"} = message, state) do
-    Router.route(Message.reply(message, state.address, "pong"))
+  @rendezvous_node "rendezvous"
 
-    {:ok, state}
+  def setup do
+    __MODULE__.create(
+      address: @rendezvous_node,
+      attributes: %{addresses: %{}, pending_connections: []}
+    )
   end
 
+  @impl true
   def handle_message(%{payload: "my address"} = message, state) do
     [external_address, source] = message.return_route
 
@@ -45,21 +48,29 @@ defmodule RendezvousWorker do
         target_address ->
           Logger.debug("Target #{target} address found: #{inspect(target_address)}")
 
-          Router.route(%{
-            payload: "connected",
-            onward_route: [target_address, target],
-            return_route: message.return_route
-          })
-
-          Router.route(%{
-            payload: "connected",
-            onward_route: message.return_route,
-            return_route: [target_address, target]
-          })
-
           pending =
-            state.attributes.pending_connections
-            |> Enum.reject(&(&1 == {source, target}))
+            if {target, source} in state.attributes.pending_connections do
+              Logger.debug("Pending connection found")
+
+              Router.route(%{
+                payload: "connected",
+                onward_route: [target_address, target],
+                return_route: message.return_route
+              })
+
+              Router.route(%{
+                payload: "connected",
+                onward_route: message.return_route,
+                return_route: [target_address, target]
+              })
+
+              state.attributes.pending_connections
+              |> Enum.reject(&(&1 == {target, source}))
+            else
+              Logger.debug("Pending connection not found")
+
+              [{source, target} | state.attributes.pending_connections]
+            end
 
           put_in(state, [:attributes, :pending_connections], pending)
       end

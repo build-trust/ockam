@@ -19,6 +19,6 @@ rendezvous_address = Ockam.Transport.UDPAddress.new(rendezvous_host, rendezvous_
 {:ok, _udp} = Ockam.Transport.UDP.start(port: 0)
 
 Ockam.Node.whereis(my_name)
-|> GenServer.call(:ping_rendezvous_server)
+|> GenServer.call(:punch_hole)
 
 Process.sleep(30_000)
