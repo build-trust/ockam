@@ -12,6 +12,7 @@ use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 
 use crate::node::get_node_name;
+use crate::node::list;
 use crate::node::util::check_default;
 use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
@@ -52,10 +53,51 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-    let is_default = check_default(&opts, &node_name);
-    print_query_status(&opts, &ctx, &node_name, &mut node, false, is_default).await?;
+    if cmd.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
+        show_node(&opts, &ctx, &get_node_name(&opts.state, &cmd.node_name)).await?;
+        return Ok(());
+    }
+
+    let node_names = opts.state.nodes.list_items_names()?;
+    match node_names.len() {
+        0 => {
+            opts.terminal
+                .stdout()
+                .plain("There are no nodes to show")
+                .write_line()?;
+        }
+        1 => {
+            show_node(&opts, &ctx, &node_names[0]).await?;
+        }
+        _ => {
+            let selected_node_names = opts.terminal.select_multiple(
+                "Select one or more nodes that you want to show".to_string(),
+                node_names,
+            );
+            match selected_node_names.len() {
+                0 => {
+                    opts.terminal
+                        .stdout()
+                        .plain("No nodes selected to show")
+                        .write_line()?;
+                }
+                1 => {
+                    show_node(&opts, &ctx, &selected_node_names[0]).await?;
+                }
+                _ => {
+                    let nodes = list::get_nodes_info(ctx, &opts, selected_node_names).await?;
+                    list::print_nodes_info(&opts, nodes)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn show_node(opts: &CommandGlobalOpts, ctx: &Context, node_name: &str) -> miette::Result<()> {
+    let mut node = BackgroundNode::create(ctx, &opts.state, node_name).await?;
+    let is_default = check_default(opts, node_name);
+    print_query_status(opts, ctx, node_name, &mut node, false, is_default).await?;
     Ok(())
 }
 
