@@ -3557,12 +3557,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-range"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21dec9db110f5f872ed9699c3ecf50cf16f423502706ba5c72462e28d3157573"
-
-[[package]]
 name = "httparse"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7607,7 +7601,7 @@ dependencies = [
  "tauri-macros",
  "tauri-runtime",
  "tauri-runtime-wry",
- "tauri-utils",
+ "tauri-utils 2.0.0-alpha.7",
  "thiserror",
  "tokio",
  "tray-icon",
@@ -7632,7 +7626,7 @@ dependencies = [
  "serde",
  "serde_json",
  "swift-rs",
- "tauri-utils",
+ "tauri-utils 2.0.0-alpha.7",
  "tauri-winres",
  "walkdir",
 ]
@@ -7655,7 +7649,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "tauri-utils",
+ "tauri-utils 2.0.0-alpha.7",
  "thiserror",
  "time",
  "url",
@@ -7674,7 +7668,7 @@ dependencies = [
  "quote",
  "syn 1.0.109",
  "tauri-codegen",
- "tauri-utils",
+ "tauri-utils 2.0.0-alpha.7",
 ]
 
 [[package]]
@@ -7744,19 +7738,17 @@ dependencies = [
 
 [[package]]
 name = "tauri-runtime"
-version = "1.0.0-alpha.0"
+version = "1.0.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5ba2ea1c0b7a2c3e53259edc3c78527e9f40fa7b45f73c52ab5165e42f9d18a"
+checksum = "d34b124f7731f3981deba3b643b2f1c8eaff59f3d6929edb401e1fc929ad93df"
 dependencies = [
  "gtk",
  "http",
- "http-range",
  "jni 0.21.1",
- "rand 0.8.5",
  "raw-window-handle",
  "serde",
  "serde_json",
- "tauri-utils",
+ "tauri-utils 2.0.0-alpha.8",
  "thiserror",
  "url",
  "uuid",
@@ -7776,7 +7768,7 @@ dependencies = [
  "rand 0.8.5",
  "raw-window-handle",
  "tauri-runtime",
- "tauri-utils",
+ "tauri-utils 2.0.0-alpha.7",
  "uuid",
  "webkit2gtk",
  "webview2-com",
@@ -7809,6 +7801,31 @@ dependencies = [
  "thiserror",
  "url",
  "walkdir",
+ "windows 0.48.0",
+]
+
+[[package]]
+name = "tauri-utils"
+version = "2.0.0-alpha.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "931ead8db578bc2f9aee6636345fe5b900cfa2b9985a1783913200fab5e607f1"
+dependencies = [
+ "ctor",
+ "dunce",
+ "heck 0.4.1",
+ "html5ever",
+ "infer 0.12.0",
+ "json-patch",
+ "kuchikiki",
+ "log",
+ "memchr",
+ "phf 0.10.1",
+ "semver 1.0.19",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "thiserror",
+ "url",
  "windows 0.48.0",
 ]
 
