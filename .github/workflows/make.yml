@@ -56,7 +56,7 @@ jobs:
       - uses: ./.github/actions/cache_rust
         with:
           job_name: ${{ github.job }}
-      - uses: ./.github/actions/elixir_cache
+      - uses: ./.github/actions/cache_elixir
       - run: make
       - uses: ./.github/actions/nix_upload_store
         if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
