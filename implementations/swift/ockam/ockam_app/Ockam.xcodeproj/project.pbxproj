@@ -18,6 +18,7 @@
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 789FA6452AE142280009FF7F /* ExportOptions.plist */; };
 		78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D520822ADD5CAE00F36B64 /* Helpers.swift */; };
 		78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA02AD4354400574AE9 /* CreateService.swift */; };
 		78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA22AD4501200574AE9 /* ShareService.swift */; };
@@ -40,6 +41,7 @@
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
 		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		789FA6452AE142280009FF7F /* ExportOptions.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = ExportOptions.plist; sourceTree = "<group>"; };
 		78D520822ADD5CAE00F36B64 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		78ED0DA02AD4354400574AE9 /* CreateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateService.swift; sourceTree = "<group>"; };
 		78ED0DA22AD4501200574AE9 /* ShareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareService.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
+				789FA6452AE142280009FF7F /* ExportOptions.plist */,
 				785D8D372AD5369100DF5004 /* Info.plist */,
 				782D5B482AC1D3D700D1B27F /* OckamApp.swift */,
 				782D5B4A2AC1D3D700D1B27F /* MainView.swift */,
@@ -180,6 +183,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				782D5B4D2AC1D3D800D1B27F /* Assets.xcassets in Resources */,
+				789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,7 +266,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Ockam;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"LIBRARY_SEARCH_PATHS[arch=*]" = ../../../../target/debug/;
-				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -323,7 +327,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Ockam;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"LIBRARY_SEARCH_PATHS[arch=*]" = ../../../../target/release/;
-				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -341,12 +345,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Ockam/Ockam.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Ockam/Info.plist;
@@ -357,10 +363,11 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -373,12 +380,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Ockam/Ockam.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Ockam/Info.plist;
@@ -389,11 +398,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MARKETING_VERSION = 0.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

@@ -222,13 +222,13 @@ jobs:
           build_app: true
           build_command: false
         - build: macos_silicon
-          os: macos-latest
+          os: macos-13
           toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false
           build_app: true
         - build: macos_86
-          os: macos-latest
+          os: macos-13
           toolchain: stable
           target: x86_64-apple-darwin
           use-cross-build: false
@@ -257,9 +257,13 @@ jobs:
 
         cp target/${{ matrix.target }}/release/ockam_command ockam.${{ matrix.target }}
         echo "ASSET_OCKAM_CLI=ockam.${{ matrix.target }}" >> $GITHUB_ENV
-        if [ -e "target/${{ matrix.target }}/release/bundle/dmg/Ockam"*dmg ]; then
-          cp "target/${{ matrix.target }}/release/bundle/dmg/Ockam"*dmg "ockam.app.${{ matrix.target }}.dmg"
+        if [ -e "implementations/swift/build/Ockam.dmg" ]; then
+          cp "implementations/swift/build/Ockam.dmg" "ockam.app.${{ matrix.target }}.dmg"
           echo "ASSET_OCKAM_APP_DMG=ockam.app.${{ matrix.target }}.dmg" >> $GITHUB_ENV
+        fi
+        if [ -e "target/${{ matrix.target }}/release/bundle/dmg/Ockam"*dmg ]; then
+          cp "target/${{ matrix.target }}/release/bundle/dmg/Ockam"*dmg "ockam.app.${{ matrix.target }}.tauri.dmg"
+          echo "ASSET_OCKAM_TAURI_APP_DMG=ockam.app.${{ matrix.target }}.tauri.dmg" >> $GITHUB_ENV
         fi
         if [ -e "target/${{ matrix.target }}/release/bundle/deb/ockam"*.deb ]; then
           cp "target/${{ matrix.target }}/release/bundle/deb/ockam"*.deb "ockam.app.${{ matrix.target }}.deb"
@@ -280,6 +284,9 @@ jobs:
         cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_CLI }}" > "${{ env.ASSET_OCKAM_CLI }}.sig"
         if [ -n "${{ env.ASSET_OCKAM_APP_DMG }}" ]; then
           cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_APP_DMG }}" > "${{ env.ASSET_OCKAM_APP_DMG }}.sig"
+        fi
+        if [ -n "${{ env.ASSET_OCKAM_TAURI_APP_DMG }}" ]; then
+          cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_TAURI_APP_DMG }}" > "${{ env.ASSET_OCKAM_TAURI_APP_DMG }}.sig"
         fi
         if [ -n "${{ env.ASSET_OCKAM_APP_DEB }}" ]; then
           cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_APP_DEB }}" > "${{ env.ASSET_OCKAM_APP_DEB }}.sig"
@@ -325,6 +332,28 @@ jobs:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
         asset_path: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
         asset_name: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
+        asset_content_type: application/octet-stream
+
+    - name: Upload MacOS Tauri App release
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_TAURI_APP_DMG }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_TAURI_APP_DMG }}
+        asset_name: ${{ env.ASSET_OCKAM_TAURI_APP_DMG }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload MacOS Tauri App release Signature
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      if: ${{ env.ASSET_OCKAM_TAURI_APP_DMG }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET_OCKAM_TAURI_APP_DMG }}.sig
+        asset_name: ${{ env.ASSET_OCKAM_TAURI_APP_DMG }}.sig
         asset_content_type: application/octet-stream
 
     - name: Upload Debian App Package

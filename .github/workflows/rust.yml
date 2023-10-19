@@ -297,7 +297,7 @@ jobs:
           target: armv7-unknown-linux-musleabihf
           use-cross-build: true
         - build: macos_silicon
-          os: macos-latest
+          os: macos-13
           toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false

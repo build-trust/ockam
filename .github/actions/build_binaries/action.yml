@@ -92,3 +92,12 @@ runs:
 
         cd implementations/rust/ockam/ockam_app/
         cargo tauri build --target ${{ inputs.target }}
+        cd -
+
+        # if any macos, also build the swiftui
+        if [[ ${{ inputs.target }} == *apple-darwin* ]]; then
+          sudo xcode-select --switch /Applications/Xcode_15.0.app/
+          brew install create-dmg
+          make swift_package
+        fi
+

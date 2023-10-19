@@ -11,9 +11,12 @@ elixir_%:
 rust_%:
 	$(MAKE) -C implementations/rust $(@:rust_%=%)
 
+swift_%:
+	$(MAKE) -C implementations/swift $(@:swift_%=%)
+
 typescript_%:
 	@cd implementations/typescript && $(MAKE) $(@:typescript_%=%)
 
 .PHONY: \
 	build build_release test lint clean very_clean \
-	elixir_% rust_% typescript_%
+	elixir_% rust_% swift_% typescript_%

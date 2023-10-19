@@ -56,6 +56,9 @@ extern "C" fn initialize_application(
         super::notification::rust::NotificationCallback::new(notification_callback),
     );
 
+    #[cfg(target_os = "macos")]
+    crate::cli::add_homebrew_to_path();
+
     if let Err(err) = check_ockam_executable() {
         error!(?err, "Couldn't find the ockam executable");
         app_state.notify(super::notification::rust::Notification {

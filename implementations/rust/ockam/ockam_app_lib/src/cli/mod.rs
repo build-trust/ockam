@@ -1,11 +1,46 @@
 use crate::{Error, Result};
-use ockam_core::env::get_env_with_default;
+use ockam_core::env::get_env;
 use tracing::{error, info};
 
 /// Return the ockam executable path either from the OCKAM env. variable or as `ockam`
 pub(crate) fn cli_bin() -> Result<String> {
-    let ockam_path = get_env_with_default("OCKAM", "ockam".to_string())?;
-    Ok(ockam_path)
+    let ockam_path = get_env("OCKAM")?;
+    match ockam_path {
+        Some(path) => Ok(path),
+        None => {
+            // check if the `ockam_command` executable was bundled with the application
+            let mut current_executable = std::env::current_exe()?;
+            current_executable.pop();
+            current_executable.push("ockam_command");
+            match current_executable.into_os_string().into_string() {
+                Ok(path) => {
+                    if std::path::Path::new(&path).exists() {
+                        Ok(path)
+                    } else {
+                        Ok("ockam".to_string())
+                    }
+                }
+                Err(_) => Ok("ockam".to_string()),
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+/// adds the homebrew path to the PATH environment variable
+/// useful for development since the application is
+/// bundled with the ockam_command executable
+pub(crate) fn add_homebrew_to_path() -> () {
+    match std::env::var("PATH") {
+        Ok(mut path) => {
+            path.push_str(":");
+            path.push_str("/opt/homebrew/bin/");
+            std::env::set_var("PATH", path);
+        }
+        Err(_) => {
+            tracing::debug!("PATH is not set");
+        }
+    }
 }
 
 /// Check that the OCKAM environment variable defines an absolute path
@@ -21,16 +56,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
         return Err(Error::App(message));
     };
 
-    #[cfg(target_os = "macos")]
-    {
-        // HACK: ockam is not installed in a listed PATH on MacOS when installed with homebrew
-        // On MacOS, the ockam command is installed in /opt/homebrew/bin/ockam
-        // It won't work if the user installed homebrew in a different location
-        let mut paths = std::env::var_os("PATH").unwrap_or_default();
-        paths.push(":");
-        paths.push("/opt/homebrew/bin/");
-        std::env::set_var("PATH", &paths);
-    }
+    info!("Using ockam command path: {ockam_path}");
 
     // Check that the executable can be found on the path
     match duct::cmd!("which", ockam_path.clone())
