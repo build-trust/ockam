@@ -15,12 +15,13 @@ indent_style = space
 indent_size = 2
 
 # Let the corresponding language formatters deal with indent size
-[{{*.{ex,exs,erl,c,h,rs,cmake,cmake.in,stderr,ts,md},CMakeLists.txt,Cargo.lock,Info.plist}}]
+[{{*.{ex,exs,erl,c,h,rs,cmake,cmake.in,stderr,ts,md,plist},CMakeLists.txt,Cargo.lock}}]
 indent_size = unset
 
 [*.{drawio,svg}]
 trim_trailing_whitespace = unset
 insert_final_newline = unset
+indent_size = unset
 
 [Makefile]
 # Make requires tab.
