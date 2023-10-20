@@ -25,7 +25,7 @@ use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
-/// Create TCP Outlets
+/// Create a TCP Outlet
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
