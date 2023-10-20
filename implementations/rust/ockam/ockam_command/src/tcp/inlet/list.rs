@@ -19,7 +19,7 @@ use crate::{docs, CommandGlobalOpts};
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
-/// List TCP Inlets
+/// List TCP Inlets on the default node
 #[derive(Args, Clone, Debug)]
 #[command(
 before_help = docs::before_help(PREVIEW_TAG),
