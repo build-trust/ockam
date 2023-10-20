@@ -43,19 +43,34 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
-
-    // Send request
     let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let space = get_space(ctx, &opts, &node, &cmd.name).await?;
+    display_space(opts, &space)?;
+    Ok(())
+}
+
+async fn get_space(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    node: &InMemoryNode,
+    space_name: &str,
+) -> miette::Result<Space> {
+    // Send request
+    let id = opts.state.spaces.get(&space_name)?.config().id.clone();
+
     let controller = node.create_controller().await?;
-    let space: Space = controller.get_space(ctx, id).await?;
+
+    controller.get_space(ctx, id).await
+}
+
+fn display_space(opts: CommandGlobalOpts, space: &Space) -> Result<(), miette::ErrReport> {
     opts.terminal
         .stdout()
         .plain(space.output()?)
-        .json(serde_json::to_string_pretty(&space).into_diagnostic()?)
+        .json(serde_json::to_string_pretty(space).into_diagnostic()?)
         .write_line()?;
     opts.state
         .spaces
-        .overwrite(&cmd.name, SpaceConfig::from(&space))?;
+        .overwrite(&space.name, SpaceConfig::from(space))?;
     Ok(())
 }
