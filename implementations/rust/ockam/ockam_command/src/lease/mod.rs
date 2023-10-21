@@ -44,16 +44,6 @@ pub enum LeaseSubcommand {
     Revoke(RevokeCommand),
 }
 
-const TOKEN_VIEW: &str = r#"
-### Token
-> **ID:** ${id}
-> **Issued For:** ${issued_for}
-> **Created At:** ${created_at}
-> **Expires At:** ${expires_at}
-> **Token:** ${token}
-> **Status:** ${status}
-"#;
-
 impl LeaseCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
