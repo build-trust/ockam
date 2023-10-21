@@ -1,16 +1,14 @@
 use clap::Args;
-use termimad::{minimad::TextTemplate, MadSkin};
 
 use ockam::Context;
 use ockam_api::InfluxDbTokenLease;
 
 use crate::identity::initialize_identity_if_default;
 use crate::lease::authenticate;
+use crate::output::Output;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
-
-use super::TOKEN_VIEW;
 
 const HELP_DETAIL: &str = "";
 
@@ -41,20 +39,12 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
     let token = project_node.get_token(&ctx, cmd.token_id).await?;
-    let token_template = TextTemplate::from(TOKEN_VIEW);
-    let mut expander = token_template.expander();
 
-    expander
-        .set("id", &token.id)
-        .set("issued_for", &token.issued_for)
-        .set("created_at", &token.created_at)
-        .set("expires_at", &token.expires)
-        .set("token", &token.token)
-        .set("status", &token.status);
-
-    let skin = MadSkin::default();
-
-    skin.print_expander(expander);
+    opts.terminal
+        .stdout()
+        .plain(token.output()?)
+        .json(serde_json::json!(&token))
+        .write_line()?;
 
     Ok(())
 }
