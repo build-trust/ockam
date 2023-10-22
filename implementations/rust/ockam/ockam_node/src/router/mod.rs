@@ -196,6 +196,7 @@ impl Router {
 
             //// ==! Core node controls
             StopNode(ShutdownType::Graceful(timeout), reply) => {
+                // This sets state to stopping, and the sends the AbortNode message
                 if shutdown::graceful(self, timeout, reply).await? {
                     info!("No more workers left.  Goodbye!");
                     if let Some(sender) = self.state.stop_reply() {
