@@ -32,7 +32,7 @@ teardown() {
   assert_output --partial "\"status\": \"Running\""
 
   run_success "$OCKAM" node stop "$n1"
-  assert_output --partial "Stopped node '$n1'"
+  assert_output --partial "Node with name $n1 was stopped"
 
   run_success "$OCKAM" node start "$n1"
 
