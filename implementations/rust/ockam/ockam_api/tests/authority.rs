@@ -8,6 +8,7 @@ use ockam_api::authority_node::{Authority, Configuration};
 use ockam_api::cloud::AuthorityNode;
 use ockam_api::nodes::NodeManager;
 use ockam_api::{authority_node, DefaultAddress};
+use ockam_core::compat::collections::HashMap;
 use ockam_core::{Address, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -320,10 +321,16 @@ async fn default_configuration() -> Result<Configuration> {
 
     let port = thread_rng().gen_range(10000..65535);
 
-    let trusted_identities =
-        "{\"I3bab350b6c9ad9c624e54dba4b2e53b2ed95967b\": {\"attribute1\": \"value1\"}}";
+    let trusted_attributes =
+        HashMap::<String, String>::from([("attribute1".to_string(), "value1".to_string())]);
+    let trusted_identities = HashMap::<Identifier, HashMap<String, String>>::from([(
+        "I3bab350b6c9ad9c624e54dba4b2e53b2ed95967b"
+            .try_into()
+            .unwrap(),
+        trusted_attributes,
+    )]);
 
-    let trusted_identities = PreTrustedIdentities::new_from_string(trusted_identities)?;
+    let trusted_identities = PreTrustedIdentities::new_from_raw_map(trusted_identities)?;
 
     let mut configuration = authority_node::Configuration {
         identifier: "I4dba4b2e53b2ed95967b3bab350b6c9ad9c624e5".try_into()?,
@@ -365,7 +372,6 @@ async fn setup(
     secure_channels: Arc<SecureChannels>,
     number_of_admins: usize,
 ) -> Result<Vec<Admin>> {
-    use ockam_core::compat::collections::HashMap;
     let now = now()?;
 
     let mut admin_ids = vec![];
