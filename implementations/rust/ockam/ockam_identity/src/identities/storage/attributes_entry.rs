@@ -6,13 +6,11 @@ use serde::{Deserialize, Serialize};
 /// An entry on the AuthenticatedIdentities table.
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Serialize, Deserialize)]
 #[rustfmt::skip]
-#[cbor(map)]
 pub struct AttributesEntry {
-    // TODO: Check how it looks serialized with both serde and minicbor
-    #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
-    #[n(2)] added: TimestampInSeconds,
-    #[n(3)] expires: Option<TimestampInSeconds>,
-    #[n(4)] attested_by: Option<String>,
+    #[n(0)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+    #[n(1)] added: TimestampInSeconds,
+    #[n(2)] expires: Option<TimestampInSeconds>,
+    #[n(3)] attested_by: Option<String>,
 }
 
 impl AttributesEntry {
