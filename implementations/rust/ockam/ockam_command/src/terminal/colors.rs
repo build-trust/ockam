@@ -41,3 +41,10 @@ impl OckamColor {
         )
     }
 }
+
+#[macro_export]
+macro_rules! color {
+    ($text:expr, $color:expr) => {
+        $text.to_string().color($color.color())
+    };
+}
