@@ -37,7 +37,7 @@ use crate::util::api::TrustContextOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{api, exitcode};
 use crate::util::{local_cmd, node_rpc};
-use crate::{docs, fmt_log, fmt_ok};
+use crate::{color, docs, fmt_log, fmt_ok};
 use crate::{shutdown, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -189,7 +189,7 @@ pub(crate) async fn background_mode(
 
     opts.terminal.write_line(&fmt_log!(
         "Creating Node {}...\n",
-        node_name.clone().color(OckamColor::PrimaryResource.color())
+        color!(&node_name, OckamColor::PrimaryResource)
     ))?;
 
     if cmd.child_process {
