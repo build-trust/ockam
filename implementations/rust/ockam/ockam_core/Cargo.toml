@@ -64,7 +64,7 @@ error-traces = [
 debugger = []
 
 [dependencies]
-async-trait = "0.1.73"
+async-trait = "0.1.74"
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
 cfg-if = "1.0"
 core2 = { version = "0.4.0", default-features = false, optional = true }
