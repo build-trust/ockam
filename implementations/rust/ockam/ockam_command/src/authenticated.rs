@@ -1,11 +1,11 @@
 use crate::node::get_node_name;
+use crate::output::Output;
 use crate::util::node_rpc;
 use crate::util::parsers::identity_identifier_parser;
 use crate::Result;
 use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
-use miette::Context as _;
-use ockam::compat::collections::HashMap;
+use miette::{miette, Context as _};
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
@@ -13,22 +13,9 @@ use ockam_api::auth::AuthorizationApi;
 use ockam_api::is_local_node;
 use ockam_api::nodes::BackgroundNode;
 use ockam_multiaddr::MultiAddr;
-use termimad::{minimad::TextTemplate, MadSkin};
+use std::fmt::Write;
 
 const HELP_DETAIL: &str = "";
-
-const LIST_VIEW: &str = r#"
-## Authenticated Identities
-
-${identity
-> **Identifier:** ${identifier}
-> **Attributes:** ${attributes}
-> **Added At:** ${created_at}
-> **Expires At:** ${expires_at}
-> **Attested By:** ${attested_by}
-
-}
-"#;
 
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide(), after_long_help = docs::after_help(HELP_DETAIL))]
@@ -66,19 +53,20 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, AuthenticatedSubcommand),
 ) -> miette::Result<()> {
     // FIXME: add support to target remote nodes.
-    match &cmd {
+    match cmd {
         AuthenticatedSubcommand::Get { addr, id } => {
-            let node = make_background_node_client(&ctx, &opts, addr).await?;
-            if let Some(entry) = node.get_attributes(&ctx, id).await? {
-                print_entries(&[(Identifier::try_from(id.to_string()).unwrap(), entry)]);
+            let node = make_background_node_client(&ctx, &opts, &addr).await?;
+            if let Some(entry) = node.get_attributes(&ctx, &id).await? {
+                let entries = vec![(id, entry)];
+                print_entries(opts, entries)?;
             } else {
-                println!("Not found");
+                Err(miette!("No attributes found for the given identifier"))?;
             }
         }
         AuthenticatedSubcommand::List { addr } => {
-            let node = make_background_node_client(&ctx, &opts, addr).await?;
+            let node = make_background_node_client(&ctx, &opts, &addr).await?;
             let entries = node.list_identifiers(&ctx).await?;
-            print_entries(&entries);
+            print_entries(opts, entries)?;
         }
     }
     Ok(())
@@ -95,45 +83,55 @@ async fn make_background_node_client(
     Ok(BackgroundNode::create(ctx, &opts.state, &node_name).await?)
 }
 
-fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
-    let template = TextTemplate::from(LIST_VIEW);
-    let model: Vec<_> = entries
-        .iter()
-        .map(|(identifier, entry)| {
-            let attrs: HashMap<String, String> = entry
-                .attrs()
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        String::from_utf8(k.clone()).unwrap(),
-                        String::from_utf8(v.clone()).unwrap(),
-                    )
-                })
-                .collect();
-            (
-                String::from(identifier),
-                serde_json::to_string(&attrs).unwrap(),
-                format!("{:?}", entry.added()),
-                entry
-                    .expires()
-                    .map_or("-".to_string(), |t| format!("{:?}", t)),
-                entry.attested_by().map_or("-".to_string(), String::from),
-            )
-        })
-        .collect();
-    let mut expander = template.expander();
+struct IdentifierWithAttributes {
+    identifier: Identifier,
+    entry: AttributesEntry,
+}
 
-    model.iter().for_each(
-        |(identifier, attributes, created_at, expires_at, attested_by)| {
-            expander
-                .sub("identity")
-                .set("identifier", identifier)
-                .set("attributes", attributes)
-                .set("created_at", created_at)
-                .set("expires_at", expires_at)
-                .set("attested_by", attested_by);
-        },
-    );
-    let skin = MadSkin::default();
-    skin.print_expander(expander);
+impl Output for IdentifierWithAttributes {
+    fn output(&self) -> Result<String> {
+        let mut output = String::new();
+        let attrs: Vec<String> = self
+            .entry
+            .attrs()
+            .iter()
+            .map(|(k, v)| {
+                format!(
+                    "{}: {}",
+                    String::from_utf8_lossy(k),
+                    String::from_utf8_lossy(v)
+                )
+            })
+            .collect();
+        let attrs_str = attrs.join(", ");
+        writeln!(output, "Identifier: {}", self.identifier)?;
+        writeln!(output, "Attributes: {}", attrs_str)?;
+        writeln!(output, "Added At: {:?}", self.entry.added())?;
+        writeln!(output, "Expires At: {:?}", self.entry.expires())?;
+        write!(
+            output,
+            "Attested By: {}",
+            self.entry
+                .attested_by()
+                .map(|i| i.to_string())
+                .unwrap_or("-".to_string())
+        )?;
+
+        Ok(output)
+    }
+}
+
+fn print_entries(
+    opts: CommandGlobalOpts,
+    entries: Vec<(Identifier, AttributesEntry)>,
+) -> Result<()> {
+    let entries = entries
+        .into_iter()
+        .map(|(identifier, entry)| IdentifierWithAttributes { identifier, entry })
+        .collect::<Vec<_>>();
+    let list =
+        opts.terminal
+            .build_list(&entries, "Attributes by identifier", "No attributes found")?;
+    opts.terminal.stdout().plain(list).write_line()?;
+    Ok(())
 }
