@@ -94,7 +94,7 @@ r3bl_tuify = "0.1.19"
 rand = "0.8"
 regex = "1.10.2"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-rustls = "0.21.7"
+rustls = "0.21.8"
 rustls-native-certs = "0.6.3"
 serde = { version = "1", features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
