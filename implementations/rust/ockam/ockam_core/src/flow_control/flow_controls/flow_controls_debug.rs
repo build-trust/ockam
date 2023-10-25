@@ -20,9 +20,10 @@ impl fmt::Display for IdsCollection {
         if let Some(first) = self.0.first() {
             write!(f, "{}", first)?;
         }
-        self.0.iter().skip(1).fold(Ok(()), |result, id| {
-            result.and_then(|_| write!(f, ", {}", id))
-        })
+        self.0
+            .iter()
+            .skip(1)
+            .try_fold((), |_, id| write!(f, ", {}", id))
     }
 }
 

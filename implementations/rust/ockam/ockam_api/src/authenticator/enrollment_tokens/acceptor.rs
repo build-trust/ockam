@@ -65,7 +65,7 @@ impl Worker for EnrollmentTokenAcceptor {
                                 .attrs
                                 .iter()
                                 .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-                                .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)].into_iter())
+                                .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)])
                                 .collect();
                             let entry =
                                 AttributesEntry::new(attrs, now()?, None, Some(tkn.generated_by));
