@@ -46,6 +46,7 @@ tokio-retry = "0.3"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-appender = "0.2.2"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
+tracing-appender = "0.2.2"
 
 [build-dependencies]
 cbindgen = "0.26"
