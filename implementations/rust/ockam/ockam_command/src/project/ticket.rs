@@ -50,6 +50,13 @@ pub struct TicketCommand {
 
     #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser=duration_parser)]
     expires_in: Option<Duration>,
+
+    #[arg(
+        long = "usage-count",
+        value_name = "USAGE_COUNT",
+        conflicts_with = "member"
+    )]
+    usage_count: Option<u64>,
 }
 
 impl TicketCommand {
@@ -133,7 +140,7 @@ async fn run_impl(
             .await?
     } else {
         let token = authority_node
-            .create_token(&ctx, cmd.attributes()?, cmd.expires_in)
+            .create_token(&ctx, cmd.attributes()?, cmd.expires_in, cmd.usage_count)
             .await?;
 
         let ticket = EnrollmentTicket::new(token, project, trust_context);

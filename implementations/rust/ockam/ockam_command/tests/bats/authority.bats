@@ -20,9 +20,13 @@ teardown() {
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
   # m1 will be pre-enrolled on authority.  m2 will be added directly, m3 will be added through enrollment token
+  # m4 and m5 will be added by a shared enrollment token, m6 won't be added
   run "$OCKAM" identity create m1
   run "$OCKAM" identity create m2
   run "$OCKAM" identity create m3
+  run "$OCKAM" identity create m4
+  run "$OCKAM" identity create m5
+  run "$OCKAM" identity create m6
 
   enroller_identifier=$($OCKAM identity show enroller)
   authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
@@ -64,10 +68,22 @@ teardown() {
   assert_success
   assert_output --partial "m2_member"
 
-  token=$($OCKAM project ticket --identity enroller --project "$PROJECT_NAME" --attribute sample_attr=m3_member)
-  run "$OCKAM" project enroll --force $token --identity m3
+  token1=$($OCKAM project ticket --identity enroller --project "$PROJECT_NAME" --attribute sample_attr=m3_member)
+  run "$OCKAM" project enroll --force $token1 --identity m3
   assert_success
   assert_output --partial "m3_member"
+
+  token2=$($OCKAM project ticket --identity enroller --project "$PROJECT_NAME" --usage-count 2 --attribute sample_attr=members_group)
+  run "$OCKAM" project enroll --force $token2 --identity m4
+  assert_success
+  assert_output --partial "members_group"
+
+  run "$OCKAM" project enroll --force $token2 --identity m5
+  assert_success
+  assert_output --partial "members_group"
+
+  run "$OCKAM" project enroll --force $token2 --identity m6
+  assert_failure
 }
 
 @test "authority - enrollment ticket ttl" {

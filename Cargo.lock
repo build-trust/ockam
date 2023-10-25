@@ -4195,15 +4195,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lru"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1efa59af2ddfad1854ae27d75009d538d0998b4b2fd47083e743ac1a10e46c60"
-dependencies = [
- "hashbrown 0.14.1",
-]
-
-[[package]]
 name = "mac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4886,7 +4877,6 @@ dependencies = [
  "home",
  "indexmap 2.0.2",
  "kafka-protocol",
- "lru",
  "miette",
  "minicbor",
  "mockall",
