@@ -29,8 +29,7 @@ class Invitee: Identifiable, Hashable, Equatable, ObservableObject {
     }
 
     static func == (lhs: Invitee, rhs: Invitee) -> Bool {
-        return lhs.name == rhs.name &&
-        lhs.email == rhs.email
+        return lhs.name == rhs.name && lhs.email == rhs.email
     }
 }
 
@@ -39,12 +38,19 @@ class Invitation: Identifiable, Hashable, Equatable, ObservableObject {
     @Published var serviceName: String
     @Published var serviceScheme: String?
     @Published var accepting: Bool
+    @Published var accepted: Bool
+    @Published var ignoring: Bool
 
-    init(id: String, serviceName: String, serviceScheme: String?, accepting: Bool) {
+    init(
+        id: String, serviceName: String, serviceScheme: String?, accepting: Bool, accepted: Bool,
+        ignoring: Bool
+    ) {
         self.id = id
         self.serviceName = serviceName
         self.serviceScheme = serviceScheme
         self.accepting = accepting
+        self.accepted = accepted
+        self.ignoring = ignoring
     }
 
     func hash(into hasher: inout Hasher) {
@@ -52,13 +58,14 @@ class Invitation: Identifiable, Hashable, Equatable, ObservableObject {
         hasher.combine(serviceName)
         hasher.combine(serviceScheme)
         hasher.combine(accepting)
+        hasher.combine(accepted)
+        hasher.combine(ignoring)
     }
 
     static func == (lhs: Invitation, rhs: Invitation) -> Bool {
-        return lhs.id == rhs.id &&
-        lhs.serviceName == rhs.serviceName &&
-        lhs.serviceScheme == rhs.serviceScheme &&
-        lhs.accepting == rhs.accepting
+        return lhs.id == rhs.id && lhs.serviceName == rhs.serviceName
+            && lhs.serviceScheme == rhs.serviceScheme && lhs.accepting == rhs.accepting
+            && lhs.accepted == rhs.accepted && lhs.ignoring == rhs.ignoring
     }
 }
 
@@ -72,7 +79,10 @@ class LocalService: Identifiable, Hashable, Equatable, ObservableObject {
 
     var id: String { name }
 
-    init(name: String, address: String, port: UInt16, scheme: String?, sharedWith: [Invitee], available: Bool) {
+    init(
+        name: String, address: String, port: UInt16, scheme: String?, sharedWith: [Invitee],
+        available: Bool
+    ) {
         self.name = name
         self.address = address
         self.port = port
@@ -91,12 +101,9 @@ class LocalService: Identifiable, Hashable, Equatable, ObservableObject {
     }
 
     static func == (lhs: LocalService, rhs: LocalService) -> Bool {
-        return lhs.name == rhs.name &&
-        lhs.address == rhs.address &&
-        lhs.port == rhs.port &&
-        lhs.scheme == rhs.scheme &&
-        lhs.sharedWith == rhs.sharedWith &&
-        lhs.available == rhs.available
+        return lhs.name == rhs.name && lhs.address == rhs.address && lhs.port == rhs.port
+            && lhs.scheme == rhs.scheme && lhs.sharedWith == rhs.sharedWith
+            && lhs.available == rhs.available
     }
 }
 
@@ -109,7 +116,10 @@ class Service: Identifiable, Hashable, Equatable, ObservableObject {
     @Published var enabled: Bool
     let id: String
 
-    init(sourceName: String, address: String? = nil, port: UInt16? = nil, scheme: String? = nil, available: Bool = false, enabled: Bool = false, id: String) {
+    init(
+        sourceName: String, address: String? = nil, port: UInt16? = nil, scheme: String? = nil,
+        available: Bool = false, enabled: Bool = false, id: String
+    ) {
         self.sourceName = sourceName
         self.address = address
         self.port = port
@@ -130,13 +140,9 @@ class Service: Identifiable, Hashable, Equatable, ObservableObject {
     }
 
     static func == (lhs: Service, rhs: Service) -> Bool {
-        return lhs.sourceName == rhs.sourceName &&
-        lhs.address == rhs.address &&
-        lhs.port == rhs.port &&
-        lhs.scheme == rhs.scheme &&
-        lhs.available == rhs.available &&
-        lhs.enabled == rhs.enabled &&
-        lhs.id == rhs.id
+        return lhs.sourceName == rhs.sourceName && lhs.address == rhs.address
+            && lhs.port == rhs.port && lhs.scheme == rhs.scheme && lhs.available == rhs.available
+            && lhs.enabled == rhs.enabled && lhs.id == rhs.id
     }
 }
 
@@ -149,7 +155,10 @@ class ServiceGroup: Identifiable, Hashable, Equatable, ObservableObject {
 
     var id: String { email }
 
-    init(name: String? = nil, email: String, imageUrl: String? = nil, invitations: [Invitation] = [], incomingServices: [Service] = []) {
+    init(
+        name: String? = nil, email: String, imageUrl: String? = nil, invitations: [Invitation] = [],
+        incomingServices: [Service] = []
+    ) {
         self.name = name
         self.email = email
         self.imageUrl = imageUrl
@@ -166,11 +175,8 @@ class ServiceGroup: Identifiable, Hashable, Equatable, ObservableObject {
     }
 
     static func == (lhs: ServiceGroup, rhs: ServiceGroup) -> Bool {
-        return lhs.name == rhs.name &&
-        lhs.email == rhs.email &&
-        lhs.imageUrl == rhs.imageUrl &&
-        lhs.invitations == rhs.invitations &&
-        lhs.incomingServices == rhs.incomingServices
+        return lhs.name == rhs.name && lhs.email == rhs.email && lhs.imageUrl == rhs.imageUrl
+            && lhs.invitations == rhs.invitations && lhs.incomingServices == rhs.incomingServices
     }
 }
 
@@ -248,7 +254,7 @@ func swift_application_snapshot() -> ApplicationState {
 
 func swift_initialize_application() {
     let applicationStateClosure: @convention(c) (C_ApplicationState) -> Void = { state in
-        StateContainer.shared.update( state: convertApplicationState(cState: state ) )
+        StateContainer.shared.update(state: convertApplicationState(cState: state))
     }
 
     let notificationClosure: @convention(c) (C_Notification) -> Void = { cNotification in
@@ -261,7 +267,8 @@ func swift_initialize_application() {
                 content.title = notification.title
                 content.body = notification.message
 
-                let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+                let request = UNNotificationRequest(
+                    identifier: UUID().uuidString, content: content, trigger: nil)
 
                 UNUserNotificationCenter.current().add(request)
             } else {
@@ -272,7 +279,8 @@ func swift_initialize_application() {
 
     initialize_application(applicationStateClosure, notificationClosure)
 
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) {
+        granted, error in
         if granted == true {
             print("Notification permission granted")
         } else {
@@ -323,7 +331,8 @@ func convertApplicationState(cState: C_ApplicationState) -> ApplicationState {
 
     return ApplicationState(
         enrolled: cState.enrolled != 0,
-        orchestrator_status: OrchestratorStatus(rawValue: Int(cState.orchestrator_status.rawValue))!,
+        orchestrator_status: OrchestratorStatus(
+            rawValue: Int(cState.orchestrator_status.rawValue))!,
         enrollmentName: enrollmentName,
         enrollmentEmail: enrollmentEmail,
         enrollmentImage: enrollmentImage,
@@ -404,8 +413,12 @@ func convertInvitation(cInvite: UnsafePointer<C_Invitation>) -> Invitation {
     let serviceName = String(cString: cRecord.service_name)
     let serviceScheme = optional_string(str: cRecord.service_scheme)
     let accepting = cRecord.accepting != 0
+    let accepted = cRecord.accepted != 0
+    let ignoring = cRecord.ignoring != 0
 
-    return Invitation(id: id, serviceName: serviceName, serviceScheme: serviceScheme, accepting: accepting)
+    return Invitation(
+        id: id, serviceName: serviceName, serviceScheme: serviceScheme, accepting: accepting,
+        accepted: accepted, ignoring: ignoring)
 }
 
 func convertService(cService: UnsafePointer<C_Service>) -> Service {
@@ -437,28 +450,33 @@ extension Invitee: CustomDebugStringConvertible {
 
 extension Invitation: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
+        return
+            "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
     }
 }
 
 extension LocalService: CustomDebugStringConvertible {
     var debugDescription: String {
         let sharedWithJsonStrings = sharedWith.map { $0.debugDescription }.joined(separator: ", ")
-        return "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
+        return
+            "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
     }
 }
 
 extension Service: CustomDebugStringConvertible {
     var debugDescription: String {
-        return "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
+        return
+            "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
     }
 }
 
 extension ServiceGroup: CustomDebugStringConvertible {
     var debugDescription: String {
         let invitationsStrings = invitations.map { $0.debugDescription }.joined(separator: ", ")
-        let incomingServicesStrings = incomingServices.map { $0.debugDescription }.joined(separator: ", ")
-        return "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
+        let incomingServicesStrings = incomingServices.map { $0.debugDescription }.joined(
+            separator: ", ")
+        return
+            "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
     }
 }
 
@@ -466,6 +484,7 @@ extension ApplicationState {
     var debugDescription: String {
         let localServicesStrings = localServices.map { $0.debugDescription }.joined(separator: ", ")
         let groupsStrings = groups.map { $0.debugDescription }.joined(separator: ", ")
-        return "{ \"enrolled\": \(enrolled), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
+        return
+            "{ \"enrolled\": \(enrolled), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
     }
 }

@@ -89,6 +89,19 @@ extern "C" fn accept_invitation(id: *const c_char) {
     });
 }
 
+/// Ignore the invitation with the provided id.
+#[no_mangle]
+extern "C" fn ignore_invitation(id: *const c_char) {
+    let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    app_state.context().runtime().spawn(async {
+        let result = app_state.ignore_invitation(id).await;
+        if let Err(err) = result {
+            error!(?err, "Couldn't accept the invitation");
+        }
+    });
+}
+
 /// Initiate graceful shutdown of the application, exit process when complete.
 #[no_mangle]
 extern "C" fn shutdown_application() {

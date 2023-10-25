@@ -19,30 +19,35 @@ struct ShareServiceView: View {
 
             HStack {
                 Spacer()
-                Button(action: {
-                    self.closeWindow()
-                }, label: {
-                    Text("Close")
-                })
-                Button(action: {
-                    let emails = Array(self.emails).joined(separator: ";")
-
-                    isProcessing = true
-                    let error = share_local_service(
-                        localService.name,
-                        emails
-                    )
-                    isProcessing = false
-
-                    if error == nil {
-                        self.errorMessage = ""
+                Button(
+                    action: {
                         self.closeWindow()
-                    } else {
-                        self.errorMessage = String(cString: error.unsafelyUnwrapped)
+                    },
+                    label: {
+                        Text("Close")
+                    })
+                Button(
+                    action: {
+                        let emails = Array(self.emails).joined(separator: ";")
+
+                        isProcessing = true
+                        let error = share_local_service(
+                            localService.name,
+                            emails
+                        )
+                        isProcessing = false
+
+                        if error == nil {
+                            self.errorMessage = ""
+                            self.closeWindow()
+                        } else {
+                            self.errorMessage = String(cString: error.unsafelyUnwrapped)
+                        }
+                    },
+                    label: {
+                        Text("Share")
                     }
-                }, label: {
-                    Text("Share")
-                })
+                )
                 .disabled(!canShareService() && !isProcessing)
                 .keyboardShortcut(.defaultAction)
                 .padding(10)
@@ -52,7 +57,7 @@ struct ShareServiceView: View {
         .frame(width: 600)
     }
 
-    func closeWindow(){
+    func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()
     }
 
@@ -61,15 +66,15 @@ struct ShareServiceView: View {
     }
 }
 
-
 struct ShareServiceView_Previews: PreviewProvider {
     static var previews: some View {
-        ShareServiceView(localService: LocalService(
-            name: "my-service",
-            address: "127.0.0.1",
-            port: 1234, scheme: nil,
-            sharedWith: [],
-            available: false
-        ))
+        ShareServiceView(
+            localService: LocalService(
+                name: "my-service",
+                address: "127.0.0.1",
+                port: 1234, scheme: nil,
+                sharedWith: [],
+                available: false
+            ))
     }
 }

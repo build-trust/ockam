@@ -54,7 +54,7 @@ struct EmailListView: View {
         // company-specific TLDs are a possibility
         let emailFormat = "[^@]+@[^@]+"
         let emailPredicate = NSPredicate(
-            format:"SELF MATCHES %@",
+            format: "SELF MATCHES %@",
             emailFormat
         )
         return emailPredicate.evaluate(with: email)
@@ -65,7 +65,7 @@ struct EmailList_Previews: PreviewProvider {
     @State static var emails = Set([
         "one@example.com",
         "two@example.com",
-        "three@example.com"
+        "three@example.com",
     ])
 
     static var previews: some View {
