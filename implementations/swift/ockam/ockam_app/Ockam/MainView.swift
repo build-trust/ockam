@@ -28,7 +28,7 @@ struct MainView: View {
                         Text("Retrieving space").font(.subheadline)
                     case .RetrievingProject:
                         Text("Retrieving project").font(.subheadline)
-                        Text("This might take a few seconds...").font(.caption)
+                        Text("This might take a few minutes...").font(.caption)
                     }
                 }
             }.padding(5)

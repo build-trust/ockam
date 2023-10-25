@@ -16,7 +16,6 @@ use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Inv
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
-use crate::shared_service::relay::RELAY_NAME;
 use crate::state::{AppState, PROJECT_NAME};
 
 impl AppState {
@@ -477,6 +476,11 @@ impl InletDataFromInvitation {
                 };
 
                 if let Some(project) = enrollment_ticket.project {
+                    let project_identifier = match &project.identity_id {
+                        Some(id) => id.to_string(),
+                        None => return Ok(None),
+                    };
+
                     // At this point, the project name will be the project id.
                     let project = cli_state
                         .projects
@@ -486,13 +490,12 @@ impl InletDataFromInvitation {
                         project.id(),
                         "Project name should be the project id"
                     );
-
                     let project_id = project.id();
-                    let local_node_name = format!("ockam_app_{project_id}_{service_name}");
+                    let relay_name = format!("forward_to_{project_identifier}");
                     let service_route = format!(
-                        "/project/{project_id}/service/{}/secure/api/service/{service_name}",
-                        *RELAY_NAME
+                        "/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}"
                     );
+                    let local_node_name = format!("ockam_app_{project_id}_{service_name}");
 
                     let inlet = inlets.get(&invitation.invitation.id);
                     let enabled = inlet.map(|i| i.enabled).unwrap_or(true);
@@ -525,7 +528,7 @@ impl InletDataFromInvitation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam::identity::OneTimeCode;
+    use ockam::identity::{Identifier, OneTimeCode};
     use ockam_api::cloud::share::{
         ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
@@ -574,7 +577,9 @@ mod tests {
                     node_route: None,
                     id: "project_identity".to_string(),
                     name: "project_name".to_string(),
-                    identity_id: None,
+                    identity_id: Some(
+                        Identifier::from_str("I1234561234561234561234561234561234561234").unwrap(),
+                    ),
                     authority: None,
                     okta: None,
                 }),
