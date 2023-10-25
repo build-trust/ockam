@@ -15,7 +15,7 @@ fn benchmark() {
     let ma = multiaddr::Multiaddr::try_from(SAMPLE).unwrap();
 
     bench("multiaddr/read-bytes: ", || {
-        multiaddr::Multiaddr::from_iter(ma.into_iter());
+        multiaddr::Multiaddr::from_iter(&ma);
         true
     });
     bench("ockam_multiaddr/read-bytes: ", || {

@@ -566,7 +566,7 @@ mod tests {
         assert!(matches!(r.contains_route(&route!["c", "d"]), Ok(true)));
         assert!(matches!(r.contains_route(&route!["e"]), Ok(true)));
 
-        assert!(matches!(r.contains_route(&route![]), Err(_)));
+        assert!(r.contains_route(&route![]).is_err());
 
         assert!(matches!(
             r.contains_route(&route!["a", "b", "c", "d", "e", "f"]),
