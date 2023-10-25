@@ -12,6 +12,7 @@ mod cli;
 mod enroll;
 mod error;
 mod invitations;
+mod log;
 mod projects;
 mod scheduler;
 mod shared_service;

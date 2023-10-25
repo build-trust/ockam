@@ -61,6 +61,10 @@ struct ServiceGroupButton: View {
                 Text(verbatim: group.email).lineLimit(1)
             }
             Spacer()
+            Circle()
+              .fill(Color.orange)
+              .frame(width: 8)
+              .opacity(group.invitations.isEmpty ? 0 : 1)
             Image(systemName: "chevron.right")
                 .frame(width: 32, height: 32)
         }.onHover { hover in
