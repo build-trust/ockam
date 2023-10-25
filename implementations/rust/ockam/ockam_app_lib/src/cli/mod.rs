@@ -30,7 +30,7 @@ pub(crate) fn cli_bin() -> Result<String> {
 /// adds the homebrew path to the PATH environment variable
 /// useful for development since the application is
 /// bundled with the ockam_command executable
-pub(crate) fn add_homebrew_to_path() -> () {
+pub(crate) fn add_homebrew_to_path() {
     match std::env::var("PATH") {
         Ok(mut path) => {
             path.push_str(":");

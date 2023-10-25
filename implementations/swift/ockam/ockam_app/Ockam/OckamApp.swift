@@ -43,11 +43,10 @@ class StateContainer {
 
 @main
 struct OckamApp: App {
-    @State var state: ApplicationState = StateContainer.shared.state;
+    @State var state: ApplicationState = StateContainer.shared.state
 
     var body: some Scene {
-        MenuBarExtra
-        {
+        MenuBarExtra {
             MainView(state: $state)
                 .onAppear(perform: {
                     StateContainer.shared.callback(callback: { state in
@@ -58,7 +57,8 @@ struct OckamApp: App {
                     // invoked when opening a ockam:// url
                     let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
                     if let path = urlComponents?.path {
-                        let segments = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+                        let segments = path.split(separator: "/", omittingEmptySubsequences: true)
+                            .map(String.init)
                         if segments.count >= 2 {
                             if segments[0] == "invitations" && segments[1] == "accept" {
                                 accept_invitation(segments[2])
@@ -83,10 +83,12 @@ struct OckamApp: App {
         .commandsRemoved()
 
         // Declare a "template" of windows, dependent on the LocalService.ID, not open by default
-        WindowGroup("Share a service", id: "share-service", for: LocalService.ID.self) { $localServiceId in
-            ShareServiceView(localService: StateContainer.shared.state.getLocalService(
-                localServiceId.unsafelyUnwrapped
-            ).unsafelyUnwrapped)
+        WindowGroup("Share a service", id: "share-service", for: LocalService.ID.self) {
+            $localServiceId in
+            ShareServiceView(
+                localService: StateContainer.shared.state.getLocalService(
+                    localServiceId.unsafelyUnwrapped
+                ).unsafelyUnwrapped)
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
@@ -96,4 +98,3 @@ struct OckamApp: App {
         swift_initialize_application()
     }
 }
-

@@ -59,6 +59,8 @@ pub trait Invitations {
         ctx: &Context,
         kind: InvitationListKind,
     ) -> miette::Result<InvitationList>;
+
+    async fn ignore_invitation(&self, ctx: &Context, invitation_id: String) -> miette::Result<()>;
 }
 
 #[async_trait]
@@ -161,8 +163,19 @@ impl Invitations for Controller {
         ctx: &Context,
         kind: InvitationListKind,
     ) -> miette::Result<InvitationList> {
-        debug!(kink = ?kind, "Sending request to list shares");
+        debug!(?kind, "Sending request to list shares");
         let req = Request::get("/v0/invites").body(ListInvitations { kind });
+        self.0
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+
+    async fn ignore_invitation(&self, ctx: &Context, invitation_id: String) -> miette::Result<()> {
+        debug!(?invitation_id, "sending request to ignore invitation");
+        let req = Request::post(format!("/v0/invites/{invitation_id}/ignore"));
         self.0
             .ask(ctx, API_SERVICE, req)
             .await

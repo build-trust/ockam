@@ -58,6 +58,10 @@ impl AppState {
                             debug!(?i, "Invitation was already accepted");
                             Ok(())
                         }
+                        _ => {
+                            debug!(?i, "Invitation is in status {s:?}, skipping...");
+                            Ok(())
+                        }
                     }
                 }
             }
@@ -72,6 +76,65 @@ impl AppState {
         debug!(?res);
         self.publish_state().await;
         info!(?id, "Invitation accepted");
+        self.schedule_invitations_refresh_now();
+        Ok(())
+    }
+
+    pub async fn ignore_invitation(&self, id: String) -> Result<(), String> {
+        self.ignore_invitation_impl(id)
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    async fn ignore_invitation_impl(&self, id: String) -> crate::Result<()> {
+        debug!(?id, "Ignoring invitation");
+        if !self.is_enrolled().await? {
+            debug!(?id, "Not enrolled, invitation can't be ignored");
+            return Ok(());
+        }
+
+        // Update the invitation status to Ignoring if it's not already being processed.
+        // Otherwise, return early.
+        {
+            let invitations = self.invitations();
+            let mut writer = invitations.write().await;
+            match writer.received.status.iter_mut().find(|x| x.0 == id) {
+                None => {
+                    writer
+                        .received
+                        .status
+                        .push((id.clone(), ReceivedInvitationStatus::Ignoring));
+                    debug!(?id, "Invitation is being processed");
+                }
+                Some((i, s)) => match s {
+                    ReceivedInvitationStatus::Ignoring => {
+                        debug!(?i, "Invitation is being ignored");
+                        return Ok(());
+                    }
+                    ReceivedInvitationStatus::Ignored => {
+                        debug!(?i, "Invitation was already ignored");
+                        return Ok(());
+                    }
+                    ReceivedInvitationStatus::Accepting => {
+                        debug!(?i, "Invitation is being accepted");
+                        return Ok(());
+                    }
+                    s => {
+                        debug!(?i, "Invitation is in status {s:?}, ignoring...");
+                    }
+                },
+            }
+        }
+        self.publish_state().await;
+
+        let controller = self.controller().await?;
+        controller
+            .ignore_invitation(&self.context(), id.clone())
+            .await?;
+
+        self.publish_state().await;
+        info!(?id, "Invitation ignored");
         self.schedule_invitations_refresh_now();
         Ok(())
     }
@@ -553,6 +616,7 @@ mod tests {
                 owner_email: "owner_email".to_string(),
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
+                ignored: false,
             },
             service_access_details: None,
         };

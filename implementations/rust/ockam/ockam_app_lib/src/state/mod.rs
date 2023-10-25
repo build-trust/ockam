@@ -501,6 +501,24 @@ impl AppState {
                                         status == &ReceivedInvitationStatus::Accepting
                                     })
                                     .unwrap_or(false),
+                                accepted: invitation_state
+                                    .received
+                                    .status
+                                    .iter()
+                                    .find(|(id, _)| id == &invitation.id)
+                                    .map(|(_, status)| {
+                                        status == &ReceivedInvitationStatus::Accepted
+                                    })
+                                    .unwrap_or(false),
+                                ignoring: invitation_state
+                                    .received
+                                    .status
+                                    .iter()
+                                    .find(|(id, _)| id == &invitation.id)
+                                    .map(|(_, status)| {
+                                        status == &ReceivedInvitationStatus::Ignoring
+                                    })
+                                    .unwrap_or(false),
                             })
                             .collect();
 
