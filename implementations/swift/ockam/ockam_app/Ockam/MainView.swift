@@ -9,6 +9,8 @@ struct MainView: View {
     @Binding var state : ApplicationState
     @Environment(\.openWindow) var openWindow
     @State private var selectedGroup: String = ""
+    @State private var optionPressed: Bool = false
+    var timer = Timer.publish(every: 0.5, on: .main, in:.common).autoconnect()
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -40,7 +42,7 @@ struct MainView: View {
                         ProfilePicture(url: state.enrollmentImage)
                         VStack(alignment: .leading) {
                             if let name = state.enrollmentName {
-                                Text(verbatim: name).font(.title3)
+                                Text(verbatim: name).font(.title3).lineLimit(1)
                             }
                             HStack {
                                 VStack(alignment: .trailing) {
@@ -51,8 +53,10 @@ struct MainView: View {
                                 }
                                 VStack(alignment: .leading) {
                                     Text(verbatim: state.enrollmentEmail.unsafelyUnwrapped)
+                                        .lineLimit(1)
                                     if let github = state.enrollmentGithubUser {
                                         Text(verbatim: github)
+                                            .lineLimit(1)
                                     }
                                 }
                             }
@@ -122,10 +126,11 @@ struct MainView: View {
                 Divider()
                 VStack(spacing: 0) {
                     @Environment(\.openWindow) var openWindow
-
-                    ClickableMenuEntry(text: "Reset", icon: "arrow.counterclockwise", action: {
-                        reset_application_state()
-                    })
+                    if self.optionPressed {
+                        ClickableMenuEntry(text: "Reset", icon: "arrow.counterclockwise", action: {
+                            reset_application_state()
+                        })
+                    }
                     ClickableMenuEntry(text: "Documentation", icon: "book", action: {
                         if let url = URL(string: "https://docs.ockam.io") {
                             NSWorkspace.shared.open(url)
@@ -144,8 +149,10 @@ struct MainView: View {
         }
         .padding(6)
         .frame(width: 300)
+        .onReceive(timer) { time in
+            optionPressed = NSEvent.modifierFlags.contains(.option)
+        }
     }
-
 
     func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()

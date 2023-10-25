@@ -4965,7 +4965,6 @@ dependencies = [
  "ockam_core",
  "ockam_multiaddr",
  "ockam_transport_tcp",
- "once_cell",
  "serde",
  "serde_json",
  "thiserror",

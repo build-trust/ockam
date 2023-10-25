@@ -8,14 +8,17 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
+use crate::api::notification::rust::Notification;
+use crate::api::notification::Kind;
 use ockam_api::address::get_free_address;
-use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
+use crate::shared_service::relay::create::relay_name;
 use crate::state::{AppState, PROJECT_NAME};
 
 impl AppState {
@@ -204,9 +207,16 @@ impl AppState {
             guard.replace_by(invitations)
         };
 
-        if changed {
+        if changed.changed {
             self.publish_state().await;
             self.schedule_inlets_refresh_now();
+            if changed.new_received_invitation {
+                self.notify(Notification {
+                    kind: Kind::Information,
+                    title: "You have pending invitations".to_string(),
+                    message: "".to_string(),
+                })
+            }
         }
 
         Ok(())
@@ -476,11 +486,6 @@ impl InletDataFromInvitation {
                 };
 
                 if let Some(project) = enrollment_ticket.project {
-                    let project_identifier = match &project.identity_id {
-                        Some(id) => id.to_string(),
-                        None => return Ok(None),
-                    };
-
                     // At this point, the project name will be the project id.
                     let project = cli_state
                         .projects
@@ -491,7 +496,7 @@ impl InletDataFromInvitation {
                         "Project name should be the project id"
                     );
                     let project_id = project.id();
-                    let relay_name = format!("forward_to_{project_identifier}");
+                    let relay_name = relay_name(project.config());
                     let service_route = format!(
                         "/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}"
                     );
