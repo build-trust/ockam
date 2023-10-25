@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct ProfilePicture: View {
-    @State var url: String?;
-    @State var placeholder = "person";
-    @State var size: CGFloat = 64;
+    @State var url: String?
+    @State var placeholder = "person"
+    @State var size: CGFloat = 64
 
     var body: some View {
         if let url = url {

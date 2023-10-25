@@ -47,6 +47,8 @@ pub mod rust {
         pub service_name: String,
         pub service_scheme: Option<String>,
         pub accepting: bool,
+        pub accepted: bool,
+        pub ignoring: bool,
     }
 
     impl Ord for Invitation {
@@ -176,6 +178,8 @@ pub mod c {
         /// Optional
         pub(super) service_scheme: *const c_char,
         pub(super) accepting: u8,
+        pub(super) accepted: u8,
+        pub(super) ignoring: u8,
     }
 
     #[repr(C)]
@@ -250,6 +254,8 @@ fn invite_to_c(invite: rust::Invitation) -> *const c::Invitation {
         service_name: to_c_string(invite.service_name),
         service_scheme: to_optional_c_string(invite.service_scheme),
         accepting: invite.accepting as u8,
+        accepted: invite.accepted as u8,
+        ignoring: invite.ignoring as u8,
     };
     Box::into_raw(Box::new(invite_c))
 }

@@ -6,11 +6,11 @@ import SwiftUI
 
 struct MainView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
-    @Binding var state : ApplicationState
+    @Binding var state: ApplicationState
     @Environment(\.openWindow) var openWindow
     @State private var selectedGroup: String = ""
     @State private var optionPressed: Bool = false
-    var timer = Timer.publish(every: 0.5, on: .main, in:.common).autoconnect()
+    var timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -66,10 +66,12 @@ struct MainView: View {
                 }
             } else {
                 if state.orchestrator_status == OrchestratorStatus.Disconnected {
-                    ClickableMenuEntry(text: "Enroll", icon: "arrow.right.square", action: {
-                        enroll_user()
-                        self.closeWindow()
-                    })
+                    ClickableMenuEntry(
+                        text: "Enroll", icon: "arrow.right.square",
+                        action: {
+                            enroll_user()
+                            self.closeWindow()
+                        })
                 }
             }
 
@@ -85,12 +87,15 @@ struct MainView: View {
                     Divider()
                     Text("Your services")
                         .font(.body).bold().foregroundColor(.primary.opacity(0.7))
-                    ClickableMenuEntry(text: "Create Service", icon: "plus", action: {
-                        openWindow(id: "create-service")
-                        self.closeWindow()
-                        bringInFront()
-                    })        .buttonStyle(PlainButtonStyle())
-                    ForEach(state.localServices){ localService in
+                    ClickableMenuEntry(
+                        text: "Create Service", icon: "plus",
+                        action: {
+                            openWindow(id: "create-service")
+                            self.closeWindow()
+                            bringInFront()
+                        }
+                    ).buttonStyle(PlainButtonStyle())
+                    ForEach(state.localServices) { localService in
                         LocalServiceView(localService: localService)
                     }
                 }
@@ -102,9 +107,12 @@ struct MainView: View {
 
                     ForEach(state.groups) { group in
                         if selectedGroup == group.id {
-                            ServiceGroupView(group: group, back: {
-                                selectedGroup = ""
-                            })
+                            ServiceGroupView(
+                                group: group,
+                                back: {
+                                    selectedGroup = ""
+                                }
+                            )
                             .padding([.top], 5)
                         }
                     }
@@ -112,9 +120,11 @@ struct MainView: View {
                     if selectedGroup == "" {
                         VStack {
                             ForEach(state.groups) { group in
-                                ServiceGroupButton(group: group, action: {
-                                    selectedGroup = group.id
-                                })
+                                ServiceGroupButton(
+                                    group: group,
+                                    action: {
+                                        selectedGroup = group.id
+                                    })
                             }
                         }
                         .padding([.top], 5)
@@ -127,23 +137,29 @@ struct MainView: View {
                 VStack(spacing: 0) {
                     @Environment(\.openWindow) var openWindow
                     if self.optionPressed {
-                        ClickableMenuEntry(text: "Reset", icon: "arrow.counterclockwise", action: {
-                            reset_application_state()
-                        })
+                        ClickableMenuEntry(
+                            text: "Reset", icon: "arrow.counterclockwise",
+                            action: {
+                                reset_application_state()
+                            })
                     }
-                    ClickableMenuEntry(text: "Documentation", icon: "book", action: {
-                        if let url = URL(string: "https://docs.ockam.io") {
-                            NSWorkspace.shared.open(url)
-                        }
-                        self.closeWindow()
-                    })
-                    ClickableMenuEntry(text: "Quit", icon: "power", action: {
-                        //even if the graceful shutdown takes a few seconds
-                        //we can give a "acknowledged" feedback to the user
-                        //by closing the window first
-                        self.closeWindow()
-                        shutdown_application();
-                    })
+                    ClickableMenuEntry(
+                        text: "Documentation", icon: "book",
+                        action: {
+                            if let url = URL(string: "https://docs.ockam.io") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            self.closeWindow()
+                        })
+                    ClickableMenuEntry(
+                        text: "Quit", icon: "power",
+                        action: {
+                            //even if the graceful shutdown takes a few seconds
+                            //we can give a "acknowledged" feedback to the user
+                            //by closing the window first
+                            self.closeWindow()
+                            shutdown_application()
+                        })
                 }
             }
         }
@@ -159,12 +175,10 @@ struct MainView: View {
     }
 }
 
-
 struct MainView_Previews: PreviewProvider {
-    @State static var state = swift_demo_application_state();
+    @State static var state = swift_demo_application_state()
 
     static var previews: some View {
         MainView(state: $state)
     }
 }
-

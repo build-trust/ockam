@@ -118,6 +118,7 @@ mod tests {
                 owner_email: "owner_email".to_string(),
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
+                ignored: false,
             }]),
             accepted: Some(vec![InvitationWithAccess {
                 invitation: ReceivedInvitation {
@@ -127,6 +128,7 @@ mod tests {
                     owner_email: "owner_email".to_string(),
                     scope: ShareScope::Project,
                     target_id: "target_id".to_string(),
+                    ignored: false,
                 },
                 service_access_details: None,
             }]),
