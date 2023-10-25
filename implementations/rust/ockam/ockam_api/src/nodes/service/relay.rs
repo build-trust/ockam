@@ -346,7 +346,7 @@ impl InMemoryNode {
 }
 
 #[async_trait]
-pub trait Relays {
+pub trait LocalRelays {
     async fn create_relay(
         &self,
         ctx: &Context,
@@ -354,10 +354,14 @@ pub trait Relays {
         alias: Option<String>,
         authorized: Option<Identifier>,
     ) -> miette::Result<RelayInfo>;
+
+    async fn show_relay(&self, ctx: &Context, remote_address: &str) -> miette::Result<RelayInfo>;
+
+    async fn list_relays(&self, ctx: &Context) -> miette::Result<Vec<RelayInfo>>;
 }
 
 #[async_trait]
-impl Relays for BackgroundNode {
+impl LocalRelays for BackgroundNode {
     async fn create_relay(
         &self,
         ctx: &Context,
@@ -369,6 +373,18 @@ impl Relays for BackgroundNode {
         let body = CreateRelay::new(address.clone(), alias, at_rust_node, authorized);
         self.ask(ctx, Request::post("/node/forwarder").body(body))
             .await
+    }
+
+    async fn show_relay(&self, ctx: &Context, remote_address: &str) -> miette::Result<RelayInfo> {
+        debug!(?remote_address, "sending request to show a relay");
+        let req = Request::get(format!("/node/forwarder/{remote_address}"));
+        self.ask::<(), RelayInfo>(ctx, req).await
+    }
+
+    async fn list_relays(&self, ctx: &Context) -> miette::Result<Vec<RelayInfo>> {
+        debug!("sending request to list relays");
+        let req = Request::get("/node/forwarder");
+        self.ask::<(), Vec<RelayInfo>>(ctx, req).await
     }
 }
 

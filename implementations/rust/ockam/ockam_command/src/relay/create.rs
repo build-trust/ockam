@@ -13,7 +13,7 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::relay::RelayInfo;
-use ockam_api::nodes::service::relay::Relays;
+use ockam_api::nodes::service::relay::LocalRelays;
 use ockam_api::nodes::BackgroundNode;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
