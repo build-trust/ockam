@@ -42,7 +42,8 @@ impl<'a> AddMember<'a> {
 #[cbor(map)]
 pub struct CreateToken<'a> {
     #[b(1)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
-    #[b(2)] token_duration_secs: Option<u64>
+    #[n(2)] ttl_secs: Option<u64>,
+    #[n(3)] ttl_count: Option<u64>,
 }
 
 impl<'a> CreateToken<'a> {
@@ -50,7 +51,8 @@ impl<'a> CreateToken<'a> {
     pub fn new() -> Self {
         CreateToken {
             attributes: HashMap::new(),
-            token_duration_secs: None,
+            ttl_count: None,
+            ttl_secs: None,
         }
     }
 
@@ -62,8 +64,13 @@ impl<'a> CreateToken<'a> {
         self
     }
 
-    pub fn with_duration(mut self, token_duration: Option<Duration>) -> Self {
-        self.token_duration_secs = token_duration.map(|d| d.as_secs());
+    pub fn with_ttl(mut self, duration: Option<Duration>) -> Self {
+        self.ttl_secs = duration.map(|d| d.as_secs());
+        self
+    }
+
+    pub fn with_ttl_count(mut self, ttl_count: Option<u64>) -> Self {
+        self.ttl_count = ttl_count;
         self
     }
 
@@ -74,7 +81,11 @@ impl<'a> CreateToken<'a> {
             .collect()
     }
 
-    pub fn token_duration(&self) -> Option<Duration> {
-        self.token_duration_secs.map(Duration::from_secs)
+    pub fn ttl_count(&self) -> Option<u64> {
+        self.ttl_count
+    }
+
+    pub fn ttl_secs(&self) -> Option<u64> {
+        self.ttl_secs
     }
 }
