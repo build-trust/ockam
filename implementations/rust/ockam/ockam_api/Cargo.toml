@@ -107,4 +107,4 @@ ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
 quickcheck = "1.0.1"
 tokio = { version = "1.33.0", features = ["full"] }
-uuid = "1.4.1"
+uuid = "1.5.0"
