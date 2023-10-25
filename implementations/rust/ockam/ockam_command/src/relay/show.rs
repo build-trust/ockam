@@ -116,16 +116,15 @@ async fn run_impl(
                 show_relay_list(relays, &opts, &default_node_name).await?;
                 return Ok(());
             }
+            // If we get here, then very little can be done.
+            opts.terminal
+                .stdout()
+                .plain("The remote address must be specified")
+                .write_line()?;
+
+            return Ok(());
         }
     }
-
-    // If we get here, then very little can be done.
-    opts.terminal
-        .stdout()
-        .plain("The remote address must be specified")
-        .write_line()?;
-
-    Ok(())
 }
 
 async fn show_single_relay(
@@ -182,16 +181,11 @@ async fn show_relay_list(
         return Ok(());
     }
 
-    // reduce the list of relays to the one(s) that were selected.
-    let mut selected_relays = Vec::<RelayInfo>::new();
-    for a in selected_remote_addresses {
-        for r in &relays {
-            if a == r.remote_address() {
-                selected_relays.push(r.clone());
-                break;
-            }
-        }
-    }
+    // limit the list of relays to the one(s) that were selected.
+    let selected_relays: Vec<RelayInfo> = relays
+        .into_iter()
+        .filter(|it| selected_remote_addresses.contains(&it.remote_address().to_string()))
+        .collect();
 
     let plain = opts.terminal.build_list(
         &selected_relays,
