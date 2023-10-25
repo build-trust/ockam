@@ -60,7 +60,7 @@ struct CreateServiceView: View {
 
                     emails = Array(self.emails).joined(separator: ";")
                     self.errorMessage = ""
-
+                    
                     isProcessing = true
                     let error = create_local_service(
                         self.serviceName,

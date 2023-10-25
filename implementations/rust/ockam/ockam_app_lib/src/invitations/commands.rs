@@ -8,6 +8,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
+use crate::api::notification::rust::Notification;
+use crate::api::notification::Kind;
 use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
@@ -16,7 +18,6 @@ use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Inv
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
-use crate::shared_service::relay::RELAY_NAME;
 use crate::state::{AppState, PROJECT_NAME};
 
 impl AppState {
@@ -205,9 +206,16 @@ impl AppState {
             guard.replace_by(invitations)
         };
 
-        if changed {
+        if changed.changed {
             self.publish_state().await;
             self.schedule_inlets_refresh_now();
+            if changed.new_received_invitation {
+                self.notify(Notification {
+                    kind: Kind::Information,
+                    title: "You have pending invitations".to_string(),
+                    message: "".to_string(),
+                })
+            }
         }
 
         Ok(())
@@ -237,6 +245,7 @@ impl AppState {
                 &cli_state,
                 &invitation,
                 &invitations.accepted.inlets,
+                &self.relay_name().await,
             ) {
                 Ok(inlet_data) => match inlet_data {
                     Some(inlet_data) => {
@@ -457,6 +466,7 @@ impl InletDataFromInvitation {
         cli_state: &CliState,
         invitation: &InvitationWithAccess,
         inlets: &HashMap<String, Inlet>,
+        relay_name: &str,
     ) -> crate::Result<Option<Self>> {
         match &invitation.service_access_details {
             Some(d) => {
@@ -490,8 +500,7 @@ impl InletDataFromInvitation {
                     let project_id = project.id();
                     let local_node_name = format!("ockam_app_{project_id}_{service_name}");
                     let service_route = format!(
-                        "/project/{project_id}/service/{}/secure/api/service/{service_name}",
-                        *RELAY_NAME
+                        "/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}"
                     );
 
                     let inlet = inlets.get(&invitation.invitation.id);
@@ -550,7 +559,7 @@ mod tests {
 
         // InletDataFromInvitation will be none because `service_access_details` is none
         assert!(
-            InletDataFromInvitation::new(&cli_state, &invitation, &inlets)
+            InletDataFromInvitation::new(&cli_state, &invitation, &inlets, "relay_name")
                 .unwrap()
                 .is_none()
         );
@@ -585,9 +594,10 @@ mod tests {
         });
 
         // Validate the inlet data, with no prior inlet data
-        let inlet_data = InletDataFromInvitation::new(&cli_state, &invitation, &inlets)
-            .unwrap()
-            .unwrap();
+        let inlet_data =
+            InletDataFromInvitation::new(&cli_state, &invitation, &inlets, "relay_name")
+                .unwrap()
+                .unwrap();
         assert!(inlet_data.socket_addr.is_none());
 
         // Validate the inlet data, with prior inlet data
@@ -600,9 +610,10 @@ mod tests {
                 enabled: true,
             },
         );
-        let inlet_data = InletDataFromInvitation::new(&cli_state, &invitation, &inlets)
-            .unwrap()
-            .unwrap();
+        let inlet_data =
+            InletDataFromInvitation::new(&cli_state, &invitation, &inlets, "relay_name")
+                .unwrap()
+                .unwrap();
         assert!(inlet_data.socket_addr.is_some());
     }
 }

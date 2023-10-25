@@ -170,7 +170,7 @@ impl AppState {
                 self.notify(Notification {
                     kind: Kind::Information,
                     title: "Creating a new project...".to_string(),
-                    message: "This might take a few seconds".to_string(),
+                    message: "This might take a few minutes".to_string(),
                 });
                 let ctx = &self.context();
                 let project = controller

@@ -102,7 +102,6 @@ impl AppState {
                     node_manager: Arc::new(RwLock::new(node_manager)),
                     model_state: Arc::new(RwLock::new(ModelState::default())),
                     model_state_repository: Arc::new(RwLock::new(model_state_repository)),
-                    // event_manager: std::sync::RwLock::new(EventManager::new()),
                     background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
                     projects: Arc::new(Default::default()),
                     invitations: Arc::new(RwLock::new(InvitationState::default())),

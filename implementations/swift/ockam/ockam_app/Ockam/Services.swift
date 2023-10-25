@@ -12,12 +12,6 @@ struct ServiceGroupView: View {
     var body: some View {
         VStack {
             HStack {
-                Image(systemName: "chevron.backward")
-                    .frame(width: 32, height: 32)
-                    //use opacity to account for space
-                    .opacity(isPictureHovered ? 1 : 0)
-
-                Spacer()
                 ProfilePicture(url: group.imageUrl, size: 32)
                 VStack(alignment: .leading) {
                     if let name = group.name {
@@ -26,11 +20,10 @@ struct ServiceGroupView: View {
                     Text(verbatim: group.email)
                 }
                 Spacer()
-                // to match the 32px icon on the left and keep the content centered
-                Spacer().frame(width: 32, height: 32)
+                Image(systemName: "chevron.down")
+                    .frame(width: 32, height: 32)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(3)
             .background(isPictureHovered ? Color.gray.opacity(0.25) : Color.clear)
             .buttonStyle(PlainButtonStyle())
             .cornerRadius(4)
@@ -68,6 +61,10 @@ struct ServiceGroupButton: View {
                 Text(verbatim: group.email).lineLimit(1)
             }
             Spacer()
+            Circle()
+              .fill(Color.orange)
+              .frame(width: 8)
+              .opacity(group.invitations.isEmpty ? 0 : 1)
             Image(systemName: "chevron.right")
                 .frame(width: 32, height: 32)
         }.onHover { hover in
