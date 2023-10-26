@@ -44,7 +44,8 @@ struct MainView: View {
                             if let name = state.enrollmentName {
                                 Text(verbatim: name).font(.title3).lineLimit(1)
                             }
-                            Text(verbatim: String(format: "Email: %@", state.enrollmentEmail.unsafelyUnwrapped)).foregroundColor(.primary.opacity(0.7))
+                            let email = state.enrollmentEmail.unsafelyUnwrapped
+                            Text(verbatim: "Email: \(email)").foregroundColor(.primary.opacity(0.7))
                         }
                         Spacer()
                     }
