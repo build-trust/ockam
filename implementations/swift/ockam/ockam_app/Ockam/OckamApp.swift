@@ -63,30 +63,7 @@ struct OckamApp: App {
         // Declare a window with an empty view to handle the ockam:// url
         // A hack to overcome the fact that `onOpenURL` only works on `Windows`
         Window("Accepting invitation", id: "accepting-invitation") {
-            EmptyView.init().onOpenURL(perform: { url in
-                if let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false) {
-                    // This host matches the `invitations` segment
-                    var segments = [urlComponents.host]
-                    // The path contains the `accept` and `invitation_id` segments
-                    segments.append(
-                        contentsOf: urlComponents.path.split(
-                            separator: "/", omittingEmptySubsequences: true
-                        )
-                        .map(String.init))
-                    if segments.count >= 3 {
-                        if segments[0] == "invitations" && segments[1] == "accept" {
-                            if state.enrolled {
-                                accept_invitation(segments[2])
-                            } else {
-                                enroll_user_and_accept_invitation(segments[2])
-                            }
-                            return
-                        }
-                    }
-                    print("Ignoring URL \(url)")
-                }
-
-            })
+            OpenUrlView(enrolled: $state.enrolled)
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
