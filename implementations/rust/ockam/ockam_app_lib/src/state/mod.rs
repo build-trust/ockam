@@ -118,10 +118,7 @@ impl AppState {
 
     /// Load a previously persisted ModelState and start refreshing schedule
     pub async fn load_model_state(&'static self) -> ModelState {
-        if self.is_enrolled().await.unwrap_or(false) {
-            // no point in trying to connect without being enrolled
-            self.load_relay_model_state().await;
-        }
+        self.load_relay_model_state().await;
         let cli_state = self.state().await;
 
         match self.model_state_repository.read().await.load().await {

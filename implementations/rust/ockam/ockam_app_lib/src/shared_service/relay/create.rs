@@ -19,6 +19,10 @@ impl AppState {
         cli_state: CliState,
         node_manager: Arc<InMemoryNode>,
     ) {
+        if !self.is_enrolled().await.unwrap_or(false) {
+            debug!("Not enrolled, skipping relay creation");
+            return;
+        }
         self.update_orchestrator_status(OrchestratorStatus::Connecting);
         self.publish_state().await;
         loop {
