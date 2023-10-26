@@ -8,6 +8,7 @@ use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
+use std::time::Duration;
 
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
@@ -19,14 +20,14 @@ pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp
 /// If it's present, its contents will be used and will have priority over the contents
 /// from ./static/controller.id.
 /// How to use: when running a command that spawns a background node or use an embedded node
-/// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
+/// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} occargo clippykam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
 
 /// A default timeout in seconds
 pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
 
 /// Total time in milliseconds to wait for Orchestrator long-running operations to complete
-pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
+pub const ORCHESTRATOR_LONG_OPERATIONS_TIMEOUT: Duration = Duration::from_secs(180);
 
 impl NodeManager {
     pub(crate) async fn create_controller_client(&self) -> Result<Controller> {
