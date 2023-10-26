@@ -175,6 +175,11 @@ void reset_application_state(void);
 void enroll_user(void);
 
 /**
+ * Starts user enrollment and accept the invitation with the provided id.
+ */
+void enroll_user_and_accept_invitation(const char *id);
+
+/**
  * This function retrieve the current version of the application state, for polling purposes.
  */
 struct C_ApplicationState application_state_snapshot(void);

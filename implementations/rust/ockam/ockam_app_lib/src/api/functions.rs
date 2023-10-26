@@ -262,6 +262,19 @@ extern "C" fn enroll_user() {
         .spawn(async move { app_state.enroll_user().await });
 }
 
+/// Starts user enrollment and accept the invitation with the provided id.
+#[no_mangle]
+extern "C" fn enroll_user_and_accept_invitation(id: *const c_char) {
+    let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    app_state.context().runtime().spawn(async {
+        let result = app_state.enroll_user_and_accept_invitation(id).await;
+        if let Err(err) = result {
+            error!(?err, "Couldn't enroll and accept the invitation");
+        }
+    });
+}
+
 /// This function retrieve the current version of the application state, for polling purposes.
 #[no_mangle]
 extern "C" fn application_state_snapshot() -> super::state::c::ApplicationState {

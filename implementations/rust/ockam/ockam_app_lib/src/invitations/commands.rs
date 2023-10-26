@@ -36,6 +36,16 @@ impl AppState {
             return Ok(());
         }
 
+        // Check if invitation exists
+        {
+            let invitations = self.invitations();
+            let reader = invitations.read().await;
+            if !reader.received.invitations.iter().any(|x| x.id == id) {
+                debug!(?id, "Invitation doesn't exist, skipping...");
+                return Ok(());
+            }
+        }
+
         // Update the invitation status to Accepting if it's not already being processed.
         // Otherwise, return early.
         {
