@@ -24,6 +24,7 @@ impl AppState {
         cli_state: &CliState,
     ) {
         if !cli_state.is_enrolled().unwrap_or(false) {
+            debug!("Not enrolled, skipping outlet restoration");
             return;
         }
         let node_manager = self.node_manager().await;
