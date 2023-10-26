@@ -1,0 +1,13 @@
+# TODO
+
+- [ ] Ability to run on local workstation
+  - [ ] Can configure add-on against a private kakfa broker
+    - [x] Created GH Issue to track
+- [x] Kafka broker is running locally
+- [x] Producer is sending data to kafka
+- [x] Consumer can read data from kafka
+- [ ] Producer can send data using Ockam add-on
+- [ ] Telegraf fetching data from kafka as input
+- [ ] Telegraf emitting to InfluxDB over secure channel
+- [ ] Highlight the data is encrypted in the broker
+- [ ] Highlight the data is readable in InfluxDB

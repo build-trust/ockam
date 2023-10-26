@@ -1,0 +1,64 @@
+version: '3'
+
+volumes:
+  influxdb_data:
+
+services:
+  # kafka-ui:
+  #   container_name: kafka-ui
+  #   image: provectuslabs/kafka-ui:latest
+  #   ports:
+  #     - 8080:8080
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: confluentcloud
+  #     KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_SSL
+  #     KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${CONFLUENT_BROKER_HOST}
+  #     KAFKA_CLUSTERS_0_KSQLDBSERVERAUTH_USERNAME: ${CONFLUENT_KEY}
+  #     KAFKA_CLUSTERS_0_KSQLDBSERVERAUTH_PASSWORD: ${CONFLUENT_SECRET}
+  #     KAFKA_CLUSTERS_0_PROPERTIES_CLIENT_DNS_LOOKUP: use_all_dns_ips
+  #     KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username='${CONFLUENT_KEY}' password='${CONFLUENT_SECRET}';
+  #     KAFKA_CLUSTERS_0_DISABLELOGDIRSCOLLECTION: 'true'
+  #     # KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+  #     DYNAMIC_CONFIG_ENABLED: 'true'
+
+  settopbox:
+    build: ./settopbox
+    environment:
+      # KAFKA_HOST: ${CONFLUENT_BROKER_HOST}
+      KAFKA_HOST: 127.0.0.1:5000
+      KAFKA_USERNAME: ${CONFLUENT_KEY}
+      KAFKA_PASSWORD: ${CONFLUENT_SECRET}
+      PRODUCER_TOKEN: ${PRODUCER_TOKEN}
+
+  telegraf:
+    build: ./telegraf
+    environment:
+      OCKAM_PROJECT_NAME: influxdb-demo
+      CONSUMER_TOKEN: ${CONSUMER_TOKEN}
+      OCKAM_TOKEN: ${TELEGRAF_TOKEN}
+      INFLUXDB_HOST: http://localhost:8086 
+      DOCKER_INFLUXDB_INIT_ORG: myorg
+      DOCKER_INFLUXDB_INIT_BUCKET: mybucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: mytoken
+      KAFKA_USERNAME: ${CONFLUENT_KEY}
+      KAFKA_PASSWORD: ${CONFLUENT_SECRET}
+      KAFKA_BROKER: localhost:4000
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+
+  influxdb:
+    build: ./influxdb
+    environment:
+      OCKAM_TOKEN: ${INFLUXDB_TOKEN}
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: myusername
+      DOCKER_INFLUXDB_INIT_PASSWORD: passwordpasswordpassword
+      DOCKER_INFLUXDB_INIT_ORG: myorg
+      DOCKER_INFLUXDB_INIT_BUCKET: mybucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: mytoken
+    volumes:
+      - influxdb_data:/var/lib/influxdb2:rw
+    # ports:
+    #   - 8087:8086
+
