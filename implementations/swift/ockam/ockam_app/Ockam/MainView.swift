@@ -44,22 +44,7 @@ struct MainView: View {
                             if let name = state.enrollmentName {
                                 Text(verbatim: name).font(.title3).lineLimit(1)
                             }
-                            HStack {
-                                VStack(alignment: .trailing) {
-                                    Text("Email:").foregroundColor(.primary.opacity(0.7))
-                                    if state.enrollmentGithubUser != nil {
-                                        Text("GitHub:").foregroundColor(.primary.opacity(0.7))
-                                    }
-                                }
-                                VStack(alignment: .leading) {
-                                    Text(verbatim: state.enrollmentEmail.unsafelyUnwrapped)
-                                        .lineLimit(1)
-                                    if let github = state.enrollmentGithubUser {
-                                        Text(verbatim: github)
-                                            .lineLimit(1)
-                                    }
-                                }
-                            }
+                            Text(verbatim: String(format: "Email: %@", state.enrollmentEmail.unsafelyUnwrapped)).foregroundColor(.primary.opacity(0.7))
                         }
                         Spacer()
                     }
