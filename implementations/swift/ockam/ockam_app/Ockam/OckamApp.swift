@@ -53,21 +53,6 @@ struct OckamApp: App {
                         self.state = state
                     })
                 })
-                .onOpenURL(perform: { url in
-                    // invoked when opening a ockam:// url
-                    let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
-                    if let path = urlComponents?.path {
-                        let segments = path.split(separator: "/", omittingEmptySubsequences: true)
-                            .map(String.init)
-                        if segments.count >= 2 {
-                            if segments[0] == "invitations" && segments[1] == "accept" {
-                                accept_invitation(segments[2])
-                                return
-                            }
-                        }
-                        print("Ignoring URL \(url)")
-                    }
-                })
         } label: {
             Image("MenuBarIcon")
                 .renderingMode(.template)
