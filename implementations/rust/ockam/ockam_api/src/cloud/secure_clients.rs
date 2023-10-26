@@ -26,7 +26,7 @@ pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY
 /// A default timeout in seconds
 pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
 
-/// Total time in milliseconds to wait for Orchestrator long-running operations to complete
+/// Timeout for Orchestrator's long-running operations
 pub const ORCHESTRATOR_LONG_OPERATIONS_TIMEOUT: Duration = Duration::from_secs(180);
 
 impl NodeManager {
