@@ -58,7 +58,7 @@ arboard = "3.2.1"
 async-trait = "0.1"
 clap = { version = "4.4.6", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.4.2"
-clap_mangen = "0.2.14"
+clap_mangen = "0.2.15"
 cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
