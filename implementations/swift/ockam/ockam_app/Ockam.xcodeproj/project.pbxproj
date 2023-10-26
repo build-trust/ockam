@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4CB45C522AEB06C700D27F22 /* OpenUrlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB45C512AEB06C700D27F22 /* OpenUrlView.swift */; };
 		7807276C2ACF5AB500C93A44 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */; };
 		7807276F2ACF5B3400C93A44 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */; };
 		781D00042AD05D26009848FE /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781D00032AD05D26009848FE /* Services.swift */; };
@@ -26,6 +27,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4CB45C512AEB06C700D27F22 /* OpenUrlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenUrlView.swift; sourceTree = "<group>"; };
 		7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		781D00032AD05D26009848FE /* Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services.swift; sourceTree = "<group>"; };
@@ -94,6 +96,7 @@
 				78F5F3032AD4127C00B8D18E /* EmailInput.swift */,
 				78ED0DA02AD4354400574AE9 /* CreateService.swift */,
 				78ED0DA22AD4501200574AE9 /* ShareService.swift */,
+				4CB45C512AEB06C700D27F22 /* OpenUrlView.swift */,
 				7827D5062AD93EE700F7A20F /* ProfilePicture.swift */,
 				7827D5082AD93F1700F7A20F /* ClickableMenuEntry.swift */,
 				78D520822ADD5CAE00F36B64 /* Helpers.swift */,
@@ -203,6 +206,7 @@
 				7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */,
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
 				78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */,
+				4CB45C522AEB06C700D27F22 /* OpenUrlView.swift in Sources */,
 				783B62722AC432B700880261 /* Bridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
