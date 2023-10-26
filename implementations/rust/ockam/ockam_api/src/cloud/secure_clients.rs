@@ -1,6 +1,9 @@
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::error::ApiError;
+use crate::multiaddr_to_route;
+use crate::nodes::NodeManager;
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient, DEFAULT_TIMEOUT};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
@@ -8,10 +11,7 @@ use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
-
-use crate::error::ApiError;
-use crate::multiaddr_to_route;
-use crate::nodes::NodeManager;
+use std::time::Duration;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -22,8 +22,8 @@ pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp
 /// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
 
-/// A default timeout in seconds
-pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
+/// Timeout for receiving a response from the Orchestrator.
+pub const ORCHESTRATOR_DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
 
 /// Total time in milliseconds to wait for Orchestrator long-running operations to complete
 pub const ORCHESTRATOR_AWAIT_TIMEOUT_MS: usize = 60 * 10 * 1000;
