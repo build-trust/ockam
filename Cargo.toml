@@ -26,6 +26,7 @@ members = [
   "implementations/rust/ockam/ockam_transport_websocket",
   "implementations/rust/ockam/ockam_vault",
   "implementations/rust/ockam/ockam_vault_aws",
+  "implementations/rust/ockam/ockam_vault_hashicorp",
   "tools/docs/example_blocks",
   "tools/docs/example_test_helper",
 ]
