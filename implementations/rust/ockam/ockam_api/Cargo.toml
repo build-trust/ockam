@@ -43,7 +43,7 @@ open = "5.0.0"
 petname = { version = "2.0.0-beta.2", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-serde = { version = "1.0.188", features = ["derive"] }
+serde = { version = "1.0.190", features = ["derive"] }
 serde_json = "1.0.107"
 sysinfo = "0.29"
 tempfile = "3.8.0"
