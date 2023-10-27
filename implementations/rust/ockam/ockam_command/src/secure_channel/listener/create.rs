@@ -34,8 +34,8 @@ pub struct CreateCommand {
     #[arg(short, long, value_name = "IDENTIFIERS")]
     authorized: Option<Vec<Identifier>>,
 
-    #[arg(value_name = "VAULT_NAME", long, requires = "identity")]
-    vault: Option<String>,
+    #[arg(value_name = "VAULT_NAME", long, requires = "identity", doc = "Name of the Vault that the secure-channel listener will use"))]
+        vault: Option<String>,
 
     /// Name of the Identity that the secure-channel listener will use
     #[arg(value_name = "IDENTITY_NAME", long)]
