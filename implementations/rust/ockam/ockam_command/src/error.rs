@@ -48,7 +48,7 @@ pub enum Error {
     // InternalError
     #[diagnostic(
     code(OCK500),
-    help("Please report this issue, with a copy of your logs, to https://github.com/build-trust/ockam/issues"),
+    help("Your local state is empty because their are no projects .You can create a project using command    ockam enroll  "),
     url("https://docs.ockam.io/errors/OCK500")
     )]
     #[error("{error_message}")]
