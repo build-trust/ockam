@@ -27,7 +27,7 @@ pub type SmallReceiver<T> = crate::tokio::sync::mpsc::Receiver<T>;
 
 /// Create small channel (size 1)
 pub fn small_channel<T>() -> (SmallSender<T>, SmallReceiver<T>) {
-    crate::tokio::sync::mpsc::channel(1)
+    crate::tokio::sync::mpsc::oneshot::channel()
 }
 
 /// Sender for oneshot channels
