@@ -76,21 +76,27 @@ where
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
-    executor
-        .execute(async move {
-            let child_ctx = ctx
-                .new_detached(
-                    Address::random_tagged("Detached.embedded_node"),
-                    DenyAll,
-                    DenyAll,
-                )
-                .await
-                .expect("Embedded node child ctx can't be created");
-            let r = f(child_ctx, a).await;
-            stop_node(ctx).await;
-            r
+    let res = executor.execute(async move {
+        let child_ctx = ctx
+            .new_detached(
+                Address::random_tagged("Detached.embedded_node"),
+                DenyAll,
+                DenyAll,
+            )
+            .await
+            .expect("Embedded node child ctx can't be created");
+        let r = f(child_ctx, a).await;
+        stop_node(ctx).await;
+        r.map_err(|e| {
+            ockam_core::Error::new(
+                ockam_core::errcode::Origin::Executor,
+                ockam_core::errcode::Kind::Unknown,
+                e,
+            )
         })
-        .into_diagnostic()?
+    });
+    let res = res.map_err(|e| miette::miette!(e));
+    res?.into_diagnostic()
 }
 
 pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
@@ -101,25 +107,33 @@ where
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
-    executor
-        .execute(async move {
-            let child_ctx = ctx
-                .new_detached(
-                    Address::random_tagged("Detached.embedded_node.not_stopped"),
-                    DenyAll,
-                    DenyAll,
-                )
-                .await
-                .expect("Embedded node child ctx can't be created");
-            let result = f(child_ctx, a).await;
-            if result.is_err() {
-                ctx.stop().await.into_diagnostic()?;
-                result
-            } else {
-                result
-            }
+    let res = executor.execute(async move {
+        let child_ctx = ctx
+            .new_detached(
+                Address::random_tagged("Detached.embedded_node.not_stopped"),
+                DenyAll,
+                DenyAll,
+            )
+            .await
+            .expect("Embedded node child ctx can't be created");
+        let result = f(child_ctx, a).await;
+        let result = if result.is_err() {
+            ctx.stop().await?;
+            result
+        } else {
+            result
+        };
+        result.map_err(|e| {
+            ockam_core::Error::new(
+                ockam_core::errcode::Origin::Executor,
+                ockam_core::errcode::Kind::Unknown,
+                e,
+            )
         })
-        .into_diagnostic()?
+    });
+
+    let res = res.map_err(|e| miette::miette!(e));
+    res?.into_diagnostic()
 }
 
 pub fn find_available_port() -> Result<u16> {

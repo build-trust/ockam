@@ -28,8 +28,12 @@ on:
     branches:
       - develop
   schedule:
-    # At 1 am.
-    - cron: "0 1 * * *"
+    # We only save cache when a cron job is started, this is to ensure
+    # that we don't save cache on every push causing excessive caching
+    # and github deleting useful caches we use in our workflows, we now
+    # run a cron job every 2 hours so as to update the cache store with the
+    # latest data so that we don't have stale cache.
+    - cron: "0 */2 * * *"
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -66,19 +70,26 @@ jobs:
         shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer
-
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+        uses: ./.github/actions/cache_nix
         with:
-          key: "${{ github.job }}-${{ matrix.lint_projects }}"
+          cache-unique-id: ${{ matrix.lint_projects }}
+        id: nix-installer
+
+      - uses: ./.github/actions/cache_rust
+        with:
+          job_name: "${{ github.job }}-${{ matrix.lint_projects }}"
 
       - name: Run lint ${{ matrix.lint_projects }}
         run:  make -f implementations/rust/Makefile lint_${{ matrix.lint_projects }}
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
 
   build:
     name: Rust - build${{ matrix.build_projects != 'packages' && format('_{0}', matrix.build_projects) || '' }}
@@ -95,25 +106,36 @@ jobs:
             make_name: 'build_examples'
           - build_projects: nightly
             make_name: 'build'
+          - build_projects: release
+            make_name: 'build_release'
 
     defaults:
       run:
         shell: nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer
-
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+        uses: ./.github/actions/cache_nix
         with:
-          key: "${{ github.job }}-${{ matrix.build_projects }}"
+          cache-unique-id: ${{ matrix.build_projects }}
+        id: nix-installer
+
+      - uses: ./.github/actions/cache_rust
+        with:
+          job_name: "${{ github.job }}-${{ matrix.build_projects }}"
 
       - name: Run build ${{ matrix.build_projects }}
         run:  make -f implementations/rust/Makefile ${{ matrix.make_name }}
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
+
+
 
   test:
     name: Rust - test${{ matrix.test_projects != 'stable' && format('_{0}', matrix.test_projects) || '' }}
@@ -133,19 +155,28 @@ jobs:
           - stable
           - nightly
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer
-
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+        uses: ./.github/actions/cache_nix
         with:
-          key: "${{ github.job }}-${{ matrix.test_projects }}"
+          cache-unique-id: ${{ matrix.test_projects }}
+        id: nix-installer
+
+      - uses: ./.github/actions/cache_rust
+        with:
+          job_name: "${{ github.job }}-${{ matrix.test_projects }}"
 
       - name: Run test on ${{ matrix.test_projects }}
         run:  make -f implementations/rust/Makefile test
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
+
+
 
   check:
     name: Rust - check_${{ matrix.check_projects }}
@@ -165,19 +196,28 @@ jobs:
       run:
         shell: nix develop ./tools/nix#${{matrix.nix_toolchain }} --keep CI --ignore-environment --command bash {0}
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer
-
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+        uses: ./.github/actions/cache_nix
         with:
-          key: "${{ github.job }}-${{ matrix.check_projects }}"
+          cache-unique-id: ${{ matrix.check_projects }}
+        id: nix-installer
+
+      - uses: ./.github/actions/cache_rust
+        with:
+          job_name: "${{ github.job }}-${{ matrix.check_projects }}"
 
       - name: Run check on ${{ matrix.check_projects }}
         run:  make -f implementations/rust/Makefile check${{ matrix.check_projects != 'nightly' && format('_{0}', matrix.check_projects) || '' }}
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
+
+
 
   test_ockam_command:
     name: Rust - test_ockam_command
@@ -193,23 +233,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout ockam cli repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.ockam_command_cli_version != '' && inputs.ockam_command_cli_version || inputs.commit_sha  }}
           path: ockam_cli
 
       - name: Checkout ockam bats repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
 
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+      - uses: ./ockam_bats/.github/actions/cache_rust
         with:
-          workspaces: "ockam_cli -> target"
+          directory_to_cache: "ockam_cli"
+          job_name: ${{ github.job }}
 
       - name: Install Nix
-        uses: ./ockam_bats/.github/actions/nix_installer
+        uses: ./ockam_bats/.github/actions/cache_nix
+        with:
+          cache-unique-id: test_ockam_command
+        id: nix-installer
 
       - name: Build Binary
         working-directory: ockam_cli
@@ -235,6 +279,11 @@ jobs:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
           BATS_TEST_RETRIES: 2
 
+      - name: Nix Upload Store
+        uses: ./ockam_bats/.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
+
+
   ockam_command_cross_build:
     name: Rust - ockam_command_cross_build
     strategy:
@@ -248,14 +297,14 @@ jobs:
           target: armv7-unknown-linux-musleabihf
           use-cross-build: true
         - build: macos_silicon
-          os: macos-latest
+          os: macos-13
           toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.commit_sha }}
 
@@ -293,22 +342,26 @@ jobs:
 
     steps:
       # Run ockam example code against a different version of ockam library
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam_examples
 
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
 
       - name: Install Nix
-        uses: ./ockam_library/.github/actions/nix_installer
-
-      - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+        uses: ./ockam_library/.github/actions/cache_nix
         with:
-          workspaces: "ockam_examples -> target"
+          cache-unique-id: test_docs_rust_library_examples
+        id: nix-installer
+
+      - uses: ./ockam_library/.github/actions/cache_rust
+        with:
+          directory_to_cache: "ockam_examples"
+          job_name: ${{ github.job }}
 
       - name: Move Implementation Directory From Ockam Library To Ockam Examples
         run: |
@@ -319,25 +372,33 @@ jobs:
         shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
         run: cargo test -p hello_ockam
 
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
+
+
   lint_docs_ockam_io_rust_examples:
     name: Rust - lint_docs_ockam_io_rust_examples
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Ockam Repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam
 
       - name: Checkout Ockam Documentation Repository
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ inputs.ockam_docs_ref == '' && 'develop' || inputs.ockam_docs_ref }}
           repository: build-trust/ockam-documentation
           path: ockam-documentation
 
       - name: Install Nix
-        uses: ./ockam/.github/actions/nix_installer
+        uses: ./ockam/.github/actions/cache_nix
+        with:
+          cache-unique-id: lint_docs_ockam_io_rust_examples
+        id: nix-installer
 
       - name: Build Example Blocks
         working-directory: ockam
@@ -345,5 +406,10 @@ jobs:
           nix develop ./tools/nix#rust --keep CI --ignore-environment --command cargo install --path ./tools/docs/example_blocks
 
       - name: Check Rust Documentation
+        if: github.event_name == 'merge_group'
         run: |
           CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
+
+      - name: Nix Upload Store
+        uses: ./ockam/.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}

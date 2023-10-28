@@ -42,19 +42,21 @@ defmodule Ockam.Node do
   def register_address(address, module \\ nil) do
     self = self()
 
-    case Registry.register(address, module) do
+    case Registry.register(address, %{module: module, attributes: %{}}) do
       :ok -> :ok
       {:error, {:already_registered, ^self}} -> :ok
       error -> error
     end
   end
 
-  @spec set_address_module(any(), module()) :: :ok | :error
+  @spec update_address_metadata(any(), (map() -> %{module: module(), attributes: map()})) ::
+          :ok | :error
   @doc """
-  Sets module name for already registered process
+  Sets module name and attributes for already registered process.
+  This can only be called for the process registered at that address itself
   """
-  def set_address_module(address, module) do
-    Registry.set_module(address, module)
+  def update_address_metadata(address, callback) do
+    Registry.update_metadata(address, callback)
   end
 
   @spec get_address_module(any()) :: {:ok, module()} | :error

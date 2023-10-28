@@ -60,11 +60,11 @@ async fn run_impl(
                 &policy_path
             ))
             .machine(&policy_path)
-            .json(serde_json::json!({ "policy": {
+            .json(serde_json::json!({
                 "resource": &cmd.resource.to_string(),
                 "action": &cmd.action.to_string(),
                 "at": &node_name}
-            }))
+            ))
             .write_line()?;
     }
     Ok(())

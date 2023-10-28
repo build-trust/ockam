@@ -8,6 +8,7 @@ defmodule Ockam.Transport.UDP.Listener do
   alias Ockam.Telemetry
   alias Ockam.Transport.UDPAddress
   alias Ockam.Wire
+  alias Ockam.Worker
 
   require Logger
 
@@ -97,7 +98,7 @@ defmodule Ockam.Transport.UDP.Listener do
           decoded
           |> Message.trace(UDPAddress.new(from_ip, from_port))
 
-        with :ok <- Router.route(message) do
+        with :ok <- Worker.route(message, state) do
           {:ok, state}
         end
 

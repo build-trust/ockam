@@ -100,11 +100,14 @@ defmodule Ockam.Messaging.Delivery.ResendPipe.Sender do
 
     receiver_route = Map.get(state, :receiver_route)
 
-    Ockam.Router.route(%{
-      onward_route: receiver_route,
-      return_route: [state.inner_address],
-      payload: wrapped_message
-    })
+    Ockam.Worker.route(
+      %{
+        onward_route: receiver_route,
+        return_route: [state.inner_address],
+        payload: wrapped_message
+      },
+      state
+    )
 
     {:ok, set_confirm_timeout(message, state)}
   end

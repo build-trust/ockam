@@ -201,7 +201,9 @@ defmodule Ockam.Services.Authorization.Tests do
 
   test "static forwarder authorization" do
     {:ok, service} =
-      Ockam.Services.StaticForwarding.create(forwarder_options: [authorization: [:is_local]])
+      Ockam.Services.Relay.StaticForwarding.create(
+        forwarder_options: [authorization: [:is_local]]
+      )
 
     {:ok, test_address} = Ockam.Node.register_random_address()
 
@@ -220,6 +222,12 @@ defmodule Ockam.Services.Authorization.Tests do
       },
       5_000
     )
+
+    on_exit(fn ->
+      Ockam.Node.stop(service)
+      Ockam.Node.stop(forwarder_address)
+      Ockam.Node.unregister_address(test_address)
+    end)
 
     local_message = %Message{
       onward_route: [forwarder_address, "smth"],

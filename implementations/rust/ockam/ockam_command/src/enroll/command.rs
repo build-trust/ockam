@@ -25,6 +25,7 @@ use ockam_api::nodes::InMemoryNode;
 use crate::enroll::OidcServiceExt;
 use crate::identity::initialize_identity_if_default;
 use crate::operation::util::check_for_completion;
+use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
@@ -40,6 +41,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
+    /// The name of an existing identity that you wish to enroll
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,
 
@@ -56,6 +58,12 @@ impl EnrollCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
+    if opts.global_args.output_format == OutputFormat::Json {
+        return Err(miette::miette!(
+            "The flag --output json is invalid for this command."
+        ));
+    }
+
     run_impl(&ctx, opts, cmd).await
 }
 

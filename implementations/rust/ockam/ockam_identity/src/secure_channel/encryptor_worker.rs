@@ -2,7 +2,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, Decodable, Encodable, Route};
 use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
@@ -47,17 +47,30 @@ impl EncryptorWorker {
         // Decode raw payload binary
         let request = EncryptionRequest::decode(&msg.into_transport_message().payload)?;
 
-        // Encrypt the message
-        let encrypted_payload = self.encryptor.encrypt(&request.0).await;
+        let mut should_stop = false;
 
-        let response = match encrypted_payload {
-            Ok(payload) => EncryptionResponse::Ok(payload),
-            Err(err) => EncryptionResponse::Err(err),
+        // Encrypt the message
+        let response = match self.encryptor.encrypt(&request.0).await {
+            Ok(encrypted_payload) => EncryptionResponse::Ok(encrypted_payload),
+            // If encryption failed, that means we have some internal error,
+            // and we may be in an invalid state, it's better to stop the Worker
+            Err(err) => {
+                should_stop = true;
+                error!(
+                    "Error while encrypting: {err} at: {}",
+                    self.addresses.encryptor
+                );
+                EncryptionResponse::Err(err)
+            }
         };
 
         // Send the reply to the caller
         ctx.send_from_address(return_route, response, self.addresses.encryptor_api.clone())
             .await?;
+
+        if should_stop {
+            ctx.stop_worker(self.addresses.encryptor.clone()).await?;
+        }
 
         Ok(())
     }
@@ -85,7 +98,17 @@ impl EncryptorWorker {
         );
 
         // Encrypt the message
-        let encrypted_payload = self.encryptor.encrypt(&msg.encode()?).await?;
+        let encrypted_payload = match self.encryptor.encrypt(&msg.encode()?).await {
+            Ok(encrypted_payload) => encrypted_payload,
+            // If encryption failed, that means we have some internal error,
+            // and we may be in an invalid state, it's better to stop the Worker
+            Err(err) => {
+                let address = self.addresses.encryptor.clone();
+                error!("Error while encrypting: {err} at: {address}");
+                ctx.stop_worker(address).await?;
+                return Ok(());
+            }
+        };
 
         // Send the message to the decryptor on the other side
         ctx.send_from_address(

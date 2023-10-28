@@ -9,7 +9,7 @@ defmodule Ockam.Messaging.ConfirmPipe.Receiver do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   alias Ockam.Messaging.ConfirmPipe.Wrapper
 
@@ -22,7 +22,7 @@ defmodule Ockam.Messaging.ConfirmPipe.Receiver do
 
     case Wrapper.unwrap_message(wrapped_message) do
       {:ok, ref, message} ->
-        Router.route(message)
+        Worker.route(message, state)
         send_confirm(ref, return_route, state)
         {:ok, state}
 
@@ -33,11 +33,14 @@ defmodule Ockam.Messaging.ConfirmPipe.Receiver do
   end
 
   def send_confirm(ref, return_route, state) do
-    Router.route(%{
-      onward_route: return_route,
-      return_route: [state.address],
-      payload: ref_payload(ref)
-    })
+    Worker.route(
+      %{
+        onward_route: return_route,
+        return_route: [state.address],
+        payload: ref_payload(ref)
+      },
+      state
+    )
   end
 
   def ref_payload(ref) do

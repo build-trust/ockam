@@ -1,5 +1,6 @@
 use clap::{arg, Args};
 use colorful::Colorful;
+use indoc::formatdoc;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
@@ -15,7 +16,8 @@ pub struct ShowCommand {
     #[arg()]
     pub credential_name: String,
 
-    #[arg()]
+    /// Name of the Vault from which to retrieve the credential
+    #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 }
 
@@ -33,18 +35,12 @@ async fn run_impl(
         .vault
         .clone()
         .unwrap_or_else(|| default_vault_name(&opts.state));
-    display_credential(&opts, &cmd.credential_name, &vault_name).await
-}
 
-pub(crate) async fn display_credential(
-    opts: &CommandGlobalOpts,
-    cred_name: &str,
-    vault_name: &str,
-) -> miette::Result<()> {
+    let cred_name = &cmd.credential_name;
     let cred = opts.state.credentials.get(cred_name)?;
     let cred_config = cred.config();
 
-    let identities = identities(vault_name, opts).await?;
+    let identities = identities(&vault_name, &opts).await?;
     identities
         .identities_creation()
         .import(
@@ -66,8 +62,15 @@ pub(crate) async fn display_credential(
     };
 
     let cred = cred_config.credential()?;
-    println!("Credential: {cred_name} {is_verified}");
-    println!("{}", CredentialAndPurposeKeyDisplay(cred));
+    let plain = formatdoc!(
+        r#"
+        Credential: {cred_name} {is_verified}
+        {}
+        "#,
+        CredentialAndPurposeKeyDisplay(cred)
+    );
+
+    opts.terminal.stdout().plain(plain).write_line()?;
 
     Ok(())
 }

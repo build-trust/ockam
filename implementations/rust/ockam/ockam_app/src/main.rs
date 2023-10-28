@@ -3,5 +3,5 @@
 
 fn main() {
     #[cfg(desktop)]
-    ockam_app_lib::run();
+    ockam_app::run();
 }

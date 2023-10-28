@@ -40,7 +40,7 @@ defmodule Ockam.Messaging.Ordering.Monotonic.IndexPipe.Receiver do
       {:ok, index, message} ->
         case index_valid?(index, state) do
           true ->
-            Ockam.Router.route(message)
+            Ockam.Worker.route(message, state)
             {:ok, Map.put(state, :current_index, index)}
 
           false ->

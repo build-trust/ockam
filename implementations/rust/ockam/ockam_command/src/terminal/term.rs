@@ -3,7 +3,6 @@
 use std::io::Write;
 
 use console::Term;
-use termimad::crossterm::tty::IsTty;
 
 use crate::terminal::{TerminalStream, TerminalWriter};
 use crate::Result;
@@ -22,7 +21,7 @@ impl TerminalWriter for TerminalStream<Term> {
     }
 
     fn is_tty(&self) -> bool {
-        self.writer.is_tty()
+        self.writer.is_term()
     }
 
     fn write(&mut self, s: impl AsRef<str>) -> Result<()> {

@@ -19,7 +19,7 @@ use crate::{docs, CommandGlobalOpts};
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
-/// List TCP Outlets
+/// List TCP Outlets on the default node
 #[derive(Clone, Debug, Args)]
 #[command(
 before_help = docs::before_help(PREVIEW_TAG),
@@ -73,7 +73,23 @@ async fn run_impl(
         &format!("Outlets on Node {node_name}"),
         &format!("No TCP Outlets found on node {node_name}."),
     )?;
-    opts.terminal.stdout().plain(list).write_line()?;
+    let json: Vec<_> = outlets
+        .list
+        .iter()
+        .map(|outlet| {
+            Ok(serde_json::json!({
+                "alias": outlet.alias,
+                "from": outlet.worker_address()?,
+                "to": outlet.socket_addr,
+            }))
+        })
+        .flat_map(|res: Result<_, ockam_core::Error>| res.ok())
+        .collect();
+    opts.terminal
+        .stdout()
+        .plain(list)
+        .json(serde_json::json!(json))
+        .write_line()?;
 
     Ok(())
 }

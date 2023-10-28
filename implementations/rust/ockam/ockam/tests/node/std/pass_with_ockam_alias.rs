@@ -3,6 +3,6 @@
 use ockam::{self as o};
 
 #[ockam::node]
-async fn main(c: o::Context) {
-    c.stop().await.unwrap();
+async fn main(c: o::Context) -> ockam_core::Result<()> {
+    c.stop().await
 }

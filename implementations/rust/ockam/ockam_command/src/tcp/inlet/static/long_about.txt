@@ -1,1 +1,1 @@
-A TCP inlet is a way of defining where a node should be listening for connections, and where it should forward that traffic to. It receives TCP data, chunks and wraps them into Ockam Routing messages and sends them along the supplied route.
+A TCP inlet is a way of defining where a node should be listening for connections, and where it should forward that traffic to. It is one end (tcp-outlet being the other) of a portal, which receives TCP data, chunks and wraps them into Ockam Routing messages and sends them along the supplied route.

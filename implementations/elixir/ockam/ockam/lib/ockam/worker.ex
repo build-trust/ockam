@@ -1,6 +1,7 @@
 defmodule Ockam.Worker do
   @moduledoc false
 
+  alias Ockam.Message
   alias Ockam.Node
   alias Ockam.Telemetry
   alias Ockam.Worker.Authorization
@@ -8,7 +9,9 @@ defmodule Ockam.Worker do
   require Logger
 
   @callback setup(options :: Keyword.t(), initial_state :: map()) ::
-              {:ok, state :: map()} | {:error, reason :: any()}
+              {:ok, state :: map()}
+              | {:ok, registry_attributes :: map(), state :: map()}
+              | {:error, reason :: any()}
 
   @callback handle_message(message :: Ockam.Message.t(), state :: map()) ::
               {:ok, state :: map()}
@@ -213,8 +216,6 @@ defmodule Ockam.Worker do
   end
 
   def handle_post_init(module, options) do
-    Node.set_address_module(Keyword.fetch!(options, :address), module)
-
     return_value =
       with_init_metric(module, options, fn ->
         with {:ok, address} <- Keyword.fetch(options, :address),
@@ -242,7 +243,7 @@ defmodule Ockam.Worker do
                    Keyword.get(options, :extra_addresses, []),
                    base_state
                  ) do
-            module.setup(options, state)
+            complete_setup(module, options, state)
           end
         else
           :error ->
@@ -262,6 +263,27 @@ defmodule Ockam.Worker do
 
       {:error, reason} ->
         {:stop, reason, {:post_init, options}}
+    end
+  end
+
+  defp complete_setup(module, options, state) do
+    case module.setup(options, state) do
+      {:ok, state} ->
+        Node.update_address_metadata(Keyword.fetch!(options, :address), fn _prev ->
+          %{module: module, attributes: %{}}
+        end)
+
+        {:ok, state}
+
+      {:ok, attrs, state} ->
+        Node.update_address_metadata(Keyword.fetch!(options, :address), fn _prev ->
+          %{module: module, attributes: attrs}
+        end)
+
+        {:ok, state}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -394,6 +416,30 @@ defmodule Ockam.Worker do
       {:error, {:already_registered, _pid}} -> register_random_extra_address(module, state)
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  ## Add Worker Route with state data (https://github.com/build-trust/ockam/issues/3654)
+  def route(message) do
+    Ockam.Router.route(message)
+  end
+
+  def route(message, _state) do
+    route(message)
+  end
+
+  @doc """
+  Routes a message with given payload, onward_route and return_route
+  """
+  def route(payload, onward_route, return_route \\ [], local_metadata \\ %{}, state) do
+    route(
+      %Message{
+        onward_route: onward_route,
+        return_route: return_route,
+        payload: payload,
+        local_metadata: local_metadata
+      },
+      state
+    )
   end
 
   ## Metrics functions

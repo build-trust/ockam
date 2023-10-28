@@ -18,6 +18,13 @@ on:
       - "**.bash"
     branches:
       - develop
+  schedule:
+    # We only save cache when a cron job is started, this is to ensure
+    # that we don't save cache on every push causing excessive caching
+    # and github deleting useful caches we use in our workflows, we now
+    # run a cron job every 2 hours so as to update the cache store with the
+    # latest data so that we don't have stale cache.
+    - cron: "0 */2 * * *"
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -38,7 +45,7 @@ jobs:
     name: Shell - lint_shellcheck
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - run: shellcheck -S error $(find . -not -path "./demos/*" -iname "*.sh" -o -name "*.bash")
@@ -49,12 +56,19 @@ jobs:
     name: Shell - lint_shfmt
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Install Nix
-        uses: ./.github/actions/nix_installer
+        uses: ./.github/actions/cache_nix
+        with:
+          cache-unique-id: shell
+        id: nix-installer
 
       - name: Run Shfmt Check
         run:  nix run ./tools/nix#shfmt-all
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}

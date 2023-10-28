@@ -18,6 +18,7 @@ use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
 /// List Relays
@@ -25,10 +26,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 #[command(
     arg_required_else_help = false,
     before_help = docs::before_help(PREVIEW_TAG),
+    long_about = docs::about(LONG_ABOUT),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
-    ///  List all the relays relaying traffic to the specified node
+    /// Get the list of Relays at the given node
     #[arg(global = true, long, value_name = "NODE")]
     pub to: Option<String>,
 }

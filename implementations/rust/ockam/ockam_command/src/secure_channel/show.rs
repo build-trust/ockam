@@ -1,4 +1,5 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
@@ -6,6 +7,7 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_core::Address;
 
 use crate::node::get_node_name;
+use crate::output::Output;
 use crate::util::parse_node_name;
 use crate::{
     docs,
@@ -49,6 +51,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let response: ShowSecureChannelResponse =
         node.ask(&ctx, api::show_secure_channel(address)).await?;
-    opts.println(&response)?;
+    opts.terminal
+        .stdout()
+        .plain(response.output()?)
+        .json(serde_json::to_string_pretty(&response).into_diagnostic()?)
+        .write_line()?;
     Ok(())
 }

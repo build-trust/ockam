@@ -43,7 +43,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
   Creates a return stream publisher id it doesn't exist
   Routes the message locally with return publisher address in return route
   """
-  def handle_message(data, consumer_stream, subscription_id, stream_options, _state) do
+  def handle_message(data, consumer_stream, subscription_id, stream_options, state) do
     with {:ok, %{return_stream: publisher_stream, message: message}} <-
            decode_message(data) do
       {:ok, publisher_address} =
@@ -56,7 +56,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
 
       forwarded_message = Message.trace(message, publisher_address)
 
-      Ockam.Router.route(forwarded_message)
+      Ockam.Worker.route(forwarded_message, state)
       :ok
     end
   end

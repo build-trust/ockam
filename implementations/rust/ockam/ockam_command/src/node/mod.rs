@@ -28,7 +28,7 @@ pub use create::*;
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-/// Manage nodes
+/// Manage Nodes
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,
@@ -77,6 +77,7 @@ impl NodeCommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
+    /// Perform the command on the given NODE_NAME
     #[arg(global = true, id = "at", value_name = "NODE_NAME", long)]
     pub at_node: Option<String>,
 }

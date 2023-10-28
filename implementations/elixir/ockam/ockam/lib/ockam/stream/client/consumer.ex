@@ -287,11 +287,14 @@ defmodule Ockam.Stream.Client.Consumer do
   end
 
   def route(payload, route, state, timeout \\ @request_timeout) do
-    Ockam.Router.route(%{
-      onward_route: route,
-      return_route: [Map.get(state, :address)],
-      payload: payload
-    })
+    Ockam.Worker.route(
+      %{
+        onward_route: route,
+        return_route: [Map.get(state, :address)],
+        payload: payload
+      },
+      state
+    )
 
     set_request_timeout(state, timeout)
   end

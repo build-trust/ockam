@@ -19,8 +19,8 @@ defmodule Ockam.Examples.Messaging.Shuffle do
     {:ok, state}
   end
 
-  def forward_message(message, _state) do
+  def forward_message(message, state) do
     :timer.sleep(10)
-    Ockam.Router.route(Message.forward(message))
+    Ockam.Worker.route(Message.forward(message), state)
   end
 end

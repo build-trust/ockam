@@ -205,7 +205,7 @@ fn gen_hostname() -> String {
     const LABEL: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789_-";
     fn gen_label<R: Rng>(g: &mut R) -> String {
         let num: usize = g.gen_range(1..=23);
-        String::from_iter(LABEL.chars().choose_multiple(g, num).into_iter())
+        String::from_iter(LABEL.chars().choose_multiple(g, num))
     }
     let mut g = rand::thread_rng();
     let mut v = Vec::new();

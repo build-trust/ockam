@@ -2,7 +2,7 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
   @moduledoc """
   Example of combining reliable delivery with index-ordering deduplication.
 
-  Such combination allows to get low message loss with high uniqness of messages
+  Such combination allows to get low message loss with high uniqueness of messages
   as long as pipes and channels are available and have no errors
   """
 

@@ -135,7 +135,7 @@ defmodule Ockam.Session.Pluggable do
       {:ok, data_state} ->
         case message do
           nil -> :ok
-          %{} -> Ockam.Router.route(message)
+          %{} -> Ockam.Worker.route(message, base_state)
         end
 
         state =
@@ -198,7 +198,9 @@ defmodule Ockam.Session.Pluggable do
     all_addresses = Map.get(state, :all_addresses, [])
 
     Enum.each(all_addresses, fn address ->
-      Ockam.Node.set_address_module(address, module)
+      Ockam.Node.update_address_metadata(address, fn _prev ->
+        %{module: module, attributes: %{}}
+      end)
     end)
   end
 

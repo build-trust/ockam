@@ -1,14 +1,14 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::TcpConnectionOptions;
-use ockam::{node, route, Context};
+use ockam::errcode::{Kind, Origin};
+use ockam::identity::SecureChannelOptions;
+use ockam::{node, route, Context, Result};
+use ockam::{Error, TcpConnectionOptions};
+use ockam_transport_tcp::TcpTransportExtension;
 
 use std::path::PathBuf;
 
-use anyhow::Result;
-use ockam::identity::SecureChannelOptions;
-use ockam_transport_tcp::TcpTransportExtension;
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -63,10 +63,15 @@ async fn main(ctx: Context) -> Result<()> {
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 
     // Open file, send name and size to Receiver then send chunk of files.
-    let mut file = File::open(&opt.input).await?;
-    let metadata = file.metadata().await?;
+    let mut file = File::open(&opt.input)
+        .await
+        .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
+    let metadata = file
+        .metadata()
+        .await
+        .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
     if !metadata.is_file() {
-        anyhow::bail!("Can only transfer a file")
+        return Err(Error::new(Origin::Executor, Kind::Unknown, "not a file"));
     }
 
     // Can safely unwrap the first time because we're sure we have a file because we opened it above

@@ -26,20 +26,23 @@ impl EnrollmentTokenIssuer {
         enroller: &Identifier,
         attrs: HashMap<String, String>,
         token_duration: Option<Duration>,
+        ttl_count: Option<u64>,
     ) -> Result<OneTimeCode> {
         let otc = OneTimeCode::new();
         let max_token_duration = token_duration.unwrap_or(MAX_TOKEN_DURATION);
+        let ttl_count = ttl_count.unwrap_or(1);
         let tkn = Token {
             attrs,
-            generated_by: enroller.clone(),
-            time: Instant::now(),
-            max_token_duration,
+            issued_by: enroller.clone(),
+            created_at: Instant::now(),
+            ttl: max_token_duration,
+            ttl_count,
         };
         self.0
             .tokens
             .write()
             .map(|mut r| {
-                r.put(*otc.code(), tkn);
+                r.insert(*otc.code(), tkn);
                 otc
             })
             .map_err(|_| {
@@ -74,9 +77,11 @@ impl Worker for EnrollmentTokenIssuer {
             let res = match (req.method(), req.path()) {
                 (Some(Method::Post), "/") | (Some(Method::Post), "/tokens") => {
                     let att: CreateToken = dec.decode()?;
-                    let duration = att.token_duration();
+                    let duration = att.ttl_secs().map(Duration::from_secs);
+                    let ttl_count = att.ttl_count();
+                    // TODO: Use ttl_duration
                     match self
-                        .issue_token(&from, att.into_owned_attributes(), duration)
+                        .issue_token(&from, att.into_owned_attributes(), duration, ttl_count)
                         .await
                     {
                         Ok(otc) => Response::ok(&req).body(&otc).to_vec()?,
@@ -171,6 +176,7 @@ pub trait TokenIssuer {
         ctx: &Context,
         attributes: HashMap<&str, &str>,
         duration: Option<Duration>,
+        ttl_count: Option<u64>,
     ) -> miette::Result<OneTimeCode>;
 }
 
@@ -181,12 +187,14 @@ impl TokenIssuer for AuthorityNode {
         ctx: &Context,
         attributes: HashMap<&str, &str>,
         duration: Option<Duration>,
+        ttl_count: Option<u64>,
     ) -> miette::Result<OneTimeCode> {
-        let req = Request::post("/").body(
-            CreateToken::new()
-                .with_attributes(attributes)
-                .with_duration(duration),
-        );
+        let body = CreateToken::new()
+            .with_attributes(attributes)
+            .with_ttl(duration)
+            .with_ttl_count(ttl_count);
+
+        let req = Request::post("/").body(body);
         self.0
             .ask(ctx, DefaultAddress::ENROLLMENT_TOKEN_ISSUER, req)
             .await

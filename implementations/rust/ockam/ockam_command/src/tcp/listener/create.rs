@@ -1,16 +1,18 @@
+use crate::util::{node_rpc, parse_node_name};
+use crate::{docs, fmt_log, CommandGlobalOpts};
+use crate::{
+    fmt_ok,
+    node::{get_node_name, initialize_node_if_default},
+};
 use clap::Args;
+use colorful::Colorful;
 use miette::IntoDiagnostic;
-
 use ockam_api::nodes::models::transport::{CreateTcpListener, TransportStatus};
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, parse_node_name};
-use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -54,7 +56,14 @@ async fn run_impl(
         .push_back(DnsAddr::new("localhost"))
         .into_diagnostic()?;
     multiaddr.push_back(Tcp::new(port)).into_diagnostic()?;
-    println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`");
+
+    opts.terminal
+        .stdout()
+        .plain(
+            fmt_ok!("Tcp listener created! You can send messages to it via this route:\n")
+                + &fmt_log!("{multiaddr}"),
+        )
+        .write_line()?;
 
     Ok(())
 }

@@ -395,6 +395,7 @@ impl OckamCommand {
             let guard = setup_logging(
                 options.global_args.verbose,
                 options.global_args.no_color,
+                options.terminal.is_tty(),
                 log_path,
             );
             tracing::debug!("{}", Version::short());
