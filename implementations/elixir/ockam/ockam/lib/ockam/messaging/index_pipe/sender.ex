@@ -23,7 +23,7 @@ defmodule Ockam.Messaging.IndexPipe.Sender do
   @impl true
   def handle_message(message, state) do
     {indexed_message, state} = make_indexed_message(message, state)
-    Ockam.Router.route(indexed_message)
+    Ockam.Worker.route(indexed_message, state)
     {:ok, state}
   end
 

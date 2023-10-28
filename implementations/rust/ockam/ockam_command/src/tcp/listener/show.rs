@@ -1,4 +1,5 @@
 use clap::Args;
+use indoc::formatdoc;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
@@ -47,12 +48,25 @@ async fn run_impl(
         )
         .await?;
 
-    println!("TCP Listener:");
-    println!("  Type: {}", transport_status.tt);
-    println!("  Mode: {}", transport_status.tm);
-    println!("  Socket address: {}", transport_status.socket_addr);
-    println!("  Worker address: {}", transport_status.processor_address);
-    println!("  Flow Control Id: {}", transport_status.flow_control_id);
+    let TransportStatus {
+        tt,
+        tm,
+        socket_addr,
+        processor_address,
+        flow_control_id,
+        ..
+    } = transport_status;
+
+    let plain = formatdoc! {r#"
+        TCP Listener:
+          Type: {tt}
+          Mode: {tm}
+          Socket address: {socket_addr}
+          Worker address: {processor_address}
+          Flow Control Id: {flow_control_id}
+    "#};
+
+    opts.terminal.stdout().plain(plain).write_line()?;
 
     Ok(())
 }

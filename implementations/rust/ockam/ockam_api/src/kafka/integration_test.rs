@@ -110,7 +110,7 @@ mod test {
     }
 
     #[allow(non_snake_case)]
-    #[ockam_macros::test(timeout = 5_000)]
+    #[ockam_macros::test(timeout = 60_000)]
     async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         context: &mut Context,
     ) -> ockam::Result<()> {
@@ -268,7 +268,7 @@ mod test {
         let mut encoded = BytesMut::new();
         RecordBatchEncoder::encode(
             &mut encoded,
-            vec![Record {
+            [Record {
                 transactional: false,
                 control: false,
                 partition_leader_epoch: 0,

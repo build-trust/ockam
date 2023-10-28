@@ -4,7 +4,6 @@ use ockam_core::env::{get_env, get_env_with_default, FromString};
 use std::io::stdout;
 use std::path::PathBuf;
 use std::str::FromStr;
-use termimad::crossterm::tty::IsTty;
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt::layer;
@@ -58,6 +57,7 @@ impl std::fmt::Display for LogFormat {
 pub fn setup_logging(
     verbose: u8,
     no_color: bool,
+    is_tty: bool,
     log_path: Option<PathBuf>,
 ) -> Option<WorkerGuard> {
     let level = {
@@ -102,7 +102,7 @@ pub fn setup_logging(
     let (appender, guard) = match log_path {
         // If a log path is not provided, log to stdout.
         None => {
-            let color = !no_color && stdout().is_tty();
+            let color = !no_color && is_tty;
             let (n, guard) = tracing_appender::non_blocking(stdout());
             let appender = layer().with_ansi(color).with_writer(n);
             (Box::new(appender), guard)

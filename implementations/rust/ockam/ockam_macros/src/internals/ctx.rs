@@ -26,7 +26,7 @@ impl Context {
         }
     }
 
-    /// Add an error to the context object with a tokenenizable object.
+    /// Add an error to the context object with a tokenizable object.
     ///
     /// The object is used for spanning in error messages.
     pub(crate) fn error_spanned_by<A: ToTokens, T: Display>(&self, obj: A, msg: T) {

@@ -77,7 +77,7 @@ defmodule Ockam.Messaging.Ordering.Strict.IndexPipe.Receiver do
   end
 
   def send_message(index, message, state) do
-    Ockam.Router.route(message)
+    Ockam.Worker.route(message, state)
     state = Map.put(state, :current_index, index)
     process_queue(state)
   end

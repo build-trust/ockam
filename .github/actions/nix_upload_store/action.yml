@@ -1,0 +1,17 @@
+name: Nix Cache
+description: Cache Nix File To Temporary Directory
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        sudo systemctl stop nix-daemon
+        sudo chown -R "${USER}:" /nix
+
+        sudo mkdir -p /tmp/nix-cache/store && sudo mv /nix/store/* /tmp/nix-cache/store/
+        sudo mkdir -p /tmp/nix-cache/var/nix/db && sudo cp -r /nix/var/nix/db/db.sqlite /tmp/nix-cache/var/nix/db && rm -rf /nix/var/nix/db/db.sqlite
+        sudo mkdir -p /tmp/nix-cache/var/nix/profiles && sudo cp -r /nix/var/nix/profiles/per-user /tmp/nix-cache/var/nix/profiles && rm -rf /nix/var/nix/profiles/per-user
+        sudo mkdir -p /tmp/nix-cache/var/nix/profiles/default && sudo cp -r /nix/var/nix/profiles/default/bin /tmp/nix-cache/var/nix/profiles/default && rm -rf /nix/var/nix/profiles/default/bin
+
+        sudo rm -rf /nix

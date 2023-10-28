@@ -83,10 +83,10 @@ impl Executor {
     /// Any errors encountered by the router or provided application
     /// code will be returned from this function.
     #[cfg(feature = "std")]
-    pub fn execute<F>(&mut self, future: F) -> Result<F::Output>
+    pub fn execute<F, T>(&mut self, future: F) -> Result<F::Output>
     where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
+        F: Future<Output = Result<T>> + Send + 'static,
+        T: Send + 'static,
     {
         // Spawn the metrics collector first
         #[cfg(feature = "metrics")]
@@ -95,6 +95,8 @@ impl Executor {
         self.rt.spawn(self.metrics.clone().run(alive.clone()));
 
         // Spawn user code second
+        let sender = self.sender();
+        let future = Executor::wrapper(sender, future);
         let join_body = self.rt.spawn(future);
 
         // Then block on the execution of the router
@@ -111,6 +113,30 @@ impl Executor {
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
 
         Ok(res)
+    }
+
+    /// Wrapper around the user provided future that will shut down the node on error
+    #[cfg(feature = "std")]
+    async fn wrapper<F, T>(sender: SmallSender<NodeMessage>, future: F) -> Result<T>
+    where
+        F: Future<Output = Result<T>> + Send + 'static,
+    {
+        match future.await {
+            Ok(val) => Ok(val),
+            Err(e) => {
+                // We earlier sent the AbortNode message to the router here.
+                // It failed because the router state was not set to `Stopping`
+                // But sending Gracefull shutdown message works because, it internally does that.
+                //
+                // I think way AbortNode is implemented right now, it is more of an
+                // internal/private message not meant to be directly used, without changing the
+                // router state.
+                let (req, mut rx) = NodeMessage::stop_node(crate::ShutdownType::Graceful(1));
+                let _ = sender.send(req).await;
+                let _ = rx.recv().await;
+                Err(e)
+            }
+        }
     }
 
     /// Execute a future and block until a result is returned

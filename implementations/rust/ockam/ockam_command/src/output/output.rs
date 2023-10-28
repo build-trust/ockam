@@ -375,26 +375,6 @@ impl Output for VaultState {
         )?;
         Ok(output)
     }
-
-    fn list_output(&self) -> Result<String> {
-        let mut output = String::new();
-        writeln!(
-            output,
-            "Vault {}",
-            self.name().color(OckamColor::PrimaryResource.color())
-        )?;
-        write!(
-            output,
-            "Type {}",
-            match self.config().is_aws() {
-                true => "AWS KMS",
-                false => "OCKAM",
-            }
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
-        )?;
-        Ok(output)
-    }
 }
 
 fn human_readable_time(time: TimestampInSeconds) -> String {
@@ -675,6 +655,22 @@ impl fmt::Display for VerifyingPublicKeyDisplay {
                 write!(f, "ECDSASHA256CurveP256: {}", hex::encode(value.0))
             }
         }
+    }
+}
+
+impl Serialize for VerifyingPublicKeyDisplay {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&match &self.0 {
+            VerifyingPublicKey::EdDSACurve25519(value) => {
+                format!("EdDSACurve25519: {}", hex::encode(value.0))
+            }
+            VerifyingPublicKey::ECDSASHA256CurveP256(value) => {
+                format!("ECDSASHA256CurveP256: {}", hex::encode(value.0))
+            }
+        })
     }
 }
 

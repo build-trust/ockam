@@ -15,7 +15,7 @@ mod util;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
-/// Manage spaces in Ockam Orchestrator
+/// Manage Spaces in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,

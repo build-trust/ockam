@@ -1,7 +1,7 @@
 use clap::Args;
-use rand::prelude::random;
 
 use ockam::Context;
+use ockam_api::cli_state::random_name;
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
@@ -27,7 +27,7 @@ pub struct CreateCommand {
     pub space_name: String,
 
     /// Name of the project - must be unique within parent Space
-    #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_project_name)]
+    #[arg(display_order = 1002, default_value_t = random_name(), hide_default_value = true, value_parser = validate_project_name)]
     pub project_name: String,
 
     #[command(flatten)]

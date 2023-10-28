@@ -26,11 +26,13 @@ use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 
-/// Create Relays
+/// Create a Relay
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = false,
+    long_about = docs::about(LONG_ABOUT),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {

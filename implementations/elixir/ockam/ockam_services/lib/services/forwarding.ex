@@ -12,7 +12,7 @@ defmodule Ockam.Services.Forwarding do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -58,7 +58,7 @@ defmodule Ockam.Services.Forwarding.Forwarder do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -83,7 +83,7 @@ defmodule Ockam.Services.Forwarding.Forwarder do
     route_to_forward = route ++ onward_route
     Logger.info("Alias forward #{inspect(message)} to #{inspect(route_to_forward)}")
 
-    Router.route(Message.set_onward_route(message, route_to_forward))
+    Worker.route(Message.set_onward_route(message, route_to_forward), state)
 
     {:ok, state}
   end
@@ -96,6 +96,6 @@ defmodule Ockam.Services.Forwarding.Forwarder do
     }
 
     Logger.info("REGISTER OK: #{inspect(reply)}")
-    Router.route(reply)
+    Worker.route(reply, state)
   end
 end

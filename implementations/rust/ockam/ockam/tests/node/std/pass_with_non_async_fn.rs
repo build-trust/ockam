@@ -1,4 +1,4 @@
 #[ockam::node]
-fn main(ctx: ockam::Context) {
-    ctx.stop().await.unwrap();
+fn main(ctx: ockam::Context) -> ockam_core::Result<()> {
+    ctx.stop().await
 }

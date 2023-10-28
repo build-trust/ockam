@@ -71,32 +71,48 @@ defmodule Ockam.Node.Registry do
   # This function is used in custom process registration
   #
   # Module should be the worker implementation module
-  def register(address, module) do
-    case Registry.register(__MODULE__, address, module) do
+  def register(address, meta) when is_map(meta) or is_nil(meta) do
+    case Registry.register(__MODULE__, address, meta) do
       {:ok, _owner} -> :ok
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec set_module(any(), module()) :: :ok | :error
+  @spec update_metadata(address :: any(), callback :: (map() -> map())) :: :ok | :error
   @doc false
-  # Set worker module for the current process
+  # Set worker metadata for the current process
   #
   # This function is called from the worker behaviour
-  # Module is not set when registering with register_name from `:via` option
-  # so this function needs to be called to set it after the process is created
-  def set_module(address, module) do
-    case Registry.update_value(__MODULE__, address, fn _old -> module end) do
+  # Metadata is not set when registering with register_name from `:via` option
+  # so this function needs to be called to set it after the process is created,
+  # and whenever we want to update it
+  def update_metadata(address, callback) do
+    case Registry.update_value(__MODULE__, address, callback) do
       :error -> :error
       {_new, _old} -> :ok
     end
   end
 
-  @spec lookup(address :: any()) :: {:ok, pid, module} | :error
+  @spec lookup(address :: any()) :: {:ok, pid(), module() | nil} | :error
   def lookup(address) do
     case Registry.lookup(__MODULE__, address) do
-      [{pid, module}] -> {:ok, pid, module}
+      [{pid, nil}] -> {:ok, pid, nil}
+      [{pid, meta}] when is_map(meta) -> {:ok, pid, Map.get(meta, :module)}
       [] -> :error
     end
+  end
+
+  @spec lookup_meta(address :: any()) :: {:ok, map()} | :error
+  def lookup_meta(address) do
+    case Registry.lookup(__MODULE__, address) do
+      [{_pid, nil}] -> {:ok, %{}}
+      [{_pid, meta}] when is_map(meta) -> {:ok, meta}
+      [] -> :error
+    end
+  end
+
+  def select_by_attribute(name, value) do
+    Registry.select(__MODULE__, [{{:_, :_, %{attributes: %{name => value}}}, [], [{{:"$_"}}]}])
+    |> Enum.map(fn {{addr, {_pid, %{attributes: attributes}}}} -> {addr, attributes} end)
   end
 end

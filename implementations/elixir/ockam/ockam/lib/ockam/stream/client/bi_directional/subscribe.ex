@@ -86,7 +86,7 @@ defmodule Ockam.Stream.Client.BiDirectional.Subscribe do
             Map.fetch!(state, :stream_options)
           )
 
-        Ockam.Router.route(Message.reply(message, address, "irrelevant"))
+        Ockam.Worker.route(Message.reply(message, address, "irrelevant"), state)
 
       other ->
         Logger.error("Unexpected message: #{inspect(other)}")

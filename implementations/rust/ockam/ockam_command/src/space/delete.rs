@@ -65,7 +65,7 @@ async fn run_impl(
             .stdout()
             .plain(fmt_ok!("Space with name '{}' has been deleted.", &cmd.name))
             .machine(&cmd.name)
-            .json(serde_json::json!({ "space": { "name": &cmd.name } }))
+            .json(serde_json::json!({ "name": &cmd.name }))
             .write_line()?;
     }
     Ok(())

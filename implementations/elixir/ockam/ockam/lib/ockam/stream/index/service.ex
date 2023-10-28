@@ -109,16 +109,19 @@ defmodule Ockam.Stream.Index.Service do
   end
 
   def reply_index(protocol, client_id, stream_name, partition, index, return_route, state) do
-    Ockam.Router.route(%{
-      onward_route: return_route,
-      return_route: [state.address],
-      payload:
-        encode_payload(protocol, %{
-          client_id: client_id,
-          stream_name: stream_name,
-          partition: partition,
-          index: index
-        })
-    })
+    Ockam.Worker.route(
+      %{
+        onward_route: return_route,
+        return_route: [state.address],
+        payload:
+          encode_payload(protocol, %{
+            client_id: client_id,
+            stream_name: stream_name,
+            partition: partition,
+            index: index
+          })
+      },
+      state
+    )
   end
 end

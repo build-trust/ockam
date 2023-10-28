@@ -18,7 +18,8 @@ use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
-    #[arg(long = "as")]
+    /// Name of the Identity to be used as the credential issuer
+    #[arg(long = "as", value_name = "IDENTITY_NAME")]
     pub as_identity: Option<String>,
 
     #[arg(long = "for", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
@@ -28,7 +29,8 @@ pub struct IssueCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     pub attributes: Vec<String>,
 
-    #[arg()]
+    /// Name of the Vault that will be used to issue the credential.
+    #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 
     /// Encoding Format

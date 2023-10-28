@@ -18,7 +18,7 @@ defmodule Ockam.Messaging.PipeChannel.Simple do
 
   alias Ockam.Message
 
-  alias Ockam.Router
+  alias Ockam.Worker
 
   @impl true
   def inner_setup(options, state) do
@@ -44,7 +44,7 @@ defmodule Ockam.Messaging.PipeChannel.Simple do
   ## Inner message is forwarded with outer address in return route
   def forward_inner(message, state) do
     message = Message.forward(message) |> Message.trace(state.address)
-    Router.route(message)
+    Worker.route(message, state)
   end
 
   @doc false
@@ -59,6 +59,6 @@ defmodule Ockam.Messaging.PipeChannel.Simple do
 
     message = Message.set_onward_route(message, [sender | channel_route ++ onward_route])
 
-    Router.route(message)
+    Worker.route(message, state)
   end
 end

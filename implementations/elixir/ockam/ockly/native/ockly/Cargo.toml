@@ -20,4 +20,4 @@ ockam_vault = { path = "../../../../../rust/ockam/ockam_vault" }
 ockam_vault_aws = { path = "../../../../../rust/ockam/ockam_vault_aws" }
 # Enable credentials-sso feature in ockam_vault_aws for use on sso environments (like dev machines)
 rustler = "0.29.1"
-tokio = "1.31.0"
+tokio = "1.33.0"

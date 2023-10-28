@@ -4,6 +4,7 @@ use self::create::CreateCommand;
 use crate::CommandGlobalOpts;
 use clap::{command, Args, Subcommand};
 
+/// Manage Kafka Outlets
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct KafkaOutletCommand {

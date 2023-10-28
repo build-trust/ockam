@@ -14,8 +14,8 @@ defmodule Ockam.Transport.Portal.InletWorker do
 
   use Ockam.Worker
   alias Ockam.Message
-  alias Ockam.Router
   alias Ockam.Transport.Portal.TunnelProtocol
+  alias Ockam.Worker
   require Logger
 
   @impl true
@@ -33,11 +33,14 @@ defmodule Ockam.Transport.Portal.InletWorker do
     # The listener process has set us as the socket' controlling process.
     # From this point on, it's safe to set the socket to active mode at any time.
     :ok =
-      Router.route(%Message{
-        payload: TunnelProtocol.encode(:ping),
-        onward_route: state.peer_route,
-        return_route: [state.address]
-      })
+      Worker.route(
+        %Message{
+          payload: TunnelProtocol.encode(:ping),
+          onward_route: state.peer_route,
+          return_route: [state.address]
+        },
+        state
+      )
 
     {:noreply, Map.merge(state, %{stage: :wait_for_pong, socket: socket})}
   end
@@ -54,10 +57,13 @@ defmodule Ockam.Transport.Portal.InletWorker do
     :ok = :inet.setopts(socket, active: :once)
 
     :ok =
-      Router.route(%Message{
-        payload: TunnelProtocol.encode({:payload, data}),
-        onward_route: peer_route
-      })
+      Worker.route(
+        %Message{
+          payload: TunnelProtocol.encode({:payload, data}),
+          onward_route: peer_route
+        },
+        state
+      )
 
     {:noreply, state}
   end
@@ -66,17 +72,26 @@ defmodule Ockam.Transport.Portal.InletWorker do
     Logger.info("Socket closed")
 
     :ok =
-      Router.route(%Message{
-        payload: TunnelProtocol.encode(:disconnect),
-        onward_route: peer_route
-      })
+      Worker.route(
+        %Message{
+          payload: TunnelProtocol.encode(:disconnect),
+          onward_route: peer_route
+        },
+        state
+      )
 
     {:stop, :normal, state}
   end
 
   def handle_info({:tcp_error, _socket, reason}, %{peer: peer} = state) do
     Logger.info("Socket error: #{inspect(reason)}")
-    :ok = Router.route(%Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer})
+
+    :ok =
+      Worker.route(
+        %Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer},
+        state
+      )
+
     {:stop, {:error, reason}, state}
   end
 

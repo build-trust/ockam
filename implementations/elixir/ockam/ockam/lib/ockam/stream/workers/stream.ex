@@ -217,11 +217,14 @@ defmodule Ockam.Stream.Workers.Stream do
 
   defp send_reply(data, reply_route, state) do
     :ok =
-      Ockam.Router.route(%{
-        onward_route: reply_route,
-        return_route: [state.address],
-        payload: data
-      })
+      Ockam.Worker.route(
+        %{
+          onward_route: reply_route,
+          return_route: [state.address],
+          payload: data
+        },
+        state
+      )
   end
 
   ### Encode helpers

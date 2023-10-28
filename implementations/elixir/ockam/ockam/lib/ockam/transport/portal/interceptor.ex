@@ -34,8 +34,8 @@ defmodule Ockam.Transport.Portal.Interceptor do
   use Ockam.AsymmetricWorker
 
   alias Ockam.Message
-  alias Ockam.Router
   alias Ockam.Transport.Portal.TunnelProtocol
+  alias Ockam.Worker
 
   ## TODO: enforce that on inlet/outlet level
   @max_payload_size 48 * 1024
@@ -143,7 +143,7 @@ defmodule Ockam.Transport.Portal.Interceptor do
   defp send_disconnect(state) do
     case Map.fetch(state, :ping_route) do
       {:ok, route} ->
-        Router.route(TunnelProtocol.encode(:disconnect), route)
+        Worker.route(TunnelProtocol.encode(:disconnect), route, [], %{}, state)
 
       :error ->
         :ok
@@ -151,7 +151,7 @@ defmodule Ockam.Transport.Portal.Interceptor do
 
     case Map.fetch(state, :pong_route) do
       {:ok, route} ->
-        Router.route(TunnelProtocol.encode(:disconnect), route)
+        Worker.route(TunnelProtocol.encode(:disconnect), route, [], %{}, state)
 
       :error ->
         :ok
@@ -177,7 +177,7 @@ defmodule Ockam.Transport.Portal.Interceptor do
     |> Message.trace(return_address)
     |> Message.set_payload(new_payload)
     |> Message.set_local_metadata(%{})
-    |> Router.route()
+    |> Worker.route(state)
   end
 
   defp handle_tunnel_message(type, %Message{payload: payload} = message, state) do

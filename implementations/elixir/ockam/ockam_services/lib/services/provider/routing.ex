@@ -6,11 +6,11 @@ defmodule Ockam.Services.Provider.Routing do
 
   @behaviour Ockam.Services.Provider
 
-  alias Ockam.Services.API.StaticForwarding, as: StaticForwardingAPI
   alias Ockam.Services.Echo, as: EchoService
   alias Ockam.Services.Forwarding, as: ForwardingService
   alias Ockam.Services.PubSub, as: PubSubService
-  alias Ockam.Services.StaticForwarding, as: StaticForwardingService
+  alias Ockam.Services.Relay.StaticForwarding
+  alias Ockam.Services.Relay.StaticForwardingAPI
   alias Ockam.Services.Tracing, as: TracingService
 
   ## TODO: API to start all services in a provider?
@@ -39,7 +39,7 @@ defmodule Ockam.Services.Provider.Routing do
   end
 
   def child_spec(:static_forwarding, args) do
-    {StaticForwardingService,
+    {StaticForwarding,
      Keyword.merge(
        [
          address: "static_forwarding",

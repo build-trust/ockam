@@ -1,8 +1,14 @@
 use clap::Args;
+use colorful::Colorful;
 use miette::IntoDiagnostic;
+use std::fmt::Write;
 
 use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_api::cli_state::StateItemTrait;
+use ockam_api::cli_state::VaultConfig;
 
+use crate::output::Output;
+use crate::terminal::OckamColor;
 use crate::util::local_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -25,13 +31,68 @@ impl ListCommand {
     }
 }
 
+#[derive(serde::Serialize)]
+pub struct VaultListOutput {
+    name: String,
+    #[serde(flatten)]
+    config: VaultConfig,
+    is_default: bool,
+}
+
+impl VaultListOutput {
+    pub fn new(name: String, config: VaultConfig, is_default: bool) -> Self {
+        Self {
+            name,
+            config,
+            is_default,
+        }
+    }
+}
+
+impl Output for VaultListOutput {
+    fn output(&self) -> crate::error::Result<String> {
+        let mut output = String::new();
+        writeln!(
+            output,
+            "Vault {} {}",
+            self.name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            if self.is_default { "(default)" } else { "" }
+        )?;
+        write!(
+            output,
+            "Type {}",
+            match self.config.is_aws() {
+                true => "AWS KMS",
+                false => "OCKAM",
+            }
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+        )?;
+        Ok(output)
+    }
+}
+
 fn run_impl(opts: CommandGlobalOpts) -> miette::Result<()> {
     let vaults = opts.state.vaults.list()?;
+
+    let output = vaults
+        .iter()
+        .map(|v| {
+            VaultListOutput::new(
+                v.name().to_string(),
+                v.config().clone(),
+                opts.state.vaults.is_default(v.name()).unwrap_or(false),
+            )
+        })
+        .collect::<Vec<VaultListOutput>>();
+
     let plain = opts
         .terminal
-        .build_list(&vaults, "Vaults", "No vaults found on this system.")?;
+        .build_list(&output, "Vaults", "No vaults found on this system.")?;
 
-    let json = serde_json::to_string_pretty(&vaults).into_diagnostic()?;
+    let json = serde_json::to_string_pretty(&output).into_diagnostic()?;
 
     opts.terminal
         .stdout()

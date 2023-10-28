@@ -43,6 +43,7 @@ impl BackgroundNode {
         cli_state: &CliState,
         node_name: &str,
     ) -> miette::Result<BackgroundNode> {
+        cli_state.nodes.get(node_name)?;
         Ok(BackgroundNode {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),

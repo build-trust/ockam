@@ -1,0 +1,58 @@
+name: Nix Installer
+description: Nix Installer
+
+inputs:
+  cache-unique-id:
+    description: Unique ID to differentiate caches
+    required: true
+
+outputs:
+  cache-hit:
+    description: Whether the cache was restored or not
+    value: ${{ steps.nix-restore-and-save.outputs.cache-hit == 'true' || steps.nix-restore.outputs.cache-hit == 'true' }}
+
+runs:
+  using: composite
+  steps:
+    - name: Restore and Save Cache
+      id: nix-restore-and-save
+      if: ${{ github.event_name == 'schedule' }}
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84
+      with:
+        path: |
+          /tmp/nix-cache
+        key: nix-cache-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ inputs.cache-unique-id }}-${{ hashFiles('**/flake.lock') }}
+
+    - name: Restore Cache
+      id: nix-restore
+      if: ${{ github.event_name != 'schedule' }}
+      uses: actions/cache/restore@704facf57e6136b1bc63b828d79edcd491f0ee84
+      with:
+        path: |
+          /tmp/nix-cache
+        key: nix-cache-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ inputs.cache-unique-id }}-${{ hashFiles('**/flake.lock') }}
+
+    - name: Restore Cached Path
+      if: ${{ steps.nix-restore-and-save.outputs.cache-hit == 'true' || steps.nix-restore.outputs.cache-hit == 'true' }}
+      shell: bash
+      run: |
+        set -ex
+        sudo mkdir -p /nix
+        sudo chown -R "${USER}:" /nix
+
+        sudo mkdir /etc/nix
+        echo "extra-experimental-features = flakes" > nix.conf
+        echo "extra-experimental-features = nix-command" >> nix.conf
+
+        sudo mv nix.conf /etc/nix/nix.conf
+
+        sudo mv /tmp/nix-cache/** /nix
+
+        echo "/nix/var/nix/profiles/per-user/root/profile/bin" >> $GITHUB_PATH
+        echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
+
+        sudo chown -R "${USER}:" /nix
+
+    - name: Install Nix If There Is No Cache
+      if: ${{ steps.nix-restore-and-save.outputs.cache-hit != 'true' && steps.nix-restore.outputs.cache-hit != 'true' }}
+      uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9

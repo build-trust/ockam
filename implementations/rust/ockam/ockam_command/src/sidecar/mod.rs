@@ -8,7 +8,7 @@ use crate::sidecar::secure_relay_outlet::SecureRelayOutlet;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
-/// Manage nodes
+/// Manage Sidecars
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,

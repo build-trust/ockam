@@ -2,7 +2,7 @@ defmodule Hop do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   @impl true
   def handle_message(message, %{address: address} = state) do
@@ -12,7 +12,7 @@ defmodule Hop do
     ## in return route.
     forwarded_message = Message.forward(message) |> Message.trace(address)
 
-    Router.route(forwarded_message)
+    Worker.route(forwarded_message, state)
 
     {:ok, state}
   end

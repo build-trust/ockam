@@ -23,10 +23,9 @@ use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, Tr
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::nodes::{InMemoryNode, NodeManager};
 use ockam_api::trust_context::TrustContextConfigBuilder;
-use ockam_multiaddr::MultiAddr;
 
 use crate::Result;
 
@@ -270,7 +269,8 @@ impl AppState {
             .store(value, std::sync::atomic::Ordering::Relaxed);
     }
 
-    pub fn controller_address(&self) -> MultiAddr {
+    pub fn controller_address(&self) -> ockam_multiaddr::MultiAddr {
+        use ockam_api::nodes::NodeManager;
         NodeManager::controller_multiaddr()
     }
 }
@@ -317,7 +317,7 @@ pub(crate) async fn make_node_manager(
 
     let node_manager = InMemoryNode::new(
         &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, false),
+        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, true),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )

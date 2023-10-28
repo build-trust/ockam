@@ -25,7 +25,7 @@ impl core::fmt::Debug for ErrorData {
         writeln!(f, "Ockam Error [{}] at {}", self.code, self.source_loc)?;
         writeln!(f, "--- Details ---")?;
         if let Some(c) = &self.cause {
-            // TODO: iterate the cause chain, print the whole thing outp
+            // TODO: iterate the cause chain, print the whole thing out
             writeln!(f, "- Caused by: {}", c)?;
         }
         for e in self.payload.iter() {

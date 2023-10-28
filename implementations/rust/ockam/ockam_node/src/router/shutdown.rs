@@ -56,6 +56,7 @@ pub(super) async fn graceful(
 ) -> Result<bool> {
     // Mark the router as shutting down to prevent spawning
     info!("Initiate graceful node shutdown");
+    // This changes the router state to `Stopping`
     router.state.shutdown(reply);
 
     // Start by shutting down clusterless workers
@@ -92,6 +93,7 @@ pub(super) async fn graceful(
         task::spawn(async move {
             time::sleep(dur).await;
             warn!("Shutdown timeout reached; aborting node!");
+            // This works only because the state of the router is `Stopping`
             if sender.send(NodeMessage::AbortNode).await.is_err() {
                 error!("Failed to send node abort signal to router");
             }
@@ -105,7 +107,7 @@ pub(super) async fn graceful(
 /// Implement the immediate shutdown strategy
 ///
 /// When triggering an `immediate` shutdown, all worker handles are
-/// signalled to terminate, allowing workers to run their `async fn
+/// signaled to terminate, allowing workers to run their `async fn
 /// shutdown(...)` hook.  However: the router will not wait for them!
 /// Messages sent during the shutdown phase may not be delivered and
 /// shutdown hooks may be suddenly interrupted by thread-deallocation.

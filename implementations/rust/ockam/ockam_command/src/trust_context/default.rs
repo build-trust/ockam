@@ -41,7 +41,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> 
             .stdout()
             .plain(fmt_ok!("The trust context '{name}' is now the default"))
             .machine(&name)
-            .json(serde_json::json!({ "trust-context": {"name": name} }))
+            .json(serde_json::json!({"name": name}))
             .write_line()?;
         Ok(())
     }

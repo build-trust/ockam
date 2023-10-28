@@ -2,7 +2,6 @@ use crate::terminal::TerminalBackground;
 use colorful::Colorful;
 use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
-use std::io::{Read, Write};
 use syntect::highlighting::Theme;
 use syntect::{
     easy::HighlightLines,
@@ -11,7 +10,6 @@ use syntect::{
     parsing::SyntaxSet,
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
-use termcolor::WriteColor;
 
 const FOOTER: &str = "
 Learn More:
@@ -159,20 +157,6 @@ impl FencedCodeBlockHighlighter<'_> {
             false
         }
     }
-}
-
-#[allow(unused)]
-fn to_bold_and_underline(mut b: String, s: &str) -> String {
-    let mut buffer = termcolor::Buffer::ansi();
-    let mut color = termcolor::ColorSpec::new();
-    color.set_bold(true);
-    color.set_underline(true);
-    let err_msg = "Failed to create styled text";
-    buffer.set_color(&color).expect(err_msg);
-    buffer.write_all(s.as_bytes()).expect(err_msg);
-    buffer.reset().expect(err_msg);
-    buffer.as_slice().read_to_string(&mut b).expect(err_msg);
-    b
 }
 
 const PREVIEW_TOOLTIP_TEXT: &str = include_str!("./static/preview_tooltip.txt");

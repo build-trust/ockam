@@ -56,9 +56,9 @@ teardown() {
   run_success $OCKAM tcp-outlet create --at /node/n2 --to $only_port
 
   run_success $OCKAM tcp-outlet show test-outlet --at /node/n1
-  assert_output --partial "Alias: test-outlet"
-  assert_output --partial "From Outlet: /service/outlet"
-  assert_output --regexp "To TCP: 127.0.0.1:$port"
+  assert_output --partial "\"alias\":\"test-outlet\""
+  assert_output --partial "\"addr\":\"/service/outlet\""
+  assert_output --partial "\"socket_addr\":\"127.0.0.1:$port\""
 
   run_success $OCKAM tcp-outlet delete "test-outlet" --yes
 

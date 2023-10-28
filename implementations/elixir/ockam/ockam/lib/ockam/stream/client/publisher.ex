@@ -223,11 +223,14 @@ defmodule Ockam.Stream.Client.Publisher do
 
   @spec route(binary(), [Ockam.Address.t()], state()) :: state()
   def route(payload, route, state) do
-    Ockam.Router.route(%{
-      onward_route: route,
-      return_route: [Map.get(state, :address)],
-      payload: payload
-    })
+    Ockam.Worker.route(
+      %{
+        onward_route: route,
+        return_route: [Map.get(state, :address)],
+        payload: payload
+      },
+      state
+    )
 
     set_request_timeout(state)
   end

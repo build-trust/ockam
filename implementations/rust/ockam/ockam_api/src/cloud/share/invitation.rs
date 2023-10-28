@@ -4,6 +4,7 @@ use crate::address::extract_address_value;
 use crate::error::ApiError;
 use crate::identity::EnrollmentTicket;
 use minicbor::{Decode, Encode};
+use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::iso8601::Iso8601;
 use time::OffsetDateTime;
@@ -88,7 +89,7 @@ impl PartialEq for InvitationWithAccess {
 
 impl Eq for InvitationWithAccess {}
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ReceivedInvitation {
@@ -98,6 +99,7 @@ pub struct ReceivedInvitation {
     #[n(4)] pub owner_email: String,
     #[n(5)] pub scope: ShareScope,
     #[n(6)] pub target_id: String,
+    #[n(7)] pub ignored: bool,
 }
 
 impl ReceivedInvitation {
@@ -106,7 +108,7 @@ impl ReceivedInvitation {
     }
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct SentInvitation {
@@ -144,11 +146,11 @@ fn is_expired(date: &str) -> ockam_core::Result<bool> {
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ServiceAccessDetails {
-    #[n(1)] pub project_identity: String,
+    #[n(1)] pub project_identity: Identifier,
     #[n(2)] pub project_route: String,
-    #[n(3)] pub project_authority_identity: String,
+    #[n(3)] pub project_authority_identity: Identifier,
     #[n(4)] pub project_authority_route: String,
-    #[n(5)] pub shared_node_identity: String,
+    #[n(5)] pub shared_node_identity: Identifier,
     #[n(6)] pub shared_node_route: String,
     #[n(7)] pub enrollment_ticket: String, // hex-encoded as with CLI output/input
 }

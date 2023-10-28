@@ -2,7 +2,7 @@ defmodule Ockam.Examples.Ping do
   @moduledoc false
   use Ockam.Worker
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -34,7 +34,7 @@ defmodule Ockam.Examples.Ping do
           reply = Message.reply(message, state.address, "#{next}")
 
           Logger.info("\nSend ping #{inspect(next)}")
-          Router.route(reply)
+          Worker.route(reply, state)
           Map.put(state, :last, next)
       end
 
@@ -48,7 +48,7 @@ defmodule Ockam.Examples.Pong do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Router
+  alias Ockam.Worker
 
   require Logger
 
@@ -65,7 +65,7 @@ defmodule Ockam.Examples.Pong do
     :timer.sleep(Map.get(state, :delay))
 
     Logger.info("\nPong\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
-    Router.route(reply)
+    Worker.route(reply, state)
 
     {:ok, state}
   end
