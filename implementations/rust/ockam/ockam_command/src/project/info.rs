@@ -1,4 +1,5 @@
 use clap::Args;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
@@ -6,6 +7,7 @@ use ockam_api::cloud::project::Projects;
 
 use ockam_api::nodes::InMemoryNode;
 
+use crate::output::Output;
 use crate::project::util::refresh_projects;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -47,10 +49,12 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: InfoCommand) -> m
         }
     };
 
-    // Send request
-
     let project = controller.get_project(ctx, id).await?;
     let info: ProjectConfigCompact = project.into();
-    opts.println(&info)?;
+    opts.terminal
+        .stdout()
+        .plain(info.output()?)
+        .json(serde_json::to_string_pretty(&info).into_diagnostic()?)
+        .write_line()?;
     Ok(())
 }

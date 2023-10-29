@@ -12,6 +12,7 @@ use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_api::nodes::BackgroundNode;
 
+use crate::node::get_default_node_name;
 use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc};
@@ -46,17 +47,24 @@ async fn run_impl(
     // one in config, we update the pid stored in the config.
     // This should only happen if the node has failed in the past,
     // and has been restarted by something that is not this CLI.
-    let mut default = String::new();
     let node_names: Vec<_> = {
         let nodes_states = opts.state.nodes.list()?;
-        // default node
-        if let Ok(state) = opts.state.nodes.default() {
-            default = state.name().to_string();
-        }
         nodes_states.iter().map(|s| s.name().to_string()).collect()
     };
 
+    let nodes = get_nodes_info(ctx, &opts, node_names).await?;
+    print_nodes_info(&opts, nodes)?;
+
+    Ok(())
+}
+
+pub async fn get_nodes_info(
+    ctx: Context,
+    opts: &CommandGlobalOpts,
+    node_names: Vec<String>,
+) -> Result<Vec<NodeListOutput>> {
     let mut nodes: Vec<NodeListOutput> = Vec::new();
+    let default_node_name = get_default_node_name(&opts.state);
     for node_name in node_names {
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
@@ -99,10 +107,17 @@ async fn run_impl(
             node_status.node_name.to_string(),
             node_status.status.to_string(),
             node_status.pid,
-            node_status.node_name == default,
+            node_status.node_name == default_node_name,
         ));
     }
 
+    Ok(nodes)
+}
+
+pub fn print_nodes_info(
+    opts: &CommandGlobalOpts,
+    nodes: Vec<NodeListOutput>,
+) -> miette::Result<()> {
     let plain = opts
         .terminal
         .build_list(&nodes, "Nodes", "No nodes found on this system.")?;
@@ -110,6 +125,7 @@ async fn run_impl(
     let json = serde_json::to_string_pretty(&nodes).into_diagnostic()?;
 
     opts.terminal
+        .clone()
         .stdout()
         .plain(plain)
         .json(json)
