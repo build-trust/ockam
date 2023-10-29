@@ -53,16 +53,16 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    NodeShowTui::run(ctx, opts, cmd.node_name).await
+    ShowTui::run(ctx, opts, cmd.node_name).await
 }
 
-pub struct NodeShowTui {
+pub struct ShowTui {
     ctx: Context,
     opts: CommandGlobalOpts,
     node_name: Option<String>,
 }
 
-impl NodeShowTui {
+impl ShowTui {
     pub async fn run(
         ctx: Context,
         opts: CommandGlobalOpts,
@@ -78,7 +78,7 @@ impl NodeShowTui {
 }
 
 #[ockam_core::async_trait]
-impl ShowCommandTui for NodeShowTui {
+impl ShowCommandTui for ShowTui {
     const ITEM_NAME: &'static str = "nodes";
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
@@ -89,14 +89,17 @@ impl ShowCommandTui for NodeShowTui {
         self.opts.terminal.clone()
     }
 
+    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
+        Ok(get_node_name(&self.opts.state, &self.node_name))
+    }
+
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self.opts.state.nodes.list_items_names()?)
     }
 
-    async fn show_single(&self) -> miette::Result<()> {
-        let node_name = get_node_name(&self.opts.state, &self.node_name);
-        let mut node = BackgroundNode::create(&self.ctx, &self.opts.state, &node_name).await?;
-        print_query_status(&self.opts, &self.ctx, &node_name, &mut node, false).await?;
+    async fn show_single(&self, item_name: &str) -> miette::Result<()> {
+        let mut node = BackgroundNode::create(&self.ctx, &self.opts.state, item_name).await?;
+        print_query_status(&self.opts, &self.ctx, item_name, &mut node, false).await?;
         Ok(())
     }
 
