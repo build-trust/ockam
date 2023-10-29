@@ -183,4 +183,9 @@ impl BackgroundNode {
         let route = self.create_route().await?;
         Ok(Client::new(&route, timeout))
     }
+
+    /// Get the node name
+    pub fn name(&self) -> &str {
+        &self.node_name
+    }
 }

@@ -46,15 +46,15 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    NodeDeleteTui::run(opts, cmd).await
+    DeleteTui::run(opts, cmd).await
 }
 
-pub struct NodeDeleteTui {
+pub struct DeleteTui {
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 }
 
-impl NodeDeleteTui {
+impl DeleteTui {
     pub async fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
         let tui = Self { opts, cmd };
         tui.delete().await
@@ -62,8 +62,8 @@ impl NodeDeleteTui {
 }
 
 #[ockam_core::async_trait]
-impl DeleteCommandTui for NodeDeleteTui {
-    const ITEM_NAME: &'static str = "nodes";
+impl DeleteCommandTui for DeleteTui {
+    const ITEM_NAME: &'static str = "node";
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.node_name.as_deref()
@@ -81,39 +81,45 @@ impl DeleteCommandTui for NodeDeleteTui {
         self.opts.terminal.clone()
     }
 
-    fn list_items_names(&self) -> miette::Result<Vec<String>> {
+    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
+        Ok(get_node_name(&self.opts.state, &self.cmd.node_name))
+    }
+
+    async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self.opts.state.nodes.list_items_names()?)
     }
 
-    async fn delete_single(&self) -> miette::Result<()> {
-        let node_name = get_node_name(&self.opts.state, &self.cmd.node_name);
+    async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.opts
             .state
             .nodes
-            .delete_sigkill(&node_name, self.cmd.force)?;
+            .delete_sigkill(item_name, self.cmd.force)?;
         self.terminal()
             .stdout()
-            .plain(fmt_ok!("Node with name '{node_name}' has been deleted"))
-            .machine(&node_name)
-            .json(serde_json::json!({ "name": &node_name }))
+            .plain(fmt_ok!(
+                "Node with name {} has been deleted",
+                item_name.light_magenta()
+            ))
+            .machine(item_name)
+            .json(serde_json::json!({ "name": &item_name }))
             .write_line()?;
         Ok(())
     }
 
-    async fn delete_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let plain = selected_items_names
-            .iter()
+    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
+        let plain = items_names
+            .into_iter()
             .map(|name| {
                 if self
                     .opts
                     .state
                     .nodes
-                    .delete_sigkill(name, self.cmd.force)
+                    .delete_sigkill(&name, self.cmd.force)
                     .is_ok()
                 {
-                    fmt_ok!("Node '{name}' deleted\n")
+                    fmt_ok!("Node {} deleted\n", name.light_magenta())
                 } else {
-                    fmt_warn!("Failed to delete node '{name}'\n")
+                    fmt_warn!("Failed to delete node {}\n", name.light_magenta())
                 }
             })
             .collect::<String>();
