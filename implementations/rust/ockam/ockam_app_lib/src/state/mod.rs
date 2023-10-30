@@ -36,7 +36,9 @@ use ockam_api::trust_context::TrustContextConfigBuilder;
 
 use crate::api::state::OrchestratorStatus;
 use crate::scheduler::Scheduler;
-use crate::state::tasks::{RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask};
+use crate::state::tasks::{
+    RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask, RefreshRelayTask,
+};
 use crate::{api, Result};
 
 pub const NODE_NAME: &str = "ockam_app";
@@ -67,6 +69,7 @@ pub struct AppState {
     refresh_project_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_invitations_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_inlets_scheduler: Arc<OnceLock<Scheduler>>,
+    refresh_relay_scheduler: Arc<OnceLock<Scheduler>>,
     last_published_snapshot: Arc<Mutex<Option<ApplicationState>>>,
 }
 
@@ -110,9 +113,10 @@ impl AppState {
                     background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
                     projects: Arc::new(Default::default()),
                     invitations: Arc::new(RwLock::new(InvitationState::default())),
-                    refresh_project_scheduler: Arc::new(OnceLock::new()),
-                    refresh_invitations_scheduler: Arc::new(OnceLock::new()),
-                    refresh_inlets_scheduler: Arc::new(OnceLock::new()),
+                    refresh_project_scheduler: Arc::new(Default::default()),
+                    refresh_invitations_scheduler: Arc::new(Default::default()),
+                    refresh_inlets_scheduler: Arc::new(Default::default()),
+                    refresh_relay_scheduler: Arc::new(Default::default()),
                     last_published_snapshot: Arc::new(Mutex::new(None)),
                 }
             }
@@ -123,7 +127,6 @@ impl AppState {
 
     /// Load a previously persisted ModelState and start refreshing schedule
     pub async fn load_model_state(&'static self) -> ModelState {
-        self.load_relay_model_state().await;
         let cli_state = self.state().await;
 
         match self.model_state_repository.read().await.load().await {
@@ -155,6 +158,15 @@ impl AppState {
                 self.refresh_inlets_scheduler
                     .set(Scheduler::create(
                         Arc::new(RefreshInletsTask::new(self.clone())),
+                        Duration::from_secs(10),
+                        runtime,
+                    ))
+                    .map_err(|_| "already set")
+                    .unwrap();
+
+                self.refresh_relay_scheduler
+                    .set(Scheduler::create(
+                        Arc::new(RefreshRelayTask::new(self.clone())),
                         Duration::from_secs(10),
                         runtime,
                     ))
@@ -220,6 +232,13 @@ impl AppState {
     /// Starts the refresh of invitations without waiting for the scheduler
     pub fn schedule_invitations_refresh_now(&self) {
         if let Some(scheduler) = self.refresh_invitations_scheduler.get() {
+            scheduler.schedule_now();
+        }
+    }
+
+    /// Starts the refresh of relay without waiting for the scheduler
+    pub fn schedule_relay_refresh_now(&self) {
+        if let Some(scheduler) = self.refresh_relay_scheduler.get() {
             scheduler.schedule_now();
         }
     }
@@ -381,6 +400,19 @@ impl AppState {
     pub fn update_orchestrator_status(&self, status: OrchestratorStatus) {
         *self.orchestrator_status.lock().unwrap() = status;
     }
+
+    /// Update to the provided status only if the current status is within the provide statuses
+    pub fn update_orchestrator_status_if(
+        &self,
+        status: OrchestratorStatus,
+        statuses: Vec<OrchestratorStatus>,
+    ) {
+        let mut guard = self.orchestrator_status.lock().unwrap();
+        if statuses.contains(&*guard) {
+            *guard = status;
+        }
+    }
+
     pub fn notify(&self, notification: Notification) {
         self.notification_callback.call(notification);
     }
