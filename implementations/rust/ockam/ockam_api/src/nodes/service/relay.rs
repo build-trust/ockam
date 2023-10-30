@@ -7,6 +7,7 @@ use ockam::identity::Identifier;
 use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, AsyncTryClone};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -52,15 +53,32 @@ impl NodeManagerWorker {
         }
     }
 
+    /// This function removes an existing relay based on its remote address
     pub async fn delete_relay(
         &self,
         ctx: &Context,
         req: &RequestHeader,
         remote_address: &str,
     ) -> Result<Response<Option<RelayInfo>>, Response<Error>> {
-        self.node_manager
-            .delete_relay(ctx, req, remote_address)
+        debug!(%remote_address , "Handling DeleteRelay request");
+
+        match self
+            .node_manager
+            .delete_relay_impl(ctx, remote_address)
             .await
+        {
+            Ok(body) => Ok(Response::ok(req).body(body)),
+            Err(err) => match err.code().kind {
+                Kind::NotFound => Err(Response::not_found(
+                    req,
+                    &format!("Relay with address {} not found.", remote_address),
+                )),
+                _ => Err(Response::internal_error(
+                    req,
+                    &format!("Failed to delete relay at {}: {}", remote_address, err),
+                )),
+            },
+        }
     }
 
     pub async fn show_relay(
@@ -146,15 +164,14 @@ impl NodeManager {
         }
     }
 
-    /// This function removes an existing relay based on its remote address
-    pub async fn delete_relay(
+    /// Delete a relay.
+    ///
+    /// This function removes a relay from the node registry and stops the relay worker.
+    pub async fn delete_relay_impl(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         remote_address: &str,
-    ) -> Result<Response<Option<RelayInfo>>, Response<Error>> {
-        debug!(%remote_address , "Handling DeleteRelay request");
-
+    ) -> Result<Option<RelayInfo>, ockam::Error> {
         if let Some(relay_to_delete) = self.registry.relays.remove(remote_address).await {
             debug!(%remote_address, "Successfully removed relay from node registry");
 
@@ -164,21 +181,19 @@ impl NodeManager {
             {
                 Ok(_) => {
                     debug!(%remote_address, "Successfully stopped relay");
-                    Ok(Response::ok(req).body(Some(RelayInfo::from(relay_to_delete.to_owned()))))
+                    Ok(Some(RelayInfo::from(relay_to_delete.to_owned())))
                 }
                 Err(err) => {
                     error!(%remote_address, ?err, "Failed to delete relay from node registry");
-                    Err(Response::internal_error(
-                        req,
-                        &format!("Failed to delete relay at {}: {}", remote_address, err),
-                    ))
+                    Err(err)
                 }
             }
         } else {
             error!(%remote_address, "Relay not found in the node registry");
-            Err(Response::not_found(
-                req,
-                &format!("Relay with address {} not found.", remote_address),
+            Err(ockam::Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("Relay with address {} not found.", remote_address),
             ))
         }
     }
@@ -252,11 +267,23 @@ impl InMemoryNode {
                 alias,
                 authorized,
             );
-            let mut session = Session::new(ping_route);
+            let mut session = Session::new(ping_route, format!("relay-{}", relay.remote_address()));
             session.set_replacer(repl);
             self.add_session(session);
         };
         Ok(relay)
+    }
+
+    pub async fn delete_relay(
+        &self,
+        ctx: &Context,
+        remote_address: &str,
+    ) -> Result<Option<RelayInfo>, ockam::Error> {
+        if let Some(relay) = self.registry.relays.remove(remote_address).await {
+            let session_id = format!("relay-{}", relay.remote_address());
+            self.remove_session(&session_id);
+        }
+        self.delete_relay_impl(ctx, remote_address).await
     }
 
     /// Create a session replacer.

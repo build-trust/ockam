@@ -11,14 +11,14 @@ use tracing::{debug, info, trace, warn};
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
 use ockam_api::address::get_free_address;
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
-use crate::shared_service::relay::create::relay_name;
+use crate::shared_service::relay::create::relay_name_from_identifier;
 use crate::state::{AppState, PROJECT_NAME};
 
 impl AppState {
@@ -541,9 +541,9 @@ impl InletDataFromInvitation {
         inlets: &HashMap<String, Inlet>,
     ) -> crate::Result<Option<Self>> {
         match &invitation.service_access_details {
-            Some(d) => {
-                let service_name = d.service_name()?;
-                let mut enrollment_ticket = d.enrollment_ticket()?;
+            Some(access_details) => {
+                let service_name = access_details.service_name()?;
+                let mut enrollment_ticket = access_details.enrollment_ticket()?;
                 // The enrollment ticket contains the project data.
                 // We need to replace the project name on the enrollment ticket with the project id,
                 // so that, when using the enrollment ticket, there are no conflicts with the default project.
@@ -569,7 +569,8 @@ impl InletDataFromInvitation {
                         "Project name should be the project id"
                     );
                     let project_id = project.id();
-                    let relay_name = relay_name(project.config());
+                    let relay_name =
+                        relay_name_from_identifier(&access_details.shared_node_identity);
                     let service_route = format!(
                         "/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}"
                     );

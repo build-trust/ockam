@@ -13,7 +13,7 @@ use ockam_node::tokio::time::{sleep, timeout, Duration};
 use ockam_node::Context;
 use ockam_node::{tokio, WorkerBuilder};
 
-use crate::session::sessions::{Key, Ping, Session, Sessions, Status};
+use crate::session::sessions::{Ping, Session, Status};
 use crate::DefaultAddress;
 
 pub(crate) mod sessions;
@@ -26,15 +26,15 @@ const DELAY: Duration = Duration::from_secs(3);
 pub struct Medic {
     retry_delay: Duration,
     delay: Duration,
-    sessions: Arc<Mutex<Sessions>>,
-    pings: JoinSet<(Key, Result<(), Error>)>,
-    replacements: JoinSet<(Key, Result<Route, Error>)>,
+    sessions: Arc<Mutex<Vec<Session>>>,
+    pings: JoinSet<(String, Result<(), Error>)>,
+    replacements: JoinSet<(String, Result<Route, Error>)>,
 }
 
-#[derive(Debug, Copy, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 pub struct Message {
-    #[n(0)] key: Key,
+    #[n(0)] key: String,
     #[n(1)] ping: Ping,
 }
 
@@ -43,7 +43,7 @@ impl Medic {
         Self {
             retry_delay: RETRY_DELAY,
             delay: DELAY,
-            sessions: Arc::new(Mutex::new(Sessions::new())),
+            sessions: Arc::new(Mutex::new(vec![])),
             pings: JoinSet::new(),
             replacements: JoinSet::new(),
         }
@@ -52,7 +52,7 @@ impl Medic {
     pub async fn start(
         self,
         ctx: Context,
-    ) -> Result<(JoinHandle<()>, Arc<Mutex<Sessions>>), Error> {
+    ) -> Result<(JoinHandle<()>, Arc<Mutex<Vec<Session>>>), Error> {
         let ctx = ctx
             .new_detached(Address::random_tagged("Medic.ctx"), DenyAll, AllowAll)
             .await?;
@@ -81,18 +81,19 @@ impl Medic {
             log::trace!("check sessions");
             {
                 let mut sessions = self.sessions.lock().unwrap();
-                for (&key, session) in sessions.iter_mut() {
+                for session in sessions.iter_mut() {
+                    let key = session.key().to_string();
                     if session.pings().len() < MAX_FAILURES {
-                        let m = Message::new(session.key());
-                        session.add_ping(m.ping);
+                        let message = Message::new(session.key().to_string());
+                        session.add_ping(message.ping);
                         let l = {
-                            let v = Encodable::encode(&m).expect("message can be encoded");
+                            let v = Encodable::encode(&message).expect("message can be encoded");
                             let echo_route =
                                 route![session.ping_route().clone(), DefaultAddress::ECHO_SERVICE];
                             log::trace! {
                                 key  = %key,
                                 addr = %session.ping_route(),
-                                ping = %m.ping,
+                                ping = %message.ping,
                                 "send ping"
                             }
                             let next = match echo_route.next() {
@@ -160,13 +161,13 @@ impl Medic {
                     Some(Ok((k, Err(e)))) => {
                         log::warn!(key = %k, err = %e, "replacing session failed");
                         let mut sessions = self.sessions.lock().unwrap();
-                        if let Some(s) = sessions.session_mut(&k) {
+                        if let Some(s) = sessions.iter_mut().find(|s| s.key() == k) {
                            s.set_status(Status::Down);
                         }
                     }
                     Some(Ok((k, Ok(ping_route)))) => {
                         let mut sessions = self.sessions.lock().unwrap();
-                        if let Some(s) = sessions.session_mut(&k) {
+                        if let Some(s) = sessions.iter_mut().find(|s| s.key() == k) {
                             log::info!(key = %k, ping_route = %ping_route, "replacement is up");
                             s.set_status(Status::Up);
                             s.set_ping_address(ping_route);
@@ -175,7 +176,8 @@ impl Medic {
                     }
                 },
                 Some(m) = rx.recv() => {
-                    if let Some(s) = self.sessions.lock().unwrap().session_mut(&m.key) {
+                    let mut sessions = self.sessions.lock().unwrap();
+                    if let Some(s) = sessions.iter_mut().find(|s| s.key() == m.key) {
                         if s.pings().contains(&m.ping) {
                             log::trace!(key = %m.key, ping = %m.ping, "recv pong");
                             s.clear_pings()
@@ -192,9 +194,9 @@ impl Medic {
 }
 
 impl Message {
-    fn new(k: Key) -> Self {
+    fn new(key: String) -> Self {
         Self {
-            key: k,
+            key,
             ping: Ping::new(),
         }
     }
@@ -245,11 +247,11 @@ impl Worker for Collector {
 
 pub struct MedicHandle {
     handle: JoinHandle<()>,
-    sessions: Arc<Mutex<Sessions>>,
+    sessions: Arc<Mutex<Vec<Session>>>,
 }
 
 impl MedicHandle {
-    pub fn new(handle: JoinHandle<()>, sessions: Arc<Mutex<Sessions>>) -> Self {
+    pub fn new(handle: JoinHandle<()>, sessions: Arc<Mutex<Vec<Session>>>) -> Self {
         Self { handle, sessions }
     }
 
@@ -267,9 +269,14 @@ impl MedicHandle {
         Ok(())
     }
 
-    pub fn add_session(&self, session: Session) -> Key {
+    pub fn add_session(&self, session: Session) {
         let mut sessions = self.sessions.lock().unwrap();
-        sessions.add(session)
+        sessions.push(session);
+    }
+
+    pub fn remove_session(&self, key: &str) {
+        let mut sessions = self.sessions.lock().unwrap();
+        sessions.retain(|s| s.key() != key)
     }
 }
 
@@ -310,7 +317,7 @@ mod tests {
         let replacer_can_return = Arc::new(AtomicBool::new(false));
 
         {
-            let mut session = Session::new(route!["broken_route"]);
+            let mut session = Session::new(route!["broken_route"], "key".to_string());
             let replacer_called = replacer_called.clone();
             let replacer_can_return = replacer_can_return.clone();
             session.set_replacer(Box::new(move |_| {
@@ -327,13 +334,13 @@ mod tests {
                 })
             }));
 
-            sessions.lock().unwrap().add(session);
+            sessions.lock().unwrap().push(session);
         }
 
         {
             // Initially it's up
             let mut guard = sessions.lock().unwrap();
-            let (_, session) = guard.iter_mut().next().unwrap();
+            let session = guard.iter_mut().next().unwrap();
             assert_eq!(session.status(), Status::Up);
             assert_eq!(session.ping_route(), &route!["broken_route"]);
         }
@@ -346,7 +353,7 @@ mod tests {
         {
             // Check the session is now marked as degraded
             let guard = sessions.lock().unwrap();
-            let (_, session) = guard.iter().next().unwrap();
+            let session = guard.iter().next().unwrap();
             assert_eq!(session.status(), Status::Degraded);
             assert_eq!(session.ping_route(), &route!["broken_route"]);
         }
@@ -359,7 +366,7 @@ mod tests {
                 // Check that the session is now up, since we don't have any
                 // synchronization we keep to keep checking until it's up
                 let guard = sessions.lock().unwrap();
-                let (_, session) = guard.iter().next().unwrap();
+                let session = guard.iter().next().unwrap();
                 if session.status() == Status::Up {
                     assert_eq!(session.ping_route(), &route!["hop"]);
                     break;

@@ -62,3 +62,20 @@ impl ScheduledTask for RefreshInletsTask {
         }
     }
 }
+
+pub(crate) struct RefreshRelayTask {
+    state: AppState,
+}
+
+impl RefreshRelayTask {
+    pub(crate) fn new(state: AppState) -> Self {
+        Self { state }
+    }
+}
+
+#[async_trait]
+impl ScheduledTask for RefreshRelayTask {
+    async fn run(&self) {
+        self.state.refresh_relay().await;
+    }
+}
