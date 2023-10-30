@@ -16,7 +16,9 @@ use ockam_api::nodes::InMemoryNode;
 
 use ockam_node::Context;
 
-use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
+use crate::project::addon::configure_confluent::{
+    AddonConfigureConfluentSubcommand, AddonConfigureRedPandaSubcommand,
+};
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
 use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
@@ -62,6 +64,7 @@ pub enum ConfigureAddonCommand {
     Okta(AddonConfigureOktaSubcommand),
     Influxdb(AddonConfigureInfluxdbSubcommand),
     Confluent(AddonConfigureConfluentSubcommand),
+    RedPanda(AddonConfigureRedPandaSubcommand),
 }
 
 impl ConfigureAddonCommand {
@@ -70,6 +73,7 @@ impl ConfigureAddonCommand {
             ConfigureAddonCommand::Okta(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Influxdb(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Confluent(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::RedPanda(cmd) => cmd.run(opts),
         }
     }
 }
