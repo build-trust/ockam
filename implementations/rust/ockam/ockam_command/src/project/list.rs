@@ -1,5 +1,5 @@
 use clap::Args;
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -40,6 +40,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
+    if !opts.state.is_enrolled()? {
+        return Err(miette!("You must enroll before you can list your projects"));
+    }
     let node = InMemoryNode::start(ctx, &opts.state).await?;
     let controller = node.create_controller().await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
