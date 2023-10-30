@@ -60,50 +60,77 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
     } else {
         let vault_names: Vec<String> = opts.state.vaults.list_items_names()?;
 
-        if vault_names.is_empty() {
-            opts.terminal
-                .stdout()
-                .plain(
-                    "There are no vaults to show, use `ockam vault create` to create a new vault",
-                )
-                .write_line()?;
-        } else {
-            let selected_names = opts.terminal.select_multiple(
-                "Select the vaults which you want to display".to_string(),
-                vault_names,
-            );
-
-            if selected_names.is_empty() {
+        match vault_names.len() {
+            0 => {
                 opts.terminal
                     .stdout()
-                    .plain("No vaults selected, use <space> to select vaults")
+                    .plain(
+                        "There are no vaults to show, use `ockam vault create` to create a new vault",
+                    )
                     .write_line()?;
-            } else {
-                let mut output: Vec<VaultListOutput> = Vec::new();
+            }
 
-                for name in selected_names {
-                    let state = opts.state.vaults.get(&name)?;
-                    let config = VaultConfig::new(state.is_aws())?;
-                    let is_default = opts.state.vaults.is_default(&name)?;
-                    let vault = VaultListOutput::new(name, config, is_default);
-                    output.push(vault);
-                }
+            1 => {
+                let name = vault_names[0];
+                let state = opts.state.vaults.get(name)?;
 
-                // same output as vault list
-                let plain = opts.terminal.build_list(
-                    &output,
-                    "Vaults",
-                    "No vaults found on this system.",
-                )?;
+                let json = serde_json::to_string_pretty(&state).into_diagnostic()?;
 
-                let json = serde_json::to_string_pretty(&output).into_diagnostic()?;
+                let plain = {
+                    let mut buf = String::new();
+
+                    writeln!(buf, "Vault:").into_diagnostic()?;
+                    for line in state.to_string().lines() {
+                        writeln!(buf, "{:2}{}", "", line).into_diagnostic()?;
+                    }
+                    buf
+                };
 
                 opts.terminal
-                    .clone()
                     .stdout()
-                    .plain(plain)
                     .json(json)
+                    .plain(plain)
                     .write_line()?;
+            }
+
+            _ => {
+                let selected_names = opts.terminal.select_multiple(
+                    "Select the vaults which you want to display".to_string(),
+                    vault_names,
+                );
+
+                if selected_names.is_empty() {
+                    opts.terminal
+                        .stdout()
+                        .plain("No vaults selected, use <space> to select vaults")
+                        .write_line()?;
+                } else {
+                    let mut output: Vec<VaultListOutput> = Vec::new();
+
+                    for name in selected_names {
+                        let state = opts.state.vaults.get(&name)?;
+                        let config = VaultConfig::new(state.is_aws())?;
+                        let is_default = opts.state.vaults.is_default(&name)?;
+                        let vault = VaultListOutput::new(name, config, is_default);
+                        output.push(vault);
+                    }
+
+                    // same output as vault list
+                    let plain = opts.terminal.build_list(
+                        &output,
+                        "Vaults",
+                        "No vaults found on this system.",
+                    )?;
+
+                    let json = serde_json::to_string_pretty(&output).into_diagnostic()?;
+
+                    opts.terminal
+                        .clone()
+                        .stdout()
+                        .plain(plain)
+                        .json(json)
+                        .write_line()?;
+                }
             }
         }
     }
