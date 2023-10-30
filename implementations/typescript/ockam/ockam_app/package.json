@@ -27,7 +27,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-alpha.8",
+    "@tauri-apps/api": "2.0.0-alpha.11",
     "@tauri-apps/plugin-window": "2.0.0-alpha.0"
   }
 }
