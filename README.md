@@ -17,11 +17,11 @@ these controls and guarantees to any application.
 
 Let's build a solution for a very common secure communication topology that
 applies to many real world use cases. We'll build our first example using
-[Ockam Command](https://docs.ockam.io/reference/command) but it is just as easy
+[Ockam Command](https://docs.ockam.io/reference/command), but it is just as easy
 to build end-to-end trustful communication using
-[Ockam Programming Libraries](https://docs.ockam.io/reference/libraries/rust)
+[Ockam Programming Libraries](https://docs.ockam.io/reference/libraries/rust).
 
-An application service and an application client running in two private networks
+An application service and an application client running on two private networks
 wish to securely communicate with each other without exposing ports on the
 Internet. In a few simple commands, we’ll make them safely talk to each other
 through an End-to-End Encrypted Cloud Relay.
@@ -86,16 +86,16 @@ curl --head 127.0.0.1:7000
 
 In the example above, we’ve created two nodes and established an end-to-end
 secure channel between them through an encrypted cloud relay. For the sake of
-simplicity, we ran both ends on a single machine but they could also be run on
+simplicity, we ran both ends on a single machine, but they could also be run on
 completely separate machines with the same result: an end-to-end encrypted and
 mutually authenticated secure channel.
 
 Distributed applications that are connected in this way can communicate without
-the risk of spoofing, tampering, or eavesdropping attacks irrespective of transport
+the risk of spoofing, tampering, or eavesdropping attacks, irrespective of transport
 protocols, communication topologies, and network configuration. As application
 data flows across data centers, through queues and caches, via gateways and
 brokers - these intermediaries, like the cloud relay in the above example, can
-facilitate communication but cannot eavesdrop or tamper data.
+facilitate communication but cannot eavesdrop on or tamper with data.
 
 You can establish secure channels across networks and clouds over multi-hop,
 multi-protocol routes to build private and secure by design distributed applications
@@ -106,9 +106,9 @@ integrity, and confidentiality.
 
 Behind the scenes, the above commands generated unique cryptographically
 provable identities and saved corresponding keys in a vault. Your orchestrator
-project was provisioned with a managed credential authority and every node was
+project was provisioned with a managed credential authority, and every node was
 setup to anchor trust in credentials issued by this authority. Identities were
-issued project membership credentials and these cryptographically verifiable
+issued project membership credentials, and these cryptographically verifiable
 credentials were then combined with attribute based access control policies to
 setup a mutually authenticated and authorized end-to-end secure channel.
 
