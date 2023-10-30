@@ -18,7 +18,7 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 
 use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::node_rpc;
+use crate::util::{is_enrolled_guard, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -62,6 +62,7 @@ pub struct TicketCommand {
 impl TicketCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         initialize_identity_if_default(&opts, &self.cloud_opts.identity);
+        is_enrolled_guard(&opts.state, self.cloud_opts.identity.as_deref())?;
         node_rpc(run_impl, (opts, self));
     }
 
