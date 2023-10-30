@@ -164,7 +164,7 @@ async fn retrieve_project<R: Runtime>(
             app.notification()
                 .builder()
                 .title("Creating a new project...")
-                .body("This might take a few seconds")
+                .body("This might take a few minutes")
                 .show()
                 .unwrap_or_else(|e| error!(?e, "Failed to create push notification"));
             let ctx = &app_state.context();

@@ -52,6 +52,13 @@ impl AppState {
         Ok(())
     }
 
+    pub async fn enroll_user_and_accept_invitation(&self, id: String) -> Result<()> {
+        self.enroll_user().await?;
+        self.schedule_invitations_refresh_now();
+        self.accept_invitation(id).await?;
+        Ok(())
+    }
+
     async fn enroll_with_token(&self) -> Result<()> {
         if self.is_enrolled().await.unwrap_or_default() {
             debug!("User is already enrolled");
@@ -170,7 +177,7 @@ impl AppState {
                 self.notify(Notification {
                     kind: Kind::Information,
                     title: "Creating a new project...".to_string(),
-                    message: "This might take a few seconds".to_string(),
+                    message: "This might take a few minutes".to_string(),
                 });
                 let ctx = &self.context();
                 let project = controller

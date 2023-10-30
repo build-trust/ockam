@@ -26,19 +26,21 @@ struct ClickableMenuEntry: View {
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)
         .contentShape(Rectangle())
-        .modifier(PressActions(
-            onPress: {
-                isDown = true
-            },
-            onRelease: {
-                if isDown {
-                    isDown = false
-                    if let action = action {
-                        action()
+        .modifier(
+            PressActions(
+                onPress: {
+                    isDown = true
+                },
+                onRelease: {
+                    if isDown {
+                        isDown = false
+                        if let action = action {
+                            action()
+                        }
                     }
                 }
-            }
-        ))
+            )
+        )
         .onHover { hover in
             isHovered = hover
         }

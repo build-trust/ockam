@@ -1438,9 +1438,9 @@ checksum = "cd7cc57abe963c6d3b9d8be5b06ba7c8957a930305ca90304f24ef040aa6f961"
 
 [[package]]
 name = "clap_mangen"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b44f35c514163027542f7147797ff930523eea288e03642727348ef1a9666f6b"
+checksum = "d3be86020147691e1d2ef58f75346a3d4d94807bfc473e377d52f09f0f7d77f7"
 dependencies = [
  "clap 4.4.6",
  "roff",
@@ -2233,6 +2233,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "deunicode"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a1abaf4d861455be59f64fd2b55606cb151fce304ede7165f410243ce96bde6"
+
+[[package]]
 name = "dialoguer"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2343,9 +2349,9 @@ dependencies = [
 
 [[package]]
 name = "dummy"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ba338a15d93c01c2f117a2b0bd1bfa3c780fe771e7db7c69fc70bda265e2115"
+checksum = "7e57e12b69e57fad516e01e2b3960f122696fdb13420e1a88ed8e210316f2876"
 dependencies = [
  "darling 0.20.3",
  "proc-macro2",
@@ -2630,13 +2636,13 @@ dependencies = [
 
 [[package]]
 name = "fake"
-version = "2.8.0"
+version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9af7b0c58ac9d03169e27f080616ce9f64004edca3d2ef4147a811c21b23b319"
+checksum = "d92ee0b58c77663520eb3b054af6f83ca98722fed454d19b9c712b06329e2019"
 dependencies = [
+ "deunicode",
  "dummy",
  "rand 0.8.5",
- "unidecode",
  "uuid",
 ]
 
@@ -4816,7 +4822,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.98.0"
+version = "0.100.0"
 dependencies = [
  "arrayref",
  "dyn-clone",
@@ -4840,7 +4846,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_abac"
-version = "0.32.0"
+version = "0.34.0"
 dependencies = [
  "either",
  "lmdb-rkv",
@@ -4864,7 +4870,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.41.0"
+version = "0.43.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -4946,7 +4952,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_app_lib"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "cbindgen",
  "duct",
@@ -4959,7 +4965,6 @@ dependencies = [
  "ockam_core",
  "ockam_multiaddr",
  "ockam_transport_tcp",
- "once_cell",
  "serde",
  "serde_json",
  "thiserror",
@@ -4971,7 +4976,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.98.0"
+version = "0.100.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -5042,7 +5047,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.89.0"
+version = "0.91.0"
 dependencies = [
  "async-trait",
  "backtrace",
@@ -5073,7 +5078,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.57.0"
+version = "0.59.0"
 dependencies = [
  "crossbeam-queue",
  "futures 0.3.28",
@@ -5086,7 +5091,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.86.0"
+version = "0.88.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -5142,7 +5147,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_multiaddr"
-version = "0.32.0"
+version = "0.34.0"
 dependencies = [
  "bincode",
  "minicbor",
@@ -5160,7 +5165,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.94.0"
+version = "0.96.0"
 dependencies = [
  "cfg-if",
  "fs2",
@@ -5184,7 +5189,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_ble"
-version = "0.53.0"
+version = "0.55.0"
 dependencies = [
  "atsame54_xpro",
  "bluenrg",
@@ -5213,7 +5218,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.62.0"
+version = "0.64.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -5221,7 +5226,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.92.0"
+version = "0.94.0"
 dependencies = [
  "cfg-if",
  "hashbrown 0.14.1",
@@ -5239,7 +5244,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.32.0"
+version = "0.34.0"
 dependencies = [
  "bytes 1.5.0",
  "futures-util",
@@ -5258,7 +5263,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_uds"
-version = "0.21.0"
+version = "0.23.0"
 dependencies = [
  "ockam_core",
  "ockam_macros",
@@ -5272,7 +5277,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.83.0"
+version = "0.85.0"
 dependencies = [
  "futures-util",
  "ockam_core",
@@ -5287,7 +5292,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.87.0"
+version = "0.89.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -5320,7 +5325,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.12.0"
+version = "0.14.0"
 dependencies = [
  "aws-config",
  "aws-credential-types",
@@ -6090,9 +6095,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_tuify"
-version = "0.1.19"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9796d7be5ee41e912962b2583be8ec1aacdd1d39ce91ec63f1894494a5a7125"
+checksum = "c9fe0de7008a48850d0be3ad07c2cb27d74b4e534e5c2cdb0daeeb0007d8f1d1"
 dependencies = [
  "clap 4.4.6",
  "crossterm 0.27.0",
@@ -6739,9 +6744,9 @@ checksum = "a3f0bf26fd526d2a95683cd0f87bf103b8539e2ca1ef48ce002d67aad59aa0b4"
 
 [[package]]
 name = "serde"
-version = "1.0.189"
+version = "1.0.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e422a44e74ad4001bdc8eede9a4570ab52f71190e9c076d14369f38b9200537"
+checksum = "91d3c334ca1ee894a2c6f6ad698fe8c435b76d504b13d436f0685d648d6d96f7"
 dependencies = [
  "serde_derive",
 ]
@@ -6788,9 +6793,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.189"
+version = "1.0.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e48d1f918009ce3145511378cf68d613e3b3d9137d67272562080d68a2b32d5"
+checksum = "67c5609f394e5c2bd7fc51efda478004ea80ef42fee983d5c67a65e34f32c0e3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6871,9 +6876,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.25"
+version = "0.9.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a49e178e4452f45cb61d0cd8cebc1b0fafd3e41929e996cef79aa3aca91f574"
+checksum = "3cc7a1570e38322cfe4154732e5110f887ea57e22b76f4bfd32b5bdd3368666c"
 dependencies = [
  "indexmap 2.0.2",
  "itoa 1.0.9",
@@ -8474,12 +8479,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
 
 [[package]]
-name = "unidecode"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "402bb19d8e03f1d1a7450e2bd613980869438e0666331be3e073089124aa1adc"
-
-[[package]]
 name = "universal-hash"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8551,9 +8550,9 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
 name = "uuid"
-version = "1.4.1"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
+checksum = "88ad59a7560b41a70d191093a945f0b87bc1deeda46fb237479708a1d6b6cdfc"
 dependencies = [
  "atomic",
  "getrandom 0.2.10",

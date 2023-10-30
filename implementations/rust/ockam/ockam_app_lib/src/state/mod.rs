@@ -102,7 +102,6 @@ impl AppState {
                     node_manager: Arc::new(RwLock::new(node_manager)),
                     model_state: Arc::new(RwLock::new(ModelState::default())),
                     model_state_repository: Arc::new(RwLock::new(model_state_repository)),
-                    // event_manager: std::sync::RwLock::new(EventManager::new()),
                     background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
                     projects: Arc::new(Default::default()),
                     invitations: Arc::new(RwLock::new(InvitationState::default())),
@@ -119,10 +118,7 @@ impl AppState {
 
     /// Load a previously persisted ModelState and start refreshing schedule
     pub async fn load_model_state(&'static self) -> ModelState {
-        if self.is_enrolled().await.unwrap_or(false) {
-            // no point in trying to connect without being enrolled
-            self.load_relay_model_state().await;
-        }
+        self.load_relay_model_state().await;
         let cli_state = self.state().await;
 
         match self.model_state_repository.read().await.load().await {
@@ -500,6 +496,24 @@ impl AppState {
                                     .find(|(id, _)| id == &invitation.id)
                                     .map(|(_, status)| {
                                         status == &ReceivedInvitationStatus::Accepting
+                                    })
+                                    .unwrap_or(false),
+                                accepted: invitation_state
+                                    .received
+                                    .status
+                                    .iter()
+                                    .find(|(id, _)| id == &invitation.id)
+                                    .map(|(_, status)| {
+                                        status == &ReceivedInvitationStatus::Accepted
+                                    })
+                                    .unwrap_or(false),
+                                ignoring: invitation_state
+                                    .received
+                                    .status
+                                    .iter()
+                                    .find(|(id, _)| id == &invitation.id)
+                                    .map(|(_, status)| {
+                                        status == &ReceivedInvitationStatus::Ignoring
                                     })
                                     .unwrap_or(false),
                             })

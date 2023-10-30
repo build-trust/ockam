@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.41.0"
+version = "0.43.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
@@ -43,7 +43,7 @@ open = "5.0.0"
 petname = { version = "2.0.0-beta.2", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-serde = { version = "1.0.188", features = ["derive"] }
+serde = { version = "1.0.190", features = ["derive"] }
 serde_json = "1.0.107"
 sysinfo = "0.29"
 tempfile = "3.8.0"
@@ -56,23 +56,23 @@ tokio-retry = "0.3.0"
 tracing = { version = "0.1", default-features = false }
 url = "2.4.1"
 
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.32.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.92.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.34.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.94.0" }
 
 [dependencies.ockam_core]
-version = "0.89.0"
+version = "0.91.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.94.0"
+version = "0.96.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.87.0"
+version = "0.89.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -80,19 +80,19 @@ default-features = false
 features = ["std"]
 
 [dependencies.ockam_vault_aws]
-version = "0.12.0"
+version = "0.14.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.98.0"
+version = "^0.100.0"
 path = "../ockam"
 default-features = false
 features = ["ockam_transport_tcp", "software_vault_storage"]
 
 [dependencies.ockam_abac]
-version = "0.32.0"
+version = "0.34.0"
 path = "../ockam_abac"
 default-features = false
 
@@ -107,4 +107,4 @@ ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
 quickcheck = "1.0.1"
 tokio = { version = "1.33.0", features = ["full"] }
-uuid = "1.4.1"
+uuid = "1.5.0"

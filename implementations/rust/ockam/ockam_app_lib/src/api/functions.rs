@@ -35,11 +35,6 @@ extern "C" fn initialize_application(
         notification: super::notification::c::Notification,
     ) -> (),
 ) {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_ansi(false)
-        .init();
-
     for &key in &[
         "OCKAM_CONTROLLER_ADDR",
         "OCKAM_CONTROLLER_IDENTITY_ID",
@@ -55,6 +50,7 @@ extern "C" fn initialize_application(
         super::state::rust::ApplicationStateCallback::new(application_state_callback),
         super::notification::rust::NotificationCallback::new(notification_callback),
     );
+    app_state.setup_logging();
 
     #[cfg(target_os = "macos")]
     crate::cli::add_homebrew_to_path();
@@ -74,7 +70,7 @@ extern "C" fn initialize_application(
 
     // avoid waiting for the load to return for a quicker initialization
     let app_state = unsafe { APPLICATION_STATE.as_ref().expect(ERROR_NOT_INITIALIZED) };
-    app_state.context().runtime().spawn(async {
+    app_state.context().runtime().spawn(async move {
         app_state.publish_state().await;
         app_state.load_model_state().await;
     });
@@ -87,6 +83,19 @@ extern "C" fn accept_invitation(id: *const c_char) {
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
     app_state.context().runtime().spawn(async {
         let result = app_state.accept_invitation(id).await;
+        if let Err(err) = result {
+            error!(?err, "Couldn't accept the invitation");
+        }
+    });
+}
+
+/// Ignore the invitation with the provided id.
+#[no_mangle]
+extern "C" fn ignore_invitation(id: *const c_char) {
+    let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    app_state.context().runtime().spawn(async {
+        let result = app_state.ignore_invitation(id).await;
         if let Err(err) = result {
             error!(?err, "Couldn't accept the invitation");
         }
@@ -251,6 +260,19 @@ extern "C" fn enroll_user() {
         .context()
         .runtime()
         .spawn(async move { app_state.enroll_user().await });
+}
+
+/// Starts user enrollment and accept the invitation with the provided id.
+#[no_mangle]
+extern "C" fn enroll_user_and_accept_invitation(id: *const c_char) {
+    let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    app_state.context().runtime().spawn(async {
+        let result = app_state.enroll_user_and_accept_invitation(id).await;
+        if let Err(err) = result {
+            error!(?err, "Couldn't enroll and accept the invitation");
+        }
+    });
 }
 
 /// This function retrieve the current version of the application state, for polling purposes.

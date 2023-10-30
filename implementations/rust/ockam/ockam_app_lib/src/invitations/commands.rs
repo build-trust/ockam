@@ -8,15 +8,17 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
+use crate::api::notification::rust::Notification;
+use crate::api::notification::Kind;
 use ockam_api::address::get_free_address;
-use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
-use crate::shared_service::relay::RELAY_NAME;
+use crate::shared_service::relay::create::relay_name;
 use crate::state::{AppState, PROJECT_NAME};
 
 impl AppState {
@@ -32,6 +34,16 @@ impl AppState {
         if !self.is_enrolled().await? {
             debug!(?id, "Not enrolled, invitation can't be accepted");
             return Ok(());
+        }
+
+        // Check if invitation exists
+        {
+            let invitations = self.invitations();
+            let reader = invitations.read().await;
+            if !reader.received.invitations.iter().any(|x| x.id == id) {
+                debug!(?id, "Invitation doesn't exist, skipping...");
+                return Ok(());
+            }
         }
 
         // Update the invitation status to Accepting if it's not already being processed.
@@ -57,6 +69,10 @@ impl AppState {
                             debug!(?i, "Invitation was already accepted");
                             Ok(())
                         }
+                        _ => {
+                            debug!(?i, "Invitation is in status {s:?}, skipping...");
+                            Ok(())
+                        }
                     }
                 }
             }
@@ -71,6 +87,65 @@ impl AppState {
         debug!(?res);
         self.publish_state().await;
         info!(?id, "Invitation accepted");
+        self.schedule_invitations_refresh_now();
+        Ok(())
+    }
+
+    pub async fn ignore_invitation(&self, id: String) -> Result<(), String> {
+        self.ignore_invitation_impl(id)
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    async fn ignore_invitation_impl(&self, id: String) -> crate::Result<()> {
+        debug!(?id, "Ignoring invitation");
+        if !self.is_enrolled().await? {
+            debug!(?id, "Not enrolled, invitation can't be ignored");
+            return Ok(());
+        }
+
+        // Update the invitation status to Ignoring if it's not already being processed.
+        // Otherwise, return early.
+        {
+            let invitations = self.invitations();
+            let mut writer = invitations.write().await;
+            match writer.received.status.iter_mut().find(|x| x.0 == id) {
+                None => {
+                    writer
+                        .received
+                        .status
+                        .push((id.clone(), ReceivedInvitationStatus::Ignoring));
+                    debug!(?id, "Invitation is being processed");
+                }
+                Some((i, s)) => match s {
+                    ReceivedInvitationStatus::Ignoring => {
+                        debug!(?i, "Invitation is being ignored");
+                        return Ok(());
+                    }
+                    ReceivedInvitationStatus::Ignored => {
+                        debug!(?i, "Invitation was already ignored");
+                        return Ok(());
+                    }
+                    ReceivedInvitationStatus::Accepting => {
+                        debug!(?i, "Invitation is being accepted");
+                        return Ok(());
+                    }
+                    s => {
+                        debug!(?i, "Invitation is in status {s:?}, ignoring...");
+                    }
+                },
+            }
+        }
+        self.publish_state().await;
+
+        let controller = self.controller().await?;
+        controller
+            .ignore_invitation(&self.context(), id.clone())
+            .await?;
+
+        self.publish_state().await;
+        info!(?id, "Invitation ignored");
         self.schedule_invitations_refresh_now();
         Ok(())
     }
@@ -205,9 +280,16 @@ impl AppState {
             guard.replace_by(invitations)
         };
 
-        if changed {
+        if changed.changed {
             self.publish_state().await;
             self.schedule_inlets_refresh_now();
+            if changed.new_received_invitation {
+                self.notify(Notification {
+                    kind: Kind::Information,
+                    title: "You have pending invitations".to_string(),
+                    message: "".to_string(),
+                })
+            }
         }
 
         Ok(())
@@ -486,13 +568,12 @@ impl InletDataFromInvitation {
                         project.id(),
                         "Project name should be the project id"
                     );
-
                     let project_id = project.id();
-                    let local_node_name = format!("ockam_app_{project_id}_{service_name}");
+                    let relay_name = relay_name(project.config());
                     let service_route = format!(
-                        "/project/{project_id}/service/{}/secure/api/service/{service_name}",
-                        *RELAY_NAME
+                        "/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}"
                     );
+                    let local_node_name = format!("ockam_app_{project_id}_{service_name}");
 
                     let inlet = inlets.get(&invitation.invitation.id);
                     let enabled = inlet.map(|i| i.enabled).unwrap_or(true);
@@ -525,7 +606,7 @@ impl InletDataFromInvitation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam::identity::OneTimeCode;
+    use ockam::identity::{Identifier, OneTimeCode};
     use ockam_api::cloud::share::{
         ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
@@ -544,6 +625,7 @@ mod tests {
                 owner_email: "owner_email".to_string(),
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
+                ignored: false,
             },
             service_access_details: None,
         };
@@ -574,7 +656,9 @@ mod tests {
                     node_route: None,
                     id: "project_identity".to_string(),
                     name: "project_name".to_string(),
-                    identity_id: None,
+                    identity_id: Some(
+                        Identifier::from_str("I1234561234561234561234561234561234561234").unwrap(),
+                    ),
                     authority: None,
                     okta: None,
                 }),

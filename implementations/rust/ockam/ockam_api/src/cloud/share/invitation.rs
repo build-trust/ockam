@@ -99,6 +99,7 @@ pub struct ReceivedInvitation {
     #[n(4)] pub owner_email: String,
     #[n(5)] pub scope: ShareScope,
     #[n(6)] pub target_id: String,
+    #[n(7)] pub ignored: bool,
 }
 
 impl ReceivedInvitation {

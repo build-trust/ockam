@@ -12,7 +12,7 @@ struct CreateServiceView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Grid(alignment: .leading){
+            Grid(alignment: .leading) {
                 GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Service Name")
@@ -24,17 +24,18 @@ struct CreateServiceView: View {
                             isFocused = true
                         })
                 }
-                GridRow{
+                GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Address")
                         Text(verbatim: "Choose an address for the service").font(.caption)
                     }
                     TextField("Address", text: $serviceAddress)
                 }
-                GridRow{
+                GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Share")
-                        Text(verbatim: "Optionally, send an invitation to share this service").font(.caption)
+                        Text(verbatim: "Optionally, send an invitation to share this service").font(
+                            .caption)
                     }
                 }
             }
@@ -50,37 +51,42 @@ struct CreateServiceView: View {
 
             HStack {
                 Spacer()
-                Button(action: {
-                    self.closeWindow()
-                }, label: {
-                    Text("Close")
-                })
-                Button(action: {
-                    let emails: String;
-
-                    emails = Array(self.emails).joined(separator: ";")
-                    self.errorMessage = ""
-
-                    isProcessing = true
-                    let error = create_local_service(
-                        self.serviceName,
-                        self.serviceAddress,
-                        emails
-                    )
-                    isProcessing = false
-
-                    if error == nil {
-                        self.errorMessage = ""
-                        self.serviceName = ""
-                        self.emails = Set<String>()
-                        self.serviceAddress = "localhost:10000"
+                Button(
+                    action: {
                         self.closeWindow()
-                    } else {
-                        self.errorMessage = String(cString: error.unsafelyUnwrapped)
+                    },
+                    label: {
+                        Text("Close")
+                    })
+                Button(
+                    action: {
+                        let emails: String
+
+                        emails = Array(self.emails).joined(separator: ";")
+                        self.errorMessage = ""
+
+                        isProcessing = true
+                        let error = create_local_service(
+                            self.serviceName,
+                            self.serviceAddress,
+                            emails
+                        )
+                        isProcessing = false
+
+                        if error == nil {
+                            self.errorMessage = ""
+                            self.serviceName = ""
+                            self.emails = Set<String>()
+                            self.serviceAddress = "localhost:10000"
+                            self.closeWindow()
+                        } else {
+                            self.errorMessage = String(cString: error.unsafelyUnwrapped)
+                        }
+                    },
+                    label: {
+                        Text("Create and Share")
                     }
-                }, label: {
-                    Text("Create and Share")
-                })
+                )
                 .disabled(!canCreateService() && !isProcessing)
                 .keyboardShortcut(.defaultAction)
                 .padding(10)
@@ -90,15 +96,14 @@ struct CreateServiceView: View {
         .frame(width: 600)
     }
 
-    func closeWindow(){
+    func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()
     }
 
-    func canCreateService() -> Bool{
+    func canCreateService() -> Bool {
         return !self.serviceName.isEmpty && !self.serviceAddress.isEmpty
     }
 }
-
 
 struct CreateServiceView_Previews: PreviewProvider {
     static var previews: some View {

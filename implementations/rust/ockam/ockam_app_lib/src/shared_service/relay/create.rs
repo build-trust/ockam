@@ -1,18 +1,15 @@
 use crate::api::state::OrchestratorStatus;
-use crate::state::{AppState, NODE_NAME};
+use crate::state::AppState;
 use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
-use ockam_api::cli_state::{CliState, StateDirTrait};
+use ockam_api::cli_state::{CliState, ProjectConfig, StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
-use once_cell::sync::Lazy;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
-
-pub static RELAY_NAME: Lazy<String> = Lazy::new(|| format!("forward_to_{NODE_NAME}"));
 
 impl AppState {
     /// Try to create a relay until it succeeds.
@@ -22,6 +19,10 @@ impl AppState {
         cli_state: CliState,
         node_manager: Arc<InMemoryNode>,
     ) {
+        if !self.is_enrolled().await.unwrap_or(false) {
+            debug!("Not enrolled, skipping relay creation");
+            return;
+        }
         self.update_orchestrator_status(OrchestratorStatus::Connecting);
         self.publish_state().await;
         loop {
@@ -54,7 +55,7 @@ impl AppState {
         }
         match cli_state.projects.default() {
             Ok(project) => {
-                if let Some(relay) = Self::get_relay(node_manager.clone()).await {
+                if let Some(relay) = get_relay(node_manager.clone(), project.config()).await {
                     debug!(project = %project.name(), "Relay already exists");
                     self.update_orchestrator_status(OrchestratorStatus::Connected);
                     self.publish_state().await;
@@ -67,7 +68,7 @@ impl AppState {
                         .create_relay(
                             context,
                             &project_address,
-                            Some(NODE_NAME.to_string()),
+                            Some(relay_alias(project.config())),
                             false,
                             None,
                         )
@@ -85,12 +86,29 @@ impl AppState {
             }
         }
     }
+}
 
-    pub(crate) async fn get_relay(node_manager: Arc<InMemoryNode>) -> Option<RelayInfo> {
-        node_manager
-            .get_relays()
-            .await
-            .into_iter()
-            .find(|r| r.remote_address() == *RELAY_NAME)
-    }
+async fn get_relay(
+    node_manager: Arc<InMemoryNode>,
+    project_config: &ProjectConfig,
+) -> Option<RelayInfo> {
+    let relay_name = relay_name(project_config);
+    node_manager
+        .get_relays()
+        .await
+        .into_iter()
+        .find(|r| r.remote_address() == relay_name)
+}
+
+pub(crate) fn relay_name(project_config: &ProjectConfig) -> String {
+    let alias = relay_alias(project_config);
+    format!("forward_to_{alias}")
+}
+
+fn relay_alias(project_config: &ProjectConfig) -> String {
+    project_config
+        .identity
+        .as_ref()
+        .expect("Project should have identifier set")
+        .to_string()
 }

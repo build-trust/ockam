@@ -57,6 +57,8 @@ typedef struct C_Invitation {
    */
   const char *service_scheme;
   uint8_t accepting;
+  uint8_t accepted;
+  uint8_t ignoring;
 } C_Invitation;
 
 typedef struct C_Service {
@@ -128,6 +130,11 @@ void initialize_application(void (*application_state_callback)(struct C_Applicat
 void accept_invitation(const char *id);
 
 /**
+ * Ignore the invitation with the provided id.
+ */
+void ignore_invitation(const char *id);
+
+/**
  * Initiate graceful shutdown of the application, exit process when complete.
  */
 void shutdown_application(void);
@@ -166,6 +173,11 @@ void reset_application_state(void);
  * Starts user enrollment
  */
 void enroll_user(void);
+
+/**
+ * Starts user enrollment and accept the invitation with the provided id.
+ */
+void enroll_user_and_accept_invitation(const char *id);
 
 /**
  * This function retrieve the current version of the application state, for polling purposes.

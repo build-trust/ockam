@@ -41,12 +41,24 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                 email: "mrinal@ockam.io".to_string(),
                 name: Some("Mrinal Wadhwa".into()),
                 image_url: Some("https://avatars.githubusercontent.com/u/159583?v=4".into()),
-                invitations: vec![rust::Invitation {
-                    id: "5373".into(),
-                    service_name: "New Concept".into(),
-                    service_scheme: Some("http".into()),
-                    accepting: false,
-                }],
+                invitations: vec![
+                    rust::Invitation {
+                        id: "5373".into(),
+                        service_name: "New Concept".into(),
+                        service_scheme: Some("http".into()),
+                        accepting: false,
+                        accepted: false,
+                        ignoring: true,
+                    },
+                    rust::Invitation {
+                        id: "5279".into(),
+                        service_name: "New Concept 2".into(),
+                        service_scheme: Some("http".into()),
+                        accepting: false,
+                        accepted: false,
+                        ignoring: false,
+                    },
+                ],
                 incoming_services: vec![],
             },
             rust::ServiceGroup {
@@ -59,12 +71,16 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                         service_name: "Local Web Deployment".into(),
                         service_scheme: Some("http".into()),
                         accepting: false,
+                        accepted: false,
+                        ignoring: false,
                     },
                     rust::Invitation {
                         id: "5678".into(),
                         service_name: "Secret Wiki".into(),
                         service_scheme: Some("http".into()),
                         accepting: true,
+                        accepted: false,
+                        ignoring: false,
                     },
                 ],
                 incoming_services: vec![rust::Service {
