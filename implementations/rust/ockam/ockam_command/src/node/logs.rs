@@ -1,7 +1,9 @@
+use crate::fmt_ok;
 use crate::node::get_node_name;
 use crate::util::local_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
+use colorful::Colorful;
 use ockam_api::cli_state::StateDirTrait;
 
 const LONG_ABOUT: &str = include_str!("./static/logs/long_about.txt");
@@ -18,10 +20,6 @@ const AFTER_LONG_HELP: &str = include_str!("./static/logs/after_long_help.txt");
 pub struct LogCommand {
     /// Name of the node to retrieve the logs from.
     node_name: Option<String>,
-
-    /// Show the standard error log file.
-    #[arg(long = "err")]
-    show_err: bool,
 }
 
 impl LogCommand {
@@ -33,14 +31,12 @@ impl LogCommand {
 fn run_impl(opts: CommandGlobalOpts, cmd: LogCommand) -> miette::Result<()> {
     let node_name = get_node_name(&opts.state, &cmd.node_name);
     let node_state = opts.state.nodes.get(node_name)?;
-    let log_file_path = if cmd.show_err {
-        node_state.stderr_log()
-    } else {
-        node_state.stdout_log()
-    };
+    let log_path = node_state.stdout_log().display().to_string();
     opts.terminal
         .stdout()
-        .machine(log_file_path.display().to_string())
+        .plain(fmt_ok!("The path for the log file is: {log_path}"))
+        .machine(&log_path)
+        .json(serde_json::json!({ "path": log_path }))
         .write_line()?;
     Ok(())
 }
