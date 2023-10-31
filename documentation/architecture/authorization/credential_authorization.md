@@ -7,7 +7,7 @@ Currently secure channel exchange identities as a part of the handshake.
 Identities can be used to authorize messages, but authorizing worker will have to
 know which identity has access to which actions.
 
-In order to configure identity access to actions, we can use attribute base authorization,
+In order to configure identity access to actions, we can use attribute based authorization,
 when identity can present a set of attributes and authorizing worker can match them.
 
 Given that attributes are stored on the authorizing node side, authorized worker can retrieve them using identity from the message metadata.
