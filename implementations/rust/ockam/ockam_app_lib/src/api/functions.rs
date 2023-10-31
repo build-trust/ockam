@@ -239,11 +239,12 @@ extern "C" fn create_local_service(
     }
 }
 
-/// Resets the application state to a fresh installation.
+/// Synchronously resets the application state to a fresh installation.
+/// A restart is **required** afterward.
 #[no_mangle]
 extern "C" fn reset_application_state() {
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
-    app_state.context().runtime().spawn(async {
+    let app_state = unsafe { APPLICATION_STATE.take() }.unwrap();
+    app_state.context().runtime().block_on(async move {
         let result = app_state.reset().await;
         if let Err(err) = result {
             error!(?err, "Cannot reset the application state");
