@@ -1,13 +1,13 @@
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Decodable, Encodable, Route};
-use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
+use ockam_core::{async_trait, Decodable, Route};
+use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::{debug, error};
 
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
-use crate::IdentityError;
+use crate::{IdentityError, PlaintextPayloadMessage, SecureChannelMessage};
 
 pub(crate) struct EncryptorWorker {
     //for debug purposes only
@@ -91,14 +91,15 @@ impl EncryptorWorker {
         // Remove our address
         let _ = onward_route.step();
 
-        let msg = TransportMessage::v1(
+        let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,
-            msg.into_transport_message().payload,
-        );
+            payload: msg.into_transport_message().payload,
+        };
+        let msg = SecureChannelMessage::Payload(msg);
 
         // Encrypt the message
-        let encrypted_payload = match self.encryptor.encrypt(&msg.encode()?).await {
+        let msg = match self.encryptor.encrypt(&minicbor::to_vec(&msg)?).await {
             Ok(encrypted_payload) => encrypted_payload,
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
@@ -113,7 +114,7 @@ impl EncryptorWorker {
         // Send the message to the decryptor on the other side
         ctx.send_from_address(
             self.remote_route.clone(),
-            encrypted_payload,
+            msg,
             self.addresses.encryptor.clone(),
         )
         .await?;

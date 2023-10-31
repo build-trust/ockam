@@ -9,7 +9,10 @@ use crate::secure_channel::encryptor::{Encryptor, KEY_RENEWAL_INTERVAL};
 use crate::secure_channel::key_tracker::KeyTracker;
 use crate::secure_channel::nonce_tracker::NonceTracker;
 use crate::secure_channel::Addresses;
-use crate::{DecryptionRequest, DecryptionResponse, IdentityError, IdentitySecureChannelLocalInfo};
+use crate::{
+    DecryptionRequest, DecryptionResponse, IdentityError, IdentitySecureChannelLocalInfo,
+    SecureChannelMessage,
+};
 
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, warn};
@@ -79,19 +82,28 @@ impl DecryptorHandler {
         );
 
         // Decode raw payload binary
-        let payload = Vec::<u8>::decode(&msg.into_transport_message().payload)?;
+        let payload = msg.into_transport_message().payload;
+        let payload = Vec::<u8>::decode(&payload)?;
 
         // Decrypt the binary
         let decrypted_payload = self.decryptor.decrypt(&payload).await?;
 
-        // Encrypted data should be a TransportMessage
-        let mut transport_message = TransportMessage::decode(&decrypted_payload)?;
+        let msg: SecureChannelMessage = minicbor::decode(&decrypted_payload)?;
+
+        let mut msg = match msg {
+            SecureChannelMessage::Payload(msg) => msg,
+            SecureChannelMessage::Close => {
+                todo!()
+            }
+        };
 
         // Add encryptor hop in the return_route (instead of our address)
-        transport_message
-            .return_route
+        msg.return_route
             .modify()
             .prepend(self.addresses.encryptor.clone());
+
+        let transport_message =
+            TransportMessage::v1(msg.onward_route, msg.return_route, msg.payload);
 
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
