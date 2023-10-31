@@ -2,7 +2,7 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use serde::{Deserialize, Serialize};
 
 /// The ModelState stores all the data which is not maintained by the NodeManager.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ModelState {
     #[serde(default = "Vec::new")]
     pub(crate) tcp_outlets: Vec<OutletStatus>,

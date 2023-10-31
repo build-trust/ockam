@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use miette::{IntoDiagnostic, WrapErr};
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{error, info, trace, warn};
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{
@@ -99,6 +99,11 @@ impl AppState {
                 // create the application state and its dependencies
                 let node_manager = create_node_manager(context.clone(), &cli_state).await;
                 let model_state_repository = create_model_state_repository(&cli_state).await;
+                let model_state = model_state_repository
+                    .load()
+                    .await
+                    .expect("Failed to load the model state")
+                    .unwrap_or(ModelState::default());
 
                 info!("AppState initialized");
                 AppState {
@@ -108,7 +113,7 @@ impl AppState {
                     state: Arc::new(RwLock::new(cli_state)),
                     orchestrator_status: Arc::new(Mutex::new(Default::default())),
                     node_manager: Arc::new(RwLock::new(node_manager)),
-                    model_state: Arc::new(RwLock::new(ModelState::default())),
+                    model_state: Arc::new(RwLock::new(model_state)),
                     model_state_repository: Arc::new(RwLock::new(model_state_repository)),
                     background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
                     projects: Arc::new(Default::default()),
@@ -126,60 +131,47 @@ impl AppState {
     }
 
     /// Load a previously persisted ModelState and start refreshing schedule
-    pub async fn load_model_state(&'static self) -> ModelState {
-        let cli_state = self.state().await;
+    pub async fn load_model_state(&'static self) {
+        self.restore_tcp_outlets().await;
+        self.publish_state().await;
 
-        match self.model_state_repository.read().await.load().await {
-            Ok(model_state) => {
-                let model_state = model_state.unwrap_or(ModelState::default());
-                self.load_outlet_model_state(&model_state, &cli_state).await;
-                self.publish_state().await;
+        let runtime = self.context.runtime();
 
-                let runtime = self.context.runtime();
+        self.refresh_project_scheduler
+            .set(Scheduler::create(
+                Arc::new(RefreshProjectsTask::new(self.clone())),
+                Duration::from_secs(30),
+                runtime,
+            ))
+            .map_err(|_| "already set")
+            .unwrap();
 
-                self.refresh_project_scheduler
-                    .set(Scheduler::create(
-                        Arc::new(RefreshProjectsTask::new(self.clone())),
-                        Duration::from_secs(30),
-                        runtime,
-                    ))
-                    .map_err(|_| "already set")
-                    .unwrap();
+        self.refresh_invitations_scheduler
+            .set(Scheduler::create(
+                Arc::new(RefreshInvitationsTask::new(self.clone())),
+                Duration::from_secs(30),
+                runtime,
+            ))
+            .map_err(|_| "already set")
+            .unwrap();
 
-                self.refresh_invitations_scheduler
-                    .set(Scheduler::create(
-                        Arc::new(RefreshInvitationsTask::new(self.clone())),
-                        Duration::from_secs(30),
-                        runtime,
-                    ))
-                    .map_err(|_| "already set")
-                    .unwrap();
+        self.refresh_inlets_scheduler
+            .set(Scheduler::create(
+                Arc::new(RefreshInletsTask::new(self.clone())),
+                Duration::from_secs(10),
+                runtime,
+            ))
+            .map_err(|_| "already set")
+            .unwrap();
 
-                self.refresh_inlets_scheduler
-                    .set(Scheduler::create(
-                        Arc::new(RefreshInletsTask::new(self.clone())),
-                        Duration::from_secs(10),
-                        runtime,
-                    ))
-                    .map_err(|_| "already set")
-                    .unwrap();
-
-                self.refresh_relay_scheduler
-                    .set(Scheduler::create(
-                        Arc::new(RefreshRelayTask::new(self.clone())),
-                        Duration::from_secs(10),
-                        runtime,
-                    ))
-                    .map_err(|_| "already set")
-                    .unwrap();
-
-                model_state
-            }
-            Err(e) => {
-                error!(?e, "Cannot load the model state");
-                panic!("Cannot load the model state: {e:?}")
-            }
-        }
+        self.refresh_relay_scheduler
+            .set(Scheduler::create(
+                Arc::new(RefreshRelayTask::new(self.clone())),
+                Duration::from_secs(10),
+                runtime,
+            ))
+            .map_err(|_| "already set")
+            .unwrap();
     }
 
     /// Asynchronously shutdown the application
@@ -376,7 +368,9 @@ impl AppState {
 
     pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {
         let mut model_state = self.model_state.write().await;
+        trace!(?model_state, "updating model state locally");
         f(&mut model_state);
+        trace!(?model_state, "persisting model state to DB");
         self.model_state_repository
             .read()
             .await
@@ -386,8 +380,8 @@ impl AppState {
     }
 
     pub async fn model<T>(&self, f: impl FnOnce(&ModelState) -> T) -> T {
-        let mut model_state = self.model_state.read().await;
-        f(&mut model_state)
+        let model_state = self.model_state.read().await;
+        f(&model_state)
     }
 
     pub async fn background_node_client(&self) -> Arc<dyn BackgroundNodeClient> {
