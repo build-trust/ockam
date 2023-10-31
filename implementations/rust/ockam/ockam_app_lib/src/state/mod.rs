@@ -86,7 +86,12 @@ impl AppState {
             let runtime = runtime.clone();
             async move {
                 // start the router, it is needed for the node manager creation
-                runtime.spawn(async move { executor.start_router().await });
+                runtime.spawn(async move {
+                    let result = executor.start_router().await;
+                    if let Err(e) = result {
+                        error!(%e, "Failed to start the router")
+                    }
+                });
 
                 // create the application state and its dependencies
                 let node_manager = create_node_manager(context.clone(), &cli_state).await;

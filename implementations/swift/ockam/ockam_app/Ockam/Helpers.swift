@@ -29,3 +29,21 @@ func copyToClipboard(_ text: String) {
     pasteboard.declareTypes([.string], owner: nil)
     pasteboard.setString(text, forType: .string)
 }
+
+// this functions reset the state in the file system and
+// stops the application node and restart the whole process
+func restartCurrentProcess() {
+    // first reset the file system
+    reset_application_state()
+
+    // start a brand new process, in this phase
+    // the application node is already stopped and
+    // the local status is cleaned
+    let task = Process()
+    task.launchPath = Bundle.main.executablePath!
+    task.arguments = CommandLine.arguments
+    task.launch()
+
+    // and quits
+    exit(0)
+}

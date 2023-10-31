@@ -126,7 +126,7 @@ struct MainView: View {
                         ClickableMenuEntry(
                             text: "Reset", icon: "arrow.counterclockwise",
                             action: {
-                                reset_application_state()
+                                restartCurrentProcess()
                             })
                     }
                     ClickableMenuEntry(
