@@ -165,7 +165,7 @@ void delete_local_service(const char *name);
 const char *create_local_service(const char *name, const char *address, const char *emails);
 
 /**
- * Resets the application state to a fresh installation.
+ * Synchronously resets the application state to a fresh installation.
  */
 void reset_application_state(void);
 

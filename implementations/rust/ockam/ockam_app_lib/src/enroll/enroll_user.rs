@@ -40,13 +40,8 @@ impl AppState {
         // which can't be rerun manually once the worker is started.
         self.reset_node_manager().await?;
 
-        // Create the relay
-        self.create_relay(
-            self.context(),
-            self.state().await,
-            self.node_manager().await,
-        )
-        .await;
+        // trigger the relay connection right away
+        self.schedule_relay_refresh_now();
 
         info!("User enrolled successfully");
         Ok(())

@@ -2,6 +2,7 @@ pub(crate) mod commands;
 pub(crate) mod state;
 
 use std::net::SocketAddr;
+use tracing::{debug, warn};
 
 use crate::state::{AppState, NODE_NAME};
 use crate::Error;
@@ -16,17 +17,22 @@ impl AppState {
         recipient_email: &str,
         enrollment_ticket: EnrollmentTicket,
     ) -> crate::Result<CreateServiceInvitation> {
+        debug!(%outlet_socket_addr, %recipient_email, "preparing payload to send invitation");
         let cli_state = self.state().await;
-
         let service_route = self
             .model(|m| {
+                if m.tcp_outlets.is_empty() {
+                    warn!("no outlets found in the App state");
+                }
                 m.tcp_outlets
                     .iter()
                     .find(|o| o.socket_addr == *outlet_socket_addr)
                     .map(|o| o.worker_address())
             })
             .await
-            .ok_or::<Error>("outlet should exist".into())??;
+            .ok_or::<Error>(
+                format!("The outlet {outlet_socket_addr} wasn't found in the App state").into(),
+            )??;
         let project = cli_state.projects.default()?;
 
         Ok(CreateServiceInvitation::new(

@@ -15,7 +15,7 @@ use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
-use crate::session::sessions::{Key, Session};
+use crate::session::sessions::Session;
 use crate::session::MedicHandle;
 use crate::DefaultAddress;
 
@@ -135,8 +135,12 @@ impl InMemoryNode {
         self.create_controller_client().await.into_diagnostic()
     }
 
-    pub fn add_session(&self, session: Session) -> Key {
-        self.medic_handle.add_session(session)
+    pub fn add_session(&self, session: Session) {
+        self.medic_handle.add_session(session);
+    }
+
+    pub fn remove_session(&self, key: &str) {
+        self.medic_handle.remove_session(key);
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {

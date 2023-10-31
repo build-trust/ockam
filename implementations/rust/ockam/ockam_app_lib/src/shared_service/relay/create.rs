@@ -2,8 +2,9 @@ use crate::api::state::OrchestratorStatus;
 use crate::state::AppState;
 use crate::Result;
 use miette::IntoDiagnostic;
+use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::cli_state::{CliState, ProjectConfig, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
@@ -13,29 +14,46 @@ use tracing::{debug, info, trace, warn};
 
 impl AppState {
     /// Try to create a relay until it succeeds.
-    pub async fn create_relay(
-        &self,
-        context: Arc<Context>,
-        cli_state: CliState,
-        node_manager: Arc<InMemoryNode>,
-    ) {
+    pub async fn refresh_relay(&self) {
+        let cli_state = self.state().await;
+        let node_manager = self.node_manager().await;
+        let context = self.context();
+
         if !self.is_enrolled().await.unwrap_or(false) {
+            // During the enrollment phase the status would be enrollment-related
+            // and we don't want to overwrite it with disconnected
+            self.update_orchestrator_status_if(
+                OrchestratorStatus::Disconnected,
+                vec![
+                    OrchestratorStatus::Connected,
+                    OrchestratorStatus::Connecting,
+                ],
+            );
+            self.publish_state().await;
+
             debug!("Not enrolled, skipping relay creation");
-            return;
-        }
-        self.update_orchestrator_status(OrchestratorStatus::Connecting);
-        self.publish_state().await;
-        loop {
-            match self
-                .create_relay_impl(&context, &cli_state, node_manager.clone())
-                .await
-            {
-                Ok(_) => break,
-                Err(e) => {
-                    warn!(%e, "Failed to create relay, retrying...");
+            match get_relay(&node_manager, &cli_state).await {
+                Ok(_) => match delete_relay(context, &node_manager, &cli_state).await {
+                    Ok(_) => {
+                        info!("Relay deleted");
+                    }
+                    Err(err) => {
+                        warn!(%err, "Cannot delete relay")
+                    }
+                },
+                Err(err) => {
+                    warn!(%err, "Cannot get relay")
                 }
             }
-            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            return;
+        }
+
+        let result = self
+            .create_relay_impl(&context, &cli_state, node_manager.clone())
+            .await;
+
+        if let Err(e) = result {
+            warn!(%e, "Failed to create relay, retrying...");
         }
     }
 
@@ -47,20 +65,18 @@ impl AppState {
         context: &Context,
         cli_state: &CliState,
         node_manager: Arc<InMemoryNode>,
-    ) -> Result<Option<RelayInfo>> {
+    ) -> Result<()> {
         trace!("Creating relay");
-        if !cli_state.is_enrolled().unwrap_or(false) {
-            trace!("Not enrolled, skipping relay creation");
-            return Ok(None);
-        }
         match cli_state.projects.default() {
             Ok(project) => {
-                if let Some(relay) = get_relay(node_manager.clone(), project.config()).await {
+                if let Some(_relay) = get_relay(&node_manager, cli_state).await? {
                     debug!(project = %project.name(), "Relay already exists");
                     self.update_orchestrator_status(OrchestratorStatus::Connected);
                     self.publish_state().await;
-                    Ok(Some(relay.clone()))
+                    Ok(())
                 } else {
+                    self.update_orchestrator_status(OrchestratorStatus::Connecting);
+                    self.publish_state().await;
                     debug!(project = %project.name(), "Creating relay at project");
                     let project_route = format!("/project/{}", project.name());
                     let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
@@ -68,7 +84,7 @@ impl AppState {
                         .create_relay(
                             context,
                             &project_address,
-                            Some(relay_alias(project.config())),
+                            Some(bare_relay_name(cli_state)?),
                             false,
                             None,
                         )
@@ -77,38 +93,52 @@ impl AppState {
                     info!(forwarding_route = %relay.forwarding_route(), "Relay created at project");
                     self.update_orchestrator_status(OrchestratorStatus::Connected);
                     self.publish_state().await;
-                    Ok(Some(relay))
+                    Ok(())
                 }
             }
             Err(err) => {
                 warn!(%err, "No default project has ben set");
-                Ok(None)
+                Ok(())
             }
         }
     }
 }
 
+async fn delete_relay(
+    context: Arc<Context>,
+    node_manager: &InMemoryNode,
+    cli_state: &CliState,
+) -> ockam::Result<Option<RelayInfo>> {
+    let relay_name = relay_name(cli_state)?;
+    node_manager.delete_relay(&context, &relay_name).await
+}
+
 async fn get_relay(
-    node_manager: Arc<InMemoryNode>,
-    project_config: &ProjectConfig,
-) -> Option<RelayInfo> {
-    let relay_name = relay_name(project_config);
-    node_manager
+    node_manager: &InMemoryNode,
+    cli_state: &CliState,
+) -> ockam::Result<Option<RelayInfo>> {
+    let relay_name = relay_name(cli_state)?;
+    Ok(node_manager
         .get_relays()
         .await
         .into_iter()
-        .find(|r| r.remote_address() == relay_name)
+        .find(|r| r.remote_address() == relay_name))
 }
 
-pub(crate) fn relay_name(project_config: &ProjectConfig) -> String {
-    let alias = relay_alias(project_config);
-    format!("forward_to_{alias}")
+fn relay_name(cli_state: &CliState) -> ockam::Result<String> {
+    let bare_relay_name = bare_relay_name(cli_state)?;
+    Ok(format!("forward_to_{bare_relay_name}"))
 }
 
-fn relay_alias(project_config: &ProjectConfig) -> String {
-    project_config
-        .identity
-        .as_ref()
-        .expect("Project should have identifier set")
-        .to_string()
+pub(crate) fn relay_name_from_identifier(identifier: &Identifier) -> String {
+    let bare_relay_name = identifier.to_string();
+    format!("forward_to_{bare_relay_name}")
+}
+
+fn bare_relay_name(cli_state: &CliState) -> ockam::Result<String> {
+    Ok(cli_state
+        .identities
+        .get_or_default(None)?
+        .identifier()
+        .to_string())
 }

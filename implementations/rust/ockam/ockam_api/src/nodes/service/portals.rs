@@ -559,7 +559,10 @@ impl InMemoryNode {
                 ping_addr = %connection.transport_route(),
                 "Creating session for TCP inlet"
             };
-            let mut session = Session::new(connection.transport_route());
+            let mut session = Session::new(
+                connection.transport_route(),
+                format!("inlet-{}", inlet.alias),
+            );
 
             let repl = Self::portal_replacer(
                 self.node_manager.clone(),
