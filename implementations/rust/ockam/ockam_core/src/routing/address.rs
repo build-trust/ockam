@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 ///
 #[derive(Serialize, Deserialize, Decode, Encode, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 #[rustfmt::skip]
-#[cbor(map)]
+#[cbor(map)] // TODO: Switch to an array eventually
 pub struct Address {
     #[n(1)] tt: TransportType,
     // It's binary but in most cases we assume it to be an UTF-8 string

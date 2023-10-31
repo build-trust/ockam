@@ -9,10 +9,12 @@ mod handshake;
 mod key_tracker;
 mod listener;
 mod local_info;
+mod message;
 mod nonce_tracker;
 mod options;
 mod registry;
 mod role;
+
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 
@@ -22,6 +24,7 @@ pub use api::*;
 pub(crate) use handshake::*;
 pub(crate) use listener::*;
 pub use local_info::*;
+pub use message::*;
 pub use options::*;
 pub use registry::*;
 pub(crate) use role::*;
