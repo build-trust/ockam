@@ -63,8 +63,8 @@ pub struct AppState {
     background_node_client: Arc<RwLock<Arc<dyn BackgroundNodeClient>>>,
     projects: Arc<RwLock<Vec<Project>>>,
     invitations: Arc<RwLock<InvitationState>>,
-    application_state_callback: ApplicationStateCallback,
-    notification_callback: NotificationCallback,
+    application_state_callback: Option<ApplicationStateCallback>,
+    notification_callback: Option<NotificationCallback>,
     node_manager: Arc<RwLock<Arc<InMemoryNode>>>,
     refresh_project_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_invitations_scheduler: Arc<OnceLock<Scheduler>>,
@@ -76,8 +76,8 @@ pub struct AppState {
 impl AppState {
     /// Create a new AppState
     pub fn new(
-        application_state_callback: ApplicationStateCallback,
-        notification_callback: NotificationCallback,
+        application_state_callback: Option<ApplicationStateCallback>,
+        notification_callback: Option<NotificationCallback>,
     ) -> AppState {
         let cli_state =
             CliState::initialize().expect("Failed to load the local Ockam configuration");
@@ -175,7 +175,7 @@ impl AppState {
     }
 
     /// Asynchronously shutdown the application
-    pub fn shutdown(self) {
+    pub fn shutdown(&self) {
         let context = self.context();
         let runtime = self.context.runtime().clone();
 
@@ -188,9 +188,10 @@ impl AppState {
         });
 
         // delete every other app-related node, then exit
+        let this = self.clone();
         runtime.spawn(async move {
             let inlets: Vec<String> = {
-                let invitation_state = self.invitations().read().await.clone();
+                let invitation_state = this.invitations().read().await.clone();
                 invitation_state
                     .accepted
                     .inlets
@@ -200,7 +201,7 @@ impl AppState {
             };
 
             for node_name in inlets {
-                let _ = self
+                let _ = this
                     .background_node_client
                     .read()
                     .await
@@ -408,28 +409,32 @@ impl AppState {
     }
 
     pub fn notify(&self, notification: Notification) {
-        self.notification_callback.call(notification);
+        if let Some(callback) = self.notification_callback.as_ref() {
+            callback.call(notification);
+        }
     }
 
     /// Sends the new application state to the UI
     pub async fn publish_state(&self) {
-        let result = self.snapshot().await;
-        match result {
-            Ok(state) => {
-                {
-                    // avoid publishing the same state multiple times
-                    let mut guard = self.last_published_snapshot.lock().unwrap();
-                    if let Some(previous) = &*guard {
-                        if previous == &state {
-                            return;
+        if let Some(callback) = self.application_state_callback.as_ref() {
+            let result = self.snapshot().await;
+            match result {
+                Ok(state) => {
+                    {
+                        // avoid publishing the same state multiple times
+                        let mut guard = self.last_published_snapshot.lock().unwrap();
+                        if let Some(previous) = &*guard {
+                            if previous == &state {
+                                return;
+                            }
                         }
+                        guard.replace(state.clone());
                     }
-                    guard.replace(state.clone());
+                    callback.call(state);
                 }
-                self.application_state_callback.call(state);
-            }
-            Err(e) => {
-                warn!(%e, "Failed to publish the application state");
+                Err(e) => {
+                    warn!(%e, "Failed to publish the application state");
+                }
             }
         }
     }

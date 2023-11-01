@@ -1,6 +1,4 @@
-use futures::future::join_all;
 use miette::IntoDiagnostic;
-use ockam::compat::tokio::spawn;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -313,7 +311,6 @@ impl AppState {
 
         let cli_state = self.state().await;
         let background_node_client = self.background_node_client().await;
-        let mut futures = vec![];
         for invitation in invitations.accepted.invitations {
             match InletDataFromInvitation::new(
                 &cli_state,
@@ -322,42 +319,35 @@ impl AppState {
             ) {
                 Ok(inlet_data) => match inlet_data {
                     Some(inlet_data) => {
-                        let invitations_arc = invitations_arc.clone();
-                        let background_node_client = background_node_client.clone();
-                        let cli_state = cli_state.clone();
-                        let self_cloned = self.clone();
-                        let future = spawn(async move {
-                            let result = self_cloned
-                                .refresh_inlet(
-                                    cli_state.clone(),
-                                    background_node_client.clone(),
-                                    inlet_data,
-                                )
-                                .await;
-
-                            {
-                                let mut guard = invitations_arc.write().await;
-                                match result {
-                                    Ok(value) => {
-                                        if let Some(inlet) = value {
-                                            guard
-                                                .accepted
-                                                .inlets
-                                                .insert(invitation.invitation.id.clone(), inlet);
-                                        } else {
-                                            // disabled inlet
-                                            guard.accepted.inlets.remove(&invitation.invitation.id);
-                                        }
-                                    }
-                                    Err(err) => {
-                                        warn!(%err, "Failed to refresh TCP inlet for accepted invitation");
+                        let result = self
+                            .refresh_inlet(
+                                cli_state.clone(),
+                                background_node_client.clone(),
+                                inlet_data,
+                            )
+                            .await;
+                        {
+                            // we want to reduce the scope of the guard as much as possible
+                            let mut guard = invitations_arc.write().await;
+                            match result {
+                                Ok(value) => {
+                                    if let Some(inlet) = value {
+                                        guard
+                                            .accepted
+                                            .inlets
+                                            .insert(invitation.invitation.id.clone(), inlet);
+                                    } else {
+                                        // disabled inlet
                                         guard.accepted.inlets.remove(&invitation.invitation.id);
                                     }
                                 }
+                                Err(err) => {
+                                    warn!(%err, "Failed to refresh TCP inlet for accepted invitation");
+                                    guard.accepted.inlets.remove(&invitation.invitation.id);
+                                }
                             }
-                            self_cloned.publish_state().await;
-                        });
-                        futures.push(future);
+                        }
+                        self.publish_state().await;
                     }
                     None => {
                         warn!("Invalid invitation data");
@@ -368,9 +358,6 @@ impl AppState {
                 }
             }
         }
-
-        // waits for all the futures _concurrently_
-        let _ = join_all(futures).await;
 
         info!("Inlets refreshed");
         Ok(())

@@ -156,6 +156,8 @@ impl Inlets for Cli {
                 &service_name,
                 "--retry-wait",
                 "0",
+                "--timeout",
+                "5",
             )
             .before_spawn(log_command)
             .stderr_null()
