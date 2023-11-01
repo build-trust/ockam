@@ -156,6 +156,7 @@ pub struct InletStatus {
     /// An optional status payload
     #[n(4)] pub payload: Option<String>,
     #[n(5)] pub outlet_route: String,
+    #[n(6)] pub status: String,
 }
 
 impl InletStatus {
@@ -166,6 +167,7 @@ impl InletStatus {
             alias: "".into(),
             payload: Some(reason.into()),
             outlet_route: "".into(),
+            status: "".into(),
         }
     }
 
@@ -175,6 +177,7 @@ impl InletStatus {
         alias: impl Into<String>,
         payload: impl Into<Option<String>>,
         outlet_route: impl Into<String>,
+        status: impl Into<String>,
     ) -> Self {
         Self {
             bind_addr: bind_addr.into(),
@@ -182,6 +185,7 @@ impl InletStatus {
             alias: alias.into(),
             payload: payload.into(),
             outlet_route: outlet_route.into(),
+            status: status.into(),
         }
     }
 }

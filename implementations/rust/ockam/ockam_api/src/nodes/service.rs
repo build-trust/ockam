@@ -47,6 +47,7 @@ use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
+use crate::session::MedicHandle;
 use crate::DefaultAddress;
 
 use super::registry::Registry;
@@ -101,6 +102,7 @@ pub struct NodeManager {
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
     policies: Arc<dyn PolicyStorage>,
+    pub(crate) medic_handle: MedicHandle,
 }
 
 impl NodeManager {
@@ -381,6 +383,7 @@ impl NodeManager {
             .build();
 
         let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
+        let medic_handle = MedicHandle::start_medic(ctx).await?;
 
         let mut s = Self {
             cli_state,
@@ -399,6 +402,7 @@ impl NodeManager {
             trust_context: None,
             registry: Default::default(),
             policies,
+            medic_handle,
         };
 
         if let Some(tc) = trust_options.trust_context_config {

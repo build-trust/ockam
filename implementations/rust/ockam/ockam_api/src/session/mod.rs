@@ -278,6 +278,11 @@ impl MedicHandle {
         let mut sessions = self.sessions.lock().unwrap();
         sessions.retain(|s| s.key() != key)
     }
+
+    pub fn status_of(&self, key: &str) -> Option<Status> {
+        let sessions = self.sessions.lock().unwrap();
+        sessions.iter().find(|s| s.key() == key).map(|s| s.status())
+    }
 }
 
 #[cfg(test)]

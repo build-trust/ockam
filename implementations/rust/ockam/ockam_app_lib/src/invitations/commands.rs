@@ -389,8 +389,10 @@ impl AppState {
                     .show(&inlet_data.local_node_name, &inlet_data.service_name)
                     .await
                 {
-                    inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
-                    return Inlet::new(inlet_data).map(Some);
+                    if inlet.status == "up" {
+                        inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
+                        return Inlet::new(inlet_data).map(Some);
+                    }
                 }
             }
         }
