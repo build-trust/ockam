@@ -1,6 +1,7 @@
 use core::fmt;
 use core::future::Future;
 use core::pin::Pin;
+use std::fmt::Formatter;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
@@ -30,6 +31,16 @@ pub enum Status {
     Down,
     Degraded,
     Up,
+}
+
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Status::Down => write!(f, "down"),
+            Status::Degraded => write!(f, "degraded"),
+            Status::Up => write!(f, "up"),
+        }
+    }
 }
 
 impl fmt::Debug for Session {

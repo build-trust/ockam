@@ -16,7 +16,6 @@ use crate::nodes::service::{
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
 use crate::session::sessions::Session;
-use crate::session::MedicHandle;
 use crate::DefaultAddress;
 
 /// An `InMemoryNode` represents a full running node
@@ -34,7 +33,6 @@ use crate::DefaultAddress;
 ///
 pub struct InMemoryNode {
     pub(crate) node_manager: Arc<NodeManager>,
-    pub(crate) medic_handle: MedicHandle,
     persistent: bool,
 }
 
@@ -170,10 +168,8 @@ impl InMemoryNode {
         let node_manager =
             NodeManager::create(ctx, general_options, transport_options, trust_options).await?;
         debug!("start the Medic");
-        let medic_handle = MedicHandle::start_medic(ctx).await?;
         Ok(Self {
             node_manager: Arc::new(node_manager),
-            medic_handle,
             persistent,
         })
     }

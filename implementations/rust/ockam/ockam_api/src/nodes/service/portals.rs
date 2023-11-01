@@ -25,7 +25,7 @@ use crate::nodes::models::portal::{
 use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::random_alias;
 use crate::nodes::InMemoryNode;
-use crate::session::sessions::{Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
+use crate::session::sessions::{Replacer, Session, Status, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 use crate::{actions, resources, DefaultAddress};
 
 use super::{NodeManager, NodeManagerWorker};
@@ -415,6 +415,7 @@ impl NodeManager {
                         alias,
                         None,
                         outlet_route.to_string(),
+                        Status::Up.to_string(),
                     ),
                     access_control,
                 )
@@ -448,6 +449,7 @@ impl NodeManager {
                         alias,
                         None,
                         inlet_to_delete.outlet_route.to_string(),
+                        Status::Down.to_string(),
                     ))
                 }
                 Err(e) => {
@@ -474,13 +476,20 @@ impl NodeManager {
     pub async fn show_inlet(&self, alias: &str) -> Option<InletStatus> {
         info!(%alias, "Handling request to show inlet portal");
         if let Some(inlet_to_show) = self.registry.inlets.get(alias).await {
+            let status = self
+                .medic_handle
+                .status_of(&format!("inlet-{alias}"))
+                .unwrap_or(Status::Down)
+                .to_string();
+
             debug!(%alias, "Inlet not found in node registry");
             Some(InletStatus::new(
                 inlet_to_show.bind_addr.to_string(),
-                inlet_to_show.worker_addr.to_string(),
+                inlet_to_show.worker_addr.address(),
                 alias,
                 None,
                 inlet_to_show.outlet_route.to_string(),
+                status,
             ))
         } else {
             error!(%alias, "Inlet not found in the node registry");
@@ -496,12 +505,19 @@ impl NodeManager {
                 .await
                 .iter()
                 .map(|(alias, info)| {
+                    let status = self
+                        .medic_handle
+                        .status_of(&format!("inlet-{alias}"))
+                        .unwrap_or(Status::Down)
+                        .to_string();
+
                     InletStatus::new(
                         &info.bind_addr,
                         info.worker_addr.to_string(),
                         alias,
                         None,
                         info.outlet_route.to_string(),
+                        status,
                     )
                 })
                 .collect(),
