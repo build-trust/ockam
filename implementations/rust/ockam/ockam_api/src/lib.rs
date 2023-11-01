@@ -146,6 +146,7 @@ pub mod uppercase;
 pub mod authority_node;
 mod influxdb_token_lease;
 
+pub mod logs;
 mod schema;
 mod session;
 mod util;

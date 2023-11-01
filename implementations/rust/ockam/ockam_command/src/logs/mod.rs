@@ -1,6 +1,6 @@
-use crate::logs::rolling::{RollingConditionBasic, RollingFileAppender};
-
-use ockam_core::env::{get_env, get_env_with_default, FromString};
+use ockam_api::logs::env::{log_format, log_level, log_max_files, log_max_size_bytes};
+use ockam_api::logs::rolling::{RollingConditionBasic, RollingFileAppender};
+use ockam_api::logs::LogFormat;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -8,51 +8,6 @@ use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
-#[allow(unused, clippy::enum_variant_names)]
-mod rolling;
-
-fn log_max_size() -> u64 {
-    let default = 100;
-    get_env_with_default("OCKAM_LOG_MAX_SIZE_MB", default).unwrap_or(default)
-}
-
-fn log_max_files() -> usize {
-    let default: u64 = 60;
-    get_env_with_default("OCKAM_LOG_MAX_FILES", default).unwrap_or(default) as usize
-}
-
-fn log_format() -> LogFormat {
-    let default = LogFormat::Default;
-    get_env_with_default("OCKAM_LOG_FORMAT", default.clone()).unwrap_or(default)
-}
-
-#[derive(Clone)]
-enum LogFormat {
-    Default,
-    Pretty,
-    Json,
-}
-
-impl FromString for LogFormat {
-    fn from_string(s: &str) -> ockam_core::Result<Self> {
-        match s {
-            "pretty" => Ok(LogFormat::Pretty),
-            "json" => Ok(LogFormat::Json),
-            _ => Ok(LogFormat::Default),
-        }
-    }
-}
-
-impl std::fmt::Display for LogFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            LogFormat::Default => write!(f, "default"),
-            LogFormat::Pretty => write!(f, "pretty"),
-            LogFormat::Json => write!(f, "json"),
-        }
-    }
-}
 
 pub fn setup_logging(
     verbose: u8,
@@ -62,11 +17,11 @@ pub fn setup_logging(
 ) -> Option<WorkerGuard> {
     let level = {
         // Parse the the raw log level value (e.g. "info" or "-vvv").
-        let level_raw = match get_env::<String>("OCKAM_LOG") {
+        let level_raw = match log_level() {
             // If OCKAM_LOG is set, give it priority over `verbose` to define the log level.
-            Ok(Some(s)) if !s.is_empty() => s,
+            Some(s) if !s.is_empty() => s,
             // Otherwise, use `verbose` to define the log level.
-            Ok(_) | Err(_) => match verbose {
+            _ => match verbose {
                 0 => "off".to_string(),
                 1 => "info".to_string(),
                 2 => "debug".to_string(),
@@ -113,7 +68,7 @@ pub fn setup_logging(
                 log_path,
                 RollingConditionBasic::new()
                     .daily()
-                    .max_size(log_max_size() * 1024 * 1024),
+                    .max_size(log_max_size_bytes()),
                 log_max_files(),
             )
             .expect("Failed to create rolling file appender");

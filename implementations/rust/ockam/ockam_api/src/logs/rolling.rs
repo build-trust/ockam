@@ -8,7 +8,6 @@ use std::{
     io::{BufWriter, Write},
     path::Path,
 };
-
 use time::{OffsetDateTime, Time};
 
 /// Determines when a file should be "rolled over".
@@ -295,7 +294,6 @@ where
 /// A rolling file appender with a rolling condition based on date/time or size.
 pub type BasicRollingFileAppender = RollingFileAppender<RollingConditionBasic>;
 
-// LCOV_EXCL_START
 #[cfg(test)]
 mod t {
     use std::convert::TryInto;
@@ -635,4 +633,3 @@ mod t {
         .assume_offset(offset!(UTC)))
     }
 }
-// LCOV_EXCL_STOP

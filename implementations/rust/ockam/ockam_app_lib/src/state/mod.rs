@@ -8,6 +8,7 @@ use std::time::Duration;
 use miette::{IntoDiagnostic, WrapErr};
 use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
+use tracing_appender::non_blocking::WorkerGuard;
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{
@@ -71,6 +72,7 @@ pub struct AppState {
     refresh_inlets_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_relay_scheduler: Arc<OnceLock<Scheduler>>,
     last_published_snapshot: Arc<Mutex<Option<ApplicationState>>>,
+    pub(crate) tracing_guard: Arc<OnceLock<WorkerGuard>>,
 }
 
 impl AppState {
@@ -123,6 +125,7 @@ impl AppState {
                     refresh_inlets_scheduler: Arc::new(Default::default()),
                     refresh_relay_scheduler: Arc::new(Default::default()),
                     last_published_snapshot: Arc::new(Mutex::new(None)),
+                    tracing_guard: Arc::new(Default::default()),
                 }
             }
         };
