@@ -71,7 +71,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
             }
 
             1 => {
-                let name = vault_names[0];
+                let name = opts.state.vaults.default()?.name().to_string();
                 let state = opts.state.vaults.get(name)?;
 
                 let json = serde_json::to_string_pretty(&state).into_diagnostic()?;
