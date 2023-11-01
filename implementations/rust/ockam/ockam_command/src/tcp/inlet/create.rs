@@ -67,6 +67,10 @@ pub struct CreateCommand {
     /// Time to wait before retrying to connect to outlet.
     #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser)]
     retry_wait: Duration,
+
+    /// Override default timeout
+    #[arg(long, value_parser = duration_parser)]
+    timeout: Option<Duration>,
 }
 
 pub(crate) fn default_from_addr() -> SocketAddr {
@@ -103,7 +107,9 @@ async fn rpc(
     let node_name = get_node_name(&opts.state, &cmd.at);
     let node_name = parse_node_name(&node_name)?;
 
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    cmd.timeout.map(|t| node.set_timeout(t));
+
     let is_finished: Mutex<bool> = Mutex::new(false);
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {
