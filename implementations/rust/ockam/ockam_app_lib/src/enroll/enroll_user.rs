@@ -43,6 +43,13 @@ impl AppState {
         // trigger the relay connection right away
         self.schedule_relay_refresh_now();
 
+        // avoid time gap between the enrollment and the invitations appearing in the UI
+        self.schedule_invitations_refresh_now();
+
+        // if we don't have project list and the user creates a service right away
+        // it would break service sharing
+        self.schedule_projects_refresh_now();
+
         info!("User enrolled successfully");
         Ok(())
     }

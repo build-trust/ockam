@@ -15,10 +15,13 @@ use crate::api::to_c_string;
 use crate::cli::check_ockam_executable;
 use crate::state::AppState;
 use libc::c_char;
+use std::pin::Pin;
 use tracing::{error, info};
 
 /// Global application state.
-static mut APPLICATION_STATE: Option<AppState> = None;
+// marked as pinned because moving (or dropping) the instance would invalidate the pointers
+// resulting in a crash
+static mut APPLICATION_STATE: Option<Pin<Box<AppState>>> = None;
 
 const ERROR_NOT_INITIALIZED: &str =
     "initialize_application must be called before any other function";
@@ -47,8 +50,12 @@ extern "C" fn initialize_application(
     }
 
     let app_state = AppState::new(
-        super::state::rust::ApplicationStateCallback::new(application_state_callback),
-        super::notification::rust::NotificationCallback::new(notification_callback),
+        Some(super::state::rust::ApplicationStateCallback::new(
+            application_state_callback,
+        )),
+        Some(super::notification::rust::NotificationCallback::new(
+            notification_callback,
+        )),
     );
     app_state.setup_logging();
 
@@ -62,14 +69,16 @@ extern "C" fn initialize_application(
             title: "Couldn't find the ockam executable".to_string(),
             message: "Please install ockam and make sure it is in your PATH".to_string(),
         });
+        //sleep for a bit to allow time for the notification to be displayed
+        std::thread::sleep(std::time::Duration::from_secs(1));
         std::process::exit(1);
     }
     unsafe {
-        APPLICATION_STATE.replace(app_state);
+        APPLICATION_STATE.replace(Box::pin(app_state));
     }
 
     // avoid waiting for the load to return for a quicker initialization
-    let app_state = unsafe { APPLICATION_STATE.as_ref().expect(ERROR_NOT_INITIALIZED) };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async move {
         app_state.publish_state().await;
         app_state.load_model_state().await;
@@ -80,7 +89,7 @@ extern "C" fn initialize_application(
 #[no_mangle]
 extern "C" fn accept_invitation(id: *const c_char) {
     let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async {
         let result = app_state.accept_invitation(id).await;
         if let Err(err) = result {
@@ -93,7 +102,7 @@ extern "C" fn accept_invitation(id: *const c_char) {
 #[no_mangle]
 extern "C" fn ignore_invitation(id: *const c_char) {
     let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async {
         let result = app_state.ignore_invitation(id).await;
         if let Err(err) = result {
@@ -105,7 +114,7 @@ extern "C" fn ignore_invitation(id: *const c_char) {
 /// Initiate graceful shutdown of the application, exit process when complete.
 #[no_mangle]
 extern "C" fn shutdown_application() {
-    let app_state = unsafe { APPLICATION_STATE.take() };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() };
     if let Some(app_state) = app_state {
         app_state.shutdown();
     } else {
@@ -129,7 +138,7 @@ extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) ->
     .filter(|s| !s.is_empty())
     .collect();
 
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     let result = app_state.context().runtime().block_on(async {
         let mut result = Ok(());
         for email in emails {
@@ -159,7 +168,7 @@ extern "C" fn enable_accepted_service(invitation_id: *const c_char) {
             .unwrap()
             .to_string()
     };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async move {
         let result = app_state.enable_tcp_inlet(&invitation_id).await;
         if let Err(err) = result {
@@ -177,7 +186,7 @@ extern "C" fn disable_accepted_service(invitation_id: *const c_char) {
             .unwrap()
             .to_string()
     };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async move {
         let result = app_state.disconnect_tcp_inlet(&invitation_id).await;
         if let Err(err) = result {
@@ -190,7 +199,7 @@ extern "C" fn disable_accepted_service(invitation_id: *const c_char) {
 #[no_mangle]
 extern "C" fn delete_local_service(name: *const c_char) {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async {
         let result = app_state.tcp_outlet_delete(name).await;
         if let Err(err) = result {
@@ -226,7 +235,7 @@ extern "C" fn create_local_service(
     .filter(|s| !s.is_empty())
     .collect();
 
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     let result = app_state.context().runtime().block_on(async {
         let result = app_state.tcp_outlet_create(name, address, emails).await;
         app_state.publish_state().await;
@@ -243,7 +252,7 @@ extern "C" fn create_local_service(
 /// A restart is **required** afterward.
 #[no_mangle]
 extern "C" fn reset_application_state() {
-    let app_state = unsafe { APPLICATION_STATE.take() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().block_on(async move {
         let result = app_state.reset().await;
         if let Err(err) = result {
@@ -255,7 +264,7 @@ extern "C" fn reset_application_state() {
 /// Starts user enrollment
 #[no_mangle]
 extern "C" fn enroll_user() {
-    let app_state = unsafe { APPLICATION_STATE.as_ref().expect(ERROR_NOT_INITIALIZED) };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
 
     app_state
         .context()
@@ -267,7 +276,7 @@ extern "C" fn enroll_user() {
 #[no_mangle]
 extern "C" fn enroll_user_and_accept_invitation(id: *const c_char) {
     let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.unwrap();
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async {
         let result = app_state.enroll_user_and_accept_invitation(id).await;
         if let Err(err) = result {
@@ -279,7 +288,7 @@ extern "C" fn enroll_user_and_accept_invitation(id: *const c_char) {
 /// This function retrieve the current version of the application state, for polling purposes.
 #[no_mangle]
 extern "C" fn application_state_snapshot() -> super::state::c::ApplicationState {
-    let app_state = unsafe { APPLICATION_STATE.as_ref().expect(ERROR_NOT_INITIALIZED) };
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
 
     let public_rust_state = app_state
         .context()
