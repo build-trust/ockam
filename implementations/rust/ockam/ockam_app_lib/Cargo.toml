@@ -44,6 +44,8 @@ thiserror = "1.0"
 tokio = { version = "1.31.0", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", features = ["attributes"] }
+tracing-appender = "0.2.2"
+tracing-error = "0.2"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
 
 [build-dependencies]

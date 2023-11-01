@@ -4971,6 +4971,8 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
+ "tracing-appender",
+ "tracing-error",
  "tracing-subscriber",
 ]
 
