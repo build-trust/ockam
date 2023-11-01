@@ -44,6 +44,10 @@ pub struct EnrollCommand {
     /// Use PKCE authorization flow
     #[arg(long)]
     pub authorization_code_flow: bool,
+
+    /// Skip creation of default Space and default Project
+    #[arg(long)]
+    pub user_account_only: bool,
 }
 
 impl EnrollCommand {
@@ -123,21 +127,20 @@ async fn run_impl(
     enroll_with_node(&controller, ctx, token)
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
-
-    let project = retrieve_user_project(&opts, ctx, &node).await?;
     let identifier = node.identifier();
-
     opts.state
         .set_identifier_as_enrolled(&identifier)
         .await
-        .wrap_err(format!(
-            "Unable to set the local identity as enrolled with project {}",
-            project
-                .name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
+        .wrap_err("Unable to set the local identity as enrolled")?;
     info!("Enrolled a user with the Identifier {}", identifier);
+
+    if let Err(e) = retrieve_user_project(&opts, ctx, &node, cmd.user_account_only).await {
+        warn!(
+            "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
+        create them manually using the `ockam space` and `ockam project` commands"
+        );
+        warn!("{e}");
+    }
 
     opts.terminal.write_line(&fmt_ok!(
         "Enrolled {} as one of the Ockam identities of your Orchestrator account {}.",
@@ -149,26 +152,30 @@ async fn run_impl(
     Ok(())
 }
 
-pub async fn retrieve_user_project(
+async fn retrieve_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
+    user_account_only: bool,
 ) -> Result<Project> {
     // return the default project if there is one already stored locally
     if let Ok(project) = opts.state.get_default_project().await {
         return Ok(project);
     };
 
-    let space = get_user_space(opts, ctx, node).await.map_err(|e| {
-        miette!(
-            "Unable to retrieve and set a space as default {:?}",
-            e.to_string()
-        )
-    })?;
+    let space = get_user_space(opts, ctx, node, user_account_only)
+        .await
+        .map_err(|e| {
+            miette!(
+                "Unable to retrieve and set a space as default {:?}",
+                e.to_string()
+            )
+        })?
+        .ok_or(miette!("No space was found"))?;
 
     info!("Retrieved the user default space {:?}", space);
 
-    let project = get_user_project(opts, ctx, node, &space)
+    let project = get_user_project(opts, ctx, node, user_account_only, &space)
         .await
         .wrap_err(format!(
             "Unable to retrieve and set a project as default with space {}",
@@ -176,7 +183,8 @@ pub async fn retrieve_user_project(
                 .name
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
-        ))?;
+        ))?
+        .ok_or(miette!("No project was found"))?;
     info!("Retrieved the user default project {:?}", project);
     Ok(project)
 }
@@ -201,10 +209,11 @@ async fn get_user_space(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-) -> Result<Space> {
+    user_account_only: bool,
+) -> Result<Option<Space>> {
     // return the default space if there is one already stored locally
     if let Ok(space) = opts.state.get_default_space().await {
-        return Ok(space);
+        return Ok(Some(space));
     };
 
     // Otherwise get the available spaces for node's identity
@@ -226,6 +235,12 @@ async fn get_user_space(
     // If the identity has no spaces, create one
     let space = match spaces.first() {
         None => {
+            if user_account_only {
+                opts.terminal
+                    .write_line(&fmt_para!("No spaces are defined in your account."))?;
+                return Ok(None);
+            }
+
             opts.terminal
                 .write_line(&fmt_para!("No spaces are defined in your account."))?
                 .write_line(&fmt_para!(
@@ -270,15 +285,16 @@ async fn get_user_space(
     opts.terminal.write_line(&fmt_ok!(
         "Marked this space as your default space, on this machine.\n"
     ))?;
-    Ok(space)
+    Ok(Some(space))
 }
 
 async fn get_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
+    user_account_only: bool,
     space: &Space,
-) -> Result<Project> {
+) -> Result<Option<Project>> {
     // Get available project for the given space
     opts.terminal.write_line(&fmt_log!(
         "Getting available projects in space {}...",
@@ -303,6 +319,17 @@ async fn get_user_project(
     // If the space has no projects, create one
     let project = match projects.first() {
         None => {
+            if user_account_only {
+                opts.terminal.write_line(&fmt_para!(
+                    "No projects are defined in the space {}.",
+                    space
+                        .name
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ))?;
+                return Ok(None);
+            }
+
             opts.terminal
                 .write_line(&fmt_para!(
                     "No projects are defined in the space {}.",
@@ -362,5 +389,5 @@ async fn get_user_project(
     opts.terminal.write_line(&fmt_ok!(
         "Marked this project as your default project, on this machine.\n"
     ))?;
-    Ok(project)
+    Ok(Some(project))
 }
