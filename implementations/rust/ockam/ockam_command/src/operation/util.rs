@@ -4,7 +4,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
 use ockam_api::cloud::operation::Operations;
-use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
+use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_node::Context;
 
 use crate::fmt_para;
@@ -17,8 +17,8 @@ pub async fn check_for_completion(
     controller: &Controller,
     operation_id: &str,
 ) -> miette::Result<()> {
-    let retry_strategy =
-        FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
+    let retry_strategy = FixedInterval::from_millis(5000)
+        .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
     let spinner_option = opts.terminal.progress_spinner();
     if let Some(spinner) = spinner_option.as_ref() {

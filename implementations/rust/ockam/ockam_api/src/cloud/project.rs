@@ -15,7 +15,7 @@ use ockam_node::{tokio, Context};
 use crate::cloud::addon::ConfluentConfigResponse;
 use crate::cloud::operation::Operations;
 use crate::cloud::share::ShareScope;
-use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
+use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
 use crate::config::lookup::ProjectAuthority;
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
@@ -350,8 +350,8 @@ impl Projects for Controller {
                 return Err(miette!("Project has no operation id"));
             }
         };
-        let retry_strategy =
-            FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
+        let retry_strategy = FixedInterval::from_millis(5000)
+            .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
         let operation = Retry::spawn(retry_strategy.clone(), || async {
             if let Some(operation) = self.get_operation(ctx, operation_id).await? {
                 if operation.is_completed() {
