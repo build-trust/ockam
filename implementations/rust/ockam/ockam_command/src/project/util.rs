@@ -9,7 +9,7 @@ use tracing::debug;
 
 use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::{Project, Projects};
-use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT_MS};
+use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::service::relay::SecureChannelsCreation;
@@ -110,8 +110,8 @@ pub async fn check_project_readiness(
     project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
-    let retry_strategy =
-        FixedInterval::from_millis(5000).take(ORCHESTRATOR_AWAIT_TIMEOUT_MS / 5000);
+    let retry_strategy = FixedInterval::from_millis(5000)
+        .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
     // Persist project config prior to checking readiness which might take a while
     opts.state
