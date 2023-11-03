@@ -2,7 +2,7 @@ use miette::Diagnostic;
 use serde::Serialize;
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = miette::Result<T, Error>;
 
 #[derive(Debug, Diagnostic, Error, Serialize)]
 pub enum Error {
@@ -20,10 +20,18 @@ pub enum Error {
     ProjectNotFound(String),
     #[error("failed to save local project state")]
     StateSaveFailed,
+    #[error("{0}")]
+    ProjectInvalidState(String),
 }
 
 impl From<Error> for String {
     fn from(e: Error) -> Self {
         e.to_string()
+    }
+}
+
+impl From<miette::Report> for Error {
+    fn from(e: miette::Report) -> Self {
+        Error::InternalFailure(e.to_string())
     }
 }

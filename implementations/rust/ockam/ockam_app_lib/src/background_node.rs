@@ -1,13 +1,9 @@
 use crate::cli::cli_bin;
-use crate::error::Error;
 use crate::Result;
 use ockam::compat::tokio::task::spawn_blocking;
 use ockam_core::async_trait;
 use std::process::Command;
-use tracing::{debug, error, info};
-
-// Matches backend default of 14 days
-const DEFAULT_ENROLLMENT_TICKET_EXPIRY: &str = "14d";
+use tracing::{debug, info};
 
 pub trait BackgroundNodeClient: Send + Sync + 'static {
     fn nodes(&self) -> Box<dyn Nodes>;
@@ -22,9 +18,6 @@ pub trait Nodes: Send + Sync + 'static {
 #[async_trait]
 pub trait Projects: Send + Sync + 'static {
     async fn enroll(&self, node_name: &str, hex_encoded_ticket: &str) -> Result<()>;
-
-    /// Returns the hex-encoded enrollment ticket
-    async fn ticket(&self, project_name: &str) -> Result<String>;
 }
 
 #[derive(Clone)]
@@ -115,31 +108,5 @@ impl Projects for Cli {
         })
         .await
         .map_err(|err| err.into())
-    }
-
-    async fn ticket(&self, project_name: &str) -> Result<String> {
-        let bin = self.bin.clone();
-        let project_name = project_name.to_string();
-        spawn_blocking(move || {
-            duct::cmd!(
-                &bin,
-                "project",
-                "ticket",
-                "--quiet",
-                "--project",
-                &project_name,
-                "--expires-in",
-                DEFAULT_ENROLLMENT_TICKET_EXPIRY.to_string(),
-                "--to",
-                &format!("/project/{project_name}")
-            )
-            .before_spawn(log_command)
-            .read()
-            .map_err(|err| {
-                error!(?err, "Could not create enrollment ticket");
-                Error::App("Could not create enrollment ticket".to_string())
-            })
-        })
-        .await?
     }
 }

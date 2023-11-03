@@ -185,6 +185,7 @@ impl AppState {
         );
 
         let project_id = {
+            // TODO: How might this degrade for users who have multiple spaces and projects?
             let projects = self.projects();
             let projects_guard = projects.read().await;
             projects_guard
