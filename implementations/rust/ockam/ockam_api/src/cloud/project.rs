@@ -281,7 +281,7 @@ impl Projects for Controller {
         trace!(target: TARGET, %space_id, project_name = name, "creating project");
         let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
             .body(CreateProject::new(name, users));
-        self.0
+        self.secure_client
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -292,7 +292,7 @@ impl Projects for Controller {
     async fn get_project(&self, ctx: &Context, project_id: String) -> miette::Result<Project> {
         trace!(target: TARGET, %project_id, "getting project");
         let req = Request::get(format!("/v0/{project_id}"));
-        self.0
+        self.secure_client
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -308,7 +308,7 @@ impl Projects for Controller {
     ) -> miette::Result<()> {
         trace!(target: TARGET, %space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
-        self.0
+        self.secure_client
             .tell(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -318,7 +318,7 @@ impl Projects for Controller {
 
     async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion> {
         trace!(target: TARGET, "getting project version");
-        self.0
+        self.secure_client
             .ask(ctx, "version_info", Request::get(""))
             .await
             .into_diagnostic()?
@@ -328,7 +328,7 @@ impl Projects for Controller {
 
     async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let req = Request::get("/v0");
-        self.0
+        self.secure_client
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?

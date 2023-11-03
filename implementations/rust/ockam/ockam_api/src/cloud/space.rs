@@ -58,7 +58,7 @@ impl Spaces for Controller {
     ) -> miette::Result<Space> {
         trace!(target: TARGET, space = %name, "creating space");
         let req = Request::post("/v0/").body(CreateSpace::new(name, users));
-        self.0
+        self.secure_client
             .ask(ctx, "spaces", req)
             .await
             .into_diagnostic()?
@@ -69,7 +69,7 @@ impl Spaces for Controller {
     async fn get_space(&self, ctx: &Context, space_id: String) -> miette::Result<Space> {
         trace!(target: TARGET, space = %space_id, "getting space");
         let req = Request::get(format!("/v0/{space_id}"));
-        self.0
+        self.secure_client
             .ask(ctx, "spaces", req)
             .await
             .into_diagnostic()?
@@ -80,7 +80,7 @@ impl Spaces for Controller {
     async fn delete_space(&self, ctx: &Context, space_id: String) -> miette::Result<()> {
         trace!(target: TARGET, space = %space_id, "deleting space");
         let req = Request::delete(format!("/v0/{space_id}"));
-        self.0
+        self.secure_client
             .tell(ctx, "spaces", req)
             .await
             .into_diagnostic()?
@@ -90,7 +90,7 @@ impl Spaces for Controller {
 
     async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
         trace!(target: TARGET, "listing spaces");
-        self.0
+        self.secure_client
             .ask(ctx, "spaces", Request::get("/v0/"))
             .await
             .into_diagnostic()?

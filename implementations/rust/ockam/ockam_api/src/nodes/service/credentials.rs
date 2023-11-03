@@ -56,7 +56,7 @@ impl Credentials for AuthorityNode {
     ) -> miette::Result<CredentialAndPurposeKey> {
         let body = GetCredentialRequest::new(overwrite, identity_name);
         let req = Request::post("/node/credentials/actions/get").body(body);
-        self.0
+        self.secure_client
             .ask(ctx, "", req)
             .await
             .into_diagnostic()?
@@ -72,7 +72,7 @@ impl Credentials for AuthorityNode {
     ) -> miette::Result<()> {
         let body = PresentCredentialRequest::new(to, oneway);
         let req = Request::post("/node/credentials/actions/present").body(body);
-        self.0
+        self.secure_client
             .tell(ctx, "", req)
             .await
             .into_diagnostic()?

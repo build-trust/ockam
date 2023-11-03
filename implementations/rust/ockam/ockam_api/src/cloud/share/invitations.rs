@@ -85,7 +85,7 @@ impl Invitations for Controller {
             target_id,
         };
         let req = Request::post("/v0/invites").body(req_body);
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -121,7 +121,7 @@ impl Invitations for Controller {
             enrollment_ticket,
         };
         let req = Request::post("/v0/invites/service").body(req_body);
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -135,7 +135,7 @@ impl Invitations for Controller {
         invitation_id: String,
     ) -> miette::Result<AcceptedInvitation> {
         let req = Request::post("/v0/redeem_invite").body(AcceptInvitation { id: invitation_id });
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -150,7 +150,7 @@ impl Invitations for Controller {
     ) -> miette::Result<InvitationWithAccess> {
         trace!(?invitation_id, "showing invitation");
         let req = Request::get(format!("/v0/invites/{invitation_id}"));
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -165,7 +165,7 @@ impl Invitations for Controller {
     ) -> miette::Result<InvitationList> {
         debug!(?kind, "Sending request to list shares");
         let req = Request::get("/v0/invites").body(ListInvitations { kind });
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -176,7 +176,7 @@ impl Invitations for Controller {
     async fn ignore_invitation(&self, ctx: &Context, invitation_id: String) -> miette::Result<()> {
         debug!(?invitation_id, "sending request to ignore invitation");
         let req = Request::post(format!("/v0/invites/{invitation_id}/ignore"));
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?

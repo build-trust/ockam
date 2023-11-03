@@ -115,7 +115,7 @@ impl Addons for Controller {
     async fn list_addons(&self, ctx: &Context, project_id: String) -> miette::Result<Vec<Addon>> {
         trace!(target: TARGET, project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -134,7 +134,7 @@ impl Addons for Controller {
             "/v1/projects/{project_id}/configure_addon/confluent"
         ))
         .body(config);
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -151,7 +151,7 @@ impl Addons for Controller {
         trace!(target: TARGET, project_id, "configuring okta addon");
         let req =
             Request::post(format!("/v1/projects/{project_id}/configure_addon/okta")).body(config);
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -171,7 +171,7 @@ impl Addons for Controller {
             "/v1/projects/{project_id}/configure_addon/influxdb_token_lease_manager"
         ))
         .body(config);
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -188,7 +188,7 @@ impl Addons for Controller {
         trace!(target: TARGET, project_id, "disabling addon");
         let req = Request::post(format!("/v1/projects/{project_id}/disable_addon"))
             .body(DisableAddon::new(addon_id));
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?

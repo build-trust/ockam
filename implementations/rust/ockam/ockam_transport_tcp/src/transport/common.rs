@@ -4,6 +4,7 @@ use core::fmt::Formatter;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Result};
+use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
 /// Result of [`TcpTransport::connect`] call.
@@ -48,6 +49,12 @@ impl TcpConnection {
             mode,
             flow_control_id,
         }
+    }
+    /// Stops the [`TcpConnection`], this method must be called to avoid
+    /// leakage of the connection.
+    /// Simply dropping this object won't close the connection
+    pub async fn stop(&self, context: &Context) -> Result<()> {
+        context.stop_worker(self.sender_address.clone()).await
     }
     /// Corresponding [`TcpSendWorker`](super::workers::TcpSendWorker) [`Address`] that can be used
     /// in a route to send messages to the other side of the TCP connection
