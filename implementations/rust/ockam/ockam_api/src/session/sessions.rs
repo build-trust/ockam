@@ -5,7 +5,9 @@ use std::fmt::Formatter;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
+use crate::error::ApiError;
 use ockam_core::compat::rand;
 use ockam_core::{Error, Route};
 
@@ -21,24 +23,42 @@ pub type Replacer = Box<dyn FnMut(Route) -> Replacement + Send>;
 pub struct Session {
     key: String,
     ping_route: Route,
-    status: Status,
+    status: ConnectionStatus,
     replace: Replacer,
     pings: Vec<Ping>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Status {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
+pub enum ConnectionStatus {
+    #[n(0)]
     Down,
+    #[n(1)]
     Degraded,
+    #[n(2)]
     Up,
 }
 
-impl fmt::Display for Status {
+impl fmt::Display for ConnectionStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Status::Down => write!(f, "down"),
-            Status::Degraded => write!(f, "degraded"),
-            Status::Up => write!(f, "up"),
+            ConnectionStatus::Down => write!(f, "down"),
+            ConnectionStatus::Degraded => write!(f, "degraded"),
+            ConnectionStatus::Up => write!(f, "up"),
+        }
+    }
+}
+
+impl TryFrom<String> for ConnectionStatus {
+    type Error = ApiError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "down" => Ok(ConnectionStatus::Down),
+            "degraded" => Ok(ConnectionStatus::Degraded),
+            "up" => Ok(ConnectionStatus::Up),
+            _ => Err(ApiError::message(format!(
+                "Invalid connection status: {value}"
+            ))),
         }
     }
 }
@@ -66,7 +86,7 @@ impl Session {
         Self {
             key,
             ping_route,
-            status: Status::Up,
+            status: ConnectionStatus::Up,
             replace: Box::new(move |r| Box::pin(async move { Ok(r) })),
             pings: Vec::new(),
         }
@@ -84,11 +104,11 @@ impl Session {
         self.ping_route = ping_route;
     }
 
-    pub fn status(&self) -> Status {
+    pub fn status(&self) -> ConnectionStatus {
         self.status
     }
 
-    pub fn set_status(&mut self, s: Status) {
+    pub fn set_status(&mut self, s: ConnectionStatus) {
         self.status = s
     }
 

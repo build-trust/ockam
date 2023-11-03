@@ -152,6 +152,7 @@ mod session;
 mod util;
 
 pub use influxdb_token_lease::*;
+pub use session::sessions::ConnectionStatus;
 pub use util::*;
 
 #[macro_use]

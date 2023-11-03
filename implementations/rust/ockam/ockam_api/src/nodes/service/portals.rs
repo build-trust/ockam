@@ -26,7 +26,9 @@ use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::policy::Policies;
 use crate::nodes::service::random_alias;
 use crate::nodes::{BackgroundNode, InMemoryNode};
-use crate::session::sessions::{Replacer, Session, Status, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
+use crate::session::sessions::{
+    ConnectionStatus, Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
+};
 use crate::{actions, resources, DefaultAddress};
 
 use super::{NodeManager, NodeManagerWorker};
@@ -416,7 +418,7 @@ impl NodeManager {
                         alias,
                         None,
                         outlet_route.to_string(),
-                        Status::Up.to_string(),
+                        ConnectionStatus::Up,
                     ),
                     access_control,
                 )
@@ -450,7 +452,7 @@ impl NodeManager {
                         alias,
                         None,
                         inlet_to_delete.outlet_route.to_string(),
-                        Status::Down.to_string(),
+                        ConnectionStatus::Down,
                     ))
                 }
                 Err(e) => {
@@ -480,8 +482,7 @@ impl NodeManager {
             let status = self
                 .medic_handle
                 .status_of(&format!("inlet-{alias}"))
-                .unwrap_or(Status::Down)
-                .to_string();
+                .unwrap_or(ConnectionStatus::Down);
 
             debug!(%alias, "Inlet not found in node registry");
             Some(InletStatus::new(
@@ -509,8 +510,7 @@ impl NodeManager {
                     let status = self
                         .medic_handle
                         .status_of(&format!("inlet-{alias}"))
-                        .unwrap_or(Status::Down)
-                        .to_string();
+                        .unwrap_or(ConnectionStatus::Down);
 
                     InletStatus::new(
                         &info.bind_addr,
