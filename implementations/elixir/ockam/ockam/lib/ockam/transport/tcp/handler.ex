@@ -35,6 +35,11 @@ defmodule Ockam.Transport.TCP.Handler do
     authorization = Keyword.get(handler_options, :authorization, [])
     tcp_wrapper = Keyword.get(handler_options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
 
+    # There are cases where we want to detect and close tcp connections after a long
+    # period without activity.  Mainly to handle the case of a server receiving connections
+    # from a long running client that "leak" them without closing.
+    idle_timeout = Keyword.get(handler_options, :idle_timeout, :infinity)
+
     :gen_server.enter_loop(
       __MODULE__,
       [],
@@ -43,19 +48,31 @@ defmodule Ockam.Transport.TCP.Handler do
         transport: transport,
         address: address,
         authorization: authorization,
-        tcp_wrapper: tcp_wrapper
+        tcp_wrapper: tcp_wrapper,
+        idle_timeout: idle_timeout
       },
-      {:via, Ockam.Node.process_registry(), address}
+      {:via, Ockam.Node.process_registry(), address},
+      idle_timeout
     )
   end
 
   @impl true
-  def handle_info({:tcp, socket, ""}, %{socket: socket} = state) do
-    ## Empty TCP payload - ignore
-    {:noreply, state}
+  def handle_info(:timeout, %{socket: socket, transport: transport, address: address} = state) do
+    # idle_timeout expired, close the socket and exit
+    transport.close(socket)
+    Logger.info("Closing socket transport #{inspect(address)} due to inactivity")
+    {:stop, :normal, state}
   end
 
-  def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
+  def handle_info({:tcp, socket, ""}, %{socket: socket, idle_timeout: idle_timeout} = state) do
+    ## Empty TCP payload - ignore
+    {:noreply, state, idle_timeout}
+  end
+
+  def handle_info(
+        {:tcp, socket, data},
+        %{socket: socket, address: address, idle_timeout: idle_timeout} = state
+      ) do
     {function_name, _} = __ENV__.function
 
     data_size = byte_size(data)
@@ -80,7 +97,7 @@ defmodule Ockam.Transport.TCP.Handler do
         raise e
     end
 
-    {:noreply, state}
+    {:noreply, state, idle_timeout}
   end
 
   def handle_info({:tcp_closed, socket}, %{socket: socket, transport: transport} = state) do
@@ -92,7 +109,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
   def handle_info(
         %Ockam.Message{} = message,
-        state
+        %{idle_timeout: idle_timeout} = state
       ) do
     reply =
       Ockam.Worker.with_handle_message_metric(__MODULE__, message, state, fn ->
@@ -107,27 +124,31 @@ defmodule Ockam.Transport.TCP.Handler do
 
     case reply do
       {:ok, state} ->
-        {:noreply, state}
+        {:noreply, state, idle_timeout}
 
       {:error, reason} ->
         Logger.warning("Unauthorized message #{inspect(reason)}")
-        {:noreply, state}
+        {:noreply, state, idle_timeout}
     end
   end
 
-  def handle_info(other, state) do
+  def handle_info(other, %{idle_timoeut: idle_timeout} = state) do
     Logger.warning("TCP HANDLER Received unknown message #{inspect(other)} #{inspect(state)}")
-    {:noreply, state}
+    {:noreply, state, idle_timeout}
   end
 
   def is_authorized(message, state) do
     Ockam.Worker.Authorization.with_state_config(message, state)
   end
 
-  def handle_message(
-        %Ockam.Message{} = message,
-        %{socket: socket, tcp_wrapper: tcp_wrapper, transport: transport} = state
-      ) do
+  defp handle_message(
+         %Ockam.Message{} = message,
+         %{
+           socket: socket,
+           tcp_wrapper: tcp_wrapper,
+           transport: transport
+         } = state
+       ) do
     forwarded_message = Message.forward(message)
 
     case Ockam.Wire.encode(forwarded_message) do
