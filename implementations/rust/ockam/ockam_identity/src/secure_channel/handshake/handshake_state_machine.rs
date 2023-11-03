@@ -61,7 +61,7 @@ pub(super) struct HandshakeResults {
 }
 
 /// This struct implements functions common to both initiator and the responder state machines
-pub(super) struct CommonStateMachine {
+pub(crate) struct CommonStateMachine {
     pub(super) identities: Arc<Identities>,
     pub(super) identifier: Identifier,
     pub(super) purpose_key_attestation: PurposeKeyAttestation,
@@ -116,77 +116,137 @@ impl CommonStateMachine {
     /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
     /// If everything is valid, store the identity identifier which will used to make the
     /// final state machine result
-    pub(super) async fn verify_identity(
+    pub(super) async fn process_identity_payload(
         &mut self,
         peer: IdentityAndCredentials,
-        peer_public_key: &X25519PublicKey,
+        peer_public_key: X25519PublicKey,
     ) -> Result<()> {
-        let identity = Identity::import_from_change_history(
+        let identifier = Self::process_identity_payload_static(
+            self.identities.clone(),
+            Some(self.trust_policy.clone()),
+            self.trust_context.clone(),
             None,
-            peer.change_history.clone(),
-            self.identities.vault().verifying_vault,
+            peer.change_history,
+            peer.credentials,
+            Some((peer.purpose_key_attestation, peer_public_key)),
         )
         .await?;
 
-        self.identities
+        self.their_identifier = Some(identifier);
+
+        Ok(())
+    }
+
+    /// Return the results of the full handshake
+    ///  - the other party identity
+    ///  - the encryption and decryption keys to use on the next messages to exchange
+    pub(super) fn make_handshake_results(
+        &self,
+        handshake_keys: Option<HandshakeKeys>,
+    ) -> Option<HandshakeResults> {
+        match (self.their_identifier.clone(), handshake_keys) {
+            (Some(their_identifier), Some(handshake_keys)) => Some(HandshakeResults {
+                their_identifier,
+                handshake_keys,
+            }),
+            _ => None,
+        }
+    }
+}
+
+impl CommonStateMachine {
+    /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
+    /// If everything is valid, store the identity identifier which will used to make the
+    /// final state machine result
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn process_identity_payload_static(
+        identities: Arc<Identities>,
+        trust_policy: Option<Arc<dyn TrustPolicy>>,
+        trust_context: Option<TrustContext>,
+        expected_identifier: Option<Identifier>,
+        change_history: ChangeHistory,
+        credentials: Vec<CredentialAndPurposeKey>,
+        // Has value if it's the identity payload during the handshake and not credential refresh
+        peer_public_key: Option<(PurposeKeyAttestation, X25519PublicKey)>,
+    ) -> Result<Identifier> {
+        let identity = Identity::import_from_change_history(
+            expected_identifier.as_ref(),
+            change_history,
+            identities.vault().verifying_vault,
+        )
+        .await?;
+
+        identities
             .identities_creation()
             .update_identity(&identity)
             .await?;
 
-        let purpose_key = self
-            .identities
-            .purpose_keys()
-            .purpose_keys_verification()
-            .verify_purpose_key_attestation(
-                Some(identity.identifier()),
-                &peer.purpose_key_attestation,
-            )
-            .await?;
+        if let Some((purpose_key_attestation, peer_public_key)) = peer_public_key {
+            let purpose_key = identities
+                .purpose_keys()
+                .purpose_keys_verification()
+                .verify_purpose_key_attestation(
+                    Some(identity.identifier()),
+                    &purpose_key_attestation,
+                )
+                .await?;
 
-        match &purpose_key.public_key {
-            PurposePublicKey::SecureChannelStatic(public_key) => {
-                if public_key.0 != peer_public_key.0 {
-                    return Err(IdentityError::InvalidKeyData.into());
+            match &purpose_key.public_key {
+                PurposePublicKey::SecureChannelStatic(public_key) => {
+                    if public_key.0 != peer_public_key.0 {
+                        return Err(IdentityError::InvalidKeyData.into());
+                    }
                 }
-            }
-            PurposePublicKey::CredentialSigning(_) => {
-                return Err(IdentityError::InvalidKeyType.into())
+                PurposePublicKey::CredentialSigning(_) => {
+                    return Err(IdentityError::InvalidKeyType.into())
+                }
             }
         }
 
-        self.verify_credentials(identity.identifier(), peer.credentials)
-            .await?;
-        self.their_identifier = Some(identity.identifier().clone());
-        Ok(())
+        let their_identifier = identity.identifier().clone();
+
+        Self::verify_credentials(
+            identities,
+            trust_policy,
+            trust_context,
+            &their_identifier,
+            credentials,
+        )
+        .await?;
+
+        Ok(their_identifier)
     }
 
     /// Verify that the credentials sent by the other party are valid using a trust context
     /// and store them
     async fn verify_credentials(
-        &self,
+        identities: Arc<Identities>,
+        trust_policy: Option<Arc<dyn TrustPolicy>>,
+        trust_context: Option<TrustContext>,
         their_identifier: &Identifier,
         credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
-        // check our TrustPolicy
-        let trust_info = SecureChannelTrustInfo::new(their_identifier.clone());
-        let trusted = self.trust_policy.check(&trust_info).await?;
-        if !trusted {
-            // TODO: Shutdown? Communicate error?
-            return Err(IdentityError::SecureChannelTrustCheckFailed.into());
+        if let Some(trust_policy) = trust_policy {
+            // check our TrustPolicy
+            let trust_info = SecureChannelTrustInfo::new(their_identifier.clone());
+            let trusted = trust_policy.check(&trust_info).await?;
+            if !trusted {
+                // TODO: Shutdown? Communicate error?
+                return Err(IdentityError::SecureChannelTrustCheckFailed.into());
+            }
+            debug!(
+                "Checked trust policy for SecureChannel from: {}",
+                their_identifier
+            );
         }
-        debug!(
-            "Initiator checked trust policy for SecureChannel from: {}",
-            their_identifier
-        );
 
-        if let Some(trust_context) = &self.trust_context {
+        if let Some(trust_context) = &trust_context {
             debug!(
                 "got a trust context to check the credentials. There are {} credentials to check",
                 credentials.len()
             );
             for credential in &credentials {
-                let result = self
-                    .identities
+                let result = identities
                     .credentials()
                     .credentials_verification()
                     .receive_presented_credential(
@@ -212,36 +272,19 @@ impl CommonStateMachine {
 
         Ok(())
     }
-
-    /// Return the results of the full handshake
-    ///  - the other party identity
-    ///  - the encryption and decryption keys to use on the next messages to exchange
-    pub(super) fn make_handshake_results(
-        &self,
-        handshake_keys: Option<HandshakeKeys>,
-    ) -> Option<HandshakeResults> {
-        match (self.their_identifier.clone(), handshake_keys) {
-            (Some(their_identifier), Some(handshake_keys)) => Some(HandshakeResults {
-                their_identifier,
-                handshake_keys,
-            }),
-            _ => None,
-        }
-    }
 }
 
 /// This internal structure is used as a payload in the XX protocol
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
-#[cbor(map)]
 pub(super) struct IdentityAndCredentials {
     /// Exported identity
-    #[n(1)] pub(super) change_history: ChangeHistory,
+    #[n(0)] pub(super) change_history: ChangeHistory,
     /// The Purpose Key guarantees that the other end has access to the private key of the identity
     /// The Purpose Key here is also the static key of the noise ('x') and is issued with the static
     /// key of the identity
-    #[n(2)] pub(super) purpose_key_attestation: PurposeKeyAttestation,
+    #[n(1)] pub(super) purpose_key_attestation: PurposeKeyAttestation,
     /// Credentials associated to the identity along with corresponding Credentials Purpose Keys
     /// to verify those Credentials
-    #[n(3)] pub(super) credentials: Vec<CredentialAndPurposeKey>,
+    #[n(2)] pub(super) credentials: Vec<CredentialAndPurposeKey>,
 }

@@ -24,6 +24,8 @@ pub enum IdentityError {
     UnknownTimestamp,
     /// Unknown Authority
     UnknownAuthority,
+    /// No CredentialsRetriever
+    NoCredentialsRetriever,
     /// Unknown version of the Credential
     UnknownCredentialVersion,
     /// Unknown version of the Identity

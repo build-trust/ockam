@@ -5,7 +5,7 @@ mod api;
 mod decryptor;
 mod encryptor;
 mod encryptor_worker;
-mod handshake;
+pub(crate) mod handshake;
 mod key_tracker;
 mod listener;
 mod local_info;

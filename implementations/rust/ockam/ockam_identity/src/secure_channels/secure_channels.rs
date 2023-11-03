@@ -1,16 +1,17 @@
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
 
 use crate::identities::Identities;
-use crate::models::Identifier;
+use crate::models::{CredentialAndPurposeKey, Identifier};
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
-    Addresses, IdentityChannelListener, Role, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannelRegistry,
+    Addresses, Role, SecureChannelListenerOptions, SecureChannelListenerWorker,
+    SecureChannelOptions, SecureChannelRegistry,
 };
-use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder, Vault};
+use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder, TrustContext, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -68,7 +69,7 @@ impl SecureChannels {
         let options = options.into();
         let flow_control_id = options.flow_control_id.clone();
 
-        IdentityChannelListener::create(
+        SecureChannelListenerWorker::create(
             ctx,
             Arc::new(self.clone()),
             identifier,
@@ -78,6 +79,31 @@ impl SecureChannels {
         .await?;
 
         Ok(SecureChannelListener::new(address, flow_control_id))
+    }
+
+    /// If credentials are not provided via list in options
+    /// get them from the trust context
+    pub(crate) async fn get_credentials(
+        identifier: &Identifier,
+        credentials: &[CredentialAndPurposeKey],
+        trust_context: Option<&TrustContext>,
+        ctx: &Context,
+    ) -> Result<Vec<CredentialAndPurposeKey>> {
+        let credentials = if credentials.is_empty() {
+            if let Some(trust_context) = trust_context {
+                vec![
+                    trust_context
+                        .authority()?
+                        .credential(ctx, identifier)
+                        .await?,
+                ]
+            } else {
+                vec![]
+            }
+        } else {
+            credentials.to_vec()
+        };
+        Ok(credentials)
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
@@ -105,6 +131,14 @@ impl SecureChannels {
             .get_or_create_secure_channel_purpose_key(identifier)
             .await?;
 
+        let credentials = Self::get_credentials(
+            identifier,
+            &options.credentials,
+            options.trust_context.as_ref(),
+            ctx,
+        )
+        .await?;
+
         HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
@@ -113,7 +147,9 @@ impl SecureChannels {
             purpose_key,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            options.credentials,
+            credentials,
+            options.min_credential_refresh_interval,
+            options.credential_refresh_time_gap,
             options.trust_context,
             Some(route),
             Some(options.timeout),
