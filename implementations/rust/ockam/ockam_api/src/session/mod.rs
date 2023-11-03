@@ -13,7 +13,7 @@ use ockam_node::tokio::time::{sleep, timeout, Duration};
 use ockam_node::Context;
 use ockam_node::{tokio, WorkerBuilder};
 
-use crate::session::sessions::{Ping, Session, Status};
+use crate::session::sessions::{ConnectionStatus, Ping, Session};
 use crate::DefaultAddress;
 
 pub(crate) mod sessions;
@@ -123,10 +123,10 @@ impl Medic {
                             .spawn(async move { (key, sender.forward(l).await) });
                     } else {
                         match session.status() {
-                            Status::Up | Status::Down => {
+                            ConnectionStatus::Up | ConnectionStatus::Down => {
                                 log::warn!(%key, "session unresponsive");
                                 let f = session.replacement(session.ping_route().clone());
-                                session.set_status(Status::Degraded);
+                                session.set_status(ConnectionStatus::Degraded);
                                 log::info!(%key, "replacing session");
                                 let retry_delay = self.retry_delay;
                                 self.replacements.spawn(async move {
@@ -134,7 +134,7 @@ impl Medic {
                                     (key, f.await)
                                 });
                             }
-                            Status::Degraded => {
+                            ConnectionStatus::Degraded => {
                                 log::warn!(%key, "session is being replaced");
                             }
                         }
@@ -162,14 +162,14 @@ impl Medic {
                         log::warn!(key = %k, err = %e, "replacing session failed");
                         let mut sessions = self.sessions.lock().unwrap();
                         if let Some(s) = sessions.iter_mut().find(|s| s.key() == k) {
-                           s.set_status(Status::Down);
+                           s.set_status(ConnectionStatus::Down);
                         }
                     }
                     Some(Ok((k, Ok(ping_route)))) => {
                         let mut sessions = self.sessions.lock().unwrap();
                         if let Some(s) = sessions.iter_mut().find(|s| s.key() == k) {
                             log::info!(key = %k, ping_route = %ping_route, "replacement is up");
-                            s.set_status(Status::Up);
+                            s.set_status(ConnectionStatus::Up);
                             s.set_ping_address(ping_route);
                             s.clear_pings();
                         }
@@ -279,7 +279,7 @@ impl MedicHandle {
         sessions.retain(|s| s.key() != key)
     }
 
-    pub fn status_of(&self, key: &str) -> Option<Status> {
+    pub fn status_of(&self, key: &str) -> Option<ConnectionStatus> {
         let sessions = self.sessions.lock().unwrap();
         sessions.iter().find(|s| s.key() == key).map(|s| s.status())
     }
@@ -297,8 +297,8 @@ mod tests {
 
     use crate::echoer::Echoer;
     use crate::hop::Hop;
+    use crate::session::sessions::ConnectionStatus;
     use crate::session::sessions::Session;
-    use crate::session::sessions::Status;
     use crate::session::Medic;
 
     #[ockam::test]
@@ -346,7 +346,7 @@ mod tests {
             // Initially it's up
             let mut guard = sessions.lock().unwrap();
             let session = guard.iter_mut().next().unwrap();
-            assert_eq!(session.status(), Status::Up);
+            assert_eq!(session.status(), ConnectionStatus::Up);
             assert_eq!(session.ping_route(), &route!["broken_route"]);
         }
 
@@ -359,7 +359,7 @@ mod tests {
             // Check the session is now marked as degraded
             let guard = sessions.lock().unwrap();
             let session = guard.iter().next().unwrap();
-            assert_eq!(session.status(), Status::Degraded);
+            assert_eq!(session.status(), ConnectionStatus::Degraded);
             assert_eq!(session.ping_route(), &route!["broken_route"]);
         }
 
@@ -372,7 +372,7 @@ mod tests {
                 // synchronization we keep to keep checking until it's up
                 let guard = sessions.lock().unwrap();
                 let session = guard.iter().next().unwrap();
-                if session.status() == Status::Up {
+                if session.status() == ConnectionStatus::Up {
                     assert_eq!(session.ping_route(), &route!["hop"]);
                     break;
                 }

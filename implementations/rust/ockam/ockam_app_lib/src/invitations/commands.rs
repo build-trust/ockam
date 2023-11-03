@@ -15,6 +15,7 @@ use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
+use ockam_api::ConnectionStatus;
 use ockam_multiaddr::MultiAddr;
 
 use crate::background_node::BackgroundNodeClient;
@@ -393,7 +394,7 @@ impl AppState {
                     .await?
                     .success()
                 {
-                    if inlet.status == "up" {
+                    if inlet.status == ConnectionStatus::Up {
                         inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
                         return Inlet::new(inlet_data).map(Some);
                     }
