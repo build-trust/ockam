@@ -372,24 +372,22 @@ impl AppState {
         background_node_client: Arc<dyn BackgroundNodeClient>,
         mut inlet_data: InletDataFromInvitation,
     ) -> crate::Result<Option<Inlet>> {
-        debug!(node = %inlet_data.local_node_name, "Checking node status");
+        let inlet_node_name = &inlet_data.local_node_name;
+        debug!(node = %inlet_node_name, "Checking node status");
         if !inlet_data.enabled {
-            debug!(node = %inlet_data.local_node_name, "TCP inlet is disabled by the user, just deleting the node");
-            background_node_client
-                .nodes()
-                .delete(&inlet_data.local_node_name)
-                .await?;
+            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, just deleting the node");
+            self.delete_background_node(inlet_node_name).await?;
             // we want to keep the entry to store the attribute `enabled = false`
             return Inlet::new(inlet_data).map(Some);
         }
 
-        let mut inlet_node = self.background_node(&inlet_data.local_node_name).await?;
+        let mut inlet_node = self.background_node(inlet_node_name).await?;
         inlet_node.set_timeout(Duration::from_secs(5));
 
         // if disabled it'll be deleted
-        if let Ok(node) = cli_state.nodes.get(&inlet_data.local_node_name) {
+        if let Ok(node) = cli_state.nodes.get(inlet_node_name) {
             if node.is_running() {
-                debug!(node = %inlet_data.local_node_name, "Node already running");
+                debug!(node = %inlet_node_name, "Node already running");
                 if let Ok(inlet) = inlet_node
                     .show_inlet(&self.context(), &inlet_data.service_name)
                     .await?
@@ -403,13 +401,10 @@ impl AppState {
             }
         }
 
-        background_node_client
-            .nodes()
-            .delete(&inlet_data.local_node_name)
-            .await?;
+        inlet_node.delete()?;
 
         if !inlet_data.enabled {
-            debug!(node = %inlet_data.local_node_name, "TCP inlet is disabled by the user, skipping");
+            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, skipping");
             return Ok(None);
         }
 

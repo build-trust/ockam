@@ -204,13 +204,7 @@ impl AppState {
             };
 
             for node_name in inlets {
-                let _ = this
-                    .background_node_client
-                    .read()
-                    .await
-                    .nodes()
-                    .delete(&node_name)
-                    .await;
+                let _ = this.delete_background_node(&node_name).await;
             }
 
             std::process::exit(0);
@@ -344,6 +338,10 @@ impl AppState {
 
     pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNode> {
         Ok(BackgroundNode::create(&self.context(), &self.state().await, node_name).await?)
+    }
+
+    pub async fn delete_background_node(&self, node_name: &str) -> Result<()> {
+        Ok(self.state().await.nodes.delete(node_name)?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {

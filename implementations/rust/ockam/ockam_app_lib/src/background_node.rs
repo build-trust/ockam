@@ -17,7 +17,6 @@ pub trait BackgroundNodeClient: Send + Sync + 'static {
 #[async_trait]
 pub trait Nodes: Send + Sync + 'static {
     async fn create(&mut self, node_name: &str) -> Result<()>;
-    async fn delete(&mut self, node_name: &str) -> Result<()>;
 }
 
 #[async_trait]
@@ -83,22 +82,6 @@ impl Nodes for Cli {
             .stdout_capture()
             .run()
             .map(|_| debug!(node = %node_name, "Node created"));
-        })
-        .await?;
-
-        Ok(())
-    }
-
-    async fn delete(&mut self, node_name: &str) -> Result<()> {
-        debug!(node = %node_name, "Deleting node");
-        let bin = self.bin.clone();
-        let node_name = node_name.to_string();
-        spawn_blocking(move || {
-            let _ = duct::cmd!(&bin, "--no-input", "node", "delete", "--yes", &node_name)
-                .before_spawn(log_command)
-                .stderr_null()
-                .stdout_capture()
-                .run();
         })
         .await?;
 

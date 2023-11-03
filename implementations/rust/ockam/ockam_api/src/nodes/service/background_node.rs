@@ -53,6 +53,10 @@ impl BackgroundNode {
         })
     }
 
+    pub fn delete(&self) -> miette::Result<()> {
+        Ok(self.cli_state.nodes.delete(self.node_name())?)
+    }
+
     // Set a different node name
     pub fn set_node_name(&mut self, node_name: &str) -> &Self {
         self.node_name = node_name.to_string();
