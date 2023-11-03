@@ -1,17 +1,19 @@
 use std::str::FromStr;
 use std::time::Duration;
+use tokio::spawn;
 
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient, DEFAULT_TIMEOUT};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
-use ockam_core::{Result, Route};
+use ockam_core::errcode::Kind;
+use ockam_core::{AsyncTryClone, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpConnection, TcpTransport};
 
 use crate::error::ApiError;
-use crate::multiaddr_to_route;
 use crate::nodes::NodeManager;
+use crate::{multiaddr_to_route, MultiAddrToRouteResult};
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -75,7 +77,7 @@ impl NodeManager {
         identifier: &Identifier,
         multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
-    ) -> Result<SecureClient> {
+    ) -> Result<GenericSecureClient> {
         NodeManager::generic(
             &self.tcp_transport,
             self.secure_channels.clone(),
@@ -91,16 +93,25 @@ impl NodeManager {
         secure_channels: Arc<SecureChannels>,
         caller_identifier: &Identifier,
     ) -> Result<Controller> {
-        let controller_route = Self::controller_route(tcp_transport).await?;
+        let mut controller_route = Self::controller_route(tcp_transport).await?;
         let controller_identifier = Self::load_controller_identifier()?;
 
-        Ok(Controller(SecureClient::new(
-            secure_channels,
-            controller_route,
-            &controller_identifier,
-            caller_identifier,
-            ORCHESTRATOR_RESTART_TIMEOUT,
-        )))
+        let tcp_connection = if let Some(tcp_connection) = controller_route.tcp_connection.take() {
+            Some((tcp_connection, tcp_transport.ctx().async_try_clone().await?))
+        } else {
+            None
+        };
+
+        Ok(Controller {
+            secure_client: SecureClient::new(
+                secure_channels,
+                controller_route.route,
+                &controller_identifier,
+                caller_identifier,
+                ORCHESTRATOR_RESTART_TIMEOUT,
+            ),
+            tcp_connection,
+        })
     }
 
     pub async fn authority_node(
@@ -110,16 +121,25 @@ impl NodeManager {
         authority_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
     ) -> Result<AuthorityNode> {
-        let authority_route =
+        let mut authority_route =
             Self::resolve_secure_route(tcp_transport, authority_multiaddr).await?;
 
-        Ok(AuthorityNode(SecureClient::new(
-            secure_channels,
-            authority_route,
-            authority_identifier,
-            caller_identifier,
-            DEFAULT_TIMEOUT,
-        )))
+        let tcp_connection = if let Some(tcp_connection) = authority_route.tcp_connection.take() {
+            Some((tcp_connection, tcp_transport.ctx().async_try_clone().await?))
+        } else {
+            None
+        };
+
+        Ok(AuthorityNode {
+            secure_client: SecureClient::new(
+                secure_channels,
+                authority_route.route,
+                authority_identifier,
+                caller_identifier,
+                DEFAULT_TIMEOUT,
+            ),
+            tcp_connection,
+        })
     }
 
     pub async fn project_node(
@@ -129,15 +149,25 @@ impl NodeManager {
         project_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
     ) -> Result<ProjectNode> {
-        let project_route = Self::resolve_secure_route(tcp_transport, project_multiaddr).await?;
+        let mut project_route =
+            Self::resolve_secure_route(tcp_transport, project_multiaddr).await?;
 
-        Ok(ProjectNode(SecureClient::new(
-            secure_channels,
-            project_route,
-            project_identifier,
-            caller_identifier,
-            DEFAULT_TIMEOUT,
-        )))
+        let tcp_connection = if let Some(tcp_connection) = project_route.tcp_connection.take() {
+            Some((tcp_connection, tcp_transport.ctx().async_try_clone().await?))
+        } else {
+            None
+        };
+
+        Ok(ProjectNode {
+            secure_client: SecureClient::new(
+                secure_channels,
+                project_route.route,
+                project_identifier,
+                caller_identifier,
+                DEFAULT_TIMEOUT,
+            ),
+            tcp_connection,
+        })
     }
 
     pub async fn generic(
@@ -146,16 +176,25 @@ impl NodeManager {
         identifier: &Identifier,
         multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
-    ) -> Result<SecureClient> {
-        let route = Self::resolve_secure_route(tcp_transport, multiaddr).await?;
+    ) -> Result<GenericSecureClient> {
+        let mut route = Self::resolve_secure_route(tcp_transport, multiaddr).await?;
 
-        Ok(SecureClient::new(
-            secure_channels,
-            route,
-            identifier,
-            caller_identifier,
-            DEFAULT_TIMEOUT,
-        ))
+        let tcp_connection = if let Some(tcp_connection) = route.tcp_connection.take() {
+            Some((tcp_connection, tcp_transport.ctx().async_try_clone().await?))
+        } else {
+            None
+        };
+
+        Ok(GenericSecureClient {
+            secure_client: SecureClient::new(
+                secure_channels,
+                route.route,
+                identifier,
+                caller_identifier,
+                DEFAULT_TIMEOUT,
+            ),
+            tcp_connection,
+        })
     }
 
     /// Load controller identity id from file.
@@ -175,30 +214,43 @@ impl NodeManager {
         get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap()
     }
 
-    async fn controller_route(tcp_transport: &TcpTransport) -> Result<Route> {
+    async fn controller_route(tcp_transport: &TcpTransport) -> Result<MultiAddrToRouteResult> {
         Self::resolve_secure_route(tcp_transport, &Self::controller_multiaddr()).await
     }
 
     async fn resolve_secure_route(
         tcp_transport: &TcpTransport,
         multiaddr: &MultiAddr,
-    ) -> Result<Route> {
-        let secure_route = multiaddr_to_route(multiaddr, tcp_transport)
+    ) -> Result<MultiAddrToRouteResult> {
+        let resolved = multiaddr_to_route(multiaddr, tcp_transport)
             .await
             .ok_or_else(|| {
                 ApiError::core(format!(
                     "Couldn't convert MultiAddr to route: multiaddr={multiaddr}"
                 ))
-            })?
-            .route;
-        debug!("using the secure route {secure_route}");
-        Ok(secure_route)
+            })?;
+        debug!("using the secure route {}", resolved.route);
+        Ok(resolved)
     }
 }
 
-pub struct AuthorityNode(pub(crate) SecureClient);
-pub struct ProjectNode(pub(crate) SecureClient);
-pub struct Controller(pub(crate) SecureClient);
+pub struct AuthorityNode {
+    pub(crate) secure_client: SecureClient,
+    pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
+}
+pub struct ProjectNode {
+    pub(crate) secure_client: SecureClient,
+    pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
+}
+pub struct Controller {
+    pub(crate) secure_client: SecureClient,
+    pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
+}
+
+pub struct GenericSecureClient {
+    pub(crate) secure_client: SecureClient,
+    pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
+}
 
 pub trait HasSecureClient {
     fn get_secure_client(&self) -> &SecureClient;
@@ -206,38 +258,100 @@ pub trait HasSecureClient {
 
 impl HasSecureClient for AuthorityNode {
     fn get_secure_client(&self) -> &SecureClient {
-        &self.0
+        &self.secure_client
     }
 }
 
 impl HasSecureClient for ProjectNode {
     fn get_secure_client(&self) -> &SecureClient {
-        &self.0
+        &self.secure_client
     }
 }
 
 impl HasSecureClient for Controller {
     fn get_secure_client(&self) -> &SecureClient {
-        &self.0
+        &self.secure_client
+    }
+}
+
+impl HasSecureClient for GenericSecureClient {
+    fn get_secure_client(&self) -> &SecureClient {
+        &self.secure_client
     }
 }
 
 impl AuthorityNode {
     pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
-        self.0.create_secure_channel(ctx).await
+        self.secure_client.create_secure_channel(ctx).await
     }
 
     pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
-        self.0.check_secure_channel(ctx).await
+        self.secure_client.check_secure_channel(ctx).await
     }
 }
 
 impl ProjectNode {
     pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
-        self.0.create_secure_channel(ctx).await
+        self.secure_client.create_secure_channel(ctx).await
     }
 
     pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
-        self.0.check_secure_channel(ctx).await
+        self.secure_client.check_secure_channel(ctx).await
+    }
+}
+
+impl Drop for AuthorityNode {
+    fn drop(&mut self) {
+        if let Some((tcp_connection, context)) = self.tcp_connection.take() {
+            spawn(async move {
+                if let Err(err) = tcp_connection.stop(&context).await {
+                    if err.code().kind != Kind::NotFound {
+                        warn!("Failed to stop TCP connection: {}", err);
+                    }
+                }
+            });
+        }
+    }
+}
+
+impl Drop for ProjectNode {
+    fn drop(&mut self) {
+        if let Some((tcp_connection, context)) = self.tcp_connection.take() {
+            spawn(async move {
+                if let Err(err) = tcp_connection.stop(&context).await {
+                    if err.code().kind != Kind::NotFound {
+                        warn!("Failed to stop TCP connection: {}", err);
+                    }
+                }
+            });
+        }
+    }
+}
+
+impl Drop for Controller {
+    fn drop(&mut self) {
+        if let Some((tcp_connection, context)) = self.tcp_connection.take() {
+            spawn(async move {
+                if let Err(err) = tcp_connection.stop(&context).await {
+                    if err.code().kind != Kind::NotFound {
+                        warn!("Failed to stop TCP connection: {}", err);
+                    }
+                }
+            });
+        }
+    }
+}
+
+impl Drop for GenericSecureClient {
+    fn drop(&mut self) {
+        if let Some((tcp_connection, context)) = self.tcp_connection.take() {
+            spawn(async move {
+                if let Err(err) = tcp_connection.stop(&context).await {
+                    if err.code().kind != Kind::NotFound {
+                        warn!("Failed to stop TCP connection: {}", err);
+                    }
+                }
+            });
+        }
     }
 }

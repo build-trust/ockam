@@ -126,13 +126,14 @@ impl AppState {
     async fn retrieve_space(&self) -> Result<Space> {
         info!("retrieving the user's space");
         let controller = self.controller().await.into_diagnostic()?;
+        let context = self.context();
 
         // list the spaces that the user can access
         // and sort them by name to make sure to get the same space every time
         // if several spaces are available
         let spaces = {
             let mut spaces = controller
-                .list_spaces(&self.context())
+                .list_spaces(&context)
                 .await
                 .map_err(|e| miette!(e))?;
             spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
@@ -146,7 +147,7 @@ impl AppState {
             None => {
                 let space_name = cli_state::random_name();
                 controller
-                    .create_space(&self.context(), space_name, vec![])
+                    .create_space(&context, space_name, vec![])
                     .await
                     .map_err(|e| miette!(e))?
             }

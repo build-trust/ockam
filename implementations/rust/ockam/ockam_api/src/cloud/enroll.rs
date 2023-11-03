@@ -51,7 +51,7 @@ impl Enroll for Controller {
     ) -> miette::Result<EnrollmentToken> {
         trace!(target: TARGET, "generating tokens");
         let req = Request::post("v0/").body(RequestEnrollmentToken::new(attributes));
-        self.0
+        self.secure_client
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -68,7 +68,7 @@ impl Enroll for Controller {
             token: enrollment_token.token,
         });
         trace!(target: TARGET, "authenticating token");
-        self.0
+        self.secure_client
             .tell(ctx, "enrollment_token_authenticator", req)
             .await
             .into_diagnostic()?

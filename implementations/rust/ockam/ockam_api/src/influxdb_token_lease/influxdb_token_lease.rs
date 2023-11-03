@@ -19,7 +19,7 @@ pub trait InfluxDbTokenLease {
 #[async_trait]
 impl InfluxDbTokenLease for ProjectNode {
     async fn create_token(&self, ctx: &Context) -> miette::Result<Token> {
-        self.0
+        self.secure_client
             .ask(ctx, "influxdb_token_lease", Request::post("/"))
             .await
             .into_diagnostic()?
@@ -28,7 +28,7 @@ impl InfluxDbTokenLease for ProjectNode {
     }
 
     async fn get_token(&self, ctx: &Context, token_id: String) -> miette::Result<Token> {
-        self.0
+        self.secure_client
             .ask(
                 ctx,
                 "influxdb_token_lease",
@@ -41,7 +41,7 @@ impl InfluxDbTokenLease for ProjectNode {
     }
 
     async fn revoke_token(&self, ctx: &Context, token_id: String) -> miette::Result<()> {
-        self.0
+        self.secure_client
             .tell(
                 ctx,
                 "influxdb_token_lease",
@@ -54,7 +54,7 @@ impl InfluxDbTokenLease for ProjectNode {
     }
 
     async fn list_tokens(&self, ctx: &Context) -> miette::Result<Vec<Token>> {
-        self.0
+        self.secure_client
             .ask(ctx, "influxdb_token_lease", Request::get("/"))
             .await
             .into_diagnostic()?

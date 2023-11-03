@@ -127,7 +127,7 @@ impl Members for AuthorityNode {
         attributes: HashMap<&str, &str>,
     ) -> miette::Result<()> {
         let req = Request::post("/").body(AddMember::new(identifier).with_attributes(attributes));
-        self.0
+        self.secure_client
             .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
             .await
             .into_diagnostic()?
@@ -137,7 +137,7 @@ impl Members for AuthorityNode {
 
     async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()> {
         let req = Request::delete(format!("/{identifier}"));
-        self.0
+        self.secure_client
             .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
             .await
             .into_diagnostic()?
@@ -147,7 +147,7 @@ impl Members for AuthorityNode {
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>> {
         let req = Request::get("/member_ids");
-        self.0
+        self.secure_client
             .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
             .await
             .into_diagnostic()?
@@ -160,7 +160,7 @@ impl Members for AuthorityNode {
         ctx: &Context,
     ) -> miette::Result<HashMap<Identifier, AttributesEntry>> {
         let req = Request::get("/");
-        self.0
+        self.secure_client
             .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
             .await
             .into_diagnostic()?
@@ -195,7 +195,7 @@ impl TokenIssuer for AuthorityNode {
             .with_ttl_count(ttl_count);
 
         let req = Request::post("/").body(body);
-        self.0
+        self.secure_client
             .ask(ctx, DefaultAddress::ENROLLMENT_TOKEN_ISSUER, req)
             .await
             .into_diagnostic()?
@@ -213,7 +213,7 @@ pub trait TokenAcceptor {
 impl TokenAcceptor for AuthorityNode {
     async fn present_token(&self, ctx: &Context, token: OneTimeCode) -> miette::Result<()> {
         let req = Request::post("/").body(token);
-        self.0
+        self.secure_client
             .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
             .await
             .into_diagnostic()?

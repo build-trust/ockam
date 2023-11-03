@@ -68,7 +68,7 @@ impl Operations for Controller {
     ) -> miette::Result<Option<Operation>> {
         trace!(target: TARGET, operation_id, "getting operation");
         let req = Request::get(format!("/v1/operations/{operation_id}"));
-        self.0
+        self.secure_client
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
