@@ -65,6 +65,14 @@ impl BackgroundNode {
         self
     }
 
+    pub fn cli_state(&self) -> &CliState {
+        &self.cli_state
+    }
+
+    pub fn node_name(&self) -> &str {
+        &self.node_name
+    }
+
     /// Send a request and expect a decodable response
     pub async fn ask<T, R>(&self, ctx: &Context, req: Request<T>) -> miette::Result<R>
     where
@@ -97,6 +105,21 @@ impl BackgroundNode {
             .into_diagnostic()
     }
 
+    /// Send a request and expect either a decodable response or an API error.
+    /// This method returns an error if the request cannot be sent or if there is any decoding error
+    pub async fn ask_and_get_reply<T, R>(
+        &self,
+        ctx: &Context,
+        req: Request<T>,
+    ) -> miette::Result<Reply<R>>
+    where
+        T: Encode<()>,
+        R: for<'b> Decode<'b, ()>,
+    {
+        let client = self.make_client().await?;
+        client.ask(ctx, req).await.into_diagnostic()
+    }
+
     /// Send a request but don't decode the response
     pub async fn tell<T>(&self, ctx: &Context, req: Request<T>) -> miette::Result<()>
     where
@@ -111,19 +134,17 @@ impl BackgroundNode {
             .into_diagnostic()
     }
 
-    /// Send a request and expect either a decodable response or an API error.
-    /// This method returns an error if the request cannot be sent of if there is any decoding error
-    pub async fn ask_and_get_reply<T, R>(
+    /// Send a request but and return the API reply without decoding the body response
+    pub async fn tell_and_get_reply<T>(
         &self,
         ctx: &Context,
         req: Request<T>,
-    ) -> miette::Result<Reply<R>>
+    ) -> miette::Result<Reply<()>>
     where
         T: Encode<()>,
-        R: for<'b> Decode<'b, ()>,
     {
         let client = self.make_client().await?;
-        client.ask(ctx, req).await.into_diagnostic()
+        client.tell(ctx, req).await.into_diagnostic()
     }
 
     /// Make a route to the node and connect using TCP

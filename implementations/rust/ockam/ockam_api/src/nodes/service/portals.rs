@@ -7,11 +7,11 @@ use tokio::time::timeout;
 use ockam::identity::Identifier;
 use ockam::{Address, Result};
 use ockam_abac::Resource;
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, AsyncTryClone, IncomingAccessControl, Route};
+use ockam_core::{async_trait, route, AsyncTryClone, IncomingAccessControl, Route};
 use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 
@@ -23,8 +23,9 @@ use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
+use crate::nodes::service::policy::Policies;
 use crate::nodes::service::random_alias;
-use crate::nodes::InMemoryNode;
+use crate::nodes::{BackgroundNode, InMemoryNode};
 use crate::session::sessions::{Replacer, Session, Status, MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 use crate::{actions, resources, DefaultAddress};
 
@@ -708,5 +709,80 @@ impl InMemoryNode {
                 }
             })
         })
+    }
+}
+
+#[async_trait]
+pub trait Inlets {
+    async fn create_inlet(
+        &self,
+        ctx: &Context,
+        listen_addr: &str,
+        outlet_addr: &MultiAddr,
+        alias: &Option<String>,
+        authorized_identifier: &Option<Identifier>,
+        wait_for_outlet_timeout: Duration,
+    ) -> miette::Result<Reply<InletStatus>>;
+
+    async fn show_inlet(
+        &self,
+        ctx: &Context,
+        inlet_alias: &str,
+    ) -> miette::Result<Reply<InletStatus>>;
+
+    async fn delete_inlet(&self, ctx: &Context, inlet_alias: &str) -> miette::Result<Reply<()>>;
+}
+
+#[async_trait]
+impl Inlets for BackgroundNode {
+    async fn create_inlet(
+        &self,
+        ctx: &Context,
+        listen_addr: &str,
+        outlet_addr: &MultiAddr,
+        alias: &Option<String>,
+        authorized_identifier: &Option<Identifier>,
+        wait_for_outlet_timeout: Duration,
+    ) -> miette::Result<Reply<InletStatus>> {
+        self.add_policy_to_project(ctx, "tcp-inlet").await?;
+        let request = {
+            let via_project = outlet_addr.matches(0, &[Project::CODE.into()]);
+            let mut payload = if via_project {
+                CreateInlet::via_project(
+                    listen_addr.to_string(),
+                    outlet_addr.clone(),
+                    route![],
+                    route![],
+                )
+            } else {
+                CreateInlet::to_node(
+                    listen_addr.to_string(),
+                    outlet_addr.clone(),
+                    route![],
+                    route![],
+                    authorized_identifier.clone(),
+                )
+            };
+            if let Some(a) = alias {
+                payload.set_alias(a.to_string())
+            }
+            payload.set_wait_ms(wait_for_outlet_timeout.as_millis() as u64);
+            Request::post("/node/inlet").body(payload)
+        };
+        self.ask_and_get_reply(ctx, request).await
+    }
+
+    async fn show_inlet(
+        &self,
+        ctx: &Context,
+        inlet_alias: &str,
+    ) -> miette::Result<Reply<InletStatus>> {
+        let request = Request::get(format!("/node/inlet/{inlet_alias}"));
+        self.ask_and_get_reply(ctx, request).await
+    }
+
+    async fn delete_inlet(&self, ctx: &Context, inlet_alias: &str) -> miette::Result<Reply<()>> {
+        let request = Request::delete(format!("/node/inlet/{inlet_alias}"));
+        self.tell_and_get_reply(ctx, request).await
     }
 }

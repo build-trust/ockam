@@ -32,7 +32,7 @@ use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, Tr
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 
 use crate::api::state::OrchestratorStatus;
@@ -340,6 +340,10 @@ impl AppState {
     pub async fn controller(&self) -> Result<Controller> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager.create_controller().await?)
+    }
+
+    pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNode> {
+        Ok(BackgroundNode::create(&self.context(), &self.state().await, node_name).await?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {

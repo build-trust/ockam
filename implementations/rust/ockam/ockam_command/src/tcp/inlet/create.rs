@@ -1,30 +1,29 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
-use std::thread::sleep;
+
 use std::time::Duration;
 
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::log::trace;
 
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_abac::Resource;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
-use ockam_api::nodes::models::portal::CreateInlet;
+
 use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
-use ockam_core::api::{Reply, Request, Status};
+use ockam_core::api::{Reply, Status};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, Error};
+use ockam_core::Error;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 
 use crate::node::{get_node_name, initialize_node_if_default};
-use crate::policy::{add_default_project_policy, has_policy};
+
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
@@ -114,58 +113,21 @@ async fn rpc(
     let progress_bar = opts.terminal.progress_spinner();
     let create_inlet = async {
         port_is_free_guard(&cmd.from)?;
-
-        let project = opts
-            .state
-            .nodes
-            .get(&node_name)?
-            .config()
-            .setup()
-            .project
-            .to_owned();
-        let resource = Resource::new("tcp-inlet");
-        if let Some(p) = project {
-            if !has_policy(&node_name, &ctx, &opts, &resource).await? {
-                add_default_project_policy(&node_name, &ctx, &opts, p, &resource).await?;
-            }
+        if cmd.to.clone().matches(0, &[Project::CODE.into()]) && cmd.authorized.is_some() {
+            return Err(miette!("--authorized can not be used with project addresses").into());
         }
 
-        let via_project = if cmd.to.clone().matches(0, &[Project::CODE.into()]) {
-            if cmd.authorized.is_some() {
-                return Err(miette!("--authorized can not be used with project addresses").into());
-            }
-            true
-        } else {
-            false
-        };
-
         let inlet = loop {
-            let req = {
-                let mut payload = if via_project {
-                    CreateInlet::via_project(
-                        cmd.from.to_string(),
-                        cmd.to.clone(),
-                        route![],
-                        route![],
-                    )
-                } else {
-                    CreateInlet::to_node(
-                        cmd.from.to_string(),
-                        cmd.to.clone(),
-                        route![],
-                        route![],
-                        cmd.authorized.clone(),
-                    )
-                };
-                if let Some(a) = cmd.alias.as_ref() {
-                    payload.set_alias(a)
-                }
-                payload.set_wait_ms(cmd.connection_wait.as_millis() as u64);
-
-                Request::post("/node/inlet").body(payload)
-            };
-
-            let result: Reply<InletStatus> = node.ask_and_get_reply(&ctx, req).await?;
+            let result: Reply<InletStatus> = node
+                .create_inlet(
+                    &ctx,
+                    &cmd.from.to_string(),
+                    &cmd.to,
+                    &cmd.alias,
+                    &cmd.authorized,
+                    cmd.connection_wait,
+                )
+                .await?;
 
             match result {
                 Reply::Successful(inlet_status) => {
@@ -196,7 +158,7 @@ async fn rpc(
                                 .color(OckamColor::PrimaryResource.color())
                         ));
                     }
-                    sleep(cmd.retry_wait)
+                    tokio::time::sleep(cmd.retry_wait).await
                 }
             }
         };
@@ -229,13 +191,7 @@ async fn rpc(
         &is_finished,
         progress_bar.as_ref(),
     );
-
     let (inlet, _) = try_join!(create_inlet, progress_output)?;
-
-    let machine_output = inlet.bind_addr.to_string();
-
-    let json_output = serde_json::to_string_pretty(&inlet).into_diagnostic()?;
-
     opts.terminal
         .stdout()
         .plain(
@@ -254,8 +210,8 @@ async fn rpc(
                     .color(OckamColor::PrimaryResource.color())
             ),
         )
-        .machine(machine_output)
-        .json(json_output)
+        .machine(inlet.bind_addr.to_string())
+        .json(serde_json::json!(&inlet))
         .write_line()?;
 
     Ok(())

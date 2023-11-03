@@ -13,6 +13,9 @@ use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
+use ockam_api::nodes::service::portals::Inlets;
+use ockam_api::nodes::BackgroundNode;
+use ockam_multiaddr::MultiAddr;
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
@@ -380,14 +383,17 @@ impl AppState {
             return Inlet::new(inlet_data).map(Some);
         }
 
+        let mut inlet_node = self.background_node(&inlet_data.local_node_name).await?;
+        inlet_node.set_timeout(Duration::from_secs(5));
+
         // if disabled it'll be deleted
         if let Ok(node) = cli_state.nodes.get(&inlet_data.local_node_name) {
             if node.is_running() {
                 debug!(node = %inlet_data.local_node_name, "Node already running");
-                if let Ok(inlet) = background_node_client
-                    .inlets()
-                    .show(&inlet_data.local_node_name, &inlet_data.service_name)
-                    .await
+                if let Ok(inlet) = inlet_node
+                    .show_inlet(&self.context(), &inlet_data.service_name)
+                    .await?
+                    .success()
                 {
                     if inlet.status == "up" {
                         inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
@@ -408,7 +414,7 @@ impl AppState {
         }
 
         let socket_addr = self
-            .create_inlet(background_node_client.clone(), &inlet_data)
+            .create_inlet(background_node_client.clone(), inlet_node, &inlet_data)
             .await?;
 
         inlet_data.socket_addr = Some(socket_addr);
@@ -420,6 +426,7 @@ impl AppState {
     async fn create_inlet(
         &self,
         background_node_client: Arc<dyn BackgroundNodeClient>,
+        inlet_node: BackgroundNode,
         inlet_data: &InletDataFromInvitation,
     ) -> crate::Result<SocketAddr> {
         debug!(service_name = ?inlet_data.service_name, "Creating TCP inlet for accepted invitation");
@@ -452,16 +459,20 @@ impl AppState {
 
         // give time for the node to spawn up
         tokio::time::sleep(Duration::from_millis(250)).await;
-        background_node_client
-            .inlets()
-            .create(local_node_name, &from, service_route, service_name)
+        inlet_node
+            .create_inlet(
+                &self.context(),
+                &from.to_string(),
+                &MultiAddr::from_str(service_route).into_diagnostic()?,
+                &Some(service_name.to_string()),
+                &None,
+                Duration::from_secs(5),
+            )
             .await?;
         Ok(from)
     }
 
     pub(crate) async fn disconnect_tcp_inlet(&self, invitation_id: &str) -> crate::Result<()> {
-        let background_node_client = self.background_node_client().await;
-
         let inlet = {
             let invitations = self.invitations();
             let mut writer = invitations.write().await;
@@ -478,9 +489,9 @@ impl AppState {
         };
 
         if let Some(inlet) = inlet {
-            background_node_client
-                .inlets()
-                .delete(&inlet.node_name, &inlet.alias)
+            self.background_node(&inlet.node_name)
+                .await?
+                .delete_inlet(&self.context(), &inlet.alias)
                 .await?;
             self.publish_state().await;
         }

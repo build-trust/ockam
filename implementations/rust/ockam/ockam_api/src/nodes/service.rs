@@ -60,7 +60,7 @@ pub mod message;
 mod node_identities;
 mod node_services;
 mod policy;
-mod portals;
+pub mod portals;
 pub mod relay;
 mod secure_channel;
 mod transport;
