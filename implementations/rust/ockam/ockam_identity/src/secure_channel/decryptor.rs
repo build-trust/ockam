@@ -6,16 +6,18 @@ use ockam_node::Context;
 
 use crate::models::Identifier;
 use crate::secure_channel::encryptor::{Encryptor, KEY_RENEWAL_INTERVAL};
+use crate::secure_channel::handshake::handshake_state_machine::CommonStateMachine;
 use crate::secure_channel::key_tracker::KeyTracker;
 use crate::secure_channel::nonce_tracker::NonceTracker;
 use crate::secure_channel::Addresses;
 use crate::{
-    DecryptionRequest, DecryptionResponse, IdentityError, IdentitySecureChannelLocalInfo,
-    SecureChannelMessage,
+    DecryptionRequest, DecryptionResponse, Identities, IdentityError,
+    IdentitySecureChannelLocalInfo, PlaintextPayloadMessage, RefreshCredentialsMessage,
+    SecureChannelMessage, TrustContext,
 };
 
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
@@ -23,10 +25,15 @@ pub(crate) struct DecryptorHandler {
     pub(crate) addresses: Addresses,
     pub(crate) their_identity_id: Identifier,
     pub(crate) decryptor: Decryptor,
+
+    identities: Arc<Identities>,
+    trust_context: Option<TrustContext>,
 }
 
 impl DecryptorHandler {
     pub fn new(
+        identities: Arc<Identities>,
+        trust_context: Option<TrustContext>,
         role: &'static str,
         addresses: Addresses,
         key: AeadSecretKeyHandle,
@@ -38,6 +45,8 @@ impl DecryptorHandler {
             addresses,
             their_identity_id,
             decryptor: Decryptor::new(key, vault),
+            identities,
+            trust_context,
         }
     }
 
@@ -71,32 +80,11 @@ impl DecryptorHandler {
         Ok(())
     }
 
-    pub(crate) async fn handle_decrypt(
+    async fn handle_payload(
         &mut self,
         ctx: &mut Context,
-        msg: Routed<Any>,
+        mut msg: PlaintextPayloadMessage,
     ) -> Result<()> {
-        debug!(
-            "SecureChannel {} received Decrypt {}",
-            self.role, &self.addresses.decryptor_remote
-        );
-
-        // Decode raw payload binary
-        let payload = msg.into_transport_message().payload;
-        let payload = Vec::<u8>::decode(&payload)?;
-
-        // Decrypt the binary
-        let decrypted_payload = self.decryptor.decrypt(&payload).await?;
-
-        let msg: SecureChannelMessage = minicbor::decode(&decrypted_payload)?;
-
-        let mut msg = match msg {
-            SecureChannelMessage::Payload(msg) => msg,
-            SecureChannelMessage::Close => {
-                todo!()
-            }
-        };
-
         // Add encryptor hop in the return_route (instead of our address)
         msg.return_route
             .modify()
@@ -125,6 +113,70 @@ impl DecryptorHandler {
                 Ok(())
             }
         }
+    }
+
+    async fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
+        // Should be enough to stop the encryptor, since it will stop the decryptor
+        ctx.stop_worker(self.addresses.encryptor.clone()).await
+    }
+
+    async fn handle_refresh_credentials(
+        &mut self,
+        _ctx: &mut Context,
+        msg: RefreshCredentialsMessage,
+    ) -> Result<()> {
+        debug!(
+            "Handling credentials refresh request for {}",
+            self.addresses.decryptor_remote
+        );
+
+        CommonStateMachine::process_identity_payload_static(
+            self.identities.clone(),
+            None,
+            self.trust_context.clone(),
+            Some(self.their_identity_id.clone()),
+            msg.change_history,
+            msg.credentials,
+            None,
+        )
+        .await?;
+
+        info!(
+            "Successfully handled credentials refresh request for {}",
+            self.addresses.decryptor_remote
+        );
+
+        Ok(())
+    }
+
+    pub(crate) async fn handle_decrypt(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<Any>,
+    ) -> Result<()> {
+        debug!(
+            "SecureChannel {} received Decrypt {}",
+            self.role, &self.addresses.decryptor_remote
+        );
+
+        // Decode raw payload binary
+        let payload = msg.into_transport_message().payload;
+        let payload = Vec::<u8>::decode(&payload)?;
+
+        // Decrypt the binary
+        let decrypted_payload = self.decryptor.decrypt(&payload).await?;
+
+        let msg: SecureChannelMessage = minicbor::decode(&decrypted_payload)?;
+
+        match msg {
+            SecureChannelMessage::Payload(msg) => self.handle_payload(ctx, msg).await?,
+            SecureChannelMessage::RefreshCredentials(msg) => {
+                self.handle_refresh_credentials(ctx, msg).await?
+            }
+            SecureChannelMessage::Close => self.handle_close(ctx).await?,
+        };
+
+        Ok(())
     }
 
     /// Remove the channel keys on shutdown

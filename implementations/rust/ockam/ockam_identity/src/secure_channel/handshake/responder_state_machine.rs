@@ -48,8 +48,11 @@ impl StateMachine for ResponderStateMachine {
                 let message3_payload = self.decode_message3(&message).await?;
                 let their_identity_payload: IdentityAndCredentials =
                     minicbor::decode(&message3_payload)?;
-                self.verify_identity(their_identity_payload, &self.handshake.state.rs()?.clone())
-                    .await?;
+                self.process_identity_payload(
+                    their_identity_payload,
+                    self.handshake.state.rs()?.clone(),
+                )
+                .await?;
                 self.set_final_state(Responder).await?;
                 Ok(NoAction)
             }
@@ -80,7 +83,7 @@ pub struct ResponderStateMachine {
 impl ResponderStateMachine {
     delegate! {
         to self.common {
-            async fn verify_identity(&mut self, peer: IdentityAndCredentials, peer_public_key: &X25519PublicKey) -> Result<()>;
+            async fn process_identity_payload(&mut self, peer: IdentityAndCredentials, peer_public_key: X25519PublicKey) -> Result<()>;
             fn make_handshake_results(&self, handshake_keys: Option<HandshakeKeys>) -> Option<HandshakeResults>;
         }
     }
