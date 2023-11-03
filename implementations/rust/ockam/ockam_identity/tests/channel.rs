@@ -1036,20 +1036,23 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
-
-    let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
     let _bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", identity_options)
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "bob_listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
 
-    let _alice_sc = {
-        let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
-        secure_channels
-            .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
-            .await?
-    };
+    secure_channels
+        .create_secure_channel(
+            ctx,
+            &alice,
+            route!["bob_listener"],
+            SecureChannelOptions::new(),
+        )
+        .await?;
 
     ctx.sleep(Duration::from_millis(100)).await;
 
@@ -1059,28 +1062,9 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let channel1 = sc_list[0].clone();
     let channel2 = sc_list[1].clone();
 
+    // This will stop both ends of the channel
     secure_channels
         .stop_secure_channel(ctx, channel1.encryptor_messaging_address())
-        .await?;
-
-    ctx.sleep(Duration::from_millis(100)).await;
-
-    assert_eq!(
-        secure_channels
-            .secure_channel_registry()
-            .get_channel_list()
-            .len(),
-        1
-    );
-
-    let workers = ctx.list_workers().await?;
-    assert!(!workers.contains(channel1.decryptor_messaging_address()));
-    assert!(!workers.contains(channel1.encryptor_messaging_address()));
-    assert!(workers.contains(channel2.decryptor_messaging_address()));
-    assert!(workers.contains(channel2.encryptor_messaging_address()));
-
-    secure_channels
-        .stop_secure_channel(ctx, channel2.encryptor_messaging_address())
         .await?;
 
     ctx.sleep(Duration::from_millis(100)).await;

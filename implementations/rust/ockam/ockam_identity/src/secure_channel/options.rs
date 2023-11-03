@@ -11,6 +11,13 @@ use core::fmt;
 use core::fmt::Formatter;
 use core::time::Duration;
 
+/// This is the default interval before a credential expiration when we'll query for
+/// a new credential to avoid it expiring before we got a new one.
+pub const DEFAULT_REFRESH_CREDENTIAL_TIME_GAP: Duration = Duration::from_secs(60);
+
+/// Default minimal interval before 2 refreshed in case we retry the refresh.
+pub const DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL: Duration = Duration::from_secs(10);
+
 /// This is the default timeout for creating a secure channel
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -21,6 +28,8 @@ pub struct SecureChannelOptions {
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<CredentialAndPurposeKey>,
     pub(crate) timeout: Duration,
+    pub(crate) min_credential_refresh_interval: Duration,
+    pub(crate) credential_refresh_time_gap: Duration,
 }
 
 impl fmt::Debug for SecureChannelOptions {
@@ -43,6 +52,8 @@ impl SecureChannelOptions {
             trust_context: None,
             credentials: vec![],
             timeout: DEFAULT_TIMEOUT,
+            min_credential_refresh_interval: DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL,
+            credential_refresh_time_gap: DEFAULT_REFRESH_CREDENTIAL_TIME_GAP,
         }
     }
 
@@ -79,6 +90,24 @@ impl SecureChannelOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn producer_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// Sets credential_refresh_time_gap
+    pub fn with_credential_refresh_time_gap(
+        mut self,
+        credential_refresh_time_gap: Duration,
+    ) -> Self {
+        self.credential_refresh_time_gap = credential_refresh_time_gap;
+        self
+    }
+
+    /// Sets min_credential_refresh_interval
+    pub fn with_min_credential_refresh_interval(
+        mut self,
+        min_credential_refresh_interval: Duration,
+    ) -> Self {
+        self.min_credential_refresh_interval = min_credential_refresh_interval;
+        self
     }
 }
 
@@ -130,6 +159,8 @@ pub struct SecureChannelListenerOptions {
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     pub(crate) trust_context: Option<TrustContext>,
     pub(crate) credentials: Vec<CredentialAndPurposeKey>,
+    pub(crate) min_credential_refresh_interval: Duration,
+    pub(crate) refresh_credential_time_gap: Duration,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -150,6 +181,8 @@ impl SecureChannelListenerOptions {
             trust_policy: Arc::new(TrustEveryonePolicy),
             trust_context: None,
             credentials: vec![],
+            min_credential_refresh_interval: DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL,
+            refresh_credential_time_gap: DEFAULT_REFRESH_CREDENTIAL_TIME_GAP,
         }
     }
 
@@ -189,6 +222,24 @@ impl SecureChannelListenerOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn spawner_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// Sets refresh_credential_time_gap
+    pub fn with_refresh_credential_time_gap(
+        mut self,
+        refresh_credential_time_gap: Duration,
+    ) -> Self {
+        self.refresh_credential_time_gap = refresh_credential_time_gap;
+        self
+    }
+
+    /// Sets min_credential_refresh_interval
+    pub fn with_min_credential_refresh_interval(
+        mut self,
+        min_credential_refresh_interval: Duration,
+    ) -> Self {
+        self.min_credential_refresh_interval = min_credential_refresh_interval;
+        self
     }
 }
 
