@@ -5,14 +5,14 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
-use ockam_core::api::Request;
 
+use crate::fmt_ok;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::tcp::util::alias_parser;
 use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
-use crate::{fmt_ok, Result};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -47,7 +47,11 @@ pub async fn run_impl(
     let node_name = parse_node_name(&node_name)?;
 
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-    let inlet_status: InletStatus = node.ask(&ctx, make_api_request(cmd)?).await?;
+    let inlet_status = node
+        .show_inlet(&ctx, &cmd.alias)
+        .await?
+        .success()
+        .into_diagnostic()?;
 
     let json = serde_json::to_string(&inlet_status).into_diagnostic()?;
     let InletStatus {
@@ -70,11 +74,4 @@ pub async fn run_impl(
         .json(json)
         .write_line()?;
     Ok(())
-}
-
-/// Construct a request to show a tcp inlet
-fn make_api_request(cmd: ShowCommand) -> Result<Request> {
-    let alias = cmd.alias;
-    let request = Request::get(format!("/node/inlet/{alias}"));
-    Ok(request)
 }

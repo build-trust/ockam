@@ -3,9 +3,8 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
-use ockam_core::api::Request;
 
 use crate::fmt_ok;
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
@@ -46,24 +45,18 @@ pub async fn run_impl(
     let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
     let node_name = parse_node_name(&node_name)?;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-
-    // Check if alias exists
-    let alias = cmd.alias;
-    node.ask_and_get_reply::<_, InletStatus>(&ctx, Request::get(format!("/node/inlet/{alias}")))
-        .await?
-        .found()
-        .into_diagnostic()?
-        .ok_or(miette!(
-            "TCP inlet with alias {alias} was not found on Node {node_name}"
-        ))?;
-
-    // Proceed with the deletion
     if opts
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this TCP inlet?")?
     {
-        node.tell(&ctx, Request::delete(format!("/node/inlet/{alias}")))
-            .await?;
+        let alias = cmd.alias;
+        node.delete_inlet(&ctx, &alias)
+            .await?
+            .found()
+            .into_diagnostic()?
+            .ok_or(miette!(
+                "TCP inlet with alias {alias} was not found on Node {node_name}"
+            ))?;
 
         opts.terminal
             .stdout()

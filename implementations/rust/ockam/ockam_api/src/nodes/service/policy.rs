@@ -1,9 +1,13 @@
 use either::Either;
 use minicbor::Decoder;
 
+use crate::cli_state::{StateDirTrait, StateItemTrait};
+use crate::nodes::BackgroundNode;
+use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Resource};
-use ockam_core::api::{Error, RequestHeader, Response};
-use ockam_core::Result;
+use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::{async_trait, Result};
+use ockam_node::Context;
 
 use crate::nodes::models::policy::{Expression, Policy, PolicyList};
 
@@ -60,5 +64,55 @@ impl NodeManager {
         let a = Action::new(act);
         self.policies.del_policy(&r, &a).await?;
         Ok(Response::ok(req))
+    }
+}
+
+pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
+    format!("/policy/{r}/{a}")
+}
+
+#[async_trait]
+pub trait Policies {
+    async fn add_policy_to_project(&self, ctx: &Context, resource_name: &str)
+        -> miette::Result<()>;
+}
+
+#[async_trait]
+impl Policies for BackgroundNode {
+    async fn add_policy_to_project(
+        &self,
+        ctx: &Context,
+        resource_name: &str,
+    ) -> miette::Result<()> {
+        let project_id = match self
+            .cli_state()
+            .nodes
+            .get(self.node_name())?
+            .config()
+            .setup()
+            .project
+            .to_owned()
+        {
+            None => return Ok(()),
+            Some(p) => p.id,
+        };
+
+        let resource = Resource::new(resource_name);
+        let policies: PolicyList = self
+            .ask(ctx, Request::get(format!("/policy/{resource}")))
+            .await?;
+        if !policies.expressions().is_empty() {
+            return Ok(());
+        }
+
+        let policy = {
+            let expr = eq([ident("subject.trust_context_id"), str(project_id)]);
+            Policy::new(expr)
+        };
+        let action = Action::new("handle_message");
+        let request = Request::post(policy_path(&resource, &action)).body(policy);
+        self.tell(ctx, request).await?;
+
+        Ok(())
     }
 }
