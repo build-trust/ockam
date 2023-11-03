@@ -19,6 +19,7 @@ use crate::background_node::{BackgroundNodeClient, Cli};
 use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
 pub(crate) use crate::state::model::ModelState;
 pub(crate) use crate::state::repository::{LmdbModelStateRepository, ModelStateRepository};
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{
@@ -26,7 +27,7 @@ use ockam_api::cli_state::{
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::Controller;
+use ockam_api::cloud::{AuthorityNode, Controller};
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
@@ -34,6 +35,7 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::trust_context::TrustContextConfigBuilder;
+use ockam_multiaddr::MultiAddr;
 
 use crate::api::state::OrchestratorStatus;
 use crate::scheduler::Scheduler;
@@ -334,6 +336,22 @@ impl AppState {
     pub async fn controller(&self) -> Result<Controller> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager.create_controller().await?)
+    }
+
+    pub async fn authority_node(
+        &self,
+        authority_identifier: &Identifier,
+        authority_multiaddr: &MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> Result<AuthorityNode> {
+        let node_manager = self.node_manager.read().await;
+        Ok(node_manager
+            .create_authority_client(
+                authority_identifier,
+                authority_multiaddr,
+                caller_identity_name,
+            )
+            .await?)
     }
 
     pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNode> {
