@@ -68,7 +68,7 @@ async-trait = "0.1.74"
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
 cfg-if = "1.0"
 core2 = { version = "0.4.0", default-features = false, optional = true }
-futures-util = { version = "0.3.17", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
+futures-util = { version = "0.3.29", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
 hashbrown = { version = "0.14", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
