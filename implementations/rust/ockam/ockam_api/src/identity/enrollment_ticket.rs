@@ -26,8 +26,21 @@ impl EnrollmentTicket {
     }
 
     pub fn hex_encoded(&self) -> Result<String> {
-        let serialized = serde_json::to_vec(&self)
-            .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
+        let serialized = serde_json::to_vec(&self).map_err(|_err| {
+            ApiError::core("Failed to serialize enrollment ticket to json format")
+        })?;
         Ok(hex::encode(serialized))
+    }
+}
+
+impl TryFrom<&str> for EnrollmentTicket {
+    type Error = ockam_core::Error;
+
+    fn try_from(hex_encoded_ticket: &str) -> Result<Self> {
+        let bytes = hex::decode(hex_encoded_ticket)
+            .map_err(|_err| ApiError::core("Failed to hex decode enrollment ticket"))?;
+        let enrollment_ticket = serde_json::from_slice(&bytes)
+            .map_err(|_err| ApiError::core("Failed to decode enrollment ticket from json"))?;
+        Ok(enrollment_ticket)
     }
 }
