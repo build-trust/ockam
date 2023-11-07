@@ -14,7 +14,6 @@ use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::nodes::BackgroundNode;
 use ockam_api::ConnectionStatus;
 use ockam_multiaddr::MultiAddr;
 
@@ -325,11 +324,7 @@ impl AppState {
                 Ok(inlet_data) => match inlet_data {
                     Some(inlet_data) => {
                         let result = self
-                            .refresh_inlet(
-                                cli_state.clone(),
-                                background_node_client.clone(),
-                                inlet_data,
-                            )
+                            .refresh_inlet(background_node_client.clone(), inlet_data)
                             .await;
                         {
                             // we want to reduce the scope of the guard as much as possible
@@ -370,50 +365,38 @@ impl AppState {
 
     async fn refresh_inlet(
         &self,
-        cli_state: CliState,
         background_node_client: Arc<dyn BackgroundNodeClient>,
         mut inlet_data: InletDataFromInvitation,
     ) -> crate::Result<Option<Inlet>> {
         let inlet_node_name = &inlet_data.local_node_name;
         debug!(node = %inlet_node_name, "Checking node status");
         if !inlet_data.enabled {
-            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, just deleting the node");
-            self.delete_background_node(inlet_node_name).await?;
+            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, deleting the node");
+            let _ = self.delete_background_node(inlet_node_name).await;
             // we want to keep the entry to store the attribute `enabled = false`
             return Inlet::new(inlet_data).map(Some);
         }
 
-        let mut inlet_node = self.background_node(inlet_node_name).await?;
-        inlet_node.set_timeout(Duration::from_secs(5));
+        if self.state().await.nodes.exists(inlet_node_name) {
+            let mut inlet_node = self.background_node(inlet_node_name).await?;
+            inlet_node.set_timeout(Duration::from_secs(5));
 
-        // if disabled it'll be deleted
-        if let Ok(node) = cli_state.nodes.get(inlet_node_name) {
-            if node.is_running() {
-                debug!(node = %inlet_node_name, "Node already running");
-                if let Ok(inlet) = inlet_node
-                    .show_inlet(&self.context(), &inlet_data.service_name)
-                    .await?
-                    .success()
-                {
-                    if inlet.status == ConnectionStatus::Up {
-                        inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
-                        return Inlet::new(inlet_data).map(Some);
-                    }
+            if let Ok(inlet) = inlet_node
+                .show_inlet(&self.context(), &inlet_data.service_name)
+                .await?
+                .success()
+            {
+                if inlet.status == ConnectionStatus::Up {
+                    debug!(node = %inlet_node_name, alias = %inlet.alias, "TCP inlet is already up");
+                    inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
+                    return Inlet::new(inlet_data).map(Some);
                 }
             }
         }
 
-        inlet_node.delete()?;
-
-        if !inlet_data.enabled {
-            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, skipping");
-            return Ok(None);
-        }
-
         let socket_addr = self
-            .create_inlet(background_node_client.clone(), inlet_node, &inlet_data)
+            .create_inlet(background_node_client, &inlet_data)
             .await?;
-
         inlet_data.socket_addr = Some(socket_addr);
         Inlet::new(inlet_data).map(Some)
     }
@@ -423,7 +406,6 @@ impl AppState {
     async fn create_inlet(
         &self,
         background_node_client: Arc<dyn BackgroundNodeClient>,
-        inlet_node: BackgroundNode,
         inlet_data: &InletDataFromInvitation,
     ) -> crate::Result<SocketAddr> {
         debug!(service_name = ?inlet_data.service_name, "Creating TCP inlet for accepted invitation");
@@ -449,13 +431,18 @@ impl AppState {
                 .enroll(local_node_name, enrollment_ticket_hex)
                 .await?;
         }
+
+        // Recreate the node using the trust context
+        debug!(node = %local_node_name, "Creating node to host TCP inlet");
+        let _ = self.delete_background_node(local_node_name).await;
         background_node_client
             .nodes()
             .create(local_node_name)
             .await?;
-
-        // give time for the node to spawn up
         tokio::time::sleep(Duration::from_millis(250)).await;
+
+        let mut inlet_node = self.background_node(local_node_name).await?;
+        inlet_node.set_timeout(Duration::from_secs(5));
         inlet_node
             .create_inlet(
                 &self.context(),
