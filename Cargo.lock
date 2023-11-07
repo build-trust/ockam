@@ -4809,6 +4809,7 @@ dependencies = [
  "cddl-cat",
  "either",
  "fake",
+ "fs2",
  "hex",
  "home",
  "indexmap 2.0.2",

@@ -1,4 +1,5 @@
 use crate::cli_state::{file_stem, CliState, CliStateError};
+use fs2::FileExt;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error};
 use serde::{Deserialize, Serialize};
@@ -82,7 +83,7 @@ pub trait StateDirTrait: Sized + Send + Sync {
         config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
     ) -> Result<Self::Item> {
         let path = self.path(&name);
-        let state = Self::Item::new(path, config)?;
+        let state = with_lock(&path, || Self::Item::new(path.clone(), config))?;
         if !self.default_path()?.exists() {
             self.set_default(&name)?;
         }
@@ -252,16 +253,36 @@ pub trait StateItemTrait: Sized + Send {
 
     /// Persist the item to disk after updating the config.
     fn persist(&self) -> Result<()> {
-        let contents = serde_json::to_string(self.config())?;
-        std::fs::write(self.path(), contents)?;
-        Ok(())
+        with_lock(self.path(), || {
+            let contents = serde_json::to_string(self.config())?;
+            std::fs::write(self.path(), contents)?;
+            Ok(())
+        })
     }
+
     fn delete(&self) -> Result<()> {
-        std::fs::remove_file(self.path())?;
+        with_lock(self.path(), || {
+            std::fs::remove_file(self.path())?;
+            Ok(())
+        })?;
+        let _ = std::fs::remove_file(self.path().with_extension("lock"));
         Ok(())
     }
+
     fn path(&self) -> &PathBuf;
     fn config(&self) -> &Self::Config;
+}
+
+fn with_lock<T>(path: &Path, f: impl FnOnce() -> Result<T>) -> Result<T> {
+    let lock_file = std::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .open(path.with_extension("lock"))?;
+    lock_file.lock_exclusive()?;
+    let res = f();
+    lock_file.unlock()?;
+    res
 }
 
 #[cfg(test)]
@@ -282,14 +303,14 @@ mod tests {
     }
     impl StateDirTrait for TestConfig {
         type Item = TestConfigItem;
-        const DEFAULT_FILENAME: &'static str = "";
-        const DIR_NAME: &'static str = "";
+        const DEFAULT_FILENAME: &'static str = "test";
+        const DIR_NAME: &'static str = "test";
         const HAS_DATA_DIR: bool = false;
 
         fn new(root_path: &Path) -> Self {
-            Self {
-                dir: Self::build_dir(root_path),
-            }
+            let dir = Self::build_dir(root_path);
+            std::fs::create_dir_all(&dir).unwrap();
+            Self { dir }
         }
 
         fn dir(&self) -> &PathBuf {
@@ -299,20 +320,21 @@ mod tests {
 
     struct TestConfigItem {
         path: PathBuf,
-        config: String,
+        config: u32,
     }
     impl StateItemTrait for TestConfigItem {
-        type Config = String;
+        type Config = u32;
 
         fn new(path: PathBuf, config: Self::Config) -> crate::cli_state::Result<Self> {
-            Ok(TestConfigItem { path, config })
+            let contents = serde_json::to_string(&config)?;
+            std::fs::write(&path, contents)?;
+            Ok(Self { path, config })
         }
 
         fn load(path: PathBuf) -> crate::cli_state::Result<Self> {
-            Ok(TestConfigItem {
-                path,
-                config: "config".into(),
-            })
+            let contents = std::fs::read_to_string(&path)?;
+            let config = serde_json::from_str(&contents)?;
+            Ok(TestConfigItem { path, config })
         }
 
         fn path(&self) -> &PathBuf {
