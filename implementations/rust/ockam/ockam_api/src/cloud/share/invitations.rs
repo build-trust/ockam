@@ -177,7 +177,7 @@ impl Invitations for Controller {
         debug!(?invitation_id, "sending request to ignore invitation");
         let req = Request::post(format!("/v0/invites/{invitation_id}/ignore"));
         self.secure_client
-            .ask(ctx, API_SERVICE, req)
+            .tell(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
             .success()

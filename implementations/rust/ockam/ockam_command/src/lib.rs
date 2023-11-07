@@ -244,6 +244,9 @@ impl CommandGlobalOpts {
             Ok(state) => state,
             Err(err) => {
                 eprintln!("Failed to initialize state: {}", err);
+                if std::env::var("OCKAM_NO_AUTOMATIC_RESET").is_ok() {
+                    std::process::exit(exitcode::CONFIG);
+                }
                 let state = CliState::backup_and_reset().expect(
                     "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
                 );

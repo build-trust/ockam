@@ -44,21 +44,46 @@ class StateContainer {
 @main
 struct OckamApp: App {
     @State var state: ApplicationState = StateContainer.shared.state
+    // when the application initialization fails to load we enter a broken state
+    // where we only propose a reset to the user
+    var broken: Bool = false
+    @Environment(\.openWindow) var openWindow
 
     var body: some Scene {
         MenuBarExtra {
-            MainView(state: $state)
-                .onAppear(perform: {
-                    StateContainer.shared.callback(callback: { state in
-                        self.state = state
-                    })
+            if broken {
+                // we need to give the user a way to re-open the window
+                // to provide at least a way to quit the application
+                ClickableMenuEntry(text: "Open Window", action: {
+                    openWindow(id: "broken-state")
                 })
+                .frame(width: 120,height: 40)
+            } else {
+                MainView(state: $state)
+                    .onAppear(perform: {
+                        StateContainer.shared.callback(callback: { state in
+                            self.state = state
+                        })
+                    })
+            }
         } label: {
             Image("MenuBarIcon")
                 .renderingMode(.template)
+                .contentShape(Rectangle())
+                .buttonStyle(PlainButtonStyle())
+                .onAppear(perform: {
+                    if broken {
+                        openWindow(id: "broken-state")
+                    }
+                })
         }
         .menuBarExtraStyle(.window)
         .commandsRemoved()
+
+        Window("Cannot load state", id: "broken-state") {
+            BrokenStateView()
+        }
+        .windowResizability(.contentSize)
 
         // Declare a window with an empty view to handle the ockam:// url
         // A hack to overcome the fact that `onOpenURL` only works on `Windows`
@@ -66,14 +91,11 @@ struct OckamApp: App {
             OpenUrlView(enrolled: $state.enrolled)
         }
         .windowResizability(.contentSize)
-        .commandsRemoved()
-
         // Declare a state-independent window, not open by default
         Window("Create a service", id: "create-service") {
             CreateServiceView()
         }
         .windowResizability(.contentSize)
-        .commandsRemoved()
 
         // Declare a "template" of windows, dependent on the LocalService.ID, not open by default
         WindowGroup("Share a service", id: "share-service", for: LocalService.ID.self) {
@@ -84,10 +106,12 @@ struct OckamApp: App {
                 ).unsafelyUnwrapped)
         }
         .windowResizability(.contentSize)
-        .commandsRemoved()
     }
 
     init() {
-        swift_initialize_application()
+        if !swift_initialize_application() {
+            broken = true
+            print("Could not initialize application: entering broken state")
+        }
     }
 }

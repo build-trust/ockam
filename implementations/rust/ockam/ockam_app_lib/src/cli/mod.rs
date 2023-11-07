@@ -43,6 +43,13 @@ pub(crate) fn add_homebrew_to_path() {
     }
 }
 
+/// Set the OCKAM_NO_AUTOMATIC_RESET environment variable to avoid
+/// automatically resetting the node when the application find an incoherent state
+/// this may happen if a command is launched during a write operation
+pub(crate) fn set_no_automatic_reset() {
+    std::env::set_var("OCKAM_NO_AUTOMATIC_RESET", "true");
+}
+
 /// Check that the OCKAM environment variable defines an absolute path
 /// Otherwise we might fail to run the ockam command when starting the desktop application from an unexpected path
 /// Check that the ockam command can at least be called with the `--version` option and log

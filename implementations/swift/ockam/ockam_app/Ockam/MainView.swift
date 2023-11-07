@@ -154,6 +154,14 @@ struct MainView: View {
         .onReceive(timer) { time in
             optionPressed = NSEvent.modifierFlags.contains(.option)
         }
+        .onReceive(state.$groups) { _ in
+            // the selected group could have been deleted, if so, reset the selection
+            if selectedGroup != "" {
+                if !state.groups.contains(where: { $0.id == selectedGroup }) {
+                    selectedGroup = ""
+                }
+            }
+        }
     }
 
     func closeWindow() {

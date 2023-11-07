@@ -252,7 +252,7 @@ func swift_application_snapshot() -> ApplicationState {
     return convertApplicationState(cState: application_state_snapshot())
 }
 
-func swift_initialize_application() {
+func swift_initialize_application() -> Bool {
     let applicationStateClosure: @convention(c) (C_ApplicationState) -> Void = { state in
         StateContainer.shared.update(state: convertApplicationState(cState: state))
     }
@@ -277,7 +277,7 @@ func swift_initialize_application() {
         }
     }
 
-    initialize_application(applicationStateClosure, notificationClosure)
+    let result = initialize_application(applicationStateClosure, notificationClosure)
 
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) {
         granted, error in
@@ -287,6 +287,8 @@ func swift_initialize_application() {
             print("Notifications not allowed")
         }
     }
+
+    return result
 }
 
 func optional_string(str: UnsafePointer<Int8>?) -> String? {
