@@ -64,7 +64,8 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     if node_states.is_empty() {
         return Ok(node_details);
     }
-    let mut node = BackgroundNode::create(ctx, &opts.state, "default").await?;
+    let default_node_name = opts.state.nodes.default()?.name().to_string();
+    let mut node = BackgroundNode::create(ctx, &opts.state, &default_node_name).await?;
     node.set_timeout(Duration::from_millis(200));
 
     for node_state in &node_states {
