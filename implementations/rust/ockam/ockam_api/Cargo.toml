@@ -33,6 +33,7 @@ aws-config = { version = "0.56.1", default-features = false, features = ["rustls
 base64-url = "2.0.0"
 bytes = { version = "1.5.0", default-features = false, features = ["serde"] }
 either = { version = "1.9.0", default-features = false }
+fs2 = { version = "0.4.3" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
 kafka-protocol = "0.7.0"
