@@ -15,6 +15,7 @@ use crate::api::to_c_string;
 use crate::cli::check_ockam_executable;
 use crate::state::AppState;
 use libc::c_char;
+use ockam_api::cli_state::CliState;
 use std::pin::Pin;
 use tracing::{error, info};
 
@@ -28,6 +29,8 @@ const ERROR_NOT_INITIALIZED: &str =
 
 /// This functions initializes the application state.
 /// It must be called before any other function.
+/// Returns true if successful, false otherwise.
+/// In case of failure the application should propose a reset to the user.
 #[no_mangle]
 extern "C" fn initialize_application(
     // we can't use any type alias because cbindgen doesn't support them
@@ -37,7 +40,7 @@ extern "C" fn initialize_application(
     notification_callback: unsafe extern "C" fn(
         notification: super::notification::c::Notification,
     ) -> (),
-) {
+) -> bool {
     for &key in &[
         "OCKAM_CONTROLLER_ADDR",
         "OCKAM_CONTROLLER_IDENTITY_ID",
@@ -49,7 +52,7 @@ extern "C" fn initialize_application(
         }
     }
 
-    let app_state = AppState::new(
+    let result = AppState::new(
         Some(super::state::rust::ApplicationStateCallback::new(
             application_state_callback,
         )),
@@ -57,10 +60,19 @@ extern "C" fn initialize_application(
             notification_callback,
         )),
     );
+
+    let app_state = match result {
+        Ok(app_state) => app_state,
+        Err(err) => {
+            eprintln!("Failed to load the local Ockam configuration: {err}");
+            return false;
+        }
+    };
     app_state.setup_logging();
 
     #[cfg(target_os = "macos")]
     crate::cli::add_homebrew_to_path();
+    crate::cli::set_no_automatic_reset();
 
     if let Err(err) = check_ockam_executable() {
         error!(?err, "Couldn't find the ockam executable");
@@ -83,6 +95,8 @@ extern "C" fn initialize_application(
         app_state.publish_state().await;
         app_state.load_model_state().await;
     });
+
+    true
 }
 
 /// Accept the invitation with the provided id.
@@ -252,13 +266,23 @@ extern "C" fn create_local_service(
 /// A restart is **required** afterward.
 #[no_mangle]
 extern "C" fn reset_application_state() {
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
-    app_state.context().runtime().block_on(async move {
-        let result = app_state.reset().await;
-        if let Err(err) = result {
-            error!(?err, "Cannot reset the application state");
+    let app_state = unsafe { APPLICATION_STATE.as_ref() };
+    match app_state {
+        Some(app_state) => {
+            app_state.context().runtime().block_on(async move {
+                let result = app_state.reset().await;
+                if let Err(err) = result {
+                    error!(?err, "Cannot reset the application state");
+                }
+            });
         }
-    });
+        None => {
+            // allow disk state reset even if we don't have an application state
+            CliState::backup_and_reset().expect(
+                "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
+            );
+        }
+    }
 }
 
 /// Starts user enrollment

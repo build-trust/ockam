@@ -121,7 +121,7 @@ typedef struct C_Notification {
 /**
  * This functions initializes the application state.
  */
-void initialize_application(void (*application_state_callback)(struct C_ApplicationState state),
+bool initialize_application(void (*application_state_callback)(struct C_ApplicationState state),
                             void (*notification_callback)(struct C_Notification notification));
 
 /**

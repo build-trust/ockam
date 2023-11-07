@@ -79,13 +79,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Create a new AppState
+    /// Create a new AppState, if it fails you can assume it's because the state cannot be loaded
     pub fn new(
         application_state_callback: Option<ApplicationStateCallback>,
         notification_callback: Option<NotificationCallback>,
-    ) -> AppState {
-        let cli_state =
-            CliState::initialize().expect("Failed to load the local Ockam configuration");
+    ) -> Result<AppState> {
+        let cli_state = CliState::initialize()?;
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
         let runtime = context.runtime().clone();
@@ -133,7 +132,7 @@ impl AppState {
             }
         };
 
-        runtime.block_on(future)
+        Ok(runtime.block_on(future))
     }
 
     /// Load a previously persisted ModelState and start refreshing schedule
