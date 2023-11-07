@@ -8,6 +8,7 @@ struct ClickableMenuEntry: View {
     @State var text: String
     @State var clicked: String = ""
     @State var icon: String = ""
+    @State var shortcut: String = ""
     @State var action: (() -> Void)? = nil
     @State var isDown = false
 
@@ -19,6 +20,10 @@ struct ClickableMenuEntry: View {
             }
             Text(verbatim: isDown ? (clicked.isEmpty ? text : clicked) : text)
             Spacer()
+            if shortcut != "" {
+                Text(shortcut)
+                    .foregroundColor(Color.gray.opacity(0.5))
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

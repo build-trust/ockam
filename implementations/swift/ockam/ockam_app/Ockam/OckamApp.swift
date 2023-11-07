@@ -80,7 +80,7 @@ struct OckamApp: App {
         .menuBarExtraStyle(.window)
         .commandsRemoved()
 
-        Window("Cannot load state", id: "broken-state") {
+        Window("Could not load local state", id: "broken-state") {
             BrokenStateView()
         }
         .windowResizability(.contentSize)
@@ -92,7 +92,7 @@ struct OckamApp: App {
         }
         .windowResizability(.contentSize)
         // Declare a state-independent window, not open by default
-        Window("Create a service", id: "create-service") {
+        Window("Create an outlet to a tcp service", id: "create-service") {
             CreateServiceView()
         }
         .windowResizability(.contentSize)

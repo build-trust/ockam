@@ -15,10 +15,11 @@ struct CreateServiceView: View {
             Grid(alignment: .leading) {
                 GridRow {
                     VStack(alignment: .leading) {
-                        Text(verbatim: "Service Name")
-                        Text(verbatim: "Name of the service you want to share").font(.caption)
+                        Text(verbatim: "Name")
+                        Text(verbatim: "A name for your service").font(.caption)
                     }
-                    TextField("Name", text: $serviceName)
+                    .padding(.top, 6)
+                    TextField("Service name", text: $serviceName)
                         .focused($isFocused)
                         .onAppear(perform: {
                             isFocused = true
@@ -27,16 +28,18 @@ struct CreateServiceView: View {
                 GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Address")
-                        Text(verbatim: "Choose an address for the service").font(.caption)
+                        Text(verbatim: "The tcp address where your service is running").font(.caption)
                     }
+                    .padding(.top, 6)
                     TextField("Address", text: $serviceAddress)
                 }
                 GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Share")
-                        Text(verbatim: "Optionally, send an invitation to share this service").font(
+                        Text(verbatim: "Optionally, share your service with others").font(
                             .caption)
                     }
+                    .padding(.top, 6)
                 }
             }
             .padding(10)

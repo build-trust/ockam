@@ -19,17 +19,18 @@ struct MainView: View {
                     Text("Ockam").font(.headline)
                     switch state.orchestrator_status {
                     case .Disconnected:
-                        Text("Disconnected from the Orchestrator").font(.subheadline)
+                        Text("Please enroll to get started.").font(.subheadline)
                     case .Connected:
-                        Text("Connected to Orchestrator").font(.subheadline)
+                        Text("Enrolled with Ockam Orchestrator.").font(.subheadline)
                     case .Connecting:
-                        Text("Connecting to Orchestrator").font(.subheadline)
+                        Text("Connecting to Ockam Orchestrator.").font(.subheadline)
                     case .WaitingForToken:
-                        Text("Waiting for token").font(.subheadline)
+                        Text("Opened account.ockam.io/activate").font(.subheadline)
+                        Text("Waiting for you to authenticate in your browser...").font(.caption)
                     case .RetrievingSpace:
-                        Text("Retrieving space").font(.subheadline)
+                        Text("Getting available spaces in your account...").font(.subheadline)
                     case .RetrievingProject:
-                        Text("Retrieving project").font(.subheadline)
+                        Text("Getting available projects...").font(.subheadline)
                         Text("This might take a few minutes...").font(.caption)
                     }
                 }
@@ -53,7 +54,7 @@ struct MainView: View {
             } else {
                 if state.orchestrator_status == OrchestratorStatus.Disconnected {
                     ClickableMenuEntry(
-                        text: "Enroll", icon: "arrow.right.square",
+                        text: "Enroll...", icon: "arrow.right.square",
                         action: {
                             enroll_user()
                             self.closeWindow()
@@ -71,10 +72,10 @@ struct MainView: View {
 
                 Group {
                     Divider()
-                    Text("Your services")
-                        .font(.body).bold().foregroundColor(.primary.opacity(0.7))
+                    Text("Your services:")
+                        .font(.body).bold().foregroundColor(.primary.opacity(0.8))
                     ClickableMenuEntry(
-                        text: "Create Service", icon: "plus",
+                        text: "Create an outlet to a tcp service...", icon: "plus",
                         action: {
                             openWindow(id: "create-service")
                             self.closeWindow()
@@ -88,8 +89,8 @@ struct MainView: View {
 
                 if !state.groups.isEmpty {
                     Divider()
-                    Text("Services shared with you")
-                        .font(.body).bold().foregroundColor(.primary.opacity(0.7))
+                    Text("Services shared with you:")
+                        .font(.body).bold().foregroundColor(.primary.opacity(0.8))
 
                     ForEach(state.groups) { group in
                         if selectedGroup == group.id {
@@ -122,6 +123,28 @@ struct MainView: View {
                 Divider()
                 VStack(spacing: 0) {
                     @Environment(\.openWindow) var openWindow
+                    ClickableMenuEntry(
+                        text: "Star us on Github...", icon: "star",
+                        action: {
+                            if let url = URL(string: "https://github.com/build-trust/ockam") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            self.closeWindow()
+                        })
+                    ClickableMenuEntry(
+                        text: "Learn more from our documentation...", icon: "book",
+                        action: {
+                            if let url = URL(string: "https://docs.ockam.io") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            self.closeWindow()
+                        })
+                }
+            }
+
+            Group {
+                Divider()
+                VStack(spacing: 0) {
                     if self.optionPressed {
                         ClickableMenuEntry(
                             text: "Reset", icon: "arrow.counterclockwise",
@@ -130,22 +153,15 @@ struct MainView: View {
                             })
                     }
                     ClickableMenuEntry(
-                        text: "Documentation", icon: "book",
-                        action: {
-                            if let url = URL(string: "https://docs.ockam.io") {
-                                NSWorkspace.shared.open(url)
-                            }
-                            self.closeWindow()
-                        })
-                    ClickableMenuEntry(
-                        text: "Quit", icon: "power",
+                        text: "Quit Ockam", icon: "power", shortcut: "⌘Q",
                         action: {
                             //even if the graceful shutdown takes a few seconds
                             //we can give a "acknowledged" feedback to the user
                             //by closing the window first
                             self.closeWindow()
                             shutdown_application()
-                        })
+                        }
+                    ).keyboardShortcut("Q", modifiers: .command)
                 }
             }
         }
