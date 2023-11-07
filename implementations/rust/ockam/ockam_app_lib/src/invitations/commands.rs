@@ -2,14 +2,13 @@ use miette::IntoDiagnostic;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
 use ockam_api::address::get_free_address;
-use ockam_api::cli_state::{CliState, CliStateError, StateDirTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
@@ -17,11 +16,10 @@ use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::identity::EnrollmentTicket;
 use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::ConnectionStatus;
 use ockam_multiaddr::MultiAddr;
 
-use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
 use crate::shared_service::relay::create::relay_name_from_identifier;
 use crate::state::{AppState, PROJECT_NAME};
@@ -318,7 +316,6 @@ impl AppState {
         }
 
         let cli_state = self.state().await;
-        let background_node_client = self.background_node_client().await;
         for invitation in invitations.accepted.invitations {
             match InletDataFromInvitation::new(
                 &cli_state,
@@ -327,13 +324,7 @@ impl AppState {
             ) {
                 Ok(inlet_data) => match inlet_data {
                     Some(inlet_data) => {
-                        let result = self
-                            .refresh_inlet(
-                                cli_state.clone(),
-                                background_node_client.clone(),
-                                inlet_data,
-                            )
-                            .await;
+                        let result = self.refresh_inlet(inlet_data).await;
                         {
                             // we want to reduce the scope of the guard as much as possible
                             let mut guard = invitations_arc.write().await;
@@ -373,50 +364,35 @@ impl AppState {
 
     async fn refresh_inlet(
         &self,
-        cli_state: CliState,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
         mut inlet_data: InletDataFromInvitation,
     ) -> crate::Result<Option<Inlet>> {
         let inlet_node_name = &inlet_data.local_node_name;
         debug!(node = %inlet_node_name, "Checking node status");
         if !inlet_data.enabled {
-            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, just deleting the node");
-            self.delete_background_node(inlet_node_name).await?;
+            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, deleting the node");
+            let _ = self.delete_background_node(inlet_node_name).await;
             // we want to keep the entry to store the attribute `enabled = false`
             return Inlet::new(inlet_data).map(Some);
         }
 
-        let mut inlet_node = self.background_node(inlet_node_name).await?;
-        inlet_node.set_timeout(Duration::from_secs(5));
+        if self.state().await.nodes.exists(inlet_node_name) {
+            let mut inlet_node = self.background_node(inlet_node_name).await?;
+            inlet_node.set_timeout(Duration::from_secs(5));
 
-        // if disabled it'll be deleted
-        if let Ok(node) = cli_state.nodes.get(inlet_node_name) {
-            if node.is_running() {
-                debug!(node = %inlet_node_name, "Node already running");
-                if let Ok(inlet) = inlet_node
-                    .show_inlet(&self.context(), &inlet_data.service_name)
-                    .await?
-                    .success()
-                {
-                    if inlet.status == ConnectionStatus::Up {
-                        inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
-                        return Inlet::new(inlet_data).map(Some);
-                    }
+            if let Ok(inlet) = inlet_node
+                .show_inlet(&self.context(), &inlet_data.service_name)
+                .await?
+                .success()
+            {
+                if inlet.status == ConnectionStatus::Up {
+                    debug!(node = %inlet_node_name, alias = %inlet.alias, "TCP inlet is already up");
+                    inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
+                    return Inlet::new(inlet_data).map(Some);
                 }
             }
         }
 
-        inlet_node.delete()?;
-
-        if !inlet_data.enabled {
-            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, skipping");
-            return Ok(None);
-        }
-
-        let socket_addr = self
-            .create_inlet(background_node_client.clone(), inlet_node, &inlet_data)
-            .await?;
-
+        let socket_addr = self.create_inlet(&inlet_data).await?;
         inlet_data.socket_addr = Some(socket_addr);
         Inlet::new(inlet_data).map(Some)
     }
@@ -425,8 +401,6 @@ impl AppState {
     /// Returns the inlet SocketAddr
     async fn create_inlet(
         &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
-        inlet_node: BackgroundNode,
         inlet_data: &InletDataFromInvitation,
     ) -> crate::Result<SocketAddr> {
         debug!(service_name = ?inlet_data.service_name, "Creating TCP inlet for accepted invitation");
@@ -447,58 +421,64 @@ impl AppState {
             None => get_free_address()?,
         };
         if let Some(enrollment_ticket_hex) = enrollment_ticket_hex {
+            debug!(node = %local_node_name, "Enrolling node with enrollment ticket");
+            let cli_state = self.state().await;
             let enrollment_ticket = EnrollmentTicket::try_from(enrollment_ticket_hex.as_ref())?;
+            let project_lookup = enrollment_ticket
+                .project
+                .ok_or("invalid enrollment ticket, it should contain a project")?;
+            let project_name = project_lookup.name.clone();
             let project_authority = {
-                let project_lookup = enrollment_ticket
-                    .project
-                    .ok_or("invalid enrollment ticket, it should contain a project")?;
                 let project = Project::from(project_lookup);
-                let cli_state = self.state().await;
                 // Store project and trust context to CLI state if they don't exist.
-                if let Err(e) = cli_state.projects.create(&project.name, project.clone()) {
-                    match e {
-                        CliStateError::AlreadyExists { .. } => {}
-                        _ => {
-                            return Err(e.into());
-                        }
-                    }
-                }
-                if let Err(e) = cli_state
+                let _ = cli_state.projects.overwrite(&project_name, project.clone());
+                let _ = cli_state
                     .trust_contexts
-                    .create(local_node_name, project.clone().try_into()?)
-                {
-                    match e {
-                        CliStateError::AlreadyExists { .. } => {}
-                        _ => {
-                            return Err(e.into());
-                        }
-                    }
-                };
+                    .overwrite(local_node_name, project.clone().try_into()?);
                 ProjectAuthority::from_project(&project)
                     .await
                     .into_diagnostic()?
                     .ok_or("project has no authority set")?
             };
-            let authority_node = self
-                .authority_node(
+            let project_config_path = cli_state.projects.get(&project_name)?.path().clone();
+            let trust_context_config = cli_state
+                .trust_contexts
+                .get(local_node_name)?
+                .config()
+                .clone();
+            let node = InMemoryNode::start_with_trust_context(
+                &self.context(),
+                &cli_state,
+                Some(&project_config_path),
+                Some(trust_context_config),
+            )
+            .await?;
+            let authority_node = node
+                .create_authority_client(
                     project_authority.identity_id(),
                     project_authority.address(),
                     None,
                 )
-                .await
-                .into_diagnostic()?;
+                .await?;
+            debug!(node = %local_node_name, "Presenting enrollment ticket to authority node");
             authority_node
                 .present_token(&self.context(), &enrollment_ticket.one_time_code)
                 .await?;
-            authority_node.issue_credential(&self.context()).await?;
         }
-        background_node_client
+
+        // Recreate the node using the trust context
+        debug!(node = %local_node_name, "Creating node to host TCP inlet");
+        let _ = self.delete_background_node(local_node_name).await;
+        self.background_node_client()
+            .await
             .nodes()
             .create(local_node_name)
             .await?;
-
         // give time for the node to spawn up
         tokio::time::sleep(Duration::from_millis(250)).await;
+
+        let mut inlet_node = self.background_node(local_node_name).await?;
+        inlet_node.set_timeout(Duration::from_secs(5));
         inlet_node
             .create_inlet(
                 &self.context(),

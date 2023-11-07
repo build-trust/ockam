@@ -75,7 +75,7 @@ impl Enrollment for SecureClient {
         token: OidcToken,
     ) -> miette::Result<EnrollStatus> {
         let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
-        trace!(target: TARGET, "executing auth0 flow");
+        debug!(target: TARGET, "executing auth0 flow");
         let reply = self
             .tell(ctx, "auth0_authenticator", req)
             .await
@@ -94,7 +94,7 @@ impl Enrollment for SecureClient {
         token: OidcToken,
     ) -> miette::Result<()> {
         let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
-        trace!(target: TARGET, "executing auth0 flow");
+        debug!(target: TARGET, "executing auth0 flow");
         self.tell(ctx, DefaultAddress::OKTA_IDENTITY_PROVIDER, req)
             .await
             .into_diagnostic()?
@@ -104,7 +104,7 @@ impl Enrollment for SecureClient {
 
     async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> miette::Result<()> {
         let req = Request::post("/").body(token);
-        trace!(target: TARGET, "present a token");
+        debug!(target: TARGET, "present a token");
         self.tell(ctx, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR, req)
             .await
             .into_diagnostic()?
@@ -114,7 +114,7 @@ impl Enrollment for SecureClient {
 
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         let req = Request::post("/");
-        trace!(target: TARGET, "getting a credential");
+        debug!(target: TARGET, "getting a credential");
         self.ask(ctx, DefaultAddress::CREDENTIAL_ISSUER, req)
             .await
             .into_diagnostic()?

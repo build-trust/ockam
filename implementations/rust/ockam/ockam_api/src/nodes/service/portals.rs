@@ -744,6 +744,7 @@ impl Inlets for BackgroundNode {
         authorized_identifier: &Option<Identifier>,
         wait_for_outlet_timeout: Duration,
     ) -> miette::Result<Reply<InletStatus>> {
+        debug!(%listen_addr, %outlet_addr, "Creating TCP inlet");
         self.add_policy_to_project(ctx, "tcp-inlet").await?;
         let request = {
             let via_project = outlet_addr.matches(0, &[Project::CODE.into()]);
