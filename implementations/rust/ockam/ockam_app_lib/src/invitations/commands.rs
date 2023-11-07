@@ -9,13 +9,10 @@ use tracing::{debug, info, trace, warn};
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
 use ockam_api::address::get_free_address;
-use ockam_api::cli_state::{CliState, CliStateError, StateDirTrait};
+use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::share::InvitationListKind;
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
-use ockam_api::config::lookup::ProjectAuthority;
-use ockam_api::enroll::enrollment::Enrollment;
-use ockam_api::identity::EnrollmentTicket;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::ConnectionStatus;
@@ -447,50 +444,10 @@ impl AppState {
             None => get_free_address()?,
         };
         if let Some(enrollment_ticket_hex) = enrollment_ticket_hex {
-            let enrollment_ticket = EnrollmentTicket::try_from(enrollment_ticket_hex.as_ref())?;
-            let project_authority = {
-                let project_lookup = enrollment_ticket
-                    .project
-                    .ok_or("invalid enrollment ticket, it should contain a project")?;
-                let project = Project::from(project_lookup);
-                let cli_state = self.state().await;
-                // Store project and trust context to CLI state if they don't exist.
-                if let Err(e) = cli_state.projects.create(&project.name, project.clone()) {
-                    match e {
-                        CliStateError::AlreadyExists { .. } => {}
-                        _ => {
-                            return Err(e.into());
-                        }
-                    }
-                }
-                if let Err(e) = cli_state
-                    .trust_contexts
-                    .create(local_node_name, project.clone().try_into()?)
-                {
-                    match e {
-                        CliStateError::AlreadyExists { .. } => {}
-                        _ => {
-                            return Err(e.into());
-                        }
-                    }
-                };
-                ProjectAuthority::from_project(&project)
-                    .await
-                    .into_diagnostic()?
-                    .ok_or("project has no authority set")?
-            };
-            let authority_node = self
-                .authority_node(
-                    project_authority.identity_id(),
-                    project_authority.address(),
-                    None,
-                )
-                .await
-                .into_diagnostic()?;
-            authority_node
-                .present_token(&self.context(), &enrollment_ticket.one_time_code)
+            background_node_client
+                .projects()
+                .enroll(local_node_name, enrollment_ticket_hex)
                 .await?;
-            authority_node.issue_credential(&self.context()).await?;
         }
         background_node_client
             .nodes()
