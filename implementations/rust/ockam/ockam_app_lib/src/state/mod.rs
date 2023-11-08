@@ -27,7 +27,6 @@ use ockam_api::cli_state::{
 };
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::cloud::{AuthorityNode, Controller};
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
@@ -269,7 +268,6 @@ impl AppState {
     }
 
     async fn reset_state(&self) -> miette::Result<()> {
-        self.reset_orchestrator().await?;
         let mut state = self.state.write().await;
         match state.reset().await {
             Ok(s) => {
@@ -277,17 +275,6 @@ impl AppState {
                 info!("reset the cli state");
             }
             Err(e) => error!("Failed to reset the state {e:?}"),
-        }
-        Ok(())
-    }
-
-    async fn reset_orchestrator(&self) -> miette::Result<()> {
-        let ctx = self.context();
-        let controller = self.controller().await?;
-        for space in self.state().await.spaces.list()? {
-            controller
-                .delete_space(&ctx, space.config().id.clone())
-                .await?;
         }
         Ok(())
     }
