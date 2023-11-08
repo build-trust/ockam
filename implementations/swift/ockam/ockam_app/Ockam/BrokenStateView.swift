@@ -5,7 +5,7 @@ import SwiftUI
 struct BrokenStateView: View {
     var body: some View {
         VStack {
-            Text("The local state of Ockam on this machine might have been currupted or is incompatible with the current version.\n\nPlease reset the state and enroll again.")
+            Text("The local state of Ockam on this machine might have been corrupted or is incompatible with the current version.\n\nPlease reset the state and enroll again.")
                 .multilineTextAlignment(.leading)
                 .padding()
             Spacer()
