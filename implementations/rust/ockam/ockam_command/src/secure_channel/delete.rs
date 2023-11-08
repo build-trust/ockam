@@ -11,7 +11,7 @@ use ockam_core::{Address, AddressParseError};
 
 use crate::docs;
 use crate::node::get_node_name;
-use crate::util::{is_tty, parse_node_name};
+use crate::util::parse_node_name;
 use crate::{
     util::{api, exitcode, node_rpc},
     CommandGlobalOpts, OutputFormat,
@@ -60,7 +60,7 @@ impl DeleteCommand {
                     Some(multiaddr) => {
                         // if stdout is not interactive/tty write the secure channel address to it
                         // in case some other program is trying to read it as piped input
-                        if !is_tty(std::io::stdout()) {
+                        if !options.terminal.clone().stdout().is_tty() {
                             println!("{multiaddr}")
                         }
 
@@ -72,7 +72,7 @@ impl DeleteCommand {
 
                         // if stderr is interactive/tty and we haven't been asked to be quiet
                         // and output format is plain then write a plain info to stderr.
-                        if is_tty(std::io::stderr())
+                        if options.terminal.is_tty()
                             && !options.global_args.quiet
                             && options.global_args.output_format == OutputFormat::Plain
                         {
@@ -96,7 +96,7 @@ impl DeleteCommand {
                     None => {
                         // if stderr is interactive/tty and we haven't been asked to be quiet
                         // and output format is plain then write a plain info to stderr.
-                        if is_tty(std::io::stderr())
+                        if options.terminal.is_tty()
                             && !options.global_args.quiet
                             && options.global_args.output_format == OutputFormat::Plain
                         {
@@ -114,7 +114,7 @@ impl DeleteCommand {
             None => {
                 // if stderr is interactive/tty and we haven't been asked to be quiet
                 // and output format is plain then write a plain info to stderr.
-                if is_tty(std::io::stderr())
+                if options.terminal.is_tty()
                     && !options.global_args.quiet
                     && options.global_args.output_format == OutputFormat::Plain
                 {

@@ -264,11 +264,6 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     Ok(())
 }
 
-pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
-    use is_terminal::IsTerminal;
-    s.is_terminal()
-}
-
 pub fn is_enrolled_guard(cli_state: &CliState, identity_name: Option<&str>) -> miette::Result<()> {
     if !cli_state
         .identities
