@@ -24,7 +24,7 @@ pub async fn check_for_completion(
     if let Some(spinner) = spinner_option.as_ref() {
         let message = format!(
             "Configuring project...\n{}\n{}",
-            fmt_para!("This takes about 2 minutes."),
+            fmt_para!("This may take 2 to 4 minutes."),
             fmt_para!(
                 "{}",
                 "Please do not press Ctrl+C or exit the terminal process until this is complete."
