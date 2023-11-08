@@ -49,7 +49,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam = "0.101.0"
+ockam = "0.102.0"
 ```
 
 ## License

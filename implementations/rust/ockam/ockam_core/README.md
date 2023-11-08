@@ -39,7 +39,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_core = "0.91.0"
+ockam_core = "0.92.0"
 ```
 
 ## License
