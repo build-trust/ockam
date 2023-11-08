@@ -1,6 +1,6 @@
 [package]
 name = "ockam_app_lib"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -34,7 +34,7 @@ hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde
 libc = "0.2"
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 ockam = { path = "../ockam", version = "^0.102.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.45.0", features = ["std"] }
+ockam_api = { path = "../ockam_api", version = "0.46.0", features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.92.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.36.0", features = ["cbor", "serde"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.95.0" }
