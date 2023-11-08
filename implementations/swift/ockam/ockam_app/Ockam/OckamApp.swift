@@ -80,17 +80,19 @@ struct OckamApp: App {
         .menuBarExtraStyle(.window)
         .commandsRemoved()
 
-        Window("Could not load local state", id: "broken-state") {
-            BrokenStateView()
-        }
-        .windowResizability(.contentSize)
-
         // Declare a window with an empty view to handle the ockam:// url
         // A hack to overcome the fact that `onOpenURL` only works on `Windows`
         Window("Accepting invitation", id: "accepting-invitation") {
             OpenUrlView(enrolled: $state.enrolled)
         }
         .windowResizability(.contentSize)
+
+        // Declare a window being shown when the ockam state cannot be loadeds
+        Window("Could not load local state", id: "broken-state") {
+            BrokenStateView()
+        }
+        .windowResizability(.contentSize)
+
         // Declare a state-independent window, not open by default
         Window("Create an outlet to a tcp service", id: "create-service") {
             CreateServiceView()
