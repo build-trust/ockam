@@ -28,7 +28,7 @@ pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY
 pub const ORCHESTRATOR_RESTART_TIMEOUT: Duration = Duration::from_secs(180);
 
 /// Total time to wait for Orchestrator long-running operations to complete
-pub const ORCHESTRATOR_AWAIT_TIMEOUT: Duration = Duration::from_secs(240);
+pub const ORCHESTRATOR_AWAIT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
 impl NodeManager {
     pub(crate) async fn create_controller_client(&self) -> Result<Controller> {
