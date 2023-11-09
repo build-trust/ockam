@@ -52,26 +52,26 @@ async fn run_impl(
         nodes_states.iter().map(|s| s.name().to_string()).collect()
     };
 
-    let nodes = get_nodes_info(ctx, &opts, node_names).await?;
+    let nodes = get_nodes_info(&ctx, &opts, node_names).await?;
     print_nodes_info(&opts, nodes)?;
 
     Ok(())
 }
 
 pub async fn get_nodes_info(
-    ctx: Context,
+    ctx: &Context,
     opts: &CommandGlobalOpts,
     node_names: Vec<String>,
 ) -> Result<Vec<NodeListOutput>> {
     let mut nodes: Vec<NodeListOutput> = Vec::new();
     let default_node_name = get_default_node_name(&opts.state);
     for node_name in node_names {
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_node_status = async {
-            let result: miette::Result<NodeStatus> = node.ask(&ctx, api::query_status()).await;
+            let result: miette::Result<NodeStatus> = node.ask(ctx, api::query_status()).await;
             let node_status = match result {
                 Ok(node_status) => {
                     if let Ok(node_state) = opts.state.nodes.get(&node_name) {

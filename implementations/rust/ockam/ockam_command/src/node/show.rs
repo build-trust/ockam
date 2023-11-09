@@ -1,4 +1,5 @@
 use clap::Args;
+use console::Term;
 use miette::IntoDiagnostic;
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
@@ -13,9 +14,9 @@ use ockam_api::nodes::models::portal::{InletList, OutletList};
 
 use crate::node::get_node_name;
 use crate::node::list;
-use crate::node::util::check_default;
+use crate::terminal::tui::ShowItemsTui;
 use crate::util::{api, node_rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result, Terminal, TerminalStream};
 
 use super::models::portal::{ShowInletStatus, ShowOutletStatus};
 use super::models::secure_channel::ShowSecureChannelListener;
@@ -39,7 +40,6 @@ const IS_NODE_UP_MAX_ATTEMPTS: usize = 60; // 3 seconds
 )]
 pub struct ShowCommand {
     /// Name of the node to retrieve the details from
-    #[arg()]
     node_name: Option<String>,
 }
 
@@ -53,52 +53,49 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    if cmd.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
-        show_node(&opts, &ctx, &get_node_name(&opts.state, &cmd.node_name)).await?;
-        return Ok(());
-    }
-
-    let node_names = opts.state.nodes.list_items_names()?;
-    match node_names.len() {
-        0 => {
-            opts.terminal
-                .stdout()
-                .plain("There are no nodes to show")
-                .write_line()?;
-        }
-        1 => {
-            show_node(&opts, &ctx, &node_names[0]).await?;
-        }
-        _ => {
-            let selected_node_names = opts.terminal.select_multiple(
-                "Select one or more nodes that you want to show".to_string(),
-                node_names,
-            );
-            match selected_node_names.len() {
-                0 => {
-                    opts.terminal
-                        .stdout()
-                        .plain("No nodes selected to show")
-                        .write_line()?;
-                }
-                1 => {
-                    show_node(&opts, &ctx, &selected_node_names[0]).await?;
-                }
-                _ => {
-                    let nodes = list::get_nodes_info(ctx, &opts, selected_node_names).await?;
-                    list::print_nodes_info(&opts, nodes)?;
-                }
-            }
-        }
-    }
+    let tui = ShowNodesTui {
+        node_name: cmd.node_name,
+        opts,
+        ctx,
+    };
+    tui.run().await?;
     Ok(())
 }
 
-async fn show_node(opts: &CommandGlobalOpts, ctx: &Context, node_name: &str) -> miette::Result<()> {
-    let mut node = BackgroundNode::create(ctx, &opts.state, node_name).await?;
-    let is_default = check_default(opts, node_name);
-    print_query_status(opts, ctx, node_name, &mut node, false, is_default).await?;
-    Ok(())
+struct ShowNodesTui {
+    node_name: Option<String>,
+    opts: CommandGlobalOpts,
+    ctx: Context,
+}
+
+#[ockam_core::async_trait]
+impl ShowItemsTui for ShowNodesTui {
+    const ITEM_NAME: &'static str = "nodes";
+
+    fn cmd_arg_item_name(&self) -> Option<&str> {
+        self.node_name.as_deref()
+    }
+
+    fn terminal(&self) -> Terminal<TerminalStream<Term>> {
+        self.opts.terminal.clone()
+    }
+
+    async fn list_items_names(&self) -> miette::Result<Vec<String>> {
+        Ok(self.opts.state.nodes.list_items_names()?)
+    }
+
+    async fn show_single(&self) -> miette::Result<()> {
+        let node_name = get_node_name(&self.opts.state, &self.node_name);
+        let mut node = BackgroundNode::create(&self.ctx, &self.opts.state, &node_name).await?;
+        print_query_status(&self.opts, &self.ctx, &node_name, &mut node, false).await?;
+        Ok(())
+    }
+
+    async fn show_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
+        let nodes = list::get_nodes_info(&self.ctx, &self.opts, selected_items_names).await?;
+        list::print_nodes_info(&self.opts, nodes)?;
+        Ok(())
+    }
 }
 
 pub async fn print_query_status(
@@ -107,9 +104,9 @@ pub async fn print_query_status(
     node_name: &str,
     node: &mut BackgroundNode,
     wait_until_ready: bool,
-    is_default: bool,
 ) -> miette::Result<()> {
     let cli_state = opts.state.clone();
+    let is_default = opts.state.nodes.is_default(node_name)?;
 
     let node_info =
         if !is_node_up(ctx, node_name, node, cli_state.clone(), wait_until_ready).await? {
