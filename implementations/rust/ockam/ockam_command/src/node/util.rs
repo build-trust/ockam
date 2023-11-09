@@ -29,11 +29,6 @@ impl Default for NodeManagerDefaults {
     }
 }
 
-pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette::Result<()> {
-    opts.state.nodes.delete_sigkill(name, force)?;
-    Ok(())
-}
-
 pub fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     let mut deletion_errors = Vec::new();
