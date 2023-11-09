@@ -47,6 +47,19 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     def from_cbor_term(_), do: :error
   end
 
+  defmodule Test.CreditCard do
+    use TypedStruct
+
+    typedstruct do
+      plugin(Ockam.TypedCBOR.Plugin, encode_as: :list)
+
+      field(:number, String.t(), minicbor: [key: 1])
+      field(:exp_month, integer(), minicbor: [key: 2])
+      field(:exp_year, integer(), minicbor: [key: 3])
+      field(:cvv, integer(), minicbor: [key: 4])
+    end
+  end
+
   test "encode-decode" do
     name = %Test.Name{firstname: "john", lastname: "smith"}
     p = %Test.Person{name: name, age: 23, gender: :male, addresses: [], like_shoes: false}
@@ -74,6 +87,10 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
 
     {:ok, data} = Test.Person.encode_list([p, p])
     assert {:ok, [^p, ^p], ""} = Test.Person.decode_list(data)
+
+    cc = %Test.CreditCard{number: "1234-1111-2222-3333", exp_month: 12, exp_year: 2030, cvv: 123}
+    {:ok, data} = Test.CreditCard.encode(cc)
+    assert {:ok, ^cc, ""} = Test.CreditCard.decode(data)
   end
 
   test "encode errors" do

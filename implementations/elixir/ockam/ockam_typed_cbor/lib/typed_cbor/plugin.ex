@@ -20,11 +20,16 @@ defmodule Ockam.TypedCBOR.Plugin do
     Module.put_attribute(mod, :tt_fields, {name, Map.put(schema, :key, key)})
   end
 
-  def field(name, _, options, _),
-    do:
+  def field(name, type, opts, env) do
+    if Keyword.has_key?(opts, :encode_as) do
+      opts = Keyword.delete(opts, :encode_as)
+      field(name, type, opts, env)
+    else
       raise(
-        "field #{name} must supply a :minicbor option, and no other option is allowed #{inspect(options)}"
+        "field #{name} must supply a :minicbor option, and no other option is allowed #{inspect(opts)}"
       )
+    end
+  end
 
   defp field_schema(nil, [nil, t]), do: %{schema: t, required: false}
   defp field_schema(nil, [t, nil]), do: %{schema: t, required: false}
@@ -73,30 +78,37 @@ defmodule Ockam.TypedCBOR.Plugin do
 
   # credo:disable-for-lines:2 Credo.Check.Refactor.CyclomaticComplexity
   @impl true
-  def after_definition(_) do
-    quote do
-      def minicbor_schema(), do: {:struct, __MODULE__, @tt_fields |> Enum.into(%{})}
+  def after_definition(opts) do
+    [
+      case Keyword.get(opts, :encode_as) do
+        :list ->
+          quote do
+            def minicbor_schema(), do: {:struct_values, __MODULE__, @tt_fields |> Enum.into(%{})}
+          end
 
-      def encode!(%__MODULE__{} = d), do: Ockam.TypedCBOR.encode!(minicbor_schema(), d)
+        _ ->
+          quote do
+            def minicbor_schema(), do: {:struct, __MODULE__, @tt_fields |> Enum.into(%{})}
+          end
+      end,
+      quote do
+        def encode!(%__MODULE__{} = d), do: Ockam.TypedCBOR.encode!(minicbor_schema(), d)
+        def encode(%__MODULE__{} = d), do: Ockam.TypedCBOR.encode(minicbor_schema(), d)
 
-      def encode(%__MODULE__{} = d), do: Ockam.TypedCBOR.encode(minicbor_schema(), d)
+        def decode!(data), do: Ockam.TypedCBOR.decode!(minicbor_schema(), data)
+        def decode(data), do: Ockam.TypedCBOR.decode(minicbor_schema(), data)
 
-      def decode!(data), do: Ockam.TypedCBOR.decode!(minicbor_schema(), data)
+        def decode_strict(data), do: Ockam.TypedCBOR.decode_strict(minicbor_schema(), data)
 
-      def decode(data), do: Ockam.TypedCBOR.decode(minicbor_schema(), data)
+        def encode_list!(l), do: Ockam.TypedCBOR.encode!({:list, minicbor_schema()}, l)
+        def encode_list(l), do: Ockam.TypedCBOR.encode({:list, minicbor_schema()}, l)
 
-      def decode_strict(data), do: Ockam.TypedCBOR.decode_strict(minicbor_schema(), data)
+        def decode_list!(data), do: Ockam.TypedCBOR.decode!({:list, minicbor_schema()}, data)
+        def decode_list(data), do: Ockam.TypedCBOR.decode({:list, minicbor_schema()}, data)
 
-      def encode_list!(l), do: Ockam.TypedCBOR.encode!({:list, minicbor_schema()}, l)
-
-      def encode_list(l), do: Ockam.TypedCBOR.encode({:list, minicbor_schema()}, l)
-
-      def decode_list!(data), do: Ockam.TypedCBOR.decode!({:list, minicbor_schema()}, data)
-
-      def decode_list(data), do: Ockam.TypedCBOR.decode({:list, minicbor_schema()}, data)
-
-      def decode_list_strict(data),
-        do: Ockam.TypedCBOR.decode_strict({:list, minicbor_schema()}, data)
-    end
+        def decode_list_strict(data),
+          do: Ockam.TypedCBOR.decode_strict({:list, minicbor_schema()}, data)
+      end
+    ]
   end
 end
