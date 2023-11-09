@@ -1,6 +1,4 @@
-use crate::models::{
-    Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier, VersionedData,
-};
+use crate::models::{Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier};
 use crate::utils::{add_seconds, now};
 use crate::{IdentitiesRepository, Identity, PurposeKeyCreation};
 
@@ -74,10 +72,7 @@ impl CredentialsCreation {
         };
         let credential_data = minicbor::to_vec(credential_data)?;
 
-        let versioned_data = VersionedData {
-            version: 1,
-            data: credential_data,
-        };
+        let versioned_data = Credential::create_versioned_data(credential_data);
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
         let versioned_data_hash = self.verifying_vault.sha256(&versioned_data).await?;

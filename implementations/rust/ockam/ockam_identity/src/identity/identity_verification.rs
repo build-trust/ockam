@@ -1,7 +1,6 @@
-use crate::models::{Change, ChangeData, ChangeHash, ChangeSignature, CHANGE_HASH_LEN};
+use crate::models::{Change, ChangeData, ChangeHash, ChangeSignature, VersionedData};
 use crate::verified_change::VerifiedChange;
 use crate::{Identity, IdentityError};
-use arrayref::array_ref;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -17,7 +16,7 @@ struct ChangeDetails {
 
 impl Identity {
     pub(crate) fn compute_change_hash_from_hash(hash: [u8; 32]) -> Result<ChangeHash> {
-        Ok(ChangeHash(*array_ref!(hash, 0, CHANGE_HASH_LEN)))
+        Ok(ChangeHash(hash))
     }
 
     /// Check consistency of changes that are being added
@@ -37,11 +36,7 @@ impl Identity {
     ) -> Result<ChangeDetails> {
         let change_full_hash = vault.sha256(&change.data).await?;
         let change_hash = Self::compute_change_hash_from_hash(change_full_hash.0)?;
-        let versioned_data = change.get_versioned_data()?;
-
-        if versioned_data.version != 1 {
-            return Err(IdentityError::UnknownIdentityVersion.into());
-        }
+        let versioned_data: VersionedData = minicbor::decode(&change.data)?;
 
         let change_data = ChangeData::get_data(&versioned_data)?;
 

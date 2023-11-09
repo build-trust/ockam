@@ -46,7 +46,10 @@ mod test {
             }
         }
 
-        let id = Identifier::try_from("Iabababababababababababababababababababab").unwrap();
+        let id = Identifier::try_from(
+            "Iabababababababababababababababababababababababababababababababab",
+        )
+        .unwrap();
         let trust_info = SecureChannelTrustInfo::new(id);
 
         assert!(TrustPolicyStub(true)

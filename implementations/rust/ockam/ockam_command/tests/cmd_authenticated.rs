@@ -9,7 +9,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("get")
         .arg("/ip4/127.0.0.1/tcp/8080")
         .arg("--id")
-        .arg("Ifa804b7fca12a19eed206ae180b5b576860ae651");
+        .arg("Ifa804b7fca12a19eed206ae180b5b576860ae651a1b2c3d4e5f6a6b5c4d3e2f1");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;

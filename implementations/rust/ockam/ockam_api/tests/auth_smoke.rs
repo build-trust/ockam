@@ -11,8 +11,8 @@ use std::sync::Arc;
 #[ockam_macros::test]
 async fn auth_smoke(ctx: &mut Context) -> Result<()> {
     let s = PreTrustedIdentities::new_from_string(
-        r#"{"I124ed0b2e5a2be82e267ead6b3279f683616b66d":{"attr":"value"},
-            "I224ed0b2e5a2be82e267ead6b3279f683616b66d":{"attr":"value2"}
+        r#"{"I124ed0b2e5a2be82e267ead6b3279f683616b66da1b2c3d4e5f6a6b5c4d3e2f1":{"attr":"value"},
+            "I224ed0b2e5a2be82e267ead6b3279f683616b66da1b2c3d4e5f6a6b5c4d3e2f1":{"attr":"value2"}
            }"#,
     )?;
     let s: Arc<dyn IdentityAttributesReader> = Arc::new(s);
@@ -24,7 +24,10 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
     let entry = client
         .get_attributes(
             ctx,
-            &Identifier::from_str("I124ed0b2e5a2be82e267ead6b3279f683616b66d").unwrap(),
+            &Identifier::from_str(
+                "I124ed0b2e5a2be82e267ead6b3279f683616b66da1b2c3d4e5f6a6b5c4d3e2f1",
+            )
+            .unwrap(),
         )
         .await
         .unwrap()
@@ -42,7 +45,10 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
         client
             .get_attributes(
                 ctx,
-                &Identifier::from_str("I324ed0b2e5a2be82e267ead6b3279f683616b66d").unwrap()
+                &Identifier::from_str(
+                    "I324ed0b2e5a2be82e267ead6b3279f683616b66da1b2c3d4e5f6a6b5c4d3e2f1"
+                )
+                .unwrap()
             )
             .await
             .unwrap()
