@@ -1,15 +1,9 @@
-use std::collections::HashMap;
-use std::net::SocketAddr;
-
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use ockam_api::cloud::share::{
     InvitationList, InvitationWithAccess, ReceivedInvitation, SentInvitation,
 };
-
-use crate::invitations::commands::InletDataFromInvitation;
-use crate::{Error, Result};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct InvitationState {
@@ -87,37 +81,6 @@ pub enum ReceivedInvitationStatus {
 pub struct AcceptedInvitations {
     #[serde(default)]
     pub(crate) invitations: Vec<InvitationWithAccess>,
-
-    /// Inlets for accepted invitations, keyed by invitation id.
-    #[serde(default)]
-    pub(crate) inlets: HashMap<String, Inlet>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub(crate) struct Inlet {
-    pub(crate) node_name: String,
-    pub(crate) alias: String,
-    pub(crate) socket_addr: SocketAddr,
-    pub(crate) enabled: bool,
-}
-
-impl Inlet {
-    pub(crate) fn new(data: InletDataFromInvitation) -> Result<Self> {
-        let socket_addr = match data.socket_addr {
-            Some(addr) => addr,
-            None => return Err(Error::App("Socket address should be set".to_string())),
-        };
-        Ok(Self {
-            node_name: data.local_node_name,
-            alias: data.service_name,
-            socket_addr,
-            enabled: data.enabled,
-        })
-    }
-
-    pub(crate) fn disable(&mut self) {
-        self.enabled = false;
-    }
 }
 
 #[cfg(test)]

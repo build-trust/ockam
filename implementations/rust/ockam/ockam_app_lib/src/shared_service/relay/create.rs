@@ -2,7 +2,6 @@ use crate::api::state::OrchestratorStatus;
 use crate::state::AppState;
 use crate::Result;
 use miette::IntoDiagnostic;
-use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::nodes::models::relay::RelayInfo;
@@ -128,11 +127,6 @@ async fn get_relay(
 fn relay_name(cli_state: &CliState) -> ockam::Result<String> {
     let bare_relay_name = bare_relay_name(cli_state)?;
     Ok(format!("forward_to_{bare_relay_name}"))
-}
-
-pub(crate) fn relay_name_from_identifier(identifier: &Identifier) -> String {
-    let bare_relay_name = identifier.to_string();
-    format!("forward_to_{bare_relay_name}")
 }
 
 fn bare_relay_name(cli_state: &CliState) -> ockam::Result<String> {
