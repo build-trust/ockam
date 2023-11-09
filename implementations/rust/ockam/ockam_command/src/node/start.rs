@@ -11,7 +11,6 @@ use crate::util::node_rpc;
 use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
 
 use super::get_node_name;
-use super::util::check_default;
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -122,8 +121,7 @@ async fn start_single_node(
     }
 
     let mut node: BackgroundNode = run_node(node_name, ctx, &opts).await?;
-    let is_default = check_default(&opts, node_name);
-    print_query_status(&opts, ctx, node_name, &mut node, true, is_default).await?;
+    print_query_status(&opts, ctx, node_name, &mut node, true).await?;
     Ok(())
 }
 
