@@ -331,7 +331,10 @@ mod tests {
     }
 
     fn create_identity_config() -> IdentityConfig {
-        let identifier = Identifier::try_from("Ifa804b7fca12a19eed206ae180b5b576860ae651").unwrap();
+        let identifier = Identifier::try_from(
+            "Ifa804b7fca12a19eed206ae180b5b576860ae651a1b2c3d4e5f6a6b5c4d3e2f1",
+        )
+        .unwrap();
         IdentityConfig {
             identifier,
             enrollment_status: Some(EnrollmentStatus {
@@ -342,6 +345,6 @@ mod tests {
     }
 
     fn create_identity_config_json() -> String {
-        r#"{"identifier":"Ifa804b7fca12a19eed206ae180b5b576860ae651","enrollment_status":{"is_enrolled":true,"created_at":{"secs_since_epoch":0,"nanos_since_epoch":0}}}"#.into()
+        r#"{"identifier":"Ifa804b7fca12a19eed206ae180b5b576860ae651a1b2c3d4e5f6a6b5c4d3e2f1","enrollment_status":{"is_enrolled":true,"created_at":{"secs_since_epoch":0,"nanos_since_epoch":0}}}"#.into()
     }
 }

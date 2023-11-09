@@ -444,7 +444,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_default_identity_state() {
         let state = CliState::test().unwrap();
-        let identifier = "Ie92f183eb4c324804ef4d62962dea94cf095a265"
+        let identifier = "Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1"
             .try_into()
             .unwrap();
         let identity1 = state
@@ -467,7 +467,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_named_identity_state() {
         let state = CliState::test().unwrap();
-        let alice = "Ie92f183eb4c324804ef4d62962dea94cf095a265"
+        let alice = "Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1"
             .try_into()
             .unwrap();
         let identity1 = state
@@ -506,7 +506,10 @@ mod tests {
             id: "pid".to_string(),
             name: "pname".to_string(),
             identity_id: Some(
-                Identifier::from_str("Ibb37445cacb3ca7a20040a9b36469e321a57d2cd").unwrap(),
+                Identifier::from_str(
+                    "Ibb37445cacb3ca7a20040a9b36469e321a57d2cda1b2c3d4e5f6a6b5c4d3e2f1",
+                )
+                .unwrap(),
             ),
             authority: None,
             okta: None,

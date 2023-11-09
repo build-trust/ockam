@@ -464,17 +464,19 @@ mod tests {
         );
 
         invitation.service_access_details = Some(ServiceAccessDetails {
-            project_identity: "I1234561234561234561234561234561234561234"
+            project_identity: "I1234561234561234561234561234561234561234a1b2c3d4e5f6a6b5c4d3e2f1"
                 .try_into()
                 .unwrap(),
             project_route: "project_route".to_string(),
-            project_authority_identity: "Iabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-                .try_into()
-                .unwrap(),
+            project_authority_identity:
+                "Iabcdefabcdefabcdefabcdefabcdefabcdefabcda1b2c3d4e5f6a6b5c4d3e2f1"
+                    .try_into()
+                    .unwrap(),
             project_authority_route: "project_authority_route".to_string(),
-            shared_node_identity: "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab"
-                .try_into()
-                .unwrap(),
+            shared_node_identity:
+                "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1"
+                    .try_into()
+                    .unwrap(),
             shared_node_route: "shared_node_route".to_string(),
             enrollment_ticket: EnrollmentTicket::new(
                 OneTimeCode::new(),

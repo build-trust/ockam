@@ -74,7 +74,6 @@ alloc = [
 sqlite = ["rusqlite"]
 
 [dependencies]
-arrayref = "0.3"
 async-trait = "0.1.74"
 cfg-if = "1.0.0"
 delegate = "0.10.0"

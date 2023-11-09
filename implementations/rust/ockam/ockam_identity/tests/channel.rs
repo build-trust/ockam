@@ -230,7 +230,8 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
     let bob = identities_creation.create_identity().await?;
 
     let alice_broken_trust_policy = TrustIdentifierPolicy::new(
-        Identifier::try_from("Iabababababababababababababababababababab").unwrap(),
+        Identifier::try_from("Iabababababababababababababababababababababababababababababababab")
+            .unwrap(),
     );
 
     secure_channels
@@ -887,7 +888,7 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
     };
 
     let access_control = IdentityAccessControlBuilder::new_with_id(
-        "Iabababababababababababababababababababab".try_into()?,
+        "Iabababababababababababababababababababababababababababababababab".try_into()?,
     );
     WorkerBuilder::new(receiver)
         .with_address("receiver")

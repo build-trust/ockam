@@ -9,7 +9,7 @@ use miette::IntoDiagnostic;
 use minicbor::Encode;
 use ockam::identity::models::{
     CredentialAndPurposeKey, CredentialData, CredentialVerifyingKey, PurposeKeyAttestation,
-    PurposeKeyAttestationData, PurposePublicKey,
+    PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
 use ockam::identity::{Credential, Identifier, Identity, TimestampInSeconds};
 use serde::{Serialize, Serializer};
@@ -470,7 +470,7 @@ pub struct CredentialDisplay(pub Credential);
 
 impl fmt::Display for CredentialDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let versioned_data = match self.0.get_versioned_data() {
+        let versioned_data = match minicbor::decode::<VersionedData>(&self.0.data) {
             Ok(versioned_data) => versioned_data,
             Err(_) => {
                 writeln!(f, "Invalid VersionedData")?;
@@ -536,7 +536,7 @@ pub struct PurposeKeyDisplay(pub PurposeKeyAttestation);
 
 impl fmt::Display for PurposeKeyDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let versioned_data = match self.0.get_versioned_data() {
+        let versioned_data = match minicbor::decode::<VersionedData>(&self.0.data) {
             Ok(versioned_data) => versioned_data,
             Err(_) => {
                 writeln!(f, "Invalid VersionedData")?;

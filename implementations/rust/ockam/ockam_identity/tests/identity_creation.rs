@@ -40,7 +40,8 @@ async fn create_and_retrieve() -> Result<()> {
         "the identity can be retrieved from the repository as an Option"
     );
 
-    let another_identifier = Identifier::from_str("Ie92f183eb4c324804ef4d62962dea94cf095a265")?;
+    let another_identifier =
+        Identifier::from_str("Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1")?;
     let missing = repository.retrieve_identity(&another_identifier).await?;
     assert_eq!(missing, None, "a missing identity returns None");
 
