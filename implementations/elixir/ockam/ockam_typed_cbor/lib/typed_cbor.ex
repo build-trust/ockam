@@ -103,6 +103,18 @@ defmodule Ockam.TypedCBOR do
       ...>                            a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
       ...>                %{0 => 123, 2 => 0})
       ** (Ockam.TypedCBOR.Exception) field a1 (1) is required
+
+      iex> to_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                                a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                    %{a1: "aa", a2: :a})
+      [nil, "aa", 0]
+
+      iex> from_cbor_term({:struct, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                            a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                 to_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                                         a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                              %{a1: "aa", a2: :a}))
+      %{a1: "aa", a2: :a}
   """
 
   alias Ockam.TypedCBOR.Exception
@@ -148,6 +160,35 @@ defmodule Ockam.TypedCBOR do
 
   def from_cbor_term({:struct, mod, fields}, struct) when is_map(struct) do
     struct(mod, from_cbor_term({:struct, fields}, struct))
+  end
+
+  def from_cbor_term({:struct, fields}, values) when is_list(values) do
+    field_count = Enum.count(fields)
+    value_count = Enum.count(values)
+
+    values =
+      case value_count - field_count do
+        0 ->
+          values
+
+        1 ->
+          [nil | rest] = values
+          rest
+
+        _ ->
+          raise Exception,
+            message:
+              "invalid struct encoding, expected #{inspect(field_count)} fields, got #{inspect(value_count)}"
+      end
+
+    struct =
+      fields
+      |> Map.values()
+      |> Enum.map(& &1.key)
+      |> Enum.zip(values)
+      |> Enum.into(%{})
+
+    from_cbor_term({:struct, fields}, struct)
   end
 
   def from_cbor_term(:term, any), do: any
@@ -246,6 +287,22 @@ defmodule Ockam.TypedCBOR do
     to_cbor_fields(Map.to_list(fields), struct) |> Enum.into(%{})
   end
 
+  def to_cbor_term({:struct_values, fields}, struct) when is_map(struct) do
+    extra_keys = Map.drop(struct, Map.keys(fields))
+
+    if not Enum.empty?(extra_keys),
+      do: raise(Exception, message: "Extra fields: #{inspect(Map.keys(extra_keys))}")
+
+    fields
+    |> Enum.any?(fn {_, %{key: i}} -> i == 0 end)
+    |> case do
+      true -> fields
+      _ -> Map.put(fields, :missing_zero_index, %{key: 0, schema: :term})
+    end
+    |> Enum.sort(fn {_, %{key: i1}}, {_, %{key: i2}} -> i1 < i2 end)
+    |> Enum.map(fn {key, schema} -> to_cbor_field(key, schema, struct) end)
+  end
+
   def to_cbor_term(:term, any), do: any
 
   def to_cbor_term(schema, val) do
@@ -276,6 +333,17 @@ defmodule Ockam.TypedCBOR do
 
       val ->
         [{key, to_cbor_term(schema, val)} | to_cbor_fields(rest, struct)]
+    end
+  end
+
+  def to_cbor_field(field_name, field_options, struct) do
+    schema = Map.fetch!(field_options, :schema)
+    required = Map.get(field_options, :required, false)
+
+    case Map.get(struct, field_name) do
+      nil when required -> raise Exception, message: "field #{field_name} is required"
+      nil -> nil
+      val -> to_cbor_term(schema, val)
     end
   end
 
