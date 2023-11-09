@@ -38,6 +38,7 @@ use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
 
 use crate::api::state::OrchestratorStatus;
+use crate::incoming_services::IncomingServicesState;
 use crate::scheduler::Scheduler;
 use crate::state::tasks::{
     RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask, RefreshRelayTask,
@@ -66,6 +67,7 @@ pub struct AppState {
     background_node_client: Arc<RwLock<Arc<dyn BackgroundNodeClient>>>,
     projects: Arc<RwLock<Vec<Project>>>,
     invitations: Arc<RwLock<InvitationState>>,
+    incoming_services: Arc<RwLock<IncomingServicesState>>,
     application_state_callback: Option<ApplicationStateCallback>,
     notification_callback: Option<NotificationCallback>,
     node_manager: Arc<RwLock<Arc<InMemoryNode>>>,
@@ -79,11 +81,18 @@ pub struct AppState {
 
 impl AppState {
     /// Create a new AppState, if it fails you can assume it's because the state cannot be loaded
+    /// when `cli_state` is `None` the default initialization will be used
     pub fn new(
         application_state_callback: Option<ApplicationStateCallback>,
         notification_callback: Option<NotificationCallback>,
+        cli_state: Option<CliState>,
     ) -> Result<AppState> {
-        let cli_state = CliState::initialize()?;
+        let cli_state = if let Some(cli_state) = cli_state {
+            cli_state
+        } else {
+            CliState::initialize()?
+        };
+
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
         let runtime = context.runtime().clone();
@@ -121,6 +130,7 @@ impl AppState {
                     background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
                     projects: Arc::new(Default::default()),
                     invitations: Arc::new(RwLock::new(InvitationState::default())),
+                    incoming_services: Arc::new(RwLock::new(IncomingServicesState::default())),
                     refresh_project_scheduler: Arc::new(Default::default()),
                     refresh_invitations_scheduler: Arc::new(Default::default()),
                     refresh_inlets_scheduler: Arc::new(Default::default()),
@@ -194,17 +204,16 @@ impl AppState {
         // delete every other app-related node, then exit
         let this = self.clone();
         runtime.spawn(async move {
-            let inlets: Vec<String> = {
-                let invitation_state = this.invitations().read().await.clone();
-                invitation_state
-                    .accepted
-                    .inlets
-                    .values()
-                    .map(|inlet| inlet.node_name.clone())
+            let inlets: Vec<Option<String>> = {
+                let services = this.incoming_services().read().await.clone();
+                services
+                    .services
+                    .iter()
+                    .map(|inlet| inlet.local_node_name().map(Some).unwrap_or_default())
                     .collect()
             };
 
-            for node_name in inlets {
+            for node_name in inlets.into_iter().flatten() {
                 let _ = this.delete_background_node(&node_name).await;
             }
 
@@ -316,6 +325,11 @@ impl AppState {
     /// Returns the status of invitations
     pub fn invitations(&self) -> Arc<RwLock<InvitationState>> {
         self.invitations.clone()
+    }
+
+    /// Returns the status of the services
+    pub fn incoming_services(&self) -> Arc<RwLock<IncomingServicesState>> {
+        self.incoming_services.clone()
     }
 
     /// Return the application cli state
@@ -473,6 +487,7 @@ impl AppState {
         let mut groups: Vec<ServiceGroup>;
         let mut sent_invitations: Vec<Invitee>;
         let invitation_state = { self.invitations().read().await.clone() };
+        let incoming_services_state = { self.incoming_services().read().await.clone() };
 
         // we want to sort everything to avoid having to deal with ordering in the UI
         if enrolled {
@@ -581,33 +596,17 @@ impl AppState {
                         invitations
                     },
                     incoming_services: {
-                        let mut incoming_services: Vec<Service> = invitation_state
-                            .accepted
-                            .invitations
+                        let mut incoming_services: Vec<Service> = incoming_services_state
+                            .services
                             .iter()
-                            .filter(|invitation| {
-                                invitation.invitation.owner_email == email
-                                    && invitation.service_access_details.is_some()
-                            })
-                            .map(|invitation| {
-                                let access_details =
-                                    invitation.service_access_details.as_ref().unwrap();
-                                let inlet = invitation_state
-                                    .accepted
-                                    .inlets
-                                    .get(&invitation.invitation.id);
-
-                                Service {
-                                    id: invitation.invitation.id.clone(),
-                                    source_name: access_details
-                                        .service_name()
-                                        .unwrap_or("unknown".to_string()),
-                                    address: inlet.map(|inlet| inlet.socket_addr.ip().to_string()),
-                                    port: inlet.map(|inlet| inlet.socket_addr.port()),
-                                    scheme: None,
-                                    available: inlet.is_some(),
-                                    enabled: inlet.map(|inlet| inlet.enabled).unwrap_or(true),
-                                }
+                            .map(|service| Service {
+                                id: service.id().to_string(),
+                                source_name: service.name().to_string(),
+                                address: service.address().map(|addr| addr.ip().to_string()),
+                                port: service.port(),
+                                scheme: None,
+                                available: service.port().is_some(),
+                                enabled: service.enabled(),
                             })
                             .collect();
 

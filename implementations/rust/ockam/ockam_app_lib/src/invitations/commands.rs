@@ -1,28 +1,61 @@
 use miette::IntoDiagnostic;
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
-use ockam_api::address::get_free_address;
-use ockam_api::cli_state::{CliState, StateDirTrait};
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::share::InvitationListKind;
-use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
-use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::ConnectionStatus;
-use ockam_multiaddr::MultiAddr;
-
-use crate::background_node::BackgroundNodeClient;
-use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
-use crate::shared_service::relay::create::relay_name_from_identifier;
+use crate::invitations::state::ReceivedInvitationStatus;
 use crate::state::{AppState, PROJECT_NAME};
+use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 
 impl AppState {
+    /// Fetch received, accept and sent invitations from the orchestrator
+    pub async fn refresh_invitations(&self) -> Result<(), String> {
+        info!("Refreshing invitations");
+        let invitations = {
+            if !self.is_enrolled().await.unwrap_or(false) {
+                debug!("not enrolled, skipping invitations refresh");
+                return Ok(());
+            }
+            let controller = self.controller().await.map_err(|e| e.to_string())?;
+            let invitations = controller
+                .list_invitations(&self.context(), InvitationListKind::All)
+                .await
+                .map_err(|e| e.to_string())?;
+            debug!("Invitations fetched");
+            trace!(?invitations);
+            invitations
+        };
+
+        let (changes, accepted_invitations) = {
+            let invitations_arc = self.invitations();
+            let mut guard = invitations_arc.write().await;
+            let changes = guard.replace_by(invitations);
+            if changes.changed {
+                (changes, Some(guard.accepted.invitations.clone()))
+            } else {
+                (changes, None)
+            }
+        };
+
+        if changes.changed {
+            self.publish_state().await;
+            self.load_services_from_invites(accepted_invitations.unwrap())
+                .await;
+            self.schedule_inlets_refresh_now();
+            if changes.new_received_invitation {
+                self.notify(Notification {
+                    kind: Kind::Information,
+                    title: "You have pending invitations".to_string(),
+                    message: "".to_string(),
+                })
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn accept_invitation(&self, id: String) -> Result<(), String> {
         self.accept_invitation_impl(id)
             .await
@@ -256,422 +289,5 @@ impl AppState {
         debug!(?res, "invitation sent");
         self.schedule_invitations_refresh_now();
         Ok(())
-    }
-
-    /// Fetch received, accept and sent invitations from the orchestrator
-    pub async fn refresh_invitations(&self) -> Result<(), String> {
-        info!("Refreshing invitations");
-        let invitations = {
-            if !self.is_enrolled().await.unwrap_or(false) {
-                debug!("not enrolled, skipping invitations refresh");
-                return Ok(());
-            }
-            let controller = self.controller().await.map_err(|e| e.to_string())?;
-            let invitations = controller
-                .list_invitations(&self.context(), InvitationListKind::All)
-                .await
-                .map_err(|e| e.to_string())?;
-            debug!("Invitations fetched");
-            trace!(?invitations);
-            invitations
-        };
-
-        let changed = {
-            let invitations_arc = self.invitations();
-            let mut guard = invitations_arc.write().await;
-            guard.replace_by(invitations)
-        };
-
-        if changed.changed {
-            self.publish_state().await;
-            self.schedule_inlets_refresh_now();
-            if changed.new_received_invitation {
-                self.notify(Notification {
-                    kind: Kind::Information,
-                    title: "You have pending invitations".to_string(),
-                    message: "".to_string(),
-                })
-            }
-        }
-
-        Ok(())
-    }
-
-    pub(crate) async fn refresh_inlets(&self) -> crate::Result<()> {
-        info!("Refreshing inlets");
-
-        // for each invitation it checks if the relative node is running
-        // if not, it deletes the node and re-create the inlet
-
-        let invitations_arc = self.invitations();
-        let invitations = {
-            // reduce locking as much as possible to make UI consistently responsive
-            invitations_arc.read().await.clone()
-        };
-        if invitations.accepted.invitations.is_empty() {
-            debug!("No accepted invitations, skipping inlets refresh");
-            return Ok(());
-        }
-
-        let cli_state = self.state().await;
-        let background_node_client = self.background_node_client().await;
-        for invitation in invitations.accepted.invitations {
-            match InletDataFromInvitation::new(
-                &cli_state,
-                &invitation,
-                &invitations.accepted.inlets,
-            ) {
-                Ok(inlet_data) => match inlet_data {
-                    Some(inlet_data) => {
-                        let result = self
-                            .refresh_inlet(background_node_client.clone(), inlet_data)
-                            .await;
-                        {
-                            // we want to reduce the scope of the guard as much as possible
-                            let mut guard = invitations_arc.write().await;
-                            match result {
-                                Ok(value) => {
-                                    if let Some(inlet) = value {
-                                        guard
-                                            .accepted
-                                            .inlets
-                                            .insert(invitation.invitation.id.clone(), inlet);
-                                    } else {
-                                        // disabled inlet
-                                        guard.accepted.inlets.remove(&invitation.invitation.id);
-                                    }
-                                }
-                                Err(err) => {
-                                    warn!(%err, "Failed to refresh TCP inlet for accepted invitation");
-                                    guard.accepted.inlets.remove(&invitation.invitation.id);
-                                }
-                            }
-                        }
-                        self.publish_state().await;
-                    }
-                    None => {
-                        warn!("Invalid invitation data");
-                    }
-                },
-                Err(err) => {
-                    warn!(%err, "Failed to parse invitation data");
-                }
-            }
-        }
-
-        info!("Inlets refreshed");
-        Ok(())
-    }
-
-    async fn refresh_inlet(
-        &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
-        mut inlet_data: InletDataFromInvitation,
-    ) -> crate::Result<Option<Inlet>> {
-        let inlet_node_name = &inlet_data.local_node_name;
-        debug!(node = %inlet_node_name, "Checking node status");
-        if !inlet_data.enabled {
-            debug!(node = %inlet_node_name, "TCP inlet is disabled by the user, deleting the node");
-            let _ = self.delete_background_node(inlet_node_name).await;
-            // we want to keep the entry to store the attribute `enabled = false`
-            return Inlet::new(inlet_data).map(Some);
-        }
-
-        if self.state().await.nodes.exists(inlet_node_name) {
-            let mut inlet_node = self.background_node(inlet_node_name).await?;
-            inlet_node.set_timeout(Duration::from_secs(5));
-
-            if let Ok(inlet) = inlet_node
-                .show_inlet(&self.context(), &inlet_data.service_name)
-                .await?
-                .success()
-            {
-                if inlet.status == ConnectionStatus::Up {
-                    debug!(node = %inlet_node_name, alias = %inlet.alias, "TCP inlet is already up");
-                    inlet_data.socket_addr = Some(inlet.bind_addr.parse()?);
-                    return Inlet::new(inlet_data).map(Some);
-                }
-            }
-        }
-
-        let socket_addr = self
-            .create_inlet(background_node_client, &inlet_data)
-            .await?;
-        inlet_data.socket_addr = Some(socket_addr);
-        Inlet::new(inlet_data).map(Some)
-    }
-
-    /// Create the tcp-inlet for the accepted invitation
-    /// Returns the inlet SocketAddr
-    async fn create_inlet(
-        &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
-        inlet_data: &InletDataFromInvitation,
-    ) -> crate::Result<SocketAddr> {
-        debug!(service_name = ?inlet_data.service_name, "Creating TCP inlet for accepted invitation");
-        let InletDataFromInvitation {
-            enabled,
-            local_node_name,
-            service_name,
-            service_route,
-            enrollment_ticket_hex,
-            socket_addr,
-            ..
-        } = inlet_data;
-        if !enabled {
-            return Err("TCP inlet is disabled by the user".into());
-        }
-        let from = match socket_addr {
-            Some(socket_addr) => *socket_addr,
-            None => get_free_address()?,
-        };
-        if let Some(enrollment_ticket_hex) = enrollment_ticket_hex {
-            background_node_client
-                .projects()
-                .enroll(local_node_name, enrollment_ticket_hex)
-                .await?;
-        }
-
-        // Recreate the node using the trust context
-        debug!(node = %local_node_name, "Creating node to host TCP inlet");
-        let _ = self.delete_background_node(local_node_name).await;
-        background_node_client
-            .nodes()
-            .create(local_node_name)
-            .await?;
-        tokio::time::sleep(Duration::from_millis(250)).await;
-
-        let mut inlet_node = self.background_node(local_node_name).await?;
-        inlet_node.set_timeout(Duration::from_secs(5));
-        inlet_node
-            .create_inlet(
-                &self.context(),
-                &from.to_string(),
-                &MultiAddr::from_str(service_route).into_diagnostic()?,
-                &Some(service_name.to_string()),
-                &None,
-                Duration::from_secs(5),
-            )
-            .await?;
-        Ok(from)
-    }
-
-    pub(crate) async fn disconnect_tcp_inlet(&self, invitation_id: &str) -> crate::Result<()> {
-        let inlet = {
-            let invitations = self.invitations();
-            let mut writer = invitations.write().await;
-            let mut inlet = writer.accepted.inlets.get_mut(invitation_id);
-
-            if let Some(inlet) = inlet.as_mut() {
-                if !inlet.enabled {
-                    debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already disconnected");
-                    return Ok(());
-                }
-                inlet.disable();
-            }
-            inlet.cloned()
-        };
-
-        if let Some(inlet) = inlet {
-            self.background_node(&inlet.node_name)
-                .await?
-                .delete_inlet(&self.context(), &inlet.alias)
-                .await?;
-            self.publish_state().await;
-        }
-        Ok(())
-    }
-
-    pub(crate) async fn enable_tcp_inlet(&self, invitation_id: &str) -> crate::Result<()> {
-        let changed = {
-            let invitations = self.invitations();
-            let mut writer = invitations.write().await;
-            if let Some(inlet) = writer.accepted.inlets.get(invitation_id).cloned() {
-                if inlet.enabled {
-                    debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already enabled");
-                    return Ok(());
-                }
-                // refresh will re-create the structure in the meantime it'll be seen in
-                // 'connecting' status
-                writer.accepted.inlets.remove(invitation_id);
-                info!(node = %inlet.node_name, alias = %inlet.alias, "Enabled TCP inlet");
-                true
-            } else {
-                false
-            }
-        };
-
-        if changed {
-            self.publish_state().await;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct InletDataFromInvitation {
-    pub enabled: bool,
-    pub local_node_name: String,
-    pub service_name: String,
-    pub service_route: String,
-    pub enrollment_ticket_hex: Option<String>,
-    pub socket_addr: Option<SocketAddr>,
-}
-
-impl InletDataFromInvitation {
-    pub fn new(
-        cli_state: &CliState,
-        invitation: &InvitationWithAccess,
-        inlets: &HashMap<String, Inlet>,
-    ) -> crate::Result<Option<Self>> {
-        match &invitation.service_access_details {
-            Some(access_details) => {
-                let service_name = access_details.service_name()?;
-                let mut enrollment_ticket = access_details.enrollment_ticket()?;
-                // The enrollment ticket contains the project data.
-                // We need to replace the project name on the enrollment ticket with the project id,
-                // so that, when using the enrollment ticket, there are no conflicts with the default project.
-                // The node created when setting up the TCP inlet is meant to only serve that TCP inlet and
-                // only has to resolve the `/project/{id}` project to create the needed secure-channel.
-                if let Some(project) = enrollment_ticket.project.as_mut() {
-                    project.name = project.id.clone();
-                }
-                let enrollment_ticket_hex = if invitation.invitation.is_expired()? {
-                    None
-                } else {
-                    Some(enrollment_ticket.hex_encoded()?)
-                };
-
-                if let Some(project) = enrollment_ticket.project {
-                    // At this point, the project name will be the project id.
-                    let project = cli_state
-                        .projects
-                        .overwrite(project.name.clone(), Project::from(project.clone()))?;
-                    assert_eq!(
-                        project.name(),
-                        project.id(),
-                        "Project name should be the project id"
-                    );
-                    let project_id = project.id();
-                    let relay_name =
-                        relay_name_from_identifier(&access_details.shared_node_identity);
-                    let service_route = format!(
-                        "/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}"
-                    );
-                    let local_node_name = format!("ockam_app_{project_id}_{service_name}");
-
-                    let inlet = inlets.get(&invitation.invitation.id);
-                    let enabled = inlet.map(|i| i.enabled).unwrap_or(true);
-                    let socket_addr = inlet.map(|i| i.socket_addr);
-
-                    Ok(Some(Self {
-                        enabled,
-                        local_node_name,
-                        service_name,
-                        service_route,
-                        enrollment_ticket_hex,
-                        socket_addr,
-                    }))
-                } else {
-                    warn!(?invitation, "No project data found in enrollment ticket");
-                    Ok(None)
-                }
-            }
-            None => {
-                warn!(
-                    ?invitation,
-                    "No service details found in accepted invitation"
-                );
-                Ok(None)
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ockam::identity::{Identifier, OneTimeCode};
-    use ockam_api::cloud::share::{
-        ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
-    };
-    use ockam_api::config::lookup::ProjectLookup;
-    use ockam_api::identity::EnrollmentTicket;
-
-    #[test]
-    fn test_inlet_data_from_invitation() {
-        let cli_state = CliState::test().unwrap();
-        let mut inlets = HashMap::new();
-        let mut invitation = InvitationWithAccess {
-            invitation: ReceivedInvitation {
-                id: "invitation_id".to_string(),
-                expires_at: "2020-09-12T15:07:14.00".to_string(),
-                grant_role: RoleInShare::Admin,
-                owner_email: "owner_email".to_string(),
-                scope: ShareScope::Project,
-                target_id: "target_id".to_string(),
-                ignored: false,
-            },
-            service_access_details: None,
-        };
-
-        // InletDataFromInvitation will be none because `service_access_details` is none
-        assert!(
-            InletDataFromInvitation::new(&cli_state, &invitation, &inlets)
-                .unwrap()
-                .is_none()
-        );
-
-        invitation.service_access_details = Some(ServiceAccessDetails {
-            project_identity: "I1234561234561234561234561234561234561234"
-                .try_into()
-                .unwrap(),
-            project_route: "project_route".to_string(),
-            project_authority_identity: "Iabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-                .try_into()
-                .unwrap(),
-            project_authority_route: "project_authority_route".to_string(),
-            shared_node_identity: "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab"
-                .try_into()
-                .unwrap(),
-            shared_node_route: "shared_node_route".to_string(),
-            enrollment_ticket: EnrollmentTicket::new(
-                OneTimeCode::new(),
-                Some(ProjectLookup {
-                    node_route: None,
-                    id: "project_identity".to_string(),
-                    name: "project_name".to_string(),
-                    identity_id: Some(
-                        Identifier::from_str("I1234561234561234561234561234561234561234").unwrap(),
-                    ),
-                    authority: None,
-                    okta: None,
-                }),
-                None,
-            )
-            .hex_encoded()
-            .unwrap(),
-        });
-
-        // Validate the inlet data, with no prior inlet data
-        let inlet_data = InletDataFromInvitation::new(&cli_state, &invitation, &inlets)
-            .unwrap()
-            .unwrap();
-        assert!(inlet_data.socket_addr.is_none());
-
-        // Validate the inlet data, with prior inlet data
-        inlets.insert(
-            "invitation_id".to_string(),
-            Inlet {
-                node_name: "local_node_name".to_string(),
-                alias: "alias".to_string(),
-                socket_addr: "127.0.0.1:1000".parse().unwrap(),
-                enabled: true,
-            },
-        );
-        let inlet_data = InletDataFromInvitation::new(&cli_state, &invitation, &inlets)
-            .unwrap()
-            .unwrap();
-        assert!(inlet_data.socket_addr.is_some());
     }
 }
