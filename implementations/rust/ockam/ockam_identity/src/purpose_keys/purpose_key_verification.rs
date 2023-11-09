@@ -2,7 +2,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::VaultForVerifyingSignatures;
 
-use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
+use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, VersionedData};
 use crate::utils::now;
 use crate::{IdentitiesReader, Identity, IdentityError, TimestampInSeconds};
 
@@ -39,7 +39,7 @@ impl PurposeKeyVerification {
     ) -> Result<PurposeKeyAttestationData> {
         let versioned_data_hash = self.verifying_vault.sha256(&attestation.data).await?;
 
-        let versioned_data = attestation.get_versioned_data()?;
+        let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
 
         if versioned_data.version != 1 {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());

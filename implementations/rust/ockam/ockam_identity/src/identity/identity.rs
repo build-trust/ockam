@@ -185,11 +185,16 @@ mod tests {
     #[tokio::test]
     async fn test_display() {
         let identities = identities();
-        let data = hex::decode("818258368201583285f68200815820a70967ee615d475107970f7da3c8e73c49845144050be85d505ef7ed4cff420af41a651d5c721a77e95f72820081584080b92b8209ccd69fd83dc8b896fc1828533bd8af205c49d31d230a2d2997be783ac95199e147a1600f5f1a0aa659dbe22f2102e5e13762e41e302f4f9d754700").unwrap();
+        let data = hex::decode("81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009").unwrap();
         let identifier = identities
             .identities_creation()
             .import(
-                Some(&Identifier::from_str("I085f2aaa8b8f5a6f7523feedc3335af1778384aa").unwrap()),
+                Some(
+                    &Identifier::from_str(
+                        "I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819",
+                    )
+                    .unwrap(),
+                ),
                 &data,
             )
             .await
@@ -197,8 +202,8 @@ mod tests {
         let identity = identities.get_identity(&identifier).await.unwrap();
 
         let actual = format!("{identity}");
-        let expected = r#"Identifier:     I085f2aaa8b8f5a6f7523feedc3335af1778384aa
-Change history: 818258368201583285f68200815820a70967ee615d475107970f7da3c8e73c49845144050be85d505ef7ed4cff420af41a651d5c721a77e95f72820081584080b92b8209ccd69fd83dc8b896fc1828533bd8af205c49d31d230a2d2997be783ac95199e147a1600f5f1a0aa659dbe22f2102e5e13762e41e302f4f9d754700
+        let expected = r#"Identifier:     I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819
+Change history: 81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009
 "#;
         assert_eq!(actual, expected)
     }

@@ -4,12 +4,16 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
+/// `data_type` value in [`VersionedData`] struct when used with [`Credential`]
+pub const CREDENTIAL_DATA_TYPE: u8 = 3;
+
 /// Credential
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 pub struct Credential {
     /// CBOR serialized [`super::VersionedData`]
     /// where VersionedData::data is CBOR serialized [`CredentialData`]
+    /// and VersionedData::data_type is [`CREDENTIAL_DATA_TYPE`]
     #[cbor(with = "minicbor::bytes")]
     #[n(0)] pub data: Vec<u8>,
     /// Signature over data field using corresponding Credentials [`super::PurposeKeyAttestation`]

@@ -1,5 +1,5 @@
 use crate::identity::Identity;
-use crate::models::{Change, ChangeData, ChangeHash, ChangeHistory, VersionedData};
+use crate::models::{Change, ChangeData, ChangeHash, ChangeHistory};
 use crate::{IdentityError, IdentityOptions};
 
 use ockam_core::compat::sync::Arc;
@@ -118,11 +118,7 @@ impl IdentitiesKeys {
 
         let change_data = minicbor::to_vec(&change_data)?;
 
-        let versioned_data = VersionedData {
-            version: 1,
-            data: change_data,
-        };
-
+        let versioned_data = Change::create_versioned_data(change_data);
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
         let hash = self.verifying_vault.sha256(&versioned_data).await?;
@@ -186,7 +182,12 @@ mod test {
 
         // Identifier should not match
         let res = Identity::import_from_change_history(
-            Some(&Identifier::from_str("Iabababababababababababababababababababab").unwrap()),
+            Some(
+                &Identifier::from_str(
+                    "Iabababababababababababababababababababababababababababababababab",
+                )
+                .unwrap(),
+            ),
             identity1.change_history().clone(),
             identities.vault().verifying_vault,
         )
@@ -219,7 +220,12 @@ mod test {
 
         // Identifier should not match
         let res = Identity::import_from_change_history(
-            Some(&Identifier::from_str("Iabababababababababababababababababababab").unwrap()),
+            Some(
+                &Identifier::from_str(
+                    "Iabababababababababababababababababababababababababababababababab",
+                )
+                .unwrap(),
+            ),
             identity2.change_history().clone(),
             identities.vault().verifying_vault,
         )

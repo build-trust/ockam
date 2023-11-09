@@ -368,8 +368,14 @@ mod tests {
 
     #[test]
     fn test_parse_trusted_identities() {
-        let identity1 = Identifier::try_from("Ie86be15e83d1c93e24dd1967010b01b6df491b45").unwrap();
-        let identity2 = Identifier::try_from("I6c20e814b56579306f55c64e8747e6c1b4a53d9a").unwrap();
+        let identity1 = Identifier::try_from(
+            "Ie86be15e83d1c93e24dd1967010b01b6df491b45a1b2c3d4e5f6a6b5c4d3e2f1",
+        )
+        .unwrap();
+        let identity2 = Identifier::try_from(
+            "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+        )
+        .unwrap();
 
         let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
@@ -383,8 +389,8 @@ mod tests {
             ("ockam-role".into(), "enroller".into()),
         ]);
         let expected = vec![
-            TrustedIdentity::new(&identity2, &attributes2),
             TrustedIdentity::new(&identity1, &attributes1),
+            TrustedIdentity::new(&identity2, &attributes2),
         ];
         assert_eq!(actual.trusted_identities(), expected);
     }
