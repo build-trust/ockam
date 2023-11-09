@@ -109,7 +109,7 @@ defmodule Ockam.TypedCBOR do
       ...>                    %{a1: "aa", a2: :a})
       [nil, "aa", 0]
 
-      iex> from_cbor_term({:struct, %{a1: %{key: 1, schema: :string, required: true},
+      iex> from_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
       ...>                            a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
       ...>                 to_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
       ...>                                         a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
@@ -162,7 +162,11 @@ defmodule Ockam.TypedCBOR do
     struct(mod, from_cbor_term({:struct, fields}, struct))
   end
 
-  def from_cbor_term({:struct, fields}, values) when is_list(values) do
+  def from_cbor_term({:struct_values, mod, fields}, values) when is_list(values) do
+    struct(mod, from_cbor_term({:struct_values, fields}, values))
+  end
+
+  def from_cbor_term({:struct_values, fields}, values) when is_list(values) do
     field_count = Enum.count(fields)
     value_count = Enum.count(values)
 
@@ -185,6 +189,7 @@ defmodule Ockam.TypedCBOR do
       fields
       |> Map.values()
       |> Enum.map(& &1.key)
+      |> Enum.sort()
       |> Enum.zip(values)
       |> Enum.into(%{})
 
@@ -285,6 +290,13 @@ defmodule Ockam.TypedCBOR do
       do: raise(Exception, message: "a %#{mod}{} struct must be provided")
 
     to_cbor_fields(Map.to_list(fields), struct) |> Enum.into(%{})
+  end
+
+  def to_cbor_term({:struct_values, mod, fields}, struct) when is_map(struct) do
+    if struct.__struct__ != mod,
+      do: raise(Exception, message: "a %#{mod}{} struct must be provided")
+
+    to_cbor_term({:struct_values, fields}, struct |> Map.from_struct())
   end
 
   def to_cbor_term({:struct_values, fields}, struct) when is_map(struct) do
