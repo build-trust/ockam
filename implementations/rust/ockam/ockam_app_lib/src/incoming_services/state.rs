@@ -337,17 +337,19 @@ mod tests {
 
     fn create_service_access() -> ServiceAccessDetails {
         ServiceAccessDetails {
-            project_identity: "I1234561234561234561234561234561234561234"
+            project_identity: "I1234561234561234561234561234561234561234a1b2c3d4e5f6a6b5c4d3e2f1"
                 .try_into()
                 .unwrap(),
             project_route: "mock_project_route".to_string(),
-            project_authority_identity: "Iabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-                .try_into()
-                .unwrap(),
+            project_authority_identity:
+                "Iabcdefabcdefabcdefabcdefabcdefabcdefabcda1b2c3d4e5f6a6b5c4d3e2f1"
+                    .try_into()
+                    .unwrap(),
             project_authority_route: "project_authority_route".to_string(),
-            shared_node_identity: "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab"
-                .try_into()
-                .unwrap(),
+            shared_node_identity:
+                "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1"
+                    .try_into()
+                    .unwrap(),
             shared_node_route: "remote_service_name".to_string(),
             enrollment_ticket: EnrollmentTicket::new(
                 OneTimeCode::new(),
@@ -356,7 +358,10 @@ mod tests {
                     id: "project_id".to_string(),
                     name: "project_name".to_string(),
                     identity_id: Some(
-                        Identifier::from_str("I1234561234561234561234561234561234561234").unwrap(),
+                        Identifier::from_str(
+                            "I1234561234561234561234561234561234561234a1b2c3d4e5f6a6b5c4d3e2f1",
+                        )
+                        .unwrap(),
                     ),
                     authority: None,
                     okta: None,
@@ -404,10 +409,10 @@ mod tests {
             "project name should be overwritten with project id"
         );
         assert_eq!(
-            "forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab",
+            "forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1",
             service.relay_name()
         );
-        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab/secure/api/service/remote_service_name", service.service_route());
+        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route());
         assert_eq!(
             "ockam_app_project_id_invitation_id",
             service.local_node_name()
@@ -448,7 +453,7 @@ mod tests {
         assert_eq!("second_invitation_id", service.id());
         assert!(!service.enabled());
         assert_eq!("custom_user_name", service.name());
-        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab/secure/api/service/remote_service_name", service.service_route());
+        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route());
 
         context.stop().await
     }

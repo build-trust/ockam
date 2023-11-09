@@ -8,7 +8,7 @@ use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::{Context, DelayedEvent};
 use tracing::{debug, error, info};
 
-use crate::models::CredentialData;
+use crate::models::{CredentialData, VersionedData};
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
@@ -196,7 +196,7 @@ impl EncryptorWorker {
             return Err(IdentityError::NoCredentialsRetriever.into());
         };
 
-        let versioned_data = credential.credential.get_versioned_data()?;
+        let versioned_data: VersionedData = minicbor::decode(&credential.credential.data)?;
         let data = CredentialData::get_data(&versioned_data)?;
         self.min_credential_expiration = Some(data.expires_at);
 

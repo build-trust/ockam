@@ -7,7 +7,9 @@ use ockam_core::compat::vec::Vec;
 pub struct VersionedData {
     /// Version
     #[n(0)] pub version: u8,
+    /// Numeric tag of type that was serialized into data field
+    #[n(1)] pub data_type: u8,
     /// Binary
     #[cbor(with = "minicbor::bytes")]
-    #[n(1)] pub data: Vec<u8>,
+    #[n(2)] pub data: Vec<u8>,
 }

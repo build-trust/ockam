@@ -2,7 +2,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 
 use crate::models::{
-    Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposePublicKey, VersionedData,
+    Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposePublicKey,
 };
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
@@ -132,10 +132,7 @@ impl PurposeKeyCreation {
 
         let attestation_data_binary = minicbor::to_vec(&attestation_data)?;
 
-        let versioned_data = VersionedData {
-            version: 1,
-            data: attestation_data_binary,
-        };
+        let versioned_data = PurposeKeyAttestation::create_versioned_data(attestation_data_binary);
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
         let versioned_data_hash = self.vault.verifying_vault.sha256(&versioned_data).await?;

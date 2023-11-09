@@ -8,6 +8,9 @@ use ockam_vault::{
     EdDSACurve25519Signature, X25519PublicKey,
 };
 
+/// `data_type` value in [`VersionedData`] struct when used with [`PurposeKeyAttestation`]
+pub const PURPOSE_KEY_ATTESTATION_DATA_TYPE: u8 = 2;
+
 /// Self-signed Attestation of an [`super::super::identity::Identity`] associating
 /// a [`super::super::purpose_key::PurposeKey`] with itself
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
@@ -15,6 +18,7 @@ use ockam_vault::{
 pub struct PurposeKeyAttestation {
     /// CBOR serialized [`super::VersionedData`]
     /// where VersionedData::data is CBOR serialized [`PurposeKeyAttestationData`]
+    /// and VersionedData::data_type is [`PURPOSE_KEY_ATTESTATION_DATA_TYPE`]
     #[cbor(with = "minicbor::bytes")]
     #[n(0)] pub data: Vec<u8>,
     /// Signature over data field using a key from [`super::super::identity::Identity`]

@@ -1,20 +1,32 @@
-use crate::models::utils::get_versioned_data;
-use crate::models::{CredentialData, CredentialSignature, VersionedData};
-use crate::Credential;
+use crate::models::{CredentialData, CredentialSignature, VersionedData, CREDENTIAL_DATA_TYPE};
+use crate::{Credential, IdentityError};
 
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::Signature;
 
 impl Credential {
-    /// Extract [`VersionedData`]
-    pub fn get_versioned_data(&self) -> Result<VersionedData> {
-        get_versioned_data(&self.data)
+    /// Create [`VersionedData`] with corresponding version and data_type
+    pub fn create_versioned_data(data: Vec<u8>) -> VersionedData {
+        VersionedData {
+            version: 1,
+            data_type: CREDENTIAL_DATA_TYPE,
+            data,
+        }
     }
 }
 
 impl CredentialData {
     /// Extract [`CredentialData`] from [`VersionedData`]
     pub fn get_data(versioned_data: &VersionedData) -> Result<Self> {
+        if versioned_data.version != 1 {
+            return Err(IdentityError::UnknownCredentialVersion.into());
+        }
+
+        if versioned_data.data_type != CREDENTIAL_DATA_TYPE {
+            return Err(IdentityError::InvalidCredentialDataType.into());
+        }
+
         Ok(minicbor::decode(&versioned_data.data)?)
     }
 }

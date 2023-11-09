@@ -12,12 +12,16 @@ use ockam_vault::{
 #[cbor(transparent)]
 pub struct ChangeHistory(#[n(0)] pub Vec<Change>);
 
+/// `data_type` value in [`VersionedData`] struct when used with [`Change`]
+pub const CHANGE_DATA_TYPE: u8 = 1;
+
 /// Individual Identity change which implies replacing the old key
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 pub struct Change {
     /// CBOR serialized [`super::VersionedData`]
     /// where VersionedData::data is CBOR serialized [`ChangeData`]
+    /// and VersionedData::data_type is [`CHANGE_DATA_TYPE`]
     #[cbor(with = "minicbor::bytes")]
     #[n(0)] pub data: Vec<u8>,
     /// Self-signature over the data using the key from this same [`Change`]

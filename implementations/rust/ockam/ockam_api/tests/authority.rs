@@ -324,12 +324,13 @@ async fn default_configuration() -> Result<Configuration> {
     let port = thread_rng().gen_range(10000..65535);
 
     let trusted_identities =
-        "{\"I3bab350b6c9ad9c624e54dba4b2e53b2ed95967b\": {\"attribute1\": \"value1\"}}";
+        "{\"I3bab350b6c9ad9c624e54dba4b2e53b2ed95967ba1b2c3d4e5f6a6b5c4d3e2f1\": {\"attribute1\": \"value1\"}}";
 
     let trusted_identities = PreTrustedIdentities::new_from_string(trusted_identities)?;
 
     let mut configuration = authority_node::Configuration {
-        identifier: "I4dba4b2e53b2ed95967b3bab350b6c9ad9c624e5".try_into()?,
+        identifier: "I4dba4b2e53b2ed95967b3bab350b6c9ad9c624e5a1b2c3d4e5f6a6b5c4d3e2f1"
+            .try_into()?,
         storage_path,
         vault_path,
         project_identifier: "123456".to_string(),

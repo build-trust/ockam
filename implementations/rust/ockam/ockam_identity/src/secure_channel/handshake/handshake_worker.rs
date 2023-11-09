@@ -11,7 +11,7 @@ use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};
 
-use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier};
+use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, VersionedData};
 use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
@@ -175,7 +175,9 @@ impl HandshakeWorker {
 
         let min_credential_expiration = credentials
             .iter()
-            .filter_map(|credential| credential.credential.get_versioned_data().ok())
+            .filter_map(|credential| {
+                minicbor::decode::<VersionedData>(&credential.credential.data).ok()
+            })
             .filter_map(|data| CredentialData::get_data(&data).ok())
             .map(|data| data.expires_at)
             .min();

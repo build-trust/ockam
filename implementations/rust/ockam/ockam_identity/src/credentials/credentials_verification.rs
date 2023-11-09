@@ -1,5 +1,7 @@
 use crate::identities::AttributesEntry;
-use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey};
+use crate::models::{
+    CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey, VersionedData,
+};
 use crate::utils::now;
 use crate::{
     CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeyVerification,
@@ -93,10 +95,8 @@ impl CredentialsVerification {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
-        let versioned_data = credential_and_purpose_key.credential.get_versioned_data()?;
-        if versioned_data.version != 1 {
-            return Err(IdentityError::UnknownCredentialVersion.into());
-        }
+        let versioned_data: VersionedData =
+            minicbor::decode(&credential_and_purpose_key.credential.data)?;
 
         let credential_data = CredentialData::get_data(&versioned_data)?;
 
