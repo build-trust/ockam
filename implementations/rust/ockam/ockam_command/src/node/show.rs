@@ -14,7 +14,7 @@ use ockam_api::nodes::models::portal::{InletList, OutletList};
 
 use crate::node::get_node_name;
 use crate::node::list;
-use crate::terminal::tui::ShowItemsTui;
+use crate::terminal::tui::ShowCommandTui;
 use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result, Terminal, TerminalStream};
 
@@ -53,23 +53,32 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let tui = ShowNodesTui {
-        node_name: cmd.node_name,
-        opts,
-        ctx,
-    };
-    tui.run().await?;
-    Ok(())
+    NodeShowTui::run(ctx, opts, cmd.node_name).await
 }
 
-struct ShowNodesTui {
-    node_name: Option<String>,
-    opts: CommandGlobalOpts,
+pub struct NodeShowTui {
     ctx: Context,
+    opts: CommandGlobalOpts,
+    node_name: Option<String>,
+}
+
+impl NodeShowTui {
+    pub async fn run(
+        ctx: Context,
+        opts: CommandGlobalOpts,
+        node_name: Option<String>,
+    ) -> miette::Result<()> {
+        let tui = Self {
+            ctx,
+            opts,
+            node_name,
+        };
+        tui.show().await
+    }
 }
 
 #[ockam_core::async_trait]
-impl ShowItemsTui for ShowNodesTui {
+impl ShowCommandTui for NodeShowTui {
     const ITEM_NAME: &'static str = "nodes";
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
