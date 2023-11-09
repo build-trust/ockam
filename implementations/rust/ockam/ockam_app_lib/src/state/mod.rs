@@ -38,6 +38,7 @@ use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
 
 use crate::api::state::OrchestratorStatus;
+use crate::incoming_services::IncomingServicesState;
 use crate::scheduler::Scheduler;
 use crate::state::tasks::{
     RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask, RefreshRelayTask,
@@ -66,6 +67,7 @@ pub struct AppState {
     background_node_client: Arc<RwLock<Arc<dyn BackgroundNodeClient>>>,
     projects: Arc<RwLock<Vec<Project>>>,
     invitations: Arc<RwLock<InvitationState>>,
+    incoming_services: Arc<RwLock<IncomingServicesState>>,
     application_state_callback: Option<ApplicationStateCallback>,
     notification_callback: Option<NotificationCallback>,
     node_manager: Arc<RwLock<Arc<InMemoryNode>>>,
@@ -77,61 +79,94 @@ pub struct AppState {
     pub(crate) tracing_guard: Arc<OnceLock<WorkerGuard>>,
 }
 
+async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
+    match make_node_manager(ctx.clone(), cli_state).await {
+        Ok(w) => w,
+        Err(e) => {
+            error!(%e, "Cannot load the model state");
+            panic!("Cannot load the model state: {e:?}")
+        }
+    }
+}
+
 impl AppState {
-    /// Create a new AppState, if it fails you can assume it's because the state cannot be loaded
+    /// Creates a new AppState, if it fails you can assume it's because the state cannot be loaded
+    /// when `cli_state` is `None` the default initialization will be used
     pub fn new(
-        application_state_callback: Option<ApplicationStateCallback>,
-        notification_callback: Option<NotificationCallback>,
+        application_state_callback: ApplicationStateCallback,
+        notification_callback: NotificationCallback,
     ) -> Result<AppState> {
         let cli_state = CliState::initialize()?;
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
-        let runtime = context.runtime().clone();
 
-        let future = {
-            let runtime = runtime.clone();
-            async move {
-                // start the router, it is needed for the node manager creation
-                runtime.spawn(async move {
-                    let result = executor.start_router().await;
-                    if let Err(e) = result {
-                        error!(%e, "Failed to start the router")
-                    }
-                });
-
-                // create the application state and its dependencies
-                let node_manager = create_node_manager(context.clone(), &cli_state).await;
-                let model_state_repository = create_model_state_repository(&cli_state).await;
-                let model_state = model_state_repository
-                    .load()
-                    .await
-                    .expect("Failed to load the model state")
-                    .unwrap_or(ModelState::default());
-
-                info!("AppState initialized");
-                AppState {
-                    context,
-                    application_state_callback,
-                    notification_callback,
-                    state: Arc::new(RwLock::new(cli_state)),
-                    orchestrator_status: Arc::new(Mutex::new(Default::default())),
-                    node_manager: Arc::new(RwLock::new(node_manager)),
-                    model_state: Arc::new(RwLock::new(model_state)),
-                    model_state_repository: Arc::new(RwLock::new(model_state_repository)),
-                    background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
-                    projects: Arc::new(Default::default()),
-                    invitations: Arc::new(RwLock::new(InvitationState::default())),
-                    refresh_project_scheduler: Arc::new(Default::default()),
-                    refresh_invitations_scheduler: Arc::new(Default::default()),
-                    refresh_inlets_scheduler: Arc::new(Default::default()),
-                    refresh_relay_scheduler: Arc::new(Default::default()),
-                    last_published_snapshot: Arc::new(Mutex::new(None)),
-                    tracing_guard: Arc::new(Default::default()),
-                }
+        // start the router, it is needed for the node manager creation
+        context.runtime().spawn(async move {
+            let result = executor.start_router().await;
+            if let Err(e) = result {
+                error!(%e, "Failed to start the router")
             }
+        });
+
+        let runtime = context.runtime().clone();
+        let future = async {
+            Self::make(
+                context,
+                Some(application_state_callback),
+                Some(notification_callback),
+                cli_state,
+            )
+            .await
         };
 
         Ok(runtime.block_on(future))
+    }
+
+    /// Creates a new AppState for testing purposes
+    #[cfg(test)]
+    pub async fn test(context: &Context, cli_state: CliState) -> AppState {
+        let context = ockam_core::AsyncTryClone::async_try_clone(context)
+            .await
+            .unwrap();
+        Self::make(Arc::new(context), None, None, cli_state).await
+    }
+
+    async fn make(
+        context: Arc<Context>,
+        application_state_callback: Option<ApplicationStateCallback>,
+        notification_callback: Option<NotificationCallback>,
+        cli_state: CliState,
+    ) -> AppState {
+        // create the application state and its dependencies
+        let node_manager = create_node_manager(context.clone(), &cli_state).await;
+        let model_state_repository = create_model_state_repository(&cli_state).await;
+        let model_state = model_state_repository
+            .load()
+            .await
+            .expect("Failed to load the model state")
+            .unwrap_or(ModelState::default());
+
+        info!("AppState initialized");
+        AppState {
+            context,
+            application_state_callback,
+            notification_callback,
+            state: Arc::new(RwLock::new(cli_state)),
+            orchestrator_status: Arc::new(Mutex::new(Default::default())),
+            node_manager: Arc::new(RwLock::new(node_manager)),
+            model_state: Arc::new(RwLock::new(model_state)),
+            model_state_repository: Arc::new(RwLock::new(model_state_repository)),
+            background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
+            projects: Arc::new(Default::default()),
+            invitations: Arc::new(RwLock::new(InvitationState::default())),
+            incoming_services: Arc::new(RwLock::new(IncomingServicesState::default())),
+            refresh_project_scheduler: Arc::new(Default::default()),
+            refresh_invitations_scheduler: Arc::new(Default::default()),
+            refresh_inlets_scheduler: Arc::new(Default::default()),
+            refresh_relay_scheduler: Arc::new(Default::default()),
+            last_published_snapshot: Arc::new(Mutex::new(None)),
+            tracing_guard: Arc::new(Default::default()),
+        }
     }
 
     /// Load a previously persisted ModelState and start refreshing schedule
@@ -195,16 +230,15 @@ impl AppState {
         let this = self.clone();
         runtime.spawn(async move {
             let inlets: Vec<String> = {
-                let invitation_state = this.invitations().read().await.clone();
-                invitation_state
-                    .accepted
-                    .inlets
-                    .values()
-                    .map(|inlet| inlet.node_name.clone())
+                let services = this.incoming_services().read().await.clone();
+                services
+                    .services
+                    .iter()
+                    .map(|inlet| inlet.local_node_name())
                     .collect()
             };
 
-            for node_name in inlets {
+            for node_name in inlets.into_iter() {
                 let _ = this.delete_background_node(&node_name).await;
             }
 
@@ -316,6 +350,11 @@ impl AppState {
     /// Returns the status of invitations
     pub fn invitations(&self) -> Arc<RwLock<InvitationState>> {
         self.invitations.clone()
+    }
+
+    /// Returns the status of the services
+    pub fn incoming_services(&self) -> Arc<RwLock<IncomingServicesState>> {
+        self.incoming_services.clone()
     }
 
     /// Return the application cli state
@@ -473,6 +512,7 @@ impl AppState {
         let mut groups: Vec<ServiceGroup>;
         let mut sent_invitations: Vec<Invitee>;
         let invitation_state = { self.invitations().read().await.clone() };
+        let incoming_services_state = { self.incoming_services().read().await.clone() };
 
         // we want to sort everything to avoid having to deal with ordering in the UI
         if enrolled {
@@ -581,33 +621,17 @@ impl AppState {
                         invitations
                     },
                     incoming_services: {
-                        let mut incoming_services: Vec<Service> = invitation_state
-                            .accepted
-                            .invitations
+                        let mut incoming_services: Vec<Service> = incoming_services_state
+                            .services
                             .iter()
-                            .filter(|invitation| {
-                                invitation.invitation.owner_email == email
-                                    && invitation.service_access_details.is_some()
-                            })
-                            .map(|invitation| {
-                                let access_details =
-                                    invitation.service_access_details.as_ref().unwrap();
-                                let inlet = invitation_state
-                                    .accepted
-                                    .inlets
-                                    .get(&invitation.invitation.id);
-
-                                Service {
-                                    id: invitation.invitation.id.clone(),
-                                    source_name: access_details
-                                        .service_name()
-                                        .unwrap_or("unknown".to_string()),
-                                    address: inlet.map(|inlet| inlet.socket_addr.ip().to_string()),
-                                    port: inlet.map(|inlet| inlet.socket_addr.port()),
-                                    scheme: None,
-                                    available: inlet.is_some(),
-                                    enabled: inlet.map(|inlet| inlet.enabled).unwrap_or(true),
-                                }
+                            .map(|service| Service {
+                                id: service.id().to_string(),
+                                source_name: service.name().to_string(),
+                                address: service.address().map(|addr| addr.ip().to_string()),
+                                port: service.port(),
+                                scheme: None,
+                                available: service.port().is_some(),
+                                enabled: service.enabled(),
                             })
                             .collect();
 
@@ -644,16 +668,6 @@ impl AppState {
             groups,
             sent_invitations,
         })
-    }
-}
-
-async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
-    match make_node_manager(ctx.clone(), cli_state).await {
-        Ok(w) => w,
-        Err(e) => {
-            error!(%e, "Cannot load the model state");
-            panic!("Cannot load the model state: {e:?}")
-        }
     }
 }
 

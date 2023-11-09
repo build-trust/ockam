@@ -53,12 +53,8 @@ extern "C" fn initialize_application(
     }
 
     let result = AppState::new(
-        Some(super::state::rust::ApplicationStateCallback::new(
-            application_state_callback,
-        )),
-        Some(super::notification::rust::NotificationCallback::new(
-            notification_callback,
-        )),
+        super::state::rust::ApplicationStateCallback::new(application_state_callback),
+        super::notification::rust::NotificationCallback::new(notification_callback),
     );
 
     let app_state = match result {
@@ -202,7 +198,7 @@ extern "C" fn disable_accepted_service(invitation_id: *const c_char) {
     };
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async move {
-        let result = app_state.disconnect_tcp_inlet(&invitation_id).await;
+        let result = app_state.disable_tcp_inlet(&invitation_id).await;
         if let Err(err) = result {
             error!(?err, "Couldn't disable the service");
         }

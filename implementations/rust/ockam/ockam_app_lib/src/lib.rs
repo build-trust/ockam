@@ -11,6 +11,7 @@ mod background_node;
 mod cli;
 mod enroll;
 mod error;
+mod incoming_services;
 mod invitations;
 mod log;
 mod projects;
