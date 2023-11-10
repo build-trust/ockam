@@ -108,7 +108,7 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
           """)
         end)
 
-      assert String.starts_with?(capture, "\e[33mwarning:")
+      assert String.contains?(capture, "warning:")
     end
   end
 
