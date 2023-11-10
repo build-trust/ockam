@@ -1,6 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use console::Term;
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::nodes::models::relay::RelayInfo;
@@ -8,28 +9,27 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::node::get_node_name;
+use crate::relay::util::relay_name_parser;
+use crate::terminal::tui::DeleteCommandTui;
 use crate::util::{node_rpc, parse_node_name};
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Delete a Relay
 #[derive(Clone, Debug, Args)]
-#[command(
-arg_required_else_help = false,
-after_long_help = docs::after_help(AFTER_LONG_HELP)
-)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct DeleteCommand {
-    /// Name assigned to Relay that will be deleted
-    #[arg(display_order = 900, required = true)]
-    relay_name: String,
+    /// Name assigned to the Relay, prefixed with 'forward_to_'. Example: 'forward_to_myrelay'
+    #[arg(value_parser = relay_name_parser)]
+    relay_name: Option<String>,
 
     /// Node on which to delete the Relay. If not provided, the default node will be used
     #[arg(global = true, long, value_name = "NODE")]
     pub at: Option<String>,
 
     /// Confirm the deletion without prompting
-    #[arg(display_order = 901, long, short)]
+    #[arg(long, short)]
     yes: bool,
 }
 
@@ -43,43 +43,121 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let relay_name = cmd.relay_name.clone();
-    let at = get_node_name(&opts.state, &cmd.at);
-    let node_name = parse_node_name(&at)?;
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    DeleteTui::run(ctx, opts, cmd).await
+}
 
-    // Check if relay exists
-    node.ask_and_get_reply::<_, RelayInfo>(
-        &ctx,
-        Request::get(format!("/node/forwarder/{relay_name}")),
-    )
-    .await?
-    .found()
-    .into_diagnostic()?
-    .ok_or(miette!("Relay with name '{}' does not exist", relay_name))?;
+struct DeleteTui {
+    ctx: Context,
+    opts: CommandGlobalOpts,
+    node: BackgroundNode,
+    cmd: DeleteCommand,
+}
 
-    // Proceed with the deletion
-    if opts
-        .terminal
-        .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this relay?")?
-    {
-        node.tell(
-            &ctx,
-            Request::delete(format!("/node/forwarder/{relay_name}",)),
-        )
-        .await?;
+impl DeleteTui {
+    pub async fn run(
+        ctx: Context,
+        opts: CommandGlobalOpts,
+        cmd: DeleteCommand,
+    ) -> miette::Result<()> {
+        let node_name = {
+            let name = get_node_name(&opts.state, &cmd.at);
+            parse_node_name(&name)?
+        };
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        let tui = Self {
+            ctx,
+            opts,
+            node,
+            cmd,
+        };
+        tui.delete().await
+    }
+}
 
-        opts.terminal
+#[ockam_core::async_trait]
+impl DeleteCommandTui for DeleteTui {
+    const ITEM_NAME: &'static str = "relay";
+
+    fn cmd_arg_item_name(&self) -> Option<&str> {
+        self.cmd.relay_name.as_deref()
+    }
+
+    fn cmd_arg_delete_all(&self) -> bool {
+        false
+    }
+
+    fn cmd_arg_confirm_deletion(&self) -> bool {
+        self.cmd.yes
+    }
+
+    fn terminal(&self) -> Terminal<TerminalStream<Term>> {
+        self.opts.terminal.clone()
+    }
+
+    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
+        self.cmd
+            .relay_name
+            .clone()
+            .ok_or(miette!("No relay name provided"))
+    }
+
+    async fn list_items_names(&self) -> miette::Result<Vec<String>> {
+        let relays: Vec<RelayInfo> = self
+            .node
+            .ask(&self.ctx, Request::get("/node/forwarder"))
+            .await?;
+        let names = relays
+            .into_iter()
+            .map(|i| i.remote_address().to_string())
+            .collect();
+        Ok(names)
+    }
+
+    async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
+        let node_name = self.node.node_name();
+        self.node
+            .tell(
+                &self.ctx,
+                Request::delete(format!("/node/forwarder/{item_name}")),
+            )
+            .await?;
+        self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "Relay with name {} on Node {} has been deleted.",
-                relay_name,
-                node_name
+                "Relay with name {} on Node {} has been deleted",
+                item_name.light_magenta(),
+                node_name.light_magenta()
             ))
-            .machine(&relay_name)
-            .json(serde_json::json!({ "name": relay_name, "node": node_name }))
-            .write_line()
-            .unwrap();
+            .write_line()?;
+        Ok(())
     }
-    Ok(())
+
+    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
+        let node_name = self.node.node_name();
+        let mut plain = String::new();
+        for item_name in items_names {
+            let res = self
+                .node
+                .tell(
+                    &self.ctx,
+                    Request::delete(format!("/node/forwarder/{item_name}")),
+                )
+                .await;
+            if res.is_ok() {
+                plain.push_str(&fmt_ok!(
+                    "Relay with name {} on Node {} has been deleted\n",
+                    item_name.light_magenta(),
+                    node_name.light_magenta()
+                ));
+            } else {
+                plain.push_str(&fmt_warn!(
+                    "Failed to delete relay with name {} on Node {}\n",
+                    item_name.light_magenta(),
+                    node_name.light_magenta()
+                ));
+            }
+        }
+        self.terminal().stdout().plain(plain).write_line()?;
+        Ok(())
+    }
 }

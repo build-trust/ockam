@@ -103,8 +103,8 @@ impl ShowCommandTui for ShowTui {
         Ok(())
     }
 
-    async fn show_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let nodes = list::get_nodes_info(&self.ctx, &self.opts, selected_items_names).await?;
+    async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
+        let nodes = list::get_nodes_info(&self.ctx, &self.opts, items_names).await?;
         list::print_nodes_info(&self.opts, nodes)?;
         Ok(())
     }
