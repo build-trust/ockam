@@ -111,7 +111,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        let node_name = self.node.name();
+        let node_name = self.node.node_name();
         self.node.delete_inlet(&self.ctx, item_name).await?;
         self.terminal()
             .stdout()
@@ -125,7 +125,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let node_name = self.node.name();
+        let node_name = self.node.node_name();
         let mut plain = String::new();
         for item_name in items_names {
             if self.node.delete_inlet(&self.ctx, &item_name).await.is_ok() {

@@ -38,7 +38,7 @@ teardown() {
   run_success $OCKAM relay create blue --at /node/n1 --to /node/n2
   run_success $OCKAM relay create red --at /node/n1 --to /node/n2
 
-  run_success $OCKAM relay list --to /node/n2
+  run_success $OCKAM relay list --to /node/n2 --output json
   assert_output --partial "\"remote_address\": \"forward_to_blue\""
   assert_output --partial "\"remote_address\": \"forward_to_red\""
 
@@ -47,17 +47,33 @@ teardown() {
   assert_output --partial "[]"
 }
 
-@test "relay - show a relay on a node" {
+@test "relay - CRUD" {
   run_success --separate-stderr "$OCKAM" node create n1
   run_success --separate-stderr "$OCKAM" node create n2
-  run_success "$OCKAM" relay create blue --at /node/n1 --to /node/n2
 
-  run_success "$OCKAM" relay show forward_to_blue --at /node/n2
+  # Create and show it
+  run_success "$OCKAM" relay create blue --at /node/n1 --to /node/n2
+  run_success "$OCKAM" relay show forward_to_blue --at /node/n2 --output json
   assert_output --regexp "\"relay_route\".* => 0#forward_to_blue"
   assert_output --partial "\"remote_address\":\"/service/forward_to_blue\""
   assert_output --regexp "\"worker_address\":\"/service/.*"
 
-  # Test showing non-existing with no relay
-  run_failure "$OCKAM" relay show relay_blank --at /node/n2
+  ## Try to show a non-existing relay
+  run_failure "$OCKAM" relay show forward_to_r --at /node/n2
   assert_output --partial "not found"
+
+  # Create another one and list both
+  run_success "$OCKAM" relay create red --at /node/n1 --to /node/n2
+  run_success "$OCKAM" relay list --to /node/n2 --output json
+  assert_output --partial "\"remote_address\": \"forward_to_blue\""
+  assert_output --partial "\"remote_address\": \"forward_to_red\""
+
+  # Delete the first
+  run_success "$OCKAM" relay delete -y forward_to_blue --at /node/n2
+  run_success "$OCKAM" relay list --to /node/n2 --output json
+  refute_output --partial "\"remote_address\": \"forward_to_blue\""
+  assert_output --partial "\"remote_address\": \"forward_to_red\""
+
+  ## Try to delete twice
+  run_failure "$OCKAM" relay delete -y forward_to_blue --at /node/n2
 }
