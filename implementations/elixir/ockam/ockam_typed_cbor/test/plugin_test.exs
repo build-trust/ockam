@@ -60,6 +60,58 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
     end
   end
 
+  describe "plugin compilation" do
+    test "errors with missing minicbor option" do
+      assert_raise RuntimeError, fn ->
+        Code.compile_string("""
+        defmodule Test.Minicbor.Error do
+          use TypedStruct
+
+          typedstruct do
+            plugin(Ockam.TypedCBOR.Plugin)
+            field(:name, String.t())
+          end
+        end
+        """)
+      end
+    end
+
+    test "errors when encoding is list and keys are not sequential" do
+      assert_raise RuntimeError, fn ->
+        Code.compile_string("""
+        defmodule Test.Keys.When.List do
+          use TypedStruct
+
+          typedstruct do
+            plugin(Ockam.TypedCBOR.Plugin, encode_as: :list)
+            field(:one, integer(), minicbor: [key: 1])
+            field(:three, integer(), minicbor: [key: 3])
+          end
+        end
+        """)
+      end
+    end
+
+    test "issues warning when encoding is struct and keys are not sequential" do
+      capture =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          Code.compile_string("""
+          defmodule Test.Keys.When.Struct do
+            use TypedStruct
+
+            typedstruct do
+              plugin(Ockam.TypedCBOR.Plugin)
+              field(:one, integer(), minicbor: [key: 1])
+              field(:three, integer(), minicbor: [key: 3])
+            end
+          end
+          """)
+        end)
+
+      assert String.starts_with?(capture, "\e[33mwarning:")
+    end
+  end
+
   test "encode-decode" do
     name = %Test.Name{firstname: "john", lastname: "smith"}
     p = %Test.Person{name: name, age: 23, gender: :male, addresses: [], like_shoes: false}

@@ -115,6 +115,13 @@ defmodule Ockam.TypedCBOR do
       ...>                                         a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
       ...>                              %{a1: "aa", a2: :a}))
       %{a1: "aa", a2: :a}
+
+      iex> from_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                            a2: %{key: 3, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                 to_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                                         a2: %{key: 3, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                              %{a1: "aa", a2: :a}))
+      ** (Ockam.TypedCBOR.Exception) invalid struct encoding, keys must be a sequence of integers starting at 1
   """
 
   alias Ockam.TypedCBOR.Exception
@@ -185,11 +192,19 @@ defmodule Ockam.TypedCBOR do
               "invalid struct encoding, expected #{inspect(field_count)} fields, got #{inspect(value_count)}"
       end
 
-    struct =
+    keys =
       fields
       |> Map.values()
       |> Enum.map(& &1.key)
       |> Enum.sort()
+
+    if keys != Enum.sort(1..field_count) do
+      raise Exception,
+        message: "invalid struct encoding, keys must be a sequence of integers starting at 1"
+    end
+
+    struct =
+      keys
       |> Enum.zip(values)
       |> Enum.into(%{})
 
