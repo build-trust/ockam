@@ -13,22 +13,18 @@ defmodule Ockam.TypedCBOR.Plugin do
   end
 
   @impl true
-  def field(name, type, [minicbor: minicbor], env) do
+  def field(name, type, opts, env) do
+    encode_as = Keyword.get(opts, :encode_as, :struct)
+    minicbor = Keyword.get(opts, :minicbor, nil)
+
+    if minicbor == nil, do: raise("field #{name} must supply a :minicbor option")
+
     %Macro.Env{module: mod} = env
     key = Keyword.fetch!(minicbor, :key)
     schema = field_schema(minicbor[:schema], type_to_spec(type))
     Module.put_attribute(mod, :tt_fields, {name, Map.put(schema, :key, key)})
-  end
 
-  def field(name, type, opts, env) do
-    if Keyword.has_key?(opts, :encode_as) do
-      opts = Keyword.delete(opts, :encode_as)
-      field(name, type, opts, env)
-    else
-      raise(
-        "field #{name} must supply a :minicbor option, and no other option is allowed #{inspect(opts)}"
-      )
-    end
+    validate_key_sequence(mod, encode_as)
   end
 
   defp field_schema(nil, [nil, t]), do: %{schema: t, required: false}
@@ -53,6 +49,24 @@ defmodule Ockam.TypedCBOR.Plugin do
     do: raise("provider schema #{inspect(schema)} must match enum type #{inspect(t)}")
 
   defp field_schema(schema, _), do: %{schema: schema, required: true}
+
+  defp validate_key_sequence(mod, :list) do
+    unless sequential_keys?(mod) do
+      raise("keys must be a sequence of integers starting at 1")
+    end
+  end
+
+  defp validate_key_sequence(mod, :struct) do
+    unless sequential_keys?(mod) do
+      IO.warn("keys should be a sequence of integers starting at 1")
+    end
+  end
+
+  defp sequential_keys?(mod) do
+    fields = Module.get_attribute(mod, :tt_fields)
+    keys = Enum.map(fields, fn {_, f} -> f[:key] end)
+    Enum.sort(keys) == Enum.sort(1..Enum.count(keys))
+  end
 
   def type_to_spec({:binary, _, _}), do: :binary
 
