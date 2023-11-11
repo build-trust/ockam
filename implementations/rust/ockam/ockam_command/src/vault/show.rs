@@ -1,12 +1,15 @@
-use std::fmt::Write;
-
 use clap::Args;
+use console::Term;
 use miette::IntoDiagnostic;
 
 use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
 
-use crate::util::local_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::output::Output;
+use crate::terminal::tui::ShowCommandTui;
+use crate::util::node_rpc;
+use crate::vault::util::VaultOutput;
+use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -26,33 +29,93 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        local_cmd(run_impl(opts, self));
+        node_rpc(run_impl, (opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let name = cmd
-        .name
-        .unwrap_or(opts.state.vaults.default()?.name().to_string());
-    let state = opts.state.vaults.get(name)?;
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> miette::Result<()> {
+    ShowTui::run(opts, cmd).await
+}
 
-    let json = serde_json::to_string_pretty(&state).into_diagnostic()?;
+pub struct ShowTui {
+    opts: CommandGlobalOpts,
+    vault_name: Option<String>,
+}
 
-    let plain = {
-        let mut buf = String::new();
+impl ShowTui {
+    pub async fn run(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
+        let tui = Self {
+            opts,
+            vault_name: cmd.name,
+        };
+        tui.show().await
+    }
+}
 
-        writeln!(buf, "Vault:").into_diagnostic()?;
-        for line in state.to_string().lines() {
-            writeln!(buf, "{:2}{}", "", line).into_diagnostic()?;
-        }
-        buf
-    };
+#[ockam_core::async_trait]
+impl ShowCommandTui for ShowTui {
+    const ITEM_NAME: &'static str = "vault";
 
-    opts.terminal
-        .stdout()
-        .json(json)
-        .plain(plain)
-        .write_line()?;
+    fn cmd_arg_item_name(&self) -> Option<&str> {
+        self.vault_name.as_deref()
+    }
 
-    Ok(())
+    fn terminal(&self) -> Terminal<TerminalStream<Term>> {
+        self.opts.terminal.clone()
+    }
+
+    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
+        Ok(self
+            .vault_name
+            .clone()
+            .unwrap_or(self.opts.state.vaults.default()?.name().to_string()))
+    }
+
+    async fn list_items_names(&self) -> miette::Result<Vec<String>> {
+        Ok(self.opts.state.vaults.list_items_names()?)
+    }
+
+    async fn show_single(&self, item_name: &str) -> miette::Result<()> {
+        let vault = VaultOutput::new(
+            &self.opts.state.vaults.get(item_name)?,
+            self.opts.state.vaults.is_default(item_name)?,
+        );
+        self.terminal()
+            .stdout()
+            .plain(vault.output()?)
+            .json(serde_json::to_string(&vault).into_diagnostic()?)
+            .machine(&vault.name)
+            .write_line()?;
+        Ok(())
+    }
+
+    async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
+        let filtered = self
+            .opts
+            .state
+            .vaults
+            .list()?
+            .into_iter()
+            .map(|v| {
+                VaultOutput::new(
+                    &v,
+                    self.opts.state.vaults.is_default(v.name()).unwrap_or(false),
+                )
+            })
+            .filter(|v| items_names.contains(&v.name))
+            .collect::<Vec<_>>();
+        let plain = self
+            .terminal()
+            .build_list(&filtered, "Vaults", "No Vaults found")?;
+        let json = serde_json::to_string(&filtered).into_diagnostic()?;
+        self.terminal()
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }
