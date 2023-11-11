@@ -18,7 +18,7 @@ use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use crate::identity::{get_identity_name, initialize_identity_if_default};
 
 use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::node_rpc;
+use crate::util::{is_enrolled_guard, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -81,6 +81,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, TicketCommand),
 ) -> miette::Result<()> {
+    is_enrolled_guard(&opts.state, cmd.cloud_opts.identity.as_deref())?;
     let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();
     let node = InMemoryNode::start_with_trust_context(
         &ctx,
