@@ -18,26 +18,26 @@ teardown() {
   v1=$(random_str)
   run_success "$OCKAM" vault create "${v1}"
 
-  run_success "$OCKAM" vault show "${v1}"
-  assert_output --partial "\"name\": \"${v1}\""
-  assert_output --partial "\"aws_kms\": false"
+  run_success "$OCKAM" vault show "${v1}" --output json
+  assert_output --partial "\"name\":\"${v1}\""
+  assert_output --partial "\"aws_kms\":false"
 
-  run_success "$OCKAM" vault list
-  assert_output --partial "\"is_default\": true"
+  run_success "$OCKAM" vault list --output json
+  assert_output --partial "\"is_default\":true"
 
   v2=$(random_str)
   run_success "$OCKAM" vault create "${v2}"
 
-  run_success "$OCKAM" vault show "${v2}"
-  assert_output --partial "\"name\": \"${v2}\""
-  assert_output --partial "\"aws_kms\": false"
+  run_success "$OCKAM" vault show "${v2}" --output json
+  assert_output --partial "\"name\":\"${v2}\""
+  assert_output --partial "\"aws_kms\":false"
 
-  run_success "$OCKAM" vault list
-  assert_output --partial "\"name\": \"${v1}\""
-  assert_output --partial "\"name\": \"${v2}\""
-  assert_output --partial "\"aws_kms\": false"
-  assert_output --partial "\"is_default\": true"
-  assert_output --partial "\"is_default\": false"
+  run_success "$OCKAM" vault list --output json
+  assert_output --partial "\"name\":\"${v1}\""
+  assert_output --partial "\"name\":\"${v2}\""
+  assert_output --partial "\"aws_kms\":false"
+  assert_output --partial "\"is_default\":true"
+  assert_output --partial "\"is_default\":false"
 }
 
 @test "vault - CRUD" {

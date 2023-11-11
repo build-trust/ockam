@@ -3,6 +3,7 @@ mod default;
 mod delete;
 mod list;
 mod show;
+mod util;
 
 use crate::vault::create::CreateCommand;
 use crate::vault::default::DefaultCommand;

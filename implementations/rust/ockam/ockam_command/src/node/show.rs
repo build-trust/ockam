@@ -79,7 +79,7 @@ impl ShowTui {
 
 #[ockam_core::async_trait]
 impl ShowCommandTui for ShowTui {
-    const ITEM_NAME: &'static str = "nodes";
+    const ITEM_NAME: &'static str = "node";
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.node_name.as_deref()
