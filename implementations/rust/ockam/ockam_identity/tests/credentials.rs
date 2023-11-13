@@ -29,7 +29,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let listener = secure_channels
         .create_secure_channel_listener(
             ctx,
-            server.identifier(),
+            &server,
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -39,7 +39,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         "test_trust_context_id".to_string(),
         Some(AuthorityService::new(
             secure_channels.identities().credentials(),
-            authority.identifier().clone(),
+            authority.clone(),
             None,
         )),
     );
@@ -50,7 +50,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .start(
             ctx,
             trust_context,
-            server.identifier().clone(),
+            server.clone(),
             "credential_exchange".into(),
             false,
         )
@@ -59,18 +59,18 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let channel = secure_channels
         .create_secure_channel(
             ctx,
-            client.identifier(),
+            &client,
             route!["listener"],
             SecureChannelOptions::new()
-                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
+                .with_trust_policy(TrustIdentifierPolicy::new(server.clone())),
         )
         .await?;
 
     let credential = credentials
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            client.identifier(),
+            &authority,
+            &client,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_superuser", "true")
                 .build(),
@@ -83,7 +83,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let attrs = identities_repository
-        .get_attributes(client.identifier())
+        .get_attributes(&client)
         .await?
         .unwrap();
 
@@ -110,8 +110,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let credential = credentials
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            client1.identifier(),
+            &authority,
+            &client1,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_admin", "true")
                 .build(),
@@ -122,7 +122,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let listener = secure_channels
         .create_secure_channel_listener(
             ctx,
-            client1.identifier(),
+            &client1,
             "listener",
             SecureChannelListenerOptions::new(),
         )
@@ -131,7 +131,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         "test_trust_context_id".to_string(),
         Some(AuthorityService::new(
             secure_channels.identities().credentials(),
-            authority.identifier().clone(),
+            authority.clone(),
             Some(Arc::new(CredentialsMemoryRetriever::new(credential))),
         )),
     );
@@ -142,7 +142,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .start(
             ctx,
             trust_context.clone(),
-            client1.identifier().clone(),
+            client1.clone(),
             "credential_exchange".into(),
             true,
         )
@@ -151,8 +151,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let credential = credentials
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            client2.identifier(),
+            &authority,
+            &client2,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_user", "true")
                 .build(),
@@ -163,7 +163,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let channel = secure_channels
         .create_secure_channel(
             ctx,
-            client2.identifier(),
+            &client2,
             route!["listener"],
             SecureChannelOptions::new(),
         )
@@ -179,7 +179,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let attrs1 = identities_repository
-        .get_attributes(client1.identifier())
+        .get_attributes(&client1)
         .await?
         .unwrap();
 
@@ -193,7 +193,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     );
 
     let attrs2 = identities_repository
-        .get_attributes(client2.identifier())
+        .get_attributes(&client2)
         .await?
         .unwrap();
 
@@ -220,14 +220,14 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     let options = SecureChannelListenerOptions::new();
     let listener = secure_channels
-        .create_secure_channel_listener(ctx, server.identifier(), "listener", options)
+        .create_secure_channel_listener(ctx, &server, "listener", options)
         .await?;
 
     let trust_context = TrustContext::new(
         "test_trust_context_id".to_string(),
         Some(AuthorityService::new(
             credentials.clone(),
-            authority.identifier().clone(),
+            authority.clone(),
             None,
         )),
     );
@@ -239,7 +239,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .start(
             ctx,
             trust_context,
-            server.identifier().clone(),
+            server.clone(),
             "credential_exchange".into(),
             false,
         )
@@ -248,18 +248,18 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let channel = secure_channels
         .create_secure_channel(
             ctx,
-            client.identifier(),
+            &client,
             route!["listener"],
             SecureChannelOptions::new()
-                .with_trust_policy(TrustIdentifierPolicy::new(server.identifier().clone())),
+                .with_trust_policy(TrustIdentifierPolicy::new(server.clone())),
         )
         .await?;
 
     let credential = credentials
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            client.identifier(),
+            &authority,
+            &client,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_superuser", "true")
                 .build(),

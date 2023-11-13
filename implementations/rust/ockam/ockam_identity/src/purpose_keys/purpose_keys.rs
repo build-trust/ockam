@@ -63,33 +63,27 @@ mod tests {
         let identities_creation = identities.identities_creation();
         let purpose_keys = identities.purpose_keys();
 
-        let identity = identities_creation.create_identity().await?;
+        let identifier = identities_creation.create_identity().await?;
         let credentials_key = purpose_keys
             .purpose_keys_creation()
-            .create_credential_purpose_key(identity.identifier())
+            .create_credential_purpose_key(&identifier)
             .await?;
         let secure_channel_key = purpose_keys
             .purpose_keys_creation()
-            .create_secure_channel_purpose_key(identity.identifier())
+            .create_secure_channel_purpose_key(&identifier)
             .await?;
 
         let credentials_key = purpose_keys
             .purpose_keys_verification()
-            .verify_purpose_key_attestation(
-                Some(identity.identifier()),
-                credentials_key.attestation(),
-            )
+            .verify_purpose_key_attestation(Some(&identifier), credentials_key.attestation())
             .await?;
         let secure_channel_key = purpose_keys
             .purpose_keys_verification()
-            .verify_purpose_key_attestation(
-                Some(identity.identifier()),
-                secure_channel_key.attestation(),
-            )
+            .verify_purpose_key_attestation(Some(&identifier), secure_channel_key.attestation())
             .await?;
 
-        assert_eq!(identity.identifier(), &credentials_key.subject);
-        assert_eq!(identity.identifier(), &secure_channel_key.subject);
+        assert_eq!(identifier, credentials_key.subject);
+        assert_eq!(identifier, secure_channel_key.subject);
 
         Ok(())
     }
@@ -100,66 +94,66 @@ mod tests {
         let identities_creation = identities.identities_creation();
         let purpose_keys = identities.purpose_keys();
 
-        let identity = identities_creation.create_identity().await?;
+        let identifier = identities_creation.create_identity().await?;
 
         let credentials_key = purpose_keys
             .purpose_keys_creation()
-            .create_credential_purpose_key(identity.identifier())
+            .create_credential_purpose_key(&identifier)
             .await?;
 
         assert!(purpose_keys
             .repository()
-            .retrieve_purpose_key(identity.identifier(), Purpose::Credentials)
+            .retrieve_purpose_key(&identifier, Purpose::Credentials)
             .await?
             .is_some());
         assert!(purpose_keys
             .repository()
-            .retrieve_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .retrieve_purpose_key(&identifier, Purpose::SecureChannel)
             .await?
             .is_none());
 
         let secure_channel_key = purpose_keys
             .purpose_keys_creation()
-            .create_secure_channel_purpose_key(identity.identifier())
+            .create_secure_channel_purpose_key(&identifier)
             .await?;
 
         let key = purpose_keys
             .repository()
-            .retrieve_purpose_key(identity.identifier(), Purpose::Credentials)
+            .retrieve_purpose_key(&identifier, Purpose::Credentials)
             .await?
             .unwrap();
         purpose_keys
             .purpose_keys_verification()
-            .verify_purpose_key_attestation(Some(identity.identifier()), &key)
+            .verify_purpose_key_attestation(Some(&identifier), &key)
             .await
             .unwrap();
         assert_eq!(&key, credentials_key.attestation());
 
         let key = purpose_keys
             .repository()
-            .retrieve_purpose_key(identity.identifier(), Purpose::SecureChannel)
+            .retrieve_purpose_key(&identifier, Purpose::SecureChannel)
             .await?
             .unwrap();
         purpose_keys
             .purpose_keys_verification()
-            .verify_purpose_key_attestation(Some(identity.identifier()), &key)
+            .verify_purpose_key_attestation(Some(&identifier), &key)
             .await
             .unwrap();
         assert_eq!(&key, secure_channel_key.attestation());
 
         let credentials_key2 = purpose_keys
             .purpose_keys_creation()
-            .create_credential_purpose_key(identity.identifier())
+            .create_credential_purpose_key(&identifier)
             .await?;
 
         let key = purpose_keys
             .repository()
-            .retrieve_purpose_key(identity.identifier(), Purpose::Credentials)
+            .retrieve_purpose_key(&identifier, Purpose::Credentials)
             .await?
             .unwrap();
         purpose_keys
             .purpose_keys_verification()
-            .verify_purpose_key_attestation(Some(identity.identifier()), &key)
+            .verify_purpose_key_attestation(Some(&identifier), &key)
             .await
             .unwrap();
         assert_eq!(&key, credentials_key2.attestation());

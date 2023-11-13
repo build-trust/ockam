@@ -137,7 +137,7 @@ async fn get_orchestrator_version(
     };
 
     // Establish secure channel with controller
-    let node_identity = opts
+    let node_identifier = opts
         .state
         .default_identities()
         .await?
@@ -149,7 +149,7 @@ async fn get_orchestrator_version(
         .with_timeout(timeout);
     let secure_channel = node
         .create_secure_channel(
-            node_identity.identifier(),
+            &node_identifier,
             route![connection, "api"],
             secure_channel_options,
         )

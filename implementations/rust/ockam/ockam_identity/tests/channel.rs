@@ -24,22 +24,17 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
 
     let bob_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
     let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "bob_listener", bob_options)
+        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
         .await?;
 
     let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
     let alice_channel = secure_channels
-        .create_secure_channel(
-            ctx,
-            alice.identifier(),
-            route!["bob_listener"],
-            alice_options,
-        )
+        .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
         .await?;
 
     let mut child_ctx = ctx
@@ -63,7 +58,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let msg = child_ctx.receive::<String>().await?;
 
     let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-    assert_eq!(&local_info.their_identity_id(), alice.identifier());
+    assert_eq!(local_info.their_identity_id(), alice);
 
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.body());
@@ -78,7 +73,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let msg = child_ctx.receive::<String>().await?;
 
     let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-    assert_eq!(&local_info.their_identity_id(), bob.identifier());
+    assert_eq!(local_info.their_identity_id(), bob);
 
     assert_eq!("Hello, Alice!", msg.body());
 
@@ -100,7 +95,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         "test".to_string(),
         Some(AuthorityService::new(
             secure_channels.identities().credentials(),
-            authority.identifier().clone(),
+            authority.clone(),
             None,
         )),
     );
@@ -110,8 +105,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            bob.identifier(),
+            &authority,
+            &bob,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_bob", "true")
                 .build(),
@@ -124,8 +119,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            bob.identifier(),
+            &authority,
+            &bob,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("bob_2", "true")
                 .build(),
@@ -136,7 +131,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             context,
-            bob.identifier(),
+            &bob,
             "bob_listener",
             SecureChannelListenerOptions::new()
                 .with_trust_context(trust_context.clone())
@@ -149,8 +144,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            alice.identifier(),
+            &authority,
+            &alice,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("is_alice", "true")
                 .build(),
@@ -163,8 +158,8 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         .credentials()
         .credentials_creation()
         .issue_credential(
-            authority.identifier(),
-            alice.identifier(),
+            &authority,
+            &alice,
             AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
                 .with_attribute("alice_2", "true")
                 .build(),
@@ -175,7 +170,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let _alice_channel = secure_channels
         .create_secure_channel(
             context,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new()
                 .with_trust_context(trust_context)
@@ -188,7 +183,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let alice_attributes = secure_channels
         .identities()
         .repository()
-        .get_attributes(alice.identifier())
+        .get_attributes(&alice)
         .await?
         .unwrap();
 
@@ -207,7 +202,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let bob_attributes = secure_channels
         .identities()
         .repository()
-        .get_attributes(bob.identifier())
+        .get_attributes(&bob)
         .await?
         .unwrap();
 
@@ -241,7 +236,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            bob.identifier(),
+            &bob,
             "bob_listener",
             SecureChannelListenerOptions::new().with_trust_policy(alice_broken_trust_policy),
         )
@@ -250,7 +245,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new().with_timeout(Duration::from_millis(500)),
         )
@@ -290,24 +285,19 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
 
     let bob_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
     let sc_listener_flow_control_id = bob_options.spawner_flow_control_id();
     secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "bob_listener", bob_options)
+        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
         .await?;
 
     let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
     let sc_flow_control_id = alice_options.producer_flow_control_id();
     let alice_channel = secure_channels
-        .create_secure_channel(
-            ctx,
-            alice.identifier(),
-            route!["bob_listener"],
-            alice_options,
-        )
+        .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
         .await?;
 
     let mut child_ctx = ctx
@@ -359,7 +349,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let bob_listener = secure_channels
         .create_secure_channel_listener(
             ctx,
-            bob.identifier(),
+            &bob,
             "bob_listener",
             SecureChannelListenerOptions::new(),
         )
@@ -368,7 +358,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new(),
         )
@@ -380,8 +370,8 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
         .unwrap();
 
     assert!(alice_channel_data.is_initiator());
-    assert_eq!(alice_channel_data.my_id(), alice.identifier());
-    assert_eq!(alice_channel_data.their_id(), bob.identifier());
+    assert_eq!(alice_channel_data.my_id(), &alice);
+    assert_eq!(alice_channel_data.their_id(), &bob);
 
     let mut bob_ctx = ctx
         .new_detached_with_mailboxes(Mailboxes::main(
@@ -413,8 +403,8 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
         .unwrap();
 
     assert!(!bob_channel_data.is_initiator());
-    assert_eq!(bob_channel_data.my_id(), bob.identifier());
-    assert_eq!(bob_channel_data.their_id(), alice.identifier());
+    assert_eq!(bob_channel_data.my_id(), &bob);
+    assert_eq!(bob_channel_data.their_id(), &alice);
 
     ctx.stop().await
 }
@@ -430,7 +420,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let bob_listener = secure_channels
         .create_secure_channel_listener(
             ctx,
-            bob.identifier(),
+            &bob,
             "bob_listener",
             SecureChannelListenerOptions::new(),
         )
@@ -439,7 +429,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new(),
         )
@@ -537,19 +527,19 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
 
     let bob_options =
         SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone());
     let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "bob_listener", bob_options)
+        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
         .await?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -559,19 +549,14 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         .as_consumer(bob_listener.flow_control_id())
         .with_trust_policy(bob_trust_policy);
     let bob_listener2 = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            bob.identifier(),
-            "bob_another_listener",
-            bob_options_2,
-        )
+        .create_secure_channel_listener(ctx, &bob, "bob_another_listener", bob_options_2)
         .await?;
 
     let alice_options2 = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
     let alice_another_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route![alice_channel, "bob_another_listener"],
             alice_options2,
         )
@@ -617,19 +602,19 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
 
     let bob_options =
         SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone());
     let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "bob_listener", bob_options)
+        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
         .await?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -639,13 +624,13 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .as_consumer(bob_listener.flow_control_id())
         .with_trust_policy(bob_trust_policy.clone());
     let bob_listener2 = secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "bob_another_listener", bob_options2)
+        .create_secure_channel_listener(ctx, &bob, "bob_another_listener", bob_options2)
         .await?;
 
     let alice_another_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route![alice_channel, "bob_another_listener"],
             SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone()),
         )
@@ -655,19 +640,14 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .as_consumer(bob_listener2.flow_control_id())
         .with_trust_policy(bob_trust_policy);
     let bob_listener3 = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            bob.identifier(),
-            "bob_yet_another_listener",
-            bob_options3,
-        )
+        .create_secure_channel_listener(ctx, &bob, "bob_yet_another_listener", bob_options3)
         .await?;
 
     let alice_options3 = SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone());
     let alice_yet_another_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route![alice_another_channel, "bob_yet_another_listener"],
             alice_options3,
         )
@@ -713,8 +693,8 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
 
     let n = rand::random::<u8>() % 5 + 4;
     let mut channels: Vec<Address> = vec![];
@@ -730,7 +710,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         };
         sc_listener_flow_control_id = Some(options.spawner_flow_control_id());
         secure_channels
-            .create_secure_channel_listener(ctx, bob.identifier(), i.to_string(), options)
+            .create_secure_channel_listener(ctx, &bob, i.to_string(), options)
             .await?;
         let mut route = route![i.to_string()];
         if let Some(last_channel) = channels.last() {
@@ -740,7 +720,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         let options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone());
         sc_flow_control_id = Some(options.producer_flow_control_id());
         let alice_channel = secure_channels
-            .create_secure_channel(ctx, alice.identifier(), route, options)
+            .create_secure_channel(ctx, &alice, route, options)
             .await?;
 
         channels.push(alice_channel.encryptor_address().clone());
@@ -812,7 +792,7 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().clone());
+    let access_control = IdentityAccessControlBuilder::new_with_id(alice.clone());
     WorkerBuilder::new(receiver)
         .with_address("receiver")
         .with_incoming_access_control(access_control)
@@ -821,18 +801,13 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
         .await?;
 
     let bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            bob.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(),
-        )
+        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["listener"],
             SecureChannelOptions::new().with_trust_policy(TrustEveryonePolicy),
         )
@@ -867,7 +842,7 @@ async fn access_control__unknown_participant__should_not_pass_messages(
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().clone());
+    let access_control = IdentityAccessControlBuilder::new_with_id(bob.clone());
     WorkerBuilder::new(receiver)
         .with_address("receiver")
         .with_incoming_access_control(access_control)
@@ -876,18 +851,13 @@ async fn access_control__unknown_participant__should_not_pass_messages(
         .await?;
 
     let bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            bob.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(),
-        )
+        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["listener"],
             SecureChannelOptions::new().with_trust_policy(TrustEveryonePolicy),
         )
@@ -984,7 +954,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
         .identities()
         .purpose_keys()
         .purpose_keys_creation()
-        .create_secure_channel_purpose_key(alice.identifier())
+        .create_secure_channel_purpose_key(&alice)
         .await?;
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
     assert_eq!(alice_sc_vault.number_of_ephemeral_aead_secrets(), 0);
@@ -997,13 +967,13 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
         .identities()
         .purpose_keys()
         .purpose_keys_creation()
-        .create_secure_channel_purpose_key(bob.identifier())
+        .create_secure_channel_purpose_key(&bob)
         .await?;
 
     secure_channels_bob
         .create_secure_channel_listener(
             ctx,
-            bob.identifier(),
+            &bob,
             "bob_listener",
             SecureChannelListenerOptions::new(),
         )
@@ -1017,7 +987,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     secure_channels_alice
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route!["bob_listener"],
             SecureChannelOptions::new(),
         )
@@ -1066,23 +1036,18 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
+    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
+    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
 
     let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
     let _bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "bob_listener", identity_options)
+        .create_secure_channel_listener(ctx, &bob, "bob_listener", identity_options)
         .await?;
 
     let _alice_sc = {
         let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
         secure_channels
-            .create_secure_channel(
-                ctx,
-                alice.identifier(),
-                route!["bob_listener"],
-                alice_options,
-            )
+            .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
             .await?
     };
 

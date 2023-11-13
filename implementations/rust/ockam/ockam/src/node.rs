@@ -5,7 +5,7 @@ use crate::identity::{
     IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
     SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
 };
-use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
+use crate::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
@@ -102,12 +102,7 @@ impl Node {
 
     /// Create an Identity
     pub async fn create_identity(&self) -> Result<Identifier> {
-        Ok(self
-            .identities_creation()
-            .create_identity()
-            .await?
-            .identifier()
-            .clone())
+        self.identities_creation().create_identity().await
     }
 
     /// Create the [`SecureChannel`] [`PurposeKey`]
@@ -123,22 +118,26 @@ impl Node {
     }
 
     /// Import an Identity given its private key and change history
-    /// Note: the data is not persisted!
     pub async fn import_private_identity(
         &self,
+        expected_identifier: Option<&Identifier>,
         identity_change_history: &[u8],
         key: &SigningSecretKeyHandle,
-    ) -> Result<Identity> {
+    ) -> Result<Identifier> {
         self.identities_creation()
-            .import_private_identity(identity_change_history, key)
+            .import_private_identity(expected_identifier, identity_change_history, key)
             .await
     }
 
     /// Import an Identity given that was exported as a hex-encoded string
-    pub async fn import_identity_hex(&self, data: &str) -> Result<Identity> {
+    pub async fn import_identity_hex(
+        &self,
+        expected_identifier: Option<&Identifier>,
+        data: &str,
+    ) -> Result<Identifier> {
         self.identities_creation()
             .import(
-                None,
+                expected_identifier,
                 &hex::decode(data).map_err(|_| OckamError::InvalidHex)?,
             )
             .await

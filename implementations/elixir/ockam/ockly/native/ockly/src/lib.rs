@@ -171,7 +171,8 @@ fn create_identity(env: Env, existing_key: Option<String>) -> NifResult<(Binary,
             None => builder.with_random_key(secret_type),
         };
 
-        builder.build().await
+        let identifier = builder.build().await?;
+        identities_ref.get_identity(&identifier).await
     })
     .map_err(|_| Error::Term(Box::new(atoms::identity_creation_error())))?;
 
@@ -238,7 +239,7 @@ fn verify_secure_channel_key_attestation(
         .map_err(|_| Error::Term(Box::new(atoms::invalid_public_key())))?;
     let k = X25519PublicKey(k);
     block_future(async move {
-        let identity = identities_ref
+        let identifier = identities_ref
             .identities_creation()
             .import(None, &identity)
             .await
@@ -246,7 +247,7 @@ fn verify_secure_channel_key_attestation(
         identities_ref
             .purpose_keys()
             .purpose_keys_verification()
-            .verify_purpose_key_attestation(Some(identity.identifier()), &attestation)
+            .verify_purpose_key_attestation(Some(&identifier), &attestation)
             .await
             .map_err(|_| atoms::attest_error())
             .and_then(|data| {
@@ -267,7 +268,7 @@ fn verify_secure_channel_key_attestation(
 #[rustler::nif]
 fn check_identity<'a>(env: Env<'a>, identity: Binary) -> NifResult<Binary<'a>> {
     let identities_ref = identities_ref()?;
-    let imported_identity = block_future(async move {
+    let identifier = block_future(async move {
         identities_ref
             .identities_creation()
             .import(None, &identity)
@@ -275,9 +276,9 @@ fn check_identity<'a>(env: Env<'a>, identity: Binary) -> NifResult<Binary<'a>> {
             .map_err(|_| atoms::identity_import_error())
     })
     .map_err(|reason| Error::Term(Box::new(reason)))?;
-    let id = imported_identity.identifier().to_string();
-    let mut binary = NewBinary::new(env, id.len());
-    binary.copy_from_slice(id.as_bytes());
+    let identifier = identifier.to_string();
+    let mut binary = NewBinary::new(env, identifier.len());
+    binary.copy_from_slice(identifier.as_bytes());
     Ok(binary.into())
 }
 
@@ -306,7 +307,7 @@ fn issue_credential<'a>(
             .credentials()
             .credentials_creation()
             .issue_credential(
-                issuer.identifier(),
+                &issuer,
                 &subject_identifier,
                 attr_builder.build(),
                 Duration::from_secs(duration),
@@ -342,7 +343,7 @@ fn verify_credential(
                 .import(None, &authority)
                 .await
                 .map_err(|_| atoms::identity_import_error())?;
-            authorities_identities.push(authority.identifier().clone());
+            authorities_identities.push(authority);
         }
         let credential_and_purpose_key_data = identities_ref
             .credentials()

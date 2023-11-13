@@ -109,8 +109,7 @@ pub async fn create_secure_channel_listener(
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
-    let identity = identities_creation.create_identity().await?;
-    let identifier = identity.identifier().clone();
+    let identifier = identities_creation.create_identity().await?;
     let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
     let listener = secure_channels
         .create_secure_channel_listener(ctx, &identifier, "listener", options)
@@ -138,8 +137,7 @@ pub async fn create_secure_channel(
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
-    let identity = identities_creation.create_identity().await?;
-    let identifier = identity.identifier().clone();
+    let identifier = identities_creation.create_identity().await?;
     let address = secure_channels
         .create_secure_channel(
             ctx,

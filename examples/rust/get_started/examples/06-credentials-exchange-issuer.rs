@@ -27,8 +27,8 @@ async fn main(ctx: Context) -> Result<()> {
     let node = Node::builder().with_vault(vault).build(&ctx).await?;
 
     let issuer_identity = hex::decode("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805").unwrap();
-    let issuer = node.import_private_identity(&issuer_identity, &secret).await?;
-    println!("issuer identifier {}", issuer.identifier());
+    let issuer = node.import_private_identity(None, &issuer_identity, &secret).await?;
+    println!("issuer identifier {}", issuer);
 
     // Tell the credential issuer about a set of public identifiers that are
     // known, in advance, to be members of the production cluster.
@@ -50,7 +50,7 @@ async fn main(ctx: Context) -> Result<()> {
     let credential_issuer = CredentialsIssuer::new(
         node.identities().repository(),
         node.credentials(),
-        issuer.identifier(),
+        &issuer,
         "trust_context".into(),
     );
     for identifier in known_identifiers.iter() {
@@ -68,12 +68,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a secure channel listener that only allows channels where the identity
     // at the other end of the channel can authenticate with the latest private key
     // corresponding to one of the above known public identifiers.
-    node.create_secure_channel_listener(
-        issuer.identifier(),
-        DefaultAddress::SECURE_CHANNEL_LISTENER,
-        sc_listener_options,
-    )
-    .await?;
+    node.create_secure_channel_listener(&issuer, DefaultAddress::SECURE_CHANNEL_LISTENER, sc_listener_options)
+        .await?;
 
     // Start a credential issuer worker that will only accept incoming requests from
     // authenticated secure channels with our known public identifiers.

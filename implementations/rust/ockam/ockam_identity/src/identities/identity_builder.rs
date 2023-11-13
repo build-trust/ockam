@@ -4,8 +4,8 @@ use ockam_vault::{SigningKeyType, SigningSecretKeyHandle};
 
 use crate::models::TimestampInSeconds;
 use crate::utils::now;
-use crate::IdentitiesCreation;
-use crate::{Identity, IdentityOptions};
+use crate::IdentityOptions;
+use crate::{Identifier, IdentitiesCreation};
 
 /// Default TTL for an Identity key
 pub const DEFAULT_IDENTITY_TTL: TimestampInSeconds = TimestampInSeconds(10 * 365 * 24 * 60 * 60); // Ten years
@@ -112,7 +112,7 @@ impl IdentityBuilder {
     }
 
     /// Create the corresponding [`Identity`]
-    pub async fn build(self) -> Result<Identity> {
+    pub async fn build(self) -> Result<Identifier> {
         let identities_creation = self.identities_creation.clone();
 
         let options = self.build_options().await?;

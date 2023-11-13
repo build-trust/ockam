@@ -46,9 +46,7 @@ async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<
         .identities()
         .identities_creation()
         .create_identity()
-        .await?
-        .identifier()
-        .clone();
+        .await?;
 
     let mut attributes = HashMap::<&str, &str>::default();
     attributes.insert("key", "value");
@@ -139,9 +137,7 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
         .identities()
         .identities_creation()
         .create_identity()
-        .await?
-        .identifier()
-        .clone();
+        .await?;
 
     let mut attributes = HashMap::<&str, &str>::default();
     attributes.insert("key", "value");
@@ -212,16 +208,12 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
         .identities()
         .identities_creation()
         .create_identity()
-        .await?
-        .identifier()
-        .clone();
+        .await?;
     let member2 = secure_channels
         .identities()
         .identities_creation()
         .create_identity()
-        .await?
-        .identifier()
-        .clone();
+        .await?;
 
     let mut attributes1 = HashMap::<&str, &str>::default();
     attributes1.insert("key1", "value1");
@@ -353,13 +345,13 @@ async fn default_configuration() -> Result<Configuration> {
     // Hack to create Authority Identity using the same vault and storage
     let authority_sc_temp = Authority::create(&configuration).await?.secure_channels();
 
-    let authority_identity = authority_sc_temp
+    let authority_identifier = authority_sc_temp
         .identities()
         .identities_creation()
         .create_identity()
         .await?;
 
-    configuration.identifier = authority_identity.identifier().clone();
+    configuration.identifier = authority_identifier;
 
     Ok(configuration)
 }
@@ -392,9 +384,7 @@ async fn setup(
             .identities()
             .identities_creation()
             .create_identity()
-            .await?
-            .identifier()
-            .clone();
+            .await?;
 
         let entry = AttributesEntry::new(attrs.clone(), now, None, None);
         trusted_identities.insert(admin.clone(), entry);

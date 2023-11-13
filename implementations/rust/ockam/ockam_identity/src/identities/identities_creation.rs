@@ -42,13 +42,13 @@ impl IdentitiesCreation {
         &self,
         expected_identifier: Option<&Identifier>,
         data: &[u8],
-    ) -> Result<Identity> {
+    ) -> Result<Identifier> {
         let identity =
             Identity::import(expected_identifier, data, self.verifying_vault.clone()).await?;
 
         self.update_identity(&identity).await?;
 
-        Ok(identity)
+        Ok(identity.identifier().clone())
     }
 
     /// Import and verify identity from its Change History
@@ -57,7 +57,7 @@ impl IdentitiesCreation {
         &self,
         expected_identifier: Option<&Identifier>,
         change_history: ChangeHistory,
-    ) -> Result<Identity> {
+    ) -> Result<Identifier> {
         let identity = Identity::import_from_change_history(
             expected_identifier,
             change_history,
@@ -67,7 +67,7 @@ impl IdentitiesCreation {
 
         self.update_identity(&identity).await?;
 
-        Ok(identity)
+        Ok(identity.identifier().clone())
     }
 
     /// Get an instance of [`IdentityBuilder`]
@@ -80,18 +80,21 @@ impl IdentitiesCreation {
     }
 
     /// Create an `Identity` and store it
-    pub async fn create_identity(&self) -> Result<Identity> {
+    pub async fn create_identity(&self) -> Result<Identifier> {
         let builder = self.identity_builder();
         builder.build().await
     }
 
     /// Create an `Identity` and store it
-    pub async fn create_identity_with_options(&self, options: IdentityOptions) -> Result<Identity> {
+    pub async fn create_identity_with_options(
+        &self,
+        options: IdentityOptions,
+    ) -> Result<Identifier> {
         let identity = self.identities_keys().create_initial_key(options).await?;
         self.repository
             .update_identity(identity.identifier(), identity.change_history())
             .await?;
-        Ok(identity)
+        Ok(identity.identifier().clone())
     }
 
     /// Rotate an existing `Identity` and update the stored version
@@ -134,10 +137,19 @@ impl IdentitiesCreation {
     /// implementations may allow importing a secret)
     pub async fn import_private_identity(
         &self,
+        expected_identifier: Option<&Identifier>,
         identity_change_history: &[u8],
         signing_secret_key_handle: &SigningSecretKeyHandle,
-    ) -> Result<Identity> {
-        let identity = self.import(None, identity_change_history).await?;
+    ) -> Result<Identifier> {
+        let identity = Identity::import(
+            expected_identifier,
+            identity_change_history,
+            self.verifying_vault.clone(),
+        )
+        .await?;
+
+        self.update_identity(&identity).await?;
+
         if identity.get_latest_public_key()?
             != self
                 .identity_vault
@@ -147,10 +159,7 @@ impl IdentitiesCreation {
             return Err(IdentityError::WrongSecretKey.into());
         }
 
-        self.repository
-            .update_identity(identity.identifier(), identity.change_history())
-            .await?;
-        Ok(identity)
+        Ok(identity.identifier().clone())
     }
 
     /// [`SigningVault`]

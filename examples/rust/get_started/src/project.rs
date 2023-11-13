@@ -57,9 +57,10 @@ pub async fn import_project(path: &str, identities: Arc<Identities>) -> Result<P
 
             let authority_identity = get_field_as_str(&values, "authority_identity")?;
             let identities_creation = identities.identities_creation();
-            let authority_public_identity = identities_creation
+            let authority_public_identifier = identities_creation
                 .import(None, &hex::decode(authority_identity).unwrap())
                 .await?;
+            let authority_identity = identities.get_identity(&authority_public_identifier).await?;
 
             let authority_access_route = get_field_as_str(&values, "authority_access_route")?;
             let authority_route =
@@ -71,7 +72,7 @@ pub async fn import_project(path: &str, identities: Arc<Identities>) -> Result<P
 
             Ok(Project {
                 project_identifier,
-                authority_identity: authority_public_identity,
+                authority_identity,
                 authority_route,
                 project_route,
             })

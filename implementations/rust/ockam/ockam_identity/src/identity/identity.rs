@@ -184,8 +184,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_display() {
+        let identities = identities();
         let data = hex::decode("81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820b23304f9473622847ca80dfda0d10f12eebc03f4041a64c956a9051a64c956a9028201815840c1598a6f85215c118a4744310bebfae71ec19353e1ede1582787592013d65a70c80aa4a4855d16d9b696a887be9bd97b2271245124857d67c07e0203564c3706").unwrap();
-        let identity = identities()
+        let identifier = identities
             .identities_creation()
             .import(
                 Some(&Identifier::from_str("Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f").unwrap()),
@@ -193,6 +194,7 @@ mod tests {
             )
             .await
             .unwrap();
+        let identity = identities.get_identity(&identifier).await.unwrap();
 
         let actual = format!("{identity}");
         let expected = r#"Identifier:     Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f
@@ -235,14 +237,14 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
             ))
             .build();
 
-        let identity0 = identities0
+        let identifier0 = identities0
             .identities_creation()
             .identity_builder()
             .with_existing_key(key0)
             .build()
             .await?;
-        let identifier = identity0.identifier().clone();
-        let identity0_bin = identity0.export()?;
+        let identity0 = identities0.get_identity(&identifier0).await?;
+        let identity0_bin = identities0.export_identity(&identifier0).await?;
 
         let identities01 = Identities::builder()
             .with_vault(Vault::new(
@@ -261,28 +263,28 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
             ))
             .build();
 
-        let identity01 = identities01
+        let identifier01 = identities01
             .identities_creation()
-            .import_private_identity(&identity0_bin, &key01)
+            .import_private_identity(Some(&identifier0), &identity0_bin, &key01)
             .await?;
-        assert_eq!(identity01.identifier(), &identifier);
-        let identity02 = identities02
+        assert_eq!(identifier01, identifier0);
+        let identifier02 = identities02
             .identities_creation()
-            .import_private_identity(&identity0_bin, &key02)
+            .import_private_identity(Some(&identifier0), &identity0_bin, &key02)
             .await?;
-        assert_eq!(identity02.identifier(), &identifier);
+        assert_eq!(identifier02, identifier0);
 
         identities01
             .identities_creation()
-            .rotate_identity(&identifier)
+            .rotate_identity(&identifier0)
             .await?;
-        let identity01 = identities01.get_identity(&identifier).await?;
+        let identity01 = identities01.get_identity(&identifier0).await?;
 
         identities02
             .identities_creation()
-            .rotate_identity(&identifier)
+            .rotate_identity(&identifier0)
             .await?;
-        let identity02 = identities02.get_identity(&identifier).await?;
+        let identity02 = identities02.get_identity(&identifier0).await?;
 
         assert_eq!(
             identity0.compare(&identity0),

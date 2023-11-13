@@ -7,8 +7,8 @@ use crate::error::ApiError;
 use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
 use ockam::identity::{
     identities, AuthorityService, CredentialsMemoryRetriever, CredentialsRetriever, Identifier,
-    Identities, Identity, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo,
-    SecureChannels, TrustContext,
+    Identities, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannels,
+    TrustContext,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Route};
@@ -115,7 +115,7 @@ impl TrustContextConfig {
         tcp_transport: Option<TcpTransport>,
     ) -> Result<TrustContext> {
         let authority = if let Some(authority_config) = self.authority.as_ref() {
-            let identity = authority_config.identity().await?;
+            let identifier = authority_config.identifier().await?;
             let credential_retriever =
                 if let Some(retriever_type) = &authority_config.own_credential {
                     Some(
@@ -129,7 +129,7 @@ impl TrustContextConfig {
 
             Some(AuthorityService::new(
                 secure_channels.identities().credentials(),
-                identity.identifier().clone(),
+                identifier,
                 credential_retriever,
             ))
         } else {
@@ -236,7 +236,7 @@ impl TrustAuthorityConfig {
         &self.identity
     }
 
-    pub async fn identity(&self) -> Result<Identity> {
+    pub async fn identifier(&self) -> Result<Identifier> {
         identities()
             .identities_creation()
             .import(
@@ -281,7 +281,7 @@ impl CredentialRetrieverConfig {
             CredentialRetrieverConfig::FromCredentialIssuer(issuer_config) => {
                 let _ = tcp_transport.ok_or_else(|| ApiError::core("TCP Transport was not provided when credential retriever was defined as an issuer."))?;
                 let credential_issuer_info = RemoteCredentialsRetrieverInfo::new(
-                    issuer_config.resolve_identity().await?.identifier().clone(),
+                    issuer_config.resolve_identity().await?,
                     issuer_config.resolve_route().await?,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
                 );
@@ -309,7 +309,7 @@ impl AuthoritiesConfig {
         self.authorities.iter()
     }
 
-    pub async fn to_identities(&self, identities: Arc<Identities>) -> Result<Vec<Identity>> {
+    pub async fn to_identities(&self, identities: Arc<Identities>) -> Result<Vec<Identifier>> {
         let mut v = Vec::new();
         for a in self.authorities.values() {
             v.push(
@@ -375,7 +375,7 @@ impl CredentialIssuerConfig {
         Ok(route)
     }
 
-    async fn resolve_identity(&self) -> Result<Identity> {
+    async fn resolve_identity(&self) -> Result<Identifier> {
         let encoded =
             hex::decode(&self.identity).map_err(|_| ApiError::core("Invalid project authority"))?;
         identities()

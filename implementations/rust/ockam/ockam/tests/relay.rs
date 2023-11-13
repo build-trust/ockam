@@ -166,11 +166,11 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
-    let cloud_identity = identities_creation.create_identity().await?;
+    let cloud = identities_creation.create_identity().await?;
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            cloud_identity.identifier(),
+            &cloud,
             "cloud_listener",
             cloud_secure_channel_listener_options,
         )
@@ -196,11 +196,11 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_server_connection = server_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
-    let server_identity = identities_creation.create_identity().await?;
+    let server = identities_creation.create_identity().await?;
     let cloud_server_channel = secure_channels
         .create_secure_channel(
             ctx,
-            server_identity.identifier(),
+            &server,
             route![cloud_server_connection, "cloud_listener"],
             server_secure_channel_options,
         )
@@ -208,7 +208,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     secure_channels
         .create_secure_channel_listener(
             ctx,
-            server_identity.identifier(),
+            &server,
             "server_listener",
             server_secure_channel_listener_options,
         )
@@ -222,11 +222,11 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let cloud_client_connection = client_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
-    let client_identity = identities_creation.create_identity().await?;
+    let client = identities_creation.create_identity().await?;
     let cloud_client_channel = secure_channels
         .create_secure_channel(
             ctx,
-            client_identity.identifier(),
+            &client,
             route![cloud_client_connection, "cloud_listener"],
             SecureChannelOptions::new(),
         )
@@ -235,7 +235,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let tunnel_channel = secure_channels
         .create_secure_channel(
             ctx,
-            client_identity.identifier(),
+            &client,
             route![
                 cloud_client_channel,
                 remote_info.remote_address(),

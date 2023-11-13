@@ -22,13 +22,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // create 2 identities to populate the trusted identities
     let identities = identities();
-    let auth_identity = identities.identities_creation().create_identity().await?;
-    let member_identity = identities.identities_creation().create_identity().await?;
+    let auth_identifier = identities.identities_creation().create_identity().await?;
+    let member_identifier = identities.identities_creation().create_identity().await?;
+    let member_identity = identities.get_identity(&member_identifier).await?;
 
     let now = now().unwrap();
 
     let pre_trusted = HashMap::from([(
-        member_identity.identifier().clone(),
+        member_identifier.clone(),
         AttributesEntry::new(
             BTreeMap::from([(b"attr".to_vec(), b"value".to_vec())]),
             now,
@@ -59,19 +60,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let options = SecureChannelListenerOptions::new();
     let sc_flow_control_id = options.spawner_flow_control_id();
     secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            auth_identity.identifier(),
-            api_worker_addr.clone(),
-            options,
-        )
+        .create_secure_channel_listener(ctx, &auth_identifier, api_worker_addr.clone(), options)
         .await?;
     ctx.flow_controls()
         .add_consumer(auth_worker_addr.clone(), &sc_flow_control_id);
     let auth = CredentialsIssuer::new(
         identities.repository(),
         identities.credentials(),
-        auth_identity.identifier(),
+        &auth_identifier,
         "project42".into(),
     );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
@@ -80,7 +76,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let e2a = secure_channels
         .create_secure_channel(
             ctx,
-            member_identity.identifier(),
+            &member_identifier,
             api_worker_addr,
             SecureChannelOptions::new(),
         )
@@ -94,17 +90,13 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let exported = member_identity.export()?;
 
     let imported = identities_creation
-        .import(Some(member_identity.identifier()), &exported)
+        .import(Some(&member_identifier), &exported)
         .await
         .unwrap();
     let data = identities
         .credentials()
         .credentials_verification()
-        .verify_credential(
-            Some(imported.identifier()),
-            &[auth_identity.identifier().clone()],
-            &credential,
-        )
+        .verify_credential(Some(&imported), &[auth_identifier.clone()], &credential)
         .await?;
     assert_eq!(
         Some(&b"project42".to_vec().into()),

@@ -85,8 +85,9 @@ async fn run_impl(
             }
         };
 
+        let issuer_exported = identities.export_identity(&issuer).await?;
         let cred = hex::decode(&cred_as_str)?;
-        if let Err(e) = validate_encoded_cred(&cred, identities, issuer.identifier()).await {
+        if let Err(e) = validate_encoded_cred(&cred, identities, &issuer).await {
             *is_finished.lock().await = true;
             return Err(miette!("Credential is invalid\n{}", e).into());
         }
@@ -94,7 +95,7 @@ async fn run_impl(
         // store
         opts.state.credentials.create(
             &cmd.credential_name,
-            CredentialConfig::new(issuer.identifier().clone(), issuer.export()?, cred)?,
+            CredentialConfig::new(issuer.clone(), issuer_exported, cred)?,
         )?;
 
         *is_finished.lock().await = true;

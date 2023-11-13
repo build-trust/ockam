@@ -88,7 +88,7 @@ impl CreateCommand {
                 .identities_creation();
 
             // Create an identity using the KMS key, if provided.
-            let identity = match &self.key_id {
+            let identifier = match &self.key_id {
                 Some(key_id) => {
                     if !vault_state.config().is_aws() {
                         Err(miette!(
@@ -111,10 +111,8 @@ impl CreateCommand {
             }?;
 
             opts.state
-                .create_identity_state(identity.identifier(), Some(&self.name))
+                .create_identity_state(&identifier, Some(&self.name))
                 .await?;
-
-            let identifier = identity.identifier().clone();
 
             *is_finished.lock().await = true;
             Ok(identifier)

@@ -12,14 +12,12 @@ mod common;
 async fn test_valid_identity() -> Result<()> {
     let identities = Identities::builder().build();
     let identities_creation = identities.identities_creation();
-    let identity = identities_creation.create_identity().await?;
+    let identifier = identities_creation.create_identity().await?;
 
     let j: i32 = thread_rng().gen_range(1..10);
     for _ in 0..j {
         // We internally check the validity during the rotation
-        identities_creation
-            .rotate_identity(identity.identifier())
-            .await?;
+        identities_creation.rotate_identity(&identifier).await?;
     }
 
     Ok(())
@@ -35,8 +33,8 @@ async fn test_invalid_signature() -> Result<()> {
     });
     let identities = Identities::builder().with_vault(vault).build();
     let identities_creation = identities.identities_creation();
-    let identity = identities_creation.create_identity().await?;
-    let identifier = identity.identifier().clone();
+    let identifier = identities_creation.create_identity().await?;
+    let identity = identities.get_identity(&identifier).await?;
     let res = check_identity(&identity).await;
 
     if crazy_signing_vault.forged_operation_occurred() {
@@ -68,20 +66,14 @@ async fn test_invalid_signature() -> Result<()> {
 async fn test_eject_signatures() -> Result<()> {
     let identities = Identities::builder().build();
     let identities_creation = identities.identities_creation();
-    let identity = identities_creation.create_identity().await?;
-    let identifier = identity.identifier().clone();
+    let identifier = identities_creation.create_identity().await?;
 
     let j: i32 = thread_rng().gen_range(1..10);
     for _ in 0..j {
-        identities_creation
-            .rotate_identity(identity.identifier())
-            .await?;
+        identities_creation.rotate_identity(&identifier).await?;
     }
 
-    let identity = identities
-        .repository()
-        .get_identity(identity.identifier())
-        .await?;
+    let identity = identities.repository().get_identity(&identifier).await?;
     let change_history = eject_random_signature(&identity)?;
     let res = check_change_history(Some(&identifier), change_history).await;
     assert!(res.is_err());
