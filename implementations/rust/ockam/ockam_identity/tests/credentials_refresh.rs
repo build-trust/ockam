@@ -15,7 +15,7 @@ use ockam_node::Context;
 
 #[ockam_macros::test]
 async fn autorefresh(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
     let credentials = identities.credentials();
@@ -96,7 +96,7 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
     let credentials = identities.credentials();
@@ -152,7 +152,7 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(100)).await;
 
-    let attributes_reader = identities.repository().as_attributes_reader();
+    let attributes_reader = identities.identity_attributes_repository();
 
     let added1 = attributes_reader
         .get_attributes(&client)
@@ -188,7 +188,7 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn autorefresh_retry(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
     let credentials = identities.credentials();

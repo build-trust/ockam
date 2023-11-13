@@ -600,13 +600,13 @@ mod tests {
     use super::*;
     use hex::decode;
     use ockam_core::Result;
-    use ockam_node::InMemoryKeyValueStorage;
+    use ockam_vault::storage::SecretsSqlxDatabase;
     use ockam_vault::{SoftwareVaultForSecureChannels, X25519SecretKey};
 
     #[tokio::test]
     async fn test_initialization() -> Result<()> {
         let vault = Arc::new(SoftwareVaultForSecureChannels::new(
-            InMemoryKeyValueStorage::create(),
+            SecretsSqlxDatabase::create().await?,
         ));
 
         let static_key = vault.generate_static_x25519_secret_key().await?;
@@ -688,7 +688,7 @@ mod tests {
     }
 
     async fn check_handshake(messages: HandshakeMessages) -> Result<()> {
-        let vault = SoftwareVaultForSecureChannels::create();
+        let vault = SoftwareVaultForSecureChannels::create().await?;
 
         let initiator_static_key_id = vault
             .import_static_x25519_secret(messages.initiator_static_key)

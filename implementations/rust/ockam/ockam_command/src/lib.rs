@@ -17,6 +17,65 @@
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
 
+use std::{path::PathBuf, sync::Mutex};
+
+use clap::{ArgAction, Args, Parser, Subcommand};
+use colorful::Colorful;
+use console::Term;
+use miette::GraphicalReportHandler;
+use once_cell::sync::Lazy;
+
+use authenticated::AuthenticatedCommand;
+use completion::CompletionCommand;
+use configuration::ConfigurationCommand;
+use credential::CredentialCommand;
+use enroll::EnrollCommand;
+use environment::EnvironmentCommand;
+use error::{Error, Result};
+use identity::IdentityCommand;
+use kafka::consumer::KafkaConsumerCommand;
+use kafka::producer::KafkaProducerCommand;
+use lease::LeaseCommand;
+use manpages::ManpagesCommand;
+use markdown::MarkdownCommand;
+use message::MessageCommand;
+use node::NodeCommand;
+use ockam_api::cli_state::CliState;
+use ockam_core::env::get_env_with_default;
+use policy::PolicyCommand;
+use project::ProjectCommand;
+use relay::RelayCommand;
+use reset::ResetCommand;
+use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
+use service::ServiceCommand;
+#[cfg(feature = "orchestrator")]
+use share::ShareCommand;
+use space::SpaceCommand;
+use status::StatusCommand;
+use tcp::{
+    connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
+    outlet::TcpOutletCommand,
+};
+use trust_context::TrustContextCommand;
+use upgrade::check_if_an_upgrade_is_available;
+use util::{exitcode, exitcode::ExitCode};
+use vault::VaultCommand;
+use version::Version;
+use worker::WorkerCommand;
+
+use crate::admin::AdminCommand;
+use crate::authority::AuthorityCommand;
+use crate::flow_control::FlowControlCommand;
+use crate::kafka::direct::KafkaDirectCommand;
+use crate::kafka::outlet::KafkaOutletCommand;
+use crate::logs::setup_logging;
+use crate::node::NodeSubcommand;
+use crate::output::{Output, OutputFormat};
+use crate::run::RunCommand;
+use crate::sidecar::SidecarCommand;
+use crate::subscription::SubscriptionCommand;
+pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
+
 mod admin;
 mod authenticated;
 mod authority;
@@ -61,63 +120,6 @@ pub mod util;
 mod vault;
 mod version;
 mod worker;
-
-use crate::admin::AdminCommand;
-use crate::authority::AuthorityCommand;
-use crate::flow_control::FlowControlCommand;
-use crate::logs::setup_logging;
-use crate::node::NodeSubcommand;
-use crate::run::RunCommand;
-use crate::subscription::SubscriptionCommand;
-pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
-use authenticated::AuthenticatedCommand;
-use clap::{ArgAction, Args, Parser, Subcommand};
-
-use crate::kafka::direct::KafkaDirectCommand;
-use crate::kafka::outlet::KafkaOutletCommand;
-use crate::output::{Output, OutputFormat};
-use crate::sidecar::SidecarCommand;
-use colorful::Colorful;
-use completion::CompletionCommand;
-use configuration::ConfigurationCommand;
-use console::Term;
-use credential::CredentialCommand;
-use enroll::EnrollCommand;
-use environment::EnvironmentCommand;
-use error::{Error, Result};
-use identity::IdentityCommand;
-use kafka::consumer::KafkaConsumerCommand;
-use kafka::producer::KafkaProducerCommand;
-use lease::LeaseCommand;
-use manpages::ManpagesCommand;
-use markdown::MarkdownCommand;
-use message::MessageCommand;
-use miette::GraphicalReportHandler;
-use node::NodeCommand;
-use ockam_api::cli_state::CliState;
-use ockam_core::env::get_env_with_default;
-use once_cell::sync::Lazy;
-use policy::PolicyCommand;
-use project::ProjectCommand;
-use relay::RelayCommand;
-use reset::ResetCommand;
-use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
-use service::ServiceCommand;
-#[cfg(feature = "orchestrator")]
-use share::ShareCommand;
-use space::SpaceCommand;
-use status::StatusCommand;
-use std::{path::PathBuf, sync::Mutex};
-use tcp::{
-    connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
-    outlet::TcpOutletCommand,
-};
-use trust_context::TrustContextCommand;
-use upgrade::check_if_an_upgrade_is_available;
-use util::{exitcode, exitcode::ExitCode};
-use vault::VaultCommand;
-use version::Version;
-use worker::WorkerCommand;
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -240,7 +242,7 @@ pub struct CommandGlobalOpts {
 
 impl CommandGlobalOpts {
     pub fn new(global_args: GlobalArgs) -> Self {
-        let state = match CliState::initialize() {
+        let state = match CliState::with_default_dir() {
             Ok(state) => state,
             Err(err) => {
                 eprintln!("Failed to initialize state: {}", err);
@@ -250,7 +252,7 @@ impl CommandGlobalOpts {
                 let state = CliState::backup_and_reset().expect(
                     "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
                 );
-                let dir = &state.dir;
+                let dir = state.dir();
                 let backup_dir = CliState::backup_default_dir().unwrap();
                 eprintln!(
                     "The {dir:?} directory has been reset and has been backed up to {backup_dir:?}"
@@ -494,13 +496,9 @@ impl OckamCommand {
                 }
                 // In the case where a node is explicitly created in foreground mode, we need
                 // to initialize the node directories before we can get the log path.
-                let path = opts
-                    .state
-                    .nodes
-                    .stdout_logs(&c.node_name)
-                    .unwrap_or_else(|_| {
-                        panic!("Failed to initialize logs file for node {}", c.node_name)
-                    });
+                let path = opts.state.stdout_logs(&c.node_name).unwrap_or_else(|_| {
+                    panic!("Failed to initialize logs file for node {}", c.node_name)
+                });
                 return Some(path);
             }
         }
@@ -518,6 +516,7 @@ pub(crate) fn display_parse_logs(opts: &CommandGlobalOpts) {
         logs.clear();
     }
 }
+
 pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     let input_stream = std::io::stdin();
     if s.contains("/-") {

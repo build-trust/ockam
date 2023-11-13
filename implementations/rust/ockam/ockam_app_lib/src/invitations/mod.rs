@@ -1,14 +1,15 @@
-pub(crate) mod commands;
-pub(crate) mod state;
-
 use std::net::SocketAddr;
+
 use tracing::{debug, warn};
+
+use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cloud::share::CreateServiceInvitation;
 
 use crate::state::{AppState, NODE_NAME};
 use crate::Error;
-use ockam_api::cli_state::StateDirTrait;
-use ockam_api::cloud::share::CreateServiceInvitation;
-use ockam_api::identity::EnrollmentTicket;
+
+pub(crate) mod commands;
+pub(crate) mod state;
 
 impl AppState {
     pub(crate) async fn build_args_for_create_service_invitation(
@@ -33,15 +34,15 @@ impl AppState {
             .ok_or::<Error>(
                 format!("The outlet {outlet_socket_addr} wasn't found in the App state").into(),
             )??;
-        let project = cli_state.projects.default()?;
+        let project = cli_state.get_default_project().await?;
 
         Ok(CreateServiceInvitation::new(
             &cli_state,
             None,
             project.name(),
-            recipient_email,
-            NODE_NAME,
-            service_route.to_string().as_str(),
+            recipient_email.to_string(),
+            NODE_NAME.to_string(),
+            service_route.to_string(),
             enrollment_ticket,
         )
         .await?)

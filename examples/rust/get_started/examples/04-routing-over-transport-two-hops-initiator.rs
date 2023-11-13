@@ -5,7 +5,7 @@ use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpTransportExte
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
 
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;

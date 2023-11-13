@@ -25,12 +25,25 @@ unused_import_braces,
 unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-#[cfg(feature = "std")]
-extern crate core;
-
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate core;
+
+///
+/// Exports
+///
+pub use credentials::*;
+pub use error::*;
+pub use identities::*;
+pub use identity::*;
+pub use models::{Attributes, Credential, Identifier, TimestampInSeconds};
+pub use purpose_key::*;
+pub use purpose_keys::*;
+pub use secure_channel::*;
+pub use secure_channels::*;
+pub use vault::*;
 
 /// Utilities
 pub mod utils;
@@ -62,23 +75,5 @@ pub mod secure_channel;
 /// Service supporting the creation of secure channel listener and connection to a listener
 pub mod secure_channels;
 
-/// Storage functions
-pub mod storage;
-
 /// Vault
 pub mod vault;
-
-///
-/// Exports
-///
-pub use credentials::*;
-pub use error::*;
-pub use identities::*;
-pub use identity::*;
-pub use purpose_key::*;
-pub use purpose_keys::*;
-pub use secure_channel::*;
-pub use secure_channels::*;
-pub use vault::*;
-
-pub use models::{Attributes, Credential, Identifier, TimestampInSeconds};

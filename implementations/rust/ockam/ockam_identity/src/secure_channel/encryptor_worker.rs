@@ -1,12 +1,15 @@
 use core::cmp::max;
+
+use tracing::{debug, error, info};
+
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{async_trait, Decodable, Route};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, Decodable, Error, Route};
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::{Context, DelayedEvent};
-use tracing::{debug, error, info};
 
 use crate::models::{CredentialData, VersionedData};
 use crate::secure_channel::addresses::Addresses;
@@ -14,8 +17,8 @@ use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
 use crate::utils::now;
 use crate::{
-    AuthorityService, Identifier, IdentitiesReader, IdentityError, PlaintextPayloadMessage,
-    RefreshCredentialsMessage, SecureChannelMessage, TimestampInSeconds,
+    ChangeHistoryRepository, Identifier, IdentityError, PlaintextPayloadMessage,
+    RefreshCredentialsMessage, SecureChannelMessage, TimestampInSeconds, TrustContext,
 };
 
 pub(crate) struct EncryptorWorker {
@@ -25,7 +28,7 @@ pub(crate) struct EncryptorWorker {
     remote_route: Route,
     encryptor: Encryptor,
     my_identifier: Identifier,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
     /// Expiration timestamp of the credential we presented (or the soonest if there are multiple)
     min_credential_expiration: Option<TimestampInSeconds>,
     /// The smallest interval of querying for a new credential from the credential retriever.
@@ -36,7 +39,7 @@ pub(crate) struct EncryptorWorker {
     refresh_credential_time_gap: Duration,
     credential_refresh_event: Option<DelayedEvent<()>>,
     // TODO: Should be CredentialsRetriever
-    credentials_retriever: Option<AuthorityService>,
+    trust_context: Option<TrustContext>,
 }
 
 impl EncryptorWorker {
@@ -47,11 +50,11 @@ impl EncryptorWorker {
         remote_route: Route,
         encryptor: Encryptor,
         my_identifier: Identifier,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
         min_credential_expiration: Option<TimestampInSeconds>,
         min_credential_refresh_interval: Duration,
         refresh_credential_time_gap: Duration,
-        credentials_retriever: Option<AuthorityService>,
+        trust_context: Option<TrustContext>,
     ) -> Self {
         Self {
             role,
@@ -59,12 +62,12 @@ impl EncryptorWorker {
             remote_route,
             encryptor,
             my_identifier,
-            identities_reader,
+            change_history_repository,
             min_credential_expiration,
             min_credential_refresh_interval,
             refresh_credential_time_gap,
             credential_refresh_event: None,
-            credentials_retriever,
+            trust_context,
         }
     }
 
@@ -171,16 +174,34 @@ impl EncryptorWorker {
         );
 
         let change_history = self
-            .identities_reader
-            .get_identity(&self.my_identifier)
-            .await?;
+            .change_history_repository
+            .get_change_history(&self.my_identifier)
+            .await?
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!(
+                        "no change history found for identifier {}",
+                        self.my_identifier
+                    ),
+                )
+            })?;
 
-        let credential = if let Some(credentials_retriever) = &self.credentials_retriever {
-            match credentials_retriever
-                .credential(ctx, &self.my_identifier)
-                .await
-            {
-                Ok(credential) => credential,
+        let credential = if let Some(trust_context) = &self.trust_context {
+            match trust_context.get_credential(ctx, &self.my_identifier).await {
+                Ok(Some(credential)) => credential,
+                // TODO: remove the duplication with the next case when reworking the trust contexts
+                Ok(None) => {
+                    info!(
+                        "Credentials refresh failed for {} and is rescheduled in {} seconds",
+                        self.addresses.encryptor,
+                        self.min_credential_refresh_interval.as_secs()
+                    );
+                    // Will schedule a refresh in self.min_credential_refresh_interval
+                    self.schedule_credentials_refresh(ctx, true).await?;
+                    return Err(IdentityError::NoCredentialsSet.into());
+                }
                 Err(err) => {
                     info!(
                         "Credentials refresh failed for {} and is rescheduled in {} seconds",

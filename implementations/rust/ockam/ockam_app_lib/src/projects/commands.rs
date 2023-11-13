@@ -4,14 +4,15 @@ use std::time::Duration;
 use tracing::{debug, info, trace, warn};
 
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
-use ockam_api::cloud::project::Projects;
-use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
-use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
+use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cloud::project::{Project, Projects};
 
-use super::error::{Error, Result};
-use crate::projects::error::Error::{InternalFailure, ListingFailed};
+use crate::projects::error::Error::ListingFailed;
 use crate::state::{AppState, StateKind};
 
+use super::error::{Error, Result};
+
+// Store the user's admin projects
 impl AppState {
     pub(crate) async fn create_enrollment_ticket(
         &self,
@@ -25,16 +26,10 @@ impl AppState {
             .find(|p| p.id == project_id)
             .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?
             .clone();
-        let project_authority = ProjectAuthority::from_project(&project)
-            .await
-            .into_diagnostic()?
-            .ok_or(Error::ProjectInvalidState(
-                "project has no authority set".to_string(),
-            ))?;
         let authority_node = self
             .authority_node(
-                project_authority.identity_id(),
-                project_authority.address(),
+                &project.authority_identifier().await.into_diagnostic()?,
+                &project.authority_access_route().into_diagnostic()?,
                 None,
             )
             .await
@@ -47,9 +42,7 @@ impl AppState {
                 None,
             )
             .await?;
-        let project_lookup = ProjectLookup::from_project(&project).await.ok();
-        let trust_context = project.try_into().ok();
-        Ok(EnrollmentTicket::new(otc, project_lookup, trust_context))
+        Ok(EnrollmentTicket::new(otc, Some(project)))
     }
 
     pub(crate) async fn refresh_projects(&self) -> Result<()> {
@@ -65,12 +58,9 @@ impl AppState {
             }
         };
 
-        let controller = self
-            .controller()
-            .await
-            .map_err(|e| InternalFailure(e.to_string()))?;
-        let projects = controller
-            .list_projects(&self.context())
+        let node_manager = self.node_manager().await;
+        let projects = node_manager
+            .get_projects(&self.context())
             .await
             .map_err(|e| ListingFailed(e.to_string()))?
             .into_iter()
@@ -78,13 +68,6 @@ impl AppState {
             .collect::<Vec<Project>>();
         debug!("Projects fetched");
         trace!(?projects);
-
-        let cli_projects = self.state().await.projects;
-        for project in &projects {
-            cli_projects
-                .overwrite(&project.name, project.clone())
-                .map_err(|_| Error::StateSaveFailed)?;
-        }
 
         *self.projects().write().await = projects;
         self.mark_as_loaded(StateKind::Projects);

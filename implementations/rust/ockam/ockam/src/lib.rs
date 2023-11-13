@@ -43,26 +43,56 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-extern crate core;
-
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
-
+#[cfg(feature = "std")]
+extern crate core;
 #[macro_use]
 extern crate tracing;
 
+pub use error::OckamError;
+pub use metadata::OckamMessage;
+pub use node::*;
+#[cfg(feature = "std")]
+pub use ockam_abac as abac;
+/// Mark an Ockam Processor implementation.
+///
+/// This is currently implemented as a re-export of the `async_trait` macro, but
+/// may be changed in the future to a [`Processor`](crate::Processor)-specific macro.
+pub use ockam_core::processor;
+/// Mark an Ockam Worker implementation.
+///
+/// This is currently implemented as a re-export of the `async_trait` macro, but
+/// may be changed in the future to a [`Worker`](crate::Worker)-specific macro.
+pub use ockam_core::worker;
+pub use ockam_core::{
+    allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,
+    Mailbox, Mailboxes, Message, Processor, ProtocolId, Result, Route, Routed, TransportMessage,
+    Worker,
+};
+pub use ockam_identity as identity;
 // ---
 // Export the ockam macros that aren't coming from ockam_core.
 pub use ockam_macros::{node, test};
-// ---
-
 // Export node implementation
+#[cfg(feature = "std")]
+pub use ockam_node::database::*;
 pub use ockam_node::{
     debugger, Context, DelayedEvent, Executor, MessageReceiveOptions, MessageSendReceiveOptions,
     NodeBuilder, WorkerBuilder,
 };
+#[cfg(feature = "ockam_transport_tcp")]
+pub use ockam_transport_tcp::{
+    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
+    TcpTransportExtension,
+};
+pub use relay_service::{RelayService, RelayServiceOptions};
+pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
+pub use unique::unique_with_prefix;
+
+// ---
+
 // ---
 
 mod delay;
@@ -73,12 +103,6 @@ mod relay_service;
 mod system;
 mod unique;
 
-pub use error::OckamError;
-pub use metadata::OckamMessage;
-pub use relay_service::{RelayService, RelayServiceOptions};
-pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
-pub use unique::unique_with_prefix;
-
 pub mod channel;
 pub mod pipe;
 pub mod pipe2;
@@ -86,18 +110,6 @@ pub mod protocols;
 pub mod remote;
 pub mod stream;
 pub mod workers;
-
-#[cfg(feature = "std")]
-pub use ockam_abac as abac;
-pub use ockam_identity as identity;
-#[cfg(feature = "std")]
-pub use ockam_identity::storage::lmdb_storage::*;
-
-pub use ockam_core::{
-    allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,
-    Mailbox, Mailboxes, Message, Processor, ProtocolId, Result, Route, Routed, TransportMessage,
-    Worker,
-};
 
 /// Access Control
 pub mod access_control {
@@ -109,18 +121,6 @@ pub mod access_control {
 pub mod flow_control {
     pub use ockam_core::flow_control::*;
 }
-
-/// Mark an Ockam Worker implementation.
-///
-/// This is currently implemented as a re-export of the `async_trait` macro, but
-/// may be changed in the future to a [`Worker`](crate::Worker)-specific macro.
-pub use ockam_core::worker;
-
-/// Mark an Ockam Processor implementation.
-///
-/// This is currently implemented as a re-export of the `async_trait` macro, but
-/// may be changed in the future to a [`Processor`](crate::Processor)-specific macro.
-pub use ockam_core::processor;
 
 // TODO: think about how to handle this more. Probably extract these into an
 // `ockam_compat` crate.
@@ -138,20 +138,12 @@ pub mod vault {
     //! Types and traits relating to ockam vaults.
     pub use ockam_vault::*;
 
-    #[cfg(feature = "software_vault_storage")]
+    #[cfg(feature = "storage")]
     /// Storage
     pub mod storage {
         pub use ockam_vault::storage::*;
     }
 }
 
-#[cfg(feature = "ockam_transport_tcp")]
-pub use ockam_transport_tcp::{
-    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
-    TcpTransportExtension,
-};
-
 /// List of all top-level services
 pub mod node;
-
-pub use node::*;

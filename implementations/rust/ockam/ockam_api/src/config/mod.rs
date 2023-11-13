@@ -12,7 +12,6 @@ use serde::Serialize;
 use crate::config::atomic::AtomicUpdater;
 
 pub mod atomic;
-pub mod cli;
 pub mod lookup;
 
 pub trait ConfigValues: Serialize + DeserializeOwned {

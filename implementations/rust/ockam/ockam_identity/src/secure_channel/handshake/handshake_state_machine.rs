@@ -1,16 +1,18 @@
 use minicbor::{Decode, Encode};
-use ockam_core::compat::string::ToString;
-use ockam_core::compat::sync::Arc;
-use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{async_trait, Result};
-use ockam_vault::{AeadSecretKeyHandle, X25519PublicKey};
 use tracing::{debug, warn};
 
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::string::ToString;
+use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::Vec;
+use ockam_core::{async_trait, Result};
+use ockam_vault::{AeadSecretKeyHandle, X25519PublicKey};
+
 use crate::models::{
-    ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
+    ChangeHistory, CredentialAndPurposeKey, PurposeKeyAttestation, PurposePublicKey,
 };
 use crate::{
-    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
+    Identifier, Identities, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
 };
 
 /// Interface for a state machine in a key exchange protocol
@@ -100,11 +102,7 @@ impl CommonStateMachine {
     ///
     pub(super) async fn make_identity_payload(&self) -> Result<Vec<u8>> {
         // prepare the payload that will be sent either in message 2 or message 3
-        let change_history = self
-            .identities
-            .repository()
-            .get_identity(&self.identifier)
-            .await?;
+        let change_history = self.identities.get_change_history(&self.identifier).await?;
         let payload = IdentityAndCredentials {
             change_history,
             purpose_key_attestation: self.purpose_key_attestation.clone(),
@@ -169,26 +167,16 @@ impl CommonStateMachine {
         // Has value if it's the identity payload during the handshake and not credential refresh
         peer_public_key: Option<(PurposeKeyAttestation, X25519PublicKey)>,
     ) -> Result<Identifier> {
-        let identity = Identity::import_from_change_history(
-            expected_identifier.as_ref(),
-            change_history,
-            identities.vault().verifying_vault,
-        )
-        .await?;
-
-        identities
+        let their_identifier = identities
             .identities_creation()
-            .update_identity(&identity)
+            .import_from_change_history(expected_identifier.as_ref(), change_history.clone())
             .await?;
 
         if let Some((purpose_key_attestation, peer_public_key)) = peer_public_key {
             let purpose_key = identities
                 .purpose_keys()
                 .purpose_keys_verification()
-                .verify_purpose_key_attestation(
-                    Some(identity.identifier()),
-                    &purpose_key_attestation,
-                )
+                .verify_purpose_key_attestation(Some(&their_identifier), &purpose_key_attestation)
                 .await?;
 
             match &purpose_key.public_key {
@@ -198,12 +186,10 @@ impl CommonStateMachine {
                     }
                 }
                 PurposePublicKey::CredentialSigning(_) => {
-                    return Err(IdentityError::InvalidKeyType.into())
+                    return Err(IdentityError::InvalidKeyType.into());
                 }
             }
         }
-
-        let their_identifier = identity.identifier().clone();
 
         Self::verify_credentials(
             identities,
@@ -251,7 +237,7 @@ impl CommonStateMachine {
                     .credentials_verification()
                     .receive_presented_credential(
                         their_identifier,
-                        &[trust_context.authority()?.identifier().clone()],
+                        &trust_context.authorities(),
                         credential,
                     )
                     .await;

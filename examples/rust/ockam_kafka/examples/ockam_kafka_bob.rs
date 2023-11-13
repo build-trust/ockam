@@ -22,7 +22,7 @@ impl Worker for Echoer {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Bob.

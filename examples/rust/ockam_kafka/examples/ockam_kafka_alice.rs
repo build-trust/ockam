@@ -6,7 +6,7 @@ use std::io;
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Alice.

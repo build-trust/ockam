@@ -165,7 +165,7 @@ mod test {
 
     #[ockam_macros::test]
     async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
-        let identities = identities();
+        let identities = identities().await?;
         let identities_keys = identities.identities_keys();
 
         let key1 = identities_keys

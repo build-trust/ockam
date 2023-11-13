@@ -1,14 +1,17 @@
-use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use crate::nodes::NODEMANAGER_ADDR;
+use std::sync::Arc;
+use std::time::Duration;
+
 use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
+
 use ockam_core::api::{Reply, Request};
 use ockam_core::{AsyncTryClone, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpTransport};
-use std::sync::Arc;
-use std::time::Duration;
+
+use crate::cli_state::CliState;
+use crate::nodes::NODEMANAGER_ADDR;
 
 /// This struct represents a node that has been started
 /// on the same machine with a given node name
@@ -28,7 +31,22 @@ impl BackgroundNode {
     /// Create a new client to send requests to a running background node
     /// This function instantiates a TcpTransport. Since a TcpTransport can only be created once
     /// this function must only be called once
+    ///
+    /// The optional node name is used to locate the node. It is either
+    /// a node specified by the user or the default node if no node name is given.
     pub async fn create(
+        ctx: &Context,
+        cli_state: &CliState,
+        node_name: &Option<String>,
+    ) -> miette::Result<BackgroundNode> {
+        let node_name = match node_name.clone() {
+            Some(name) => name,
+            None => cli_state.get_default_node().await?.name(),
+        };
+        Self::create_to_node(ctx, cli_state, &node_name).await
+    }
+
+    pub async fn create_to_node(
         ctx: &Context,
         cli_state: &CliState,
         node_name: &str,
@@ -43,7 +61,6 @@ impl BackgroundNode {
         cli_state: &CliState,
         node_name: &str,
     ) -> miette::Result<BackgroundNode> {
-        cli_state.nodes.get(node_name)?;
         Ok(BackgroundNode {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
@@ -53,14 +70,18 @@ impl BackgroundNode {
         })
     }
 
-    pub fn delete(&self) -> miette::Result<()> {
-        Ok(self.cli_state.nodes.delete(self.node_name())?)
+    pub async fn delete(&self) -> miette::Result<()> {
+        Ok(self.cli_state.delete_node(&self.node_name(), false).await?)
     }
 
     // Set a different node name
     pub fn set_node_name(&mut self, node_name: &str) -> &Self {
         self.node_name = node_name.to_string();
         self
+    }
+
+    pub fn node_name(&self) -> String {
+        self.node_name.clone()
     }
 
     /// Use a default timeout for making requests
@@ -71,10 +92,6 @@ impl BackgroundNode {
 
     pub fn cli_state(&self) -> &CliState {
         &self.cli_state
-    }
-
-    pub fn node_name(&self) -> &str {
-        &self.node_name
     }
 
     /// Send a request and expect a decodable response
@@ -154,12 +171,20 @@ impl BackgroundNode {
     /// Make a route to the node and connect using TCP
     async fn create_route(&self) -> miette::Result<Route> {
         let mut route = self.to.clone();
-        let node_state = self.cli_state.nodes.get(&self.node_name)?;
-        let port = node_state.config().setup().api_transport()?.addr.port();
-        let addr_str = format!("localhost:{port}");
+        let node_info = self.cli_state.get_node(&self.node_name).await?;
+        let tcp_listener_address = node_info
+            .tcp_listener_address()
+            .unwrap_or_else(|| {
+                panic!(
+                    "an api transport should have been started for node {:?}",
+                    &node_info
+                )
+            })
+            .to_string();
+
         let addr = self
             .tcp_transport
-            .connect(addr_str, TcpConnectionOptions::new())
+            .connect(tcp_listener_address, TcpConnectionOptions::new())
             .await
             .into_diagnostic()?
             .sender_address()

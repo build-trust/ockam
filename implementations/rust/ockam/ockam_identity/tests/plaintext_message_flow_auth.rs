@@ -13,8 +13,8 @@ mod common;
 // Bob: Secure Channel listener
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    let alice_secure_channels = secure_channels();
-    let bob_secure_channels = secure_channels();
+    let alice_secure_channels = secure_channels().await?;
+    let bob_secure_channels = secure_channels().await?;
 
     let alice = alice_secure_channels
         .identities()
@@ -84,8 +84,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, &connection_to_bob.clone().into()).await?;
     message_should_not_pass(ctx, connection_to_alice.address()).await?;
 
-    let alice_secure_channels = secure_channels();
-    let bob_secure_channels = secure_channels();
+    let alice_secure_channels = secure_channels().await?;
+    let bob_secure_channels = secure_channels().await?;
 
     let alice = alice_secure_channels
         .identities()
@@ -113,7 +113,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    ctx.sleep(Duration::from_millis(500)).await; // Wait for workers to add themselves to the registry
 
     let channels = bob_secure_channels
         .secure_channel_registry()

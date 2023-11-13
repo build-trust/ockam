@@ -5,8 +5,7 @@ use ockam_api::nodes::{models, BackgroundNode};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::node::{get_node_name, initialize_node_if_default};
-use crate::util::{node_rpc, parse_node_name};
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -24,7 +23,6 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -33,10 +31,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = parse_node_name(&node_name)?;
-
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = Request::delete("/node/services/kafka_producer").body(
         models::services::DeleteServiceRequest::new(cmd.address.clone()),
     );

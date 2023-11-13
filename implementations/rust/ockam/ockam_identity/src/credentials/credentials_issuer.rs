@@ -1,6 +1,7 @@
-use crate::models::{Attributes, CredentialAndPurposeKey, CredentialSchemaIdentifier, Identifier};
-use crate::utils::AttributesBuilder;
-use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
+use core::time::Duration;
+
+use minicbor::Decoder;
+use tracing::trace;
 
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
@@ -11,9 +12,9 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
-use core::time::Duration;
-use minicbor::Decoder;
-use tracing::trace;
+use crate::models::{Attributes, CredentialAndPurposeKey, CredentialSchemaIdentifier, Identifier};
+use crate::utils::AttributesBuilder;
+use crate::{Credentials, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
@@ -30,7 +31,7 @@ pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600
 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialsIssuer {
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     credentials: Arc<Credentials>,
     issuer: Identifier,
     subject_attributes: Attributes,
@@ -39,7 +40,7 @@ pub struct CredentialsIssuer {
 impl CredentialsIssuer {
     /// Create a new credentials issuer
     pub fn new(
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
         trust_context: String,
@@ -49,7 +50,7 @@ impl CredentialsIssuer {
             .build();
 
         Self {
-            identities_repository,
+            identity_attributes_repository,
             credentials,
             issuer: issuer.clone(),
             subject_attributes,
@@ -61,8 +62,7 @@ impl CredentialsIssuer {
         subject: &Identifier,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         let entry = match self
-            .identities_repository
-            .as_attributes_reader()
+            .identity_attributes_repository
             .get_attributes(subject)
             .await?
         {

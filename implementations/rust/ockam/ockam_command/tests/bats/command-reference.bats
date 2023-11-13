@@ -177,13 +177,11 @@ teardown() {
 @test "elastic encrypted relays" {
   setup_orchestrator_test
 
-  "$OCKAM" project information --output json >/${BATS_TEST_TMPDIR}/project.json
-
   a="$(random_str)"
   b="$(random_str)"
 
-  run_success "$OCKAM" node create "$a" --project-path /${BATS_TEST_TMPDIR}/project.json
-  run_success "$OCKAM" node create "$b" --project-path /${BATS_TEST_TMPDIR}/project.json
+  run_success "$OCKAM" node create "$a" --project $PROJECT_NAME
+  run_success "$OCKAM" node create "$b" --project $PROJECT_NAME
   run_success "$OCKAM" relay create "$b" --at /project/default --to "/node/$a"
 
   output=$("$OCKAM" secure-channel create --from "$a" --to "/project/default/service/forward_to_$b/service/api" |
@@ -288,13 +286,11 @@ teardown() {
 @test "managed authorities" {
   setup_orchestrator_test
 
-  "$OCKAM" project information --output json >/${BATS_TEST_TMPDIR}/project.json
-
   a="$(random_str)"
   b="$(random_str)"
 
-  run_success "$OCKAM" node create "$a" --project-path /${BATS_TEST_TMPDIR}/project.json
-  run_success "$OCKAM" node create "$b" --project-path /${BATS_TEST_TMPDIR}/project.json
+  run_success "$OCKAM" node create "$a" --project $PROJECT_NAME
+  run_success "$OCKAM" node create "$b" --project $PROJECT_NAME
 
   run_success "$OCKAM" relay create "$b" --at /project/default --to "/node/$a/service/forward_to_$b"
 

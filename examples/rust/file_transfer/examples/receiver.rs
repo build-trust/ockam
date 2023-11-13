@@ -79,7 +79,7 @@ impl Worker for FileReception {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Receiver.

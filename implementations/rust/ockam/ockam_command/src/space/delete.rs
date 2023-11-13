@@ -3,9 +3,7 @@ use colorful::Colorful;
 use console::Term;
 
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::Spaces;
-use ockam_api::cloud::Controller;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::terminal::tui::DeleteCommandTui;
@@ -51,7 +49,7 @@ async fn run_impl(
 pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
-    controller: Controller,
+    node: InMemoryNode,
     cmd: DeleteCommand,
 }
 
@@ -62,11 +60,10 @@ impl DeleteTui {
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(&ctx, &opts.state).await?;
-        let controller = node.create_controller().await?;
         let tui = Self {
             ctx,
             opts,
-            controller,
+            node,
             cmd,
         };
         tui.delete().await
@@ -95,20 +92,25 @@ impl DeleteCommandTui for DeleteTui {
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
         let space_name = match &self.cmd.space_name {
-            None => self.opts.state.spaces.default()?.name().to_string(),
+            None => self.opts.state.get_default_space().await?.space_name(),
             Some(n) => n.to_string(),
         };
         Ok(space_name)
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.opts.state.spaces.list_items_names()?)
+        Ok(self
+            .opts
+            .state
+            .get_spaces()
+            .await?
+            .iter()
+            .map(|s| s.space_name())
+            .collect())
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        let space_id = self.opts.state.spaces.get(item_name)?.config().id.clone();
-        self.controller.delete_space(&self.ctx, space_id).await?;
-        let _ = self.opts.state.spaces.delete(item_name);
+        self.node.delete_space_by_name(&self.ctx, item_name).await?;
 
         self.terminal()
             .stdout()

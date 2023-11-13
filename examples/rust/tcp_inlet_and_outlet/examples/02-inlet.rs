@@ -4,7 +4,7 @@ use ockam_transport_tcp::TcpTransportExtension;
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // We know that the Outlet node is listening for Ockam Routing Messages

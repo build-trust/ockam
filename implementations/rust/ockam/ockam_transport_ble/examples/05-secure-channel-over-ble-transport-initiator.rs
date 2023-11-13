@@ -3,7 +3,6 @@
 use ockam_core::{route, Result};
 use ockam_identity::{secure_channels, SecureChannelOptions};
 use ockam_node::Context;
-
 use ockam_transport_ble::driver::btleplug::BleAdapter;
 use ockam_transport_ble::driver::BleClient;
 use ockam_transport_ble::{BleTransport, BLE};
@@ -25,7 +24,7 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     let ble = BleTransport::create(&ctx).await?;
 
     // Create an Entity to represent Alice.
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let alice = secure_channels
         .identities()
         .identities_creation()

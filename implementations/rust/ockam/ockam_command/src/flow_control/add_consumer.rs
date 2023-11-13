@@ -1,12 +1,11 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::address::extract_address_value;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::NodeOpts;
 use crate::util::{api, node_rpc};
 use crate::CommandGlobalOpts;
 
@@ -41,9 +40,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: AddConsumerCommand,
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     node.tell(ctx, api::add_consumer(cmd.flow_control_id, cmd.address))
         .await?;
 

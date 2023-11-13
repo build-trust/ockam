@@ -1,13 +1,15 @@
-use miette::IntoDiagnostic;
 use std::net::SocketAddr;
 use std::str::FromStr;
+
+use miette::IntoDiagnostic;
 use tracing::{debug, info, trace, warn};
+
+use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
 use crate::invitations::state::ReceivedInvitationStatus;
 use crate::state::{AppState, StateKind, PROJECT_NAME};
-use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 
 impl AppState {
     /// Fetch received, accept and sent invitations from the orchestrator
@@ -108,7 +110,7 @@ impl AppState {
                             debug!(?i, "Invitation is in status {s:?}, skipping...");
                             Ok(())
                         }
-                    }
+                    };
                 }
             }
         }

@@ -27,7 +27,7 @@ async fn main(ctx: Context) -> Result<()> {
     print_title(vec!["Run a node & stop it right away"]);
 
     // Create a node.
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
 
     // Stop the node as soon as it starts.
     node.stop().await

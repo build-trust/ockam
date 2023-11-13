@@ -15,8 +15,8 @@ std = [
   "either/use_std",
   "hex/std",
   "minicbor/std",
-  "ockam_core/std",
   "ockam_abac/std",
+  "ockam_core/std",
   "ockam/std",
   "ockam_multiaddr/std",
   "ockam_node/std",
@@ -24,8 +24,9 @@ std = [
   "ockam_vault_aws/std",
   "tinyvec/std",
   "tracing/std",
+  "storage",
 ]
-vault-storage = ["ockam_vault/storage"]
+storage = ["ockam/storage"]
 
 [dependencies]
 anyhow = "1"
@@ -34,6 +35,7 @@ base64-url = "2.0.0"
 bytes = { version = "1.5.0", default-features = false, features = ["serde"] }
 either = { version = "1.9.0", default-features = false }
 fs2 = { version = "0.4.3" }
+futures = { version = "0.3.28" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
 kafka-protocol = "0.7.0"
@@ -46,6 +48,7 @@ rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
+sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite"] }
 sysinfo = "0.29"
 tempfile = "3.8.0"
 thiserror = "1.0"
@@ -90,7 +93,7 @@ features = ["std"]
 version = "^0.105.0"
 path = "../ockam"
 default-features = false
-features = ["ockam_transport_tcp", "software_vault_storage"]
+features = ["ockam_transport_tcp", "storage"]
 
 [dependencies.ockam_abac]
 version = "0.39.0"

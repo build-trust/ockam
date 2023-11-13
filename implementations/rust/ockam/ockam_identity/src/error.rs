@@ -26,6 +26,8 @@ pub enum IdentityError {
     UnknownAuthority,
     /// No CredentialsRetriever
     NoCredentialsRetriever,
+    /// No Credentials set on a trust context
+    NoCredentialsSet,
     /// Unknown version of the Credential
     UnknownCredentialVersion,
     /// Invalid data_type value for Credential

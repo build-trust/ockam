@@ -1,98 +1,234 @@
 use std::fmt::{Display, Formatter};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
-
-use ockam::identity::Vault;
+use ockam::identity::{Identities, Vault};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 
-use crate::cli_state::traits::StateItemTrait;
-use crate::cli_state::{CliStateError, StateDirTrait, DATA_DIR_NAME};
+use crate::cli_state::{random_name, CliState, Result};
 
-use super::Result;
+/// The methods below support the creation and update of local vaults
+///
+///  - by default private keys are stored locally but they can also be stored in a KMS
+///  - keys stored locally are stored with other application data in the local database if the default vault is used
+///  - any additional vault stores its keys in a separate file
+///
+impl CliState {
+    /// Create a vault with a given name
+    /// The secrets persisted with this vault are stored under $OCKAM_HOME/vault_name
+    pub async fn create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
+        self.create_a_vault(vault_name, false).await
+    }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct VaultsState {
-    dir: PathBuf,
-}
+    /// Create a KMS vault with a given name.
+    /// A KMS vault only stores identifiers to secrets physically stored in a KMS like
+    /// an AWS KMS (the only supported KMS implementation at the moment).
+    ///
+    /// The secrets persisted with this vault are stored under $OCKAM_HOME/vault_name
+    pub async fn create_kms_vault(&self, vault_name: &str) -> Result<NamedVault> {
+        self.create_a_vault(vault_name, true).await
+    }
 
-impl VaultsState {
-    pub async fn create_async(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
-        if self.exists(name) {
-            return Err(CliStateError::AlreadyExists {
-                resource: Self::default_filename().to_string(),
-                name: name.to_string(),
-            });
+    /// Select a different vault to be the default vault
+    pub async fn set_default_vault(&self, vault_name: &str) -> Result<()> {
+        Ok(self
+            .vaults_repository()
+            .await?
+            .set_as_default(vault_name)
+            .await?)
+    }
+
+    /// Delete an existing vault
+    pub async fn delete_named_vault(&self, vault_name: &str) -> Result<()> {
+        let repository = self.vaults_repository().await?;
+        let vault = repository.get_named_vault(vault_name).await?;
+        if let Some(vault) = vault {
+            repository.delete_vault(vault_name).await?;
+
+            // if the vault is stored in a separate file
+            // remove that file
+            if vault.path != self.database_path() {
+                let _ = std::fs::remove_file(vault.path);
+            }
         }
-        let state = VaultState::new(self.path(name), config)?;
-        state.get().await?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
+        Ok(())
+    }
+
+    /// Delete all vaults and their files
+    pub async fn delete_all_named_vaults(&self) -> Result<()> {
+        let vaults = self.vaults_repository().await?.get_named_vaults().await?;
+        for vault in vaults {
+            self.delete_named_vault(&vault.name()).await?;
         }
-        Ok(state)
+        Ok(())
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub struct VaultState {
+/// The methods below provide an API to query named vaults.
+impl CliState {
+    /// Return all the named vaults
+    pub async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
+        Ok(self.vaults_repository().await?.get_named_vaults().await?)
+    }
+
+    /// Return the vault with a given name
+    /// and raise an error if the vault is not found
+    pub async fn get_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
+        let result = self
+            .vaults_repository()
+            .await?
+            .get_named_vault(vault_name)
+            .await?;
+        result.ok_or_else(|| {
+            ockam_core::Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("no vault found with name {vault_name}"),
+            )
+            .into()
+        })
+    }
+
+    /// Return the default vault
+    /// If it doesn't exist, the vault is created with a random name
+    pub async fn get_default_named_vault(&self) -> Result<NamedVault> {
+        let result = self.vaults_repository().await?.get_default_vault().await?;
+        match result {
+            Some(vault) => Ok(vault),
+            None => self.create_named_vault(&random_name()).await,
+        }
+    }
+
+    /// Return either the default vault or a vault with the given name
+    /// If the default vault is required and does not exist it is created.
+    pub async fn get_named_vault_or_default(
+        &self,
+        vault_name: &Option<String>,
+    ) -> Result<NamedVault> {
+        match vault_name {
+            Some(name) => self.get_named_vault(name).await,
+            None => self.get_default_named_vault().await,
+        }
+    }
+}
+
+/// Builder functions
+impl CliState {
+    /// Return an Identities struct using a specific Vault
+    pub async fn make_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
+        Ok(Identities::builder()
+            .await?
+            .with_vault(vault)
+            .with_change_history_repository(self.change_history_repository().await?)
+            .with_identity_attributes_repository(self.identity_attributes_repository().await?)
+            .with_purpose_keys_repository(self.purpose_keys_repository().await?)
+            .build())
+    }
+}
+
+/// Private functions
+impl CliState {
+    /// Create a vault with the given name and indicate if it is going to be used as a KMS vault
+    /// The vault path is either
+    /// - the database path if this is the first created vault (it is set as the default vault)
+    /// - a file next to the database file, named 'vault_name'
+    async fn create_a_vault(&self, vault_name: &str, is_kms: bool) -> Result<NamedVault> {
+        let vaults_repository = self.vaults_repository().await?;
+
+        // the first created vault is the default one
+        let is_default_vault = vaults_repository.get_default_vault().await?.is_none();
+
+        // if the vault is the default vault we store the data directly in the main database
+        // otherwise we open a new file with the vault name
+        let path = if is_default_vault {
+            self.database_path()
+        } else {
+            self.dir().join(vault_name)
+        };
+
+        let mut vault = vaults_repository
+            .store_vault(vault_name, path, is_kms)
+            .await?;
+        if is_default_vault {
+            vaults_repository.set_as_default(vault_name).await?;
+            vault = vault.set_as_default();
+        }
+        Ok(vault)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NamedVault {
     name: String,
     path: PathBuf,
-    /// The path to the vault's storage config file, contained in the data directory
-    data_path: PathBuf,
-    config: VaultConfig,
+    is_default: bool,
+    is_kms: bool,
 }
 
-impl VaultState {
-    pub async fn get(&self) -> Result<Vault> {
-        if self.config.aws_kms {
-            let mut vault = Vault::create();
-            let aws_vault = Arc::new(AwsSigningVault::create().await?);
-            vault.identity_vault = aws_vault.clone();
-            vault.credential_vault = aws_vault;
-
-            Ok(vault)
-        } else {
-            let vault =
-                Vault::create_with_persistent_storage_path(self.vault_file_path().as_path())
-                    .await?;
-            Ok(vault)
+impl NamedVault {
+    /// Create a new named vault
+    pub fn new(name: &str, path: PathBuf, is_default: bool, is_kms: bool) -> Self {
+        Self {
+            name: name.to_string(),
+            path,
+            is_default,
+            is_kms,
         }
     }
 
-    fn build_data_path(name: &str, path: &Path) -> PathBuf {
-        path.parent()
-            .expect("Should have parent")
-            .join(DATA_DIR_NAME)
-            .join(format!("{name}-storage.json"))
+    /// Return the vault name
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
-    pub fn vault_file_path(&self) -> &PathBuf {
-        &self.data_path
+    /// Return the vault path
+    pub fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    /// Return true if this vault is the default one
+    pub fn is_default(&self) -> bool {
+        self.is_default
+    }
+
+    /// Return a copy of this vault as vault with the is_default flag set to true
+    pub fn set_as_default(&self) -> NamedVault {
+        let mut result = self.clone();
+        result.is_default = true;
+        result
+    }
+
+    /// Return true if this vault is a KMS vault
+    pub fn is_kms(&self) -> bool {
+        self.is_kms
     }
 
     pub async fn vault(&self) -> Result<Vault> {
-        let path = self.vault_file_path().clone();
-        let vault = Vault::create_with_persistent_storage_path(path.as_path()).await?;
-        Ok(vault)
+        if self.is_kms {
+            let mut vault = Vault::create().await?;
+            let aws_vault = Arc::new(AwsSigningVault::create().await?);
+            vault.identity_vault = aws_vault.clone();
+            vault.credential_vault = aws_vault;
+            Ok(vault)
+        } else {
+            Ok(Vault::create_with_database(self.database().await?))
+        }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn is_aws(&self) -> bool {
-        self.config.is_aws()
+    async fn database(&self) -> Result<Arc<SqlxDatabase>> {
+        Ok(Arc::new(SqlxDatabase::create(self.path.as_path()).await?))
     }
 }
 
-impl Display for VaultState {
+impl Display for NamedVault {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Name: {}", self.name)?;
         writeln!(
             f,
             "Type: {}",
-            match self.config.is_aws() {
+            match self.is_kms {
                 true => "AWS KMS",
                 false => "OCKAM",
             }
@@ -101,117 +237,57 @@ impl Display for VaultState {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
-pub struct VaultConfig {
-    #[serde(default)]
-    aws_kms: bool,
-}
-
-impl VaultConfig {
-    pub fn new(aws_kms: bool) -> Result<Self> {
-        Ok(Self { aws_kms })
-    }
-
-    pub fn is_aws(&self) -> bool {
-        self.aws_kms
-    }
-}
-
-mod traits {
-    use ockam_core::async_trait;
-
-    use crate::cli_state::file_stem;
-    use crate::cli_state::traits::*;
-
+#[cfg(test)]
+mod tests {
     use super::*;
 
-    #[async_trait]
-    impl StateDirTrait for VaultsState {
-        type Item = VaultState;
-        const DEFAULT_FILENAME: &'static str = "vault";
-        const DIR_NAME: &'static str = "vaults";
-        const HAS_DATA_DIR: bool = true;
+    #[tokio::test]
+    async fn test_create_named_vault() -> Result<()> {
+        let cli = CliState::test().await?;
 
-        fn new(root_path: &Path) -> Self {
-            Self {
-                dir: Self::build_dir(root_path),
-            }
-        }
+        // create a vault
+        let named_vault1 = cli.create_named_vault("vault1").await?;
 
-        fn dir(&self) -> &PathBuf {
-            &self.dir
-        }
+        let result = cli.get_named_vault("vault1").await?;
+        assert_eq!(result, named_vault1.clone());
 
-        fn create(
-            &self,
-            _name: impl AsRef<str>,
-            _config: <<Self as StateDirTrait>::Item as StateItemTrait>::Config,
-        ) -> Result<Self::Item> {
-            unreachable!()
-        }
+        // create another vault
+        let named_vault2 = cli.create_named_vault("vault2").await?;
 
-        fn delete(&self, name: impl AsRef<str>) -> Result<()> {
-            // If doesn't exist do nothing.
-            if !self.exists(&name) {
-                return Ok(());
-            }
-            let vault = self.get(&name)?;
-            // If it's the default, remove link
-            if let Ok(default) = self.default() {
-                if default.path == vault.path {
-                    let _ = std::fs::remove_file(self.default_path()?);
-                }
-            }
-            // Remove vault files
-            vault.delete()?;
-            Ok(())
-        }
+        let result = cli.get_named_vaults().await?;
+        assert_eq!(result, vec![named_vault1.clone(), named_vault2.clone()]);
+
+        // the first created vault is the default one
+        let result = cli.get_default_named_vault().await?;
+        assert_eq!(result, named_vault1.clone());
+
+        // the default vault can be changed
+        cli.set_default_vault("vault2").await?;
+        let result = cli.get_default_named_vault().await?;
+        assert_eq!(result, named_vault2.set_as_default());
+
+        // a vault can be deleted
+        cli.delete_named_vault("vault2").await?;
+        let result = cli.get_default_named_vault().await?;
+        assert_eq!(result, named_vault1.set_as_default());
+
+        // all the vaults can be deleted
+        cli.delete_all_named_vaults().await?;
+        let result = cli.get_named_vaults().await?;
+        assert!(result.is_empty());
+
+        Ok(())
     }
 
-    #[async_trait]
-    impl StateItemTrait for VaultState {
-        type Config = VaultConfig;
+    #[tokio::test]
+    async fn test_get_default_named_vault() -> Result<()> {
+        let cli = CliState::test().await?;
 
-        fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
-            let contents = serde_json::to_string(&config)?;
-            std::fs::create_dir_all(path.parent().unwrap())?;
-            std::fs::write(&path, contents)?;
-            let name = file_stem(&path)?;
-            let data_path = VaultState::build_data_path(&name, &path);
-            Ok(Self {
-                name,
-                path,
-                data_path,
-                config,
-            })
-        }
+        // the default vault is always available
+        let vault = cli.get_default_named_vault().await?;
+        assert!(vault.is_default());
+        assert!(vault.path().starts_with(cli.dir()));
 
-        fn load(path: PathBuf) -> Result<Self> {
-            let name = file_stem(&path)?;
-            let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
-            let data_path = VaultState::build_data_path(&name, &path);
-            Ok(Self {
-                name,
-                path,
-                data_path,
-                config,
-            })
-        }
-
-        fn delete(&self) -> Result<()> {
-            std::fs::remove_file(&self.path)?;
-            std::fs::remove_file(&self.data_path)?;
-            std::fs::remove_file(self.data_path.with_extension("json.lock"))?;
-            Ok(())
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
-        }
-
-        fn config(&self) -> &Self::Config {
-            &self.config
-        }
+        Ok(())
     }
 }

@@ -15,10 +15,10 @@ use ockam_node::{Context, WorkerBuilder};
 
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identities_repository = identities.repository();
+    let identity_attributes_repository = identities.identity_attributes_repository();
     let credentials = identities.credentials();
     let credentials_service = identities.credentials_server();
 
@@ -82,7 +82,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .present_credential(ctx, route![channel, "credential_exchange"], credential)
         .await?;
 
-    let attrs = identities_repository
+    let attrs = identity_attributes_repository
         .get_attributes(&client)
         .await?
         .unwrap();
@@ -96,10 +96,10 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identities_repository = identities.repository();
+    let identity_attributes_repository = identities.identity_attributes_repository();
     let credentials = identities.credentials();
     let credentials_service = identities.credentials_server();
 
@@ -173,12 +173,12 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .present_credential_mutual(
             ctx,
             route![channel, "credential_exchange"],
-            trust_context.authorities().await?.as_slice(),
+            &trust_context.authorities(),
             credential,
         )
         .await?;
 
-    let attrs1 = identities_repository
+    let attrs1 = identity_attributes_repository
         .get_attributes(&client1)
         .await?
         .unwrap();
@@ -192,7 +192,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         b"true"
     );
 
-    let attrs2 = identities_repository
+    let attrs2 = identity_attributes_repository
         .get_attributes(&client2)
         .await?
         .unwrap();
@@ -207,10 +207,10 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn access_control(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identities_repository = identities.repository();
+    let identity_attributes_repository = identities.identity_attributes_repository();
     let credentials = identities.credentials();
     let credentials_service = identities.credentials_server();
 
@@ -275,7 +275,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     let required_attributes = vec![(b"is_superuser".to_vec(), b"true".to_vec())];
     let access_control =
-        CredentialAccessControl::new(&required_attributes, identities_repository.clone());
+        CredentialAccessControl::new(&required_attributes, identity_attributes_repository.clone());
 
     ctx.flow_controls()
         .add_consumer("counter", listener.flow_control_id());

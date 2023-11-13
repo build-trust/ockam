@@ -2,4 +2,4 @@ mod commands;
 mod state;
 
 pub use state::IncomingServicesState;
-pub use state::PersistentIncomingServiceState;
+pub use state::PersistentIncomingService;

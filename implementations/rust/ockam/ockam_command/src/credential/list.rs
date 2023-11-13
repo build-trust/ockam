@@ -2,11 +2,8 @@ use clap::{arg, Args};
 
 use colorful::Colorful;
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
 
-use crate::{
-    fmt_log, terminal::OckamColor, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
-};
+use crate::{fmt_log, terminal::OckamColor, util::node_rpc, CommandGlobalOpts};
 
 use super::CredentialOutput;
 
@@ -30,15 +27,16 @@ async fn run_impl(
     opts.terminal
         .write_line(&fmt_log!("Listing Credentials...\n"))?;
 
-    let vault_name = cmd
-        .vault
-        .clone()
-        .unwrap_or_else(|| default_vault_name(&opts.state));
+    let vault_name = opts
+        .state
+        .get_named_vault_or_default(&cmd.vault)
+        .await?
+        .name();
     let mut credentials: Vec<CredentialOutput> = Vec::new();
 
-    for cred_state in opts.state.credentials.list()? {
-        let cred = CredentialOutput::try_from_state(&opts, &cred_state, &vault_name).await?;
-        credentials.push(cred);
+    for credential in opts.state.get_credentials().await? {
+        let credential_output = CredentialOutput::new(credential).await;
+        credentials.push(credential_output);
     }
 
     let list = opts.terminal.build_list(

@@ -6,7 +6,7 @@ use ockam_transport_udp::{UdpTransportExtension, UDP};
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
 
     // Initialize the UDP Transport
     let _udp = node.create_udp_transport().await?;

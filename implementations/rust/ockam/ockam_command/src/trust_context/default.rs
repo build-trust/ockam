@@ -1,9 +1,9 @@
-use crate::util::local_cmd;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -22,21 +22,23 @@ pub struct DefaultCommand {
 
 impl DefaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        local_cmd(run_impl(opts, self));
+        node_rpc(run_impl, (opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
-    let DefaultCommand { name } = cmd;
-    let state = opts.state.trust_contexts;
-    let tc = state.get(&name)?;
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, DefaultCommand),
+) -> miette::Result<()> {
+    let name = cmd.name;
+    let default_trust_context = opts.state.get_default_trust_context().await?;
     // If it exists, warn the user and exit
-    if state.is_default(tc.name())? {
+    if default_trust_context.name() == name {
         Err(miette!("The trust context '{name}' is already the default"))
     }
     // Otherwise, set it as default
     else {
-        state.set_default(tc.name())?;
+        opts.state.set_default_trust_context(&name).await?;
         opts.terminal
             .stdout()
             .plain(fmt_ok!("The trust context '{name}' is now the default"))

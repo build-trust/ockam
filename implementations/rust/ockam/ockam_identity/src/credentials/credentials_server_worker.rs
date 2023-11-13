@@ -78,7 +78,7 @@ impl CredentialsServerWorker {
                     .credentials_verification()
                     .receive_presented_credential(
                         &sender,
-                        self.trust_context.authorities().await?.as_slice(),
+                        &self.trust_context.authorities(),
                         &credential_and_purpose_key,
                     )
                     .await;
@@ -110,7 +110,7 @@ impl CredentialsServerWorker {
                     .credentials_verification()
                     .receive_presented_credential(
                         &sender,
-                        self.trust_context.authorities().await?.as_slice(),
+                        &self.trust_context.authorities(),
                         &credential_and_purpose_key,
                     )
                     .await;
@@ -128,13 +128,12 @@ impl CredentialsServerWorker {
                     );
                     let credential = self
                         .trust_context
-                        .authority()?
-                        .credential(ctx, &self.identifier)
-                        .await;
+                        .get_credential(ctx, &self.identifier)
+                        .await?;
                     match credential.as_ref() {
-                        Ok(p) if self.present_back => {
+                        Some(c) if self.present_back => {
                             info!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
-                            Response::ok(req).body(p).to_vec()?
+                            Response::ok(req).body(c).to_vec()?
                         }
                         _ => {
                             info!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);

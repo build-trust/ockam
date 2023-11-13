@@ -1,6 +1,8 @@
-use crate::util::local_cmd;
+use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 use clap::Args;
+use miette::IntoDiagnostic;
+use ockam_node::Context;
 
 #[derive(Clone, Debug, Args)]
 pub struct SetDefaultNodeCommand {
@@ -9,12 +11,17 @@ pub struct SetDefaultNodeCommand {
 }
 
 impl SetDefaultNodeCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        local_cmd(run_impl(&self.name, &options));
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(run_impl, (opts, self));
     }
 }
 
-fn run_impl(_name: &str, _options: &CommandGlobalOpts) -> miette::Result<()> {
-    // TODO: add symlink to options.state.defaults().node
-    todo!()
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, SetDefaultNodeCommand),
+) -> miette::Result<()> {
+    opts.state
+        .set_default_node(&cmd.name)
+        .await
+        .into_diagnostic()
 }

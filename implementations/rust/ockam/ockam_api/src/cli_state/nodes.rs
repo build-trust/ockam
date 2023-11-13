@@ -1,89 +1,140 @@
-use super::Result;
-use crate::cli_state::{
-    CliState, CliStateError, IdentityConfig, IdentityState, ProjectConfig, ProjectConfigCompact,
-    StateDirTrait, StateItemTrait, VaultState,
-};
-use crate::config::lookup::ProjectLookup;
-use crate::nodes::models::transport::CreateTransportJson;
-use backwards_compatibility::*;
-use miette::{IntoDiagnostic, WrapErr};
+use std::path::PathBuf;
+use std::process;
+
 use nix::errno::Errno;
-use ockam::identity::Identifier;
-use ockam::identity::Vault;
-use ockam::LmdbStorage;
-use ockam_core::compat::collections::HashSet;
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use sysinfo::{Pid, ProcessExt, ProcessStatus, System, SystemExt};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NodesState {
-    dir: PathBuf,
-}
+use ockam::identity::Identifier;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Error;
+use ockam_multiaddr::MultiAddr;
 
-impl NodesState {
-    pub fn stdout_logs(&self, name: &str) -> Result<PathBuf> {
-        let dir = self.path(name);
-        std::fs::create_dir_all(&dir)?;
-        Ok(NodePaths::new(&dir).stdout())
+use crate::cli_state::{random_name, Result};
+use crate::cli_state::{CliState, CliStateError};
+use crate::cloud::project::Project;
+use crate::config::lookup::InternetAddress;
+use crate::NamedVault;
+
+/// The methods below support the creation and update of local nodes
+///
+impl CliState {
+    /// Create a node, with some optional associated values:
+    ///
+    ///  - an identity name. That identity is used by the `NodeManager` to create secure channels
+    ///  - a project name. It is used to create policies on resources provisioned on a node (like a TCP outlet for example)
+    pub async fn create_node_with_optional_values(
+        &self,
+        node_name: &str,
+        identity_name: &Option<String>,
+        project_name: &Option<String>,
+    ) -> Result<NodeInfo> {
+        // Return the node if it has already been created
+        // and update its process id
+        if let Ok(node) = self.get_node(node_name).await {
+            self.set_node_pid(node_name, process::id()).await?;
+            return Ok(node);
+        };
+
+        let identity = match identity_name {
+            Some(name) => self.get_named_identity(name).await?,
+            None => self.get_default_named_identity().await?,
+        };
+        let node = self
+            .create_node_with_identifier(node_name, &identity.identifier())
+            .await?;
+        self.set_node_project(node_name, project_name).await?;
+        Ok(node)
     }
 
-    pub fn delete_sigkill(&self, name: &str, sigkill: bool) -> Result<()> {
-        self._delete(name, sigkill)
+    /// This method creates a node with an associated identity
+    /// The vault used to create the identity is the default vault
+    pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
+        let identity = self.create_identity_with_name(&random_name()).await?;
+        self.create_node_with_identifier(node_name, &identity.identifier())
+            .await
     }
 
-    fn _delete(&self, name: impl AsRef<str>, sigkill: bool) -> Result<()> {
-        // If doesn't exist do nothing
-        if !self.exists(&name) {
-            return Ok(());
+    /// Delete a node
+    ///  - first stop it if it is running
+    ///  - then remove it from persistent storage
+    pub async fn delete_node(&self, node_name: &str, force: bool) -> Result<()> {
+        self.stop_node(node_name, force).await?;
+        self.remove_node(node_name).await?;
+        Ok(())
+    }
+
+    /// Delete all created nodes
+    pub async fn delete_all_nodes(&self, force: bool) -> Result<()> {
+        let nodes = self.nodes_repository().await?.get_nodes().await?;
+        for node in nodes {
+            self.delete_node(&node.name(), force).await?;
         }
-        let node = self.get(&name)?;
-        // Set default to another node if it's the default
-        if self.is_default(&name)? {
-            // Remove link if it exists
-            let _ = std::fs::remove_file(self.default_path()?);
-            for node in self.list()? {
-                if node.name() != name.as_ref() && self.set_default(node.name()).is_ok() {
-                    debug!(name=%node.name(), "set default node");
-                    break;
-                }
+        Ok(())
+    }
+
+    /// This method can be used to start a local node first
+    /// then create a project, and associate it to the node
+    pub async fn set_node_project(
+        &self,
+        node_name: &str,
+        project_name: &Option<String>,
+    ) -> Result<()> {
+        let project = match project_name {
+            Some(name) => Some(self.get_project_by_name(name).await?),
+            None => self.get_default_project().await.ok(),
+        };
+
+        if let Some(project) = project {
+            self.nodes_repository()
+                .await?
+                .set_node_project_name(node_name, &project.name())
+                .await?
+        };
+        Ok(())
+    }
+
+    /// Remove a node:
+    ///
+    ///  - remove it from the repository
+    ///  - remove the node log files
+    pub async fn remove_node(&self, node_name: &str) -> Result<()> {
+        // don't try to remove a node on a non-existent database
+        if !self.database_path().exists() {
+            return Ok(());
+        };
+
+        // remove the node from the database
+        let repository = self.nodes_repository().await?;
+        let node_exists = repository.get_node(node_name).await.is_ok();
+        repository.delete_node(node_name).await?;
+        // set another node as the default node
+        if node_exists {
+            let other_nodes = repository.get_nodes().await?;
+            if let Some(other_node) = other_nodes.first() {
+                repository.set_default_node(&other_node.name()).await?;
             }
         }
-        // Remove node directory
-        node.delete_sigkill(sigkill)?;
-        Ok(())
-    }
-}
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NodeState {
-    name: String,
-    path: PathBuf,
-    paths: NodePaths,
-    config: NodeConfig,
-}
-
-impl NodeState {
-    fn _delete(&self, sikgill: bool) -> Result<()> {
-        self.kill_process(sikgill)?;
-        std::fs::remove_dir_all(&self.path)?;
-        let _ = std::fs::remove_file(self.path.with_extension("lock"));
-        let _ = std::fs::remove_dir(&self.path); // Make sure the dir is gone
-        info!(name=%self.name, "node deleted");
+        // remove the node directory
+        let _ = std::fs::remove_dir_all(self.node_dir(node_name));
+        debug!(name=%node_name, "node deleted");
         Ok(())
     }
 
-    pub fn delete_sigkill(&self, sigkill: bool) -> Result<()> {
-        self._delete(sigkill)
-    }
+    /// Stop a background node
+    ///
+    ///  - if force is true, send a SIGKILL signal to the node process
+    pub async fn stop_node(&self, node_name: &str, force: bool) -> Result<()> {
+        let node = self.get_node(node_name).await?;
+        self.nodes_repository()
+            .await?
+            .set_no_node_pid(node_name)
+            .await?;
 
-    pub fn kill_process(&self, sigkill: bool) -> Result<()> {
-        if let Some(pid) = self.pid()? {
+        if let Some(pid) = node.pid() {
             nix::sys::signal::kill(
-                nix::unistd::Pid::from_raw(pid),
-                if sigkill {
+                nix::unistd::Pid::from_raw(pid as i32),
+                if force {
                     nix::sys::signal::Signal::SIGKILL
                 } else {
                     nix::sys::signal::Signal::SIGTERM
@@ -91,7 +142,7 @@ impl NodeState {
             )
             .or_else(|e| {
                 if e == Errno::ESRCH {
-                    tracing::warn!(node = %self.name(), %pid, "No such process");
+                    tracing::warn!(node = %node.name(), %pid, "No such process");
                     Ok(())
                 } else {
                     Err(e)
@@ -103,38 +154,273 @@ impl NodeState {
                     format!("failed to stop PID `{pid}` with error `{e}`"),
                 ))
             })?;
-            std::fs::remove_file(self.paths.pid())?;
         }
-        info!(name = %self.name(), "node process killed");
+        info!(name = %node.name(), "node process killed");
         Ok(())
     }
 
-    pub fn set_setup(&self, setup: &NodeSetupConfig) -> Result<()> {
-        let contents = serde_json::to_string(setup)?;
-        std::fs::write(self.paths.setup(), contents)?;
-        info!(name = %self.name(), "setup config updated");
-        Ok(())
+    /// Set a node as the default node
+    pub async fn set_default_node(&self, node_name: &str) -> Result<()> {
+        Ok(self
+            .nodes_repository()
+            .await?
+            .set_default_node(node_name)
+            .await?)
     }
 
-    pub fn pid(&self) -> Result<Option<i32>> {
-        let path = self.paths.pid();
-        if path.exists() {
-            let pid = std::fs::read_to_string(path)?
-                .parse::<i32>()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-            Ok(Some(pid))
+    /// Set a TCP listener address on a node when the TCP listener has been started
+    pub async fn set_tcp_listener_address(&self, node_name: &str, address: String) -> Result<()> {
+        Ok(self
+            .nodes_repository()
+            .await?
+            .set_tcp_listener_address(node_name, address.as_str())
+            .await?)
+    }
+
+    /// Specify that a node is an authority node
+    /// This is used to display the node status since if the node TCP listener is not accessible
+    /// without a secure channel
+    pub async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
+        Ok(self
+            .nodes_repository()
+            .await?
+            .set_as_authority_node(node_name)
+            .await?)
+    }
+
+    /// Set the current process id on a background node
+    /// Keeping track of a background node process id allows us to kill its process when stopping the node
+    pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
+        Ok(self
+            .nodes_repository()
+            .await?
+            .set_node_pid(node_name, pid)
+            .await?)
+    }
+}
+
+/// The following methods return nodes data
+impl CliState {
+    /// Return a node by name
+    pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
+        if let Some(node) = self.nodes_repository().await?.get_node(node_name).await? {
+            Ok(node)
         } else {
-            Ok(None)
+            Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("There is no node with name {node_name}"),
+            )
+            .into())
         }
     }
 
-    pub fn set_pid(&self, pid: i32) -> Result<()> {
-        std::fs::write(self.paths.pid(), pid.to_string())?;
-        Ok(())
+    /// Return all the created nodes
+    pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
+        Ok(self.nodes_repository().await?.get_nodes().await?)
     }
 
+    /// Return information about the default node (if there is one)
+    pub async fn get_default_node(&self) -> Result<NodeInfo> {
+        if let Some(node) = self.nodes_repository().await?.get_default_node().await? {
+            Ok(node)
+        } else {
+            let identity = self.get_default_named_identity().await?;
+            let node = self
+                .create_node_with_identifier(&random_name(), &identity.identifier())
+                .await?;
+            Ok(node)
+        }
+    }
+
+    /// Return the node information for the given node name, otherwise for the default node
+    pub async fn get_node_or_default(&self, node_name: &Option<String>) -> Result<NodeInfo> {
+        match node_name {
+            Some(name) => self.get_node(name).await,
+            None => self.get_default_node().await,
+        }
+    }
+
+    /// Return the project associated to a node if there is one
+    pub async fn get_node_project(&self, node_name: &str) -> Result<Project> {
+        match self
+            .nodes_repository()
+            .await?
+            .get_node_project_name(node_name)
+            .await?
+        {
+            Some(project_name) => self.get_project_by_name(&project_name).await,
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("there is no project associated to node {node_name}"),
+            )
+            .into()),
+        }
+    }
+
+    /// Return the stdout log file used by a node
+    pub fn stdout_logs(&self, node_name: &str) -> Result<PathBuf> {
+        Ok(self.create_node_dir(node_name)?.join("stdout.log"))
+    }
+
+    /// Return the stderr log file used by a node
+    pub fn stderr_logs(&self, node_name: &str) -> Result<PathBuf> {
+        Ok(self.create_node_dir(node_name)?.join("stderr.log"))
+    }
+}
+
+/// Private functions
+impl CliState {
+    /// This method creates a node
+    pub async fn create_node_with_identifier(
+        &self,
+        node_name: &str,
+        identifier: &Identifier,
+    ) -> Result<NodeInfo> {
+        let repository = self.nodes_repository().await?;
+        let is_default = repository.is_default_node(node_name).await?
+            || repository.get_nodes().await?.is_empty();
+        let tcp_listener_address = repository.get_tcp_listener_address(node_name).await?;
+        let node_info = NodeInfo::new(
+            node_name.to_string(),
+            identifier.clone(),
+            0,
+            is_default,
+            false,
+            tcp_listener_address,
+            Some(process::id()),
+        );
+        repository.store_node(&node_info).await?;
+        Ok(node_info)
+    }
+
+    /// Return the nodes using a given identity
+    pub(super) async fn get_nodes_by_identity_name(
+        &self,
+        identity_name: &str,
+    ) -> Result<Vec<NodeInfo>> {
+        let identifier = self.get_identifier_by_name(identity_name).await?;
+        Ok(self
+            .nodes_repository()
+            .await?
+            .get_nodes_by_identifier(&identifier)
+            .await?)
+    }
+
+    /// Return the vault which was used to create the identity associated to a node
+    pub(super) async fn get_node_vault(&self, node_name: &str) -> Result<NamedVault> {
+        let identifier = self.get_node(node_name).await?.identifier();
+        let identity = self.get_named_identity_by_identifier(&identifier).await?;
+        self.get_named_vault(&identity.vault_name()).await
+    }
+
+    /// Create a directory used to store files specific to a node
+    fn create_node_dir(&self, node_name: &str) -> Result<PathBuf> {
+        let path = self.node_dir(node_name);
+        std::fs::create_dir_all(&path)?;
+        Ok(path)
+    }
+
+    /// Return the directory used by a node
+    fn node_dir(&self, node_name: &str) -> PathBuf {
+        Self::make_node_dir_path(&self.dir(), node_name)
+    }
+}
+
+/// This struct contains all the data associated to a node
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct NodeInfo {
+    name: String,
+    identifier: Identifier,
+    verbosity: u8,
+    // this is used when restarting the node to determine its logging level
+    is_default: bool,
+    is_authority: bool,
+    tcp_listener_address: Option<InternetAddress>,
+    pid: Option<u32>,
+}
+
+impl NodeInfo {
+    pub fn new(
+        name: String,
+        identifier: Identifier,
+        verbosity: u8,
+        is_default: bool,
+        is_authority: bool,
+        tcp_listener_address: Option<InternetAddress>,
+        pid: Option<u32>,
+    ) -> Self {
+        Self {
+            name,
+            identifier,
+            verbosity,
+            is_default,
+            is_authority,
+            tcp_listener_address,
+            pid,
+        }
+    }
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn identifier(&self) -> Identifier {
+        self.identifier.clone()
+    }
+
+    pub fn verbosity(&self) -> u8 {
+        self.verbosity
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.is_default
+    }
+
+    /// Return a copy of this node with the is_default flag set to true
+    pub fn set_as_default(&self) -> Self {
+        let mut result = self.clone();
+        result.is_default = true;
+        result
+    }
+
+    pub fn is_authority_node(&self) -> bool {
+        self.is_authority
+    }
+
+    pub fn tcp_listener_port(&self) -> Option<u16> {
+        self.tcp_listener_address.as_ref().map(|t| t.port())
+    }
+
+    pub fn tcp_listener_address(&self) -> Option<InternetAddress> {
+        self.tcp_listener_address.clone()
+    }
+
+    pub fn tcp_listener_multi_address(&self) -> Result<MultiAddr> {
+        Ok(self
+            .tcp_listener_address
+            .as_ref()
+            .ok_or(ockam::Error::new(
+                Origin::Api,
+                Kind::Internal,
+                "no transport has been set on the node".to_string(),
+            ))
+            .and_then(|t| t.multi_addr())?)
+    }
+
+    pub fn pid(&self) -> Option<u32> {
+        self.pid
+    }
+
+    pub fn set_pid(&self, pid: u32) -> NodeInfo {
+        let mut result = self.clone();
+        result.pid = Some(pid);
+        result
+    }
+
+    /// Return true if there is a running process corresponding to the node process id
     pub fn is_running(&self) -> bool {
-        if let Ok(Some(pid)) = self.pid() {
+        if let Some(pid) = self.pid() {
             let mut sys = System::new();
             sys.refresh_processes();
             if let Some(p) = sys.process(Pid::from(pid as usize)) {
@@ -149,592 +435,147 @@ impl NodeState {
             false
         }
     }
-
-    pub fn stdout_log(&self) -> PathBuf {
-        self.paths.stdout()
-    }
-
-    pub fn stderr_log(&self) -> PathBuf {
-        self.paths.stderr()
-    }
-
-    pub async fn policies_storage(&self) -> Result<LmdbStorage> {
-        Ok(LmdbStorage::new(self.paths.policies_storage()).await?)
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct NodeConfig {
-    #[serde(flatten)]
-    setup: NodeSetupConfig,
-    #[serde(skip)]
-    version: ConfigVersion,
-    #[serde(skip)]
-    default_vault: PathBuf,
-    #[serde(skip)]
-    default_identity: PathBuf,
-}
-
-impl NodeConfig {
-    pub fn new(cli_state: &CliState) -> Result<Self> {
-        Self::try_from(cli_state)
-    }
-
-    pub fn setup(&self) -> &NodeSetupConfig {
-        &self.setup
-    }
-
-    pub fn setup_mut(&self) -> NodeSetupConfig {
-        self.setup.clone()
-    }
-
-    pub fn vault_path(&self) -> Result<PathBuf> {
-        Ok(std::fs::canonicalize(&self.default_vault)?)
-    }
-
-    pub async fn vault(&self) -> Result<Vault> {
-        let state = VaultState::load(self.vault_path()?)?;
-        state.get().await
-    }
-
-    pub fn identity_config(&self) -> Result<IdentityConfig> {
-        let path = std::fs::canonicalize(&self.default_identity)?;
-        Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
-    }
-
-    pub fn identifier(&self) -> Result<Identifier> {
-        let state_path = std::fs::canonicalize(&self.default_identity)?;
-        let state = IdentityState::load(state_path)?;
-        Ok(state.identifier())
-    }
-}
-
-impl TryFrom<&CliState> for NodeConfig {
-    type Error = CliStateError;
-
-    fn try_from(cli_state: &CliState) -> std::result::Result<Self, Self::Error> {
-        let default_vault = cli_state.vaults.default_path()?;
-        assert!(default_vault.exists(), "default vault does not exist");
-        let default_identity = cli_state.identities.default_path()?;
-        assert!(default_identity.exists(), "default identity does not exist");
-        Ok(Self {
-            version: ConfigVersion::latest(),
-            default_vault,
-            default_identity,
-            setup: NodeSetupConfig::default(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct NodeConfigBuilder {
-    vault: Option<PathBuf>,
-    identity: Option<PathBuf>,
-}
-
-impl NodeConfigBuilder {
-    pub fn vault(mut self, path: PathBuf) -> Self {
-        self.vault = Some(path);
-        self
-    }
-
-    pub fn identity(mut self, path: PathBuf) -> Self {
-        self.identity = Some(path);
-        self
-    }
-
-    pub fn build(self, cli_state: &CliState) -> Result<NodeConfig> {
-        let vault = match self.vault {
-            Some(path) => path,
-            None => cli_state.vaults.default_path()?,
-        };
-        let identity = match self.identity {
-            Some(path) => path,
-            None => cli_state.identities.default_path()?,
-        };
-        Ok(NodeConfig {
-            default_vault: vault,
-            default_identity: identity,
-            ..NodeConfig::new(cli_state)?
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ConfigVersion {
-    V1,
-}
-
-impl ConfigVersion {
-    fn latest() -> Self {
-        Self::V1
-    }
-}
-
-impl Display for ConfigVersion {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            ConfigVersion::V1 => "1",
-        })
-    }
-}
-
-impl FromStr for ConfigVersion {
-    type Err = CliStateError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "1" => Ok(Self::V1),
-            _ => Err(CliStateError::InvalidVersion(s.to_string())),
-        }
-    }
-}
-
-impl Default for ConfigVersion {
-    fn default() -> Self {
-        Self::latest()
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
-pub struct NodeSetupConfig {
-    pub verbose: u8,
-
-    /// This flag is used to determine how the node status should be
-    /// displayed in print_query_status.
-    /// The field might be missing in previous configuration files, hence it is an Option
-    pub authority_node: Option<bool>,
-    pub project: Option<ProjectLookup>,
-    pub api_transport: Option<CreateTransportJson>,
-}
-
-impl NodeSetupConfig {
-    pub fn set_verbose(mut self, verbose: u8) -> Self {
-        self.verbose = verbose;
-        self
-    }
-
-    pub fn set_authority_node(mut self) -> Self {
-        self.authority_node = Some(true);
-        self
-    }
-
-    pub fn set_project(&mut self, project: ProjectLookup) -> &mut Self {
-        self.project = Some(project);
-        self
-    }
-
-    pub fn set_api_transport(mut self, transport: CreateTransportJson) -> Self {
-        self.api_transport = Some(transport);
-        self
-    }
-
-    pub fn api_transport(&self) -> Result<&CreateTransportJson> {
-        self.api_transport.as_ref().ok_or_else(|| {
-            CliStateError::InvalidOperation(
-                "The api transport was not set for the node".to_string(),
-            )
-        })
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct NodePaths {
-    path: PathBuf,
-}
-
-impl NodePaths {
-    fn new(path: &Path) -> Self {
-        Self {
-            path: path.to_path_buf(),
-        }
-    }
-
-    fn setup(&self) -> PathBuf {
-        self.path.join("setup.json")
-    }
-
-    fn vault(&self) -> PathBuf {
-        self.path.join("default_vault")
-    }
-
-    fn identity(&self) -> PathBuf {
-        self.path.join("default_identity")
-    }
-
-    fn pid(&self) -> PathBuf {
-        self.path.join("pid")
-    }
-
-    fn version(&self) -> PathBuf {
-        self.path.join("version")
-    }
-
-    fn stdout(&self) -> PathBuf {
-        self.path.join("stdout.log")
-    }
-
-    fn stderr(&self) -> PathBuf {
-        self.path.join("stderr.log")
-    }
-
-    fn policies_storage(&self) -> PathBuf {
-        self.path.join("policies_storage.lmdb")
-    }
-}
-
-mod backwards_compatibility {
-    use super::*;
-
-    #[derive(Deserialize, Debug, Clone)]
-    #[serde(untagged)]
-    pub(super) enum NodeConfigs {
-        V1(NodeConfigV1),
-        V2(NodeConfig),
-    }
-
-    #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-    pub(super) struct NodeConfigV1 {
-        #[serde(flatten)]
-        pub setup: NodeSetupConfigV1,
-        #[serde(skip)]
-        pub version: ConfigVersion,
-        #[serde(skip)]
-        pub default_vault: PathBuf,
-        #[serde(skip)]
-        pub default_identity: PathBuf,
-    }
-
-    #[derive(Deserialize, Debug, Clone)]
-    #[serde(untagged)]
-    pub(super) enum NodeSetupConfigs {
-        V1(NodeSetupConfigV1),
-        V2(NodeSetupConfig),
-    }
-
-    // The change was replacing the `transports` field with `api_transport`
-    #[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
-    pub(super) struct NodeSetupConfigV1 {
-        pub verbose: u8,
-
-        /// This flag is used to determine how the node status should be
-        /// displayed in print_query_status.
-        /// The field might be missing in previous configuration files, hence it is an Option
-        pub authority_node: Option<bool>,
-        pub project: Option<ProjectLookup>,
-        pub transports: HashSet<CreateTransportJson>,
-    }
-
-    #[cfg(test)]
-    impl NodeSetupConfigV1 {
-        pub fn add_transport(mut self, transport: CreateTransportJson) -> Self {
-            self.transports.insert(transport);
-            self
-        }
-    }
-}
-
-mod traits {
-    use super::*;
-    use crate::cli_state::file_stem;
-    use crate::cli_state::traits::*;
-    use crate::nodes::models::transport::{TransportMode, TransportType};
-    use ockam_core::async_trait;
-
-    #[async_trait]
-    impl StateDirTrait for NodesState {
-        type Item = NodeState;
-        const DEFAULT_FILENAME: &'static str = "node";
-        const DIR_NAME: &'static str = "nodes";
-        const HAS_DATA_DIR: bool = false;
-
-        fn new(root_path: &Path) -> Self {
-            Self {
-                dir: Self::build_dir(root_path),
-            }
-        }
-
-        fn dir(&self) -> &PathBuf {
-            &self.dir
-        }
-
-        fn path(&self, name: impl AsRef<str>) -> PathBuf {
-            self.dir().join(name.as_ref())
-        }
-
-        /// A node contains several files, and the existence of the main directory is not not enough
-        /// to determine if a node exists as it could be created but empty.
-        fn exists(&self, name: impl AsRef<str>) -> bool {
-            let paths = NodePaths::new(&self.path(&name));
-            paths.setup().exists()
-        }
-
-        fn delete(&self, name: impl AsRef<str>) -> Result<()> {
-            self._delete(&name, false)
-        }
-
-        async fn migrate(&self, node_path: &Path) -> Result<()> {
-            if node_path.is_file() {
-                // If path is a file, it is probably a non supported file (e.g. .DS_Store)
-                return Ok(());
-            }
-            let paths = NodePaths::new(node_path);
-            let contents = std::fs::read_to_string(paths.setup())?;
-            match serde_json::from_str(&contents)? {
-                NodeSetupConfigs::V1(setup) => {
-                    // Get the first tcp-listener from the transports hashmap and
-                    // use it as the api transport
-                    let mut new_setup = NodeSetupConfig {
-                        verbose: setup.verbose,
-                        authority_node: setup.authority_node,
-                        project: setup.project,
-                        api_transport: None,
-                    };
-                    if let Some(t) = setup
-                        .transports
-                        .into_iter()
-                        .find(|t| t.tt == TransportType::Tcp && t.tm == TransportMode::Listen)
-                    {
-                        new_setup.api_transport = Some(t);
-                    }
-                    std::fs::write(paths.setup(), serde_json::to_string(&new_setup)?)?;
-                }
-                NodeSetupConfigs::V2(_) => (),
-            }
-            Ok(())
-        }
-    }
-
-    #[async_trait]
-    impl StateItemTrait for NodeState {
-        type Config = NodeConfig;
-
-        fn new(path: PathBuf, mut config: Self::Config) -> Result<Self> {
-            std::fs::create_dir_all(&path)?;
-            let paths = NodePaths::new(&path);
-            let name = file_stem(&path)?;
-            std::fs::write(paths.setup(), serde_json::to_string(config.setup())?)?;
-            std::fs::write(paths.version(), config.version.to_string())?;
-            let _ = std::fs::remove_file(paths.vault());
-            std::os::unix::fs::symlink(&config.default_vault, paths.vault())?;
-            config.default_vault = paths.vault();
-            let _ = std::fs::remove_file(paths.identity());
-            std::os::unix::fs::symlink(&config.default_identity, paths.identity())?;
-            config.default_identity = paths.identity();
-            Ok(Self {
-                name,
-                path,
-                paths,
-                config,
-            })
-        }
-
-        fn load(path: PathBuf) -> Result<Self> {
-            let paths = NodePaths::new(&path);
-            let name = file_stem(&path)?;
-            let setup = {
-                let contents = std::fs::read_to_string(paths.setup())?;
-                serde_json::from_str(&contents)?
-            };
-            let version = {
-                let contents = std::fs::read_to_string(paths.version())?;
-                contents.parse::<ConfigVersion>()?
-            };
-            let config = NodeConfig {
-                setup,
-                version,
-                default_vault: paths.vault(),
-                default_identity: paths.identity(),
-            };
-            Ok(Self {
-                name,
-                path,
-                paths,
-                config,
-            })
-        }
-
-        fn delete(&self) -> Result<()> {
-            self._delete(false)
-        }
-
-        fn path(&self) -> &PathBuf {
-            &self.path
-        }
-
-        fn config(&self) -> &Self::Config {
-            &self.config
-        }
-    }
-}
-
-pub async fn init_node_state(
-    cli_state: &CliState,
-    node_name: &str,
-    vault_name: Option<&str>,
-    identity_name: Option<&str>,
-) -> miette::Result<()> {
-    debug!(name=%node_name, "initializing node state");
-    // Get vault specified in the argument, or get the default
-    let vault_state = cli_state.create_vault_state(vault_name).await?;
-
-    // create an identity for the node
-    let identifier = cli_state
-        .get_identities(vault_state.get().await?)
-        .await?
-        .identities_creation()
-        .create_identity()
-        .await
-        .into_diagnostic()
-        .wrap_err("Failed to create identity")?;
-
-    let identity_state = cli_state
-        .create_identity_state(&identifier, identity_name)
-        .await?;
-
-    // Create the node with the given vault and identity
-    let node_config = NodeConfigBuilder::default()
-        .vault(vault_state.path().clone())
-        .identity(identity_state.path().clone())
-        .build(cli_state)?;
-    cli_state.nodes.overwrite(node_name, node_config)?;
-
-    info!(name=%node_name, "node state initialized");
-    Ok(())
-}
-
-pub async fn add_project_info_to_node_state(
-    node_name: &str,
-    cli_state: &CliState,
-    project_path: Option<&PathBuf>,
-) -> Result<Option<String>> {
-    debug!(name=%node_name, "Adding project info to state");
-    let proj_path = if let Some(path) = project_path {
-        Some(path.clone())
-    } else if let Ok(proj) = cli_state.projects.default() {
-        Some(proj.path().clone())
-    } else {
-        None
-    };
-
-    match proj_path {
-        Some(path) => {
-            debug!(path=%path.display(), "Reading project info from path");
-            let s = std::fs::read_to_string(path)?;
-            let proj_info: ProjectConfigCompact = serde_json::from_str(&s)?;
-            let proj_lookup = ProjectLookup::from_project(&(&proj_info).into())
-                .await
-                .map_err(|e| {
-                    CliStateError::InvalidData(format!("Failed to read project: {}", e))
-                })?;
-            let proj_config = ProjectConfig::from(&proj_info);
-            let state = cli_state.nodes.get(node_name)?;
-            state.set_setup(state.config().setup_mut().set_project(proj_lookup.clone()))?;
-            cli_state
-                .projects
-                .overwrite(proj_lookup.name, proj_config)?;
-            Ok(Some(proj_lookup.id))
-        }
-        None => {
-            debug!("No project info used");
-            Ok(None)
-        }
-    }
-}
-
-pub async fn update_enrolled_identity(cli_state: &CliState, node_name: &str) -> Result<Identifier> {
-    let identities = cli_state.identities.list()?;
-
-    let node_state = cli_state.nodes.get(node_name)?;
-    let node_identifier = node_state.config().identifier()?;
-
-    for mut identity in identities {
-        if node_identifier == identity.config().identifier() {
-            identity.set_enrollment_status()?;
-        }
-    }
-
-    Ok(node_identifier)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use ockam_core::env::FromString;
+
     use crate::config::lookup::InternetAddress;
-    use crate::nodes::models::transport::{TransportMode, TransportType};
 
-    #[test]
-    fn node_config_setup_transports_no_duplicates() {
-        let mut config = NodeSetupConfigV1 {
-            verbose: 0,
-            authority_node: None,
-            project: None,
-            transports: HashSet::new(),
-        };
-        let transport = CreateTransportJson {
-            tt: TransportType::Tcp,
-            tm: TransportMode::Listen,
-            addr: InternetAddress::V4("127.0.0.1:1020".parse().unwrap()),
-        };
-        config = config.add_transport(transport.clone());
-        assert_eq!(config.transports.len(), 1);
-        assert_eq!(config.transports.iter().next(), Some(&transport));
+    use super::*;
 
-        config = config.add_transport(transport);
-        assert_eq!(config.transports.len(), 1);
-    }
+    #[tokio::test]
+    async fn test_create_node() -> Result<()> {
+        let cli = CliState::test().await?;
 
-    #[test]
-    fn node_config_setup_transports_parses_a_json_with_duplicate_entries() {
-        // This test is to ensure backwards compatibility, for versions where transports where stored as a Vec<>
-        let config_json = r#"{
-            "verbose": 0,
-            "authority_node": null,
-            "project": null,
-            "transports": [
-                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}},
-                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}}
-            ]
-        }"#;
-        let config = serde_json::from_str::<NodeSetupConfigV1>(config_json).unwrap();
-        assert_eq!(config.transports.len(), 1);
+        // a node can be created with just a name
+        let node_name = "node-1";
+        let result = cli.create_node(node_name).await?;
+        assert_eq!(result.name(), node_name.to_string());
+
+        // the first node is the default one
+        let result = cli.get_default_node().await?.name();
+        assert_eq!(result, node_name.to_string());
+
+        // as a consequence, a default identity must have been created
+        let result = cli.get_default_named_vault().await.ok();
+        assert!(result.is_some());
+
+        let result = cli.get_default_named_identity().await.ok();
+        assert!(result.is_some());
+
+        // that identity is associated to the node
+        let identifier = result.unwrap().identifier();
+        let result = cli.get_node(node_name).await?.identifier();
+        assert_eq!(result, identifier);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn migrate_node_config_from_v1_to_v2() {
-        // Create a v1 setup.json file
-        let v1_json_json = r#"{
-            "verbose": 0,
-            "authority_node": null,
-            "project": null,
-            "transports": [
-                {"tt":"Tcp","tm":"Listen","addr":{"V4":"127.0.0.1:1020"}}
-            ]
-        }"#;
-        let tmp_dir = tempfile::tempdir().unwrap();
-        let node_dir = tmp_dir.path().join("n");
-        std::fs::create_dir(&node_dir).unwrap();
-        let tmp_file = node_dir.join("setup.json");
-        std::fs::write(&tmp_file, v1_json_json).unwrap();
+    async fn test_update_node() -> Result<()> {
+        let cli = CliState::test().await?;
 
-        // Run migration
-        let nodes_state = NodesState::new(tmp_dir.path());
-        nodes_state.migrate(&node_dir).await.unwrap();
+        // create a node
+        let node_name = "node-1";
+        let _ = cli.create_node(node_name).await?;
+        cli.set_tcp_listener_address(node_name, "127.0.0.1:0".to_string())
+            .await?;
 
-        // Check migration was done correctly
-        let contents = std::fs::read_to_string(&tmp_file).unwrap();
-        let v2_setup: NodeSetupConfig = serde_json::from_str(&contents).unwrap();
+        // recreate the node with the same name
+        let _ = cli.create_node(node_name).await?;
+
+        // the node must still be the default node
+        let result = cli.get_default_node().await?;
+        assert_eq!(result.name(), node_name.to_string());
+        assert!(result.is_default());
+
+        // the original tcp listener address has been kept
         assert_eq!(
-            v2_setup.api_transport,
-            Some(CreateTransportJson {
-                tt: TransportType::Tcp,
-                tm: TransportMode::Listen,
-                addr: InternetAddress::V4("127.0.0.1:1020".parse().unwrap())
-            })
+            result.tcp_listener_address(),
+            InternetAddress::new("127.0.0.1:0")
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_remove_node() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // a node can be created with just a name
+        let node1 = "node-1";
+        let node_info1 = cli.create_node(node1).await?;
+
+        // the created node is set as the default node
+        let result = cli.get_default_node().await?;
+        assert_eq!(result, node_info1);
+
+        // a node can also be removed
+        // first let's create a second node
+        let node2 = "node-2";
+        let node_info2 = cli.create_node(node2).await?;
+
+        // and remove node 1
+        cli.remove_node(node1).await?;
+
+        let result = cli.get_node(node1).await.ok();
+        assert_eq!(
+            result, None,
+            "the node information is not available anymore"
+        );
+        assert!(
+            !cli.node_dir(node1).exists(),
+            "the node directory must be deleted"
+        );
+
+        // then node 2 should be the default node
+        let result = cli.get_default_node().await?;
+        assert_eq!(result, node_info2.set_as_default());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_node_with_optional_values() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // a node can be created with just a name
+        let node = cli
+            .create_node_with_optional_values("node-1", &None, &None)
+            .await?;
+        let result = cli.get_node(&node.name()).await?;
+        assert_eq!(result.name(), node.name());
+
+        // a node can be created with a name and an existing identity
+        let identity = cli.create_identity_with_name("name").await?;
+        let node = cli
+            .create_node_with_optional_values("node-2", &Some(identity.name()), &None)
+            .await?;
+        let result = cli.get_node(&node.name()).await?;
+        assert_eq!(result.identifier(), identity.identifier());
+
+        // a node can be created with a name, an existing identity and an existing project
+        let authority = cli.get_identity(&identity.identifier()).await?;
+        let project = cli
+            .import_project(
+                "project_id",
+                "project_name",
+                &None,
+                &MultiAddr::from_string("/project/default").unwrap(),
+                &Some(authority),
+                &Some(MultiAddr::from_string("/project/authority").unwrap()),
+            )
+            .await?;
+
+        let node = cli
+            .create_node_with_optional_values(
+                "node-4",
+                &Some(identity.name()),
+                &Some(project.project_name()),
+            )
+            .await?;
+        let result = cli.get_node_project(&node.name()).await?;
+        assert_eq!(result.project_name(), project.project_name());
+
+        Ok(())
     }
 }

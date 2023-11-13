@@ -8,11 +8,10 @@ use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
 
-use crate::fmt_ok;
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
-use crate::util::{node_rpc, parse_node_name};
-use crate::{docs, CommandGlobalOpts};
+use crate::util::node_rpc;
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -34,7 +33,6 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -43,10 +41,7 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = parse_node_name(&node_name)?;
-
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let inlet_status = node
         .show_inlet(&ctx, &cmd.alias)
         .await?

@@ -18,12 +18,11 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::node::{get_node_name, initialize_node_if_default};
 use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::{node_rpc, process_nodes_multiaddr};
-use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
-use crate::{fmt_log, Result};
+use crate::{display_parse_logs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_log, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -41,7 +40,7 @@ pub struct CreateCommand {
     relay_name: String,
 
     /// Node for which to create the relay
-    #[arg(long, id = "NODE", display_order = 900)]
+    #[arg(long, id = "NODE", display_order = 900, value_parser = extract_address_value)]
     to: Option<String>,
 
     /// Route to the node at which to create the relay
@@ -55,7 +54,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.to);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -80,11 +78,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     display_parse_logs(&opts);
 
-    let to = get_node_name(&opts.state, &cmd.to);
-    let node_name = extract_address_value(&to)?;
     let at_rust_node = is_local_node(&cmd.at).wrap_err("Argument --at is not valid")?;
 
-    let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
+    let ma = process_nodes_multiaddr(&cmd.at, &opts.state).await?;
     let alias = if at_rust_node {
         format!("forward_to_{}", cmd.relay_name)
     } else {
@@ -93,13 +89,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.to).await?;
     let get_relay_info = async {
         let relay_info = {
-            if cmd.at.matches(0, &[Project::CODE.into()]) && cmd.authorized.is_some() {
+            if cmd.at.starts_with(Project::CODE) && cmd.authorized.is_some() {
                 return Err(miette!("--authorized can not be used with project addresses").into());
             };
-            info!("creating a relay at {} to {node_name}", cmd.at);
-            let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+            info!("creating a relay at {} to {}", cmd.at, node.node_name());
             node.create_relay(&ctx, &ma, Some(alias.clone()), cmd.authorized)
                 .await?
         };
@@ -116,9 +112,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         ),
         format!(
             "Setting up receiving relay mailbox on node {}...",
-            &node_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            &node.node_name().color(OckamColor::PrimaryResource.color())
         ),
     ];
     let progress_output = opts
@@ -138,7 +132,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     .color(OckamColor::PrimaryResource.color());
     let formatted_to = format!(
         "/node/{}{}",
-        &node_name,
+        &node.node_name(),
         &relay.remote_address_ma().into_diagnostic()?.to_string()
     )
     .color(OckamColor::PrimaryResource.color());

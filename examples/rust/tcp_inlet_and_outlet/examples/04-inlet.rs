@@ -5,7 +5,7 @@ use ockam_transport_tcp::TcpTransportExtension;
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // Create a Vault to store our cryptographic keys and an Identity to represent this Node.

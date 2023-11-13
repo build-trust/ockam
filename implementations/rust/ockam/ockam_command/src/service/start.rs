@@ -4,11 +4,11 @@ use miette::miette;
 use minicbor::Encode;
 
 use ockam::Context;
+use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNode;
-use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::terminal::OckamColor;
 use crate::util::{api, node_rpc};
 use crate::{fmt_ok, CommandGlobalOpts};
@@ -70,7 +70,6 @@ fn authenticator_default_addr() -> String {
 
 impl StartCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -80,8 +79,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StartCommand)) -> mi
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Hop { addr, .. } => {

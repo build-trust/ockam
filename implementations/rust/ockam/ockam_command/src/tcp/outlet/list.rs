@@ -1,17 +1,14 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::OutletList;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -31,7 +28,6 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -40,26 +36,19 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
-
-    if !opts.state.nodes.get(&node_name)?.is_running() {
-        return Err(miette!("The node '{}' is not running", node_name));
-    }
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let res = send_request(&ctx, &opts, node_name.clone()).await;
+        let res: OutletList = node.ask(&ctx, Request::get("/node/outlet")).await?;
         *is_finished.lock().await = true;
-        res
+        Ok(res)
     };
 
     let output_messages = vec![format!(
         "Listing TCP Outlets on node {}...\n",
-        node_name
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
+        node.node_name().color(OckamColor::PrimaryResource.color())
     )];
 
     let progress_output = opts
@@ -70,8 +59,8 @@ async fn run_impl(
 
     let list = opts.terminal.build_list(
         &outlets.list,
-        &format!("Outlets on Node {node_name}"),
-        &format!("No TCP Outlets found on node {node_name}."),
+        &format!("Outlets on Node {}", node.node_name()),
+        &format!("No TCP Outlets found on node {}.", node.node_name()),
     )?;
     let json: Vec<_> = outlets
         .list
@@ -92,14 +81,4 @@ async fn run_impl(
         .write_line()?;
 
     Ok(())
-}
-
-pub async fn send_request(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    to_node: impl Into<Option<String>>,
-) -> crate::Result<OutletList> {
-    let node_name = get_node_name(&opts.state, &to_node.into());
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
-    Ok(node.ask(ctx, Request::get("/node/outlet")).await?)
 }

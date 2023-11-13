@@ -6,7 +6,6 @@ use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
 
 use crate::kafka::util::{rpc, ArgOpts};
-use crate::node::initialize_node_if_default;
 use crate::{
     kafka::{
         kafka_consumer_default_addr, kafka_default_consumer_port_range,
@@ -41,7 +40,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         let arg_opts = ArgOpts {
             endpoint: "/node/services/kafka_consumer".to_string(),
             kafka_entity: "KafkaConsumer".to_string(),

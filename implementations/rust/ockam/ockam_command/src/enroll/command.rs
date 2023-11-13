@@ -9,10 +9,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{info, warn};
 
-use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::{random_name, update_enrolled_identity, SpaceConfig};
+use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
@@ -22,7 +20,6 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::identity::initialize_identity_if_default;
 use crate::operation::util::check_for_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
@@ -51,7 +48,6 @@ pub struct EnrollCommand {
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.identity);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -75,7 +71,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
                     "\n{} Received Ctrl+C again. Cancelling {}. Please try again.",
                     "!".red(), "ockam enroll".bold().light_yellow()
                 )
-                .as_str(),
+                    .as_str(),
             );
             process::exit(2);
         } else {
@@ -84,12 +80,12 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
                     "\n{} {} is still in progress. If you would like to stop the enrollment process, press Ctrl+C again.",
                     "!".red(), "ockam enroll".bold().light_yellow()
                 )
-                .as_str(),
+                    .as_str(),
             );
             is_confirmation.store(true, Ordering::Relaxed);
         }
     })
-    .expect("Error setting Ctrl-C handler");
+        .expect("Error setting Ctrl-C handler");
 }
 
 async fn run_impl(
@@ -114,9 +110,7 @@ async fn run_impl(
     let user_info = oidc_service
         .wait_for_email_verification(&token, Some(&opts.terminal))
         .await?;
-    opts.state
-        .users_info
-        .overwrite(&user_info.email, user_info.clone())?;
+    opts.state.store_user(&user_info).await?;
 
     let node = InMemoryNode::start(ctx, &opts.state).await?;
     let controller = node.create_controller().await?;
@@ -125,7 +119,19 @@ async fn run_impl(
         .await
         .wrap_err("Failed to enroll your local identity with Ockam Orchestrator")?;
 
-    let identifier = retrieve_user_project(&opts, ctx, &node).await?;
+    let project = retrieve_user_project(&opts, ctx, &node).await?;
+    let identifier = node.identifier();
+    opts.state
+        .set_identifier_as_enrolled(&identifier)
+        .await
+        .wrap_err(format!(
+            "Unable to set the local identity as enrolled with project {}",
+            project
+                .name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))?;
+    info!("Enrolled a user with the Identifier {}", identifier);
 
     opts.terminal.write_line(&fmt_ok!(
         "Enrolled {} as one of the Ockam identities of your Orchestrator account {}.",
@@ -141,13 +147,18 @@ pub async fn retrieve_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-) -> Result<Identifier> {
-    let space = default_space(opts, ctx, &node.create_controller().await?)
+) -> Result<Project> {
+    // return the default project if there is one already stored locally
+    if let Ok(project) = opts.state.get_default_project().await {
+        return Ok(project);
+    };
+
+    let space = get_user_space(opts, ctx, node)
         .await
         .wrap_err("Unable to retrieve and set a space as default")?;
     info!("Retrieved the user default space {:?}", space);
 
-    let project = default_project(opts, ctx, node, &space)
+    let project = get_user_project(opts, ctx, node, &space)
         .await
         .wrap_err(format!(
             "Unable to retrieve and set a project as default with space {}",
@@ -157,19 +168,7 @@ pub async fn retrieve_user_project(
                 .color(OckamColor::PrimaryResource.color())
         ))?;
     info!("Retrieved the user default project {:?}", project);
-
-    let identifier = update_enrolled_identity(&opts.state, &node.node_name())
-        .await
-        .wrap_err(format!(
-            "Unable to set the local identity as enrolled with project {}",
-            project
-                .name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
-    info!("Enrolled a user with the Identifier {}", identifier);
-
-    Ok(identifier)
+    Ok(project)
 }
 
 /// Enroll a user with a token, using the controller
@@ -188,17 +187,23 @@ pub async fn enroll_with_node(
     Ok(())
 }
 
-async fn default_space(
+async fn get_user_space(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    controller: &Controller,
+    node: &InMemoryNode,
 ) -> Result<Space> {
-    // Get available spaces for node's identity
+    // return the default space if there is one already stored locally
+    if let Ok(space) = opts.state.get_default_space().await {
+        return Ok(space);
+    };
+
+    // Otherwise get the available spaces for node's identity
+    // Those spaces might have been created previously and all the local state reset
     opts.terminal
         .write_line(&fmt_log!("Getting available spaces in your account..."))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
-        let spaces: Vec<Space> = controller.list_spaces(ctx).await?;
+        let spaces = node.get_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };
@@ -206,79 +211,64 @@ async fn default_space(
     let message = vec![format!("Checking for any existing spaces...")];
     let progress_output = opts.terminal.progress_output(&message, &is_finished);
 
-    let (mut available_spaces, _) = try_join!(get_spaces, progress_output)?;
+    let (spaces, _) = try_join!(get_spaces, progress_output)?;
 
     // If the identity has no spaces, create one
-    let default_space = if available_spaces.is_empty() {
-        opts.terminal
-            .write_line(&fmt_para!("No spaces are defined in your account."))?
-            .write_line(&fmt_para!(
-                "Creating a trial space for you ({}) ...",
-                "everything in it will be deleted in 15 days"
-                    .to_string()
-                    .color(OckamColor::FmtWARNBackground.color())
-            ))?
-            .write_line(&fmt_para!(
-            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: {}",
-            "hello@ockam.io".to_string().color(OckamColor::PrimaryResource.color())
-        ))?;
+    let space = match spaces.first() {
+        None => {
+            opts.terminal
+                .write_line(&fmt_para!("No spaces are defined in your account."))?
+                .write_line(&fmt_para!(
+                    "Creating a trial space for you ({}) ...",
+                    "everything in it will be deleted in 15 days"
+                        .to_string()
+                        .color(OckamColor::FmtWARNBackground.color())
+                ))?
+                .write_line(&fmt_para!(
+                    "To learn more about production ready spaces in Ockam Orchestrator, contact us at: {}",
+                    "hello@ockam.io".to_string().color(OckamColor::PrimaryResource.color())))?;
 
-        let is_finished = Mutex::new(false);
-        let name = random_name();
-        let space_name = name.clone();
-        let create_space = async {
-            let space = controller.create_space(ctx, space_name, vec![]).await?;
-            *is_finished.lock().await = true;
-            Ok(space)
-        };
+            let is_finished = Mutex::new(false);
+            let space_name = random_name();
+            let create_space = async {
+                let space = node.create_space(ctx, &space_name, vec![]).await?;
+                *is_finished.lock().await = true;
+                Ok(space)
+            };
 
-        let message = vec![format!(
-            "Creating space {}...",
-            name.color(OckamColor::PrimaryResource.color())
-        )];
-        let progress_output = opts.terminal.progress_output(&message, &is_finished);
-        let (space, _) = try_join!(create_space, progress_output)?;
-        space
-    }
-    // If it has, return the first one on the list
-    else {
-        for space in &available_spaces {
-            opts.state
-                .spaces
-                .overwrite(&space.name, SpaceConfig::from(space))?;
-        }
-
-        let space = available_spaces
-            .drain(..1)
-            .next()
-            .expect("already checked that is not empty");
-
-        opts.terminal.write_line(&fmt_log!(
-            "Found space {}.",
+            let message = vec![format!(
+                "Creating space {}...",
+                space_name
+                    .clone()
+                    .color(OckamColor::PrimaryResource.color())
+            )];
+            let progress_output = opts.terminal.progress_output(&message, &is_finished);
+            let (space, _) = try_join!(create_space, progress_output)?;
             space
-                .name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
-        space
+        }
+        Some(space) => {
+            opts.terminal.write_line(&fmt_log!(
+                "Found space {}.",
+                space
+                    .name
+                    .clone()
+                    .color(OckamColor::PrimaryResource.color())
+            ))?;
+            space.clone()
+        }
     };
-    opts.state
-        .spaces
-        .overwrite(&default_space.name, SpaceConfig::from(&default_space))?;
     opts.terminal.write_line(&fmt_ok!(
         "Marked this space as your default space, on this machine.\n"
     ))?;
-    Ok(default_space)
+    Ok(space)
 }
 
-async fn default_project(
+async fn get_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
     space: &Space,
 ) -> Result<Project> {
-    let controller = node.create_controller().await?;
-
     // Get available project for the given space
     opts.terminal.write_line(&fmt_log!(
         "Getting available projects in space {}...",
@@ -290,7 +280,7 @@ async fn default_project(
 
     let is_finished = Mutex::new(false);
     let get_projects = async {
-        let projects = controller.list_projects(ctx).await?;
+        let projects = node.get_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
@@ -298,85 +288,68 @@ async fn default_project(
     let message = vec![format!("Checking for any existing projects...")];
     let progress_output = opts.terminal.progress_output(&message, &is_finished);
 
-    let (mut available_projects, _) = try_join!(get_projects, progress_output)?;
+    let (projects, _) = try_join!(get_projects, progress_output)?;
 
     // If the space has no projects, create one
-    let default_project = if available_projects.is_empty() {
-        opts.terminal
-            .write_line(&fmt_para!(
-                "No projects are defined in the space {}.",
-                space
-                    .name
+    let project = match projects.first() {
+        None => {
+            opts.terminal
+                .write_line(&fmt_para!(
+                    "No projects are defined in the space {}.",
+                    space
+                        .name
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ))?
+                .write_line(&fmt_para!("Creating a project for you..."))?;
+
+            let is_finished = Mutex::new(false);
+            let project_name = "default".to_string();
+            let get_project = async {
+                let project = node
+                    .create_project(ctx, &space.id, &project_name, vec![])
+                    .await?;
+                *is_finished.lock().await = true;
+                Ok(project)
+            };
+
+            let message = vec![format!(
+                "Creating project {}...",
+                project_name
                     .to_string()
                     .color(OckamColor::PrimaryResource.color())
-            ))?
-            .write_line(&fmt_para!("Creating a project for you..."))?;
+            )];
+            let progress_output = opts.terminal.progress_output(&message, &is_finished);
+            let (project, _) = try_join!(get_project, progress_output)?;
 
-        let is_finished = Mutex::new(false);
-        let project_name = "default".to_string();
-        let get_project = async {
-            let project = controller
-                .create_project(ctx, space.id.clone(), project_name.clone(), vec![])
+            opts.terminal.write_line(&fmt_ok!(
+                "Created project {}.",
+                project_name
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ))?;
+
+            let operation_id = project.operation_id.clone().unwrap();
+            check_for_completion(opts, ctx, &node.create_controller().await?, &operation_id)
                 .await?;
-            *is_finished.lock().await = true;
-            Ok(project)
-        };
 
-        let message = vec![format!(
-            "Creating project {}...",
-            project_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )];
-        let progress_output = opts.terminal.progress_output(&message, &is_finished);
-        let (project, _) = try_join!(get_project, progress_output)?;
-
-        opts.terminal.write_line(&fmt_ok!(
-            "Created project {}.",
-            project_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
-
-        let operation_id = project.operation_id.clone().unwrap();
-        check_for_completion(opts, ctx, &controller, &operation_id).await?;
-
-        project.to_owned()
-    }
-    // If it has, return the "default" project or first one on the list
-    else {
-        for project in &available_projects {
-            opts.state
-                .projects
-                .overwrite(&project.name, project.clone())?;
+            project.to_owned()
         }
-        let p = match available_projects.iter().find(|ns| ns.name == "default") {
-            None => available_projects
-                .drain(..1)
-                .next()
-                .expect("already checked that is not empty"),
-            Some(p) => p.to_owned(),
-        };
-        opts.terminal.write_line(&fmt_log!(
-            "Found project {}.",
-            p.name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
-        p
+        Some(project) => {
+            opts.terminal.write_line(&fmt_log!(
+                "Found project {}.",
+                project
+                    .project_name()
+                    .color(OckamColor::PrimaryResource.color())
+            ))?;
+            project.clone()
+        }
     };
 
-    let project = check_project_readiness(opts, ctx, node, default_project).await?;
+    check_project_readiness(opts, ctx, node, project.clone()).await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this project as your default project, on this machine.\n"
     ))?;
-
-    opts.state
-        .projects
-        .overwrite(&project.name, project.clone())?;
-    opts.state
-        .trust_contexts
-        .overwrite(&project.name, project.clone().try_into()?)?;
     Ok(project)
 }

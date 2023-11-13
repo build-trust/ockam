@@ -4,14 +4,14 @@ use console::Term;
 use miette::miette;
 
 use ockam::Context;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
-use crate::node::get_node_name;
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::DeleteCommandTui;
-use crate::util::{node_rpc, parse_node_name};
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -25,7 +25,7 @@ pub struct DeleteCommand {
     relay_name: Option<String>,
 
     /// Node on which to delete the Relay. If not provided, the default node will be used
-    #[arg(global = true, long, value_name = "NODE")]
+    #[arg(global = true, long, value_name = "NODE", value_parser = extract_address_value)]
     pub at: Option<String>,
 
     /// Confirm the deletion without prompting
@@ -59,11 +59,7 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node_name = {
-            let name = get_node_name(&opts.state, &cmd.at);
-            parse_node_name(&name)?
-        };
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
         let tui = Self {
             ctx,
             opts,
@@ -147,13 +143,13 @@ impl DeleteCommandTui for DeleteTui {
                 plain.push_str(&fmt_ok!(
                     "Relay with name {} on Node {} has been deleted\n",
                     item_name.light_magenta(),
-                    node_name.light_magenta()
+                    node_name.clone().light_magenta()
                 ));
             } else {
                 plain.push_str(&fmt_warn!(
                     "Failed to delete relay with name {} on Node {}\n",
                     item_name.light_magenta(),
-                    node_name.light_magenta()
+                    node_name.clone().light_magenta()
                 ));
             }
         }
