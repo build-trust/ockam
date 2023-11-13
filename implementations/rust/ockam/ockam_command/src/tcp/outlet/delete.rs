@@ -8,9 +8,9 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::fmt_ok;
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
-use crate::util::{node_rpc, parse_node_name};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -34,7 +34,6 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -43,9 +42,7 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = parse_node_name(&node_name)?;
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
 
     // Check if there an outlet with the provided alias/name exists
     let alias = cmd.alias;
@@ -54,7 +51,8 @@ pub async fn run_impl(
         .found()
         .into_diagnostic()?
         .ok_or(miette!(
-            "TCP outlet with alias {alias} was not found on Node {node_name}"
+            "TCP outlet with alias {alias} was not found on Node {}",
+            node.node_name()
         ))?;
 
     // Proceed with the deletion
@@ -68,10 +66,11 @@ pub async fn run_impl(
         opts.terminal
             .stdout()
             .plain(fmt_ok!(
-                "TCP outlet with alias {alias} on Node {node_name} has been deleted"
+                "TCP outlet with alias {alias} on Node {} has been deleted",
+                node.node_name()
             ))
             .machine(&alias)
-            .json(serde_json::json!({ "alias": alias, "node": node_name }))
+            .json(serde_json::json!({ "alias": alias, "node": node.node_name() }))
             .write_line()
             .unwrap();
     }

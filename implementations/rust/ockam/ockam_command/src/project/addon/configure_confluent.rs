@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::cloud::addon::{Addons, ConfluentConfig};
 use ockam_api::nodes::InMemoryNode;
 
-use crate::project::addon::{check_configuration_completion, get_project_id};
+use crate::project::addon::check_configuration_completion;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -54,16 +54,16 @@ async fn run_impl(
         project_name,
         bootstrap_server,
     } = cmd;
-    let project_id = get_project_id(&opts.state, project_name.as_str())?;
+    let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
     let config = ConfluentConfig::new(bootstrap_server);
 
     let node = InMemoryNode::start(&ctx, &opts.state).await?;
     let controller = node.create_controller().await?;
 
     let response = controller
-        .configure_confluent_addon(&ctx, project_id.clone(), config)
+        .configure_confluent_addon(&ctx, project_id, config)
         .await?;
-    check_configuration_completion(&opts, &ctx, &node, project_id, response.operation_id).await?;
+    check_configuration_completion(&opts, &ctx, &node, project_id, &response.operation_id).await?;
 
     opts.terminal
         .write_line(&fmt_ok!("Confluent addon configured successfully"))?;

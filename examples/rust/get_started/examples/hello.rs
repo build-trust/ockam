@@ -4,7 +4,7 @@ use ockam::{node, route, Context, Result};
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
     // Create an Identity to represent Bob
     let bob = node.create_identity().await?;
 

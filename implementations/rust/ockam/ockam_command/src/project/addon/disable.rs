@@ -7,7 +7,6 @@ use ockam_api::cloud::addon::Addons;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_completion;
-use crate::project::addon::get_project_id;
 use crate::util::node_rpc;
 use crate::{fmt_ok, CommandGlobalOpts};
 
@@ -47,11 +46,13 @@ async fn run_impl(
         project_name,
         addon_id,
     } = cmd;
-    let project_id = get_project_id(&opts.state, project_name.as_str())?;
+    let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
     let node = InMemoryNode::start(&ctx, &opts.state).await?;
     let controller = node.create_controller().await?;
 
-    let response = controller.disable_addon(&ctx, project_id, addon_id).await?;
+    let response = controller
+        .disable_addon(&ctx, project_id, &addon_id)
+        .await?;
     let operation_id = response.operation_id;
     check_for_completion(&opts, &ctx, &controller, &operation_id).await?;
 

@@ -4,7 +4,7 @@ use minicbor::Decoder;
 use tracing::trace;
 
 use crate::nodes::BackgroundNode;
-use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesReader};
+use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesRepository};
 use ockam_core::api::{Method, RequestHeader};
 use ockam_core::api::{Request, Response};
 use ockam_core::compat::sync::Arc;
@@ -16,7 +16,7 @@ pub mod types;
 
 /// Auth API server.
 pub struct Server {
-    store: Arc<dyn IdentityAttributesReader>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
 #[ockam_core::worker]
@@ -35,8 +35,10 @@ impl Worker for Server {
 }
 
 impl Server {
-    pub fn new(s: Arc<dyn IdentityAttributesReader>) -> Self {
-        Server { store: s }
+    pub fn new(identity_attributes_repository: Arc<dyn IdentityAttributesRepository>) -> Self {
+        Server {
+            identity_attributes_repository,
+        }
     }
 
     async fn on_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
@@ -54,10 +56,20 @@ impl Server {
 
         let res = match req.method() {
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
-                [""] => Response::ok(&req).body(self.store.list().await?).to_vec()?,
+                [""] => Response::ok(&req)
+                    .body(
+                        self.identity_attributes_repository
+                            .list_attributes_by_identifier()
+                            .await?,
+                    )
+                    .to_vec()?,
                 [id] => {
                     let identifier = Identifier::try_from(id.to_string())?;
-                    if let Some(a) = self.store.get_attributes(&identifier).await? {
+                    if let Some(a) = self
+                        .identity_attributes_repository
+                        .get_attributes(&identifier)
+                        .await?
+                    {
                         Response::ok(&req).body(a).to_vec()?
                     } else {
                         Response::not_found(&req, &format!("identity {} not found", id)).to_vec()?

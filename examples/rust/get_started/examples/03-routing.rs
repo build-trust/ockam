@@ -6,7 +6,7 @@ use ockam::{node, route, Context, Result};
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
 
     // Start a worker, of type Echoer, at address "echoer"
     node.start_worker("echoer", Echoer).await?;

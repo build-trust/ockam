@@ -1,11 +1,14 @@
-use crate::state::{AppState, ModelState};
-use minicbor::{Decode, Encode};
-use ockam::identity::Identifier;
-use ockam_api::cloud::share::InvitationWithAccess;
-use ockam_api::identity::EnrollmentTicket;
-use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use tracing::warn;
+
+use ockam::identity::Identifier;
+use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cloud::share::InvitationWithAccess;
+
+use crate::state::{AppState, ModelState};
 
 /// A Socket port number
 pub type Port = u16;
@@ -13,7 +16,7 @@ pub type Port = u16;
 #[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct PersistentIncomingServiceState {
+pub struct PersistentIncomingService {
     #[n(1)] pub(crate) invitation_id: String,
     #[n(2)] pub(crate) enabled: bool,
     #[n(3)] pub(crate) name: Option<String>,
@@ -41,10 +44,7 @@ impl IncomingServicesState {
 }
 
 impl ModelState {
-    pub(crate) fn upsert_incoming_service(
-        &mut self,
-        id: &str,
-    ) -> &mut PersistentIncomingServiceState {
+    pub(crate) fn upsert_incoming_service(&mut self, id: &str) -> &mut PersistentIncomingService {
         match self
             .incoming_services
             .iter_mut()
@@ -53,7 +53,7 @@ impl ModelState {
             // we have to use index, see https://github.com/rust-lang/rust/issues/21906
             Some(index) => &mut self.incoming_services[index],
             None => {
-                self.incoming_services.push(PersistentIncomingServiceState {
+                self.incoming_services.push(PersistentIncomingService {
                     invitation_id: id.to_string(),
                     enabled: true,
                     name: None,
@@ -306,17 +306,17 @@ impl IncomingService {
 
 #[cfg(test)]
 mod tests {
-    use crate::incoming_services::PersistentIncomingServiceState;
-    use crate::state::AppState;
-    use ockam::identity::{Identifier, OneTimeCode};
+    use ockam::identity::OneTimeCode;
     use ockam::Context;
+    use ockam_api::cli_state::enrollments::EnrollmentTicket;
     use ockam_api::cli_state::CliState;
+    use ockam_api::cloud::project::Project;
     use ockam_api::cloud::share::{
         InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
-    use ockam_api::config::lookup::ProjectLookup;
-    use ockam_api::identity::EnrollmentTicket;
-    use std::str::FromStr;
+
+    use crate::incoming_services::PersistentIncomingService;
+    use crate::state::AppState;
 
     fn create_invitation_with(
         service_access_details: Option<ServiceAccessDetails>,
@@ -353,23 +353,26 @@ mod tests {
             shared_node_route: "remote_service_name".to_string(),
             enrollment_ticket: EnrollmentTicket::new(
                 OneTimeCode::new(),
-                Some(ProjectLookup {
-                    node_route: None,
+                Some(Project {
                     id: "project_id".to_string(),
                     name: "project_name".to_string(),
-                    identity_id: Some(
-                        Identifier::from_str(
-                            "I1234561234561234561234561234561234561234a1b2c3d4e5f6a6b5c4d3e2f1",
-                        )
-                        .unwrap(),
-                    ),
-                    authority: None,
-                    okta: None,
+                    space_name: "space_name".to_string(),
+                    access_route: "route".to_string(),
+                    users: vec![],
+                    space_id: "space_id".to_string(),
+                    identity: None,
+                    authority_access_route: Some("/project/authority_route".to_string()),
+                    authority_identity: Some("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805".to_string()),
+                    okta_config: None,
+                    confluent_config: None,
+                    version: None,
+                    running: None,
+                    operation_id: None,
+                    user_roles: vec![],
                 }),
-                None,
             )
-            .hex_encoded()
-            .unwrap(),
+                .hex_encoded()
+                .unwrap(),
         }
     }
 
@@ -377,7 +380,7 @@ mod tests {
     async fn test_inlet_data_from_invitation(context: &mut Context) -> ockam::Result<()> {
         // in this test we want to validate data loading from the accepted invitation
         // as well as using the related persistent data
-        let app_state = AppState::test(context, CliState::test().unwrap()).await;
+        let app_state = AppState::test(context, CliState::test().await?).await;
 
         let mut invitation = create_invitation_with(None);
 
@@ -434,7 +437,7 @@ mod tests {
         // let's load another invitation, but persistent state for it already exists
         app_state
             .model_mut(|m| {
-                m.incoming_services.push(PersistentIncomingServiceState {
+                m.incoming_services.push(PersistentIncomingService {
                     invitation_id: "second_invitation_id".to_string(),
                     enabled: false,
                     name: Some("custom_user_name".to_string()),

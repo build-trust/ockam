@@ -5,13 +5,13 @@ use colorful::Colorful;
 use serde_json::json;
 
 use ockam::{route, Context};
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
 use crate::docs;
-use crate::node::get_node_name;
-use crate::util::{is_tty, parse_node_name};
+use crate::util::is_tty;
 use crate::{
     util::{api, exitcode, node_rpc},
     CommandGlobalOpts, OutputFormat,
@@ -29,7 +29,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
     /// Node at which the secure channel was initiated
-    #[arg(value_name = "NODE", long, display_order = 800)]
+    #[arg(value_name = "NODE", long, display_order = 800, value_parser = extract_address_value)]
     at: Option<String>,
 
     /// Address at which the channel to be deleted is running
@@ -152,13 +152,11 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         cmd.yes,
         "Are you sure you want to delete this secure channel?",
     )? {
-        let at = get_node_name(&opts.state, &cmd.at);
-        let node_name = parse_node_name(&at)?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
         let address = &cmd.address;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let response: DeleteSecureChannelResponse =
             node.ask(&ctx, api::delete_secure_channel(address)).await?;
-        cmd.print_output(&node_name, address, &opts, response);
+        cmd.print_output(&node.node_name(), address, &opts, response);
     }
     Ok(())
 }

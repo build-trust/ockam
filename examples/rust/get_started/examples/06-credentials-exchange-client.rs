@@ -9,7 +9,7 @@ use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigni
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let identity_vault = SoftwareVaultForSigning::create();
+    let identity_vault = SoftwareVaultForSigning::create().await?;
     // Import the signing secret key to the Vault
     let secret = identity_vault
         .import_key(SigningSecret::EdDSACurve25519(EdDSACurve25519SecretKey::new(
@@ -21,10 +21,10 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Create a default Vault but use the signing vault with our secret in it
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     vault.identity_vault = identity_vault;
 
-    let mut node = Node::builder().with_vault(vault).build(&ctx).await?;
+    let mut node = Node::builder().await?.with_vault(vault).build(&ctx).await?;
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 

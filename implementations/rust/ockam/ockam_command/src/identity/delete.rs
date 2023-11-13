@@ -1,14 +1,12 @@
+use clap::Args;
+use colorful::Colorful;
+use console::Term;
+
+use ockam::Context;
+
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
-use clap::Args;
-use colorful::Colorful;
-
-use console::Term;
-use ockam::Context;
-use ockam_api::cli_state::traits::StateDirTrait;
-
-use super::get_identity_name;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -76,17 +74,28 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        Ok(get_identity_name(&self.opts.state, &self.cmd.name))
+        Ok(self
+            .opts
+            .state
+            .get_named_identity_or_default(&self.cmd.name)
+            .await?
+            .name())
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.opts.state.identities.list_items_names()?)
+        Ok(self
+            .opts
+            .state
+            .get_named_identities()
+            .await?
+            .iter()
+            .map(|i| i.name())
+            .collect())
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         let state = &self.opts.state;
-        let idt = state.identities.get(item_name)?;
-        state.delete_identity(idt)?;
+        state.delete_identity_by_name(item_name).await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
@@ -100,17 +109,20 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let plain = selected_items_names
-            .iter()
-            .map(|name| {
-                let idt = self.opts.state.identities.get(name)?;
-                if self.opts.state.delete_identity(idt).is_ok() {
-                    Ok(fmt_ok!("Identity '{name}' deleted\n"))
-                } else {
-                    Ok(fmt_warn!("Failed to delete identity '{name}'\n"))
-                }
-            })
-            .collect::<miette::Result<String>>()?;
+        let mut plain = String::new();
+        for name in selected_items_names {
+            if self
+                .opts
+                .state
+                .delete_identity_by_name(name.as_ref())
+                .await
+                .is_ok()
+            {
+                plain.push_str(&fmt_ok!("Identity '{name}' deleted\n"))
+            } else {
+                plain.push_str(&fmt_warn!("Failed to delete identity '{name}'\n"))
+            }
+        }
         self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }

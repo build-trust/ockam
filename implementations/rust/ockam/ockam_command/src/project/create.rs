@@ -2,14 +2,14 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc};
+use crate::util::node_rpc;
+use crate::util::parsers::validate_project_name;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -50,33 +50,14 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
     let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
-
-    let project = controller
-        .create_project(ctx, space_id, cmd.project_name, vec![])
+    let project = node
+        .create_project(ctx, &cmd.space_name, &cmd.project_name, vec![])
         .await?;
     let operation_id = project.operation_id.clone().unwrap();
+    let controller = node.create_controller().await?;
     check_for_completion(&opts, ctx, &controller, &operation_id).await?;
     let project = check_project_readiness(&opts, ctx, &node, project).await?;
-    opts.state
-        .projects
-        .overwrite(&project.name, project.clone())?;
-    opts.state
-        .trust_contexts
-        .overwrite(&project.name, project.clone().try_into()?)?;
     opts.println(&project)?;
     Ok(())
-}
-
-fn validate_project_name(s: &str) -> Result<String, String> {
-    match api::validate_cloud_resource_name(s) {
-        Ok(_) => Ok(s.to_string()),
-        Err(_e)=> Err(String::from(
-            "project name can contain only alphanumeric characters and the '-', '_' and '.' separators. \
-            Separators must occur between alphanumeric characters. This implies that separators can't \
-            occur at the start or end of the name, nor they can occur in sequence.",
-        )),
-    }
 }

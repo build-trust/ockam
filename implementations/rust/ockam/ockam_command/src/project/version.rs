@@ -3,7 +3,6 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
@@ -16,8 +15,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/version/after_long_help.txt
 /// Return the version of the Orchestrator Controller and the Projects
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about=docs::about(LONG_ABOUT),
-    after_long_help=docs::about(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::about(AFTER_LONG_HELP)
 )]
 pub struct VersionCommand {
     #[command(flatten)]
@@ -38,7 +37,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> 
     // Send request
     let node = InMemoryNode::start(ctx, &opts.state).await?;
     let controller = node.create_controller().await?;
-    let project_version = controller.get_project_version(ctx).await?;
+    let project_version = controller.get_orchestrator_version_info(ctx).await?;
 
     let json = serde_json::to_string(&project_version).into_diagnostic()?;
     let project_version = project_version

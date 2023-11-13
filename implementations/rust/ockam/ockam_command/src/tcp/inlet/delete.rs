@@ -10,10 +10,10 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
 use crate::fmt_ok;
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::DeleteCommandTui;
-use crate::util::{node_rpc, parse_node_name};
+use crate::util::node_rpc;
 use crate::{docs, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -37,7 +37,6 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -62,11 +61,7 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node_name = {
-            let name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-            parse_node_name(&name)?
-        };
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
             ctx,
             opts,
@@ -132,13 +127,13 @@ impl DeleteCommandTui for DeleteTui {
                 plain.push_str(&fmt_ok!(
                     "TCP inlet with alias {} on Node {} has been deleted\n",
                     item_name.light_magenta(),
-                    node_name.light_magenta()
+                    node_name.clone().light_magenta()
                 ));
             } else {
                 plain.push_str(&fmt_warn!(
                     "Failed to delete TCP inlet with alias {} on Node {}\n",
                     item_name.light_magenta(),
-                    node_name.light_magenta()
+                    node_name.clone().light_magenta()
                 ));
             }
         }

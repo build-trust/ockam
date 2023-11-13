@@ -1,18 +1,20 @@
-use crate::identities::AttributesEntry;
-use crate::models::{
-    CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey, VersionedData,
-};
-use crate::utils::now;
-use crate::{
-    CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeyVerification,
-    TimestampInSeconds,
-};
+use tracing::{debug, warn};
 
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::VaultForVerifyingSignatures;
+
+use crate::identities::AttributesEntry;
+use crate::models::{
+    CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey, VersionedData,
+};
+use crate::utils::now;
+use crate::{
+    CredentialAndPurposeKeyData, IdentityAttributesRepository, IdentityError,
+    PurposeKeyVerification, TimestampInSeconds,
+};
 
 /// We allow Credentials to be created in the future related to this machine's time due to
 /// possible time dyssynchronization
@@ -22,7 +24,7 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 pub struct CredentialsVerification {
     purpose_keys_verification: Arc<PurposeKeyVerification>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    identities_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
 impl CredentialsVerification {
@@ -30,18 +32,13 @@ impl CredentialsVerification {
     pub fn new(
         purpose_keys_verification: Arc<PurposeKeyVerification>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        identities_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         Self {
             purpose_keys_verification,
             verifying_vault,
-            identities_repository,
+            identities_attributes_repository,
         }
-    }
-
-    /// [`IdentitiesRepository`]
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities_repository.clone()
     }
 }
 
@@ -54,6 +51,7 @@ impl CredentialsVerification {
         authorities: &[Identifier],
         credential_and_purpose_key: &CredentialAndPurposeKey,
     ) -> Result<CredentialAndPurposeKeyData> {
+        debug!("verify purpose key attestation");
         let purpose_key_data = self
             .purpose_keys_verification
             .verify_purpose_key_attestation(
@@ -62,20 +60,26 @@ impl CredentialsVerification {
             )
             .await?;
 
+        debug!("verify issuer");
         if !authorities.contains(&purpose_key_data.subject) {
+            warn!(
+                "unknown authority on a credential: {}. Accepted authorities: {:?}",
+                purpose_key_data.subject, authorities
+            );
             return Err(IdentityError::UnknownAuthority.into());
         }
 
+        debug!("verify purpose key type");
         let public_key = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStatic(_) => {
-                return Err(IdentityError::InvalidKeyType.into())
+                return Err(IdentityError::InvalidKeyType.into());
             }
 
             PurposePublicKey::CredentialSigning(public_key) => public_key,
         };
 
+        debug!("verify signature");
         let public_key = public_key.into();
-
         let versioned_data_hash = self
             .verifying_vault
             .sha256(&credential_and_purpose_key.credential.data)
@@ -100,6 +104,10 @@ impl CredentialsVerification {
 
         let credential_data = CredentialData::get_data(&versioned_data)?;
 
+        debug!(
+            "verify subject {:?}. Expected {:?}",
+            credential_data.subject, expected_subject
+        );
         if credential_data.subject.is_none() {
             // Currently unsupported
             return Err(IdentityError::CredentialVerificationFailed.into());
@@ -116,6 +124,7 @@ impl CredentialsVerification {
             return Err(IdentityError::CredentialVerificationFailed.into());
         }
 
+        debug!("verify dates");
         if credential_data.created_at < purpose_key_data.created_at {
             // Credential validity time range should be inside the purpose key validity time range
             return Err(IdentityError::CredentialVerificationFailed.into());
@@ -184,7 +193,7 @@ impl CredentialsVerification {
             .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
             .collect();
 
-        self.identities_repository
+        self.identities_attributes_repository
             .put_attributes(
                 subject,
                 AttributesEntry::new(

@@ -14,7 +14,7 @@ use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigni
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let identity_vault = SoftwareVaultForSigning::create();
+    let identity_vault = SoftwareVaultForSigning::create().await?;
     // Import the signing secret key to the Vault
     let secret = identity_vault
         .import_key(SigningSecret::EdDSACurve25519(EdDSACurve25519SecretKey::new(
@@ -26,10 +26,10 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Create a default Vault but use the signing vault with our secret in it
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     vault.identity_vault = identity_vault;
 
-    let node = Node::builder().with_vault(vault).build(&ctx).await?;
+    let node = Node::builder().await?.with_vault(vault).build(&ctx).await?;
 
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
@@ -90,7 +90,7 @@ async fn main(ctx: Context) -> Result<()> {
         DefaultAddress::ECHO_SERVICE,
         &sc_listener_options.spawner_flow_control_id(),
     );
-    let allow_production = AbacAccessControl::create(node.identities_repository(), "cluster", "production");
+    let allow_production = AbacAccessControl::create(node.identity_attributes_repository(), "cluster", "production");
     node.start_worker_with_access_control(DefaultAddress::ECHO_SERVICE, Echoer, allow_production, AllowAll)
         .await?;
 

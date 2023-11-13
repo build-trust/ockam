@@ -5,18 +5,15 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::AuthorityNode;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
-use ockam_api::identity::EnrollmentTicket;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-
 use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
@@ -69,7 +66,6 @@ pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentT
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
     }
 }
@@ -88,27 +84,33 @@ pub async fn project_enroll(
     cmd: EnrollCommand,
 ) -> miette::Result<String> {
     let project = retrieve_project(opts, &cmd).await?;
-    let project_authority = project
-        .authority()
-        .await
-        .into_diagnostic()?
-        .ok_or_else(|| miette!("Authority details not configured"))?;
-    let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+    let identity_name = opts
+        .state
+        .get_identity_name_or_default(&cmd.cloud_opts.identity)
+        .await?;
 
     // Create secure channel to the project's authority node
-    let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();
+    let trust_context = opts
+        .state
+        .retrieve_trust_context(
+            &cmd.trust_opts.trust_context,
+            &cmd.trust_opts.project_name,
+            &None,
+            &None,
+        )
+        .await?;
     let node = InMemoryNode::start_with_trust_context(
         ctx,
         &opts.state,
-        cmd.trust_opts.project_path.as_ref(),
-        trust_context_config,
+        cmd.trust_opts.project_name,
+        trust_context,
     )
     .await?;
 
     let authority_node: AuthorityNode = node
         .create_authority_client(
-            project_authority.identity_id(),
-            project_authority.address(),
+            &project.authority_identifier().await.into_diagnostic()?,
+            &project.authority_access_route().into_diagnostic()?,
             Some(identity_name),
         )
         .await?;
@@ -140,40 +142,24 @@ pub async fn project_enroll(
 }
 
 async fn retrieve_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {
-    let project_as_string: String;
-
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
-    let proj: ProjectConfigCompact = if let Some(ticket) = &cmd.enroll_ticket {
+    let project = if let Some(ticket) = &cmd.enroll_ticket {
         ticket
             .project
             .as_ref()
             .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
             .clone()
-            .try_into()?
     } else {
         // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
         // currently okta auth does not use an enrollment token
         // however, it could be worked to use one in the future
         //
         // REQUIRES Project passed or default project
-        let path = match cmd.trust_opts.project_path.as_ref() {
-            Some(p) => p.clone(),
-            None => {
-                let default_project = opts
-                    .state
-                    .projects
-                    .default()
-                    .context("A default project or project parameter is required.")?;
-                default_project.path().clone()
-            }
-        };
-
-        // Read (okta and authority) project parameters from project.json
-        project_as_string = tokio::fs::read_to_string(path).await.into_diagnostic()?;
-        serde_json::from_str(&project_as_string).into_diagnostic()?
+        opts.state
+            .get_project_by_name_or_default(&cmd.trust_opts.project_name)
+            .await
+            .context("A default project or project parameter is required.")?
     };
-
-    let project: Project = (&proj).into();
 
     let trust_context_name = if let Some(trust_context_name) = &cmd.new_trust_context_name {
         trust_context_name
@@ -182,8 +168,8 @@ async fn retrieve_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Resu
     };
 
     if !cmd.force {
-        if let Ok(trust_context) = opts.state.trust_contexts.get(trust_context_name) {
-            if trust_context.config().id() != project.id {
+        if let Ok(trust_context) = opts.state.get_trust_context(trust_context_name).await {
+            if trust_context.trust_context_id() != project.id {
                 return Err(miette!(
                     "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
                     trust_context_name
@@ -193,12 +179,14 @@ async fn retrieve_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Resu
     }
 
     opts.state
-        .projects
-        .overwrite(&project.name, project.clone())?;
-
-    opts.state
-        .trust_contexts
-        .overwrite(trust_context_name, project.clone().try_into()?)?;
+        .create_trust_context(
+            Some(trust_context_name.clone()),
+            Some(project.id()),
+            None,
+            project.authority_identity().await.ok(),
+            project.authority_access_route().ok(),
+        )
+        .await?;
 
     Ok(project)
 }

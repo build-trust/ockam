@@ -9,7 +9,6 @@ use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::identity::initialize_identity_if_default;
 use crate::lease::authenticate;
 use crate::terminal::OckamColor;
 use crate::util::api::{CloudOpts, TrustContextOpts};
@@ -26,7 +25,6 @@ pub struct CreateCommand {}
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
-        initialize_identity_if_default(&opts, &cloud_opts.identity);
         node_rpc(run_impl, (opts, cloud_opts, trust_opts));
     }
 }

@@ -1,8 +1,6 @@
 use either::Either;
 use minicbor::Decoder;
 
-use crate::cli_state::{StateDirTrait, StateItemTrait};
-use crate::nodes::BackgroundNode;
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Resource};
 use ockam_core::api::{Error, Request, RequestHeader, Response};
@@ -10,6 +8,7 @@ use ockam_core::{async_trait, Result};
 use ockam_node::Context;
 
 use crate::nodes::models::policy::{Expression, Policy, PolicyList};
+use crate::nodes::BackgroundNode;
 
 use super::NodeManager;
 
@@ -24,7 +23,10 @@ impl NodeManager {
         let p: Policy = dec.decode()?;
         let r = Resource::new(resource);
         let a = Action::new(action);
-        self.policies.set_policy(&r, &a, p.expression()).await?;
+        self.cli_state
+            .set_policy(&r, &a, p.expression())
+            .await
+            .map_err(ockam_core::Error::from)?;
         Ok(Response::ok(req))
     }
 
@@ -36,7 +38,7 @@ impl NodeManager {
     ) -> Result<Either<Response<Error>, Response<Policy>>> {
         let r = Resource::new(resource);
         let a = Action::new(action);
-        if let Some(e) = self.policies.get_policy(&r, &a).await? {
+        if let Some(e) = self.cli_state.get_policy(&r, &a).await? {
             Ok(Either::Right(Response::ok(req).body(Policy::new(e))))
         } else {
             Ok(Either::Left(Response::not_found(req, "policy not found")))
@@ -49,7 +51,11 @@ impl NodeManager {
         res: &str,
     ) -> Result<Response<PolicyList>, Response<Error>> {
         let r = Resource::new(res);
-        let p = self.policies.policies(&r).await?;
+        let p = self
+            .cli_state
+            .get_policies_by_resource(&r)
+            .await
+            .map_err(ockam_core::Error::from)?;
         let p = p.into_iter().map(|(a, e)| Expression::new(a, e)).collect();
         Ok(Response::ok(req).body(PolicyList::new(p)))
     }
@@ -62,7 +68,10 @@ impl NodeManager {
     ) -> Result<Response<()>, Response<Error>> {
         let r = Resource::new(res);
         let a = Action::new(act);
-        self.policies.del_policy(&r, &a).await?;
+        self.cli_state
+            .delete_policy(&r, &a)
+            .await
+            .map_err(ockam_core::Error::from)?;
         Ok(Response::ok(req))
     }
 }
@@ -86,12 +95,9 @@ impl Policies for BackgroundNode {
     ) -> miette::Result<()> {
         let project_id = match self
             .cli_state()
-            .nodes
-            .get(self.node_name())?
-            .config()
-            .setup()
-            .project
-            .to_owned()
+            .get_node_project(&self.node_name())
+            .await
+            .ok()
         {
             None => return Ok(()),
             Some(p) => p.id,

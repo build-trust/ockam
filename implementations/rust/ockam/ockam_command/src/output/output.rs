@@ -7,14 +7,14 @@ use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
 use minicbor::Encode;
+use serde::{Serialize, Serializer};
+
 use ockam::identity::models::{
     CredentialAndPurposeKey, CredentialData, CredentialVerifyingKey, PurposeKeyAttestation,
     PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
 use ockam::identity::{Credential, Identifier, Identity, TimestampInSeconds};
-use serde::{Serialize, Serializer};
-
-use ockam_api::cli_state::{ProjectConfigCompact, StateItemTrait, VaultState};
+use ockam_api::cli_state::vaults::NamedVault;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
@@ -145,7 +145,7 @@ impl Output for Project {
         write!(w, "Project")?;
         write!(w, "\n  Id: {}", self.id)?;
         write!(w, "\n  Name: {}", self.name)?;
-        write!(w, "\n  Access route: {}", self.access_route)?;
+        write!(w, "\n  Access route: {}", self.access_route()?)?;
         write!(
             w,
             "\n  Identity identifier: {}",
@@ -179,17 +179,28 @@ Space {}"#,
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectConfigCompact(pub Project);
+
 impl Output for ProjectConfigCompact {
     fn output(&self) -> Result<String> {
         let pi = self
-            .identity
-            .as_ref()
+            .0
+            .identifier()
             .map(|i| i.to_string())
-            .unwrap_or_else(|| "N/A".to_string());
-        let ar = self.authority_access_route.as_deref().unwrap_or("N/A");
-        let ai = self.authority_identity.as_deref().unwrap_or("N/A");
+            .unwrap_or_else(|_| "N/A".to_string());
+        let ar = self
+            .0
+            .authority_access_route()
+            .map(|r| r.to_string())
+            .unwrap_or_else(|_| "N/A".to_string());
+        let ai = self
+            .0
+            .authority_change_history()
+            .map(|r| r.to_string())
+            .unwrap_or_else(|_| "N/A".to_string());
         let mut w = String::new();
-        writeln!(w, "{}: {}", "Project ID".bold(), self.id)?;
+        writeln!(w, "{}: {}", "Project ID".bold(), self.0.id())?;
         writeln!(w, "{}: {}", "Project identity".bold(), pi)?;
         writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
         write!(w, "{}: {}", "Authority identity".bold(), ai)?;
@@ -361,14 +372,14 @@ From {} to {}"#,
     }
 }
 
-impl Output for VaultState {
+impl Output for NamedVault {
     fn output(&self) -> Result<String> {
         let mut output = String::new();
         writeln!(output, "Name: {}", self.name())?;
         writeln!(
             output,
             "Type: {}",
-            match self.config().is_aws() {
+            match self.is_kms() {
                 true => "AWS KMS",
                 false => "OCKAM",
             }

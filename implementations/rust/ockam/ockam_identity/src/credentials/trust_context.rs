@@ -1,11 +1,11 @@
-use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
 use ockam_node::Context;
-use tracing::{debug, error};
 
 use crate::models::{CredentialAndPurposeKey, Identifier};
-use crate::{AuthorityService, IdentityError};
+use crate::AuthorityService;
 
 /// A trust context defines which authorities are trusted to attest to which attributes, within a context.
 /// Our first implementation assumes that there is only one authority and it is trusted to attest to all attributes within this context.
@@ -13,14 +13,18 @@ use crate::{AuthorityService, IdentityError};
 pub struct TrustContext {
     /// This is the ID of the trust context; which is primarily used for ABAC policies
     id: String,
-    /// Authority capable of retrieving credentials
-    authority: Option<AuthorityService>,
+
+    /// Authority service
+    authority_service: Option<AuthorityService>,
 }
 
 impl TrustContext {
     /// Create a new Trust Context
-    pub fn new(id: String, authority: Option<AuthorityService>) -> Self {
-        Self { id, authority }
+    pub fn new(id: String, authority_service: Option<AuthorityService>) -> Self {
+        Self {
+            id,
+            authority_service,
+        }
     }
 
     /// Return the ID of the Trust Context
@@ -28,16 +32,20 @@ impl TrustContext {
         &self.id
     }
 
-    /// Return the Authority of the Trust Context
-    pub fn authority(&self) -> Result<&AuthorityService> {
-        self.authority
-            .as_ref()
-            .ok_or_else(|| IdentityError::UnknownAuthority.into())
+    /// Return the authority identities attached to this trust context
+    /// There is only the possibility to have 1 at the moment
+    pub fn authorities(&self) -> Vec<Identifier> {
+        match self.authority_identifier() {
+            Some(identifier) => vec![identifier],
+            None => vec![],
+        }
     }
 
-    /// Return the authority identities attached to this trust context
-    pub async fn authorities(&self) -> Result<Vec<Identifier>> {
-        Ok(vec![self.authority()?.identifier().clone()])
+    /// Return the authority identifier
+    pub fn authority_identifier(&self) -> Option<Identifier> {
+        self.authority_service()
+            .ok()
+            .map(|a| a.identifier().clone())
     }
 
     /// Return the credential for a given identity if an Authority has been defined
@@ -46,27 +54,26 @@ impl TrustContext {
         &self,
         ctx: &Context,
         identifier: &Identifier,
-    ) -> Option<CredentialAndPurposeKey> {
-        match self.authority().ok() {
-            Some(authority) => match authority.credential(ctx, identifier).await {
-                Ok(credential) => {
-                    debug!("retrieved a credential using the trust context authority");
-                    Some(credential)
-                }
-                Err(e) => {
-                    error!(
-                        "no credential could be retrieved {}, authority {}, subject {}",
-                        e.to_string(),
-                        authority.identifier(),
-                        identifier
-                    );
-                    None
-                }
-            },
-            None => {
-                debug!("no authority is defined on the trust context");
-                None
+    ) -> Result<Option<CredentialAndPurposeKey>> {
+        match self.authority_service().ok() {
+            Some(authority_service) => {
+                Ok(Some(authority_service.credential(ctx, identifier).await?))
             }
+            None => Ok(None),
         }
+    }
+
+    /// Return the authority service
+    fn authority_service(&self) -> Result<AuthorityService> {
+        self.authority_service.clone().ok_or_else(|| {
+            Error::new(
+                Origin::Identity,
+                Kind::Internal,
+                format!(
+                    "no authority service has been defined for the trust context {}",
+                    self.id
+                ),
+            )
+        })
     }
 }

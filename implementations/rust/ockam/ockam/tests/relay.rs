@@ -164,7 +164,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         .relay_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id());
     RelayService::create(ctx, "forwarding_service", options).await?;
 
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
     let cloud = identities_creation.create_identity().await?;
     secure_channels

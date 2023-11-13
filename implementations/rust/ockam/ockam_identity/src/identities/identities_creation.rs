@@ -1,15 +1,16 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::Result;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
 use ockam_vault::{SigningSecretKeyHandle, VaultForSigning, VaultForVerifyingSignatures};
 
 use crate::identities::identity_builder::IdentityBuilder;
 use crate::models::{ChangeHistory, Identifier};
-use crate::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
+use crate::{ChangeHistoryRepository, IdentitiesKeys, Identity, IdentityError};
 use crate::{IdentityHistoryComparison, IdentityOptions};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
-    pub(super) repository: Arc<dyn IdentitiesRepository>,
+    pub(super) repository: Arc<dyn ChangeHistoryRepository>,
     pub(super) identity_vault: Arc<dyn VaultForSigning>,
     pub(super) verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
 }
@@ -17,7 +18,7 @@ pub struct IdentitiesCreation {
 impl IdentitiesCreation {
     /// Create a new identities import module
     pub fn new(
-        repository: Arc<dyn IdentitiesRepository>,
+        repository: Arc<dyn ChangeHistoryRepository>,
         identity_vault: Arc<dyn VaultForSigning>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Self {
@@ -37,18 +38,13 @@ impl IdentitiesCreation {
     }
 
     /// Import and verify identity from its binary format
-    /// This action persists the Identity in the storage, use `Identity::import` to avoid that
     pub async fn import(
         &self,
         expected_identifier: Option<&Identifier>,
         data: &[u8],
     ) -> Result<Identifier> {
-        let identity =
-            Identity::import(expected_identifier, data, self.verifying_vault.clone()).await?;
-
-        self.update_identity(&identity).await?;
-
-        Ok(identity.identifier().clone())
+        self.import_from_change_history(expected_identifier, ChangeHistory::import(data)?)
+            .await
     }
 
     /// Import and verify identity from its Change History
@@ -66,7 +62,6 @@ impl IdentitiesCreation {
         .await?;
 
         self.update_identity(&identity).await?;
-
         Ok(identity.identifier().clone())
     }
 
@@ -92,7 +87,7 @@ impl IdentitiesCreation {
     ) -> Result<Identifier> {
         let identity = self.identities_keys().create_initial_key(options).await?;
         self.repository
-            .update_identity(identity.identifier(), identity.change_history())
+            .store_change_history(identity.identifier(), identity.change_history().clone())
             .await?;
         Ok(identity.identifier().clone())
     }
@@ -111,22 +106,14 @@ impl IdentitiesCreation {
         identifier: &Identifier,
         options: IdentityOptions,
     ) -> Result<()> {
-        let change_history = self.repository.get_identity(identifier).await?;
-
-        let identity = Identity::import_from_change_history(
-            Some(identifier),
-            change_history,
-            self.verifying_vault.clone(),
-        )
-        .await?;
-
+        let identity = self.get_identity(identifier).await?;
         let identity = self
             .identities_keys()
             .rotate_key_with_options(identity, options)
             .await?;
 
         self.repository
-            .update_identity(identity.identifier(), identity.change_history())
+            .store_change_history(identity.identifier(), identity.change_history().clone())
             .await?;
 
         Ok(())
@@ -158,7 +145,6 @@ impl IdentitiesCreation {
         {
             return Err(IdentityError::WrongSecretKey.into());
         }
-
         Ok(identity.identifier().clone())
     }
 
@@ -171,6 +157,37 @@ impl IdentitiesCreation {
     pub fn verifying_vault(&self) -> Arc<dyn VaultForVerifyingSignatures> {
         self.verifying_vault.clone()
     }
+
+    /// Return the change history of a persisted identity
+    pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
+        match self.repository.get_change_history(identifier).await? {
+            Some(change_history) => {
+                let identity = Identity::import_from_change_history(
+                    Some(identifier),
+                    change_history,
+                    self.verifying_vault.clone(),
+                )
+                .await?;
+                Ok(identity)
+            }
+            None => Err(Error::new(
+                Origin::Core,
+                Kind::NotFound,
+                format!("identity not found for identifier {}", identifier),
+            )),
+        }
+    }
+    /// Return the change history of a persisted identity
+    pub async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
+        match self.repository.get_change_history(identifier).await? {
+            Some(change_history) => Ok(change_history),
+            None => Err(Error::new(
+                Origin::Core,
+                Kind::NotFound,
+                format!("identity not found for identifier {}", identifier),
+            )),
+        }
+    }
 }
 
 impl IdentitiesCreation {
@@ -182,7 +199,7 @@ impl IdentitiesCreation {
     pub async fn update_identity(&self, identity: &Identity) -> Result<()> {
         if let Some(known_identity) = self
             .repository
-            .retrieve_identity(identity.identifier())
+            .get_change_history(identity.identifier())
             .await?
         {
             let known_identity = Identity::import_from_change_history(
@@ -198,14 +215,17 @@ impl IdentitiesCreation {
                 }
                 IdentityHistoryComparison::Newer => {
                     self.repository
-                        .update_identity(identity.identifier(), identity.change_history())
+                        .store_change_history(
+                            identity.identifier(),
+                            identity.change_history().clone(),
+                        )
                         .await?;
                 }
                 IdentityHistoryComparison::Equal => {}
             }
         } else {
             self.repository
-                .update_identity(identity.identifier(), identity.change_history())
+                .store_change_history(identity.identifier(), identity.change_history().clone())
                 .await?;
         }
 

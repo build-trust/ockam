@@ -9,8 +9,8 @@ use ockam_api::nodes::{BackgroundNode, NODEMANAGER_ADDR};
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, exitcode, node_rpc, parse_node_name};
+use crate::node::NodeOpts;
+use crate::util::{api, exitcode, node_rpc};
 use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -19,9 +19,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
     #[command(flatten)]
@@ -45,7 +45,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -58,9 +57,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = parse_node_name(&at)?;
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(
             &cmd.address,
@@ -83,9 +80,7 @@ async fn run_impl(
                             .color(OckamColor::PrimaryResource.color())
                     ) + &fmt_log!(
                         "At node /node/{}",
-                        node_name
-                            .to_string()
-                            .color(OckamColor::PrimaryResource.color())
+                        node.node_name().color(OckamColor::PrimaryResource.color())
                     ),
                 )
                 .machine(address.to_string())

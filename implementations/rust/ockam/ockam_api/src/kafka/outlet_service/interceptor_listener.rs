@@ -48,7 +48,9 @@ impl OutletManagerService {
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(),
             incoming_access_control: Arc::new(AbacAccessControl::create(
-                secure_channels.identities().repository(),
+                secure_channels
+                    .identities()
+                    .identity_attributes_repository(),
                 TRUST_CONTEXT_ID_UTF8,
                 trust_context_id,
             )),

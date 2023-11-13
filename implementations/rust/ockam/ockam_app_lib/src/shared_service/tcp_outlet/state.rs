@@ -1,6 +1,9 @@
+use tracing::{debug, error};
+
+#[cfg(test)]
+use crate::incoming_services::PersistentIncomingService;
 use crate::state::{AppState, ModelState};
 use ockam_api::nodes::models::portal::OutletStatus;
-use tracing::{debug, error};
 
 impl ModelState {
     pub fn add_tcp_outlet(&mut self, status: OutletStatus) {
@@ -14,12 +17,17 @@ impl ModelState {
     pub fn get_tcp_outlets(&self) -> &[OutletStatus] {
         &self.tcp_outlets
     }
+
+    #[cfg(test)]
+    pub fn add_incoming_service(&mut self, service: PersistentIncomingService) {
+        self.incoming_services.push(service);
+    }
 }
 
 impl AppState {
     pub(crate) async fn restore_tcp_outlets(&self) {
         let cli_state = self.state().await;
-        if !cli_state.is_enrolled().unwrap_or(false) {
+        if !cli_state.is_enrolled().await.ok().unwrap_or(false) {
             debug!("Not enrolled, skipping outlet restoration");
             return;
         }

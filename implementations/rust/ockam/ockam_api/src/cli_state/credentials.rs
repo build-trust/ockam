@@ -1,107 +1,175 @@
+use ockam::identity::models::{ChangeHistory, CredentialAndPurposeKey};
+use ockam::identity::{AttributesEntry, Identifier, Identity};
+
+use crate::cli_state::{CliState, CliStateError};
+
 use super::Result;
-use crate::cli_state::CliStateError;
-use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::Identifier;
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CredentialsState {
-    dir: PathBuf,
+impl CliState {
+    /// Store a credential inside the local database
+    /// This function stores both the credential as a named entity
+    /// and the identity attributes in another table.
+    /// TODO: normalize the storage so that the data is only represented once
+    pub async fn store_credential(
+        &self,
+        name: &str,
+        issuer: &Identity,
+        credential: CredentialAndPurposeKey,
+    ) -> Result<()> {
+        // store the subject attributes
+        let credential_data = credential.get_credential_data()?;
+        let identity_attributes_repository = self.identity_attributes_repository().await?;
+        if let Some(subject) = credential_data.subject {
+            let attributes_entry = AttributesEntry::new(
+                credential_data
+                    .subject_attributes
+                    .map
+                    .into_iter()
+                    .map(|(k, v)| (k.to_vec(), v.to_vec()))
+                    .collect(),
+                credential_data.created_at,
+                Some(credential_data.expires_at),
+                Some(issuer.identifier().clone()),
+            );
+            identity_attributes_repository
+                .put_attributes(&subject, attributes_entry)
+                .await?;
+        }
+
+        // store the credential itself
+        let credentials_repository = self.credentials_repository().await?;
+        credentials_repository
+            .store_credential(name, issuer, credential)
+            .await?;
+        Ok(())
+    }
+
+    /// Return a credential given its name
+    pub async fn get_credential_by_name(&self, name: &str) -> Result<NamedCredential> {
+        match self
+            .credentials_repository()
+            .await?
+            .get_credential(name)
+            .await?
+        {
+            Some(credential) => Ok(credential),
+            None => Err(CliStateError::ResourceNotFound {
+                name: name.to_string(),
+                resource: "credential".into(),
+            }),
+        }
+    }
+
+    pub async fn get_credentials(&self) -> Result<Vec<NamedCredential>> {
+        Ok(self
+            .credentials_repository()
+            .await?
+            .get_credentials()
+            .await?)
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct CredentialState {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NamedCredential {
     name: String,
-    path: PathBuf,
-    config: CredentialConfig,
+    issuer_identifier: Identifier,
+    issuer_change_history: ChangeHistory,
+    credential: CredentialAndPurposeKey,
 }
 
-impl CredentialState {
-    pub fn name(&self) -> &str {
-        &self.name
+impl NamedCredential {
+    pub fn new(name: &str, issuer: &Identity, credential: CredentialAndPurposeKey) -> Self {
+        Self::make(
+            name,
+            issuer.identifier().clone(),
+            issuer.change_history().clone(),
+            credential,
+        )
     }
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CredentialConfig {
-    pub issuer_identifier: Identifier,
-    // FIXME: Appear as array of number in JSON
-    pub encoded_issuer_change_history: Vec<u8>,
-    // FIXME: Appear as array of number in JSON
-    pub encoded_credential: Vec<u8>,
-}
-
-impl CredentialConfig {
-    pub fn new(
+    pub fn make(
+        name: &str,
         issuer_identifier: Identifier,
-        encoded_issuer_change_history: Vec<u8>,
-        encoded_credential: Vec<u8>,
-    ) -> Result<Self> {
-        Ok(Self {
+        issuer_change_history: ChangeHistory,
+        credential: CredentialAndPurposeKey,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
             issuer_identifier,
-            encoded_issuer_change_history,
-            encoded_credential,
-        })
-    }
-
-    pub fn credential(&self) -> Result<CredentialAndPurposeKey> {
-        minicbor::decode(&self.encoded_credential).map_err(|e| {
-            error!(%e, "Unable to decode credential");
-            CliStateError::InvalidOperation("Unable to decode credential".to_string())
-        })
+            issuer_change_history,
+            credential,
+        }
     }
 }
 
-mod traits {
-    use super::*;
-    use crate::cli_state::file_stem;
-    use crate::cli_state::traits::*;
-    use ockam_core::async_trait;
-    use std::path::Path;
-
-    #[async_trait]
-    impl StateDirTrait for CredentialsState {
-        type Item = CredentialState;
-        const DEFAULT_FILENAME: &'static str = "credential";
-        const DIR_NAME: &'static str = "credentials";
-        const HAS_DATA_DIR: bool = false;
-
-        fn new(root_path: &Path) -> Self {
-            Self {
-                dir: Self::build_dir(root_path),
-            }
-        }
-
-        fn dir(&self) -> &PathBuf {
-            &self.dir
-        }
+impl NamedCredential {
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
-    #[async_trait]
-    impl StateItemTrait for CredentialState {
-        type Config = CredentialConfig;
+    pub fn issuer_identifier(&self) -> Identifier {
+        self.issuer_identifier.clone()
+    }
 
-        fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
-            let contents = serde_json::to_string(&config)?;
-            std::fs::write(&path, contents)?;
-            let name = file_stem(&path)?;
-            Ok(Self { name, path, config })
-        }
+    pub async fn issuer_identity(&self) -> Result<Identity> {
+        Ok(Identity::create_from_change_history(&self.issuer_change_history).await?)
+    }
 
-        fn load(path: PathBuf) -> Result<Self> {
-            let name = file_stem(&path)?;
-            let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
-            Ok(Self { name, path, config })
-        }
+    pub fn issuer_change_history(&self) -> ChangeHistory {
+        self.issuer_change_history.clone()
+    }
 
-        fn path(&self) -> &PathBuf {
-            &self.path
-        }
+    pub fn credential_and_purpose_key(&self) -> CredentialAndPurposeKey {
+        self.credential.clone()
+    }
+}
 
-        fn config(&self) -> &Self::Config {
-            &self.config
-        }
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use ockam::identity::models::CredentialSchemaIdentifier;
+    use ockam::identity::utils::AttributesBuilder;
+    use ockam::identity::{identities, Identities};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cli_spaces() -> Result<()> {
+        let cli = CliState::test().await?;
+        let identities = identities().await?;
+        let issuer_identifier = identities.identities_creation().create_identity().await?;
+        let issuer = identities.get_identity(&issuer_identifier).await?;
+        let credential = create_credential(identities, &issuer_identifier).await?;
+
+        // a credential can be stored and retrieved by name
+        cli.store_credential("name1", &issuer, credential.clone())
+            .await?;
+        let result = cli.get_credential_by_name("name1").await?;
+        assert_eq!(result.name(), "name1".to_string());
+        assert_eq!(result.issuer_identifier(), issuer_identifier);
+        assert_eq!(result.issuer_change_history(), *issuer.change_history());
+        assert_eq!(result.credential_and_purpose_key(), credential);
+
+        Ok(())
+    }
+
+    /// HELPERS
+    async fn create_credential(
+        identities: Arc<Identities>,
+        issuer: &Identifier,
+    ) -> Result<CredentialAndPurposeKey> {
+        let subject = identities.identities_creation().create_identity().await?;
+
+        let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
+            .with_attribute("name".as_bytes().to_vec(), b"value".to_vec())
+            .build();
+
+        Ok(identities
+            .credentials()
+            .credentials_creation()
+            .issue_credential(issuer, &subject, attributes, Duration::from_secs(1))
+            .await?)
     }
 }

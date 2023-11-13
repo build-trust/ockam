@@ -54,15 +54,12 @@ teardown() {
 @test "trust context - trust context with an id only; ABAC rules are applied" {
   run_success "$OCKAM" identity create m1
 
-  echo "{
-        \"id\": \"1\"
-    }" >"$OCKAM_HOME/trust_context.json"
-
   m1_identifier=$(run_success "$OCKAM" identity show m1)
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}}"
 
   run_success "$OCKAM" node create n1 --identity m1
-  run_success "$OCKAM" node create n2 --trust-context "$OCKAM_HOME/trust_context.json" --trusted-identities "$trusted"
+  run_success "$OCKAM" trust-context create default --id 1
+  run_success "$OCKAM" node create n2 --trust-context default --trusted-identities "$trusted"
   run_success bash -c "$OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api \
         | $OCKAM message send hello --from /node/n1 --to -/service/echo"
   run_failure "$OCKAM" message send hello --timeout 2 --from /node/n1 --to /node/n2/service/echo
@@ -113,8 +110,9 @@ teardown() {
   assert_output $msg
 
   run_success "$OCKAM" node delete alice --yes
-  echo "{\"id\": \"$authority_id\"}" >"$OCKAM_HOME/alice-trust-context.json"
-  run_success "$OCKAM" node create alice --tcp-listener-address 127.0.0.1:$port --identity alice --trust-context "$OCKAM_HOME/alice-trust-context.json"
+  run_success "$OCKAM" trust-context create alice-trust-context --id "$authority_id"
+
+  run_success "$OCKAM" node create alice --tcp-listener-address 127.0.0.1:$port --identity alice --trust-context alice-trust-context
 
   run_failure "$OCKAM" message send --timeout 2 --identity bob --to /dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo --trust-context bob-trust-context $msg
 }
@@ -135,26 +133,20 @@ teardown() {
   assert_success
   sleep 1
 
-  echo "{\"id\": \"test-context\",
-        \"authority\" : {
-            \"identity\" : \"$authority_identity\",
-            \"own_credential\" :{
-                \"FromCredentialIssuer\" : {
-                    \"identity\": \"$authority_identity\",
-                    \"multiaddr\" : \"/dnsaddr/127.0.0.1/tcp/$auth_port/service/api\" }}}}" >"$OCKAM_HOME/trust_context.json"
-
-  run_success "$OCKAM" node create --identity alice --tcp-listener-address 127.0.0.1:$node_port --trust-context "$OCKAM_HOME/trust_context.json"
+  authority_route="/dnsaddr/127.0.0.1/tcp/$auth_port/service/api"
+  run_success "$OCKAM" trust-context create test-context --id test-context --authority-identity $authority_identity --authority-route $authority_route
+  run_success "$OCKAM" node create --identity alice --tcp-listener-address 127.0.0.1:$node_port --trust-context test-context
   sleep 1
 
   # send a message to alice using the trust context
   msg=$(random_str)
-  run_success "$OCKAM" message send --identity bob --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
+  run_success "$OCKAM" message send --timeout 2 --identity bob --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context test-context $msg
   assert_output "$msg"
 
   # send a message to authority node echo service to make sure we can use it as a healthcheck endpoint
   run_success "$OCKAM" message send --timeout 2 --identity bob --to "/dnsaddr/127.0.0.1/tcp/$auth_port/secure/api/service/echo" $msg
   assert_output "$msg"
 
-  run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context "$OCKAM_HOME/trust_context.json" $msg
+  run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context test-context $msg
   run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context $msg
 }

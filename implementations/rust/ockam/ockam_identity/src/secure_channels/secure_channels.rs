@@ -11,7 +11,9 @@ use crate::secure_channel::{
     Addresses, Role, SecureChannelListenerOptions, SecureChannelListenerWorker,
     SecureChannelOptions, SecureChannelRegistry,
 };
-use crate::{SecureChannel, SecureChannelListener, SecureChannelsBuilder, TrustContext, Vault};
+#[cfg(feature = "storage")]
+use crate::SecureChannelsBuilder;
+use crate::{SecureChannel, SecureChannelListener, TrustContext, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -48,11 +50,12 @@ impl SecureChannels {
     }
 
     /// Create a builder for secure channels
-    pub fn builder() -> SecureChannelsBuilder {
-        SecureChannelsBuilder {
-            identities_builder: Identities::builder(),
+    #[cfg(feature = "storage")]
+    pub async fn builder() -> Result<SecureChannelsBuilder> {
+        Ok(SecureChannelsBuilder {
+            identities_builder: Identities::builder().await?,
             registry: SecureChannelRegistry::new(),
-        }
+        })
     }
 }
 
@@ -89,21 +92,20 @@ impl SecureChannels {
         trust_context: Option<&TrustContext>,
         ctx: &Context,
     ) -> Result<Vec<CredentialAndPurposeKey>> {
-        let credentials = if credentials.is_empty() {
+        let credential = if credentials.is_empty() {
             if let Some(trust_context) = trust_context {
-                vec![
-                    trust_context
-                        .authority()?
-                        .credential(ctx, identifier)
-                        .await?,
-                ]
+                trust_context
+                    .get_credential(ctx, identifier)
+                    .await?
+                    .into_iter()
+                    .collect::<Vec<_>>()
             } else {
                 vec![]
             }
         } else {
             credentials.to_vec()
         };
-        Ok(credentials)
+        Ok(credential)
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]

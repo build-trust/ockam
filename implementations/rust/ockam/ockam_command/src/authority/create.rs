@@ -1,25 +1,27 @@
-use crate::node::util::run_ockam;
-use crate::util::{embedded_node_that_is_not_stopped, exitcode};
-use crate::util::{local_cmd, node_rpc};
-use crate::{docs, identity, CommandGlobalOpts, Result};
-use clap::{ArgGroup, Args};
-use miette::Context as _;
+use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+use std::process;
+
+use clap::ArgGroup;
+use clap::Args;
 use miette::{miette, IntoDiagnostic};
+use serde::{Deserialize, Serialize};
+
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
 use ockam_api::authority_node;
 use ockam_api::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_api::cli_state::init_node_state;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-use ockam_api::DefaultAddress;
+use ockam_api::config::lookup::InternetAddress;
+use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
-use tracing::debug;
+
+use crate::node::util::run_ockam;
+use crate::util::parsers::internet_address_parser;
+use crate::util::{embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{local_cmd, node_rpc};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -28,9 +30,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create an Authority node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 #[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
@@ -44,13 +46,14 @@ pub struct CreateCommand {
 
     /// TCP listener address
     #[arg(
-        display_order = 900,
-        long,
-        short,
-        id = "SOCKET_ADDRESS",
-        default_value = "127.0.0.1:4000"
+    display_order = 900,
+    long,
+    short,
+    id = "SOCKET_ADDRESS",
+    default_value = "127.0.0.1:4000",
+    value_parser = internet_address_parser
     )]
-    tcp_listener_address: String,
+    tcp_listener_address: InternetAddress,
 
     /// `authority create` started a child process to run this node in foreground.
     #[arg(long, hide = true)]
@@ -107,14 +110,9 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
 ) -> miette::Result<()> {
-    // Create node state, including the vault and identity if they don't exist
-    init_node_state(
-        &opts.state,
-        &cmd.node_name,
-        cmd.vault.as_deref(),
-        cmd.identity.as_deref(),
-    )
-    .await?;
+    opts.state
+        .create_node_with_optional_values(&cmd.node_name, &cmd.identity, &None)
+        .await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -128,7 +126,7 @@ async fn spawn_background_node(
         "--project-identifier".to_string(),
         cmd.project_identifier.clone(),
         "--tcp-listener-address".to_string(),
-        cmd.tcp_listener_address.clone(),
+        cmd.tcp_listener_address.to_string(),
         "--foreground".to_string(),
         "--child-process".to_string(),
     ];
@@ -187,7 +185,7 @@ async fn spawn_background_node(
     }
     args.push(cmd.node_name.to_string());
 
-    run_ockam(opts, &cmd.node_name, args, cmd.logging_to_file())
+    run_ockam(opts, &cmd.node_name, args, cmd.logging_to_file()).await
 }
 
 impl CreateCommand {
@@ -259,42 +257,18 @@ async fn start_authority_node(
 ) -> miette::Result<()> {
     let (opts, cmd) = args;
 
-    // Create node state, including the vault and identity if they don't exist
-    if !opts.state.nodes.exists(&cmd.node_name) {
-        init_node_state(
-            &opts.state,
-            &cmd.node_name,
-            cmd.vault.as_deref(),
-            cmd.identity.as_deref(),
-        )
-        .await?;
-    };
-
     // Retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let identifier = match &cmd.identity {
-        Some(identity_name) => {
-            debug!(name=%identity_name, "getting identity from state");
-            opts.state
-                .identities
-                .get(identity_name)
-                .context("Identity not found")?
-                .config()
-                .identifier()
-        }
-        None => {
-            debug!("getting default identity from state");
-            match opts.state.identities.default() {
-                Ok(state) => state.config().identifier(),
-                Err(_) => {
-                    debug!("creating default identity");
-                    let cmd = identity::CreateCommand::new("authority".into(), None, None);
-                    cmd.create_identity(opts.clone()).await?
-                }
-            }
-        }
-    };
-    debug!(identifier=%identifier, "authority identifier");
+    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
+    let node = opts
+        .state
+        .create_node_with_optional_values(&cmd.node_name, &Some(identity_name), &None)
+        .await?;
+    opts.state
+        .set_tcp_listener_address(&node.name(), cmd.tcp_listener_address.to_string())
+        .await?;
+    opts.state.set_as_authority_node(&node.name()).await?;
+    opts.state.set_node_pid(&node.name(), process::id()).await?;
 
     let okta_configuration = match (&cmd.tenant_base_url, &cmd.certificate, &cmd.attributes) {
         (Some(tenant_base_url), Some(certificate), Some(attributes)) => Some(OktaConfiguration {
@@ -306,34 +280,11 @@ async fn start_authority_node(
         _ => None,
     };
 
-    // persist the node state and mark it as an authority node
-    // That flag allows the node to be seen as UP when listing the nodes with the
-    // the `ockam node list` command, without having to send a TCP query to open a connection
-    // because this would fail if there is no intention to create a secure channel
-    debug!("updating node state's setup config");
-    let node_state = opts.state.nodes.get(&cmd.node_name)?;
-    node_state.set_setup(
-        &node_state
-            .config()
-            .setup_mut()
-            .set_verbose(opts.global_args.verbose)
-            .set_authority_node()
-            .set_api_transport(
-                CreateTransportJson::new(
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    cmd.tcp_listener_address.as_str(),
-                )
-                .into_diagnostic()?,
-            ),
-    )?;
-
-    let trusted_identities = cmd.trusted_identities(&identifier)?;
+    let trusted_identities = cmd.trusted_identities(&node.clone().identifier())?;
 
     let configuration = authority_node::Configuration {
-        identifier,
-        storage_path: opts.state.identities.identities_repository_path()?,
-        vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
+        identifier: node.identifier(),
+        database_path: opts.state.database_path(),
         project_identifier: cmd.project_identifier,
         tcp_listener_address: cmd.tcp_listener_address,
         secure_channel_listener_name: None,
@@ -362,20 +313,15 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ockam::identity::Identifier;
+    use ockam::identity::{identities, Identifier};
     use ockam_core::compat::collections::HashMap;
 
-    #[test]
-    fn test_parse_trusted_identities() {
-        let identity1 = Identifier::try_from(
-            "Ie86be15e83d1c93e24dd1967010b01b6df491b45a1b2c3d4e5f6a6b5c4d3e2f1",
-        )
-        .unwrap();
-        let identity2 = Identifier::try_from(
-            "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
-        )
-        .unwrap();
+    use super::*;
+
+    #[tokio::test]
+    async fn test_parse_trusted_identities() -> Result<()> {
+        let identity1 = create_identity().await?;
+        let identity2 = create_identity().await?;
 
         let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
@@ -388,11 +334,24 @@ mod tests {
             ("trust_context_id".into(), "1".into()),
             ("ockam-role".into(), "enroller".into()),
         ]);
-        let expected = vec![
+        let mut expected = vec![
             TrustedIdentity::new(&identity1, &attributes1),
             TrustedIdentity::new(&identity2, &attributes2),
         ];
-        assert_eq!(actual.trusted_identities(), expected);
+        expected.sort_by_key(|t| t.identifier());
+
+        let mut trusted_identities = actual.trusted_identities();
+        trusted_identities.sort_by_key(|t| t.identifier());
+
+        assert_eq!(trusted_identities, expected);
+
+        Ok(())
+    }
+
+    /// HELPERS
+    async fn create_identity() -> Result<Identifier> {
+        let identities = identities().await?;
+        Ok(identities.identities_creation().create_identity().await?)
     }
 }
 

@@ -1,7 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::BackgroundNode;
 use ockam_node::Context;
 
@@ -10,8 +9,6 @@ use crate::node::util::spawn_node;
 use crate::util::node_rpc;
 use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
 
-use super::get_node_name;
-
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt");
@@ -19,9 +16,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/start/after_long_help.txt")
 /// Start a node that was previously stopped
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct StartCommand {
     /// Name of the node to be started
@@ -42,12 +39,12 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, StartCommand),
 ) -> miette::Result<()> {
     if cmd.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
-        let node_name = &get_node_name(&opts.state, &cmd.node_name);
-        start_single_node(node_name, opts, &ctx).await?;
+        let node_name = opts.state.get_node_or_default(&cmd.node_name).await?.name();
+        start_single_node(&node_name, opts, &ctx).await?;
         return Ok(());
     }
 
-    let inactive_nodes = get_inactive_nodes(&opts)?;
+    let inactive_nodes = get_inactive_nodes(&opts).await?;
     match inactive_nodes.len() {
         0 => {
             opts.terminal
@@ -104,12 +101,12 @@ async fn start_single_node(
     mut opts: CommandGlobalOpts,
     ctx: &Context,
 ) -> miette::Result<()> {
-    let node_state = opts.state.nodes.get(node_name)?;
+    let node_info = opts.state.get_node(node_name).await?;
 
-    opts.global_args.verbose = node_state.config().setup().verbose;
+    opts.global_args.verbose = node_info.verbosity();
 
     // Abort if node is already running
-    if node_state.is_running() {
+    if node_info.is_running() {
         opts.terminal
             .stdout()
             .plain(fmt_err!(
@@ -121,7 +118,7 @@ async fn start_single_node(
     }
 
     let mut node: BackgroundNode = run_node(node_name, ctx, &opts).await?;
-    print_query_status(&opts, ctx, node_name, &mut node, true).await?;
+    print_query_status(&opts, ctx, &mut node, true).await?;
     Ok(())
 }
 
@@ -149,40 +146,44 @@ async fn start_multiple_nodes(
     Ok(node_starts_output)
 }
 
-/// Run a single node. Return the BackgroundNode istance of the created node or error
+/// Run a single node. Return the BackgroundNode instance of the created node or error
 async fn run_node(
     node_name: &str,
     ctx: &Context,
     opts: &CommandGlobalOpts,
 ) -> miette::Result<BackgroundNode> {
-    let node_state = opts.state.nodes.get(node_name)?;
-    node_state.kill_process(false)?;
-    let node_setup = node_state.config().setup();
-    let node_name = node_state.name();
+    let node_info = opts.state.get_node(node_name).await?;
+    opts.state.stop_node(node_name, false).await?;
+    let node_address = node_info
+        .tcp_listener_address()
+        .map(|a| a.to_string())
+        .unwrap_or("no transport address".to_string());
+
     // Restart node
     spawn_node(
         opts,
-        node_name,                                     // The selected node name
-        &node_setup.api_transport()?.addr.to_string(), // The selected node api address
-        None,                                          // No project information available
-        None,                                          // No trusted identities
-        None,                                          // "
-        None,                                          // "
-        None,                                          // Launch config
-        None,                                          // Authority Identity
-        None,                                          // Credential
-        None,                                          // Trust Context
-        None,                                          // Project Name
-        true,                                          // Restarted nodes will log to files
-    )?;
+        node_name,     // The selected node name
+        &None,         // Use the default identity
+        &None,         // Use the default vault
+        &node_address, // The selected node api address
+        None,          // No project information available
+        None,          // No trusted identities
+        None,          // "
+        None,          // Launch config
+        None,          // Authority Identity
+        None,          // Credential
+        None,          // Trust Context
+        true,          // Restarted nodes will log to files
+    )
+    .await?;
 
-    let node = BackgroundNode::create(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNode::create_to_node(ctx, &opts.state, node_name).await?;
     Ok(node)
 }
 
 /// Get a list of the inactive_nodes
-fn get_inactive_nodes(opts: &CommandGlobalOpts) -> miette::Result<Vec<String>> {
-    let node_list = opts.state.nodes.list()?;
+async fn get_inactive_nodes(opts: &CommandGlobalOpts) -> miette::Result<Vec<String>> {
+    let node_list = opts.state.get_nodes().await?;
     Ok(node_list
         .iter()
         .filter(|node_state| !(node_state.is_running()))

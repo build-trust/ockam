@@ -1,100 +1,113 @@
-use super::Result;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Error;
+
+use crate::cli_state::CliState;
 use crate::cloud::space::Space;
-use crate::config::lookup::SpaceLookup;
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SpacesState {
-    dir: PathBuf,
-}
+use super::Result;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SpaceState {
-    name: String,
-    path: PathBuf,
-    config: SpaceConfig,
-}
+impl CliState {
+    pub async fn store_space(
+        &self,
+        space_id: &str,
+        space_name: &str,
+        users: Vec<&str>,
+    ) -> Result<Space> {
+        let repository = self.spaces_repository().await?;
+        let space = Space {
+            id: space_id.to_string(),
+            name: space_name.to_string(),
+            users: users.iter().map(|u| u.to_string()).collect(),
+        };
 
-impl SpaceState {
-    pub fn name(&self) -> &str {
-        &self.name
+        repository.store_space(&space).await?;
+
+        // If there is no previous default space set this space as the default
+        let default_space = repository.get_default_space().await?;
+        if default_space.is_none() {
+            repository.set_default_space(&space.id).await?
+        };
+
+        Ok(space)
     }
-}
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct SpaceConfig {
-    pub name: String,
-    pub id: String,
-}
-
-impl SpaceConfig {
-    pub fn from_lookup(name: &str, lookup: SpaceLookup) -> Self {
-        Self {
-            name: name.to_string(),
-            id: lookup.id,
-        }
-    }
-}
-
-impl From<&Space> for SpaceConfig {
-    fn from(s: &Space) -> Self {
-        Self {
-            name: s.name.to_string(),
-            id: s.id.to_string(),
-        }
-    }
-}
-
-mod traits {
-    use super::*;
-    use crate::cli_state::file_stem;
-    use crate::cli_state::traits::*;
-    use ockam_core::async_trait;
-    use std::path::Path;
-
-    #[async_trait]
-    impl StateDirTrait for SpacesState {
-        type Item = SpaceState;
-        const DEFAULT_FILENAME: &'static str = "space";
-        const DIR_NAME: &'static str = "spaces";
-        const HAS_DATA_DIR: bool = false;
-
-        fn new(root_path: &Path) -> Self {
-            Self {
-                dir: Self::build_dir(root_path),
+    pub async fn get_default_space(&self) -> Result<Space> {
+        match self.spaces_repository().await?.get_default_space().await? {
+            Some(space) => Ok(space),
+            None => {
+                Err(Error::new(Origin::Api, Kind::NotFound, "there is no default space").into())
             }
         }
+    }
 
-        fn dir(&self) -> &PathBuf {
-            &self.dir
+    pub async fn get_space_by_name(&self, name: &str) -> Result<Space> {
+        match self
+            .spaces_repository()
+            .await?
+            .get_space_by_name(name)
+            .await?
+        {
+            Some(space) => Ok(space),
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("there is no space with name {name}"),
+            )
+            .into()),
         }
     }
 
-    #[async_trait]
-    impl StateItemTrait for SpaceState {
-        type Config = SpaceConfig;
+    pub async fn get_spaces(&self) -> Result<Vec<Space>> {
+        Ok(self.spaces_repository().await?.get_spaces().await?)
+    }
 
-        fn new(path: PathBuf, config: Self::Config) -> Result<Self> {
-            let contents = serde_json::to_string(&config)?;
-            std::fs::write(&path, contents)?;
-            let name = file_stem(&path)?;
-            Ok(Self { name, path, config })
-        }
+    pub async fn delete_space(&self, space_id: &str) -> Result<()> {
+        let repository = self.spaces_repository().await?;
+        // delete the space
+        let space_exists = repository.get_space(space_id).await.is_ok();
+        repository.delete_space(space_id).await?;
 
-        fn load(path: PathBuf) -> Result<Self> {
-            let name = file_stem(&path)?;
-            let contents = std::fs::read_to_string(&path)?;
-            let config = serde_json::from_str(&contents)?;
-            Ok(Self { name, path, config })
+        // set another space as the default space
+        if space_exists {
+            let other_space = repository.get_spaces().await?;
+            if let Some(other_space) = other_space.first() {
+                repository
+                    .set_default_space(&other_space.space_id())
+                    .await?;
+            }
         }
+        Ok(())
+    }
 
-        fn path(&self) -> &PathBuf {
-            &self.path
-        }
+    pub async fn set_space_as_default(&self, space_id: &str) -> Result<()> {
+        Ok(self
+            .spaces_repository()
+            .await?
+            .set_default_space(space_id)
+            .await?)
+    }
+}
 
-        fn config(&self) -> &Self::Config {
-            &self.config
-        }
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cli_spaces() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // the first created space becomes the default
+        let space1 = cli
+            .store_space("1", "name1", vec!["me@ockam.io", "you@ockam.io"])
+            .await?;
+        let result = cli.get_default_space().await?;
+        assert_eq!(result, space1);
+
+        // the store method can be used to update a space
+        let updated_space1 = cli.store_space("1", "name1", vec!["them@ockam.io"]).await?;
+        let result = cli.get_default_space().await?;
+        assert_eq!(result, updated_space1);
+
+        Ok(())
     }
 }

@@ -20,7 +20,6 @@ impl AppState {
                 .runtime()
                 .block_on(async move { this.state().await });
             state
-                .nodes
                 .stdout_logs(NODE_NAME)
                 .expect("Failed to get stdout log path for node")
         };

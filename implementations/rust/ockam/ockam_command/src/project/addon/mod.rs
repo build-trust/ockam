@@ -1,33 +1,27 @@
-mod configure_confluent;
-mod configure_influxdb;
-mod configure_okta;
-mod disable;
-mod list;
-
 use core::fmt::Write;
 
 use clap::{Args, Subcommand};
-use miette::Context as _;
 
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::addon::Addon;
-use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
-
 use ockam_node::Context;
 
+use crate::operation::util::check_for_completion;
+use crate::output::Output;
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
 use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
 use crate::project::addon::list::AddonListSubcommand;
-
-use crate::output::Output;
-use crate::util::api::CloudOpts;
-
-use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
+use crate::util::api::CloudOpts;
 use crate::{CommandGlobalOpts, Result};
+
+mod configure_confluent;
+mod configure_influxdb;
+mod configure_okta;
+mod disable;
+mod list;
 
 /// Manage addons for a project
 #[derive(Clone, Debug, Args)]
@@ -103,27 +97,15 @@ impl Output for Vec<Addon> {
     }
 }
 
-pub fn get_project_id(cli_state: &CliState, project_name: &str) -> Result<String> {
-    Ok(cli_state
-        .projects
-        .get(project_name)
-        .context(format!(
-            "Failed to get project {project_name} from config lookup"
-        ))?
-        .config()
-        .id
-        .clone())
-}
-
 async fn check_configuration_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-    project_id: String,
-    operation_id: String,
+    project_id: &str,
+    operation_id: &str,
 ) -> Result<()> {
     let controller = node.create_controller().await?;
-    check_for_completion(opts, ctx, &controller, &operation_id).await?;
+    check_for_completion(opts, ctx, &controller, operation_id).await?;
     let project = controller.get_project(ctx, project_id).await?;
     let _ = check_project_readiness(opts, ctx, node, project).await?;
     Ok(())

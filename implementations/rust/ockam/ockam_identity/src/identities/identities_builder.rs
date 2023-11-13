@@ -1,27 +1,31 @@
-use crate::identities::{Identities, IdentitiesRepository, IdentitiesStorage};
-use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
-use crate::storage::Storage;
-use crate::{Vault, VaultStorage};
-
 use ockam_core::compat::sync::Arc;
+#[cfg(feature = "storage")]
+use ockam_core::Result;
+use ockam_vault::storage::SecretsRepository;
+
+use crate::identities::{ChangeHistoryRepository, Identities};
+use crate::purpose_keys::storage::PurposeKeysRepository;
+use crate::{IdentityAttributesRepository, Vault};
 
 /// Builder for Identities services
 #[derive(Clone)]
 pub struct IdentitiesBuilder {
     pub(crate) vault: Vault,
-    pub(crate) repository: Arc<dyn IdentitiesRepository>,
+    pub(crate) change_history_repository: Arc<dyn ChangeHistoryRepository>,
+    pub(crate) identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     pub(crate) purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
 
 /// Return a default identities
-pub fn identities() -> Arc<Identities> {
-    Identities::builder().build()
+#[cfg(feature = "storage")]
+pub async fn identities() -> Result<Arc<Identities>> {
+    Ok(Identities::builder().await?.build())
 }
 
 impl IdentitiesBuilder {
-    /// With Software Vault with given Storage
-    pub fn with_vault_storage(mut self, storage: VaultStorage) -> Self {
-        self.vault = Vault::create_with_persistent_storage(storage);
+    /// With Software Vault with given secrets repository
+    pub fn with_secrets_repository(mut self, repository: Arc<dyn SecretsRepository>) -> Self {
+        self.vault = Vault::create_with_secrets_repository(repository);
         self
     }
 
@@ -31,20 +35,22 @@ impl IdentitiesBuilder {
         self
     }
 
-    /// Set a specific storage for identities
-    pub fn with_identities_storage(self, storage: Arc<dyn Storage>) -> Self {
-        self.with_identities_repository(Arc::new(IdentitiesStorage::new(storage)))
-    }
-
     /// Set a specific repository for identities
-    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
-        self.repository = repository;
+    pub fn with_change_history_repository(
+        mut self,
+        repository: Arc<dyn ChangeHistoryRepository>,
+    ) -> Self {
+        self.change_history_repository = repository;
         self
     }
 
-    /// Set a specific storage for Purpose Keys
-    pub fn with_purpose_keys_storage(self, storage: Arc<dyn Storage>) -> Self {
-        self.with_purpose_keys_repository(Arc::new(PurposeKeysStorage::new(storage)))
+    /// Set a specific repository for identity attributes
+    pub fn with_identity_attributes_repository(
+        mut self,
+        repository: Arc<dyn IdentityAttributesRepository>,
+    ) -> Self {
+        self.identity_attributes_repository = repository;
+        self
     }
 
     /// Set a specific repository for Purpose Keys
@@ -60,7 +66,8 @@ impl IdentitiesBuilder {
     pub fn build(self) -> Arc<Identities> {
         Arc::new(Identities::new(
             self.vault,
-            self.repository,
+            self.change_history_repository,
+            self.identity_attributes_repository,
             self.purpose_keys_repository,
         ))
     }

@@ -16,10 +16,13 @@ use std::time::Duration;
 #[tokio::test]
 #[ignore]
 async fn create_identity_with_aws_pregenerated_key() -> Result<()> {
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     let aws_vault = Arc::new(AwsSigningVault::create().await?);
     vault.identity_vault = aws_vault.clone();
-    let identities = Identities::builder().with_vault(vault.clone()).build();
+    let identities = Identities::builder()
+        .await?
+        .with_vault(vault.clone())
+        .build();
 
     // create a secret key using the AWS KMS
     let key_id = aws_vault
@@ -47,10 +50,13 @@ async fn create_identity_with_aws_pregenerated_key() -> Result<()> {
 #[tokio::test]
 #[ignore]
 async fn create_identity_with_aws_random_key() -> Result<()> {
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     let aws_vault = Arc::new(AwsSigningVault::create().await?);
     vault.identity_vault = aws_vault.clone();
-    let identities = Identities::builder().with_vault(vault.clone()).build();
+    let identities = Identities::builder()
+        .await?
+        .with_vault(vault.clone())
+        .build();
 
     let identifier = identities
         .identities_creation()
@@ -78,10 +84,13 @@ async fn create_identity_with_aws_random_key() -> Result<()> {
 #[tokio::test]
 #[ignore]
 async fn create_credential_aws_key() -> Result<()> {
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     let aws_vault = Arc::new(AwsSigningVault::create().await?);
     vault.credential_vault = aws_vault.clone();
-    let identities = Identities::builder().with_vault(vault.clone()).build();
+    let identities = Identities::builder()
+        .await?
+        .with_vault(vault.clone())
+        .build();
 
     let identifier = identities.identities_creation().create_identity().await?;
 

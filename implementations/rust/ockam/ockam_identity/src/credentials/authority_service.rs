@@ -65,6 +65,7 @@ impl AuthorityService {
         let credential = retriever.retrieve(ctx, subject).await?;
         debug!("retrieved a credential for subject {}", subject);
 
+        debug!("verifying the credential for authority {}", self.identifier);
         let credential_data = self
             .credentials
             .credentials_verification()

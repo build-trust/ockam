@@ -1,16 +1,14 @@
-use miette::{miette, IntoDiagnostic, WrapErr};
+use miette::{IntoDiagnostic, WrapErr};
 use tracing::{debug, error, info};
 
-use crate::api::notification::rust::{Kind, Notification};
-use crate::api::state::OrchestratorStatus;
 use ockam_api::cli_state;
-use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 
+use crate::api::notification::rust::{Kind, Notification};
+use crate::api::state::OrchestratorStatus;
 use crate::state::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::Result;
 
@@ -112,10 +110,8 @@ impl AppState {
         }
 
         let cli_state = self.state().await;
-        cli_state
-            .users_info
-            .overwrite(&user_info.email, user_info.clone())?;
-        cli_state.users_info.set_default(&user_info.email)?;
+        cli_state.store_user(&user_info).await?;
+        cli_state.set_default_user(&user_info.email).await?;
 
         // enroll the current user using that token on the controller
         {
@@ -132,7 +128,11 @@ impl AppState {
         self.publish_state().await;
         self.retrieve_project(&space).await?;
 
-        let identifier = update_enrolled_identity(&cli_state, NODE_NAME)
+        let cli_state = self.state().await;
+        let node = cli_state.get_node(NODE_NAME).await?;
+        let identifier = node.identifier();
+        cli_state
+            .set_identifier_as_enrolled(&identifier)
             .await
             .into_diagnostic()?;
         info!(%identifier, "User enrolled successfully");
@@ -142,17 +142,14 @@ impl AppState {
 
     async fn retrieve_space(&self) -> Result<Space> {
         info!("retrieving the user's space");
-        let controller = self.controller().await.into_diagnostic()?;
+        let node_manager = self.node_manager().await;
         let context = self.context();
 
         // list the spaces that the user can access
         // and sort them by name to make sure to get the same space every time
         // if several spaces are available
         let spaces = {
-            let mut spaces = controller
-                .list_spaces(&context)
-                .await
-                .map_err(|e| miette!(e))?;
+            let mut spaces = node_manager.get_spaces(&context).await?;
             spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
             spaces
         };
@@ -163,16 +160,11 @@ impl AppState {
             Some(space) => space.clone(),
             None => {
                 let space_name = cli_state::random_name();
-                controller
-                    .create_space(&context, space_name, vec![])
-                    .await
-                    .map_err(|e| miette!(e))?
+                node_manager
+                    .create_space(&self.context(), &space_name, vec![])
+                    .await?
             }
         };
-        self.state()
-            .await
-            .spaces
-            .overwrite(&space.name, SpaceConfig::from(&space))?;
 
         Ok(space)
     }
@@ -181,11 +173,8 @@ impl AppState {
         info!("retrieving the user project");
         let email = self.user_email().await.wrap_err("User info is not valid")?;
 
-        let controller = self.controller().await.into_diagnostic()?;
-        let projects = controller
-            .list_projects(&self.context())
-            .await
-            .map_err(|e| miette!(e))?;
+        let node_manager = self.node_manager().await;
+        let projects = node_manager.get_projects(&self.context()).await?;
         let admin_project = projects
             .iter()
             .filter(|p| p.has_admin_with_email(&email))
@@ -200,18 +189,19 @@ impl AppState {
                     message: "This might take a few minutes".to_string(),
                 });
                 let ctx = &self.context();
-                let project = controller
-                    .create_project(ctx, space.id.to_string(), PROJECT_NAME.to_string(), vec![])
-                    .await
-                    .map_err(|e| miette!(e))?;
-                controller.wait_until_project_is_ready(ctx, project).await?
+                let project = node_manager
+                    .create_project(ctx, &space.id, PROJECT_NAME, vec![])
+                    .await?;
+                node_manager
+                    .wait_until_project_is_ready(ctx, project)
+                    .await?
             }
         };
-        let cli_state = self.state().await;
-        cli_state
-            .projects
-            .overwrite(&project.name, project.clone())?;
-        add_project_info_to_node_state(NODE_NAME, &cli_state, None).await?;
+
+        self.state()
+            .await
+            .set_node_project(&node_manager.node_name(), &Some(project.name()))
+            .await?;
         Ok(project)
     }
 }

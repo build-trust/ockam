@@ -1,14 +1,17 @@
-use crate::bootstrapped_identities_store::PreTrustedIdentities;
-use crate::DefaultAddress;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 
 use ockam::identity::utils::now;
 use ockam::identity::{AttributesEntry, Identifier, TRUST_CONTEXT_ID};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+
+use crate::bootstrapped_identities_store::PreTrustedIdentities;
+use crate::config::lookup::InternetAddress;
+use crate::nodes::service::default_address::DefaultAddress;
 
 /// Configuration for the Authority node
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,17 +19,14 @@ pub struct Configuration {
     /// Authority identity or identity associated with the newly created node
     pub identifier: Identifier,
 
-    /// path where the storage for identity attributes should be persisted
-    pub storage_path: PathBuf,
-
-    /// path where secrets should be persisted
-    pub vault_path: PathBuf,
+    /// path where the database should be stored
+    pub database_path: PathBuf,
 
     /// Project identifier on the Orchestrator node
     pub project_identifier: String,
 
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
-    pub tcp_listener_address: String,
+    pub tcp_listener_address: InternetAddress,
 
     /// service name for the secure channel listener, for example "secure"
     /// The default is DefaultAddress::SECURE_CHANNEL_LISTENER
@@ -62,7 +62,7 @@ impl Configuration {
     }
 
     /// Return the address for the TCP listener
-    pub(crate) fn tcp_listener_address(&self) -> String {
+    pub(crate) fn tcp_listener_address(&self) -> InternetAddress {
         self.tcp_listener_address.clone()
     }
 

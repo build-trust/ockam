@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use std::time::Duration;
+
 use tokio::spawn;
 
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient, DEFAULT_TIMEOUT};
@@ -35,7 +36,7 @@ impl NodeManager {
         NodeManager::controller_node(
             &self.tcp_transport,
             self.secure_channels.clone(),
-            &self.get_identifier(None).await?,
+            &self.identifier(),
         )
         .await
     }
@@ -238,10 +239,12 @@ pub struct AuthorityNode {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
+
 pub struct ProjectNode {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
+
 pub struct Controller {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,

@@ -67,7 +67,7 @@ use ockam::{node, route, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
     let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to

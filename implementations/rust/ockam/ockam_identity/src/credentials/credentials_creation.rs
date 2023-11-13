@@ -1,18 +1,19 @@
-use crate::models::{Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier};
-use crate::utils::{add_seconds, now};
-use crate::{IdentitiesRepository, Identity, PurposeKeyCreation};
-
 use core::time::Duration;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
+
+use crate::models::{Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier};
+use crate::utils::{add_seconds, now};
+use crate::{IdentitiesCreation, PurposeKeyCreation};
 
 /// Service for managing [`Credential`]s
 pub struct CredentialsCreation {
     purpose_keys_creation: Arc<PurposeKeyCreation>,
     credential_vault: Arc<dyn VaultForSigning>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    identities_creation: Arc<IdentitiesCreation>,
 }
 
 impl CredentialsCreation {
@@ -21,19 +22,14 @@ impl CredentialsCreation {
         purpose_keys_creation: Arc<PurposeKeyCreation>,
         credential_vault: Arc<dyn VaultForSigning>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        identities_creation: Arc<IdentitiesCreation>,
     ) -> Self {
         Self {
             purpose_keys_creation,
             verifying_vault,
             credential_vault,
-            identities_repository,
+            identities_creation,
         }
-    }
-
-    /// [`IdentitiesRepository`]
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities_repository.clone()
     }
 }
 
@@ -52,13 +48,7 @@ impl CredentialsCreation {
             .get_or_create_credential_purpose_key(issuer)
             .await?;
 
-        let subject_change_history = self.identities_repository.get_identity(subject).await?;
-        let subject_identity = Identity::import_from_change_history(
-            Some(subject),
-            subject_change_history,
-            self.verifying_vault.clone(),
-        )
-        .await?;
+        let subject_identity = self.identities_creation.get_identity(subject).await?;
 
         let created_at = now()?;
         let expires_at = add_seconds(&created_at, ttl.as_secs());

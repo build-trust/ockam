@@ -4,9 +4,7 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::cloud::project::Projects;
-
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
@@ -20,9 +18,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 /// List projects
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ListCommand {
     #[command(flatten)]
@@ -40,15 +38,14 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
-    if !opts.state.is_enrolled()? {
+    if !opts.state.is_enrolled().await? {
         return Err(miette!("You must enroll before you can list your projects"));
     }
     let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_projects = async {
-        let projects = controller.list_projects(ctx).await?;
+        let projects = node.get_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
@@ -65,12 +62,6 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
             .terminal
             .build_list(&projects, "Projects", "No projects found on this system.")?;
     let json = serde_json::to_string_pretty(&projects).into_diagnostic()?;
-
-    for project in &projects {
-        opts.state
-            .projects
-            .overwrite(&project.name, project.clone())?;
-    }
 
     opts.terminal
         .stdout()

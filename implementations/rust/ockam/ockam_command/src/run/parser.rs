@@ -1,13 +1,15 @@
-use crate::{shutdown, CommandGlobalOpts};
-use duct::Expression;
-use miette::IntoDiagnostic;
-use ockam_api::cli_state::StateDirTrait;
-use ockam_core::compat::collections::HashMap;
-use once_cell::sync::Lazy;
-use serde::Deserialize;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::Debug;
+
+use duct::Expression;
+use miette::IntoDiagnostic;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
 use tracing::debug;
+
+use ockam_core::compat::collections::HashMap;
+
+use crate::{shutdown, CommandGlobalOpts};
 
 pub struct ConfigRunner {
     commands_sorted: Vec<ParsedCommand>,
@@ -130,11 +132,16 @@ impl ConfigRunner {
             shutdown::wait(opts.terminal, true, true, tx, &mut rx).await?;
 
             // Send a SIGTERM to all nodes if they are still running
-            for node_name in spawned_nodes {
-                if let Ok(node) = opts.state.nodes.get(node_name) {
-                    if node.is_running() {
-                        let _ = node.kill_process(false);
-                    }
+            for node_name in &spawned_nodes {
+                if opts
+                    .state
+                    .get_node(node_name)
+                    .await
+                    .ok()
+                    .map(|n| n.is_running())
+                    .unwrap_or(false)
+                {
+                    opts.state.stop_node(node_name, false).await?;
                 }
             }
         }

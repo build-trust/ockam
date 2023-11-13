@@ -1,4 +1,4 @@
-use ockam::identity::{Identifier, IdentityAttributesReader};
+use ockam::identity::{Identifier, IdentityAttributesRepository};
 use ockam_api::auth;
 use ockam_api::auth::AuthorizationApi;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
@@ -15,7 +15,7 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
             "I224ed0b2e5a2be82e267ead6b3279f683616b66da1b2c3d4e5f6a6b5c4d3e2f1":{"attr":"value2"}
            }"#,
     )?;
-    let s: Arc<dyn IdentityAttributesReader> = Arc::new(s);
+    let s: Arc<dyn IdentityAttributesRepository> = Arc::new(s);
     ctx.start_worker("auth", auth::Server::new(s)).await?;
 
     let client = Client::new(&route!["auth"], None);

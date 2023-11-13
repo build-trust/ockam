@@ -1,23 +1,20 @@
-use crate::util::duration::duration_parser;
-use clap::Args;
-use ockam_api::config::cli::TrustContextConfig;
-use ockam_api::identity::EnrollmentTicket;
 use std::collections::HashMap;
 use std::time::Duration;
 
+use clap::Args;
 use miette::{miette, IntoDiagnostic};
+
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::enrollment_tokens::{Members, TokenIssuer};
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
+use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cli_state::CliState;
+use ockam_api::cloud::project::Project;
 use ockam_api::nodes::InMemoryNode;
-
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-
 use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::duration::duration_parser;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
 
@@ -27,8 +24,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt"
 /// Add members to a project as an authorised enroller.
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct TicketCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
@@ -48,7 +45,7 @@ pub struct TicketCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 
-    #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser=duration_parser)]
+    #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser = duration_parser)]
     expires_in: Option<Duration>,
 
     #[arg(
@@ -61,7 +58,6 @@ pub struct TicketCommand {
 
 impl TicketCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
     }
 
@@ -81,51 +77,60 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, TicketCommand),
 ) -> miette::Result<()> {
-    let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();
+    let trust_context = opts
+        .state
+        .retrieve_trust_context(
+            &cmd.trust_opts.trust_context,
+            &cmd.trust_opts.project_name,
+            &None,
+            &None,
+        )
+        .await?;
     let node = InMemoryNode::start_with_trust_context(
         &ctx,
         &opts.state,
-        cmd.trust_opts.project_path.as_ref(),
-        trust_context_config,
+        cmd.trust_opts.project_name.clone(),
+        trust_context,
     )
     .await?;
 
-    let mut project: Option<ProjectLookup> = None;
-    let mut trust_context: Option<TrustContextConfig> = None;
+    let mut project: Option<Project> = None;
 
-    let authority_node = if let Some(tc) = cmd.trust_opts.trust_context.as_ref() {
-        let tc = &opts.state.trust_contexts.read_config_from_path(tc)?;
-        trust_context = Some(tc.clone());
-        let cred_retr = tc
+    let authority_node = if let Some(name) = cmd.trust_opts.trust_context.as_ref() {
+        let authority = if let Some(authority) = opts
+            .state
+            .get_trust_context(name)
+            .await?
             .authority()
-            .into_diagnostic()?
-            .own_credential()
-            .into_diagnostic()?;
-        let addr = match cred_retr {
-            ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
-                &c.multiaddr
-            }
-            _ => {
-                return Err(miette!(
-                    "Trust context must be configured with a credential issuer"
-                ));
-            }
-        };
-        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-        let authority_identifier = tc
-            .authority()
-            .into_diagnostic()?
-            .identifier()
             .await
-            .into_diagnostic()?;
+            .into_diagnostic()?
+        {
+            authority
+        } else {
+            return Err(miette!(
+                "Trust context must be configured with a credential issuer"
+            ));
+        };
 
-        node.create_authority_client(&authority_identifier, addr, Some(identity))
+        let identity = opts
+            .state
+            .get_identity_name_or_default(&cmd.cloud_opts.identity)
+            .await?;
+
+        node.create_authority_client(&authority.identifier(), &authority.route(), Some(identity))
             .await?
-    } else if let (Some(p), Some(a)) = get_project(&opts.state, &cmd.to).await? {
-        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-        project = Some(p);
-        node.create_authority_client(a.identity_id(), a.address(), Some(identity))
-            .await?
+    } else if let Some(p) = get_project(&opts.state, &cmd.to).await? {
+        let identity = opts
+            .state
+            .get_identity_name_or_default(&cmd.cloud_opts.identity)
+            .await?;
+        project = Some(p.clone());
+        node.create_authority_client(
+            &p.authority_identifier().await.into_diagnostic()?,
+            &p.authority_access_route().into_diagnostic()?,
+            Some(identity),
+        )
+        .await?
     } else {
         return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
     };
@@ -141,7 +146,7 @@ async fn run_impl(
             .create_token(&ctx, cmd.attributes()?, cmd.expires_in, cmd.usage_count)
             .await?;
 
-        let ticket = EnrollmentTicket::new(token, project, trust_context);
+        let ticket = EnrollmentTicket::new(token, project);
         let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
         opts.terminal
             .clone()
@@ -156,28 +161,27 @@ async fn run_impl(
 /// Get the project authority from the first address protocol.
 ///
 /// If the first protocol is a `/project`, look up the project's config.
-async fn get_project(
-    cli_state: &CliState,
-    input: &MultiAddr,
-) -> Result<(Option<ProjectLookup>, Option<ProjectAuthority>)> {
+async fn get_project(cli_state: &CliState, input: &MultiAddr) -> Result<Option<Project>> {
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
-            let proj = proto.cast::<proto::Project>().expect("project protocol");
-            return if let Ok(p) = cli_state.projects.get(proj.to_string()) {
-                let c = p.config();
-                let a =
-                    ProjectAuthority::from_raw(&c.authority_access_route, &c.authority_identity)
-                        .await?;
-                if a.is_some() {
-                    let p = ProjectLookup::from_project(c).await?;
-                    Ok((Some(p), a))
-                } else {
-                    Err(miette!("missing authority in project {:?}", &*proj).into())
+            let project_name = proto.cast::<proto::Project>().expect("project protocol");
+            match cli_state.get_project_by_name(&project_name).await.ok() {
+                None => Err(miette!("unknown project {}", project_name.to_string()).into()),
+                Some(project) => {
+                    if project.authority_identifier().await.is_err() {
+                        Err(
+                            miette!("missing authority in project {}", project_name.to_string())
+                                .into(),
+                        )
+                    } else {
+                        Ok(Some(project))
+                    }
                 }
-            } else {
-                Err(miette!("unknown project {}", &*proj).into())
-            };
+            }
+        } else {
+            Ok(None)
         }
+    } else {
+        Ok(None)
     }
-    Ok((None, None))
 }

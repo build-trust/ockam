@@ -741,7 +741,7 @@ mod test {
             PortRange::new(0, 0).unwrap(),
         );
 
-        let secure_channels = secure_channels();
+        let secure_channels = secure_channels().await.unwrap();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(MultiAddr::default()),

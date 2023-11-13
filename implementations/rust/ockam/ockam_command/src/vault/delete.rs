@@ -3,7 +3,6 @@ use colorful::Colorful;
 
 use console::Term;
 use ockam::Context;
-use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
@@ -84,15 +83,22 @@ impl DeleteCommandTui for DeleteTui {
             .cmd
             .name
             .clone()
-            .unwrap_or(self.opts.state.vaults.default()?.name().to_string()))
+            .unwrap_or(self.opts.state.get_default_named_vault().await?.name()))
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.opts.state.vaults.list_items_names()?)
+        Ok(self
+            .opts
+            .state
+            .get_named_vaults()
+            .await?
+            .iter()
+            .map(|v| v.name())
+            .collect())
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        self.opts.state.vaults.delete(item_name)?;
+        self.opts.state.delete_named_vault(item_name).await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!("Vault with name '{item_name}' has been deleted"))
@@ -104,16 +110,20 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let plain = selected_items_names
-            .iter()
-            .map(|name| {
-                if self.opts.state.vaults.delete(name).is_ok() {
-                    fmt_ok!("Vault '{name}' deleted\n")
-                } else {
-                    fmt_warn!("Failed to delete vault '{name}'\n")
-                }
-            })
-            .collect::<String>();
+        let mut plain = String::new();
+        for name in selected_items_names {
+            if self
+                .opts
+                .state
+                .delete_named_vault(name.as_ref())
+                .await
+                .is_ok()
+            {
+                plain.push_str(&fmt_ok!("Vault '{name}' deleted\n"))
+            } else {
+                plain.push_str(&fmt_warn!("Failed to delete vault '{name}'\n"))
+            }
+        }
         self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }

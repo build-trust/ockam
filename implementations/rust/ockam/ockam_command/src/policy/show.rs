@@ -2,7 +2,6 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_abac::{Action, Resource};
-use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::policy::Policy;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
@@ -34,9 +33,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let node_name = extract_address_value(&cmd.at)?;
+    let node = BackgroundNode::create_to_node(ctx, &opts.state, &cmd.at).await?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let policy: Policy = node.ask(ctx, req).await?;
     println!("{}", policy.expression());
     Ok(())

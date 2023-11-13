@@ -9,7 +9,7 @@ use ockam::{node, Context, Result, TcpConnectionOptions, TcpListenerOptions, Tcp
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let node = node(ctx);
+    let node = node(ctx).await?;
 
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;

@@ -13,8 +13,8 @@ use ockam_node::tokio::time::{sleep, timeout, Duration};
 use ockam_node::Context;
 use ockam_node::{tokio, WorkerBuilder};
 
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::session::sessions::{ConnectionStatus, Ping, Session};
-use crate::DefaultAddress;
 
 pub(crate) mod sessions;
 
