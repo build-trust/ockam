@@ -6,17 +6,18 @@ use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
-use ockam::identity::Identifier;
+use ockam::identity::models::ChangeHistory;
+use ockam::identity::{identities, Identifier, Identity};
 use ockam_core::api::Request;
-use ockam_core::{async_trait, Result};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, Error, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{tokio, Context};
 
-use crate::cloud::addon::ConfluentConfigResponse;
+use crate::cloud::addon::ConfluentConfig;
 use crate::cloud::operation::Operations;
 use crate::cloud::share::ShareScope;
 use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
-use crate::config::lookup::ProjectAuthority;
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 
@@ -60,7 +61,7 @@ pub struct Project {
 
     #[cbor(n(12))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub confluent_config: Option<ConfluentConfigResponse>,
+    pub confluent_config: Option<ConfluentConfig>,
 
     #[cbor(n(13))]
     pub version: Option<String>,
@@ -80,14 +81,101 @@ pub struct Project {
 #[rustfmt::skip]
 pub struct ProjectUserRole {
     #[n(1)] pub email: String,
-    #[n(2)] pub id: usize,
+    #[n(2)] pub id: u64,
     #[n(3)] pub role: RoleInShare,
     #[n(4)] pub scope: ShareScope,
 }
 
 impl Project {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    pub fn identifier(&self) -> Result<Identifier> {
+        match &self.identity.clone() {
+            Some(identifier) => Ok(identifier.clone()),
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("no identity has been created for the project {}", self.name),
+            )),
+        }
+    }
+
+    pub fn project_name(&self) -> String {
+        self.name.clone()
+    }
+
     pub fn access_route(&self) -> Result<MultiAddr> {
         MultiAddr::from_str(&self.access_route).map_err(|e| ApiError::core(e.to_string()))
+    }
+
+    pub fn authority_access_route(&self) -> Result<MultiAddr> {
+        match &self.authority_access_route {
+            Some(authority_access_route) => MultiAddr::from_str(authority_access_route)
+                .map_err(|e| ApiError::core(e.to_string())),
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!(
+                    "no authority has been configured for the project {}",
+                    self.name
+                ),
+            )),
+        }
+    }
+
+    /// Return the decoded authority change history
+    /// This method does not verify the change history so it does not require to be async
+    pub fn authority_change_history(&self) -> Result<ChangeHistory> {
+        match &self.authority_identity {
+            Some(authority_identity) => {
+                let decoded = hex::decode(authority_identity.as_bytes())
+                    .map_err(|e| Error::new(Origin::Api, Kind::NotFound, e.to_string()))?;
+                Ok(ChangeHistory::import(&decoded)?)
+            }
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!(
+                    "no authority has been configured for the project {}",
+                    self.name
+                ),
+            )),
+        }
+    }
+
+    /// Return the identifier of the project's authority
+    pub async fn authority_identifier(&self) -> Result<Identifier> {
+        Ok(self.authority_identity().await?.identifier().clone())
+    }
+
+    /// Return the identity of the project's authority
+    pub async fn authority_identity(&self) -> Result<Identity> {
+        match &self.authority_identity {
+            Some(authority_identity) => {
+                let decoded = hex::decode(authority_identity.as_bytes())
+                    .map_err(|e| Error::new(Origin::Api, Kind::Serialization, e.to_string()))?;
+                let identities = identities().await?;
+                let identifier = identities
+                    .identities_creation()
+                    .import(None, &decoded)
+                    .await?;
+                Ok(identities.get_identity(&identifier).await?)
+            }
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!(
+                    "no authority has been configured for the project {}",
+                    self.name
+                ),
+            )),
+        }
     }
 
     pub fn has_admin_with_email(&self, email: &str) -> bool {
@@ -117,18 +205,11 @@ impl Project {
         ma.to_socket_addr()
             .map_err(|e| ApiError::core(e.to_string()))
     }
-
-    /// Return the project authority if there is one defined
-    pub async fn authority(&self) -> Result<Option<ProjectAuthority>> {
-        ProjectAuthority::from_project(self)
-            .await
-            .map_err(|e| ApiError::core(e.to_string()))
-    }
 }
 
 #[derive(Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
-pub struct ProjectVersion {
+pub struct OrchestratorVersionInfo {
     /// The version of the Orchestrator Controller
     #[cbor(n(1))]
     pub version: Option<String>,
@@ -136,6 +217,16 @@ pub struct ProjectVersion {
     /// The version of the Projects
     #[cbor(n(2))]
     pub project_version: Option<String>,
+}
+
+impl OrchestratorVersionInfo {
+    pub fn version(&self) -> String {
+        self.version.clone().unwrap_or("N/A".to_string())
+    }
+
+    pub fn project_version(&self) -> String {
+        self.project_version.clone().unwrap_or("N/A".to_string())
+    }
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -244,43 +335,58 @@ pub trait Projects {
     async fn create_project(
         &self,
         ctx: &Context,
-        space_id: String,
-        name: String,
+        space_id: &str,
+        name: &str,
         users: Vec<String>,
     ) -> miette::Result<Project>;
 
-    async fn get_project(&self, ctx: &Context, project_id: String) -> miette::Result<Project>;
+    async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project>;
+
+    async fn get_project_by_name(
+        &self,
+        ctx: &Context,
+        project_name: &str,
+    ) -> miette::Result<Project>;
+
+    async fn get_project_by_name_or_default(
+        &self,
+        ctx: &Context,
+        project_name: &Option<String>,
+    ) -> miette::Result<Project>;
 
     async fn delete_project(
         &self,
         ctx: &Context,
-        space_id: String,
-        project_id: String,
+        space_id: &str,
+        project_id: &str,
     ) -> miette::Result<()>;
 
-    async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion>;
-
-    async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
-
-    async fn wait_until_project_is_ready(
+    async fn delete_project_by_name(
         &self,
         ctx: &Context,
-        project: Project,
-    ) -> miette::Result<Project>;
+        space_name: &str,
+        project_name: &str,
+    ) -> miette::Result<()>;
+
+    async fn get_orchestrator_version_info(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<OrchestratorVersionInfo>;
+
+    async fn get_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
 }
 
-#[async_trait]
-impl Projects for Controller {
-    async fn create_project(
+impl Controller {
+    pub async fn create_project(
         &self,
         ctx: &Context,
-        space_id: String,
-        name: String,
+        space_id: &str,
+        name: &str,
         users: Vec<String>,
     ) -> miette::Result<Project> {
         trace!(target: TARGET, %space_id, project_name = name, "creating project");
         let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
-            .body(CreateProject::new(name, users));
+            .body(CreateProject::new(name.to_string(), users));
         self.secure_client
             .ask(ctx, "projects", req)
             .await
@@ -289,7 +395,7 @@ impl Projects for Controller {
             .into_diagnostic()
     }
 
-    async fn get_project(&self, ctx: &Context, project_id: String) -> miette::Result<Project> {
+    pub async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
         trace!(target: TARGET, %project_id, "getting project");
         let req = Request::get(format!("/v0/{project_id}"));
         self.secure_client
@@ -300,11 +406,11 @@ impl Projects for Controller {
             .into_diagnostic()
     }
 
-    async fn delete_project(
+    pub async fn delete_project(
         &self,
         ctx: &Context,
-        space_id: String,
-        project_id: String,
+        space_id: &str,
+        project_id: &str,
     ) -> miette::Result<()> {
         trace!(target: TARGET, %space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
@@ -316,8 +422,11 @@ impl Projects for Controller {
             .into_diagnostic()
     }
 
-    async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion> {
-        trace!(target: TARGET, "getting project version");
+    pub async fn get_orchestrator_version_info(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<OrchestratorVersionInfo> {
+        trace!(target: TARGET, "getting orchestrator version information");
         self.secure_client
             .ask(ctx, "version_info", Request::get(""))
             .await
@@ -326,7 +435,7 @@ impl Projects for Controller {
             .into_diagnostic()
     }
 
-    async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
+    pub async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let req = Request::get("/v0");
         self.secure_client
             .ask(ctx, "projects", req)
@@ -336,7 +445,7 @@ impl Projects for Controller {
             .into_diagnostic()
     }
 
-    async fn wait_until_project_is_ready(
+    pub async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
         project: Project,
@@ -363,7 +472,7 @@ impl Projects for Controller {
         .await?;
 
         if operation.is_successful() {
-            self.get_project(ctx, project.id).await
+            self.get_project(ctx, &project.id).await
         } else {
             Err(miette!("Operation failed. Please try again."))
         }
@@ -446,7 +555,7 @@ mod tests {
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g))),
                 okta_config: bool::arbitrary(g).then(|| OktaConfig::arbitrary(g)),
-                confluent_config: bool::arbitrary(g).then(|| ConfluentConfigResponse::arbitrary(g)),
+                confluent_config: bool::arbitrary(g).then(|| ConfluentConfig::arbitrary(g)),
                 version: Some(String::arbitrary(g)),
                 running: bool::arbitrary(g).then(|| bool::arbitrary(g)),
                 operation_id: bool::arbitrary(g).then(|| String::arbitrary(g)),

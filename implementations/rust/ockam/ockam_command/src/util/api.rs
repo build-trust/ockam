@@ -1,7 +1,4 @@
 //! API shim to make it nicer to interact with the ockam messaging API
-
-use std::path::PathBuf;
-
 use clap::Args;
 use miette::miette;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
@@ -9,15 +6,13 @@ use minicbor::Decoder;
 use regex::Regex;
 
 use ockam::identity::Identifier;
-use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
     StartHopServiceRequest, StartOktaIdentityProviderRequest,
 };
+use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::*;
-use ockam_api::trust_context::TrustContextConfigBuilder;
-use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
 use ockam_core::api::ResponseHeader;
 use ockam_core::flow_control::FlowControlId;
@@ -204,10 +199,6 @@ pub struct CloudOpts {
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct TrustContextOpts {
-    /// Project config file
-    #[arg(global = true, long = "project-path", value_name = "PROJECT_JSON_PATH")]
-    pub project_path: Option<PathBuf>,
-
     /// Trust Context config file
     #[arg(
         global = true,
@@ -217,24 +208,12 @@ pub struct TrustContextOpts {
     pub trust_context: Option<String>,
 
     #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
-    pub project: Option<String>,
+    pub project_name: Option<String>,
 }
 
 impl TrustContextOpts {
-    pub fn to_config(&self, cli_state: &CliState) -> Result<TrustContextConfigBuilder> {
-        let trust_context = match &self.trust_context {
-            Some(tc) => Some(cli_state.trust_contexts.read_config_from_path(tc)?),
-            None => None,
-        };
-        Ok(TrustContextConfigBuilder {
-            cli_state: cli_state.clone(),
-            project_path: self.project_path.clone(),
-            trust_context,
-            project: self.project.clone(),
-            authority_identity: None,
-            credential_name: None,
-            use_default_trust_context: true,
-        })
+    pub fn project_name(&self) -> Option<String> {
+        self.project_name.clone()
     }
 }
 

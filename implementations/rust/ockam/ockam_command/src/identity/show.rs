@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use crate::identity::get_identity_name;
 use crate::identity::list::IdentityListOutput;
 use crate::output::{EncodeFormat, IdentifierDisplay, Output, VerifyingPublicKeyDisplay};
 use crate::util::node_rpc;
@@ -8,8 +7,8 @@ use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::identity::verified_change::VerifiedChange;
-use ockam::identity::{Identifier, Identity, Vault};
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
+use ockam::identity::{Identifier, Identity};
+use ockam_api::NamedIdentity;
 use ockam_node::Context;
 use serde::Serialize;
 use serde_json::{json, to_string_pretty};
@@ -21,9 +20,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 /// Show the details of an identity
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     #[arg()]
@@ -53,26 +52,32 @@ impl ShowCommand {
         let (opts, cmd) = options;
 
         if cmd.name.is_some() || !opts.terminal.can_ask_for_user_input() {
-            let name = get_identity_name(&opts.state, &cmd.name);
-            Self::show_single_identity(&opts, &name, cmd.full, cmd.encoding).await?;
+            Self::show_single_identity(&opts, &cmd.name, cmd.full, cmd.encoding).await?;
             return Ok(());
         }
 
-        let id_names: Vec<String> = opts.state.identities.list_items_names()?;
-        match id_names.len() {
+        let identities: Vec<NamedIdentity> = opts.state.get_named_identities().await?;
+        let identities_names: Vec<String> = identities.iter().map(|i| i.name()).collect();
+        match identities_names.len() {
             0 => {
                 opts.terminal
                     .stdout()
-                    .plain("There are no nodes to show")
+                    .plain("There are no identities to show")
                     .write_line()?;
             }
             1 => {
-                Self::show_single_identity(&opts, &id_names[0], cmd.full, cmd.encoding).await?;
+                Self::show_single_identity(
+                    &opts,
+                    &identities_names.first().cloned(),
+                    cmd.full,
+                    cmd.encoding,
+                )
+                .await?;
             }
             _ => {
                 let selected_names = opts.terminal.select_multiple(
                     "Select one or more identities that you want to show".to_string(),
-                    id_names,
+                    identities_names,
                 );
 
                 if selected_names.is_empty() {
@@ -97,40 +102,25 @@ impl ShowCommand {
 
     async fn show_single_identity(
         opts: &CommandGlobalOpts,
-        name: &str,
+        name: &Option<String>,
         full: bool,
         encoding: Option<EncodeFormat>,
     ) -> miette::Result<()> {
-        let state = opts.state.identities.get(name)?;
-        let identifier = state.config().identifier();
+        let identity = opts.state.get_identity_by_optional_name(name).await?;
+
         let (plain, json) = if full {
-            let change_history = opts
-                .state
-                .identities
-                .identities_repository()
-                .await?
-                .get_identity(&identifier)
-                .await
-                .into_diagnostic()?;
+            let change_history = identity.change_history();
 
             if Some(EncodeFormat::Hex) == encoding {
                 let encoded = hex::encode(change_history.export().into_diagnostic()?);
                 let json = to_string_pretty(&json!({"encoded": &encoded}));
                 (encoded, json)
             } else {
-                let identity: ShowIdentity = Identity::import_from_change_history(
-                    Some(&identifier),
-                    change_history,
-                    Vault::create_verifying_vault(),
-                )
-                .await
-                .into_diagnostic()?
-                .into();
-
+                let identity: ShowIdentity = identity.into();
                 (identity.to_string(), to_string_pretty(&identity))
             }
         } else {
-            let identifier_display = IdentifierDisplay(identifier);
+            let identifier_display = IdentifierDisplay(identity.identifier().clone());
             (
                 identifier_display.to_string(),
                 to_string_pretty(&json!({"identifier": &identifier_display})),
@@ -154,11 +144,13 @@ impl ShowCommand {
         let mut identities: Vec<IdentityListOutput> = Vec::new();
 
         for name in selected_names {
-            let state = opts.state.identities.get(&name)?;
-            let identifier = state.config().identifier().to_string();
-            let is_default = opts.state.identities.is_default(&name)?;
-            let identity = IdentityListOutput::new(name, identifier, is_default);
-            identities.push(identity);
+            let identity = opts.state.get_named_identity(&name).await?;
+            let identity_list_output = IdentityListOutput::new(
+                identity.name(),
+                identity.identifier().to_string(),
+                identity.is_default(),
+            );
+            identities.push(identity_list_output);
         }
 
         let list = opts.terminal.build_list(

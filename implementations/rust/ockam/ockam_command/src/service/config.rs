@@ -4,7 +4,7 @@ use miette::{Context as _, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 
 use ockam::identity::Identifier;
-use ockam_api::DefaultAddress;
+use ockam_api::nodes::service::default_address::DefaultAddress;
 
 use crate::Result;
 

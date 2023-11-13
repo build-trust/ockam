@@ -1,11 +1,12 @@
-use crate::kafka::KAFKA_OUTLET_CONSUMERS;
-
-use crate::DefaultAddress;
 use core::str::from_utf8;
+
 use ockam::{Context, Result, Routed, Worker};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, AllowOnwardAddress};
+
+use crate::kafka::KAFKA_OUTLET_CONSUMERS;
+use crate::nodes::service::default_address::DefaultAddress;
 
 /// This service applies a prefix to the provided static forwarding address.
 /// This service was created mainly to keep full compatibility with the existing
@@ -14,6 +15,7 @@ pub struct PrefixRelayService {
     prefix: String,
     secure_channel_listener_flow_control_id: FlowControlId,
 }
+
 impl PrefixRelayService {
     pub async fn create(
         context: &Context,

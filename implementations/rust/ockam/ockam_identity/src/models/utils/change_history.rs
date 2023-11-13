@@ -1,12 +1,15 @@
+use ockam_core::compat::string::String;
+use ockam_core::compat::vec::Vec;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
+use ockam_vault::{Signature, VerifyingPublicKey};
+
+use crate::alloc::string::ToString;
+use crate::IdentityError;
 use crate::models::{
     Change, ChangeData, ChangeHistory, ChangeSignature, PrimaryPublicKey, VersionedData,
     CHANGE_DATA_TYPE,
 };
-
-use crate::IdentityError;
-use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
-use ockam_vault::{Signature, VerifyingPublicKey};
 
 impl Change {
     /// Create [`VersionedData`] with corresponding version and data_type
@@ -40,9 +43,22 @@ impl ChangeHistory {
         Ok(minicbor::to_vec(self)?)
     }
 
+    /// Export [`ChangeHistory`] to a hex encoded string
+    pub fn export_as_string(&self) -> Result<String> {
+        Ok(hex::encode(self.export()?))
+    }
+
     /// Import [`ChangeHistory`] from a binary format using CBOR
     pub fn import(data: &[u8]) -> Result<Self> {
         Ok(minicbor::decode(data)?)
+    }
+
+    /// Import [`ChangeHistory`] from a hex-encoded string
+    pub fn import_from_string(data: &str) -> Result<Self> {
+        Self::import(
+            &hex::decode(data)
+                .map_err(|e| Error::new(Origin::Identity, Kind::Serialization, e.to_string()))?,
+        )
     }
 }
 

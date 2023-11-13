@@ -1,20 +1,17 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use crate::{
-    fmt_err, fmt_log, fmt_ok, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
-};
-use miette::miette;
-
-use crate::credential::identities;
 use clap::Args;
 use colorful::Colorful;
-use ockam::identity::Identifier;
-use ockam::Context;
+use miette::{miette, IntoDiagnostic};
 use tokio::{sync::Mutex, try_join};
 
-use crate::util::parsers::identity_identifier_parser;
+use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::{Identifier, Identities};
+use ockam::Context;
 
-use super::validate_encoded_cred;
+use crate::util::parsers::identity_identifier_parser;
+use crate::{fmt_err, fmt_log, fmt_ok, util::node_rpc, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
@@ -46,61 +43,20 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, VerifyCommand),
 ) -> miette::Result<()> {
-    opts.terminal
-        .write_line(&fmt_log!("Verifying credential...\n"))?;
-
-    let is_finished: Mutex<bool> = Mutex::new(false);
-
-    let send_req = async {
-        let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
-                .await?
-                .trim()
-                .to_string(),
-            (Some(credential), _) => credential.clone(),
-            _ => {
-                *is_finished.lock().await = true;
-                return crate::Result::Err(
-                    miette!("Credential or Credential Path argument must be provided").into(),
-                );
-            }
-        };
-
-        let vault_name = cmd
-            .vault
-            .clone()
-            .unwrap_or_else(|| default_vault_name(&opts.state));
-
-        let issuer = cmd.issuer();
-
-        let identities = match identities(&vault_name, &opts).await {
-            Ok(i) => i,
-            Err(_) => {
-                *is_finished.lock().await = true;
-                return Err(miette!("Invalid state").into());
-            }
-        };
-
-        let cred = hex::decode(&cred_as_str)?;
-        let is_valid = match validate_encoded_cred(&cred, identities, issuer).await {
-            Ok(_) => (true, String::new()),
-            Err(e) => (false, e.to_string()),
-        };
-
-        *is_finished.lock().await = true;
-        Ok(is_valid)
-    };
-
-    let output_messages = vec![format!("Verifying credential...")];
-
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
-
-    let ((is_valid, reason), _) = try_join!(send_req, progress_output)?;
-    let plain_text = match is_valid {
-        true => fmt_ok!("Credential is valid"),
-        false => fmt_err!("Credential is not valid\n") + &fmt_log!("{reason}"),
+    let (is_valid, plain_text) = match verify_credential(
+        &opts,
+        cmd.issuer(),
+        &cmd.credential,
+        &cmd.credential_path,
+        &cmd.vault,
+    )
+    .await
+    {
+        Ok(_) => (true, fmt_ok!("Credential is")),
+        Err(e) => (
+            false,
+            fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
+        ),
     };
 
     opts.terminal
@@ -111,4 +67,74 @@ async fn run_impl(
         .write_line()?;
 
     Ok(())
+}
+
+pub async fn verify_credential(
+    opts: &CommandGlobalOpts,
+    issuer: &Identifier,
+    credential: &Option<String>,
+    credential_path: &Option<PathBuf>,
+    vault: &Option<String>,
+) -> miette::Result<CredentialAndPurposeKey> {
+    opts.terminal
+        .write_line(&fmt_log!("Verifying credential...\n"))?;
+
+    let is_finished: Mutex<bool> = Mutex::new(false);
+
+    let send_req = async {
+        let credential_as_str = match (&credential, &credential_path) {
+            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
+                .await?
+                .trim()
+                .to_string(),
+            (Some(credential), _) => credential.clone(),
+            _ => {
+                *is_finished.lock().await = true;
+                return Err(
+                    miette!("Credential or Credential Path argument must be provided").into(),
+                );
+            }
+        };
+
+        let identities = match opts
+            .state
+            .get_identities_with_optional_vault_name(vault)
+            .await
+        {
+            Ok(i) => i,
+            Err(e) => {
+                *is_finished.lock().await = true;
+                return Err(e.into());
+            }
+        };
+
+        let result = validate_encoded_credential(identities, issuer, &credential_as_str).await;
+        *is_finished.lock().await = true;
+        result.map_err(|e| miette!("Credential is invalid\n{}", e).into())
+    };
+
+    let output_messages = vec![format!("Verifying credential...")];
+
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
+
+    let (credential_and_purpose_key, _) = try_join!(send_req, progress_output)?;
+
+    Ok(credential_and_purpose_key)
+}
+
+async fn validate_encoded_credential(
+    identities: Arc<Identities>,
+    issuer: &Identifier,
+    credential_as_str: &str,
+) -> miette::Result<CredentialAndPurposeKey> {
+    let verification = identities.credentials().credentials_verification();
+    let credential_and_purpose_key: CredentialAndPurposeKey =
+        minicbor::decode(&hex::decode(credential_as_str).into_diagnostic()?).into_diagnostic()?;
+    verification
+        .verify_credential(None, &[issuer.clone()], &credential_and_purpose_key)
+        .await
+        .into_diagnostic()?;
+    Ok(credential_and_purpose_key)
 }

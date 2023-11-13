@@ -7,7 +7,7 @@ use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
-    Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    Identifier, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
@@ -19,8 +19,6 @@ use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::cli_state::traits::StateDirTrait;
-use crate::cli_state::StateItemTrait;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     DeleteSecureChannelListenerRequest, DeleteSecureChannelListenerResponse,
@@ -29,9 +27,8 @@ use crate::nodes::models::secure_channel::{
     ShowSecureChannelResponse,
 };
 use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
-use crate::nodes::service::NodeIdentities;
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{NodeManager, NodeManagerWorker};
-use crate::DefaultAddress;
 
 /// SECURE CHANNELS
 impl NodeManagerWorker {
@@ -80,7 +77,7 @@ impl NodeManagerWorker {
                 return Err(Response::bad_request(
                     req,
                     &format!("Incorrect multi-address {}", addr),
-                ))
+                ));
             }
         };
         let sc = self
@@ -266,9 +263,9 @@ impl NodeManager {
         credential_name: Option<String>,
         timeout: Option<Duration>,
     ) -> Result<SecureChannel> {
-        let identifier = self.get_identifier(identity_name.clone()).await?;
+        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
         let credential = self
-            .get_credential(ctx, &identifier, credential_name, timeout)
+            .retrieve_credential(ctx, &identifier, credential_name, timeout)
             .await?;
 
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
@@ -276,7 +273,7 @@ impl NodeManager {
             .make_connection(
                 connection_ctx,
                 &addr,
-                Some(identifier.clone()),
+                identifier.clone(),
                 None,
                 credential.clone(),
                 timeout,
@@ -297,7 +294,7 @@ impl NodeManager {
         Ok(sc)
     }
 
-    pub async fn get_credential(
+    pub async fn retrieve_credential(
         &self,
         ctx: &Context,
         identifier: &Identifier,
@@ -305,35 +302,42 @@ impl NodeManager {
         timeout: Option<Duration>,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         debug!("getting a credential");
-        let credential = if let Some(credential_name) = credential_name {
+        if let Some(credential_name) = credential_name {
             debug!(
                 "get the credential using a credential name {}",
                 &credential_name
             );
-            Some(
+            Ok(Some(
                 self.cli_state
-                    .credentials
-                    .get(credential_name)?
-                    .config()
-                    .credential()?,
-            )
+                    .get_credential_by_name(&credential_name)
+                    .await?
+                    .credential_and_purpose_key(),
+            ))
         } else {
-            match self.trust_context().ok() {
-                Some(tc) => {
-                    if let Some(t) = timeout {
-                        ockam_node::compat::timeout(t, tc.get_credential(ctx, identifier))
-                            .await
-                            .map_err(|e| {
-                                ockam_core::Error::new(Origin::Api, Kind::Timeout, e.to_string())
-                            })?
-                    } else {
-                        tc.get_credential(ctx, identifier).await
-                    }
-                }
-                None => None,
+            self.get_credential(ctx, identifier, timeout).await
+        }
+    }
+
+    pub async fn get_credential(
+        &self,
+        ctx: &Context,
+        identifier: &Identifier,
+        timeout: Option<Duration>,
+    ) -> Result<Option<CredentialAndPurposeKey>> {
+        if let Some(tc) = self.trust_context.as_ref() {
+            debug!("getting a credential");
+            if let Some(t) = timeout {
+                ockam_node::compat::timeout(t, tc.get_credential(ctx, identifier))
+                    .await
+                    .map_err(|e| {
+                        ockam_core::Error::new(Origin::Api, Kind::Timeout, e.to_string())
+                    })?
+            } else {
+                tc.get_credential(ctx, identifier).await
             }
-        };
-        Ok(credential)
+        } else {
+            Ok(None)
+        }
     }
 
     pub(crate) async fn create_secure_channel_internal(
@@ -356,8 +360,7 @@ impl NodeManager {
 
         let options = if let Some(credential) = credential {
             options.with_credential(credential)
-        } else if let Some(credential) = self.get_credential(ctx, identifier, None, timeout).await?
-        {
+        } else if let Some(credential) = self.get_credential(ctx, identifier, timeout).await? {
             options.with_credential(credential)
         } else {
             options
@@ -422,7 +425,7 @@ impl NodeManager {
         );
 
         let secure_channels = self.build_secure_channels(vault_name.clone()).await?;
-        let identifier = self.get_identifier(identity_name.clone()).await?;
+        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
 
         let options =
             SecureChannelListenerOptions::new().as_consumer(&self.api_transport_flow_control_id);
@@ -503,37 +506,28 @@ impl NodeManager {
             return Ok(self.secure_channels.clone());
         }
         let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
-        let identities = self.get_identities(vault_name).await?;
         let registry = self.secure_channels.secure_channel_registry();
         Ok(SecureChannels::builder()
+            .await?
             .with_vault(vault)
-            .with_identities(identities)
+            .with_change_history_repository(
+                self.secure_channels
+                    .identities()
+                    .change_history_repository(),
+            )
+            .with_purpose_keys_repository(
+                self.secure_channels.identities().purpose_keys_repository(),
+            )
             .with_secure_channels_registry(registry)
             .build())
     }
 
-    pub fn node_identities(&self) -> NodeIdentities {
-        NodeIdentities::new(self.identities(), self.cli_state.clone())
-    }
-
-    pub async fn get_identifier(&self, identity_name: Option<String>) -> Result<Identifier> {
-        if let Some(name) = identity_name {
-            self.node_identities().get_identifier(name.clone()).await
-        } else {
-            Ok(self.identifier().clone())
-        }
-    }
-
-    async fn get_identities(&self, vault_name: Option<String>) -> Result<Arc<Identities>> {
-        self.node_identities().get_identities(vault_name).await
-    }
-
     async fn get_secure_channels_vault(&self, vault_name: Option<String>) -> Result<Vault> {
-        if let Some(vault) = vault_name {
-            let existing_vault = self.cli_state.vaults.get(vault.as_str())?.get().await?;
+        if let Some(vault_name) = vault_name {
+            let existing_vault = self.cli_state.get_vault_by_name(&vault_name).await?;
             Ok(existing_vault)
         } else {
-            Ok(self.secure_channels_vault())
+            Ok(self.secure_channels.vault())
         }
     }
 }

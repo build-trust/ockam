@@ -11,11 +11,10 @@ use ockam_multiaddr::MultiAddr;
 
 use serde::Serialize;
 
-use crate::node::get_node_name;
 use crate::output::Output;
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::ShowCommandTui;
-use crate::util::{node_rpc, parse_node_name};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -63,11 +62,7 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node_name = {
-            let name = get_node_name(&opts.state, &cmd.at);
-            parse_node_name(&name)?
-        };
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
         let tui = Self {
             ctx,
             opts,

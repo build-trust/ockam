@@ -1,0 +1,1 @@
+This command will import a project in the local database. If the project already exists, an error is returned

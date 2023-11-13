@@ -1,8 +1,3 @@
-mod kind;
-mod model;
-mod repository;
-mod tasks;
-
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
@@ -11,41 +6,44 @@ use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 
+pub use kind::StateKind;
+use ockam::identity::Identifier;
+use ockam::Context;
+use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
+use ockam_api::cli_state::CliState;
+use ockam_api::cloud::enroll::auth0::UserInfo;
+use ockam_api::cloud::project::Project;
+use ockam_api::cloud::{AuthorityNode, Controller};
+use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::service::{
+    NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
+};
+use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_multiaddr::MultiAddr;
+
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{
     ApplicationState, ApplicationStateCallback, Invitation, Invitee, LocalService, Service,
     ServiceGroup,
 };
-use crate::background_node::{BackgroundNodeClient, Cli};
-use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
-pub(crate) use crate::state::model::ModelState;
-pub(crate) use crate::state::repository::{LmdbModelStateRepository, ModelStateRepository};
-use ockam::identity::Identifier;
-use ockam::Context;
-use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
-use ockam_api::cli_state::{
-    add_project_info_to_node_state, init_node_state, CliState, StateDirTrait, StateItemTrait,
-};
-use ockam_api::cloud::enroll::auth0::UserInfo;
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::{AuthorityNode, Controller};
-use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-use ockam_api::nodes::service::{
-    NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
-};
-use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_api::trust_context::TrustContextConfigBuilder;
-use ockam_multiaddr::MultiAddr;
-
 use crate::api::state::OrchestratorStatus;
+use crate::background_node::{BackgroundNodeClient, Cli};
 use crate::incoming_services::IncomingServicesState;
+use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
 use crate::scheduler::Scheduler;
+pub(crate) use crate::state::model::ModelState;
+use crate::state::model_state_repository::ModelStateRepository;
+pub(crate) use crate::state::model_state_repository_sql::ModelStateSqlxDatabase;
 use crate::state::tasks::{
     RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask, RefreshRelayTask,
 };
 use crate::{api, Result};
-pub use kind::StateKind;
+
+mod kind;
+mod model;
+mod model_state_repository;
+mod model_state_repository_sql;
+mod tasks;
 
 pub const NODE_NAME: &str = "ockam_app";
 // TODO: static project name of "default" is an unsafe default behavior due to backend uniqueness requirements
@@ -99,7 +97,8 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state = CliState::initialize()?;
+        let cli_state =
+            CliState::with_default_dir().expect("Failed to load the local Ockam configuration");
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
 
@@ -146,7 +145,6 @@ impl AppState {
         let model_state = model_state_repository
             .load()
             .await
-            .expect("Failed to load the model state")
             .unwrap_or(ModelState::default());
 
         info!("AppState initialized");
@@ -288,16 +286,11 @@ impl AppState {
             let mut writer = self.model_state.write().await;
             *writer = ModelState::default();
         }
-        let identity_path = self
-            .state()
-            .await
-            .identities
-            .identities_repository_path()
-            .expect("Failed to get the identities repository path");
-        let new_state_repository = LmdbModelStateRepository::new(identity_path).await?;
+        let cli_state = &self.state().await;
+        let new_state_repository = create_model_state_repository(cli_state).await;
         {
             let mut writer = self.model_state_repository.write().await;
-            *writer = Arc::new(new_state_repository);
+            *writer = new_state_repository;
         }
         self.update_orchestrator_status(OrchestratorStatus::default());
         self.publish_state().await;
@@ -307,7 +300,7 @@ impl AppState {
 
     async fn reset_state(&self) -> miette::Result<()> {
         let mut state = self.state.write().await;
-        match state.reset().await {
+        match state.recreate().await {
             Ok(s) => {
                 *state = s;
                 info!("reset the cli state");
@@ -397,15 +390,15 @@ impl AppState {
     }
 
     pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNode> {
-        Ok(BackgroundNode::create(&self.context(), &self.state().await, node_name).await?)
+        Ok(BackgroundNode::create_to_node(&self.context(), &self.state().await, node_name).await?)
     }
 
     pub async fn delete_background_node(&self, node_name: &str) -> Result<()> {
-        Ok(self.state().await.nodes.delete(node_name)?)
+        Ok(self.state().await.delete_node(node_name, true).await?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
-        self.state().await.is_enrolled().map_err(|e| {
+        self.state().await.is_enrolled().await.map_err(|e| {
             warn!(%e, "Failed to check if user is enrolled");
             e.into()
         })
@@ -418,14 +411,7 @@ impl AppState {
     }
 
     pub async fn user_info(&self) -> Result<UserInfo> {
-        Ok(self
-            .state
-            .read()
-            .await
-            .users_info
-            .default()?
-            .config()
-            .clone())
+        Ok(self.state.read().await.get_default_user().await?)
     }
 
     pub async fn user_email(&self) -> Result<String> {
@@ -684,8 +670,6 @@ pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
 ) -> miette::Result<Arc<InMemoryNode>> {
-    init_node_state(cli_state, NODE_NAME, None, None).await?;
-
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let options = TcpListenerOptions::new();
     let listener = tcp
@@ -693,20 +677,7 @@ pub(crate) async fn make_node_manager(
         .await
         .into_diagnostic()?;
 
-    add_project_info_to_node_state(NODE_NAME, cli_state, None).await?;
-
-    let node_state = cli_state.nodes.get(NODE_NAME)?;
-    node_state.set_setup(
-        &node_state.config().setup_mut().set_api_transport(
-            CreateTransportJson::new(
-                TransportType::Tcp,
-                TransportMode::Listen,
-                &listener.socket_address().to_string(),
-            )
-            .into_diagnostic()?,
-        ),
-    )?;
-    let trust_context_config = TrustContextConfigBuilder::new(cli_state).build();
+    let _ = cli_state.create_node(NODE_NAME).await?;
 
     let node_manager = Arc::new(
         InMemoryNode::new(
@@ -719,7 +690,7 @@ pub(crate) async fn make_node_manager(
                 true,
             ),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
-            NodeManagerTrustOptions::new(trust_context_config),
+            NodeManagerTrustOptions::new(cli_state.get_default_trust_context().await.ok()),
         )
         .await
         .into_diagnostic()?,
@@ -737,13 +708,10 @@ pub(crate) async fn make_node_manager(
 
 /// Create the repository containing the model state
 async fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
-    let identity_path = state
-        .identities
-        .identities_repository_path()
-        .expect("Failed to get the identities repository path");
+    let database_path = state.database_path();
 
-    match LmdbModelStateRepository::new(identity_path).await {
-        Ok(model_state_repository) => Arc::new(model_state_repository),
+    match ModelStateSqlxDatabase::create_at(database_path).await {
+        Ok(model_state_repository) => model_state_repository,
         Err(e) => {
             error!(%e, "Cannot create a model state repository manager");
             panic!("Cannot create a model state repository manager: {e:?}");

@@ -14,6 +14,11 @@ impl Credential {
             data,
         }
     }
+
+    /// Extract [`CredentialData`]
+    pub fn get_credential_data(&self) -> Result<CredentialData> {
+        CredentialData::get_data(&minicbor::decode(&self.data)?)
+    }
 }
 
 impl CredentialData {

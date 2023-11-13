@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::nodes::{BackgroundNode, Credentials};
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 
@@ -22,7 +22,6 @@ pub struct PresentCommand {
 
 impl PresentCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -36,8 +35,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: PresentCommand,
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     node.present_credential(ctx, &cmd.to, cmd.oneway).await?;
     Ok(())
 }

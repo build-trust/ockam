@@ -1,12 +1,14 @@
-use crate::cloud::operation::CreateOperationResponse;
-use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
-use crate::cloud::Controller;
 use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
+
 use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
-use serde::{Deserialize, Serialize};
+
+use crate::cloud::operation::CreateOperationResponse;
+use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
+use crate::cloud::Controller;
 
 const TARGET: &str = "ockam_api::cloud::addon";
 const API_SERVICE: &str = "projects";
@@ -23,7 +25,7 @@ pub struct Addon {
     pub enabled: bool,
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ConfluentConfig {
@@ -54,7 +56,7 @@ impl ConfluentConfigResponse {
 }
 
 #[cfg(test)]
-impl quickcheck::Arbitrary for ConfluentConfigResponse {
+impl quickcheck::Arbitrary for ConfluentConfig {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         Self {
             bootstrap_server: String::arbitrary(g),
@@ -79,40 +81,40 @@ impl DisableAddon {
 
 #[async_trait]
 pub trait Addons {
-    async fn list_addons(&self, ctx: &Context, project_id: String) -> miette::Result<Vec<Addon>>;
+    async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>>;
 
     async fn configure_confluent_addon(
         &self,
         ctx: &Context,
-        project_id: String,
+        project_id: &str,
         config: ConfluentConfig,
     ) -> miette::Result<CreateOperationResponse>;
 
     async fn configure_okta_addon(
         &self,
         ctx: &Context,
-        project_id: String,
+        project_id: &str,
         config: OktaConfig,
     ) -> miette::Result<CreateOperationResponse>;
 
     async fn configure_influxdb_addon(
         &self,
         ctx: &Context,
-        project_id: String,
+        project_id: &str,
         config: InfluxDBTokenLeaseManagerConfig,
     ) -> miette::Result<CreateOperationResponse>;
 
     async fn disable_addon(
         &self,
         ctx: &Context,
-        project_id: String,
-        addon_id: String,
+        project_id: &str,
+        addon_id: &str,
     ) -> miette::Result<CreateOperationResponse>;
 }
 
 #[async_trait]
 impl Addons for Controller {
-    async fn list_addons(&self, ctx: &Context, project_id: String) -> miette::Result<Vec<Addon>> {
+    async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
         trace!(target: TARGET, project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
         self.secure_client
@@ -126,7 +128,7 @@ impl Addons for Controller {
     async fn configure_confluent_addon(
         &self,
         ctx: &Context,
-        project_id: String,
+        project_id: &str,
         config: ConfluentConfig,
     ) -> miette::Result<CreateOperationResponse> {
         trace!(target: TARGET, project_id, "configuring confluent addon");
@@ -145,7 +147,7 @@ impl Addons for Controller {
     async fn configure_okta_addon(
         &self,
         ctx: &Context,
-        project_id: String,
+        project_id: &str,
         config: OktaConfig,
     ) -> miette::Result<CreateOperationResponse> {
         trace!(target: TARGET, project_id, "configuring okta addon");
@@ -162,7 +164,7 @@ impl Addons for Controller {
     async fn configure_influxdb_addon(
         &self,
         ctx: &Context,
-        project_id: String,
+        project_id: &str,
         config: InfluxDBTokenLeaseManagerConfig,
     ) -> miette::Result<CreateOperationResponse> {
         //
@@ -182,8 +184,8 @@ impl Addons for Controller {
     async fn disable_addon(
         &self,
         ctx: &Context,
-        project_id: String,
-        addon_id: String,
+        project_id: &str,
+        addon_id: &str,
     ) -> miette::Result<CreateOperationResponse> {
         trace!(target: TARGET, project_id, "disabling addon");
         let req = Request::post(format!("/v1/projects/{project_id}/disable_addon"))

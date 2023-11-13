@@ -1,12 +1,5 @@
-use crate::kafka::KAFKA_OUTLET_CONSUMERS;
-use crate::nodes::models::relay::{CreateRelay, RelayInfo};
-use crate::nodes::models::secure_channel::{
-    CreateSecureChannelRequest, CreateSecureChannelResponse, DeleteSecureChannelRequest,
-    DeleteSecureChannelResponse,
-};
-use crate::nodes::NODEMANAGER_ADDR;
-use crate::DefaultAddress;
 use minicbor::Decoder;
+
 use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
     SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID_UTF8,
@@ -22,6 +15,15 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::compat::tokio::sync::MutexGuard;
 use ockam_node::Context;
+
+use crate::kafka::KAFKA_OUTLET_CONSUMERS;
+use crate::nodes::models::relay::{CreateRelay, RelayInfo};
+use crate::nodes::models::secure_channel::{
+    CreateSecureChannelRequest, CreateSecureChannelResponse, DeleteSecureChannelRequest,
+    DeleteSecureChannelResponse,
+};
+use crate::nodes::service::default_address::DefaultAddress;
+use crate::nodes::NODEMANAGER_ADDR;
 
 pub(crate) struct KafkaEncryptedContent {
     /// The encrypted content
@@ -155,6 +157,7 @@ pub(crate) enum ConsumerNodeAddr {
 }
 
 type TopicPartition = (String, i32);
+
 struct InnerSecureChannelControllerImpl<F: RelayCreator> {
     // we identity the secure channel instance by using the decryptor of the consumer
     // which is known to both parties
@@ -202,7 +205,9 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
-            secure_channels.identities().repository(),
+            secure_channels
+                .identities()
+                .identity_attributes_repository(),
             TRUST_CONTEXT_ID_UTF8,
             &trust_context_id,
         );
@@ -412,14 +417,17 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
                 Err(Error::new(
                     Origin::Transport,
                     Kind::Invalid,
-                    "unauthorized secure channel for consumer",
+                    format!(
+                        "unauthorized secure channel for consumer with identifier {}",
+                        entry.their_id()
+                    ),
                 ))
             }
         } else {
             Err(Error::new(
                 Origin::Transport,
                 Kind::Unknown,
-                "cannot find secure channel entry",
+                format!("cannot find secure channel entry {producer_encryptor_address}"),
             ))
         }
     }

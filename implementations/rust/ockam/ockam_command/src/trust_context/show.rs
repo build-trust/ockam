@@ -1,7 +1,7 @@
 use clap::Args;
-use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
 
-use crate::util::local_cmd;
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -22,18 +22,18 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        local_cmd(run_impl(opts, self));
+        node_rpc(run_impl, (opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let name = cmd
-        .name
-        .unwrap_or(opts.state.trust_contexts.default()?.name().to_string());
-    let state = opts.state.trust_contexts.get(name)?;
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> miette::Result<()> {
+    let trust_context = opts.state.get_trust_context_or_default(&cmd.name).await?;
     let plain_output = {
         let mut output = "Trust context:".to_string();
-        for line in state.to_string().lines() {
+        for line in trust_context.to_string().lines() {
             output.push_str(&format!("{:2}{}\n", "", line));
         }
         output

@@ -25,10 +25,7 @@ use crate::secure_channel::handshake::handshake_state_machine::{
 use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMachine;
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
-use crate::{
-    IdentitiesReader, IdentityError, SecureChannelPurposeKey, SecureChannelRegistryEntry,
-    SecureChannels, TimestampInSeconds, TrustContext, TrustPolicy,
-};
+use crate::{ChangeHistoryRepository, IdentityError, SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannels, TimestampInSeconds, TrustContext, TrustPolicy};
 
 /// This struct implements a Worker receiving and sending messages
 /// on one side of the secure channel creation as specified with its role: INITIATOR or RESPONDER
@@ -45,7 +42,7 @@ pub(crate) struct HandshakeWorker {
     min_credential_expiration: Option<TimestampInSeconds>,
     refresh_credential_time_gap: Duration,
     trust_context: Option<TrustContext>,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
 }
 
 #[ockam_core::worker]
@@ -230,7 +227,7 @@ impl HandshakeWorker {
             min_credential_expiration,
             refresh_credential_time_gap,
             trust_context,
-            identities_reader: identities.identities_reader(),
+            change_history_repository: identities.change_history_repository(),
         };
 
         WorkerBuilder::new(worker)
@@ -321,12 +318,6 @@ impl HandshakeWorker {
             handshake_results.their_identifier.clone(),
         );
 
-        // FIXME
-        let credentials_retriever = self
-            .trust_context
-            .clone()
-            .and_then(|x| x.authority().cloned().ok());
-
         // create a separate encryptor worker which will be started independently
         {
             let encryptor = EncryptorWorker::new(
@@ -339,11 +330,11 @@ impl HandshakeWorker {
                     self.secure_channels.identities.vault().secure_channel_vault,
                 ),
                 self.identifier.clone(),
-                self.identities_reader.clone(),
+                self.change_history_repository.clone(),
                 self.min_credential_expiration,
                 self.min_credential_refresh_interval,
                 self.refresh_credential_time_gap,
-                credentials_retriever,
+                self.trust_context.clone(),
             );
 
             let next_hop = self.remote_route()?.next()?.clone();

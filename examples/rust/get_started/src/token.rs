@@ -1,11 +1,13 @@
-use anyhow::anyhow;
-use ockam::identity::OneTimeCode;
-use ockam::Result;
-use ockam_api::identity::EnrollmentTicket;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
 use std::process::Command;
 use std::str;
+
+use anyhow::anyhow;
+
+use ockam::identity::OneTimeCode;
+use ockam::Result;
+use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Error;
 
 /// Invoke the `ockam` command line in order to create a one-time token for
 /// a given attribute name/value (and the default project on this machine)

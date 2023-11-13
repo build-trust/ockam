@@ -1,17 +1,16 @@
 use minicbor::{Decode, Encode};
+use tracing::{debug, warn};
+
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Result};
 use ockam_vault::{AeadSecretKeyHandle, X25519PublicKey};
-use tracing::{debug, warn};
 
 use crate::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
 };
-use crate::{
-    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
-};
+use crate::{Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -100,11 +99,7 @@ impl CommonStateMachine {
     ///
     pub(super) async fn make_identity_payload(&self) -> Result<Vec<u8>> {
         // prepare the payload that will be sent either in message 2 or message 3
-        let change_history = self
-            .identities
-            .repository()
-            .get_identity(&self.identifier)
-            .await?;
+        let change_history = self.identities.get_change_history(&self.identifier).await?;
         let payload = IdentityAndCredentials {
             change_history,
             purpose_key_attestation: self.purpose_key_attestation.clone(),
@@ -251,7 +246,7 @@ impl CommonStateMachine {
                     .credentials_verification()
                     .receive_presented_credential(
                         their_identifier,
-                        &[trust_context.authority()?.identifier().clone()],
+                        &trust_context.authorities(),
                         credential,
                     )
                     .await;

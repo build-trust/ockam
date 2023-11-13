@@ -4,10 +4,8 @@ use tracing::{debug, error, info};
 use crate::api::notification::rust::{Kind, Notification};
 use crate::api::state::OrchestratorStatus;
 use ockam_api::cli_state;
-use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
-use ockam_api::cloud::project::{Project, Projects};
-use ockam_api::cloud::space::{Space, Spaces};
+use ockam_api::cloud::project::Project;
+use ockam_api::cloud::space::Space;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 
@@ -112,10 +110,8 @@ impl AppState {
         }
 
         let cli_state = self.state().await;
-        cli_state
-            .users_info
-            .overwrite(&user_info.email, user_info.clone())?;
-        cli_state.users_info.set_default(&user_info.email)?;
+        cli_state.store_user(&user_info).await?;
+        cli_state.set_default_user(&user_info.email).await?;
 
         // enroll the current user using that token on the controller
         {
@@ -132,9 +128,12 @@ impl AppState {
         self.publish_state().await;
         self.retrieve_project(&space).await?;
 
-        let identifier = update_enrolled_identity(&cli_state, NODE_NAME)
+        let cli_state = self.state().await;
+        cli_state
+            .set_node_as_enrolled(NODE_NAME)
             .await
             .into_diagnostic()?;
+        let identifier = cli_state.get_node_identifier(NODE_NAME).await?;
         info!(%identifier, "User enrolled successfully");
 
         Ok(EnrollmentOutcome::Successful)
@@ -164,15 +163,11 @@ impl AppState {
             None => {
                 let space_name = cli_state::random_name();
                 controller
-                    .create_space(&context, space_name, vec![])
+                    .create_space(&self.context(), &space_name, vec![])
                     .await
                     .map_err(|e| miette!(e))?
             }
         };
-        self.state()
-            .await
-            .spaces
-            .overwrite(&space.name, SpaceConfig::from(&space))?;
 
         Ok(space)
     }
@@ -201,17 +196,12 @@ impl AppState {
                 });
                 let ctx = &self.context();
                 let project = controller
-                    .create_project(ctx, space.id.to_string(), PROJECT_NAME.to_string(), vec![])
+                    .create_project(ctx, &space.id, PROJECT_NAME, vec![])
                     .await
                     .map_err(|e| miette!(e))?;
                 controller.wait_until_project_is_ready(ctx, project).await?
             }
         };
-        let cli_state = self.state().await;
-        cli_state
-            .projects
-            .overwrite(&project.name, project.clone())?;
-        add_project_info_to_node_state(NODE_NAME, &cli_state, None).await?;
         Ok(project)
     }
 }

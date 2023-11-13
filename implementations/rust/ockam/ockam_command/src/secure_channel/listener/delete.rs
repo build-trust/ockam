@@ -6,8 +6,8 @@ use ockam_api::nodes::models::secure_channel::DeleteSecureChannelListenerRespons
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::Address;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
-use crate::util::{api, node_rpc, parse_node_name};
+use crate::node::NodeOpts;
+use crate::util::{api, node_rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -16,9 +16,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 /// Delete Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct DeleteCommand {
     /// Address at which the channel listener to be deleted is running
@@ -30,7 +30,6 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -43,16 +42,15 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = parse_node_name(&at)?;
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = api::delete_secure_channel_listener(&cmd.address);
     let response: DeleteSecureChannelListenerResponse = node.ask(ctx, req).await?;
     let addr = response.addr;
     opts.terminal
         .stdout()
         .plain(fmt_ok!(
-            "Deleted secure-channel listener with address '{addr}' on node '{node_name}'"
+            "Deleted secure-channel listener with address '{addr}' on node '{}'",
+            node.node_name()
         ))
         .machine(addr)
         .write_line()?;

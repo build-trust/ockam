@@ -106,7 +106,7 @@ pub async fn create_secure_channel_listener(
     ctx: &Context,
     flow_control_id: &FlowControlId,
 ) -> Result<SecureChannelListenerInfo> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let identifier = identities_creation.create_identity().await?;
@@ -134,7 +134,7 @@ pub async fn create_secure_channel(
     ctx: &Context,
     connection: &Address,
 ) -> Result<SecureChannelInfo> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let identifier = identities_creation.create_identity().await?;

@@ -18,6 +18,7 @@ std = [
   "serde_json/default",
   "ockam_multiaddr/std",
   "ockam_api/std",
+  "storage",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -27,6 +28,7 @@ no_std = ["ockam/no_std"]
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = ["ockam/alloc", "serde_json/alloc"]
+storage = ["ockam_api/storage"]
 
 [dependencies]
 anyhow = "1"

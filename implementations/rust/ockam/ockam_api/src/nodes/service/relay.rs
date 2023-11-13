@@ -1,6 +1,7 @@
-use miette::IntoDiagnostic;
 use std::sync::Arc;
 use std::time::Duration;
+
+use miette::IntoDiagnostic;
 
 use ockam::compat::sync::Mutex;
 use ockam::identity::Identifier;
@@ -233,7 +234,7 @@ impl InMemoryNode {
             .make_connection(
                 connection_ctx.clone(),
                 &address.clone(),
-                None,
+                self.identifier(),
                 authorized.clone(),
                 None,
                 None,
@@ -337,7 +338,7 @@ impl InMemoryNode {
                         .make_connection(
                             ctx.clone(),
                             &addr,
-                            None,
+                            node_manager.identifier(),
                             authorized,
                             None,
                             Some(MAX_CONNECT_TIME),

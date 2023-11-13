@@ -5,7 +5,6 @@ use ockam_api::nodes::{models, BackgroundNode};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::node::{get_node_name, initialize_node_if_default};
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
@@ -28,7 +27,6 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -41,9 +39,8 @@ async fn run_impl(
         cmd.yes,
         "Are you sure you want to delete this TCP connection?",
     )? {
+        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let address = cmd.address;
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(address.clone()));
         node.tell(&ctx, req).await?;

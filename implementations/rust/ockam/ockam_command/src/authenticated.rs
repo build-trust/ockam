@@ -1,4 +1,3 @@
-use crate::node::get_node_name;
 use crate::output::Output;
 use crate::util::node_rpc;
 use crate::util::parsers::identity_identifier_parser;
@@ -8,7 +7,6 @@ use clap::{Args, Subcommand};
 use miette::{miette, Context as _};
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
-use ockam_api::address::extract_address_value;
 use ockam_api::auth::AuthorizationApi;
 use ockam_api::is_local_node;
 use ockam_api::nodes::BackgroundNode;
@@ -78,9 +76,7 @@ async fn make_background_node_client(
     addr: &MultiAddr,
 ) -> Result<BackgroundNode> {
     is_local_node(addr).context("The address must point to a local node")?;
-    let to = get_node_name(&opts.state, &Some(addr.to_string()));
-    let node_name = extract_address_value(&to)?;
-    Ok(BackgroundNode::create(ctx, &opts.state, &node_name).await?)
+    Ok(BackgroundNode::create_to_node(ctx, &opts.state, &addr.to_string()).await?)
 }
 
 struct IdentifierWithAttributes {

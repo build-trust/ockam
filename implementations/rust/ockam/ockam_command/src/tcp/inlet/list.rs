@@ -1,17 +1,15 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::InletList;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -31,7 +29,6 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -40,14 +37,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node.at_node);
-    let node_name = extract_address_value(&node_name)?;
-
-    if !opts.state.nodes.get(&node_name)?.is_running() {
-        return Err(miette!("The node '{}' is not running", node_name));
-    }
-
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node.at_node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_inlets = async {
@@ -58,9 +48,7 @@ async fn run_impl(
 
     let output_messages = vec![format!(
         "Listing TCP Inlets on {}...\n",
-        node_name
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
+        node.node_name().color(OckamColor::PrimaryResource.color())
     )];
 
     let progress_output = opts
@@ -72,7 +60,7 @@ async fn run_impl(
     let plain = opts.terminal.build_list(
         &inlets.list,
         "Inlets",
-        &format!("No TCP Inlets found on {node_name}"),
+        &format!("No TCP Inlets found on {}", node.node_name()),
     )?;
     let json = serde_json::to_string_pretty(&inlets.list).into_diagnostic()?;
     opts.terminal

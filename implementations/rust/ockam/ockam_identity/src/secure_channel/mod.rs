@@ -135,8 +135,8 @@ mod tests {
     }
 
     async fn create_encryptor_decryptor() -> Result<(Encryptor, Decryptor)> {
-        let vault1 = SoftwareVaultForSecureChannels::create();
-        let vault2 = SoftwareVaultForSecureChannels::create();
+        let vault1 = SoftwareVaultForSecureChannels::create().await?;
+        let vault2 = SoftwareVaultForSecureChannels::create().await?;
 
         let mut rng = thread_rng();
         let mut key = [0u8; 32];

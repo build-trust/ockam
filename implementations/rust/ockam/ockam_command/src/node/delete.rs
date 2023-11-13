@@ -1,10 +1,8 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_node::Context;
 
-use crate::node::get_node_name;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
@@ -82,18 +80,29 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        Ok(get_node_name(&self.opts.state, &self.cmd.node_name))
+        Ok(self
+            .opts
+            .state
+            .get_node_name_or_default(&self.cmd.node_name)
+            .await?)
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.opts.state.nodes.list_items_names()?)
+        Ok(self
+            .opts
+            .state
+            .get_nodes()
+            .await?
+            .iter()
+            .map(|n| n.name())
+            .collect())
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.opts
             .state
-            .nodes
-            .delete_sigkill(item_name, self.cmd.force)?;
+            .delete_node(item_name, self.cmd.force)
+            .await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
@@ -107,23 +116,26 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let plain = items_names
-            .into_iter()
-            .map(|name| {
-                if self
-                    .opts
-                    .state
-                    .nodes
-                    .delete_sigkill(&name, self.cmd.force)
-                    .is_ok()
-                {
-                    fmt_ok!("Node {} deleted\n", name.light_magenta())
-                } else {
-                    fmt_warn!("Failed to delete node {}\n", name.light_magenta())
-                }
-            })
-            .collect::<String>();
-        self.terminal().stdout().plain(plain).write_line()?;
+        let mut plain: Vec<String> = vec![];
+        for name in items_names {
+            let result = if self
+                .opts
+                .state
+                .delete_node(&name, self.cmd.force)
+                .await
+                .is_ok()
+            {
+                fmt_ok!("Node {} deleted\n", name.light_magenta())
+            } else {
+                fmt_warn!("Failed to delete node {}\n", name.light_magenta())
+            };
+            plain.push(result);
+        }
+
+        self.terminal()
+            .stdout()
+            .plain(plain.join("\n"))
+            .write_line()?;
         Ok(())
     }
 }

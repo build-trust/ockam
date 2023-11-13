@@ -2,7 +2,6 @@ use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
 
-use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_node::Context;
 
 use crate::output::Output;
@@ -18,9 +17,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 /// Show the details of a vault
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     /// Name of the vault
@@ -71,23 +70,27 @@ impl ShowCommandTui for ShowTui {
         Ok(self
             .vault_name
             .clone()
-            .unwrap_or(self.opts.state.vaults.default()?.name().to_string()))
+            .unwrap_or(self.opts.state.get_default_vault_name().await?))
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.opts.state.vaults.list_items_names()?)
+        Ok(self
+            .opts
+            .state
+            .get_named_vaults()
+            .await?
+            .iter()
+            .map(|v| v.name())
+            .collect())
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let vault = VaultOutput::new(
-            &self.opts.state.vaults.get(item_name)?,
-            self.opts.state.vaults.is_default(item_name)?,
-        );
+        let vault = VaultOutput::new(&self.opts.state.get_named_vault(item_name).await?);
         self.terminal()
             .stdout()
             .plain(vault.output()?)
             .json(serde_json::to_string(&vault).into_diagnostic()?)
-            .machine(&vault.name)
+            .machine(vault.name())
             .write_line()?;
         Ok(())
     }
@@ -96,16 +99,11 @@ impl ShowCommandTui for ShowTui {
         let filtered = self
             .opts
             .state
-            .vaults
-            .list()?
+            .get_named_vaults()
+            .await?
             .into_iter()
-            .map(|v| {
-                VaultOutput::new(
-                    &v,
-                    self.opts.state.vaults.is_default(v.name()).unwrap_or(false),
-                )
-            })
-            .filter(|v| items_names.contains(&v.name))
+            .map(|v| VaultOutput::new(&v))
+            .filter(|v| items_names.contains(&v.name()))
             .collect::<Vec<_>>();
         let plain = self
             .terminal()

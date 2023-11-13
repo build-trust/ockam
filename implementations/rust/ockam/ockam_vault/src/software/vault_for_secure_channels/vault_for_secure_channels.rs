@@ -1,4 +1,16 @@
-use super::aes::make_aes;
+use sha2::{Digest, Sha256};
+
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::rand::{thread_rng, RngCore};
+use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::vec::{vec, Vec};
+use ockam_core::{async_trait, Result};
+
+use crate::storage::SecretsRepository;
+
+#[cfg(feature = "storage")]
+use crate::storage::SecretsSqlxDatabase;
 
 use crate::{
     AeadSecret, AeadSecretKeyHandle, BufferSecret, HKDFNumberOfOutputs, HandleToSecret, HashOutput,
@@ -7,39 +19,31 @@ use crate::{
     AEAD_SECRET_LENGTH,
 };
 
-use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::rand::{thread_rng, RngCore};
-use ockam_core::compat::sync::{Arc, RwLock};
-use ockam_core::compat::vec::{vec, Vec};
-use ockam_core::{async_trait, compat::boxed::Box, Result};
-use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
-
-use crate::legacy::{KeyId, StoredSecret};
-use sha2::{Digest, Sha256};
+use super::aes::make_aes;
 
 /// [`SecureChannelVault`] implementation using software
 pub struct SoftwareVaultForSecureChannels {
     ephemeral_buffer_secrets: Arc<RwLock<BTreeMap<SecretBufferHandle, BufferSecret>>>,
     ephemeral_aead_secrets: Arc<RwLock<BTreeMap<AeadSecretKeyHandle, AeadSecret>>>,
     ephemeral_x25519_secrets: Arc<RwLock<BTreeMap<X25519SecretKeyHandle, X25519SecretKey>>>,
-    // Use String as a key for backwards compatibility
-    static_x25519_secrets: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
+    static_x25519_secrets: Arc<dyn SecretsRepository>,
 }
 
 impl SoftwareVaultForSecureChannels {
     /// Constructor
-    pub fn new(storage: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>) -> Self {
+    pub fn new(repository: Arc<dyn SecretsRepository>) -> Self {
         Self {
             ephemeral_buffer_secrets: Default::default(),
             ephemeral_aead_secrets: Default::default(),
             ephemeral_x25519_secrets: Default::default(),
-            static_x25519_secrets: storage,
+            static_x25519_secrets: repository,
         }
     }
 
-    /// Create Software implementation Vault with [`InMemoryKeyVaultStorage`]
-    pub fn create() -> Arc<Self> {
-        Arc::new(Self::new(InMemoryKeyValueStorage::create()))
+    /// Create Software implementation Vault with an in-memory implementation to store secrets
+    #[cfg(feature = "storage")]
+    pub async fn create() -> Result<Arc<Self>> {
+        Ok(Arc::new(Self::new(SecretsSqlxDatabase::create().await?)))
     }
 }
 
@@ -53,7 +57,7 @@ impl SoftwareVaultForSecureChannels {
         let handle = Self::compute_handle_for_public_key(&public_key);
 
         self.static_x25519_secrets
-            .put(hex::encode(handle.0.value()), secret.into())
+            .store_x25519_secret(&handle, secret)
             .await?;
 
         Ok(handle)
@@ -83,7 +87,11 @@ impl SoftwareVaultForSecureChannels {
 
     /// Return the total number of static x25519 secrets present in the Vault
     pub async fn number_of_static_x25519_secrets(&self) -> Result<usize> {
-        Ok(self.static_x25519_secrets.keys().await?.len())
+        Ok(self
+            .static_x25519_secrets
+            .get_x25519_secret_handles()
+            .await?
+            .len())
     }
 
     /// Return the total number of ephemeral x25519 secrets present in the Vault
@@ -176,15 +184,10 @@ impl SoftwareVaultForSecureChannels {
             return Ok(secret.clone());
         }
 
-        if let Some(stored_secret) = self
-            .static_x25519_secrets
-            .get(&hex::encode(handle.0.value()))
+        self.static_x25519_secrets
+            .get_x25519_secret(handle)
             .await?
-        {
-            return stored_secret.try_into();
-        }
-
-        Err(VaultError::KeyNotFound.into())
+            .ok_or(VaultError::KeyNotFound.into())
     }
 
     async fn get_buffer_secret(&self, handle: &SecretBufferHandle) -> Result<BufferSecret> {
@@ -306,7 +309,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
     ) -> Result<bool> {
         Ok(self
             .static_x25519_secrets
-            .delete(&hex::encode(secret_key_handle.0.value()))
+            .delete_x25519_secret(&secret_key_handle)
             .await?
             .is_some())
     }

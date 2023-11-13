@@ -2,13 +2,11 @@ use clap::Args;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cli_state::{ProjectConfigCompact, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::output::Output;
-use crate::project::util::refresh_projects;
+use crate::output::{Output, ProjectConfigCompact};
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
@@ -38,19 +36,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, InfoCommand)) -> mie
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: InfoCommand) -> miette::Result<()> {
     let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
-
-    // Lookup project
-    let id = match opts.state.projects.get(&cmd.name) {
-        Ok(state) => state.config().id.clone(),
-        Err(_) => {
-            refresh_projects(&opts, ctx, &controller).await?;
-            opts.state.projects.get(&cmd.name)?.config().id.clone()
-        }
-    };
-
-    let project = controller.get_project(ctx, id).await?;
-    let info: ProjectConfigCompact = project.into();
+    let project = node.get_project_by_name(ctx, &cmd.name).await?;
+    let info = ProjectConfigCompact(project);
     opts.terminal
         .stdout()
         .plain(info.output()?)

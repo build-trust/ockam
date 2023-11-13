@@ -1,5 +1,6 @@
-use miette::miette;
 use std::net::{SocketAddrV4, SocketAddrV6};
+
+use miette::miette;
 
 use ockam::TcpTransport;
 use ockam_core::errcode::{Kind, Origin};
@@ -49,7 +50,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Origin::Api,
                     Kind::Invalid,
                     "unexpected code: node. clean_multiaddr should have been called",
-                ))
+                ));
             }
 
             code @ (Ip4::CODE | Ip6::CODE | DnsAddr::CODE) => {
@@ -57,7 +58,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Origin::Api,
                     Kind::Invalid,
                     format!("unexpected code: {code}. The address must be a local address {ma}"),
-                ))
+                ));
             }
 
             other => {
@@ -373,22 +374,17 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 
 #[cfg(test)]
 pub mod test_utils {
-    use ockam::identity::storage::InMemoryStorage;
     use ockam::identity::utils::AttributesBuilder;
-    use ockam::identity::{Identifier, MAX_CREDENTIAL_VALIDITY};
+    use ockam::identity::MAX_CREDENTIAL_VALIDITY;
     use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
-    use crate::cli_state::{
-        random_name, traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig,
-    };
-    use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
+    use crate::cli_state::{random_name, CliState};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
@@ -405,12 +401,11 @@ pub mod test_utils {
         pub node_manager: Arc<InMemoryNode>,
         pub tcp: TcpTransport,
         pub secure_channels: Arc<SecureChannels>,
-        pub identifier: Identifier,
     }
 
     impl Drop for NodeManagerHandle {
         fn drop(&mut self) {
-            CliState::delete_at(&self.cli_state.dir).expect("cannot delete cli state");
+            self.cli_state.delete().expect("cannot delete cli state");
         }
     }
 
@@ -421,42 +416,22 @@ pub mod test_utils {
     // #[must_use] make sense to enable only on rust 1.67+
     pub async fn start_manager_for_tests(context: &mut Context) -> Result<NodeManagerHandle> {
         let tcp = TcpTransport::create(context).await?;
-        let cli_state = CliState::test()?;
+        let cli_state = CliState::test().await?;
 
-        let vault_name = random_name();
-        let vault = cli_state
-            .vaults
-            .create_async(&vault_name.clone(), VaultConfig::default())
-            .await?
-            .get()
-            .await?;
-
-        let identity_name = random_name();
+        let node_name = random_name();
+        cli_state.create_node(&node_name).await.unwrap();
 
         // Premise: we need an identity and a credential before the node manager starts.
-        // Since the LMDB can trigger some race conditions, we first use the memory storage
-        // export the identity and credentials,then import in the LMDB after secure-channel
-        // has been re-created
-        let secure_channels = SecureChannels::builder()
-            .with_vault(vault)
-            .with_identities_repository(cli_state.identities.identities_repository().await?)
-            .with_identities_storage(InMemoryStorage::create())
-            .build();
-
-        let identifier = create_random_identity(&secure_channels).await?;
-
-        let exported_identity = secure_channels
-            .identities()
-            .get_identity(&identifier)
-            .await?
-            .export()?;
+        let identifier = cli_state.get_node_identifier(&node_name).await?;
+        let identity = cli_state.get_identity(&identifier).await?;
 
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
             .build();
 
-        let credential = secure_channels
-            .identities()
+        let credential = cli_state
+            .get_identities()
+            .await?
             .credentials()
             .credentials_creation()
             .issue_credential(
@@ -468,14 +443,19 @@ pub mod test_utils {
             .await
             .unwrap();
 
-        drop(secure_channels);
+        cli_state
+            .store_credential("credential", &identity, credential)
+            .await?;
 
-        let config = IdentityConfig::new(&identifier).await;
-        cli_state.identities.create(&identity_name, config).unwrap();
-
-        let node_name = random_name();
-        let node_config = NodeConfig::try_from(&cli_state).unwrap();
-        cli_state.nodes.create(&node_name, node_config)?;
+        let trust_context = cli_state
+            .create_trust_context(
+                Some("trust-context".to_string()),
+                None,
+                Some("credential".to_string()),
+                None,
+                None,
+            )
+            .await?;
 
         let node_manager = InMemoryNode::new(
             context,
@@ -484,46 +464,23 @@ pub mod test_utils {
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
-                "test_trust_context".to_string(),
-                Some(TrustAuthorityConfig::new(
-                    hex::encode(&exported_identity),
-                    Some(CredentialRetrieverConfig::FromMemory(minicbor::to_vec(
-                        &credential,
-                    )?)),
-                )),
-            ))),
+            NodeManagerTrustOptions::new(Some(trust_context)),
         )
         .await?;
+
         let node_manager = Arc::new(node_manager);
         let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
-        let secure_channels = node_manager.secure_channels.clone();
-
-        // Import identity, since it doesn't exist in the LMDB storage
-        let _ = secure_channels
-            .identities()
-            .identities_creation()
-            .import(Some(&identifier), &exported_identity)
-            .await?;
 
         context
             .start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await?;
 
+        let secure_channels = node_manager.secure_channels();
         Ok(NodeManagerHandle {
             cli_state,
             node_manager,
             tcp: tcp.async_try_clone().await?,
-            secure_channels: secure_channels.clone(),
-            identifier,
+            secure_channels,
         })
-    }
-
-    async fn create_random_identity(secure_channels: &Arc<SecureChannels>) -> Result<Identifier> {
-        secure_channels
-            .identities()
-            .identities_creation()
-            .create_identity()
-            .await
     }
 }

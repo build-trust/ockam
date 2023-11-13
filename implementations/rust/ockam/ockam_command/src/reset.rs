@@ -1,13 +1,13 @@
-use crate::terminal::ConfirmResult;
-use crate::util::node_rpc;
-use crate::{fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use ockam_api::cloud::space::Spaces;
+
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
+
+use crate::terminal::ConfirmResult;
+use crate::util::node_rpc;
+use crate::{fmt_ok, CommandGlobalOpts};
 
 /// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]
@@ -32,7 +32,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ResetCommand)) -> mi
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ResetCommand) -> miette::Result<()> {
-    let delete_orchestrator_resources = cmd.with_orchestrator && opts.state.is_enrolled()?;
+    let delete_orchestrator_resources = cmd.with_orchestrator && opts.state.is_enrolled().await?;
     if !cmd.yes {
         let msg = if delete_orchestrator_resources {
             "This will delete the local Ockam configuration and remove your spaces from the Orchestrator. Are you sure?"
@@ -57,14 +57,12 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ResetCommand) -> 
         }
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let controller = node.create_controller().await?;
-        for space in opts.state.spaces.list()? {
+        for space in opts.state.get_spaces().await? {
             if let Some(ref s) = spinner {
-                s.set_message(format!("Deleting space '{}'...", space.name()))
+                s.set_message(format!("Deleting space '{}'...", space.name))
             }
-            controller
-                .delete_space(ctx, space.config().id.clone())
-                .await?;
-            let _ = opts.state.spaces.delete(space.name());
+            controller.delete_space(ctx, &space.id).await?;
+            opts.state.delete_space(&space.id).await?
         }
         if let Some(ref s) = spinner {
             s.finish_and_clear();
@@ -72,7 +70,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ResetCommand) -> 
         opts.terminal
             .write_line(fmt_ok!("Orchestrator spaces deleted"))?;
     }
-    CliState::delete()?;
+    opts.state.reset().await?;
     opts.terminal
         .stdout()
         .plain(fmt_ok!("Local Ockam configuration deleted"))

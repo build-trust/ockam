@@ -37,3 +37,9 @@ impl CreateTransportJson {
         Ok(m)
     }
 }
+
+impl ToString for CreateTransportJson {
+    fn to_string(&self) -> String {
+        format!("{}/{}/{}", self.tt, self.tm, self.addr)
+    }
+}

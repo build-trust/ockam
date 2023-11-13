@@ -1,9 +1,9 @@
-use crate::util::local_cmd;
+use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -21,26 +21,26 @@ pub struct DefaultCommand {
 
 impl DefaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        local_cmd(run_impl(opts, self));
+        node_rpc(run_impl, (opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
-    let DefaultCommand { name } = cmd;
-    let state = opts.state.vaults;
-    let v = state.get(&name)?;
-    // If it exists, warn the user and exit
-    if state.is_default(v.name())? {
-        Err(miette!("The vault '{}' is already the default", name))
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, DefaultCommand),
+) -> miette::Result<()> {
+    // If the vault is already the default vault, warn the user and exit
+    if opts.state.is_default_vault(&cmd.name).await? {
+        Err(miette!("The vault '{}' is already the default", &cmd.name))
     }
     // Otherwise, set it as default
     else {
-        state.set_default(v.name())?;
+        opts.state.set_default_vault(&cmd.name).await?;
         opts.terminal
             .stdout()
-            .plain(fmt_ok!("The vault '{name}' is now the default"))
-            .machine(&name)
-            .json(serde_json::json!({ "name": name }))
+            .plain(fmt_ok!("The vault '{}' is now the default", &cmd.name))
+            .machine(&cmd.name)
+            .json(serde_json::json!({ "name": cmd.name }))
             .write_line()?;
         Ok(())
     }

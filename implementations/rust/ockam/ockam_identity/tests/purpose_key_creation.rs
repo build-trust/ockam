@@ -4,7 +4,7 @@ use ockam_vault::{SigningKeyType, VerifyingPublicKey};
 
 #[tokio::test]
 async fn create_default_purpose_keys() -> Result<()> {
-    let identities = identities();
+    let identities = identities().await?;
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
@@ -58,7 +58,7 @@ async fn create_default_purpose_keys() -> Result<()> {
 
 #[tokio::test]
 async fn create_custom_type() -> Result<()> {
-    let identities = identities();
+    let identities = identities().await?;
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
@@ -89,7 +89,7 @@ async fn create_custom_type() -> Result<()> {
 
 #[tokio::test]
 async fn create_with_p256_identity() -> Result<()> {
-    let identities = identities();
+    let identities = identities().await?;
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
@@ -147,7 +147,7 @@ async fn create_with_p256_identity() -> Result<()> {
 
 #[tokio::test]
 async fn create_with_rotated_identity() -> Result<()> {
-    let identities = identities();
+    let identities = identities().await?;
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 

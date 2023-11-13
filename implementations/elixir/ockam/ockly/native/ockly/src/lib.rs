@@ -88,17 +88,22 @@ fn identities_ref() -> NifResult<Arc<Identities>> {
 }
 
 fn load_memory_vault() -> bool {
-    let identity_vault = SoftwareVaultForSigning::create();
-    let secure_channel_vault = SoftwareVaultForSecureChannels::create();
-    *IDENTITY_MEMORY_VAULT.write().unwrap() = Some(identity_vault.clone());
-    *SECURE_CHANNEL_MEMORY_VAULT.write().unwrap() = Some(secure_channel_vault.clone());
-    let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
-        identity_vault,
-        secure_channel_vault,
-        Vault::create_credential_vault(),
-        Vault::create_verifying_vault(),
-    ));
-    *IDENTITIES.write().unwrap() = Some(builder.build());
+    block_future(async move {
+        let identity_vault = SoftwareVaultForSigning::create().await.unwrap();
+        let secure_channel_vault = SoftwareVaultForSecureChannels::create().await.unwrap();
+        *IDENTITY_MEMORY_VAULT.write().unwrap() = Some(identity_vault.clone());
+        *SECURE_CHANNEL_MEMORY_VAULT.write().unwrap() = Some(secure_channel_vault.clone());
+        let builder = ockam_identity::Identities::builder()
+            .await
+            .unwrap()
+            .with_vault(Vault::new(
+                identity_vault,
+                secure_channel_vault,
+                Vault::create_credential_vault().await.unwrap(),
+                Vault::create_verifying_vault(),
+            ));
+        *IDENTITIES.write().unwrap() = Some(builder.build());
+    });
     true
 }
 
@@ -123,12 +128,15 @@ fn setup_aws_kms(key_ids: Vec<String>) -> NifResult<bool> {
         match AwsSigningVault::create_with_config(config).await {
             Ok(vault) => {
                 let aws_vault = Arc::new(vault);
-                let builder = ockam_identity::Identities::builder().with_vault(Vault::new(
-                    aws_vault.clone(),
-                    secure_channel_vault,
-                    aws_vault,
-                    Vault::create_verifying_vault(),
-                ));
+                let builder = ockam_identity::Identities::builder()
+                    .await
+                    .map_err(|e| Error::Term(Box::new(e.to_string())))?
+                    .with_vault(Vault::new(
+                        aws_vault.clone(),
+                        secure_channel_vault,
+                        aws_vault,
+                        Vault::create_verifying_vault(),
+                    ));
                 *IDENTITIES.write().unwrap() = Some(builder.build());
                 Ok(true)
             }

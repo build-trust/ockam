@@ -2,16 +2,14 @@ use core::time::Duration;
 
 use clap::Args;
 use miette::{Context as _, IntoDiagnostic};
+use tracing::info;
 
 use ockam::Context;
-use ockam_api::address::extract_address_value;
 use ockam_api::nodes::service::message::{MessageSender, SendMessage};
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::nodes::InMemoryNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
-
-use crate::identity::{get_identity_name, initialize_identity_if_default};
 
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
@@ -59,7 +57,6 @@ pub struct SendCommand {
 
 impl SendCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(rpc, (opts, self))
     }
 }
@@ -67,8 +64,9 @@ impl SendCommand {
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> miette::Result<()> {
     async fn go(ctx: &Context, opts: CommandGlobalOpts, cmd: SendCommand) -> miette::Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) =
-            clean_nodes_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
+        let (to, meta) = clean_nodes_multiaddr(&cmd.to, &opts.state)
+            .await
+            .context("Argument '--to' is invalid")?;
 
         let msg_bytes = if cmd.hex {
             hex::decode(cmd.message)
@@ -78,28 +76,45 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             cmd.message.as_bytes().to_vec()
         };
 
-        // Setup environment depending on whether we are sending the message from an background node
+        // Setup environment depending on whether we are sending the message from a background node
         // or an in-memory node
         let response: Vec<u8> = if let Some(node) = &cmd.from {
-            let node_name = extract_address_value(node)?;
-            BackgroundNode::create(ctx, &opts.state, &node_name)
+            BackgroundNode::create_to_node(ctx, &opts.state, node.as_str())
                 .await?
                 .set_timeout(cmd.timeout)
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
-            let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
-            let trust_context_config = cmd.trust_context_opts.to_config(&opts.state)?.build();
+            let identity_name = opts
+                .state
+                .get_identity_name_or_default(&cmd.cloud_opts.identity)
+                .await?;
+
+            info!("retrieving the trust context");
+
+            let named_trust_context = opts
+                .state
+                .retrieve_trust_context(
+                    &cmd.trust_context_opts.trust_context,
+                    &cmd.trust_context_opts.project_name,
+                    &None,
+                    &None,
+                )
+                .await?;
+            info!("retrieved the trust context: {named_trust_context:?}");
+
+            info!("starting an in memory node to send a message");
 
             let node_manager = InMemoryNode::start_node(
                 ctx,
                 &opts.state,
                 None,
                 Some(identity_name.clone()),
-                cmd.trust_context_opts.project_path.as_ref(),
-                trust_context_config,
+                cmd.trust_context_opts.project_name,
+                named_trust_context,
             )
             .await?;
+            info!("started an in memory node to send a message");
 
             // Replace `/project/<name>` occurrences with their respective secure channel addresses
             let projects_sc = get_projects_secure_channels_from_config_lookup(
@@ -112,6 +127,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
+            info!("sending to {to}");
             node_manager
                 .send_message(ctx, &to, msg_bytes, Some(cmd.timeout))
                 .await

@@ -6,7 +6,7 @@ use ockam_transport_uds::{UdsTransportExtension, UDS};
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
 
     // Initialize the UDS Transport
     let uds = node.create_uds_transport().await?;

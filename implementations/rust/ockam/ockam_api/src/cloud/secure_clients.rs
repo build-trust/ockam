@@ -35,7 +35,7 @@ impl NodeManager {
         NodeManager::controller_node(
             &self.tcp_transport,
             self.secure_channels.clone(),
-            &self.get_identifier(None).await?,
+            &self.get_identifier_by_name(None).await?,
         )
         .await
     }

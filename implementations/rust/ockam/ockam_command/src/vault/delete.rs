@@ -2,7 +2,6 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cli_state::traits::StateDirTrait;
 
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -45,8 +44,7 @@ async fn run_impl(
         .terminal
         .confirmed_with_flag_or_prompt(yes, "Are you sure you want to delete this vault?")?
     {
-        opts.state.vaults.get(&name)?;
-        opts.state.vaults.delete(&name)?;
+        opts.state.delete_vault(&name).await?;
         opts.terminal
             .stdout()
             .plain(fmt_ok!("Vault with name '{name}' has been deleted"))

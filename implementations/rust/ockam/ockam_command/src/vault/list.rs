@@ -1,9 +1,9 @@
-use crate::util::local_cmd;
+use crate::util::node_rpc;
 use crate::vault::util::VaultOutput;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -20,17 +20,17 @@ pub struct ListCommand;
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        local_cmd(run_impl(opts));
+        node_rpc(run_impl, opts);
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts) -> miette::Result<()> {
+async fn run_impl(_ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
     let vaults = opts
         .state
-        .vaults
-        .list()?
+        .get_named_vaults()
+        .await?
         .into_iter()
-        .map(|v| VaultOutput::new(&v, opts.state.vaults.is_default(v.name()).unwrap_or(false)))
+        .map(|v| VaultOutput::new(&v))
         .collect::<Vec<_>>();
     let plain = opts
         .terminal

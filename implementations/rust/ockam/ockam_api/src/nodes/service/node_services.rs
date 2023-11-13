@@ -30,16 +30,15 @@ use crate::nodes::models::services::{
 use crate::nodes::registry::{
     CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
 };
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
-use crate::DefaultAddress;
-use crate::{actions, resources};
 
-use super::NodeManagerWorker;
+use super::{actions, resources, NodeManagerWorker};
 
 impl NodeManager {
-    pub(super) async fn start_credentials_service_impl<'a>(
+    pub(super) async fn start_credentials_service_impl(
         &self,
         ctx: &Context,
         trust_context: TrustContext,
@@ -51,13 +50,7 @@ impl NodeManager {
         }
 
         self.credentials_service()
-            .start(
-                ctx,
-                trust_context,
-                self.identifier().clone(),
-                addr.clone(),
-                !oneway,
-            )
+            .start(ctx, trust_context, self.identifier(), addr.clone(), !oneway)
             .await?;
 
         self.registry
@@ -84,7 +77,7 @@ impl NodeManager {
             ));
         }
 
-        let server = Server::new(self.attributes_reader());
+        let server = Server::new(self.identity_attributes_repository());
         ctx.start_worker(addr.clone(), server).await?;
 
         self.registry
@@ -236,6 +229,7 @@ impl NodeManagerWorker {
         let decoded_identity =
             &hex::decode(encoded_identity).map_err(|_| ApiError::core("Unable to decode trust context's public identity when starting credential service."))?;
         let i = identities()
+            .await?
             .identities_creation()
             .import(None, decoded_identity)
             .await?;
@@ -538,13 +532,14 @@ impl NodeManagerWorker {
                 // if we are using the project we need to allow safe communication based on the
                 // project identifier
                 self.node_manager
-                    .policies
+                    .cli_state
                     .set_policy(
                         &resources::INLET,
                         &actions::HANDLE_MESSAGE,
                         &eq([ident("subject.identifier"), str(project_identifier)]),
                     )
-                    .await?;
+                    .await
+                    .map_err(ockam_core::Error::from)?
             }
         }
 

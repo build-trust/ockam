@@ -2,11 +2,13 @@ use ockam::identity::utils::now;
 use ockam::identity::{secure_channels, AttributesEntry, Identifier, SecureChannels};
 use ockam::AsyncTryClone;
 use ockam_api::authenticator::enrollment_tokens::Members;
+use ockam_api::authority_node;
 use ockam_api::authority_node::{Authority, Configuration};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cloud::AuthorityNode;
+use ockam_api::config::lookup::InternetAddress;
+use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::NodeManager;
-use ockam_api::{authority_node, DefaultAddress};
 use ockam_core::{Address, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -37,7 +39,7 @@ async fn authority_starts_with_default_configuration(ctx: &mut Context) -> Resul
 async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<()> {
     use std::collections::HashMap;
 
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
 
     let admins = setup(ctx, secure_channels.clone(), 1).await?;
     let admin = &admins[0];
@@ -86,7 +88,7 @@ async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<
 
 #[ockam_macros::test]
 async fn one_admin_test_api(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
 
     let admins = setup(ctx, secure_channels.clone(), 1).await?;
     let admin = &admins[0];
@@ -126,7 +128,7 @@ async fn one_admin_test_api(ctx: &mut Context) -> Result<()> {
 async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
     use std::collections::HashMap;
 
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
 
     let admins = setup(ctx, secure_channels.clone(), 1).await?;
     let admin = &admins[0];
@@ -198,7 +200,7 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
 async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> Result<()> {
     use std::collections::HashMap;
 
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
 
     let admins = setup(ctx, secure_channels.clone(), 2).await?;
     let admin1 = &admins[0];
@@ -319,7 +321,6 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
 // with freshly created Authority Identifier and temporary files for storage and vault
 async fn default_configuration() -> Result<Configuration> {
     let storage_path = NamedTempFile::new().unwrap().keep().unwrap().1;
-    let vault_path = NamedTempFile::new().unwrap().keep().unwrap().1;
 
     let port = thread_rng().gen_range(10000..65535);
 
@@ -329,12 +330,10 @@ async fn default_configuration() -> Result<Configuration> {
     let trusted_identities = PreTrustedIdentities::new_from_string(trusted_identities)?;
 
     let mut configuration = authority_node::Configuration {
-        identifier: "I4dba4b2e53b2ed95967b3bab350b6c9ad9c624e5a1b2c3d4e5f6a6b5c4d3e2f1"
-            .try_into()?,
-        storage_path,
-        vault_path,
+        identifier: "I4dba4b2e53b2ed95967b3bab350b6c9ad9c624e5a1b2c3d4e5f6a6b5c4d3e2f1".try_into()?,
+        database_path: storage_path,
         project_identifier: "123456".to_string(),
-        tcp_listener_address: format!("127.0.0.1:{}", port),
+        tcp_listener_address: InternetAddress::new(&format!("127.0.0.1:{}", port)).unwrap(),
         secure_channel_listener_name: None,
         authenticator_name: None,
         trusted_identities,

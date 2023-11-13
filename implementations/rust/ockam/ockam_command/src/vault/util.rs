@@ -1,24 +1,25 @@
-use crate::output::Output;
-use crate::OckamColor;
 use colorful::Colorful;
 use indoc::formatdoc;
-use ockam_api::cli_state::{StateItemTrait, VaultConfig, VaultState};
+
+use ockam_api::cli_state::vaults::NamedVault;
+
+use crate::output::Output;
+use crate::OckamColor;
 
 #[derive(serde::Serialize)]
 pub struct VaultOutput {
-    pub(crate) name: String,
-    #[serde(flatten)]
-    config: VaultConfig,
-    is_default: bool,
+    vault: NamedVault,
 }
 
 impl VaultOutput {
-    pub fn new(state: &VaultState, is_default: bool) -> Self {
+    pub fn new(vault: &NamedVault) -> Self {
         Self {
-            name: state.name().to_string(),
-            config: state.config().clone(),
-            is_default,
+            vault: vault.clone(),
         }
+    }
+
+    pub fn name(&self) -> String {
+        self.vault.name().clone()
     }
 }
 
@@ -31,11 +32,16 @@ impl Output for VaultOutput {
                 Type: {vault_type}
             "#,
             name = self
-                .name
+                .vault
+                .name()
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            default = if self.is_default { "(default)" } else { "" },
-            vault_type = match self.config.is_aws() {
+            default = if self.vault.is_default() {
+                "(default)"
+            } else {
+                ""
+            },
+            vault_type = match self.vault.is_kms() {
                 true => "AWS KMS",
                 false => "OCKAM",
             }
@@ -49,11 +55,16 @@ impl Output for VaultOutput {
             r#"Name: {name} {default}
             Type: {vault_type}"#,
             name = self
-                .name
+                .vault
+                .name()
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            default = if self.is_default { "(default)" } else { "" },
-            vault_type = match self.config.is_aws() {
+            default = if self.vault.is_default() {
+                "(default)"
+            } else {
+                ""
+            },
+            vault_type = match self.vault.is_kms() {
                 true => "AWS KMS",
                 false => "OCKAM",
             }

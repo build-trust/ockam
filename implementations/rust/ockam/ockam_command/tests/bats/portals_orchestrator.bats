@@ -24,13 +24,13 @@ teardown() {
 @test "portals - create an inlet/outlet pair, a relay in an orchestrator project and move tcp traffic through it" {
   port="$(random_port)"
 
-  run_success "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
 
-  run_success "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME"
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
     | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
@@ -38,10 +38,9 @@ teardown() {
 }
 
 @test "portals - create an inlet using only default arguments, an outlet, a relay in an orchestrator project and move tcp traffic through it" {
-  port="$(random_port)"
-
-  run_success "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
+  run_success "$OCKAM" node create blue
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+
   run_success "$OCKAM" relay create --to /node/blue
 
   addr=$($OCKAM tcp-inlet create)
@@ -51,13 +50,13 @@ teardown() {
 @test "portals - create an inlet (with implicit secure channel creation), an outlet, a relay in an orchestrator project and move tcp traffic through it" {
   port="$(random_port)"
 
-  run_success "$OCKAM" node create blue --project "$PROJECT_JSON_PATH"
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   fwd="$(random_str)"
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
 
-  run_success "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME"
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
@@ -70,14 +69,15 @@ teardown() {
   # Setup nodes from a non-enrolled environment
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  cp -r $ENROLLED_OCKAM_HOME/. $NON_ENROLLED_OCKAM_HOME
 
   run_success "$OCKAM" identity create green
   run_success "$OCKAM" identity create blue
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run_success "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  run_success "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Green isn't enrolled as project member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
@@ -90,7 +90,7 @@ teardown() {
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
-  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
+  run_success bash -c "$OCKAM secure-channel create --from /node/green --identity green  --to /project/default/service/forward_to_$fwd/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
   # Green can't establish secure channel with blue, because it didn't exchange credential with it.
@@ -102,14 +102,15 @@ teardown() {
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  cp -r $ENROLLED_OCKAM_HOME/. $NON_ENROLLED_OCKAM_HOME
 
   run_success "$OCKAM" identity create green
   run_success "$OCKAM" identity create blue
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run_success "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  run_success "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Green isn't enrolled as project member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
@@ -131,14 +132,15 @@ teardown() {
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  cp -r $ENROLLED_OCKAM_HOME/. $NON_ENROLLED_OCKAM_HOME
 
   run_success "$OCKAM" identity create green
   run_success "$OCKAM" identity create blue
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run_success "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
-  run_success "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
   run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
@@ -166,16 +168,17 @@ teardown() {
 
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
+  cp -r $ENROLLED_OCKAM_HOME/. $NON_ENROLLED_OCKAM_HOME
 
   run_success "$OCKAM" identity create green
   run_success "$OCKAM" identity create blue
 
   run_success "$OCKAM" project enroll $green_token --identity green
-  run_success "$OCKAM" node create green --project-path "$PROJECT_JSON_PATH" --identity green
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
   run_success "$OCKAM" policy create --at green --resource tcp-inlet --expression '(= subject.app "app1")'
 
   run_success "$OCKAM" project enroll $blue_token --identity blue
-  run_success "$OCKAM" node create blue --project-path "$PROJECT_JSON_PATH" --identity blue
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
   run_success "$OCKAM" policy create --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
 
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
@@ -209,21 +212,22 @@ teardown() {
   run_success curl --head --retry-connrefused --retry 20 --retry-max-time 20 --max-time 1 "127.0.0.1:$port"
 }
 
-@test "portals - local inlet and outlet passing trhough a relay, removing and re-creating the outlet" {
+@test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
   port="$(random_port)"
   node_port="$(random_port)"
 
-  run_success "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+
   run_success "$OCKAM" relay create --to /node/blue
-  run_success "$OCKAM" node create green --project "$PROJECT_JSON_PATH"
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /project/default/service/forward_to_default/secure/api/service/outlet
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_default/secure/api/service/outlet"
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   $OCKAM node delete blue --yes
   run_failure curl --fail --head --max-time 2 "127.0.0.1:$port"
 
-  run_success "$OCKAM" node create blue --project "$PROJECT_JSON_PATH" --tcp-listener-address "127.0.0.1:$node_port"
+  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" relay create --to /node/blue
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   run_success curl --head --retry-connrefused --retry 50 --max-time 1 "127.0.0.1:$port"

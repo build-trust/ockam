@@ -9,33 +9,32 @@ use crate::{
     EDDSA_CURVE25519_SECRET_KEY_LENGTH,
 };
 
+use crate::storage::SecretsRepository;
+#[cfg(feature = "storage")]
+use crate::storage::SecretsSqlxDatabase;
+use arrayref::array_ref;
 use ockam_core::compat::rand::thread_rng;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
-use ockam_node::{InMemoryKeyValueStorage, KeyValueStorage};
-
-use crate::legacy::KeyId;
-use crate::software::legacy::StoredSecret;
-use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
 /// [`SigningVault`] implementation using software
 #[derive(Clone)]
 pub struct SoftwareVaultForSigning {
-    // Use String as a key for backwards compatibility
-    secrets: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>,
+    secrets: Arc<dyn SecretsRepository>,
 }
 
 impl SoftwareVaultForSigning {
     /// Constructor
-    pub fn new(secrets: Arc<dyn KeyValueStorage<KeyId, StoredSecret>>) -> Self {
+    pub fn new(secrets: Arc<dyn SecretsRepository>) -> Self {
         Self { secrets }
     }
 
-    /// Create Software implementation Vault with [`InMemoryKeyVaultStorage`]
-    pub fn create() -> Arc<SoftwareVaultForSigning> {
-        Arc::new(Self::new(InMemoryKeyValueStorage::create()))
+    /// Create an in-memory Software implementation Vault
+    #[cfg(feature = "storage")]
+    pub async fn create() -> Result<Arc<SoftwareVaultForSigning>> {
+        Ok(Arc::new(Self::new(SecretsSqlxDatabase::create().await?)))
     }
 
     /// Import a key from a binary
@@ -43,16 +42,14 @@ impl SoftwareVaultForSigning {
         let public_key = Self::compute_public_key_from_secret(&key)?;
         let handle = Self::compute_handle_for_public_key(&public_key)?;
 
-        self.secrets
-            .put(hex::encode(handle.handle().value()), key.into())
-            .await?;
+        self.secrets.store_signing_secret(&handle, key).await?;
 
         Ok(handle)
     }
 
     /// Return the total number of keys
     pub async fn number_of_keys(&self) -> Result<usize> {
-        Ok(self.secrets.keys().await?.len())
+        Ok(self.secrets.get_signing_secret_handles().await?.len())
     }
 }
 
@@ -139,9 +136,9 @@ impl VaultForSigning for SoftwareVaultForSigning {
         signing_secret_key_handle: SigningSecretKeyHandle,
     ) -> Result<bool> {
         self.secrets
-            .delete(&hex::encode(signing_secret_key_handle.handle().value()))
+            .delete_signing_secret(&signing_secret_key_handle)
             .await
-            .map(|r| r.is_some())
+            .map(|s| s.is_some())
     }
 }
 
@@ -219,17 +216,12 @@ impl SoftwareVaultForSigning {
         &self,
         signing_secret_key_handle: &SigningSecretKeyHandle,
     ) -> Result<SigningSecret> {
-        let handle = match signing_secret_key_handle {
-            SigningSecretKeyHandle::EdDSACurve25519(handle) => handle,
-            SigningSecretKeyHandle::ECDSASHA256CurveP256(handle) => handle,
-        };
-
         let stored_secret = self
             .secrets
-            .get(&hex::encode(handle.value()))
+            .get_signing_secret(signing_secret_key_handle)
             .await?
             .ok_or(VaultError::KeyNotFound)?;
 
-        stored_secret.try_into()
+        Ok(stored_secret)
     }
 }

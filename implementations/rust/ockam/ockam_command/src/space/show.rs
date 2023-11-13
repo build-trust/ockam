@@ -3,9 +3,7 @@ use console::Term;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cli_state::{SpaceConfig, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::{Space, Spaces};
-use ockam_api::cloud::Controller;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::output::Output;
@@ -21,9 +19,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 /// Show the details of a space
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     /// Name of the space
@@ -51,7 +49,7 @@ pub struct ShowTui {
     ctx: Context,
     opts: CommandGlobalOpts,
     space_name: Option<String>,
-    controller: Controller,
+    node: InMemoryNode,
 }
 
 impl ShowTui {
@@ -61,12 +59,11 @@ impl ShowTui {
         cmd: ShowCommand,
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(&ctx, &opts.state).await?;
-        let controller = node.create_controller().await?;
         let tui = Self {
             ctx,
             opts,
             space_name: cmd.name,
-            controller,
+            node,
         };
         tui.show().await
     }
@@ -86,23 +83,24 @@ impl ShowCommandTui for ShowTui {
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
         let space_name = match &self.space_name {
-            None => self.opts.state.spaces.default()?.name().to_string(),
+            None => self.opts.state.get_default_space().await?.space_name(),
             Some(n) => n.to_string(),
         };
         Ok(space_name)
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.opts.state.spaces.list_items_names()?)
+        Ok(self
+            .node
+            .get_spaces(&self.ctx)
+            .await?
+            .iter()
+            .map(|s| s.space_name())
+            .collect())
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let id = self.opts.state.spaces.get(item_name)?.config().id.clone();
-        let space = self.controller.get_space(&self.ctx, id).await?;
-        self.opts
-            .state
-            .spaces
-            .overwrite(&space.name, SpaceConfig::from(&space))?;
+        let space = self.node.get_space_by_name(&self.ctx, item_name).await?;
         self.terminal()
             .stdout()
             .plain(space.output()?)
@@ -113,13 +111,7 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let spaces: Vec<Space> = self.controller.list_spaces(&self.ctx).await?;
-        for space in &spaces {
-            self.opts
-                .state
-                .spaces
-                .overwrite(&space.name, SpaceConfig::from(space))?;
-        }
+        let spaces: Vec<Space> = self.node.get_spaces(&self.ctx).await?;
         let filtered: Vec<Space> = spaces
             .into_iter()
             .filter(|s| items_names.contains(&s.name))

@@ -2,7 +2,6 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::space::Spaces;
 
 use ockam_api::nodes::InMemoryNode;
@@ -53,14 +52,9 @@ async fn run_impl(
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this space?")?
     {
-        let space_id = opts.state.spaces.get(&cmd.name)?.config().id.clone();
         let node = InMemoryNode::start(ctx, &opts.state).await?;
-        let controller = node.create_controller().await?;
-        controller.delete_space(ctx, space_id).await?;
+        node.delete_space_by_name(ctx, &cmd.name).await?;
 
-        let _ = opts.state.spaces.delete(&cmd.name);
-        // TODO: remove projects associated to the space.
-        //  Currently we are not storing that association in the project config file.
         opts.terminal
             .stdout()
             .plain(fmt_ok!("Space with name '{}' has been deleted.", &cmd.name))

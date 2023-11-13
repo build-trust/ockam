@@ -10,8 +10,7 @@ use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, rout
 use ockam_core::{Address, AddressParseError};
 
 use crate::docs;
-use crate::node::get_node_name;
-use crate::util::{is_tty, parse_node_name};
+use crate::util::is_tty;
 use crate::{
     util::{api, exitcode, node_rpc},
     CommandGlobalOpts, OutputFormat,
@@ -152,13 +151,11 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         cmd.yes,
         "Are you sure you want to delete this secure channel?",
     )? {
-        let at = get_node_name(&opts.state, &cmd.at);
-        let node_name = parse_node_name(&at)?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
         let address = &cmd.address;
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let response: DeleteSecureChannelResponse =
             node.ask(&ctx, api::delete_secure_channel(address)).await?;
-        cmd.print_output(&node_name, address, &opts, response);
+        cmd.print_output(&node.node_name(), address, &opts, response);
     }
     Ok(())
 }
