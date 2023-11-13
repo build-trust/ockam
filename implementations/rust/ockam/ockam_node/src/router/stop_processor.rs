@@ -8,17 +8,17 @@ use ockam_core::{Address, Result};
 
 pub(super) async fn exec(
     router: &mut Router,
-    main_addr: &Address,
+    addr: &Address,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
-    trace!("Stopping processor '{}'", main_addr);
+    trace!("Stopping processor '{}'", addr);
 
-    // First check if the processor exists
-    let mut record = match router.map.remove_address_record(main_addr) {
-        Some(proc) => proc,
+    // Resolve any secondary address to the primary address
+    let primary_address = match router.map.get_primary_address(addr) {
+        Some(p) => p.clone(),
         None => {
             reply
-                .send(RouterReply::no_such_address(main_addr.clone()))
+                .send(RouterReply::no_such_address(addr.clone()))
                 .await
                 .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
 
@@ -26,8 +26,19 @@ pub(super) async fn exec(
         }
     };
 
-    // Remove  main address from addr_map too
-    router.map.remove_alias(main_addr);
+    // Get the internal address record
+    let record = match router.map.get_address_record_mut(&primary_address) {
+        Some(r) => r,
+        None => {
+            // Actually should not happen
+            reply
+                .send(RouterReply::no_such_address(addr.clone()))
+                .await
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
+
+            return Ok(());
+        }
+    };
 
     // Then send processor shutdown signal
     record.stop().await?;

@@ -168,8 +168,13 @@ impl Context {
         let (ctx, sender, _) = self.copy_with_mailboxes_detached(mailboxes, drop_sender);
 
         // Create a "detached relay" and register it with the router
-        let (msg, mut rx) =
-            NodeMessage::start_worker(addresses, sender, true, Arc::clone(&self.mailbox_count));
+        let (msg, mut rx) = NodeMessage::start_worker(
+            addresses,
+            sender,
+            true,
+            Arc::clone(&self.mailbox_count),
+            vec![],
+        );
         self.sender
             .send(msg)
             .await

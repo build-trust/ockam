@@ -216,6 +216,7 @@ impl HandshakeWorker {
                 &addresses,
                 decryptor_outgoing_access_control,
             ))
+            .terminal(addresses.decryptor_remote.clone())
             .start(context)
             .await?;
 
@@ -324,6 +325,7 @@ impl HandshakeWorker {
 
             WorkerBuilder::new(encryptor)
                 .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
+                .terminal(self.addresses.encryptor.clone())
                 .start(context)
                 .await?;
         }
