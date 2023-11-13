@@ -35,6 +35,7 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::trust_context::TrustContextConfigBuilder;
+use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
 use crate::api::state::OrchestratorStatus;
@@ -79,6 +80,16 @@ pub struct AppState {
     pub(crate) tracing_guard: Arc<OnceLock<WorkerGuard>>,
 }
 
+async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
+    match make_node_manager(ctx.clone(), cli_state).await {
+        Ok(w) => w,
+        Err(e) => {
+            error!(%e, "Cannot load the model state");
+            panic!("Cannot load the model state: {e:?}")
+        }
+    }
+}
+
 impl AppState {
     /// Create a new AppState, if it fails you can assume it's because the state cannot be loaded
     /// when `cli_state` is `None` the default initialization will be used
@@ -87,14 +98,7 @@ impl AppState {
         notification_callback: Option<NotificationCallback>,
         cli_state: Option<CliState>,
     ) -> Result<AppState> {
-        let cli_state = if let Some(cli_state) = cli_state {
-            cli_state
-        } else {
-            CliState::initialize()?
-        };
-
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
-        let context = Arc::new(context);
         let runtime = context.runtime().clone();
 
         let future = {
@@ -107,41 +111,66 @@ impl AppState {
                         error!(%e, "Failed to start the router")
                     }
                 });
+                let cli_state = if let Some(cli_state) = cli_state {
+                    cli_state
+                } else {
+                    CliState::initialize()?
+                };
 
-                // create the application state and its dependencies
-                let node_manager = create_node_manager(context.clone(), &cli_state).await;
-                let model_state_repository = create_model_state_repository(&cli_state).await;
-                let model_state = model_state_repository
-                    .load()
-                    .await
-                    .expect("Failed to load the model state")
-                    .unwrap_or(ModelState::default());
-
-                info!("AppState initialized");
-                AppState {
-                    context,
+                Self::make(
+                    &context,
                     application_state_callback,
                     notification_callback,
-                    state: Arc::new(RwLock::new(cli_state)),
-                    orchestrator_status: Arc::new(Mutex::new(Default::default())),
-                    node_manager: Arc::new(RwLock::new(node_manager)),
-                    model_state: Arc::new(RwLock::new(model_state)),
-                    model_state_repository: Arc::new(RwLock::new(model_state_repository)),
-                    background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
-                    projects: Arc::new(Default::default()),
-                    invitations: Arc::new(RwLock::new(InvitationState::default())),
-                    incoming_services: Arc::new(RwLock::new(IncomingServicesState::default())),
-                    refresh_project_scheduler: Arc::new(Default::default()),
-                    refresh_invitations_scheduler: Arc::new(Default::default()),
-                    refresh_inlets_scheduler: Arc::new(Default::default()),
-                    refresh_relay_scheduler: Arc::new(Default::default()),
-                    last_published_snapshot: Arc::new(Mutex::new(None)),
-                    tracing_guard: Arc::new(Default::default()),
-                }
+                    cli_state,
+                )
+                .await
             }
         };
 
-        Ok(runtime.block_on(future))
+        runtime.block_on(future)
+    }
+
+    pub(crate) async fn test(context: &Context) -> Result<Self> {
+        Ok(Self::make(context, None, None, CliState::test()?).await?)
+    }
+
+    pub(crate) async fn make(
+        context: &Context,
+        application_state_callback: Option<ApplicationStateCallback>,
+        notification_callback: Option<NotificationCallback>,
+        cli_state: CliState,
+    ) -> Result<Self> {
+        let context = Arc::new(context.async_try_clone().await?);
+        // create the application state and its dependencies
+        let node_manager = create_node_manager(context.clone(), &cli_state).await;
+        let model_state_repository = create_model_state_repository(&cli_state).await;
+        let model_state = model_state_repository
+            .load()
+            .await
+            .expect("Failed to load the model state")
+            .unwrap_or(ModelState::default());
+
+        info!("AppState initialized");
+        Ok(AppState {
+            context,
+            application_state_callback,
+            notification_callback,
+            state: Arc::new(RwLock::new(cli_state)),
+            orchestrator_status: Arc::new(Mutex::new(Default::default())),
+            node_manager: Arc::new(RwLock::new(node_manager)),
+            model_state: Arc::new(RwLock::new(model_state)),
+            model_state_repository: Arc::new(RwLock::new(model_state_repository)),
+            background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
+            projects: Arc::new(Default::default()),
+            invitations: Arc::new(RwLock::new(InvitationState::default())),
+            incoming_services: Arc::new(RwLock::new(IncomingServicesState::default())),
+            refresh_project_scheduler: Arc::new(Default::default()),
+            refresh_invitations_scheduler: Arc::new(Default::default()),
+            refresh_inlets_scheduler: Arc::new(Default::default()),
+            refresh_relay_scheduler: Arc::new(Default::default()),
+            last_published_snapshot: Arc::new(Mutex::new(None)),
+            tracing_guard: Arc::new(Default::default()),
+        })
     }
 
     /// Load a previously persisted ModelState and start refreshing schedule
@@ -646,16 +675,6 @@ impl AppState {
     }
 }
 
-async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
-    match make_node_manager(ctx.clone(), cli_state).await {
-        Ok(w) => w,
-        Err(e) => {
-            error!(%e, "Cannot load the model state");
-            panic!("Cannot load the model state: {e:?}")
-        }
-    }
-}
-
 /// Make a node manager with a default node called "default"
 pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
@@ -693,7 +712,7 @@ pub(crate) async fn make_node_manager(
                 NODE_NAME.to_string(),
                 None,
                 true,
-                true,
+                false,
             ),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
             NodeManagerTrustOptions::new(trust_context_config),

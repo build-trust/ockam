@@ -234,7 +234,7 @@ mod tests {
     use crate::incoming_services::PersistentIncomingServiceState;
     use crate::state::AppState;
     use ockam::identity::{Identifier, OneTimeCode};
-    use ockam_api::cli_state::CliState;
+    use ockam::Context;
     use ockam_api::cloud::share::{
         InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
@@ -242,8 +242,8 @@ mod tests {
     use ockam_api::identity::EnrollmentTicket;
     use std::str::FromStr;
 
-    #[test]
-    fn test_inlet_data_from_invitation() {
+    #[ockam::test(crate = "ockam")]
+    async fn test_inlet_data_from_invitation(ctx: &mut Context) -> ockam::Result<()> {
         let mut invitation = InvitationWithAccess {
             invitation: ReceivedInvitation {
                 id: "invitation_id".to_string(),
@@ -258,108 +258,113 @@ mod tests {
         };
 
         // Skipping an invitation without service access details
-        let app_state = AppState::new(None, None, Some(CliState::test().unwrap())).unwrap();
+        let app_state = AppState::test(ctx).await.unwrap();
 
-        app_state.context().runtime().block_on(async move {
-            app_state
-                .load_services_from_invites(vec![invitation.clone()])
-                .await;
+        app_state
+            .load_services_from_invites(vec![invitation.clone()])
+            .await;
 
-            let services = app_state.incoming_services().read().await.services.clone();
-            assert!(services.is_empty(), "No services should be loaded");
+        let services = app_state.incoming_services().read().await.services.clone();
+        assert!(services.is_empty(), "No services should be loaded");
 
-            invitation.service_access_details = Some(ServiceAccessDetails {
-                project_identity: "I1234561234561234561234561234561234561234"
-                    .try_into()
-                    .unwrap(),
-                project_route: "mock_project_route".to_string(),
-                project_authority_identity: "Iabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-                    .try_into()
-                    .unwrap(),
-                project_authority_route: "project_authority_route".to_string(),
-                shared_node_identity: "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab"
-                    .try_into()
-                    .unwrap(),
-                shared_node_route: "remote_service_name".to_string(),
-                enrollment_ticket: EnrollmentTicket::new(
-                    OneTimeCode::new(),
-                    Some(ProjectLookup {
-                        node_route: None,
-                        id: "project_id".to_string(),
-                        name: "project_name".to_string(),
-                        identity_id: Some(
-                            Identifier::from_str("I1234561234561234561234561234561234561234")
-                                .unwrap(),
-                        ),
-                        authority: None,
-                        okta: None,
-                    }),
-                    None,
-                )
-                .hex_encoded()
+        invitation.service_access_details = Some(ServiceAccessDetails {
+            project_identity: "I1234561234561234561234561234561234561234"
+                .try_into()
                 .unwrap(),
-            });
+            project_route: "mock_project_route".to_string(),
+            project_authority_identity: "Iabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+                .try_into()
+                .unwrap(),
+            project_authority_route: "project_authority_route".to_string(),
+            shared_node_identity: "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab"
+                .try_into()
+                .unwrap(),
+            shared_node_route: "remote_service_name".to_string(),
+            enrollment_ticket: EnrollmentTicket::new(
+                OneTimeCode::new(),
+                Some(ProjectLookup {
+                    node_route: None,
+                    id: "project_id".to_string(),
+                    name: "project_name".to_string(),
+                    identity_id: Some(
+                        Identifier::from_str("I1234561234561234561234561234561234561234").unwrap(),
+                    ),
+                    authority: None,
+                    okta: None,
+                }),
+                None,
+            )
+            .hex_encoded()
+            .unwrap(),
+        });
 
-            app_state
-                .load_services_from_invites(vec![invitation.clone()])
-                .await;
-            let services = app_state.incoming_services().read().await.services.clone();
-            assert_eq!(1, services.len(), "One service should be loaded");
+        app_state
+            .load_services_from_invites(vec![invitation.clone()])
+            .await;
+        let services = app_state.incoming_services().read().await.services.clone();
+        assert_eq!(1, services.len(), "One service should be loaded");
 
-            let service = &services[0];
-            assert_eq!(
-                "invitation_id",
-                service.id()
-            );
-            assert_eq!(
-                "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab",
-                service.access_details.shared_node_identity.to_string()
-            );
-            assert_eq!("remote_service_name", service.name());
-            assert!(service.enabled());
-            assert!(service.port().is_none());
-            assert_eq!("project_id", service.enrollment_ticket().unwrap().project.unwrap().name, "project name should be overwritten with project id");
-            assert_eq!("forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab", service.relay_name());
-            assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab/secure/api/service/remote_service_name", service.service_route().unwrap());
-            assert_eq!("ockam_app_project_id_invitation_id", service.local_node_name().unwrap());
+        let service = &services[0];
+        assert_eq!("invitation_id", service.id());
+        assert_eq!(
+            "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab",
+            service.access_details.shared_node_identity.to_string()
+        );
+        assert_eq!("remote_service_name", service.name());
+        assert!(service.enabled());
+        assert!(service.port().is_none());
+        assert_eq!(
+            "project_id",
+            service.enrollment_ticket().unwrap().project.unwrap().name,
+            "project name should be overwritten with project id"
+        );
+        assert_eq!(
+            "forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab",
+            service.relay_name()
+        );
+        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab/secure/api/service/remote_service_name", service.service_route().unwrap());
+        assert_eq!(
+            "ockam_app_project_id_invitation_id",
+            service.local_node_name().unwrap()
+        );
 
-            let second_invitation = InvitationWithAccess {
-                invitation: ReceivedInvitation {
-                    id: "second_invitation_id".to_string(),
-                    expires_at: "2020-09-12T15:07:14.00".to_string(),
-                    grant_role: RoleInShare::Admin,
-                    owner_email: "owner_email".to_string(),
-                    scope: ShareScope::Project,
-                    target_id: "target_id".to_string(),
-                    ignored: false,
-                },
-                service_access_details: invitation.service_access_details.clone(),
-            };
+        let second_invitation = InvitationWithAccess {
+            invitation: ReceivedInvitation {
+                id: "second_invitation_id".to_string(),
+                expires_at: "2020-09-12T15:07:14.00".to_string(),
+                grant_role: RoleInShare::Admin,
+                owner_email: "owner_email".to_string(),
+                scope: ShareScope::Project,
+                target_id: "target_id".to_string(),
+                ignored: false,
+            },
+            service_access_details: invitation.service_access_details.clone(),
+        };
 
-            // let's load another invitation, but but a persistent state for it already exists
-            app_state.model_mut(|m| {
+        // let's load another invitation, but but a persistent state for it already exists
+        app_state
+            .model_mut(|m| {
                 m.incoming_services.push(PersistentIncomingServiceState {
                     invitation_id: "second_invitation_id".to_string(),
                     enabled: false,
                     name: Some("custom_user_name".to_string()),
                 })
-            }).await.unwrap();
+            })
+            .await
+            .unwrap();
 
-            app_state
-                .load_services_from_invites(vec![invitation.clone(), second_invitation.clone()])
-                .await;
-            let services = app_state.incoming_services().read().await.services.clone();
-            assert_eq!(2, services.len(), "Two services should be loaded");
+        app_state
+            .load_services_from_invites(vec![invitation.clone(), second_invitation.clone()])
+            .await;
+        let services = app_state.incoming_services().read().await.services.clone();
+        assert_eq!(2, services.len(), "Two services should be loaded");
 
-            let service = &services[1];
-            assert_eq!(
-                "second_invitation_id",
-                service.id()
-            );
-            assert!(!service.enabled());
-            assert_eq!("custom_user_name", service.name());
-            assert_eq!("remote_service_name", service.original_name().unwrap());
-            assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab/secure/api/service/remote_service_name", service.service_route().unwrap());
-        });
+        let service = &services[1];
+        assert_eq!("second_invitation_id", service.id());
+        assert!(!service.enabled());
+        assert_eq!("custom_user_name", service.name());
+        assert_eq!("remote_service_name", service.original_name().unwrap());
+        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12ab/secure/api/service/remote_service_name", service.service_route().unwrap());
+        ctx.stop().await
     }
 }
