@@ -375,7 +375,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 pub mod test_utils {
     use ockam::identity::storage::InMemoryStorage;
     use ockam::identity::utils::AttributesBuilder;
-    use ockam::identity::{Identifier, Identity, MAX_CREDENTIAL_VALIDITY};
+    use ockam::identity::{Identifier, MAX_CREDENTIAL_VALIDITY};
     use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
@@ -443,9 +443,13 @@ pub mod test_utils {
             .with_identities_storage(InMemoryStorage::create())
             .build();
 
-        let identity = create_random_identity(&secure_channels).await?;
+        let identifier = create_random_identity(&secure_channels).await?;
 
-        let exported_identity = identity.export()?;
+        let exported_identity = secure_channels
+            .identities()
+            .get_identity(&identifier)
+            .await?
+            .export()?;
 
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
@@ -456,8 +460,8 @@ pub mod test_utils {
             .credentials()
             .credentials_creation()
             .issue_credential(
-                identity.identifier(),
-                identity.identifier(),
+                &identifier,
+                &identifier,
                 attributes,
                 MAX_CREDENTIAL_VALIDITY,
             )
@@ -466,7 +470,7 @@ pub mod test_utils {
 
         drop(secure_channels);
 
-        let config = IdentityConfig::new(identity.identifier()).await;
+        let config = IdentityConfig::new(&identifier).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
         let node_name = random_name();
@@ -483,7 +487,7 @@ pub mod test_utils {
             NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
                 "test_trust_context".to_string(),
                 Some(TrustAuthorityConfig::new(
-                    hex::encode(&identity.export().unwrap()),
+                    hex::encode(&exported_identity),
                     Some(CredentialRetrieverConfig::FromMemory(minicbor::to_vec(
                         &credential,
                     )?)),
@@ -499,7 +503,7 @@ pub mod test_utils {
         let _ = secure_channels
             .identities()
             .identities_creation()
-            .import(Some(identity.identifier()), &exported_identity)
+            .import(Some(&identifier), &exported_identity)
             .await?;
 
         context
@@ -511,18 +515,15 @@ pub mod test_utils {
             node_manager,
             tcp: tcp.async_try_clone().await?,
             secure_channels: secure_channels.clone(),
-            identifier: identity.identifier().clone(),
+            identifier,
         })
     }
 
-    async fn create_random_identity(secure_channels: &Arc<SecureChannels>) -> Result<Identity> {
-        let identity = secure_channels
+    async fn create_random_identity(secure_channels: &Arc<SecureChannels>) -> Result<Identifier> {
+        secure_channels
             .identities()
             .identities_creation()
             .create_identity()
             .await
-            .unwrap();
-
-        Ok(identity)
     }
 }

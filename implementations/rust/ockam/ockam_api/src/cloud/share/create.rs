@@ -66,8 +66,6 @@ impl CreateServiceInvitation {
                 .identities_creation()
                 .import(None, &as_hex)
                 .await?
-                .identifier()
-                .clone()
         };
         // see also: ockam_command::project::ticket
         let enrollment_ticket = hex::encode(

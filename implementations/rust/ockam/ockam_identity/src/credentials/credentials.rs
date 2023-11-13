@@ -97,8 +97,8 @@ mod tests {
         let credential = credentials
             .credentials_creation()
             .issue_credential(
-                issuer.identifier(),
-                subject.identifier(),
+                &issuer,
+                &subject,
                 subject_attributes,
                 Duration::from_secs(60),
             )
@@ -108,11 +108,7 @@ mod tests {
 
         let _res = credentials
             .credentials_verification()
-            .verify_credential(
-                Some(subject.identifier()),
-                &[issuer.identifier().clone()],
-                &credential,
-            )
+            .verify_credential(Some(&subject), &[issuer.clone()], &credential)
             .await?;
 
         Ok(())

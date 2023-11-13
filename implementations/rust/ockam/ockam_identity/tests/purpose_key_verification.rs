@@ -18,7 +18,8 @@ async fn test_invalid_signature() -> Result<()> {
     let identities_remote = identities();
     let identities = Identities::builder().with_vault(vault).build();
     let identities_creation = identities.identities_creation();
-    let identity = identities_creation.create_identity().await?;
+    let identifier = identities_creation.create_identity().await?;
+    let identity = identities.get_identity(&identifier).await?;
 
     if crazy_signing_vault.forged_operation_occurred() {
         return Ok(());

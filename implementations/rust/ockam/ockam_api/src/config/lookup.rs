@@ -295,7 +295,7 @@ impl ProjectAuthority {
             let a = hex::decode(a.as_str())
                 .map_err(|_| ApiError::message("Invalid project authority"))?;
             let p = identities().identities_creation().import(None, &a).await?;
-            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
+            Ok(Some(ProjectAuthority::new(p.clone(), rte, a)))
         } else {
             Ok(None)
         }

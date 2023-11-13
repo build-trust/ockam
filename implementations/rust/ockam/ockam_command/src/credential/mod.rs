@@ -10,7 +10,7 @@ use colorful::Colorful;
 pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
-use ockam::identity::{Identifier, Identities, Identity};
+use ockam::identity::{Identifier, Identities};
 use ockam_api::cli_state::{CredentialState, StateItemTrait};
 pub(crate) use present::PresentCommand;
 pub(crate) use show::ShowCommand;
@@ -66,15 +66,15 @@ pub async fn identities(vault_name: &str, opts: &CommandGlobalOpts) -> Result<Ar
     Ok(identities)
 }
 
-pub async fn identity(identity: &str, identities: Arc<Identities>) -> Result<Identity> {
+pub async fn identity(identity: &str, identities: Arc<Identities>) -> Result<Identifier> {
     let identity_as_bytes = hex::decode(identity)?;
 
-    let identity = identities
+    let identifier = identities
         .identities_creation()
         .import(None, &identity_as_bytes)
         .await?;
 
-    Ok(identity)
+    Ok(identifier)
 }
 
 pub async fn validate_encoded_cred(

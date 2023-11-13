@@ -8,48 +8,48 @@ async fn create_default_purpose_keys() -> Result<()> {
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
-    let identity = identities_creation.create_identity().await?;
+    let identifier = identities_creation.create_identity().await?;
 
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await;
     assert!(res.is_err());
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_secure_channel_purpose_key(identity.identifier())
-        .await;
-    assert!(res.is_err());
-
-    let _purpose_key = purpose_keys
-        .purpose_keys_creation()
-        .create_credential_purpose_key(identity.identifier())
-        .await?;
-
-    let res = purpose_keys
-        .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
-        .await;
-    assert!(res.is_ok());
-    let res = purpose_keys
-        .purpose_keys_creation()
-        .get_secure_channel_purpose_key(identity.identifier())
+        .get_secure_channel_purpose_key(&identifier)
         .await;
     assert!(res.is_err());
 
     let _purpose_key = purpose_keys
         .purpose_keys_creation()
-        .create_secure_channel_purpose_key(identity.identifier())
+        .create_credential_purpose_key(&identifier)
         .await?;
 
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await;
     assert!(res.is_ok());
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_secure_channel_purpose_key(identity.identifier())
+        .get_secure_channel_purpose_key(&identifier)
+        .await;
+    assert!(res.is_err());
+
+    let _purpose_key = purpose_keys
+        .purpose_keys_creation()
+        .create_secure_channel_purpose_key(&identifier)
+        .await?;
+
+    let res = purpose_keys
+        .purpose_keys_creation()
+        .get_credential_purpose_key(&identifier)
+        .await;
+    assert!(res.is_ok());
+    let res = purpose_keys
+        .purpose_keys_creation()
+        .get_secure_channel_purpose_key(&identifier)
         .await;
     assert!(res.is_ok());
 
@@ -62,18 +62,18 @@ async fn create_custom_type() -> Result<()> {
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
-    let identity = identities_creation.create_identity().await?;
+    let identifier = identities_creation.create_identity().await?;
 
     let _purpose_key = purpose_keys
         .purpose_keys_creation()
-        .credential_purpose_key_builder(identity.identifier())
+        .credential_purpose_key_builder(&identifier)
         .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
         .await?;
 
     let purpose_key = purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await?;
 
     let key_id = purpose_key.key();
@@ -93,7 +93,7 @@ async fn create_with_p256_identity() -> Result<()> {
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
-    let identity = identities_creation
+    let identifier = identities_creation
         .identity_builder()
         .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
@@ -101,44 +101,44 @@ async fn create_with_p256_identity() -> Result<()> {
 
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await;
     assert!(res.is_err());
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_secure_channel_purpose_key(identity.identifier())
-        .await;
-    assert!(res.is_err());
-
-    let _purpose_key = purpose_keys
-        .purpose_keys_creation()
-        .create_credential_purpose_key(identity.identifier())
-        .await?;
-
-    let res = purpose_keys
-        .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
-        .await;
-    assert!(res.is_ok());
-    let res = purpose_keys
-        .purpose_keys_creation()
-        .get_secure_channel_purpose_key(identity.identifier())
+        .get_secure_channel_purpose_key(&identifier)
         .await;
     assert!(res.is_err());
 
     let _purpose_key = purpose_keys
         .purpose_keys_creation()
-        .create_secure_channel_purpose_key(identity.identifier())
+        .create_credential_purpose_key(&identifier)
         .await?;
 
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await;
     assert!(res.is_ok());
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_secure_channel_purpose_key(identity.identifier())
+        .get_secure_channel_purpose_key(&identifier)
+        .await;
+    assert!(res.is_err());
+
+    let _purpose_key = purpose_keys
+        .purpose_keys_creation()
+        .create_secure_channel_purpose_key(&identifier)
+        .await?;
+
+    let res = purpose_keys
+        .purpose_keys_creation()
+        .get_credential_purpose_key(&identifier)
+        .await;
+    assert!(res.is_ok());
+    let res = purpose_keys
+        .purpose_keys_creation()
+        .get_secure_channel_purpose_key(&identifier)
         .await;
     assert!(res.is_ok());
 
@@ -151,32 +151,30 @@ async fn create_with_rotated_identity() -> Result<()> {
     let identities_creation = identities.identities_creation();
     let purpose_keys = identities.purpose_keys();
 
-    let identity = identities_creation.create_identity().await?;
+    let identifier = identities_creation.create_identity().await?;
 
     let _purpose_key = purpose_keys
         .purpose_keys_creation()
-        .create_credential_purpose_key(identity.identifier())
+        .create_credential_purpose_key(&identifier)
         .await?;
 
-    identities_creation
-        .rotate_identity(identity.identifier())
-        .await?;
+    identities_creation.rotate_identity(&identifier).await?;
 
     // We currently do not verify Purpose Keys issued by an older version of identity
     let res = purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await;
     assert!(res.is_err());
 
     let _purpose_key = purpose_keys
         .purpose_keys_creation()
-        .create_credential_purpose_key(identity.identifier())
+        .create_credential_purpose_key(&identifier)
         .await?;
 
     purpose_keys
         .purpose_keys_creation()
-        .get_credential_purpose_key(identity.identifier())
+        .get_credential_purpose_key(&identifier)
         .await?;
 
     Ok(())

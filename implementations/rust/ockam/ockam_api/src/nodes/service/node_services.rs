@@ -244,7 +244,7 @@ impl NodeManagerWorker {
             encoded_identity.to_string(),
             Some(AuthorityService::new(
                 self.node_manager.identities().credentials(),
-                i.identifier().clone(),
+                i,
                 None,
             )),
         );

@@ -574,12 +574,12 @@ mod tests {
                 .with_vault(vault)
                 .with_identities_repository(sut.identities.identities_repository().await?)
                 .build();
-            let identity = identities
+            let identifier = identities
                 .identities_creation()
                 .create_identity()
                 .await
                 .unwrap();
-            let config = IdentityConfig::new(identity.identifier()).await;
+            let config = IdentityConfig::new(&identifier).await;
 
             let state = sut.identities.create(&name, config).unwrap();
             let got = sut.identities.get(&name).unwrap();

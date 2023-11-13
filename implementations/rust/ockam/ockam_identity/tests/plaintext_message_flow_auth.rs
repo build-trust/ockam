@@ -29,21 +29,11 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            bob.identifier(),
-            "listener",
-            SecureChannelListenerOptions::new(),
-        )
+        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     let channel_to_bob = alice_secure_channels
-        .create_secure_channel(
-            ctx,
-            alice.identifier(),
-            route!["listener"],
-            SecureChannelOptions::new(),
-        )
+        .create_secure_channel(ctx, &alice, route!["listener"], SecureChannelOptions::new())
         .await?;
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
@@ -111,13 +101,13 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
     let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(ctx, bob.identifier(), "listener", bob_options)
+        .create_secure_channel_listener(ctx, &bob, "listener", bob_options)
         .await?;
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
             ctx,
-            alice.identifier(),
+            &alice,
             route![connection_to_bob, "listener"],
             SecureChannelOptions::new(),
         )

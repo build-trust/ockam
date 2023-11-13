@@ -115,11 +115,9 @@ async fn run_impl(
         let authority_identifier = tc
             .authority()
             .into_diagnostic()?
-            .identity()
-            .await
-            .into_diagnostic()?
             .identifier()
-            .clone();
+            .await
+            .into_diagnostic()?;
 
         node.create_authority_client(&authority_identifier, addr, Some(identity))
             .await?
