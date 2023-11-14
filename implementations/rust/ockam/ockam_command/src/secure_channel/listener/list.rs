@@ -6,7 +6,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::{
-    SecureChannelListenersList, ShowSecureChannelListenerResponse,
+    ListSecureChannelListenerResponse, ShowSecureChannelListenerResponse,
 };
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
@@ -52,7 +52,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> m
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_listeners = async {
-        let listeners: SecureChannelListenersList =
+        let listeners: ListSecureChannelListenerResponse =
             node.ask(ctx, api::list_secure_channel_listener()).await?;
         *is_finished.lock().await = true;
         Ok(listeners)

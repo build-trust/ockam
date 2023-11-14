@@ -410,7 +410,10 @@ impl From<crate::Error> for Error {
 
 impl From<crate::Error> for Response<Error> {
     fn from(e: crate::Error) -> Self {
-        Response::internal_error_no_request(&e.to_string())
+        match e.code().kind {
+            Kind::NotFound => Response::not_found_no_request(&e.to_string()),
+            _ => Response::internal_error_no_request(&e.to_string()),
+        }
     }
 }
 
@@ -541,6 +544,7 @@ impl<T> Response<T> {
         self
     }
 
+    /// Setter for the Request Id on the ResponseHeader
     pub fn re(mut self, re: Id) -> Self {
         self.header.re = re;
         self
@@ -557,6 +561,11 @@ impl<T> Response<T> {
 
     pub fn into_parts(self) -> (ResponseHeader, Option<T>) {
         (self.header, self.body)
+    }
+    /// Convenient wrapper to append the requests header to the response
+    pub fn with_headers(self, req: &RequestHeader) -> Self {
+        let id = req.id;
+        self.re(id)
     }
 }
 
@@ -585,8 +594,8 @@ impl Response {
         Response::builder(r.id(), status).body(e)
     }
 
-    pub fn ok(re: &RequestHeader) -> Response {
-        Response::builder(re.id(), Status::Ok)
+    pub fn ok() -> Response {
+        Response::builder(Id::default(), Status::Ok)
     }
 
     pub fn bad_request_no_request(msg: &str) -> Response<Error> {
@@ -601,6 +610,11 @@ impl Response {
 
     pub fn not_found(r: &RequestHeader, msg: &str) -> Response<Error> {
         Self::error(r, msg, Status::NotFound)
+    }
+
+    pub fn not_found_no_request(msg: &str) -> Response<Error> {
+        let e = Error::new_without_path().with_message(msg);
+        Response::builder(Id::default(), Status::NotFound).body(e)
     }
 
     pub fn not_implemented(re: Id) -> Response {

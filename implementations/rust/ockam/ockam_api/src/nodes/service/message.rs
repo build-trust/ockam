@@ -5,7 +5,7 @@ use tracing::trace;
 
 use minicbor::{Decode, Encode};
 
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Response};
 use ockam_core::{self, async_trait, AsyncTryClone, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -42,7 +42,6 @@ impl NodeManagerWorker {
     pub(crate) async fn send_message(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         send_message: SendMessage,
     ) -> Result<Response<Vec<u8>>, Response<Error>> {
         let multiaddr = send_message.multiaddr()?;
@@ -53,10 +52,12 @@ impl NodeManagerWorker {
             .send_message(ctx, &multiaddr, msg, None)
             .await;
         match res {
-            Ok(r) => Ok(Response::ok(req).body(r)),
+            Ok(r) => Ok(Response::ok().body(r)),
             Err(err) => {
                 error!(target: TARGET, ?err, "Failed to send message");
-                Err(Response::internal_error(req, "Failed to send message"))
+                Err(Response::internal_error_no_request(
+                    "Failed to send message",
+                ))
             }
         }
     }

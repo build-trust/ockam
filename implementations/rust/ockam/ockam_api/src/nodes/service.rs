@@ -72,12 +72,14 @@ fn random_alias() -> String {
     Address::random_local().without_type().to_owned()
 }
 
+/// Append the request header to the Response and encode in vector format
 pub(crate) fn encode_response<T: Encode<()>>(
+    req: &RequestHeader,
     res: std::result::Result<Response<T>, Response<ockam_core::api::Error>>,
 ) -> Result<Vec<u8>> {
     let v = match res {
-        Ok(r) => r.to_vec()?,
-        Err(e) => e.to_vec()?,
+        Ok(r) => r.with_headers(req).to_vec()?,
+        Err(e) => e.with_headers(req).to_vec()?,
     };
 
     Ok(v)
@@ -555,179 +557,189 @@ impl NodeManagerWorker {
         let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
-            (Get, ["node"]) => encode_response(self.get_node_status(ctx, req).await)?,
+            (Get, ["node"]) => encode_response(req, self.get_node_status(ctx).await)?,
 
             // ==*== Tcp Connection ==*==
             (Get, ["node", "tcp", "connection"]) => self.get_tcp_connections(req).await.to_vec()?,
             (Get, ["node", "tcp", "connection", address]) => {
-                encode_response(self.get_tcp_connection(req, address.to_string()).await)?
+                encode_response(req, self.get_tcp_connection(address.to_string()).await)?
             }
             (Post, ["node", "tcp", "connection"]) => {
-                encode_response(self.create_tcp_connection(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.create_tcp_connection(ctx, dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "connection"]) => {
-                encode_response(self.delete_tcp_connection(req, dec.decode()?).await)?
+                encode_response(req, self.delete_tcp_connection(dec.decode()?).await)?
             }
 
             // ==*== Tcp Listeners ==*==
             (Get, ["node", "tcp", "listener"]) => self.get_tcp_listeners(req).await.to_vec()?,
             (Get, ["node", "tcp", "listener", address]) => {
-                encode_response(self.get_tcp_listener(req, address.to_string()).await)?
+                encode_response(req, self.get_tcp_listener(address.to_string()).await)?
             }
             (Post, ["node", "tcp", "listener"]) => {
-                encode_response(self.create_tcp_listener(req, dec.decode()?).await)?
+                encode_response(req, self.create_tcp_listener(dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "listener"]) => {
-                encode_response(self.delete_tcp_listener(req, dec.decode()?).await)?
+                encode_response(req, self.delete_tcp_listener(dec.decode()?).await)?
             }
 
             // ==*== Credential ==*==
             (Post, ["node", "credentials", "actions", "get"]) => {
-                encode_response(self.get_credential(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.get_credential(ctx, dec.decode()?).await)?
             }
             (Post, ["node", "credentials", "actions", "present"]) => {
-                encode_response(self.present_credential(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.present_credential(ctx, dec.decode()?).await)?
             }
 
             // ==*== Secure channels ==*==
-            (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).await.to_vec()?,
+            (Get, ["node", "secure_channel"]) => {
+                encode_response(req, self.list_secure_channels().await)?
+            }
             (Get, ["node", "secure_channel_listener"]) => {
-                self.list_secure_channel_listener(req).await.to_vec()?
+                encode_response(req, self.list_secure_channel_listener().await)?
             }
             (Post, ["node", "secure_channel"]) => {
-                encode_response(self.create_secure_channel(req, dec, ctx).await)?
+                encode_response(req, self.create_secure_channel(dec.decode()?, ctx).await)?
             }
             (Delete, ["node", "secure_channel"]) => {
-                encode_response(self.delete_secure_channel(req, dec, ctx).await)?
+                encode_response(req, self.delete_secure_channel(dec.decode()?, ctx).await)?
             }
             (Get, ["node", "show_secure_channel"]) => {
-                encode_response(self.show_secure_channel(req, dec).await)?
+                encode_response(req, self.show_secure_channel(dec.decode()?).await)?
             }
-            (Post, ["node", "secure_channel_listener"]) => {
-                encode_response(self.create_secure_channel_listener(req, dec, ctx).await)?
-            }
-            (Delete, ["node", "secure_channel_listener"]) => self
-                .delete_secure_channel_listener(ctx, req, dec)
-                .await?
-                .to_vec(),
+            (Post, ["node", "secure_channel_listener"]) => encode_response(
+                req,
+                self.create_secure_channel_listener(dec.decode()?, ctx)
+                    .await,
+            )?,
+            (Delete, ["node", "secure_channel_listener"]) => encode_response(
+                req,
+                self.delete_secure_channel_listener(dec.decode()?, ctx)
+                    .await,
+            )?,
             (Get, ["node", "show_secure_channel_listener"]) => {
-                self.show_secure_channel_listener(req, dec).await?
+                encode_response(req, self.show_secure_channel_listener(dec.decode()?).await)?
             }
 
             // ==*== Services ==*==
+            //<<<<<<< HEAD
             (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => encode_response(
-                self.start_authenticated_service(ctx, req, dec.decode()?)
-                    .await,
+                req,
+                self.start_authenticated_service(ctx, dec.decode()?).await,
             )?,
             (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => {
-                encode_response(self.start_uppercase_service(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.start_uppercase_service(ctx, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => {
-                encode_response(self.start_echoer_service(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.start_echoer_service(ctx, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
-                encode_response(self.start_hop_service(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.start_hop_service(ctx, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => encode_response(
-                self.start_credentials_service(ctx, req, dec.decode()?)
-                    .await,
+                req,
+                self.start_credentials_service(ctx, dec.decode()?).await,
             )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
-                self.start_kafka_outlet_service(ctx, req, dec.decode()?)
-                    .await,
+                req,
+                self.start_kafka_outlet_service(ctx, dec.decode()?).await,
             )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
-                self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Outlet)
+                req,
+                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Outlet)
                     .await,
             )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
-                self.start_kafka_consumer_service(ctx, req, dec.decode()?)
-                    .await,
+                req,
+                self.start_kafka_consumer_service(ctx, dec.decode()?).await,
             )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
-                self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Consumer)
+                req,
+                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Consumer)
                     .await,
             )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
-                self.start_kafka_producer_service(ctx, req, dec.decode()?)
-                    .await,
+                req,
+                self.start_kafka_producer_service(ctx, dec.decode()?).await,
             )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
-                self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Producer)
+                req,
+                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Producer)
                     .await,
             )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_response(
-                self.start_kafka_direct_service(ctx, req, dec.decode()?)
-                    .await,
+                req,
+                self.start_kafka_direct_service(ctx, dec.decode()?).await,
             )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_response(
-                self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Direct)
+                req,
+                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Direct)
                     .await,
             )?,
-            (Get, ["node", "services"]) => encode_response(self.list_services(req).await)?,
+            (Get, ["node", "services"]) => encode_response(req, self.list_services().await)?,
             (Get, ["node", "services", service_type]) => {
-                encode_response(self.list_services_of_type(req, service_type).await)?
+                encode_response(req, self.list_services_of_type(service_type).await)?
             }
 
             // ==*== Relay commands ==*==
             // TODO: change the path to 'relay' instead of 'forwarder'
             (Get, ["node", "forwarder", remote_address]) => {
-                encode_response(self.show_relay(req, remote_address).await)?
+                encode_response(req, self.show_relay(req, remote_address).await)?
             }
-            (Get, ["node", "forwarder"]) => encode_response(self.get_relays(req).await)?,
+            (Get, ["node", "forwarder"]) => encode_response(req, self.get_relays(req).await)?,
             (Delete, ["node", "forwarder", remote_address]) => {
-                encode_response(self.delete_relay(ctx, req, remote_address).await)?
+                encode_response(req, self.delete_relay(ctx, req, remote_address).await)?
             }
             (Post, ["node", "forwarder"]) => {
-                encode_response(self.create_relay(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.create_relay(ctx, req, dec.decode()?).await)?
             }
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "inlet"]) => encode_response(self.get_inlets(req).await)?,
-            (Get, ["node", "inlet", alias]) => encode_response(self.show_inlet(req, alias).await)?,
+            (Get, ["node", "inlet"]) => encode_response(req, self.get_inlets().await)?,
+            (Get, ["node", "inlet", alias]) => encode_response(req, self.show_inlet(alias).await)?,
             (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
             (Get, ["node", "outlet", alias]) => {
-                encode_response(self.show_outlet(req, alias).await)?
+                encode_response(req, self.show_outlet(alias).await)?
             }
             (Post, ["node", "inlet"]) => {
-                encode_response(self.create_inlet(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.create_inlet(ctx, dec.decode()?).await)?
             }
             (Post, ["node", "outlet"]) => {
-                encode_response(self.create_outlet(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.create_outlet(ctx, dec.decode()?).await)?
             }
             (Delete, ["node", "outlet", alias]) => {
-                encode_response(self.delete_outlet(req, alias).await)?
+                encode_response(req, self.delete_outlet(alias).await)?
             }
             (Delete, ["node", "inlet", alias]) => {
-                encode_response(self.delete_inlet(req, alias).await)?
+                encode_response(req, self.delete_inlet(alias).await)?
             }
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Flow Controls ==*==
             (Post, ["node", "flow_controls", "add_consumer"]) => {
-                encode_response(self.add_consumer(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.add_consumer(ctx, dec.decode()?).await)?
             }
 
             // ==*== Workers ==*==
-            (Get, ["node", "workers"]) => encode_response(self.list_workers(ctx, req).await)?,
+            (Get, ["node", "workers"]) => encode_response(req, self.list_workers(ctx).await)?,
 
             // ==*== Policies ==*==
             (Post, ["policy", resource, action]) => {
-                encode_response(self.add_policy(req, resource, action, dec.decode()?).await)?
+                encode_response(req, self.add_policy(resource, action, dec.decode()?).await)?
             }
             (Get, ["policy", resource, action]) => {
-                encode_response(self.get_policy(req, resource, action).await)?
+                encode_response(req, self.get_policy(resource, action).await)?
             }
             (Get, ["policy", resource]) => {
-                encode_response(self.list_policies(req, resource).await)?
+                encode_response(req, self.list_policies(resource).await)?
             }
             (Delete, ["policy", resource, action]) => {
-                encode_response(self.delete_policy(req, resource, action).await)?
+                encode_response(req, self.delete_policy(resource, action).await)?
             }
 
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => {
-                encode_response(self.send_message(ctx, req, dec.decode()?).await)?
+                encode_response(req, self.send_message(ctx, dec.decode()?).await)?
             }
 
             // ==*== Catch-all for Unimplemented APIs ==*==

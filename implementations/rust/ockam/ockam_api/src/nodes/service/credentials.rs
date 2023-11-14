@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::Result;
-use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::api::{Error, Request, Response};
 use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -112,7 +112,6 @@ impl NodeManagerWorker {
     pub(super) async fn get_credential(
         &mut self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: GetCredentialRequest,
     ) -> Result<Response<CredentialAndPurposeKey>, Response<Error>> {
         match self
@@ -120,43 +119,36 @@ impl NodeManagerWorker {
             .get_credential_by_identity_name(ctx, request.identity_name.clone(), None)
             .await
         {
-            Ok(Some(c)) => Ok(Response::ok(request_header).body(c)),
-            Ok(None) => Err(Response::not_found(
-                request_header,
-                &format!(
-                    "no credential found for {}",
-                    request
-                        .identity_name
-                        .unwrap_or("default identity".to_string())
-                ),
-            )),
-            Err(e) => Err(Response::internal_error(
-                request_header,
-                &format!(
-                    "Error retrieving credential from authority for {}: {}",
-                    request
-                        .identity_name
-                        .unwrap_or("default identity".to_string()),
-                    e,
-                ),
-            )),
+            Ok(Some(c)) => Ok(Response::ok().body(c)),
+            Ok(None) => Err(Response::not_found_no_request(&format!(
+                "no credential found for {}",
+                request
+                    .identity_name
+                    .unwrap_or("default identity".to_string())
+            ))),
+            Err(e) => Err(Response::internal_error_no_request(&format!(
+                "Error retrieving credential from authority for {}: {}",
+                request
+                    .identity_name
+                    .unwrap_or("default identity".to_string()),
+                e,
+            ))),
         }
     }
 
     pub(super) async fn present_credential(
         &self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: PresentCredentialRequest,
     ) -> Result<Response, Response<Error>> {
         // TODO: Replace with self.connect?
         let route = match MultiAddr::from_str(&request.route) {
             Ok(route) => route,
             Err(e) => {
-                return Err(Response::bad_request(
-                    request_header,
-                    &format!("Couldn't convert {} to a MultiAddr: {e:?}", request.route),
-                ))
+                return Err(Response::bad_request_no_request(&format!(
+                    "Couldn't convert {} to a MultiAddr: {e:?}",
+                    request.route
+                )))
             }
         };
 
@@ -165,8 +157,8 @@ impl NodeManagerWorker {
             .present_credential(ctx, route, request.oneway)
             .await
         {
-            Ok(()) => Ok(Response::ok(request_header)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(()) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 }

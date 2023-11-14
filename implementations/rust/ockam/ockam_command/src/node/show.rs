@@ -1,12 +1,12 @@
 use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
+use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
 use tokio_retry::strategy::FixedInterval;
 use tracing::{info, trace, warn};
 
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
-use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::nodes::BackgroundNode;
@@ -176,7 +176,7 @@ pub async fn print_query_status(
             .collect();
 
         // Get list of Secure Channel Listeners
-        let listeners: SecureChannelListenersList =
+        let listeners: ListSecureChannelListenerResponse =
             node.ask(ctx, api::list_secure_channel_listener()).await?;
         show_node.secure_channel_listeners = listeners
             .list

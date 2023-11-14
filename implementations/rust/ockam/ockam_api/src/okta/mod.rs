@@ -103,7 +103,7 @@ impl Server {
                         self.identity_attributes_repository
                             .put_attributes(from, entry)
                             .await?;
-                        Response::ok(&req).to_vec()?
+                        Response::ok().with_headers(&req).to_vec()?
                     } else {
                         Response::forbidden(&req, "Forbidden").to_vec()?
                     }

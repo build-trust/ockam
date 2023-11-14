@@ -70,7 +70,7 @@ impl EnrollmentTokenAcceptor {
             return Ok(Response::internal_error(req, "attributes storage error").to_vec()?);
         }
 
-        Ok(Response::ok(req).to_vec()?)
+        Ok(Response::ok().with_headers(req).to_vec()?)
     }
 }
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
-use ockam::identity::{Identifier, DEFAULT_TIMEOUT};
+use ockam::identity::{Identifier, SecureChannel, DEFAULT_TIMEOUT};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
@@ -12,13 +12,15 @@ use crate::error::ApiError;
 use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
 use crate::route_to_multiaddr;
 
+//Requests
+
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelRequest {
-    #[n(1)] pub addr: String,
-    #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
+    #[n(1)] pub addr: MultiAddr,
+    #[n(2)] pub authorized_identifiers: Option<Vec<Identifier>>,
     #[n(4)] pub timeout: Option<Duration>,
     #[n(5)] pub identity_name: Option<String>,
     #[n(6)] pub credential_name: Option<String>,
@@ -32,15 +34,80 @@ impl CreateSecureChannelRequest {
         credential_name: Option<String>,
     ) -> Self {
         Self {
-            addr: addr.to_string(),
-            authorized_identifiers: authorized_identifiers
-                .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
+            addr: addr.to_owned(),
+            authorized_identifiers,
             timeout: Some(DEFAULT_TIMEOUT),
             identity_name,
             credential_name,
         }
     }
 }
+
+/// Request body when instructing a node to delete a Secure Channel
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteSecureChannelRequest {
+    #[n(1)] pub channel: Address,
+}
+
+impl DeleteSecureChannelRequest {
+    pub fn new(channel: &Address) -> Self {
+        Self {
+            channel: channel.to_owned(),
+        }
+    }
+}
+
+/// Request body when instructing a node to show a Secure Channel
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ShowSecureChannelRequest {
+    #[n(1)] pub channel: Address,
+}
+
+impl ShowSecureChannelRequest {
+    pub fn new(channel: &Address) -> Self {
+        Self {
+            channel: channel.to_owned(),
+        }
+    }
+}
+
+/// Request body when instructing a node to delete a Secure Channel Listener
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteSecureChannelListenerRequest {
+    #[n(1)] pub addr: Address,
+}
+
+impl DeleteSecureChannelListenerRequest {
+    pub fn new(addr: &Address) -> Self {
+        Self {
+            addr: addr.to_owned(),
+        }
+    }
+}
+
+/// Request body to show a Secure Channel Listener
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ShowSecureChannelListenerRequest {
+    #[n(1)] pub addr: Address,
+}
+
+impl ShowSecureChannelListenerRequest {
+    pub fn new(addr: &Address) -> Self {
+        Self {
+            addr: addr.to_owned(),
+        }
+    }
+}
+
+// Responses
 
 /// Response body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
@@ -52,10 +119,10 @@ pub struct CreateSecureChannelResponse {
 }
 
 impl CreateSecureChannelResponse {
-    pub fn new(addr: &Address, flow_control_id: &FlowControlId) -> Self {
+    pub fn new(secure_channel: SecureChannel) -> Self {
         Self {
-            addr: addr.to_string().into(),
-            flow_control_id: flow_control_id.clone(),
+            addr: secure_channel.encryptor_address().to_string().into(),
+            flow_control_id: secure_channel.flow_control_id().clone(),
         }
     }
 
@@ -69,13 +136,12 @@ impl CreateSecureChannelResponse {
     }
 }
 
-/// Request body when instructing a node to create a Secure Channel Listener
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelListenerRequest {
-    #[n(1)] pub addr: String,
-    #[n(2)] pub authorized_identifiers: Option<Vec<String>>,
+    #[n(1)] pub addr: Address,
+    #[n(2)] pub authorized_identifiers: Option<Vec<Identifier>>,
     #[n(3)] pub vault_name: Option<String>,
     #[n(4)] pub identity_name: Option<String>,
 }
@@ -88,27 +154,10 @@ impl CreateSecureChannelListenerRequest {
         identity_name: Option<String>,
     ) -> Self {
         Self {
-            addr: addr.to_string(),
-            authorized_identifiers: authorized_identifiers
-                .map(|x| x.into_iter().map(|y| y.to_string()).collect()),
+            addr: addr.to_owned(),
+            authorized_identifiers,
             vault_name,
             identity_name,
-        }
-    }
-}
-
-/// Request body when deleting a Secure Channel Listener
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct DeleteSecureChannelListenerRequest {
-    #[n(1)] pub addr: String,
-}
-
-impl DeleteSecureChannelListenerRequest {
-    pub fn new(addr: &Address) -> Self {
-        Self {
-            addr: addr.to_string(),
         }
     }
 }
@@ -124,22 +173,6 @@ pub struct DeleteSecureChannelListenerResponse {
 impl DeleteSecureChannelListenerResponse {
     pub fn new(addr: Address) -> Self {
         Self { addr }
-    }
-}
-
-/// Request body to show a Secure Channel Listener
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ShowSecureChannelListenerRequest {
-    #[n(1)] pub addr: String,
-}
-
-impl ShowSecureChannelListenerRequest {
-    pub fn new(addr: &Address) -> Self {
-        Self {
-            addr: addr.to_string(),
-        }
     }
 }
 
@@ -164,21 +197,6 @@ impl ShowSecureChannelListenerResponse {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct DeleteSecureChannelRequest {
-    #[n(1)] pub channel: String,
-}
-
-impl DeleteSecureChannelRequest {
-    pub fn new(channel: &Address) -> Self {
-        Self {
-            channel: channel.to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
 pub struct DeleteSecureChannelResponse {
     #[n(1)] pub channel: Option<String>,
 }
@@ -187,21 +205,6 @@ impl DeleteSecureChannelResponse {
     pub fn new(channel: Option<Address>) -> Self {
         Self {
             channel: channel.map(|ch| ch.to_string()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ShowSecureChannelRequest {
-    #[n(1)] pub channel: String,
-}
-
-impl ShowSecureChannelRequest {
-    pub fn new(channel: &Address) -> Self {
-        Self {
-            channel: channel.to_string(),
         }
     }
 }
@@ -239,12 +242,16 @@ impl ShowSecureChannelResponse {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct SecureChannelListenersList {
+pub struct ListSecureChannelListenerResponse {
     #[n(1)] pub list: Vec<ShowSecureChannelListenerResponse>,
 }
 
-impl SecureChannelListenersList {
-    pub fn new(list: Vec<ShowSecureChannelListenerResponse>) -> Self {
+impl ListSecureChannelListenerResponse {
+    pub fn new(list: Vec<SecureChannelListenerInfo>) -> Self {
+        let list = list
+            .iter()
+            .map(ShowSecureChannelListenerResponse::new)
+            .collect();
         Self { list }
     }
 }

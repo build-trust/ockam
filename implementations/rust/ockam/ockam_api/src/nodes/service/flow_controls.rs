@@ -1,4 +1,4 @@
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Response};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
@@ -14,7 +14,6 @@ impl NodeManagerWorker {
     pub(super) async fn add_consumer(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         consumer: AddConsumer,
     ) -> Result<Response, Response<Error>> {
         match self
@@ -22,9 +21,9 @@ impl NodeManagerWorker {
             .add_consumer(ctx, consumer.address(), consumer.flow_control_id())
             .await
         {
-            Ok(None) => Ok(Response::ok(req)),
-            Ok(Some(failure)) => Err(Response::bad_request(req, &failure.to_string())),
-            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+            Ok(None) => Ok(Response::ok()),
+            Ok(Some(failure)) => Err(Response::bad_request_no_request(&failure.to_string())),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 }
