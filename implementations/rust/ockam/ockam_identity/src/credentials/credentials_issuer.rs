@@ -114,7 +114,7 @@ impl Worker for CredentialsIssuer {
             let res = match (req.method(), req.path()) {
                 (Some(Method::Post), "/") | (Some(Method::Post), "/credential") => {
                     match self.issue_credential(&from).await {
-                        Ok(Some(crd)) => Response::ok(&req).body(crd).to_vec()?,
+                        Ok(Some(crd)) => Response::ok().with_headers(&req).body(crd).to_vec()?,
                         Ok(None) => {
                             // Again, this has already been checked by the access control, so if we
                             // reach this point there is an error actually.

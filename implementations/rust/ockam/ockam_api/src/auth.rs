@@ -56,7 +56,8 @@ impl Server {
 
         let res = match req.method() {
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
-                [""] => Response::ok(&req)
+                [""] => Response::ok()
+                    .with_headers(&req)
                     .body(
                         self.identity_attributes_repository
                             .list_attributes_by_identifier()
@@ -70,7 +71,7 @@ impl Server {
                         .get_attributes(&identifier)
                         .await?
                     {
-                        Response::ok(&req).body(a).to_vec()?
+                        Response::ok().with_headers(&req).body(a).to_vec()?
                     } else {
                         Response::not_found(&req, &format!("identity {} not found", id)).to_vec()?
                     }

@@ -86,7 +86,7 @@ impl CredentialsServerWorker {
                 match res {
                     Ok(()) => {
                         debug!("One-way credential presentation request processed successfully with {}", sender);
-                        Response::ok(req).to_vec()?
+                        Response::ok().with_headers(req).to_vec()?
                     }
                     Err(err) => {
                         debug!(
@@ -133,11 +133,11 @@ impl CredentialsServerWorker {
                     match credential.as_ref() {
                         Some(c) if self.present_back => {
                             info!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
-                            Response::ok(req).body(c).to_vec()?
+                            Response::ok().with_headers(req).body(c).to_vec()?
                         }
                         _ => {
                             info!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);
-                            Response::ok(req).to_vec()?
+                            Response::ok().with_headers(req).to_vec()?
                         }
                     }
                 }

@@ -3,7 +3,7 @@ use either::Either;
 use ockam::identity::{AuthorityService, Identifier, Identity, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::Resource;
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Response};
 use ockam_node::WorkerBuilder;
 
 use crate::auth::Server;
@@ -27,7 +27,6 @@ impl NodeManagerWorker {
     pub(super) async fn start_authenticated_service(
         &self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: StartAuthenticatedServiceRequest,
     ) -> Result<Response, Response<Error>> {
         match self
@@ -35,15 +34,14 @@ impl NodeManagerWorker {
             .start_authenticated_service(ctx, request.addr.into())
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_uppercase_service(
         &self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: StartUppercaseServiceRequest,
     ) -> Result<Response, Response<Error>> {
         match self
@@ -51,15 +49,14 @@ impl NodeManagerWorker {
             .start_uppercase_service(ctx, request.addr.into())
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_echoer_service(
         &self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: StartEchoerServiceRequest,
     ) -> Result<Response, Response<Error>> {
         match self
@@ -67,15 +64,14 @@ impl NodeManagerWorker {
             .start_echoer_service(ctx, request.addr.into())
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_hop_service(
         &self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: StartHopServiceRequest,
     ) -> Result<Response, Response<Error>> {
         match self
@@ -83,15 +79,14 @@ impl NodeManagerWorker {
             .start_hop_service(ctx, request.addr.into())
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_credentials_service(
         &self,
         ctx: &Context,
-        request_header: &RequestHeader,
         request: StartCredentialsService,
     ) -> Result<Response, Response<Error>> {
         let addr: Address = request.address().into();
@@ -99,48 +94,43 @@ impl NodeManagerWorker {
         let encoded_identity = request.public_identity();
         let identifier = match Identity::create(encoded_identity).await {
             Ok(identity) => identity.identifier().clone(),
-            Err(e) => return Err(Response::bad_request(request_header, &e.to_string())),
+            Err(e) => return Err(Response::bad_request_no_request(&e.to_string())),
         };
         match self
             .node_manager
             .start_credentials_service_with_trusted_identity(ctx, &identifier, addr, oneway)
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn list_services_of_type(
         &self,
-        req: &RequestHeader,
         service_type: &str,
     ) -> Result<Response<ServiceList>, Response<Error>> {
         match self.node_manager.list_services_of_type(service_type).await {
-            Ok(Either::Left(services)) => Ok(Response::ok(req).body(ServiceList::new(services))),
-            Ok(Either::Right(message)) => Err(Response::bad_request(req, &message)),
-            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+            Ok(Either::Left(services)) => Ok(Response::ok().body(ServiceList::new(services))),
+            Ok(Either::Right(message)) => Err(Response::bad_request_no_request(&message)),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
-    pub(super) async fn list_services(
-        &self,
-        req: &RequestHeader,
-    ) -> Result<Response<ServiceList>, Response<Error>> {
+    pub(super) async fn list_services(&self) -> Result<Response<ServiceList>, Response<Error>> {
         match self.node_manager.list_services().await {
-            Ok(services) => Ok(Response::ok(req).body(ServiceList::new(services))),
-            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+            Ok(services) => Ok(Response::ok().body(ServiceList::new(services))),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn get_node_status(
         &self,
         context: &Context,
-        request_header: &RequestHeader,
     ) -> Result<Response<NodeStatus>, Response<Error>> {
         match self.node_manager.get_node_status(context).await {
-            Ok(node_status) => Ok(Response::ok(request_header).body(node_status)),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(node_status) => Ok(Response::ok().body(node_status)),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 }

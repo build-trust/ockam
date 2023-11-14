@@ -86,7 +86,7 @@ impl Worker for EnrollmentTokenIssuer {
                         .issue_token(&from, att.into_owned_attributes(), duration, ttl_count)
                         .await
                     {
-                        Ok(otc) => Response::ok(&req).body(&otc).to_vec()?,
+                        Ok(otc) => Response::ok().with_headers(&req).body(&otc).to_vec()?,
                         Err(error) => {
                             Response::internal_error(&req, &error.to_string()).to_vec()?
                         }

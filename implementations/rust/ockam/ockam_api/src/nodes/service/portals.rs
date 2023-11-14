@@ -33,18 +33,14 @@ use super::{NodeManager, NodeManagerWorker};
 
 /// INLETS
 impl NodeManagerWorker {
-    pub(super) async fn get_inlets(
-        &self,
-        req: &RequestHeader,
-    ) -> Result<Response<InletList>, Response<Error>> {
+    pub(super) async fn get_inlets(&self) -> Result<Response<InletList>, Response<Error>> {
         let inlets = self.node_manager.list_inlets().await;
-        Ok(Response::ok(req).body(inlets))
+        Ok(Response::ok().body(inlets))
     }
 
     pub(super) async fn create_inlet(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         create_inlet: CreateInlet,
     ) -> Result<Response<InletStatus>, Response<Error>> {
         let CreateInlet {
@@ -70,33 +66,30 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(status) => Ok(Response::ok(req).body(status)),
-            Err(e) => Err(Response::bad_request(req, &format!("{e:?}"))),
+            Ok(status) => Ok(Response::ok().body(status)),
+            Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
     }
 
     pub(super) async fn delete_inlet(
         &self,
-        req: &RequestHeader,
         alias: &str,
     ) -> Result<Response<InletStatus>, Response<Error>> {
         match self.node_manager.delete_inlet(alias).await {
-            Ok(status) => Ok(Response::ok(req).body(status)),
-            Err(e) => Err(Response::bad_request(req, &format!("{e:?}"))),
+            Ok(status) => Ok(Response::ok().body(status)),
+            Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
     }
 
     pub(super) async fn show_inlet(
         &self,
-        req: &RequestHeader,
         alias: &str,
     ) -> Result<Response<InletStatus>, Response<Error>> {
         match self.node_manager.show_inlet(alias).await {
-            Some(inlet) => Ok(Response::ok(req).body(inlet)),
-            None => Err(Response::not_found(
-                req,
-                &format!("Inlet with alias {alias} not found"),
-            )),
+            Some(inlet) => Ok(Response::ok().body(inlet)),
+            None => Err(Response::not_found_no_request(&format!(
+                "Inlet with alias {alias} not found"
+            ))),
         }
     }
 }
@@ -106,7 +99,6 @@ impl NodeManagerWorker {
     pub(super) async fn create_outlet(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         create_outlet: CreateOutlet,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         let CreateOutlet {
@@ -128,49 +120,47 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(outlet_status) => Ok(Response::ok(req).body(outlet_status)),
-            Err(e) => Err(Response::bad_request(req, &format!("{e:?}"))),
+            Ok(outlet_status) => Ok(Response::ok().body(outlet_status)),
+            Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
     }
 
     pub(super) async fn delete_outlet(
         &self,
-        req: &RequestHeader,
         alias: &str,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         match self.node_manager.delete_outlet(alias).await {
             Ok(res) => match res {
-                Some(outlet_info) => Ok(Response::ok(req).body(OutletStatus::new(
+                Some(outlet_info) => Ok(Response::ok().body(OutletStatus::new(
                     outlet_info.socket_addr,
                     outlet_info.worker_addr.clone(),
                     alias,
                     None,
                 ))),
-                None => Err(Response::bad_request(
-                    req,
-                    &format!("Outlet with alias {alias} not found"),
-                )),
+                None => Err(Response::bad_request_no_request(&format!(
+                    "Outlet with alias {alias} not found"
+                ))),
             },
-            Err(e) => Err(Response::bad_request(req, &format!("{e:?}"))),
+            Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
     }
 
     pub(super) async fn show_outlet(
         &self,
-        req: &RequestHeader,
         alias: &str,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         match self.node_manager.show_outlet(alias).await {
-            Some(outlet) => Ok(Response::ok(req).body(outlet)),
-            None => Err(Response::not_found(
-                req,
-                &format!("Outlet with alias {alias} not found"),
-            )),
+            Some(outlet) => Ok(Response::ok().body(outlet)),
+            None => Err(Response::not_found_no_request(&format!(
+                "Outlet with alias {alias} not found"
+            ))),
         }
     }
 
     pub(super) async fn get_outlets(&self, req: &RequestHeader) -> Response<OutletList> {
-        Response::ok(req).body(self.node_manager.list_outlets().await)
+        Response::ok()
+            .with_headers(req)
+            .body(self.node_manager.list_outlets().await)
     }
 }
 

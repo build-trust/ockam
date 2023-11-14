@@ -46,7 +46,7 @@ impl NodeManagerWorker {
             .create_relay(ctx, &address, alias, at_rust_node, authorized)
             .await
         {
-            Ok(body) => Ok(Response::ok(req).body(body)),
+            Ok(body) => Ok(Response::ok().with_headers(req).body(body)),
             Err(err) => Err(Response::internal_error(
                 req,
                 &format!("Failed to create relay: {}", err),
@@ -68,7 +68,7 @@ impl NodeManagerWorker {
             .delete_relay_impl(ctx, remote_address)
             .await
         {
-            Ok(body) => Ok(Response::ok(req).body(body)),
+            Ok(body) => Ok(Response::ok().with_headers(req).body(body)),
             Err(err) => match err.code().kind {
                 Kind::NotFound => Err(Response::not_found(
                     req,
@@ -95,7 +95,9 @@ impl NodeManagerWorker {
         req: &RequestHeader,
     ) -> Result<Response<Vec<RelayInfo>>, Response<Error>> {
         debug!("Handling GetRelays request");
-        Ok(Response::ok(req).body(self.node_manager.get_relays().await))
+        Ok(Response::ok()
+            .with_headers(req)
+            .body(self.node_manager.get_relays().await))
     }
 }
 
@@ -208,7 +210,9 @@ impl NodeManager {
         debug!("Handling ShowRelay request");
         if let Some(relay) = self.registry.relays.get(remote_address).await {
             debug!(%remote_address, "Relay not found in node registry");
-            Ok(Response::ok(req).body(Some(RelayInfo::from(relay.to_owned()))))
+            Ok(Response::ok()
+                .with_headers(req)
+                .body(Some(RelayInfo::from(relay.to_owned()))))
         } else {
             error!(%remote_address, "Relay not found in the node registry");
             Err(Response::not_found(

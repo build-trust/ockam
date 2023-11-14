@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Policy;
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Response};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
@@ -29,7 +29,6 @@ impl NodeManagerWorker {
     pub(super) async fn start_kafka_outlet_service(
         &self,
         context: &Context,
-        request_header: &RequestHeader,
         body: StartServiceRequest<StartKafkaOutletRequest>,
     ) -> Result<Response<()>, Response<Error>> {
         match self
@@ -41,22 +40,21 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header).body(())),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok().body(())),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_kafka_direct_service(
         &self,
         context: &Context,
-        request_header: &RequestHeader,
         body: StartServiceRequest<StartKafkaDirectRequest>,
     ) -> Result<Response<()>, Response<Error>> {
         let request = body.request();
         let consumer_route: Option<MultiAddr> =
             match request.consumer_route().map(|r| r.parse()).transpose() {
                 Ok(multiaddr) => multiaddr,
-                Err(e) => return Err(Response::bad_request(request_header, &e.to_string())),
+                Err(e) => return Err(Response::bad_request_no_request(&e.to_string())),
             };
 
         match self
@@ -72,21 +70,20 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header).body(())),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok().body(())),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_kafka_consumer_service(
         &self,
         context: &Context,
-        request_header: &RequestHeader,
         body: StartServiceRequest<StartKafkaConsumerRequest>,
     ) -> Result<Response<()>, Response<Error>> {
         let request = body.request();
         let outlet_node_multiaddr: MultiAddr = match request.project_route().to_string().parse() {
             Ok(multiaddr) => multiaddr,
-            Err(e) => return Err(Response::bad_request(request_header, &e.to_string())),
+            Err(e) => return Err(Response::bad_request_no_request(&e.to_string())),
         };
 
         match self
@@ -102,21 +99,20 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header).body(())),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok().body(())),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn start_kafka_producer_service(
         &mut self,
         context: &Context,
-        request_header: &RequestHeader,
         body: StartServiceRequest<StartKafkaProducerRequest>,
     ) -> Result<Response<()>, Response<Error>> {
         let request = body.request();
         let outlet_node_multiaddr: MultiAddr = match request.project_route().to_string().parse() {
             Ok(multiaddr) => multiaddr,
-            Err(e) => return Err(Response::bad_request(request_header, &e.to_string())),
+            Err(e) => return Err(Response::bad_request_no_request(&e.to_string())),
         };
 
         match self
@@ -132,15 +128,14 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(_) => Ok(Response::ok(request_header).body(())),
-            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+            Ok(_) => Ok(Response::ok().body(())),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(crate) async fn delete_kafka_service(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         delete_service_request: DeleteServiceRequest,
         kind: KafkaServiceKind,
     ) -> Result<Response<()>, Response<Error>> {
@@ -149,20 +144,18 @@ impl NodeManagerWorker {
             .delete_kafka_service(ctx, delete_service_request.address(), kind)
             .await
         {
-            Ok(DeleteKafkaServiceResult::ServiceDeleted) => Ok(Response::ok(req)),
+            Ok(DeleteKafkaServiceResult::ServiceDeleted) => Ok(Response::ok()),
             Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }) => {
-                Err(Response::not_found(
-                    req,
+                Err(Response::not_found_no_request(
                     &format!("Service at address '{address}' with kind {kind} not found"),
                 ))
             },
             Ok(DeleteKafkaServiceResult::IncorrectKind { address, actual, expected }) => {
-                Err(Response::not_found(
-                    req,
+                Err(Response::not_found_no_request(
                     &format!("Service at address '{address}' is not a kafka {expected}. A service of kind {actual} was found instead"),
                 ))
             },
-            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+            Err(e) => Err(Response::internal_error_no_request( &e.to_string())),
         }
     }
 }

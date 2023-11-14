@@ -106,45 +106,46 @@ impl NodeManager {
 
 impl NodeManagerWorker {
     pub(super) async fn get_tcp_connections(&self, req: &RequestHeader) -> Response<TransportList> {
-        Response::ok(req).body(self.node_manager.get_tcp_connections())
+        Response::ok()
+            .with_headers(req)
+            .body(self.node_manager.get_tcp_connections())
     }
 
     pub(super) async fn get_tcp_connection(
         &self,
-        req: &RequestHeader,
         address: String,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
         self.node_manager
             .get_tcp_connection(address.to_string())
-            .map(|status| Response::ok(req).body(status))
+            .map(|status| Response::ok().body(status))
             .ok_or_else(|| {
                 let msg = format!("Connection {address} was not found in the registry.");
-                Response::not_found(req, &msg)
+                Response::not_found_no_request(&msg)
             })
     }
 
     pub(super) async fn get_tcp_listeners(&self, req: &RequestHeader) -> Response<TransportList> {
-        Response::ok(req).body(self.node_manager.get_tcp_listeners())
+        Response::ok()
+            .with_headers(req)
+            .body(self.node_manager.get_tcp_listeners())
     }
 
     pub(super) async fn get_tcp_listener(
         &self,
-        req: &RequestHeader,
         address: String,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
         self.node_manager
             .get_tcp_listener(address.to_string())
-            .map(|status| Response::ok(req).body(status))
+            .map(|status| Response::ok().body(status))
             .ok_or_else(|| {
                 let msg = format!("Listener {address} was not found in the registry.");
-                Response::bad_request(req, &msg)
+                Response::bad_request_no_request(&msg)
             })
     }
 
     pub(super) async fn create_tcp_connection<'a>(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
         create: CreateTcpConnection,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
         let CreateTcpConnection { addr, .. } = create;
@@ -153,15 +154,14 @@ impl NodeManagerWorker {
         self.node_manager
             .create_tcp_connection(addr.to_string(), ctx)
             .await
-            .map(|status| Response::ok(req).body(status))
+            .map(|status| Response::ok().body(status))
             .map_err(|msg| {
-                Response::bad_request(req, &format!("Unable to connect to {addr}: {msg}"))
+                Response::bad_request_no_request(&format!("Unable to connect to {addr}: {msg}"))
             })
     }
 
     pub(super) async fn create_tcp_listener<'a>(
         &self,
-        req: &RequestHeader,
         create: CreateTcpListener,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
         let CreateTcpListener { addr, .. } = create;
@@ -170,15 +170,14 @@ impl NodeManagerWorker {
         self.node_manager
             .create_tcp_listener(addr.to_string())
             .await
-            .map(|status| Response::ok(req).body(status))
+            .map(|status| Response::ok().body(status))
             .map_err(|msg| {
-                Response::bad_request(req, &format!("Unable to listen on {addr}: {msg}"))
+                Response::bad_request_no_request(&format!("Unable to listen on {addr}: {msg}"))
             })
     }
 
     pub(super) async fn delete_tcp_connection(
         &self,
-        req: &RequestHeader,
         delete: DeleteTransport,
     ) -> Result<Response<()>, Response<Error>> {
         info!("Handling request to stop listener: {}", delete.address);
@@ -186,13 +185,12 @@ impl NodeManagerWorker {
         self.node_manager
             .delete_tcp_connection(delete.address)
             .await
-            .map(|status| Response::ok(req).body(status))
-            .map_err(|msg| Response::bad_request(req, &msg))
+            .map(|status| Response::ok().body(status))
+            .map_err(|msg| Response::bad_request_no_request(&msg))
     }
 
     pub(super) async fn delete_tcp_listener(
         &self,
-        req: &RequestHeader,
         delete: DeleteTransport,
     ) -> Result<Response<()>, Response<Error>> {
         info!("Handling request to stop listener: {}", delete.address);
@@ -200,7 +198,7 @@ impl NodeManagerWorker {
         self.node_manager
             .delete_tcp_listener(delete.address)
             .await
-            .map(|status| Response::ok(req).body(status))
-            .map_err(|msg| Response::bad_request(req, &msg))
+            .map(|status| Response::ok().body(status))
+            .map_err(|msg| Response::bad_request_no_request(&msg))
     }
 }

@@ -88,17 +88,17 @@ impl Worker for DirectAuthenticator {
                     let add: AddMember = dec.decode()?;
                     self.add_member(&from, add.member(), add.attributes())
                         .await?;
-                    Response::ok(&req).to_vec()?
+                    Response::ok().with_headers(&req).to_vec()?
                 }
                 (Some(Method::Get), ["member_ids"]) => {
                     let entries = self.list_members().await?;
                     let ids: Vec<Identifier> = entries.into_keys().collect();
-                    Response::ok(&req).body(ids).to_vec()?
+                    Response::ok().with_headers(&req).body(ids).to_vec()?
                 }
                 (Some(Method::Get), [""]) | (Some(Method::Get), ["members"]) => {
                     let entries = self.list_members().await?;
 
-                    Response::ok(&req).body(entries).to_vec()?
+                    Response::ok().with_headers(&req).body(entries).to_vec()?
                 }
                 (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
                     let identifier = Identifier::try_from(id.to_string())?;
@@ -106,7 +106,7 @@ impl Worker for DirectAuthenticator {
                         .delete(&identifier)
                         .await?;
 
-                    Response::ok(&req).to_vec()?
+                    Response::ok().with_headers(&req).to_vec()?
                 }
 
                 _ => Response::unknown_path(&req).to_vec()?,
