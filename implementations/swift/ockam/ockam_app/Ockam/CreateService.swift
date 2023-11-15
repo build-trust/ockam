@@ -4,6 +4,7 @@ struct CreateServiceView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @FocusState private var isFocused: Bool
 
+    @Binding var state_loaded: Bool
     @State var isProcessing = false
     @State var errorMessage = ""
     @State var serviceName = ""
@@ -104,12 +105,12 @@ struct CreateServiceView: View {
     }
 
     func canCreateService() -> Bool {
-        return !self.serviceName.isEmpty && !self.serviceAddress.isEmpty
+        return !self.serviceName.isEmpty && !self.serviceAddress.isEmpty && state_loaded
     }
 }
 
 struct CreateServiceView_Previews: PreviewProvider {
     static var previews: some View {
-        CreateServiceView()
+        CreateServiceView(state_loaded: .constant(true))
     }
 }

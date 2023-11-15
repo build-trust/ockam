@@ -41,6 +41,12 @@ extern "C" fn initialize_application(
         notification: super::notification::c::Notification,
     ) -> (),
 ) -> bool {
+    unsafe {
+        if APPLICATION_STATE.is_some() {
+            panic!("initialize_application must be called only once")
+        }
+    }
+
     for &key in &[
         "OCKAM_CONTROLLER_ADDR",
         "OCKAM_CONTROLLER_IDENTITY_ID",
@@ -290,19 +296,6 @@ extern "C" fn enroll_user() {
         .context()
         .runtime()
         .spawn(async move { app_state.enroll_user().await });
-}
-
-/// Starts user enrollment and accept the invitation with the provided id.
-#[no_mangle]
-extern "C" fn enroll_user_and_accept_invitation(id: *const c_char) {
-    let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
-    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
-    app_state.context().runtime().spawn(async {
-        let result = app_state.enroll_user_and_accept_invitation(id).await;
-        if let Err(err) = result {
-            error!(?err, "Couldn't enroll and accept the invitation");
-        }
-    });
 }
 
 /// This function retrieve the current version of the application state, for polling purposes.

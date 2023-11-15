@@ -7,6 +7,7 @@ use crate::api::state::{c, convert_to_c, rust, OrchestratorStatus};
 extern "C" fn mock_application_state() -> c::ApplicationState {
     let state = rust::ApplicationState {
         enrolled: true,
+        loaded: true,
         orchestrator_status: OrchestratorStatus::Connected,
         enrollment_name: Some("Davide Baldo".into()),
         enrollment_email: Some("davide@baldo.me".into()),
@@ -25,7 +26,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                 available: true,
             },
             rust::LocalService {
-                name: "My Router Admin Page".into(),
+                name: "My Admin Page".into(),
                 address: "localhost".into(),
                 port: 8080,
                 scheme: Some("http".into()),
@@ -44,7 +45,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                 invitations: vec![
                     rust::Invitation {
                         id: "5373".into(),
-                        service_name: "New Concept".into(),
+                        service_name: "New Website Concept".into(),
                         service_scheme: Some("http".into()),
                         accepting: false,
                         accepted: false,
@@ -52,7 +53,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                     },
                     rust::Invitation {
                         id: "5279".into(),
-                        service_name: "New Concept 2".into(),
+                        service_name: "Alternative Website Concept".into(),
                         service_scheme: Some("http".into()),
                         accepting: false,
                         accepted: false,

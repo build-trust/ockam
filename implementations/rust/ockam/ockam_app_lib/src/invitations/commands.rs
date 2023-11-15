@@ -6,7 +6,7 @@ use tracing::{debug, info, trace, warn};
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
 use crate::invitations::state::ReceivedInvitationStatus;
-use crate::state::{AppState, PROJECT_NAME};
+use crate::state::{AppState, StateKind, PROJECT_NAME};
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 
 impl AppState {
@@ -39,6 +39,7 @@ impl AppState {
             }
         };
 
+        self.mark_as_loaded(StateKind::Invitations);
         if changes.changed {
             self.publish_state().await;
             self.load_services_from_invitations(accepted_invitations.unwrap())

@@ -47,3 +47,26 @@ func restartCurrentProcess() {
     // and quits
     exit(0)
 }
+
+
+func parseInvitationIdFromUrl(url: URL) -> String? {
+    if let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+        // This host matches the `invitations` segment
+        var segments = [urlComponents.host]
+        // The path contains the `accept` and `invitation_id` segments
+        segments.append(
+            contentsOf: urlComponents.path.split(
+                separator: "/", omittingEmptySubsequences: true
+            )
+            .map(String.init))
+        if segments.count >= 3 {
+            if segments[0] == "invitations" && segments[1] == "accept" {
+                return segments[2].unsafelyUnwrapped
+            }
+        } else {
+            print("Ignoring URL \(url)")
+        }
+    }
+
+    return nil
+}

@@ -3,6 +3,7 @@ import SwiftUI
 struct ShareServiceView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
 
+    @Binding var state_loaded: Bool
     @State var isProcessing = false
     @State public var localService: LocalService
     @State var emails = Set<String>()
@@ -62,13 +63,14 @@ struct ShareServiceView: View {
     }
 
     func canShareService() -> Bool {
-        return !self.emails.isEmpty
+        return !self.emails.isEmpty && state_loaded
     }
 }
 
 struct ShareServiceView_Previews: PreviewProvider {
     static var previews: some View {
         ShareServiceView(
+            state_loaded: .constant(true),
             localService: LocalService(
                 name: "my-service",
                 address: "127.0.0.1",
