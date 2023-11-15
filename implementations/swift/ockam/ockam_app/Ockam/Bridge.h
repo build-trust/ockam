@@ -90,6 +90,7 @@ typedef struct C_ServiceGroup {
 
 typedef struct C_ApplicationState {
   uint8_t enrolled;
+  uint8_t loaded;
   enum C_OrchestratorStatus orchestrator_status;
   /**
    * Optional
@@ -173,11 +174,6 @@ void reset_application_state(void);
  * Starts user enrollment
  */
 void enroll_user(void);
-
-/**
- * Starts user enrollment and accept the invitation with the provided id.
- */
-void enroll_user_and_accept_invitation(const char *id);
 
 /**
  * This function retrieve the current version of the application state, for polling purposes.

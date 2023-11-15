@@ -3,6 +3,15 @@
 */
 
 import SwiftUI
+import AppKit
+import OSLog
+
+
+// you can read the logs inside the console application
+let logger: Logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier!,
+    category: String(describing: OckamApp.self)
+)
 
 /*
     This class was needed to allow receiving events from the C library.
@@ -14,8 +23,10 @@ import SwiftUI
 class StateContainer {
     static var shared = StateContainer()
 
+    var callback: ((ApplicationState) -> Void)?
     var state = ApplicationState(
         enrolled: false,
+        loaded: false,
         orchestrator_status: OrchestratorStatus.Disconnected,
         enrollmentName: nil,
         enrollmentEmail: nil,
@@ -27,23 +38,48 @@ class StateContainer {
     )
 
     func update(state: ApplicationState) {
-        debugPrint("update: ", state)
+        debugPrint(state)
         self.state = state
         if let callback = self.callback {
             callback(state)
         }
     }
 
-    var callback: ((ApplicationState) -> Void)?
-    func callback(callback: @escaping (ApplicationState) -> Void) {
+    func callback(_ callback: @escaping (ApplicationState) -> Void) {
         self.callback = callback
         callback(state)
     }
 }
 
+// This is needed to properly receive and handle every url event, swiftui
+// does have a simpler mechanism, however it doesn't handle the first time
+// a link is clicked and the application is not yet started
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            logger.info("Received url: \(url.absoluteString)")
+            if let invitationId = parseInvitationIdFromUrl(url: url) {
+                InvitationContainer.shared.update(invitationId: invitationId)
+            }
+        }
+    }
+}
+
+// This is needed to create a bridge between a static context and the SwiftUI world
+class InvitationContainer: ObservableObject {
+    static var shared = InvitationContainer()
+    @Published var id = ""
+
+    func update(invitationId: String) {
+        self.id = invitationId;
+    }
+}
+
 @main
 struct OckamApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State var state: ApplicationState = StateContainer.shared.state
+    @State var invitation: InvitationContainer = InvitationContainer.shared
     // when the application initialization fails to load we enter a broken state
     // where we only propose a reset to the user
     var broken: Bool = false
@@ -60,11 +96,6 @@ struct OckamApp: App {
                 .frame(width: 120,height: 40)
             } else {
                 MainView(state: $state)
-                    .onAppear(perform: {
-                        StateContainer.shared.callback(callback: { state in
-                            self.state = state
-                        })
-                    })
             }
         } label: {
             Image("MenuBarIcon")
@@ -74,16 +105,27 @@ struct OckamApp: App {
                 .onAppear(perform: {
                     if broken {
                         openWindow(id: "broken-state")
+                    } else {
+                        StateContainer.shared.callback{ state in
+                            self.state = state
+                        }
+                    }
+                })
+                .onReceive(invitation.$id, perform: { invitationId in
+                    if invitationId != "" {
+                        logger.info("opening 'accepting-invitation' window with invitation \(invitationId)")
+                        // without this it won't show the window when a link is clicked and the application
+                        // has not yet started
+                        NSApp.activate(ignoringOtherApps: true)
+                        openWindow(id: "accepting-invitation")
                     }
                 })
         }
         .menuBarExtraStyle(.window)
         .commandsRemoved()
 
-        // Declare a window with an empty view to handle the ockam:// url
-        // A hack to overcome the fact that `onOpenURL` only works on `Windows`
         Window("Accepting invitation", id: "accepting-invitation") {
-            OpenUrlView(enrolled: $state.enrolled)
+            AcceptingInvitation(state: $state, invitationIdContainer: $invitation)
         }
         .windowResizability(.contentSize)
 
@@ -95,7 +137,7 @@ struct OckamApp: App {
 
         // Declare a state-independent window, not open by default
         Window("Create an outlet to a tcp service", id: "create-service") {
-            CreateServiceView()
+            CreateServiceView(state_loaded: $state.loaded)
         }
         .windowResizability(.contentSize)
 
@@ -103,6 +145,7 @@ struct OckamApp: App {
         WindowGroup("Share a service", id: "share-service", for: LocalService.ID.self) {
             $localServiceId in
             ShareServiceView(
+                state_loaded: $state.loaded,
                 localService: StateContainer.shared.state.getLocalService(
                     localServiceId.unsafelyUnwrapped
                 ).unsafelyUnwrapped)
@@ -111,9 +154,10 @@ struct OckamApp: App {
     }
 
     init() {
+        logger.info("Application started")
         if !swift_initialize_application() {
             broken = true
-            print("Could not initialize application: entering broken state")
+            logger.error("Could not initialize application: entering broken state")
         }
     }
 }

@@ -1,3 +1,4 @@
+mod kind;
 mod model;
 mod repository;
 mod tasks;
@@ -44,6 +45,7 @@ use crate::state::tasks::{
     RefreshInletsTask, RefreshInvitationsTask, RefreshProjectsTask, RefreshRelayTask,
 };
 use crate::{api, Result};
+pub use kind::StateKind;
 
 pub const NODE_NAME: &str = "ockam_app";
 // TODO: static project name of "default" is an unsafe default behavior due to backend uniqueness requirements
@@ -71,6 +73,7 @@ pub struct AppState {
     application_state_callback: Option<ApplicationStateCallback>,
     notification_callback: Option<NotificationCallback>,
     node_manager: Arc<RwLock<Arc<InMemoryNode>>>,
+    state_loaded: Arc<Mutex<u8>>,
     refresh_project_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_invitations_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_inlets_scheduler: Arc<OnceLock<Scheduler>>,
@@ -166,6 +169,7 @@ impl AppState {
             refresh_relay_scheduler: Arc::new(Default::default()),
             last_published_snapshot: Arc::new(Mutex::new(None)),
             tracing_guard: Arc::new(Default::default()),
+            state_loaded: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -503,6 +507,7 @@ impl AppState {
     /// Creates a snapshot of the application state without any side-effects
     pub async fn snapshot(&self) -> Result<api::state::rust::ApplicationState> {
         let enrolled = self.is_enrolled().await.unwrap_or(false);
+        let loaded;
         let orchestrator_status = self.orchestrator_status();
         let enrollment_name;
         let enrollment_email;
@@ -516,6 +521,7 @@ impl AppState {
 
         // we want to sort everything to avoid having to deal with ordering in the UI
         if enrolled {
+            loaded = self.is_state_loaded();
             local_services = self
                 .tcp_outlet_list()
                 .await
@@ -585,7 +591,7 @@ impl AppState {
                             .filter(|invitation| invitation.owner_email == email)
                             .map(|invitation| Invitation {
                                 id: invitation.id.clone(),
-                                service_name: invitation.target_id.clone(),
+                                service_name: invitation.id.clone(),
                                 service_scheme: None,
                                 accepting: invitation_state
                                     .received
@@ -648,6 +654,7 @@ impl AppState {
             enrollment_image = Some(user_info.picture);
             enrollment_github_user = Some(user_info.nickname);
         } else {
+            loaded = false;
             enrollment_name = None;
             enrollment_email = None;
             enrollment_image = None;
@@ -659,6 +666,7 @@ impl AppState {
 
         Ok(ApplicationState {
             enrolled,
+            loaded,
             orchestrator_status,
             enrollment_name,
             enrollment_email,

@@ -10,7 +10,7 @@ use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::Enr
 
 use super::error::{Error, Result};
 use crate::projects::error::Error::{InternalFailure, ListingFailed};
-use crate::state::AppState;
+use crate::state::{AppState, StateKind};
 
 impl AppState {
     pub(crate) async fn create_enrollment_ticket(
@@ -87,6 +87,7 @@ impl AppState {
         }
 
         *self.projects().write().await = projects;
+        self.mark_as_loaded(StateKind::Projects);
         self.publish_state().await;
         Ok(())
     }

@@ -90,13 +90,6 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn enroll_user_and_accept_invitation(&self, id: String) -> Result<()> {
-        self.enroll_user().await?;
-        self.schedule_invitations_refresh_now();
-        self.accept_invitation(id).await?;
-        Ok(())
-    }
-
     async fn enroll_with_token(&self) -> Result<EnrollmentOutcome> {
         if self.is_enrolled().await.unwrap_or_default() {
             debug!("User is already enrolled");

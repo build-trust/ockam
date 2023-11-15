@@ -132,6 +132,7 @@ pub mod rust {
     #[derive(Default, Clone, Debug, PartialEq)]
     pub struct ApplicationState {
         pub enrolled: bool,
+        pub loaded: bool,
         pub orchestrator_status: OrchestratorStatus,
         pub enrollment_name: Option<String>,
         pub enrollment_email: Option<String>,
@@ -222,6 +223,7 @@ pub mod c {
     #[repr(C)]
     pub struct ApplicationState {
         pub(super) enrolled: u8,
+        pub(super) loaded: u8,
         pub(super) orchestrator_status: OrchestratorStatus,
         /// Optional
         pub(super) enrollment_name: *const c_char,
@@ -319,6 +321,7 @@ fn group_to_c(group: rust::ServiceGroup) -> *const c::ServiceGroup {
 pub(crate) fn convert_to_c(state: rust::ApplicationState) -> c::ApplicationState {
     c::ApplicationState {
         enrolled: state.enrolled as u8,
+        loaded: state.loaded as u8,
         orchestrator_status: state.orchestrator_status,
         enrollment_name: to_optional_c_string(state.enrollment_name),
         enrollment_email: to_optional_c_string(state.enrollment_email),
