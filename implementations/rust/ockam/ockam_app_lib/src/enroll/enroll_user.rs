@@ -14,6 +14,12 @@ use ockam_api::enroll::oidc_service::OidcService;
 use crate::state::{AppState, NODE_NAME, PROJECT_NAME};
 use crate::Result;
 
+enum EnrollmentOutcome {
+    AlreadyEnrolled,
+    PendingValidation,
+    Successful,
+}
+
 impl AppState {
     /// Enroll a user.
     ///
@@ -24,17 +30,47 @@ impl AppState {
     pub async fn enroll_user(&self) -> Result<()> {
         let result = self.enroll_with_token().await;
 
-        if let Err(err) = result {
-            error!(?err, "Failed to enroll user");
-            self.update_orchestrator_status(OrchestratorStatus::Disconnected);
-            self.publish_state().await;
-            self.notify(Notification {
-                kind: Kind::Error,
-                title: "Failed to enroll user".to_string(),
-                message: format!("{}", err),
-            });
-            return Err(err);
+        match result {
+            Ok(outcome) => match outcome {
+                EnrollmentOutcome::AlreadyEnrolled => {
+                    return Ok(());
+                }
+                EnrollmentOutcome::PendingValidation => {
+                    self.notify(Notification {
+                        kind: Kind::Information,
+                        title: "Email Verification Required".to_string(),
+                        message: "For security reasons, we need to confirm your email address.\
+                     A verification email has been sent to you. \
+                     Please review your inbox and follow the provided steps \
+                     to complete the verification process"
+                            .to_string(),
+                    });
+                    self.update_orchestrator_status(OrchestratorStatus::Disconnected);
+                    self.publish_state().await;
+                    return Ok(());
+                }
+                EnrollmentOutcome::Successful => {
+                    // notify and keep going
+                    self.notify(Notification {
+                        kind: Kind::Information,
+                        title: "Enrolled successfully!".to_string(),
+                        message: "You can now use the Ockam app".to_string(),
+                    });
+                }
+            },
+            Err(err) => {
+                error!(?err, "Failed to enroll user");
+                self.update_orchestrator_status(OrchestratorStatus::Disconnected);
+                self.publish_state().await;
+                self.notify(Notification {
+                    kind: Kind::Error,
+                    title: "Failed to enroll user".to_string(),
+                    message: format!("{}", err),
+                });
+                return Err(err);
+            }
         }
+
         // Reset the node manager to include the project's setup, needed to create the relay.
         // This is necessary because the project data is used in the worker initialization,
         // which can't be rerun manually once the worker is started.
@@ -61,10 +97,10 @@ impl AppState {
         Ok(())
     }
 
-    async fn enroll_with_token(&self) -> Result<()> {
+    async fn enroll_with_token(&self) -> Result<EnrollmentOutcome> {
         if self.is_enrolled().await.unwrap_or_default() {
             debug!("User is already enrolled");
-            return Ok(());
+            return Ok(EnrollmentOutcome::AlreadyEnrolled);
         }
 
         self.update_orchestrator_status(OrchestratorStatus::WaitingForToken);
@@ -77,22 +113,16 @@ impl AppState {
         // retrieve the user information
         let user_info = oidc_service.get_user_info(&token).await?;
         info!(?user_info, "User info retrieved successfully");
+
+        if !user_info.email_verified {
+            return Ok(EnrollmentOutcome::PendingValidation);
+        }
+
         let cli_state = self.state().await;
         cli_state
             .users_info
             .overwrite(&user_info.email, user_info.clone())?;
-
-        if !user_info.email_verified {
-            self.notify(Notification {
-                kind: Kind::Information,
-                title: "Email Verification Required".to_string(),
-                message: "For security reasons, we need to confirm your email address.\
-                     A verification email has been sent to you. \
-                     Please review your inbox and follow the provided steps \
-                     to complete the verification process"
-                    .to_string(),
-            })
-        }
+        cli_state.users_info.set_default(&user_info.email)?;
 
         // enroll the current user using that token on the controller
         {
@@ -114,13 +144,7 @@ impl AppState {
             .into_diagnostic()?;
         info!(%identifier, "User enrolled successfully");
 
-        self.notify(Notification {
-            kind: Kind::Information,
-            title: "Enrolled successfully!".to_string(),
-            message: "You can now use the Ockam app".to_string(),
-        });
-
-        Ok(())
+        Ok(EnrollmentOutcome::Successful)
     }
 
     async fn retrieve_space(&self) -> Result<Space> {
