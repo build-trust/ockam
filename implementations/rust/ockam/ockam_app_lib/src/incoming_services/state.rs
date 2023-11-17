@@ -217,8 +217,12 @@ impl IncomingService {
         self.enabled
     }
 
-    pub fn set_port(&mut self, port: Option<Port>) {
-        self.port = port;
+    pub fn set_port(&mut self, port: Port) {
+        self.port = Some(port);
+    }
+
+    pub fn remove_port(&mut self) {
+        self.port = None;
     }
 
     pub fn enable(&mut self) {
