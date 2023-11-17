@@ -11,8 +11,6 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.SecureChannel.Crypto
   alias Ockam.Tests.Helpers.Echoer
 
-  @identity_impl Ockam.Identity.Stub
-
   setup do
     Node.register_address("test")
     {:ok, alice} = Identity.create()

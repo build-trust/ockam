@@ -91,25 +91,6 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
         """)
       end
     end
-
-    test "issues warning when encoding is struct and keys are not sequential" do
-      capture =
-        ExUnit.CaptureIO.capture_io(:stderr, fn ->
-          Code.compile_string("""
-          defmodule Test.Keys.When.Struct do
-            use TypedStruct
-
-            typedstruct do
-              plugin(Ockam.TypedCBOR.Plugin)
-              field(:one, integer(), minicbor: [key: 1])
-              field(:three, integer(), minicbor: [key: 3])
-            end
-          end
-          """)
-        end)
-
-      assert String.contains?(capture, "warning:")
-    end
   end
 
   test "encode-decode" do

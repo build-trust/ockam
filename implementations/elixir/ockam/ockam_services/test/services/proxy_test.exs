@@ -9,8 +9,6 @@ defmodule Test.Services.ProxyTest do
   alias Ockam.Services.Echo, as: EchoService
   alias Ockam.Services.Proxy
 
-  @tcp_port 5000
-
   ## Helper function to count TCP clients
   def tcp_clients() do
     Ockam.Node.list_addresses()
@@ -53,11 +51,12 @@ defmodule Test.Services.ProxyTest do
       Ockam.Node.stop(echo_address)
     end)
 
-    {:ok, _listener} = Ockam.Transport.TCP.start(listen: [port: @tcp_port])
+    {:ok, _listener} = Ockam.Transport.TCP.start(listen: [port: 0, ref: :listener])
+    {:ok, lport} = Ockam.Transport.TCP.Listener.get_port(:listener)
 
     tcp_clients_count = Enum.count(tcp_clients())
 
-    forward_route = [TCPAddress.new("localhost", @tcp_port), echo_address]
+    forward_route = [TCPAddress.new("localhost", lport), echo_address]
 
     {:ok, proxy_address} = Proxy.create(forward_route: forward_route)
 
