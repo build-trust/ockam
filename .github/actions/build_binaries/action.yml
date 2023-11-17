@@ -88,12 +88,6 @@ runs:
       if: inputs.build_app == 'true'
       run: |
         set -x
-        cargo install tauri-cli --git https://github.com/build-trust/tauri.git --branch add-url-scheme
-
-        cd implementations/rust/ockam/ockam_app/
-        cargo tauri build --target ${{ inputs.target }}
-        cd -
-
         # if any macos, also build the swiftui
         if [[ ${{ inputs.target }} == *apple-darwin* ]]; then
           sudo xcode-select --switch /Applications/Xcode_15.0.app/
