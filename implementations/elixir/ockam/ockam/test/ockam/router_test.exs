@@ -207,10 +207,18 @@ defmodule Ockam.Router.Tests do
     end
 
     test "TCP multi hop test", %{printer_pid: printer} do
+      assert {:ok, _address_a} = TCP.start(listen: [port: 0])
+      {_, ref_a, _} = :ets.last(:ranch_server)
+      port_a = :ranch.get_port(ref_a)
+
+      assert {:ok, _address_b} = TCP.start(listen: [port: 0])
+      {_, ref_b, _} = :ets.last(:ranch_server)
+      port_b = :ranch.get_port(ref_b)
+
       message = %{
         onward_route: [
-          TCPAddress.new({127, 0, 0, 1}, 4002),
-          TCPAddress.new({127, 0, 0, 1}, 5002),
+          TCPAddress.new({127, 0, 0, 1}, port_a),
+          TCPAddress.new({127, 0, 0, 1}, port_b),
           "printer"
         ],
         return_route: [],
@@ -218,10 +226,6 @@ defmodule Ockam.Router.Tests do
       }
 
       :erlang.trace(printer, true, [:receive])
-
-      assert {:ok, _address_a} = TCP.start(listen: [port: 5002])
-
-      assert {:ok, _address_b} = TCP.start(listen: [port: 4002])
 
       Ockam.Router.route(message)
 
@@ -344,10 +348,14 @@ defmodule Ockam.Router.Tests do
         Ockam.Node.stop("ping_pong_client")
       end)
 
+      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 0])
+      {_, tcp_ref, _} = :ets.last(:ranch_server)
+      port = :ranch.get_port(tcp_ref)
+
       ## Initial request
       request = %{
         onward_route: [
-          TCPAddress.new({127, 0, 0, 1}, 5001),
+          TCPAddress.new({127, 0, 0, 1}, :ranch.get_port(tcp_ref)),
           "ping_pong_server"
         ],
         return_route: [
@@ -355,8 +363,6 @@ defmodule Ockam.Router.Tests do
         ],
         payload: "ping 1"
       }
-
-      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 5001])
 
       Ockam.Router.route(request)
 

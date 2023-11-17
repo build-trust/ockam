@@ -22,6 +22,10 @@ test: $(addprefix test_,$(PACKAGES))
 test_%: deps_%
 	cd ockam/$* &&  MIX_BUILD_ROOT="../_build" mix test
 
+test_local: $(addprefix test_local_,$(PACKAGES))
+test_local_%: deps_%
+	cd ockam/$* && mix test --exit-status=0
+
 lint: $(addprefix lint_,$(PACKAGES))
 lint_%: deps_%
 	cd ockam/$* && MIX_ENV=test MIX_BUILD_ROOT="../_build" mix lint

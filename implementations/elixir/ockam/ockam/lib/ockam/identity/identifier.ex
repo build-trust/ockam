@@ -16,4 +16,9 @@ defmodule Ockam.Identity.Identifier do
     {:ok, id} = Base.decode16(hex, case: :lower)
     %Identifier{id: id}
   end
+
+  def from_str(<<"I", hex::binary-size(64)>>) do
+    {:ok, id} = Base.decode16(hex, case: :lower)
+    %Identifier{id: id}
+  end
 end
