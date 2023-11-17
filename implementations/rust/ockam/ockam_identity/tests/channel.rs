@@ -1033,14 +1033,8 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let secure_channels = secure_channels();
     let identities_creation = secure_channels.identities().identities_creation();
 
-    let alice = identities_creation
-        .create_identity()
-        .await?
-        .clone();
-    let bob = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let alice = identities_creation.create_identity().await?.clone();
+    let bob = identities_creation.create_identity().await?.clone();
 
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());

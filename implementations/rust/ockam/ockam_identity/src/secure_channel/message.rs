@@ -18,18 +18,21 @@ pub enum SecureChannelMessage {
 /// Secure Channel Message format.
 #[derive(Debug, Encode, Decode, Clone)]
 #[rustfmt::skip]
+#[cbor(map)]
 pub struct PlaintextPayloadMessage {
     /// Onward route of the message.
     #[n(0)] pub onward_route: Route,
     /// Return route of the message.
     #[n(1)] pub return_route: Route,
     /// Untyped binary payload.
+    #[cbor(with = "minicbor::bytes")]
     #[n(2)] pub payload: Vec<u8>,
 }
 
 /// Secure Channel Message format.
 #[derive(Debug, Encode, Decode, Clone)]
 #[rustfmt::skip]
+#[cbor(map)]
 pub struct RefreshCredentialsMessage {
     /// Exported identity
     #[n(0)] pub change_history: ChangeHistory,
