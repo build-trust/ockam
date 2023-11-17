@@ -116,12 +116,22 @@ defmodule Ockam.TypedCBOR do
       ...>                              %{a1: "aa", a2: :a}))
       %{a1: "aa", a2: :a}
 
+      iex>  to_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                                         a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                              %{a1: "aa", a2: :a})
+      [nil,"aa", 0]
+
+      iex>  from_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
+      ...>                                         a2: %{key: 2, schema: {:enum, [a: 0, b: 1]}}}},
+      ...>                              [nil, "aa", 0])
+      %{a1: "aa", a2: :a}
+
       iex> from_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
       ...>                            a2: %{key: 3, schema: {:enum, [a: 0, b: 1]}}}},
       ...>                 to_cbor_term({:struct_values, %{a1: %{key: 1, schema: :string, required: true},
       ...>                                         a2: %{key: 3, schema: {:enum, [a: 0, b: 1]}}}},
       ...>                              %{a1: "aa", a2: :a}))
-      ** (Ockam.TypedCBOR.Exception) invalid struct encoding, keys must be a sequence of integers starting at 1
+      ** (Ockam.TypedCBOR.Exception) invalid struct encoding, keys must be a sequence of integers starting at 0 or 1
   """
 
   alias Ockam.TypedCBOR.Exception
@@ -140,6 +150,10 @@ defmodule Ockam.TypedCBOR do
     end
   end
 
+  def from_cbor_term(:charlist, val) when is_list(val) do
+    to_string(val)
+  end
+
   def from_cbor_term(:binary, %CBOR.Tag{tag: :bytes, value: val}), do: val
 
   def from_cbor_term({:enum, vals}, n) when is_integer(n) do
@@ -149,6 +163,19 @@ defmodule Ockam.TypedCBOR do
 
       {val, ^n} ->
         val
+    end
+  end
+
+  def from_cbor_term({:enum, vals}, [n, list]) when is_integer(n) do
+    case {List.keyfind(vals, n, 1), list} do
+      {nil, _} ->
+        raise Exception, message: "invalid enum encoding: #{n}, allowed: #{inspect(vals)}"
+
+      {{val, ^n}, []} ->
+        val
+
+      {{schema, ^n}, [val]} ->
+        from_cbor_term(schema, val)
     end
   end
 
@@ -174,38 +201,30 @@ defmodule Ockam.TypedCBOR do
   end
 
   def from_cbor_term({:struct_values, fields}, values) when is_list(values) do
-    field_count = Enum.count(fields)
-    value_count = Enum.count(values)
-
-    values =
-      case value_count - field_count do
-        0 ->
-          values
-
-        1 ->
-          [nil | rest] = values
-          rest
-
-        _ ->
-          raise Exception,
-            message:
-              "invalid struct encoding, expected #{inspect(field_count)} fields, got #{inspect(value_count)}"
+    keys =
+      case Enum.sort(Enum.map(fields, fn {_, f} -> f[:key] end)) do
+        [1 | _] = keys -> [0 | keys]
+        keys -> keys
       end
 
-    keys =
-      fields
-      |> Map.values()
-      |> Enum.map(& &1.key)
-      |> Enum.sort()
+    key_count = Enum.count(keys)
 
-    if keys != Enum.sort(1..field_count) do
+    if keys != Enum.into(0..(key_count - 1), []) do
       raise Exception,
-        message: "invalid struct encoding, keys must be a sequence of integers starting at 1"
+        message: "invalid struct encoding, keys must be a sequence of integers starting at 0 or 1"
+    end
+
+    value_count = Enum.count(values)
+
+    if key_count != value_count do
+      raise Exception,
+        message:
+          "invalid struct encoding, expected #{inspect(key_count)} fields, got #{inspect(value_count)}"
     end
 
     struct =
-      keys
-      |> Enum.zip(values)
+      values
+      |> Enum.with_index(&{&2, &1})
       |> Enum.into(%{})
 
     from_cbor_term({:struct, fields}, struct)
@@ -220,8 +239,11 @@ defmodule Ockam.TypedCBOR do
          {:ok, val} <- schema.from_cbor_term(data) do
       val
     else
-      _ ->
-        Logger.error("type mismatch, expected schema #{inspect(schema)}, value: #{inspect(data)}")
+      r ->
+        Logger.error(
+          "type mismatch, expected schema #{inspect(schema)}, value: #{inspect(data)} err: #{inspect(r)}"
+        )
+
         raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
     end
   end
@@ -269,6 +291,14 @@ defmodule Ockam.TypedCBOR do
     end
   end
 
+  def to_cbor_term(:charlist, val) when is_binary(val) do
+    if String.valid?(val) do
+      to_charlist(val)
+    else
+      raise Exception, message: "invalid string #{inspect(val)}"
+    end
+  end
+
   def to_cbor_term(:binary, val) when is_binary(val), do: %CBOR.Tag{tag: :bytes, value: val}
 
   def to_cbor_term({:enum, vals}, val) when is_atom(val) do
@@ -279,6 +309,19 @@ defmodule Ockam.TypedCBOR do
 
       n when is_integer(n) ->
         n
+    end
+  end
+
+  def to_cbor_term({:enum, vals}, val) when is_struct(val) do
+    schema = val.__struct__
+
+    case vals[schema] do
+      nil ->
+        raise Exception,
+          message: "invalid enum val: #{inspect(val)}, allowed: #{inspect(Keyword.keys(vals))}"
+
+      n when is_integer(n) ->
+        [n, [to_cbor_term(schema, val)]]
     end
   end
 

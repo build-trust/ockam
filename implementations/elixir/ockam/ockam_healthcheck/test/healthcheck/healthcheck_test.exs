@@ -7,7 +7,8 @@ defmodule Ockam.Healthcheck.Test do
   require Logger
 
   setup_all do
-    start_supervised({Ockam.Transport.TCP, [listen: [port: 4000]]})
+    start_supervised({Ockam.Transport.TCP, [listen: [port: 0, ref: :listener]]})
+    {:ok, lport} = Ockam.Transport.TCP.Listener.get_port(:listener)
     {:ok, identity} = Ockam.Identity.create()
     {:ok, keypair} = Ockam.SecureChannel.Crypto.generate_dh_keypair()
     {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair)
@@ -29,14 +30,14 @@ defmodule Ockam.Healthcheck.Test do
       Ockam.Node.stop("endpoint")
     end)
 
-    :ok
+    [tcp_port: lport]
   end
 
-  test "healthcheck target OK" do
+  test "healthcheck target OK", %{tcp_port: port} do
     target = %Target{
       name: "target",
       host: "localhost",
-      port: 4000,
+      port: port,
       api_worker: "api",
       healthcheck_worker: "healthcheck"
     }
@@ -75,11 +76,11 @@ defmodule Ockam.Healthcheck.Test do
                    500
   end
 
-  test "healthcheck ping error" do
+  test "healthcheck ping error", %{tcp_port: port} do
     target = %Target{
       name: "target",
       host: "localhost",
-      port: 4000,
+      port: port,
       api_worker: "api",
       healthcheck_worker: "not_healthcheck"
     }
@@ -118,11 +119,11 @@ defmodule Ockam.Healthcheck.Test do
                    500
   end
 
-  test "healthcheck API endpoint target OK" do
+  test "healthcheck API endpoint target OK", %{tcp_port: port} do
     target = %APIEndpointTarget{
       name: "target",
       host: "localhost",
-      port: 4000,
+      port: port,
       api_worker: "api",
       healthcheck_worker: "endpoint",
       path: "/ok",
@@ -162,11 +163,11 @@ defmodule Ockam.Healthcheck.Test do
                      %{target: %{name: "target"}}}
   end
 
-  test "healthcheck API endpoint target Error" do
+  test "healthcheck API endpoint target Error", %{tcp_port: port} do
     target = %APIEndpointTarget{
       name: "target",
       host: "localhost",
-      port: 4000,
+      port: port,
       api_worker: "api",
       healthcheck_worker: "endpoint",
       path: "/error",
@@ -206,11 +207,11 @@ defmodule Ockam.Healthcheck.Test do
                      %{target: %{name: "target"}}}
   end
 
-  test "healthcheck channel error" do
+  test "healthcheck channel error", %{tcp_port: port} do
     target = %Target{
       name: "target",
       host: "localhost",
-      port: 4000,
+      port: port,
       api_worker: "not_api",
       healthcheck_worker: "healthcheck"
     }

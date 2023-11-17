@@ -36,7 +36,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   @default_prologue ""
   @default_payloads %{}
 
-  @protocol_name "Noise_XX_25519_AESGCM_SHA256"
+  @protocol_name "OCKAM_XX_25519_AES256_GCM_SHA256"
   defmacro zero_padded_protocol_name do
     quote bind_quoted: binding() do
       padding_size = (32 - byte_size(@protocol_name)) * 8
