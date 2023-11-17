@@ -55,7 +55,7 @@ credentials-sso = ["aws-config/credentials-sso"]
 
 [dependencies]
 aws-config = { version = "0.56.1", default-features = false, features = ["rustls"] }
-aws-sdk-kms = { version = "0.33.0", default-features = false, features = ["rustls"] }
+aws-sdk-kms = { version = "0.37.0", default-features = false, features = ["rustls"] }
 delegate = "0.10.0"
 ockam_core = { path = "../ockam_core", version = "^0.93.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0", default-features = false }
