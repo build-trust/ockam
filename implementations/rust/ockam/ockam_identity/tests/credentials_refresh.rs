@@ -20,15 +20,9 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
     let identities_creation = identities.identities_creation();
     let credentials = identities.credentials();
 
-    let authority = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let authority = identities_creation.create_identity().await?.clone();
 
-    let server = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let server = identities_creation.create_identity().await?.clone();
     let call_counter_server = Arc::new(AtomicU8::new(0));
     let retriever_server = LocalCredentialsRetriever::new(
         credentials.clone(),
@@ -59,10 +53,7 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let client = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let client = identities_creation.create_identity().await?.clone();
     let call_counter_client = Arc::new(AtomicU8::new(0));
     let retriever_client = LocalCredentialsRetriever::new(
         credentials.clone(),
@@ -110,15 +101,9 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
     let identities_creation = identities.identities_creation();
     let credentials = identities.credentials();
 
-    let authority = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let authority = identities_creation.create_identity().await?.clone();
 
-    let server = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let server = identities_creation.create_identity().await?.clone();
     let authority_service_server =
         AuthorityService::new(credentials.clone(), authority.clone(), None);
     let trust_context_server = TrustContext::new(
@@ -134,10 +119,7 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let client = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let client = identities_creation.create_identity().await?.clone();
     let call_counter_client = Arc::new(AtomicU8::new(0));
     let retriever_client = LocalCredentialsRetriever::new(
         credentials.clone(),
@@ -211,18 +193,9 @@ async fn autorefresh_retry(ctx: &mut Context) -> Result<()> {
     let identities_creation = identities.identities_creation();
     let credentials = identities.credentials();
 
-    let authority = identities_creation
-        .create_identity()
-        .await?
-        .clone();
-    let client1 = identities_creation
-        .create_identity()
-        .await?
-        .clone();
-    let client2 = identities_creation
-        .create_identity()
-        .await?
-        .clone();
+    let authority = identities_creation.create_identity().await?.clone();
+    let client1 = identities_creation.create_identity().await?.clone();
+    let client2 = identities_creation.create_identity().await?.clone();
 
     let authority_service2 = AuthorityService::new(credentials.clone(), authority.clone(), None);
     let trust_context2 = TrustContext::new(

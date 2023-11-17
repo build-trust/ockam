@@ -52,20 +52,24 @@ defmodule Ockam.TypedCBOR.Plugin do
 
   defp validate_key_sequence(mod, :list) do
     unless sequential_keys?(mod) do
-      raise("keys must be a sequence of integers starting at 1")
+      raise("keys must be a sequence of integers starting at 0 or 1")
     end
   end
 
-  defp validate_key_sequence(mod, :struct) do
-    unless sequential_keys?(mod) do
-      IO.warn("keys should be a sequence of integers starting at 1")
-    end
+  defp validate_key_sequence(_, :struct) do
+    :ok
   end
 
   defp sequential_keys?(mod) do
     fields = Module.get_attribute(mod, :tt_fields)
-    keys = Enum.map(fields, fn {_, f} -> f[:key] end)
-    Enum.sort(keys) == Enum.sort(1..Enum.count(keys))
+
+    keys =
+      case Enum.sort(Enum.map(fields, fn {_, f} -> f[:key] end)) do
+        [1 | _] = keys -> [0 | keys]
+        keys -> keys
+      end
+
+    keys == Enum.sort(0..(Enum.count(keys) - 1))
   end
 
   def type_to_spec({:binary, _, _}), do: :binary
@@ -119,6 +123,11 @@ defmodule Ockam.TypedCBOR.Plugin do
 
         def decode_list!(data), do: Ockam.TypedCBOR.decode!({:list, minicbor_schema()}, data)
         def decode_list(data), do: Ockam.TypedCBOR.decode({:list, minicbor_schema()}, data)
+
+        def from_cbor_term(term),
+          do: {:ok, Ockam.TypedCBOR.from_cbor_term(minicbor_schema(), term)}
+
+        def to_cbor_term(data), do: {:ok, Ockam.TypedCBOR.to_cbor_term(minicbor_schema(), data)}
 
         def decode_list_strict(data),
           do: Ockam.TypedCBOR.decode_strict({:list, minicbor_schema()}, data)
