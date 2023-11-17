@@ -35,9 +35,9 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm.Encryptor
   alias Ockam.SecureChannel.IdentityProof
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol, as: XX
+  alias Ockam.SecureChannel.Messages
   alias Ockam.SecureChannel.ServiceMessage
   alias Ockam.Session.Spawner
-  alias Ockam.Wire
   alias Ockam.Worker
 
   alias __MODULE__
@@ -512,12 +512,31 @@ defmodule Ockam.SecureChannel.Channel do
     with {:ok, ciphertext} <- bare_decode_strict(message.payload, :data),
          {:ok, plaintext, decrypt_st} <-
            Decryptor.decrypt("", ciphertext, channel_state.decrypt_st) do
-      case Wire.decode(plaintext, :secure_channel) do
-        {:ok, message} ->
+      case Messages.decode(plaintext) do
+        {:ok, %Messages.Payload{} = payload} ->
+          message = struct(Ockam.Message, Map.from_struct(payload))
+
           handle_decrypted_message(message, %Channel{
             state
             | channel_state: %{channel_state | decrypt_st: decrypt_st}
           })
+
+        {:ok, :close} ->
+          Logger.debug("Peer closed secure channel, terminating #{inspect(state.address)}")
+          {:stop, :normal, channel_state}
+
+        ## TODO: add tests
+        {:ok, %Messages.RefreshCredentials{contact: contact, credentials: credentials}} ->
+          with {:ok, peer_identity, peer_identity_id} <- Identity.validate_contact_data(contact),
+               true <- peer_identity_id == channel_state.peer_identity_id,
+               :ok <- process_credentials(credentials, peer_identity_id, state.authorities) do
+            {:ok,
+             %Channel{state | channel_state: %{channel_state | peer_identity: peer_identity}}}
+          else
+            error ->
+              Logger.warning("Invalid credential refresh: #{inspect(error)}")
+              {:stop, {:error, :invalid_credential_refresh}, state}
+          end
 
         {:error, reason} ->
           {:error, reason}
@@ -553,7 +572,10 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp attach_metadata(msg, additional, %Established{peer_identity: i, peer_identity_id: id}) do
-    Message.with_local_metadata(msg, Map.merge(additional, %{identity: i, identity_id: id}))
+    Message.with_local_metadata(
+      msg,
+      Map.merge(additional, %{identity: i, identity_id: id, channel: :secure_channel})
+    )
   end
 
   defp handle_outer_message_impl(message, %Channel{channel_state: %Established{} = e} = state) do
@@ -576,7 +598,9 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route, inner_address) do
-    with {:ok, encoded} <- Wire.encode(message),
+    payload = struct(Messages.Payload, Map.from_struct(message))
+
+    with {:ok, encoded} <- Messages.encode(payload),
          {:ok, ciphertext, encrypt_st} <- Encryptor.encrypt("", encoded, encrypt_st) do
       ciphertext = :bare.encode(ciphertext, :data)
       envelope = %{onward_route: peer_route, return_route: [inner_address], payload: ciphertext}
