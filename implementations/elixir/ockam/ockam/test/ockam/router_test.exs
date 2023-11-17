@@ -208,11 +208,11 @@ defmodule Ockam.Router.Tests do
 
     test "TCP multi hop test", %{printer_pid: printer} do
       assert {:ok, _address_a} = TCP.start(listen: [port: 0])
-      {_, ref_a, _} = :ets.last(:ranch_server)
+      {:conns_sup, ref_a, _x} = :ets.last(:ranch_server)
       port_a = :ranch.get_port(ref_a)
 
       assert {:ok, _address_b} = TCP.start(listen: [port: 0])
-      {_, ref_b, _} = :ets.last(:ranch_server)
+      {:conns_sup, ref_b, _x} = :ets.last(:ranch_server)
       port_b = :ranch.get_port(ref_b)
 
       message = %{
@@ -349,7 +349,7 @@ defmodule Ockam.Router.Tests do
       end)
 
       assert {:ok, _listener_address_b} = TCP.start(listen: [port: 0])
-      {_, tcp_ref, _} = :ets.last(:ranch_server)
+      {:conns_sup, tcp_ref, _x} = :ets.last(:ranch_server)
       port = :ranch.get_port(tcp_ref)
 
       ## Initial request

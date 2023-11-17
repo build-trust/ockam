@@ -52,7 +52,7 @@ defmodule Test.Services.ProxyTest do
     end)
 
     {:ok, _listener} = Ockam.Transport.TCP.start(listen: [port: 0])
-    {_, ref, _} = :ets.last(:ranch_server)
+    {:conns_sup, ref, _x} = :ets.last(:ranch_server)
     port = :ranch.get_port(ref)
 
     tcp_clients_count = Enum.count(tcp_clients())
