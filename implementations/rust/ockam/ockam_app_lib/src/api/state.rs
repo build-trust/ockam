@@ -155,15 +155,27 @@ pub mod rust {
         }
         pub fn call(&self, state: ApplicationState) {
             unsafe {
-                (self.0)(super::convert_to_c(state));
+                (self.0)(super::convert_application_state_to_c(state));
             }
         }
+    }
+
+    #[derive(Default, Clone, Debug, PartialEq)]
+    pub struct RuntimeInformation {
+        pub version: String,
+        pub commit: String,
+        /// when overwritten
+        pub home: Option<String>,
+        /// when overwritten
+        pub controller_addr: Option<String>,
+        /// when overwritten
+        pub controller_identity: Option<String>,
     }
 }
 
 pub mod c {
     use crate::api::state::OrchestratorStatus;
-    use libc::c_char;
+    use std::ffi::c_char;
 
     #[repr(C)]
     pub struct Invitee {
@@ -238,9 +250,22 @@ pub mod c {
         pub(super) groups: *const *const ServiceGroup,
         pub(super) sent_invitations: *const *const Invitee,
     }
+
+    #[repr(C)]
+    pub struct RuntimeInformation {
+        pub(super) version: *const c_char,
+        pub(super) commit: *const c_char,
+        /// Optional, when overwritten
+        pub(super) home: *const c_char,
+        /// Optional, when overwritten
+        pub(super) controller_addr: *const c_char,
+        /// Optional, when overwritten
+        pub(super) controller_identity: *const c_char,
+    }
 }
 
-use crate::api::{append_c_terminator, to_c_string, to_optional_c_string};
+use crate::api::{append_c_terminator, free_c_string, to_c_string, to_optional_c_string};
+use std::ffi::c_char;
 
 fn invitee_to_c(invitee: rust::Invitee) -> *const c::Invitee {
     let invitee_c = c::Invitee {
@@ -318,7 +343,8 @@ fn group_to_c(group: rust::ServiceGroup) -> *const c::ServiceGroup {
 
 /// Convert the instance into c representation.
 /// Manual call to [free] must be performed to reclaim memory.
-pub(crate) fn convert_to_c(state: rust::ApplicationState) -> c::ApplicationState {
+//TODO: free the memory allocated by the conversion functions
+pub(crate) fn convert_application_state_to_c(state: rust::ApplicationState) -> c::ApplicationState {
     c::ApplicationState {
         enrolled: state.enrolled as u8,
         loaded: state.loaded as u8,
@@ -344,5 +370,30 @@ pub(crate) fn convert_to_c(state: rust::ApplicationState) -> c::ApplicationState
                 .map(invitee_to_c)
                 .collect::<Vec<_>>(),
         ),
+    }
+}
+
+/// Convert the instance into c representation.
+/// Manual call to [free] must be performed to reclaim memory.
+pub(crate) fn convert_runtime_information_to_c(
+    info: rust::RuntimeInformation,
+) -> c::RuntimeInformation {
+    c::RuntimeInformation {
+        version: to_c_string(info.version),
+        commit: to_c_string(info.commit),
+        home: to_optional_c_string(info.home),
+        controller_addr: to_optional_c_string(info.controller_addr),
+        controller_identity: to_optional_c_string(info.controller_identity),
+    }
+}
+
+/// Free the memory allocated by the conversion functions.
+pub(crate) fn free_runtime_information_free(info: c::RuntimeInformation) {
+    unsafe {
+        free_c_string(info.version as *const c_char);
+        free_c_string(info.commit as *const c_char);
+        free_c_string(info.home as *const c_char);
+        free_c_string(info.controller_addr as *const c_char);
+        free_c_string(info.controller_identity as *const c_char);
     }
 }

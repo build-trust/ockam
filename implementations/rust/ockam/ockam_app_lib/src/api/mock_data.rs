@@ -1,5 +1,5 @@
 use crate::api::state::rust::Invitee;
-use crate::api::state::{c, convert_to_c, rust, OrchestratorStatus};
+use crate::api::state::{c, convert_application_state_to_c, rust, OrchestratorStatus};
 
 /// This function serves to create a mock application state for the UI.
 /// The sole purpose is to have a quick preview without requiring an initialized state.
@@ -133,5 +133,5 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
         ],
     };
 
-    convert_to_c(state)
+    convert_application_state_to_c(state)
 }

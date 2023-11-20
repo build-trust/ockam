@@ -11,11 +11,12 @@
 //!
 //!
 
-use crate::api::to_c_string;
+use crate::api::state::{c, convert_runtime_information_to_c, rust};
+use crate::api::{state, to_c_string};
 use crate::cli::check_ockam_executable;
 use crate::state::AppState;
-use libc::c_char;
 use ockam_api::cli_state::CliState;
+use std::ffi::c_char;
 use std::pin::Pin;
 use tracing::{error, info};
 
@@ -309,5 +310,30 @@ extern "C" fn application_state_snapshot() -> super::state::c::ApplicationState 
         .block_on(async { app_state.snapshot().await })
         .expect("Cannot retrieve application state");
 
-    super::state::convert_to_c(public_rust_state)
+    super::state::convert_application_state_to_c(public_rust_state)
+}
+
+/// This functions returns runtime information about the application.
+/// It is used to display the version and the git hash of the application.
+#[no_mangle]
+extern "C" fn runtime_information() -> c::RuntimeInformation {
+    let home = std::env::var("OCKAM_HOME").ok();
+    let controller_addr = std::env::var("OCKAM_CONTROLLER_ADDR").ok();
+    let controller_identity = std::env::var("OCKAM_CONTROLLER_IDENTITY_ID").ok();
+
+    let info = rust::RuntimeInformation {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        commit: env!("GIT_HASH").to_string(),
+        home,
+        controller_addr,
+        controller_identity,
+    };
+
+    convert_runtime_information_to_c(info)
+}
+
+/// Free the runtime information memory
+#[no_mangle]
+extern "C" fn free_runtime_information(information: c::RuntimeInformation) {
+    state::free_runtime_information_free(information);
 }

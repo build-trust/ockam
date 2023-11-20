@@ -1,13 +1,11 @@
-/*
-    This files is a bridge between the C library and the swift representation.
-    It takes the C data structures from Bridge.h and re-define them using native
-    swift elements such as string and arrays and convert them from C.
-
-    The optionality of fields is lost in C structures and must be manually
-    restored on a field-by-field basis.
-
-    It also expose wrappers prefixed with swift_, like swift_initialize_application().
-*/
+// This files is a bridge between the C library and the swift representation.
+// It takes the C data structures from Bridge.h and re-define them using native
+// swift elements such as string and arrays and convert them from C.
+//
+// The optionality of fields is lost in C structures and must be manually
+// restored on a field-by-field basis.
+//
+// It also expose wrappers prefixed with swift_, like swift_initialize_application().
 
 import Foundation
 import UserNotifications
@@ -64,8 +62,8 @@ class Invitation: Identifiable, Hashable, Equatable, ObservableObject {
 
     static func == (lhs: Invitation, rhs: Invitation) -> Bool {
         return lhs.id == rhs.id && lhs.serviceName == rhs.serviceName
-            && lhs.serviceScheme == rhs.serviceScheme && lhs.accepting == rhs.accepting
-            && lhs.accepted == rhs.accepted && lhs.ignoring == rhs.ignoring
+        && lhs.serviceScheme == rhs.serviceScheme && lhs.accepting == rhs.accepting
+        && lhs.accepted == rhs.accepted && lhs.ignoring == rhs.ignoring
     }
 }
 
@@ -102,8 +100,8 @@ class LocalService: Identifiable, Hashable, Equatable, ObservableObject {
 
     static func == (lhs: LocalService, rhs: LocalService) -> Bool {
         return lhs.name == rhs.name && lhs.address == rhs.address && lhs.port == rhs.port
-            && lhs.scheme == rhs.scheme && lhs.sharedWith == rhs.sharedWith
-            && lhs.available == rhs.available
+        && lhs.scheme == rhs.scheme && lhs.sharedWith == rhs.sharedWith
+        && lhs.available == rhs.available
     }
 }
 
@@ -141,8 +139,8 @@ class Service: Identifiable, Hashable, Equatable, ObservableObject {
 
     static func == (lhs: Service, rhs: Service) -> Bool {
         return lhs.sourceName == rhs.sourceName && lhs.address == rhs.address
-            && lhs.port == rhs.port && lhs.scheme == rhs.scheme && lhs.available == rhs.available
-            && lhs.enabled == rhs.enabled && lhs.id == rhs.id
+        && lhs.port == rhs.port && lhs.scheme == rhs.scheme && lhs.available == rhs.available
+        && lhs.enabled == rhs.enabled && lhs.id == rhs.id
     }
 }
 
@@ -176,7 +174,7 @@ class ServiceGroup: Identifiable, Hashable, Equatable, ObservableObject {
 
     static func == (lhs: ServiceGroup, rhs: ServiceGroup) -> Bool {
         return lhs.name == rhs.name && lhs.email == rhs.email && lhs.imageUrl == rhs.imageUrl
-            && lhs.invitations == rhs.invitations && lhs.incomingServices == rhs.incomingServices
+        && lhs.invitations == rhs.invitations && lhs.incomingServices == rhs.incomingServices
     }
 }
 
@@ -479,7 +477,7 @@ extension Invitee: CustomDebugStringConvertible {
 extension Invitation: CustomDebugStringConvertible {
     var debugDescription: String {
         return
-            "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
+        "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
     }
 }
 
@@ -487,14 +485,14 @@ extension LocalService: CustomDebugStringConvertible {
     var debugDescription: String {
         let sharedWithJsonStrings = sharedWith.map { $0.debugDescription }.joined(separator: ", ")
         return
-            "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
+        "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
     }
 }
 
 extension Service: CustomDebugStringConvertible {
     var debugDescription: String {
         return
-            "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
+        "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
     }
 }
 
@@ -504,7 +502,7 @@ extension ServiceGroup: CustomDebugStringConvertible {
         let incomingServicesStrings = incomingServices.map { $0.debugDescription }.joined(
             separator: ", ")
         return
-            "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
+        "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
     }
 }
 
@@ -513,6 +511,36 @@ extension ApplicationState {
         let localServicesStrings = localServices.map { $0.debugDescription }.joined(separator: ", ")
         let groupsStrings = groups.map { $0.debugDescription }.joined(separator: ", ")
         return
-            "{ \"enrolled\": \(enrolled), \"loaded\": \(loaded), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
+        "{ \"enrolled\": \(enrolled), \"loaded\": \(loaded), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
     }
+}
+
+class RuntimeInformation {
+    let version: String
+    let commit: String
+    let home: String?
+    let controllerAddr: String?
+    let controllerIdentity: String?
+
+    init(version: String, commit: String, home: String?, controllerAddr: String?, controllerIdentity: String?) {
+        self.version = version
+        self.commit = commit
+        self.home = home
+        self.controllerAddr = controllerAddr
+        self.controllerIdentity = controllerIdentity
+    }
+}
+
+func swift_runtime_information() -> RuntimeInformation {
+    let cRuntimeInformation = runtime_information()
+    let version = String(cString: cRuntimeInformation.version)
+    let commit = String(cString: cRuntimeInformation.commit)
+    let home = optional_string(str: cRuntimeInformation.home)
+    let controllerAddr = optional_string(str: cRuntimeInformation.controller_addr)
+    let controllerIdentity = optional_string(str: cRuntimeInformation.controller_identity)
+
+    let info = RuntimeInformation(version: version, commit: commit, home: home, controllerAddr: controllerAddr, controllerIdentity: controllerIdentity)
+    free_runtime_information(cRuntimeInformation)
+
+    return info
 }
