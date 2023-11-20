@@ -19,6 +19,7 @@
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		785C8DC12B0BAD5E00926DCD /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785C8DC02B0BAD5E00926DCD /* About.swift */; };
 		789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 789FA6452AE142280009FF7F /* ExportOptions.plist */; };
 		78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BD349C2AFA621500F09058 /* BrokenStateView.swift */; };
 		78BD34A12AFCFDF100F09058 /* RemoteServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BD34A02AFCFDF100F09058 /* RemoteServiceView.swift */; };
@@ -44,6 +45,7 @@
 		782D5BAB2AC33EAD00D1B27F /* Bridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Bridge.h; path = Ockam/Bridge.h; sourceTree = "<group>"; };
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
+		785C8DC02B0BAD5E00926DCD /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		789FA6452AE142280009FF7F /* ExportOptions.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = ExportOptions.plist; sourceTree = "<group>"; };
 		78BD349C2AFA621500F09058 /* BrokenStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrokenStateView.swift; sourceTree = "<group>"; };
@@ -106,6 +108,7 @@
 				7827D5082AD93F1700F7A20F /* ClickableMenuEntry.swift */,
 				78D520822ADD5CAE00F36B64 /* Helpers.swift */,
 				78BD349C2AFA621500F09058 /* BrokenStateView.swift */,
+				785C8DC02B0BAD5E00926DCD /* About.swift */,
 			);
 			path = Ockam;
 			sourceTree = "<group>";
@@ -212,6 +215,7 @@
 				781D00042AD05D26009848FE /* Services.swift in Sources */,
 				7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */,
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
+				785C8DC12B0BAD5E00926DCD /* About.swift in Sources */,
 				78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */,
 				78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */,
 				4CB45C522AEB06C700D27F22 /* AcceptingInvitation.swift in Sources */,

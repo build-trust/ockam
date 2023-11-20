@@ -40,7 +40,7 @@ pub mod rust {
 
 pub(super) mod c {
     pub use crate::api::notification::Kind;
-    use libc::c_char;
+    use std::ffi::c_char;
 
     #[repr(C)]
     pub struct Notification {

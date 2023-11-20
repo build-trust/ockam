@@ -129,6 +129,11 @@ struct OckamApp: App {
         }
         .windowResizability(.contentSize)
 
+        Window("About", id:"about") {
+            About(runtimeInformation: swift_runtime_information())
+        }
+        .windowResizability(.contentSize)
+
         // Declare a window being shown when the ockam state cannot be loadeds
         Window("Could not load local state", id: "broken-state") {
             BrokenStateView()

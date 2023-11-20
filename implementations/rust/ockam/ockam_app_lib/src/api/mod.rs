@@ -3,8 +3,7 @@ mod mock_data;
 pub mod notification;
 pub mod state;
 
-use libc::c_char;
-use std::ffi::CString;
+use std::ffi::{c_char, CString};
 use std::ptr::null;
 
 /// Every string created this way must be manually freed
@@ -26,4 +25,13 @@ pub fn append_c_terminator<T>(vec: Vec<*const T>) -> *const *const T {
     let mut vec = vec;
     vec.push(null());
     Box::into_raw(vec.into_boxed_slice()) as *const *const T
+}
+
+/// Free string memory allocated by to_optional_c_string or to_c_string
+pub unsafe fn free_c_string(s: *const c_char) {
+    if s.is_null() {
+        return;
+    }
+    // we need to reconstruct the CString instance to avoid leaks
+    let _ = CString::from_raw(s as *mut c_char);
 }

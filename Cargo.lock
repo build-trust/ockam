@@ -4889,7 +4889,6 @@ dependencies = [
  "duct",
  "futures 0.3.28",
  "hex",
- "libc",
  "miette",
  "minicbor",
  "ockam",

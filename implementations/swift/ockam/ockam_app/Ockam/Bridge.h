@@ -119,6 +119,23 @@ typedef struct C_Notification {
   const char *message;
 } C_Notification;
 
+typedef struct C_RuntimeInformation {
+  const char *version;
+  const char *commit;
+  /**
+   * Optional, when overwritten
+   */
+  const char *home;
+  /**
+   * Optional, when overwritten
+   */
+  const char *controller_addr;
+  /**
+   * Optional, when overwritten
+   */
+  const char *controller_identity;
+} C_RuntimeInformation;
+
 /**
  * This functions initializes the application state.
  */
@@ -179,6 +196,16 @@ void enroll_user(void);
  * This function retrieve the current version of the application state, for polling purposes.
  */
 struct C_ApplicationState application_state_snapshot(void);
+
+/**
+ * This functions returns runtime information about the application.
+ */
+struct C_RuntimeInformation runtime_information(void);
+
+/**
+ * Free the runtime information memory
+ */
+void free_runtime_information(struct C_RuntimeInformation information);
 
 /**
  * This function serves to create a mock application state for the UI.

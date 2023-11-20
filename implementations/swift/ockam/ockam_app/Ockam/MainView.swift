@@ -147,10 +147,17 @@ struct MainView: View {
                 VStack(spacing: 0) {
                     if self.optionPressed {
                         ClickableMenuEntry(
+                            text: "About", icon: "questionmark.circle",
+                            action: {
+                                openWindow(id: "about")
+                            })
+                        ClickableMenuEntry(
                             text: "Reset", icon: "arrow.counterclockwise",
                             action: {
                                 restartCurrentProcess()
                             })
+                        Divider()
+                            .padding([.top,.bottom], 8)
                     }
                     ClickableMenuEntry(
                         text: "Quit Ockam", icon: "power", shortcut: "⌘Q",
