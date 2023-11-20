@@ -7,9 +7,7 @@ It's built on top of on the crate `ockam_app_lib` which exposes C APIs for inter
 ## How to build
 
 To build the Ockam Desktop Application:
-1. Build `ockam_app_lib` by executing `cargo build -p ockam_app_lib`
-2. After this point, you have two options:
+1. Run `make swift_build` from the root of the repository.
+2. Launch it using `./implementations/swift/build/Ockam.xcarchive/Products/Applications/Ockam.app/Contents/MacOS/Ockam`
 
-   2a. Open the Xcode project `Ockam.xcodeproj` and build the project from Xcode by pressing `Product => Build`
-
-   2b. Compile from command line via `xcodebuild -project Ockam.xcodeproj/ -scheme Ockam -configuration Debug -derivedDataPath /tmp/build/`
+To build the package you can use `make swift_package`.

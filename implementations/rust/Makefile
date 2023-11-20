@@ -21,10 +21,9 @@ check_no_std:
 	cargo check --example hello
 check_cargo_update:
 	cargo --version
-	# TODO: uncomment when tauri version is updated
-	# rm -rf Cargo.lock
-	# cargo update
-	# cargo check --locked
+	rm -rf Cargo.lock
+	cargo update
+	cargo check --locked
 
 test:
 	@if [ "$(CI)" = "true" ]; then \

@@ -23,14 +23,6 @@ exceptions = [
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
 
-  # ockam_app exceptions
-  { allow = ["MPL-2.0"], name = "cssparser", version = "*" },
-  { allow = ["MPL-2.0"], name = "cssparser-macros", version = "*" },
-  { allow = ["MPL-2.0"], name = "dtoa-short", version = "*" },
-  { allow = ["MPL-2.0"], name = "selectors", version = "*" },
-  { allow = ["MPL-2.0"], name = "thin-slice", version = "*" },
-  { allow = ["Apache-2.0 WITH LLVM-exception"], name = "target-lexicon", version = "*" },
-
   # used by ockam_app_lib only as a build dependency
   { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },
 ]

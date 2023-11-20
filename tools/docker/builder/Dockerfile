@@ -104,7 +104,6 @@ RUN set -xe; \
     cargo install --locked cargo-deny; \
     cargo install --locked cargo-nextest; \
     cargo install --locked cargo-readme; \
-    cargo install tauri-cli --git https://github.com/build-trust/tauri.git --branch add-url-scheme; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     echo "deb http://deb.debian.org/debian bullseye main" >> /etc/apt/sources.list; \
@@ -152,9 +151,6 @@ RUN set -xe; \
     echo "${GH_CLI_SHA256}  gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" | sha256sum -c; \
     tar -xf "gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}.tar.gz" -C /opt/; \
     mv "/opt/gh_${GH_CLI_VERSION}_linux_${GH_CLI_OS}" "${GH_CLI_HOME}"; \
-# Setup Tauri dependencies
-    npm install -g pnpm@${PNPM_VERSION}; \
-    npm install -g vite@${VITE_VERSION}; \
 # Setup cosign
     cd /tmp; \
     COSIGN_PACKAGE="cosign-linux-${COSIGN_OS}"; \
