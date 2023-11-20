@@ -8,7 +8,6 @@ members = [
   "examples/rust/mitm_node",
   "implementations/rust/ockam/ockam",
   "implementations/rust/ockam/ockam_abac",
-  "implementations/rust/ockam/ockam_app",
   "implementations/rust/ockam/ockam_app_lib",
   "implementations/rust/ockam/ockam_api",
   "implementations/rust/ockam/ockam_command",
@@ -49,10 +48,3 @@ inherits = "test"
 opt-level = 2
 [profile.dev.package.adler]
 opt-level = 1
-
-[patch.crates-io]
-# temporary fork for url scheme - https://github.com/build-trust/ockam/issues/5667
-tauri = { git = "https://github.com/build-trust/tauri.git", branch = "add-url-scheme" }
-tauri-build = { git = "https://github.com/build-trust/tauri.git", branch = "add-url-scheme" }
-tauri-utils = { git = "https://github.com/build-trust/tauri.git", branch = "add-url-scheme" }
-muda = { git = "https://github.com/build-trust/muda.git", branch = "muda-v0.8.7-patched" }

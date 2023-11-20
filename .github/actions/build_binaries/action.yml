@@ -30,17 +30,6 @@ runs:
         profile: minimal
         override: true
         target: ${{ inputs.target }}
-    - name: setup node
-      if: inputs.build_app == 'true'
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16
-    - uses: pnpm/action-setup@d882d12c64e032187b2edb46d3a0d003b7a43598
-      if: inputs.build_app == 'true'
-      name: Install pnpm
-      with:
-        version: 8
-        run_install: false
     - shell: bash
       if: inputs.platform_operating_system == 'ubuntu-20.04'
       run: |
