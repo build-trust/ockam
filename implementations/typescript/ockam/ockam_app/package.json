@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "2.0.3",
-    "@sveltejs/kit": "^1.27.5",
+    "@sveltejs/kit": "^1.27.6",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
     "prettier": "^3.1.0",

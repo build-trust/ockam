@@ -40,10 +40,10 @@ importers:
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: 2.0.3
-        version: 2.0.3(@sveltejs/kit@1.27.5)
+        version: 2.0.3(@sveltejs/kit@1.27.6)
       '@sveltejs/kit':
-        specifier: ^1.27.5
-        version: 1.27.5(svelte@4.2.5)(vite@5.0.0)
+        specifier: ^1.27.6
+        version: 1.27.6(svelte@4.2.5)(vite@5.0.0)
       autoprefixer:
         specifier: ^10.4.16
         version: 10.4.16(postcss@8.4.31)
@@ -1091,16 +1091,16 @@ packages:
       '@sinonjs/commons': 3.0.0
     dev: true
 
-  /@sveltejs/adapter-static@2.0.3(@sveltejs/kit@1.27.5):
+  /@sveltejs/adapter-static@2.0.3(@sveltejs/kit@1.27.6):
     resolution: {integrity: sha512-VUqTfXsxYGugCpMqQv1U0LIdbR3S5nBkMMDmpjGVJyM6Q2jHVMFtdWJCkeHMySc6mZxJ+0eZK3T7IgmUCDrcUQ==}
     peerDependencies:
       '@sveltejs/kit': ^1.5.0
     dependencies:
-      '@sveltejs/kit': 1.27.5(svelte@4.2.5)(vite@5.0.0)
+      '@sveltejs/kit': 1.27.6(svelte@4.2.5)(vite@5.0.0)
     dev: true
 
-  /@sveltejs/kit@1.27.5(svelte@4.2.5)(vite@5.0.0):
-    resolution: {integrity: sha512-+L1WPs/ZYNjXoBFoFARypD4aZOjkT51vFpRCtQI45+Fmmfi4Y0dH/8VFlmYD6VlGe89ViIPg7lgf/JpGQ2tr7A==}
+  /@sveltejs/kit@1.27.6(svelte@4.2.5)(vite@5.0.0):
+    resolution: {integrity: sha512-GsjTkMbKzXdbeRg0tk8S7HNShQ4879ftRr0ZHaZfjbig1xQwG57Bvcm9U9/mpLJtCapLbLWUnygKrgcLISLC8A==}
     engines: {node: ^16.14 || >=18}
     hasBin: true
     requiresBuild: true
