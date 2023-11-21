@@ -1,0 +1,45 @@
+# docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build elixir_package.yaml --arch amd64 -k melange.rsa.pub --signing-key melange.rsa
+# Builds a pinned version of the elixir package
+package:
+  name: elixir-1_14
+  version: 1.14.5
+  epoch: 0
+  description: General-purpose programming language and runtime environment
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - erlang-24
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+      - /work/packages
+    packages:
+      - glibc
+      - glib
+      - erlang-24
+      - erlang-24-dev
+      - ca-certificates-bundle
+      - build-base
+      - glibc-dev
+      - busybox
+      - gcc
+      - llvm-libcxx-16
+      - make
+      - sed
+
+pipeline:
+  - uses: fetch
+    with:
+      expected-sha256: 2ea249566c67e57f8365ecdcd0efd9b6c375f57609b3ac2de326488ac37c8ebd
+      uri: https://github.com/elixir-lang/elixir/archive/refs/tags/v${{package.version}}.tar.gz
+  - runs: |
+      # This is a hack to get elixir to compile on Alpine https://git.alpinelinux.org/aports/tree/community/elixir/APKBUILD?h=3.18-stable
+      sed -i 's/^.NOTPARALLEL: compile/.NOTPARALLEL:/' Makefile
+  - uses: autoconf/make
+  - uses: autoconf/make-install
+  - uses: strip
