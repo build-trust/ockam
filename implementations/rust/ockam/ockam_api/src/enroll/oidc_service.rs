@@ -10,7 +10,7 @@ use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{error, info};
 
 use crate::cloud::enroll::auth0::{AuthorizationCode, DeviceCode, OidcToken, UserInfo};
-use crate::enroll::ockam_oidc_provider::OckamOidcProvider;
+use crate::enroll::ockam_oidc_provider::{authenticator_endpoint, OckamOidcProvider};
 use crate::enroll::oidc_provider::OidcProvider;
 use crate::error::ApiError;
 use ockam::compat::fmt::Debug;
@@ -69,6 +69,10 @@ impl OidcService {
     /// Return the OIDC provider
     pub fn provider(&self) -> Arc<dyn OidcProvider + Send + Sync + 'static> {
         self.0.clone()
+    }
+
+    fn authenticator_endpoint() -> String {
+        authenticator_endpoint()
     }
 
     /// Request a device code for the current client
@@ -138,7 +142,7 @@ impl OidcService {
             authorization_code.code
         );
         self.request_code(
-            Url::parse("https://account.ockam.io/oauth/token").unwrap(),
+            Url::parse(&format!("{}/oauth/token", Self::authenticator_endpoint())).unwrap(),
             vec![
                 ("code", authorization_code.code),
                 ("code_verifier", code_verifier.to_string()),
@@ -230,7 +234,7 @@ impl OidcService {
 
                     // Note that a code 303 does not properly redirect to the success page
                     let response = Response::empty(302).with_header(
-                        Header::from_str("Location: https://account.ockam.io/device/success")
+                        Header::from_str(&format!("Location: {}/device/success", Self::authenticator_endpoint()))
                             .unwrap(),
                     );
 
@@ -296,7 +300,7 @@ impl OidcService {
         let access_token = token.access_token.0.clone();
         let req = || {
             client
-                .get("https://account.ockam.io/userinfo")
+                .get(format!("{}/userinfo", Self::authenticator_endpoint()))
                 .header("Authorization", format!("Bearer {}", access_token.clone()))
         };
         let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
