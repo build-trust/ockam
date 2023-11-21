@@ -5,9 +5,9 @@ on:
     inputs:
       commit_sha:
         description: Git commit sha, on which, to run this workflow
-  # push:
-  #   paths:
-  #     - 'tools/docker/wolfi/**'
+  push:
+    paths:
+      - 'tools/docker/wolfi/**'
 
 permissions:
   contents: read
@@ -62,7 +62,11 @@ jobs:
       - name: Get Image ref
         id: image_ref
         run: |
-          # TODO
+          base=$(docker image inspect ghcr.io/${REPOSITORY}/ockam-elixir-base:latest | jq -r .[0].Id)
+          builder=$(docker image inspect ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest | jq -r .[0].Id)
+
+          echo "BUILDER=$builder" >> $GITHUB_OUTPUT
+          echo "BASE=$base" >> $GITHUB_OUTPUT
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19
@@ -74,11 +78,11 @@ jobs:
           cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
           image: 'ghcr.io/${REPOSITORY}/ockam-elixir-base:latest'
-          ref: ${{ inputs.ref }}
+          ref: ${{ steps.image_ref.outputs.BASE }}
 
       - uses: build-trust/.github/actions/image_cosign@custom-actions
         with:
           cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
           image: 'ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest'
-          ref: ${{ inputs.ref }}
+          ref: ${{ steps.image_ref.outputs.BUILDER }}
