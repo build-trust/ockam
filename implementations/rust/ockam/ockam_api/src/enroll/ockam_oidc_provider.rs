@@ -1,11 +1,23 @@
+use ockam_core::env::get_env_with_default;
 use ockam_core::Result;
 use std::time::Duration;
 use url::Url;
 
 use crate::enroll::oidc_provider::OidcProvider;
 
+pub fn authenticator_endpoint() -> String {
+    get_env_with_default(
+        "OCKAM_AUTHENTICATOR_ENDPOINT",
+        "https://account.ockam.io".to_string(),
+    )
+    .expect("OCKAM_AUTHENTICATOR_ENDPOINT is not valid")
+    .trim_matches('/')
+    .to_string()
+}
+
 pub struct OckamOidcProvider {
     redirect_timeout: Duration,
+    base_url: String,
 }
 
 impl Default for OckamOidcProvider {
@@ -16,7 +28,10 @@ impl Default for OckamOidcProvider {
 
 impl OckamOidcProvider {
     pub fn new(redirect_timeout: Duration) -> Self {
-        Self { redirect_timeout }
+        Self {
+            redirect_timeout,
+            base_url: authenticator_endpoint(),
+        }
     }
 }
 
@@ -34,15 +49,15 @@ impl OidcProvider for OckamOidcProvider {
     }
 
     fn device_code_url(&self) -> Url {
-        Url::parse("https://account.ockam.io/oauth/device/code").unwrap()
+        Url::parse(&format!("{}/oauth/device/code", self.base_url)).unwrap()
     }
 
     fn authorization_url(&self) -> Url {
-        Url::parse("https://account.ockam.io/authorize").unwrap()
+        Url::parse(&format!("{}/authorize", self.base_url)).unwrap()
     }
 
     fn token_request_url(&self) -> Url {
-        Url::parse("https://account.ockam.io/oauth/token").unwrap()
+        Url::parse(&format!("{}/oauth/token", self.base_url)).unwrap()
     }
 
     fn build_http_client(&self) -> Result<reqwest::Client> {

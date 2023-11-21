@@ -21,6 +21,7 @@ Devs Usage
 - OCKAM_HELP_SHOW_HIDDEN: a `boolean` to control the visibility of hidden commands.
 - OCKAM_CONTROLLER_ADDR: a `string` that overrides the default address of the controller.
 - OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.
+- OCKAM_AUTHENTICATOR_ENDPOINT: a `string` that overrides the default endpoint of the authenticator. Defaults to `https://account.ockam.io`.
 
 Internal (to enable some special behavior in the logic)
 - OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.
