@@ -1,9 +1,14 @@
-FROM ghcr.io/build-trust/ockam-builder@sha256:0a4c3640f78650e35207a047891e55863d8648a9333ea0bcfe03f09e2d57480c as executable
+FROM cgr.dev/chainguard/wolfi-base as executable
+
+ENV PATH=/root/.cargo/bin:$PATH
 
 WORKDIR /app
 COPY . /app
-RUN cargo build --bin ockam --verbose --release
+RUN set -ex; \
+    apk add rustup git glibc glibc-dev gcc; \
+    rustup-init --no-update-default-toolchain -y && rustup show; \
+    cargo build --bin ockam --verbose --release;
 
-FROM gcr.io/distroless/cc@sha256:3ca297cd5426268b5ad21e3fbe5c568411e0dec49dbae8e2967d33207bc99773
+FROM cgr.dev/chainguard/cc-dynamic
 COPY --from=executable /app/target/release/ockam /
 ENTRYPOINT ["./ockam"]
