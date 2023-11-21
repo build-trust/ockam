@@ -1,0 +1,84 @@
+name: Build Ockam Distroless Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Git commit sha, on which, to run this workflow
+  # push:
+  #   paths:
+  #     - 'tools/docker/wolfi/**'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ARCH_TO_BUILD_IMAGES: amd64
+  REPOSITORY: ${{ github.repository_owner }}
+
+jobs:
+  build_base_image:
+    name: "Build Ockam Distroless Base Image"
+    runs-on: ubuntu-20.04
+    permissions:
+      packages: write
+    environment: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+
+      - name: Build Erlang Image
+        run: docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build tools/docker/wolfi/erlang_package.yaml --arch ${{ env.ARCH_TO_BUILD_IMAGES }}
+
+      - name: Build Elixir Image
+        run: docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build tools/docker/wolfi/elixir_package.yaml --arch ${{ env.ARCH_TO_BUILD_IMAGES }}
+
+      - name: Build Builder Image
+        run: docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build tools/docker/wolfi/builder_image.yaml ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest builder_image.tar
+
+      - name: Build Base Image
+        run: docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build tools/docker/wolfi/base_image.yaml ghcr.io/${REPOSITORY}/ockam-elixir-base:latest base_image.tar
+
+      - name: Load Images
+        run: |
+          docker load < base_image.tar
+          docker load < builder_image.tar
+
+      - name: Push Images
+        run: |
+          docker tag ghcr.io/${REPOSITORY}/ockam-elixir-base:latest-${$ARCH_TO_BUILD_IMAGES} docker tag ghcr.io/${REPOSITORY}/ockam-elixir-base:latest
+          docker push ghcr.io/${REPOSITORY}/ockam-elixir-base:latest
+
+          docker tag ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest-${$ARCH_TO_BUILD_IMAGES} docker tag ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest
+          docker push ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest
+
+      - name: Get Image ref
+        id: image_ref
+        run: |
+          # TODO
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19
+        with:
+          cosign-release: 'v2.0.0'
+
+      - uses: build-trust/.github/actions/image_cosign@custom-actions
+        with:
+          cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+          image: 'ghcr.io/${REPOSITORY}/ockam-elixir-base:latest'
+          ref: ${{ inputs.ref }}
+
+      - uses: build-trust/.github/actions/image_cosign@custom-actions
+        with:
+          cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+          image: 'ghcr.io/${REPOSITORY}/ockam-elixir-builder:latest'
+          ref: ${{ inputs.ref }}
