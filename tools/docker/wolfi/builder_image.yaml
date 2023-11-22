@@ -23,7 +23,7 @@ contents:
     - rustup
     - zlib
     - zlib-dev
-    - elixir-1_15
+    - elixir-1_14
     - erlang-24
     - erlang-24-dev
     - openssl
