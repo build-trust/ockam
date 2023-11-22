@@ -1,14 +1,14 @@
 # Stage 1 - Build elixir release of ockam_healthcheck elixir app
-FROM cgr.dev/chainguard/wolfi-base AS elixir-app-release-build
+FROM ghcr.io/build-trust/ockam-elixir-builder:latest AS elixir-app-release-build
 
-RUN set -xe; \
-    apk add curl xz bash elixir erlang-dev git openssl ca-certificates ncurses gcc gcc-12 glibc-dev libstdc++-12 glibc gcc llvm-libcxx-16
+COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
+COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
 
 ENV PATH=/root/.cargo/bin:$PATH
 COPY . /work
-RUN set -xe; \
+RUN set -ex; \
     cd work; \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none -y; \
+    rustup-init --no-update-default-toolchain -y; \
     rustup show; \
     cargo --version; \
     cd implementations/elixir/ockam/ockam_healthcheck; \
@@ -19,13 +19,14 @@ RUN set -xe; \
 
 
 # Stage 2 - Create container and copy executables in above step
-FROM cgr.dev/chainguard/wolfi-base AS app
+FROM ghcr.io/build-trust/ockam-elixir-base:latest AS app
+
+COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
+COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
 
 COPY --from=elixir-app-release-build /work/implementations/elixir/ockam/ockam_healthcheck/_build/prod/rel/ockam_healthcheck /opt/ockam_healthcheck
 
 ENV LANG=C.UTF-8
-
-RUN apk add ncurses gcc
 
 EXPOSE 4000
 

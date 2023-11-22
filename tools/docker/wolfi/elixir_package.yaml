@@ -1,4 +1,3 @@
-# docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build elixir_package.yaml --arch amd64 -k melange.rsa.pub --signing-key melange.rsa
 # Builds a pinned version of the elixir package
 package:
   name: elixir-1_14
