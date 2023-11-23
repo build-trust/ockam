@@ -41,9 +41,9 @@ impl AppState {
 
         self.mark_as_loaded(StateKind::Invitations);
         if changes.changed {
-            self.publish_state().await;
             self.load_services_from_invitations(accepted_invitations.unwrap())
                 .await;
+            self.publish_state().await;
             self.schedule_inlets_refresh_now();
             if changes.new_received_invitation {
                 self.notify(Notification {
@@ -160,10 +160,6 @@ impl AppState {
                     }
                     ReceivedInvitationStatus::Ignored => {
                         debug!(?i, "Invitation was already ignored");
-                        return Ok(());
-                    }
-                    ReceivedInvitationStatus::Accepting => {
-                        debug!(?i, "Invitation is being accepted");
                         return Ok(());
                     }
                     s => {

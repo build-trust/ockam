@@ -129,6 +129,15 @@ struct OckamApp: App {
         }
         .windowResizability(.contentSize)
 
+        WindowGroup("Confirmation", id: "ignore-service-confirmation", for: Service.ID.self) { $serviceId in
+            IgnoreServiceView(
+                service: StateContainer.shared.state.lookupIncomingServiceById(
+                    serviceId.unsafelyUnwrapped
+                ).unsafelyUnwrapped.1
+            )
+        }
+        .windowResizability(.contentSize)
+
         Window("About", id:"about") {
             About(runtimeInformation: swift_runtime_information())
         }
