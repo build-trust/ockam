@@ -19,6 +19,7 @@ defmodule Ockam.Services.Relay.StaticForwarding do
   """
   use Ockam.Worker
 
+  alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
   alias Ockam.Services.Relay.Types.CreateRelayRequest
   alias Ockam.Services.Relay.Types.Relay
   alias Ockam.Services.Relay.Worker, as: Forwarder
@@ -57,23 +58,24 @@ defmodule Ockam.Services.Relay.StaticForwarding do
   def handle_message(message, state) do
     payload = Message.payload(message)
 
-    case parse_create_relay_req(payload) do
-      {:ok, req} ->
-        return_route = Message.return_route(message)
-        target_identifier = Message.local_metadata_value(message, :identity_id)
+    with {:ok, req} <- parse_create_relay_req(payload),
+         target_identifier when target_identifier != nil <-
+           Message.local_metadata_value(message, :identity_id),
+         :ok <- check_authorization(target_identifier, req.alias) do
+      return_route = Message.return_route(message)
 
-        case subscribe(req.alias, req.tags, return_route, target_identifier, true, state) do
-          {:ok, _addr} ->
-            :ok
+      case subscribe(req.alias, req.tags, return_route, target_identifier, true, state) do
+        {:ok, _addr} ->
+          :ok
 
-          {:error, reason} ->
-            Logger.warning(
-              "Error creating/updating relay (alias #{req.alias}) (caller identifier #{inspect(target_identifier)})  #{inspect(reason)}"
-            )
-        end
+        {:error, reason} ->
+          Logger.warning(
+            "Error creating/updating relay (alias #{req.alias}) (caller identifier #{inspect(target_identifier)})  #{inspect(reason)}"
+          )
+      end
 
-        {:ok, state}
-
+      {:ok, state}
+    else
       {:error, reason} ->
         Logger.error("Invalid relay create msg: #{inspect(payload)}, reason #{inspect(reason)}")
         {:ok, state}
@@ -87,6 +89,23 @@ defmodule Ockam.Services.Relay.StaticForwarding do
 
       _err ->
         CreateRelayRequest.decode_strict(data)
+    end
+  end
+
+  def check_authorization(identifier, alias_str) do
+    case AttributeStorage.get_attributes(identifier) do
+      %{"allow_relay_address" => "*"} ->
+        :ok
+
+      %{"allow_relay_address" => ^alias_str} ->
+        :ok
+
+      attrs ->
+        Logger.warn(
+          "Identifier #{inspect(identifier)} (#{inspect(attrs)}) not authorized to act on #{alias_str}"
+        )
+
+        {:error, :not_authorized}
     end
   end
 

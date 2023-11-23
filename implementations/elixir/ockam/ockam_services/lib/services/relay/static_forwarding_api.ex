@@ -17,19 +17,13 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
 
   @impl true
   def init_endpoint(options) do
-    delete_authorization =
-      case Keyword.get(options, :check_owner_on_delete, false) do
-        true -> :relay_owner
-        false -> :identity
-      end
-
     with {:ok, state} <- Base.setup(options, %{address: "fwd_to"}) do
       {:ok, state,
        [
          {:identity, :get, "/", &list/2},
          {:identity, :post, "/", &create_relay/2},
          {:identity, :get, "/:addr", &get/2},
-         {delete_authorization, :delete, "/:addr", &delete/2}
+         {:identity, :delete, "/:addr", &delete/2}
        ]}
     end
   end
@@ -46,22 +40,6 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
     end
   end
 
-  def authorize(:relay_owner, %Request{} = req, %{addr: addr} = bindings) do
-    with {true, %{identifier: caller_identifier}} = resp <- authorize(:identity, req, bindings) do
-      case Base.relay_info(addr) do
-        {:ok, %Relay{target_identifier: ^caller_identifier}} ->
-          resp
-
-        other ->
-          Logger.warning(
-            "Operation restricted to relay' owner.  addr #{inspect(addr)} (caller #{inspect(caller_identifier)}) : #{inspect(other)}"
-          )
-
-          false
-      end
-    end
-  end
-
   def list(_req, %{
         auth_data: %{identifier: _identifier},
         state: _
@@ -75,12 +53,17 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
       }) do
     with {:ok, %CreateRelayRequest{alias: alias, tags: tags}} <-
            CreateRelayRequest.decode_strict(body),
+         :ok <- Base.check_authorization(identifier, alias),
          {:ok, worker_addr} <- Base.subscribe(alias, tags, from_route, identifier, false, state),
          {:ok, relay} <- wait_for_relay_worker(worker_addr) do
       Relay.encode(relay)
     else
       {:error, :not_authorized} ->
-        {:error, {:unauthorized, "relay already taken"}}
+        {:error, :unauthorized}
+
+      error ->
+        Logger.error("Error creating relay: #{inspect(error)}")
+        error
     end
   end
 
@@ -132,15 +115,15 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
   def delete(_req, %{
         bindings: %{addr: addr},
         auth_data: %{identifier: identifier},
-        state: _
+        state: state
       }) do
-    with {:ok, %Relay{}} <- Base.relay_info(addr),
-         :ok <- Ockam.Node.stop(addr) do
+    with :ok <- Base.check_authorization(identifier, addr),
+         :ok <- Ockam.Node.stop(Base.forwarder_address(addr, state)) do
       {:ok, nil}
     else
       other ->
         Logger.warning(
-          "Error attempting to delete relay information for addr #{inspect(addr)} (caller #{inspect(identifier)}) : #{inspect(other)}"
+          "Error attempting to delete relay information for addr #{inspect(addr)} (caller #{Ockam.Identity.Identifier.to_str(identifier)}) : #{inspect(other)}"
         )
 
         {:error, 401}

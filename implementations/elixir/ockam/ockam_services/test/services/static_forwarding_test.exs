@@ -4,6 +4,8 @@ defmodule Test.Services.StaticForwardingTest do
   # Fail after 200ms of retrying with time between attempts 10ms
   use AssertEventually, timeout: 200, interval: 10
 
+  alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
+
   alias Ockam.Identity
   alias Ockam.SecureChannel
 
@@ -15,115 +17,12 @@ defmodule Test.Services.StaticForwardingTest do
   alias Ockam.Node
   alias Ockam.Router
 
-  test "static forwarding" do
-    {:ok, service_address} = StaticForwardingService.create(prefix: "forward_to")
+  setup do
+    {:ok, alice} = Identity.create()
+    {:ok, bob} = Identity.create()
+    {:ok, carol} = Identity.create()
+    {:ok, authority} = Identity.create()
 
-    {:ok, test_address} = Node.register_random_address()
-
-    alias_str = "test_static_forwarding_alias"
-
-    encoded_alias_str = :bare.encode(alias_str, :string)
-
-    forwarder_address = "forward_to_" <> alias_str
-
-    on_exit(fn ->
-      Node.stop(service_address)
-      Node.stop(forwarder_address)
-      Node.unregister_address(test_address)
-    end)
-
-    register_message = %Message{
-      onward_route: [service_address],
-      payload: encoded_alias_str,
-      return_route: [test_address]
-    }
-
-    Router.route(register_message)
-
-    assert_receive(
-      %Message{
-        payload: ^encoded_alias_str,
-        onward_route: [^test_address],
-        return_route: [^forwarder_address]
-      },
-      5_000
-    )
-
-    forwarded_message = %Message{
-      onward_route: [forwarder_address, "smth"],
-      payload: "hello",
-      return_route: [test_address]
-    }
-
-    Router.route(forwarded_message)
-
-    assert_receive(%Message{payload: "hello", onward_route: [^test_address, "smth"]}, 5_000)
-
-    assert_eventually(
-      [%Relay{addr: ^forwarder_address, target_identifier: nil}] =
-        StaticForwardingService.list_running_relays()
-    )
-
-    Ockam.Node.stop(forwarder_address)
-    assert_eventually([] = StaticForwardingService.list_running_relays())
-  end
-
-  test "static forwarding cbor msg with tags" do
-    {:ok, service_address} = StaticForwardingService.create(prefix: "forward_to")
-
-    {:ok, test_address} = Node.register_random_address()
-
-    alias_str = "test_static_forwarding_alias"
-
-    forwarder_address = "forward_to_" <> alias_str
-
-    on_exit(fn ->
-      Node.stop(service_address)
-      Node.stop(forwarder_address)
-      Node.unregister_address(test_address)
-    end)
-
-    req = %CreateRelayRequest{alias: alias_str, tags: %{"name" => "test"}}
-
-    register_message = %Message{
-      onward_route: [service_address],
-      payload: CreateRelayRequest.encode!(req),
-      return_route: [test_address]
-    }
-
-    Router.route(register_message)
-
-    assert_receive(
-      %Message{
-        payload: encoded_payload,
-        onward_route: [^test_address],
-        return_route: [^forwarder_address]
-      },
-      5_000
-    )
-
-    assert {:ok, alias_str, ""} == :bare.decode(encoded_payload, :string)
-
-    forwarded_message = %Message{
-      onward_route: [forwarder_address, "smth"],
-      payload: "hello",
-      return_route: [test_address]
-    }
-
-    Router.route(forwarded_message)
-
-    assert_receive(%Message{payload: "hello", onward_route: [^test_address, "smth"]}, 5_000)
-
-    assert_eventually(
-      [%Relay{addr: ^forwarder_address, target_identifier: nil, tags: %{"name" => "test"}}] =
-        StaticForwardingService.list_running_relays()
-    )
-
-    Ockam.Node.stop(forwarder_address)
-    assert_eventually([] = StaticForwardingService.list_running_relays())
-  end
-
-  test "forwarding route override" do
     {:ok, listener_identity} = Identity.create()
     {:ok, listener_keypair} = SecureChannel.Crypto.generate_dh_keypair()
     {:ok, attestation} = Identity.attest_purpose_key(listener_identity, listener_keypair)
@@ -134,136 +33,184 @@ defmodule Test.Services.StaticForwardingTest do
         encryption_options: [
           static_keypair: listener_keypair,
           static_key_attestation: attestation
-        ]
-      )
-
-    {:ok, bob} = Identity.create()
-    {:ok, alice} = Identity.create()
-    bob_id = Identity.get_identifier(bob)
-    {:ok, bob_keypair} = SecureChannel.Crypto.generate_dh_keypair()
-    {:ok, bob_attestation} = Identity.attest_purpose_key(bob, bob_keypair)
-    {:ok, alice_keypair} = SecureChannel.Crypto.generate_dh_keypair()
-    {:ok, alice_attestation} = Identity.attest_purpose_key(alice, alice_keypair)
-
-    {:ok, bob_channel} =
-      SecureChannel.create_channel(
-        identity: bob,
-        encryption_options: [static_keypair: bob_keypair, static_key_attestation: bob_attestation],
-        route: [listener]
-      )
-
-    {:ok, alice_channel} =
-      SecureChannel.create_channel(
-        identity: alice,
-        encryption_options: [
-          static_keypair: alice_keypair,
-          static_key_attestation: alice_attestation
         ],
-        route: [listener]
+        authorities: [authority]
       )
 
+    # TODO: rework the relationship on credential exchange API, attribute storage and secure channel
+    :ok = AttributeStorage.init()
     {:ok, service_address} = StaticForwardingService.create(prefix: "forward_to")
 
-    {:ok, test_address} = Node.register_random_address()
+    on_exit(fn ->
+      :ok = Node.stop(service_address)
+      :ok = Node.stop(listener)
+    end)
 
-    alias_str = "test_route_override_alias"
+    {:ok,
+     authority: authority,
+     alice: alice,
+     bob: bob,
+     carol: carol,
+     listener: listener,
+     service_addr: service_address}
+  end
 
+  defp create_channel_with_credential(authority, identity, listener, attributes) do
+    {:ok, credential} =
+      Identity.issue_credential(authority, Identity.get_identifier(identity), attributes, 100)
+
+    {:ok, keypair} = SecureChannel.Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(identity, keypair)
+
+    SecureChannel.create_channel(
+      identity: identity,
+      encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+      route: [listener],
+      authorities: [authority],
+      credentials: [credential]
+    )
+  end
+
+  defp register_relay(channel, service_address, payload, return_route) do
+    register_message = %Message{
+      onward_route: [channel, service_address],
+      payload: payload,
+      return_route: return_route
+    }
+
+    Router.route(register_message)
+  end
+
+  defp assert_register_relay(channel, service_address, alias_str, return_route, tags \\ nil) do
+    forwarder_address = "forward_to_" <> alias_str
     encoded_alias_str = :bare.encode(alias_str, :string)
+
+    payload =
+      case tags do
+        nil ->
+          encoded_alias_str
+
+        %{} ->
+          req = %CreateRelayRequest{alias: alias_str, tags: tags}
+          CreateRelayRequest.encode!(req)
+      end
+
+    register_relay(channel, service_address, payload, return_route)
+
+    assert_receive(
+      %Message{
+        payload: ^encoded_alias_str,
+        onward_route: ^return_route,
+        return_route: [^channel, ^forwarder_address]
+      },
+      5_000
+    )
+
+    {:ok, forwarder_address}
+  end
+
+  defp refute_register_relay(channel, service_address, alias_str, return_route) do
+    encoded_alias_str = :bare.encode(alias_str, :string)
+    register_relay(channel, service_address, encoded_alias_str, return_route)
+    refute_receive(%Message{onward_route: ^return_route}, 200)
+    :ok
+  end
+
+  defp assert_message_pass_through_relay(forwarder_address, registered_route) do
+    # Messages sent to the relay are delivered to alice
+    forwarded_message = %Message{
+      onward_route: [forwarder_address, "smth"],
+      payload: "hello",
+      return_route: []
+    }
+
+    Router.route(forwarded_message)
+    expected_route = registered_route ++ ["smth"]
+    assert_receive(%Message{payload: "hello", onward_route: ^expected_route}, 5_000)
+  end
+
+  test "static forwarding", %{
+    authority: authority,
+    alice: alice,
+    bob: bob,
+    carol: carol,
+    listener: listener,
+    service_addr: service_address
+  } do
+    {:ok, test_address_alice} = Node.register_random_address()
+    {:ok, test_address_bob} = Node.register_random_address()
+    {:ok, test_address_carol} = Node.register_random_address()
+
+    alias_str = "test_static_forwarding_alias"
 
     forwarder_address = "forward_to_" <> alias_str
 
     on_exit(fn ->
-      Node.stop(service_address)
       Node.stop(forwarder_address)
-      Node.unregister_address(test_address)
+      Node.unregister_address(test_address_alice)
+      Node.unregister_address(test_address_bob)
     end)
 
-    # Bob creates the relay
-    register_message = %Message{
-      onward_route: [bob_channel, service_address],
-      payload: encoded_alias_str,
-      return_route: [test_address]
-    }
+    {:ok, channel_alice} =
+      create_channel_with_credential(authority, alice, listener, %{
+        "allow_relay_address" => alias_str
+      })
 
-    Router.route(register_message)
+    {:ok, channel_bob} =
+      create_channel_with_credential(authority, bob, listener, %{"allow_relay_address" => "*"})
 
-    assert_receive(
-      %Message{
-        payload: ^encoded_alias_str,
-        onward_route: [^test_address],
-        return_route: [^bob_channel, ^forwarder_address]
-      },
-      5_000
-    )
+    {:ok, channel_carol} =
+      create_channel_with_credential(authority, carol, listener, %{
+        "allow_relay_address" => "other"
+      })
 
-    assert_eventually(
-      [
-        %Relay{
-          addr: ^forwarder_address,
-          created_at: t1,
-          updated_at: t2,
-          target_identifier: ^bob_id
-        }
-      ] = StaticForwardingService.list_running_relays()
-    )
+    {:ok, ^forwarder_address} =
+      assert_register_relay(channel_alice, service_address, alias_str, [test_address_alice])
 
-    assert t1 == t2
+    assert_message_pass_through_relay(forwarder_address, [test_address_alice])
 
-    {:ok, test_address2} = Node.register_random_address()
-
-    register_message2 = %Message{
-      onward_route: [bob_channel, service_address],
-      payload: encoded_alias_str,
-      return_route: [test_address2]
-    }
-
-    # Bob make a modification to the relay, it's allowed
-    Router.route(register_message2)
-
-    assert_receive(
-      %Message{
-        payload: ^encoded_alias_str,
-        onward_route: [^test_address2],
-        return_route: [^bob_channel, ^forwarder_address]
-      },
-      5_000
-    )
+    # Metadata on the relay point to alice
+    alice_id = Identity.get_identifier(alice)
 
     assert_eventually(
-      (
-        [%Relay{addr: ^forwarder_address, created_at: ^t1, updated_at: t3}] =
-          StaticForwardingService.list_running_relays()
-
-        :lt == DateTime.compare(t1, t3)
-      )
+      [%Relay{addr: ^forwarder_address, target_identifier: ^alice_id}] =
+        StaticForwardingService.list_running_relays()
     )
 
-    forwarded_message = %Message{
-      onward_route: [forwarder_address, "smth"],
-      payload: "hello",
-      return_route: [test_address]
-    }
+    # Bob can take the relay. It also shows that can attach tags to it
+    bob_tags = %{"some" => "tag"}
 
-    Router.route(forwarded_message)
+    {:ok, ^forwarder_address} =
+      assert_register_relay(channel_bob, service_address, alias_str, [test_address_bob], bob_tags)
 
-    assert_receive(%Message{payload: "hello", onward_route: [^test_address2, "smth"]}, 5_000)
+    assert_message_pass_through_relay(forwarder_address, [test_address_bob])
 
-    refute_receive(%Message{payload: "hello", onward_route: [^test_address, "smth"]}, 100)
+    # Metadata on the relay point to bob
+    bob_id = Identity.get_identifier(bob)
 
-    {:ok, test_address3} = Node.register_random_address()
+    assert_eventually(
+      [%Relay{addr: ^forwarder_address, target_identifier: ^bob_id, tags: ^bob_tags}] =
+        StaticForwardingService.list_running_relays()
+    )
 
-    register_message2 = %Message{
-      onward_route: [alice_channel, service_address],
-      payload: encoded_alias_str,
-      return_route: [test_address3]
-    }
+    # Carol can't register on this address
+    :ok = refute_register_relay(channel_carol, service_address, alias_str, [test_address_carol])
 
-    # Alice try to make a modification to the relay, it isn't allowed
-    Router.route(register_message2)
-    refute_receive(%Message{onward_route: [^test_address3]}, 100)
+    # It still points to bob
+    assert_message_pass_through_relay(forwarder_address, [test_address_bob])
 
-    # Relay is unchanged
-    Router.route(forwarded_message)
-    assert_receive(%Message{payload: "hello", onward_route: [^test_address2, "smth"]}, 5_000)
+    assert_eventually(
+      [%Relay{addr: ^forwarder_address, target_identifier: ^bob_id}] =
+        StaticForwardingService.list_running_relays()
+    )
+
+    # If attribute is missing, it is not allowed to create any relay
+    {:ok, channel_carol_2} = create_channel_with_credential(authority, carol, listener, %{})
+
+    :ok =
+      refute_register_relay(channel_carol_2, service_address, "anyalias", [test_address_carol])
+
+    Ockam.Node.stop(forwarder_address)
+    assert_eventually([] = StaticForwardingService.list_running_relays())
   end
 end
