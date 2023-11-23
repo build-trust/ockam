@@ -1,6 +1,6 @@
 [package]
 name = "ockam_command"
-version = "0.104.0"
+version = "0.105.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -77,9 +77,9 @@ itertools = "0.11"
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.20.0", features = ["derive", "alloc", "half"] }
 nix = "0.27"
-ockam = { path = "../ockam", version = "^0.104.0", features = ["software_vault"] }
-ockam_abac = { path = "../ockam_abac", version = "0.38.0", features = ["std"] }
-ockam_api = { path = "../ockam_api", version = "0.47.0", features = ["std"] }
+ockam = { path = "../ockam", version = "^0.105.0", features = ["software_vault"] }
+ockam_abac = { path = "../ockam_abac", version = "0.39.0", features = ["std"] }
+ockam_api = { path = "../ockam_api", version = "0.48.0", features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.93.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.37.0", features = ["std"] }
 ockam_node = { path = "../ockam_node", version = "^0.98.0" }

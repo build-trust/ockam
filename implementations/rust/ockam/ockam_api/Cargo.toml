@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.47.0"
+version = "0.48.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
@@ -87,13 +87,13 @@ default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.104.0"
+version = "^0.105.0"
 path = "../ockam"
 default-features = false
 features = ["ockam_transport_tcp", "software_vault_storage"]
 
 [dependencies.ockam_abac]
-version = "0.38.0"
+version = "0.39.0"
 path = "../ockam_abac"
 default-features = false
 
