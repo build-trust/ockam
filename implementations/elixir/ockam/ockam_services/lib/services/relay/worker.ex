@@ -38,20 +38,7 @@ defmodule Ockam.Services.Relay.Worker do
 
   @impl true
   def handle_call(
-        {:update_route, _route, target_identifier, _tags, _notify},
-        _from,
-        %{target_identifier: new_target_identifier} = state
-      )
-      when target_identifier != new_target_identifier do
-    # A relay can only be updated by the same identity that created it on the first place.
-    # Note that if the relay was created without a secure channel, the identifier is nil and
-    # updated only allowed if they are also not comming from a secure channel, this is intentional
-    # (in future we can disallow non-secure channels relays entirely as there is little use of them)
-    {:reply, {:error, :not_authorized}, state}
-  end
-
-  def handle_call(
-        {:update_route, route, _target_identifier, user_defined_tags, notify},
+        {:update_route, route, target_identifier, user_defined_tags, notify},
         _from,
         %{alias: alias_str} = state
       ) do
@@ -63,7 +50,16 @@ defmodule Ockam.Services.Relay.Worker do
         state.address,
         fn some ->
           %{attributes: attrs} = some
-          %{some | attributes: %{attrs | updated_at: ts, tags: user_defined_tags}}
+
+          %{
+            some
+            | attributes: %{
+                attrs
+                | updated_at: ts,
+                  tags: user_defined_tags,
+                  target_identifier: target_identifier
+              }
+          }
         end
       )
 

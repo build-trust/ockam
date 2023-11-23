@@ -199,61 +199,6 @@ defmodule Ockam.Services.Authorization.Tests do
     )
   end
 
-  test "static forwarder authorization" do
-    {:ok, service} =
-      Ockam.Services.Relay.StaticForwarding.create(
-        forwarder_options: [authorization: [:is_local]]
-      )
-
-    {:ok, test_address} = Ockam.Node.register_random_address()
-
-    register_message = %Message{
-      onward_route: [service],
-      payload: :bare.encode(test_address, :string),
-      return_route: [test_address]
-    }
-
-    Router.route(register_message)
-
-    assert_receive(
-      %Message{
-        onward_route: [^test_address],
-        return_route: [forwarder_address]
-      },
-      5_000
-    )
-
-    on_exit(fn ->
-      Ockam.Node.stop(service)
-      Ockam.Node.stop(forwarder_address)
-      Ockam.Node.unregister_address(test_address)
-    end)
-
-    local_message = %Message{
-      onward_route: [forwarder_address, "smth"],
-      payload: "hello",
-      return_route: [test_address]
-    }
-
-    Router.route(local_message)
-
-    assert_receive(%Message{payload: "hello", onward_route: [^test_address, "smth"]}, 500)
-
-    channel_message = %Message{
-      onward_route: [forwarder_address, "smth"],
-      payload: "hello from channel",
-      return_route: [test_address],
-      local_metadata: %{source: :channel, channel: :tcp}
-    }
-
-    Router.route(channel_message)
-
-    refute_receive(
-      %Message{payload: "hello from channel", onward_route: [^test_address, "smth"]},
-      500
-    )
-  end
-
   defp create_channel(route, authorization \\ []) do
     {:ok, identity} = Identity.create()
 
