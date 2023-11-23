@@ -4617,9 +4617,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_ansi_color"
-version = "0.6.8"
+version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44e2ca58d7398a6cbdf17201f42d93a8483dde17443f8adf5585c50f6c45aae4"
+checksum = "60454e5ba19194a4b76f5a46ea68ffe0ec5d49710d3d077858563c4d55c4cbb4"
 dependencies = [
  "is-terminal",
  "is_ci",
@@ -4627,9 +4627,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_rs_utils_core"
-version = "0.9.7"
+version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a16eeee6263260e685b95e80051ac8feda3257ce4d286b25cca5ee43cdf4ce8"
+checksum = "572cb6e605b36a70b5c80fc89c3c022e521f0bc349df9b3ea10caed8085fe123"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4655,9 +4655,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_simple_logger"
-version = "0.1.1"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "665bed7a174e96b8e43b9f95538b6d2a0a0e50ff01c6a506feb69f187b32b86a"
+checksum = "dfeb326ffba6a7132041cb20b245bd61151dc171087b66bb3fe7ec454502c4d4"
 dependencies = [
  "log",
  "r3bl_ansi_color",
@@ -4667,9 +4667,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_tuify"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9fe0de7008a48850d0be3ad07c2cb27d74b4e534e5c2cdb0daeeb0007d8f1d1"
+checksum = "b2770cf28e5764c238234ff01315f6e5a3185e9d4950b342f8f4ac9a778bebd2"
 dependencies = [
  "clap 4.4.7",
  "crossterm",
