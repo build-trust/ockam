@@ -7,8 +7,7 @@ use colorful::Colorful;
 use miette::{IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::info;
-use tracing::log::warn;
+use tracing::{info, warn};
 
 use ockam::identity::Identifier;
 use ockam::Context;

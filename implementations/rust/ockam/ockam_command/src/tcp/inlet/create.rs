@@ -9,7 +9,7 @@ use miette::{miette, IntoDiagnostic};
 use miette::{Result, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::log::trace;
+use tracing::trace;
 
 use ockam::identity::Identifier;
 use ockam::Context;
