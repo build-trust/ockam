@@ -54,6 +54,14 @@ impl AppState {
                     }
                 }
             }
+
+            // the service resources are already cleaned up at this stage, since when it's
+            // removed is always also disabled.
+            if service.removed() {
+                let mut guard = services_arc.write().await;
+                guard.remove_by_id(service.id());
+            }
+
             self.publish_state().await;
         }
 

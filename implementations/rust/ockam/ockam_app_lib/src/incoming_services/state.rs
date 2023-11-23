@@ -29,6 +29,12 @@ impl IncomingServicesState {
         self.services.iter().find(|s| s.id == id)
     }
 
+    pub(crate) fn remove_by_id(&mut self, id: &str) {
+        if let Some(index) = self.services.iter().position(|s| s.id == id) {
+            self.services.remove(index);
+        }
+    }
+
     pub(crate) fn find_mut_by_id(&mut self, id: &str) -> Option<&mut IncomingService> {
         self.services.iter_mut().find(|s| s.id == id)
     }
@@ -65,8 +71,22 @@ impl AppState {
     ) {
         let incoming_services_arc = self.incoming_services();
         let mut guard = incoming_services_arc.write().await;
+
+        // first let's remove services that are not in the list of accepted invitations
+        // and mark the as removed, so relative resource will be freed before removing
+        // them from the list
+        for service in guard.services.iter_mut() {
+            if !accepted_invitations
+                .iter()
+                .any(|invite| invite.invitation.id == service.id)
+            {
+                service.mark_as_removed();
+            }
+        }
+
         for invite in accepted_invitations {
             // during the synchronization we only need to add new ones
+            // assuming the invitation won't change
             if guard.find_by_id(&invite.invitation.id).is_some() {
                 continue;
             }
@@ -165,6 +185,9 @@ pub struct IncomingService {
     // this enrollment ticket is modified to avoid conflicts with 'default' name
     // the name of the project is re-set to 'project_id'
     enrollment_ticket: EnrollmentTicket,
+    // When the invitation is removed, the service is marked as removed
+    // to clean up the resources before removing the service from the list
+    removed: bool,
 }
 
 impl IncomingService {
@@ -188,6 +211,7 @@ impl IncomingService {
             shared_node_identifier,
             original_name,
             enrollment_ticket,
+            removed: false,
         }
     }
 
@@ -214,7 +238,11 @@ impl IncomingService {
 
     /// Whether the service is enabled or not, this may not reflect the current state
     pub fn enabled(&self) -> bool {
-        self.enabled
+        if self.removed {
+            false
+        } else {
+            self.enabled
+        }
     }
 
     pub fn set_port(&mut self, port: Port) {
@@ -231,6 +259,16 @@ impl IncomingService {
     pub fn disable(&mut self) {
         self.enabled = false;
         self.port = None;
+    }
+
+    /// True when the service is marked as removed
+    pub fn removed(&self) -> bool {
+        self.removed
+    }
+
+    /// Mark the service as removed, following [`enabled()`] will return false.
+    pub fn mark_as_removed(&mut self) {
+        self.removed = true;
     }
 
     /// Returns the enrollment ticket, to avoid conflicts with 'default' name
