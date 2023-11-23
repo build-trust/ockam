@@ -375,6 +375,19 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
             &fmt_log!("└{}┘\n", "─".repeat(header_len + (padding * 2)))
         )?;
 
+        Ok(output)
+    }
+
+    pub fn build_list(
+        &self,
+        items: &Vec<impl crate::output::Output>,
+        header: &str,
+        empty_message: &str,
+    ) -> Result<String> {
+        let output = String::new();
+
+        let mut output = self.build_header(header, output)?;
+
         // Display empty message if items is empty
         if items.is_empty() {
             writeln!(output, "{}", &fmt_warn!("{empty_message}"))?;
