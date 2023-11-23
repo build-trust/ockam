@@ -1,5 +1,5 @@
 use crate::error::Error;
-use aws_config::SdkConfig;
+use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_kms::error::SdkError;
 use aws_sdk_kms::operation::schedule_key_deletion::ScheduleKeyDeletionError;
 use aws_sdk_kms::primitives::Blob;
@@ -41,7 +41,9 @@ pub struct AwsKmsConfig {
 impl AwsKmsConfig {
     /// Create a new configuration for the AWS KMS
     pub async fn default() -> Result<AwsKmsConfig> {
-        Ok(Self::new(aws_config::load_from_env().await))
+        Ok(Self::new(
+            aws_config::load_defaults(BehaviorVersion::latest()).await,
+        ))
     }
 
     /// Create a new configuration for the AWS KMS
@@ -105,7 +107,7 @@ impl AwsKmsClient {
                 )));
             }
         };
-        if let Some(kid) = output.key_metadata().and_then(|meta| meta.key_id()) {
+        if let Some(kid) = output.key_metadata().map(|meta| meta.key_id()) {
             log::debug!(%kid, "created new key");
             let handle = SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(
                 kid.as_bytes().to_vec(),
@@ -267,21 +269,17 @@ impl KmsClient for AwsKmsClient {
                     return Err(Error::TruncatedKeysList.into());
                 }
 
-                if let Some(keys) = output.keys() {
-                    let mut result = vec![];
-                    for key in keys {
-                        if let Some(key_id) = key.key_id() {
-                            let key = SigningSecretKeyHandle::ECDSASHA256CurveP256(
-                                HandleToSecret::new(key_id.as_bytes().to_vec()),
-                            );
-                            result.push(key)
-                        }
+                let mut result = vec![];
+                for key in output.keys() {
+                    if let Some(key_id) = key.key_id() {
+                        let key = SigningSecretKeyHandle::ECDSASHA256CurveP256(
+                            HandleToSecret::new(key_id.as_bytes().to_vec()),
+                        );
+                        result.push(key)
                     }
-
-                    return Ok(result);
                 }
 
-                Ok(vec![])
+                Ok(result)
             }
             InitialKeysDiscovery::Keys(key_ids) => Ok(key_ids.clone()),
         }

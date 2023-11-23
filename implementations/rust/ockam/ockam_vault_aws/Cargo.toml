@@ -51,11 +51,11 @@ no_std = [
 alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 
 # Feature: "credentials-sso" enables support for sso on aws-config
-credentials-sso = ["aws-config/credentials-sso"]
+credentials-sso = ["aws-config/sso"]
 
 [dependencies]
-aws-config = { version = "0.56.1", default-features = false, features = ["rustls"] }
-aws-sdk-kms = { version = "0.33.0", default-features = false, features = ["rustls"] }
+aws-config = { version = "1.0.0", default-features = false, features = ["rustls"] }
+aws-sdk-kms = { version = "0.39.0", default-features = false, features = ["rustls"] }
 delegate = "0.10.0"
 ockam_core = { path = "../ockam_core", version = "^0.93.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0", default-features = false }
@@ -67,6 +67,6 @@ thiserror = { version = "1.0.50" }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 
 [dev-dependencies]
-aws-credential-types = { version = "0.56.0", default-features = false, features = ["test-util"] }
+aws-credential-types = { version = "1.0.0", default-features = false, features = ["test-util"] }
 hex = { version = "0.4", default-features = false }
 tokio = { version = "1.33", features = ["full"] }
