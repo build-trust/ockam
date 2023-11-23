@@ -17,6 +17,7 @@ use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::route;
 use ockam_node::MessageSendReceiveOptions;
 
+use crate::util::duration::duration_parser;
 use crate::util::{api, node_rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
@@ -28,9 +29,9 @@ pub struct StatusCommand {
     #[arg(long, short)]
     all: bool,
 
-    /// Override default timeout (in seconds)
-    #[arg(long, default_value = "30")]
-    timeout: u64,
+    /// Override default timeout
+    #[arg(long, default_value = "30s", value_parser = duration_parser)]
+    timeout: Duration,
 }
 
 impl StatusCommand {
@@ -50,8 +51,7 @@ async fn run_impl(
 ) -> miette::Result<()> {
     let identities_details = get_identities_details(&opts, cmd.all)?;
     let nodes_details = get_nodes_details(ctx, &opts).await?;
-    let orchestrator_version =
-        get_orchestrator_version(ctx, &opts, Duration::from_secs(cmd.timeout)).await;
+    let orchestrator_version = get_orchestrator_version(ctx, &opts, cmd.timeout).await;
     let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
     print_output(opts, cmd, status)?;
     Ok(())
