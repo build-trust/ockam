@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct RemoteServiceView: View {
+    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    @Environment(\.openWindow) var openWindow
+
     @State private var isHovered = false
     @State private var isOpen = false
     @ObservedObject var service: Service
 
-    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()
     }
@@ -99,6 +101,11 @@ struct RemoteServiceView: View {
                                 enable_accepted_service(service.id)
                             })
                     }
+                    ClickableMenuEntry(
+                        text: "Ignore",
+                        action: {
+                            openWindow(id: "ignore-service-confirmation", value: service.id)
+                        })
                 }
             }
         }
