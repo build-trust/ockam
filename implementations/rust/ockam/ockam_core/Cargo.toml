@@ -84,7 +84,7 @@ subtle = { version = "2", default-features = false }
 tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-error = { version = "0.2", default-features = false, optional = true }
-zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
+zeroize = { version = "1.7.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 cddl-cat = { version = "0.6.1" }
