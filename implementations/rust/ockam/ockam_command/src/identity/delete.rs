@@ -27,7 +27,7 @@ pub struct DeleteCommand {
     #[arg(display_order = 901, long, short)]
     yes: bool,
 
-    #[arg(long, short, group = "identities")]
+    #[arg(long, short)]
     all: bool,
 }
 
@@ -58,7 +58,7 @@ async fn run_impl(
 
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: &'static str = "identities";
+    const ITEM_NAME: &'static str = "identity";
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.name.as_deref()
     }
@@ -103,16 +103,14 @@ impl DeleteCommandTui for DeleteTui {
         let plain = selected_items_names
             .iter()
             .map(|name| {
-                //Should be safe to unwrap since the identity come from the list of existing
-                //identities
-                let idt = self.opts.state.identities.get(name).unwrap();
+                let idt = self.opts.state.identities.get(name)?;
                 if self.opts.state.delete_identity(idt).is_ok() {
-                    fmt_ok!("Identity '{name}' deleted\n")
+                    Ok(fmt_ok!("Identity '{name}' deleted\n"))
                 } else {
-                    fmt_warn!("Failed to delete identity '{name}'\n")
+                    Ok(fmt_warn!("Failed to delete identity '{name}'\n"))
                 }
             })
-            .collect::<String>();
+            .collect::<miette::Result<String>>()?;
         self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }

@@ -46,6 +46,41 @@ teardown() {
   # Delete identity after deleting the node
   run_success "$OCKAM" node delete "${n}" --yes
   run_success "$OCKAM" identity delete "${i}" --yes
+
+  # Create two and list them
+
+  run_success "$OCKAM" identity create "${i}"
+  run_success "$OCKAM" identity create "${n}"
+  run_success "$OCKAM" identity list
+  assert_output --partial "${i}"
+  assert_output --partial "${n}"
+
+  # Update the list correctly after deleting one
+
+  run_success "$OCKAM" identity delete "${i}" --yes
+  run_success "$OCKAM" identity list
+  assert_output --partial "${n}"
+  refute_output --partial "${i}"
+
+  # Delete twice
+
+  run_failure "$OCKAM" identity delete {i} --yes
+
+  # Create three nodes and deletes all
+
+  i=$(random_str)
+  k=$(random_str)
+
+  run_success "$OCKAM" identity delete -a --yes
+
+  run_success "$OCKAM" identity list --output json
+  assert_output --partial "[]"
+
+  # Delete on empty list
+
+  run_success "$OCKAM" identity delete
+  ## In order to match the output that for now is identytis
+  assert_output --regexp "There are no identit.*s to delete"
 }
 
 @test "identity - set default" {
