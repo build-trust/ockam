@@ -25,7 +25,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct DeleteCommand {
     /// Name of the space.
     #[arg(display_order = 1001)]
-    pub name: Option<String>,
+    pub space_name: Option<String>,
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
@@ -51,8 +51,8 @@ async fn run_impl(
 pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
-    space_name: Option<String>,
     controller: Controller,
+    cmd: DeleteCommand,
 }
 
 impl DeleteTui {
@@ -66,8 +66,8 @@ impl DeleteTui {
         let tui = Self {
             ctx,
             opts,
-            space_name: cmd.name,
             controller,
+            cmd,
         };
         tui.delete().await
     }
@@ -78,7 +78,7 @@ impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: &'static str = "space";
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.space_name.as_deref()
+        self.cmd.space_name.as_deref()
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
@@ -86,7 +86,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     fn cmd_arg_confirm_deletion(&self) -> bool {
-        false
+        self.cmd.yes
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {
@@ -94,7 +94,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        let space_name = match &self.space_name {
+        let space_name = match &self.cmd.space_name {
             None => self.opts.state.spaces.default()?.name().to_string(),
             Some(n) => n.to_string(),
         };
