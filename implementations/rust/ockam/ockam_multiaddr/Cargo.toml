@@ -19,7 +19,7 @@ minicbor = { version = "0.20.0", default-features = false, features = ["alloc"],
 once_cell = { version = "1.18.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.193", default-features = false, optional = true }
 tinyvec = { version = "1.5.1", features = ["alloc"] }
-unsigned-varint = "0.7.2"
+unsigned-varint = "0.8.0"
 
 [dependencies.ockam_core]
 version = "0.93.0"
