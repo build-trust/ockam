@@ -851,7 +851,7 @@ dependencies = [
  "bluez-generated",
  "dbus",
  "dbus-tokio",
- "futures 0.3.28",
+ "futures 0.3.29",
  "itertools 0.10.5",
  "log",
  "serde",
@@ -902,7 +902,7 @@ dependencies = [
  "cocoa",
  "dashmap",
  "dbus",
- "futures 0.3.28",
+ "futures 0.3.29",
  "jni",
  "jni-utils",
  "libc",
@@ -2338,9 +2338,9 @@ checksum = "3a471a38ef8ed83cd6e40aa59c1ffe17db6855c18e3604d9c4ed8c08ebc28678"
 
 [[package]]
 name = "futures"
-version = "0.3.28"
+version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23342abe12aba583913b2e62f22225ff9c950774065e4bfb61a19cd9770fec40"
+checksum = "da0290714b38af9b4a7b094b8a37086d1b4e61f2df9122c3cad2577669145335"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -2369,9 +2369,9 @@ checksum = "eb1d22c66e66d9d72e1758f0bd7d4fd0bee04cad842ee34587d68c07e45d088c"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.28"
+version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccecee823288125bd88b4d7f565c9e58e41858e47ab72e8ea2d64e93624386e0"
+checksum = "0f4fb8693db0cf099eadcca0efe2a5a22e4550f98ed16aba6c48700da29597bc"
 dependencies = [
  "futures-core",
  "futures-task",
@@ -2990,7 +2990,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "259e9f2c3ead61de911f147000660511f07ab00adeed1d84f5ac4d0386e7a6c4"
 dependencies = [
  "dashmap",
- "futures 0.3.28",
+ "futures 0.3.29",
  "jni",
  "log",
  "once_cell",
@@ -3714,7 +3714,7 @@ version = "0.9.0"
 dependencies = [
  "cbindgen",
  "duct",
- "futures 0.3.28",
+ "futures 0.3.29",
  "hex",
  "miette",
  "minicbor",
@@ -3840,7 +3840,7 @@ name = "ockam_executor"
 version = "0.61.0"
 dependencies = [
  "crossbeam-queue",
- "futures 0.3.28",
+ "futures 0.3.29",
  "heapless",
  "ockam_core",
  "pin-project-lite",
@@ -3928,7 +3928,7 @@ version = "0.98.0"
 dependencies = [
  "cfg-if",
  "fs2",
- "futures 0.3.28",
+ "futures 0.3.29",
  "heapless",
  "hex",
  "minicbor",
@@ -3956,7 +3956,7 @@ dependencies = [
  "btleplug",
  "cortex-m 0.7.7",
  "embedded-hal 0.2.7",
- "futures 0.3.28",
+ "futures 0.3.29",
  "futures-util",
  "heapless",
  "nb 1.1.0",
@@ -5283,7 +5283,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e56dd856803e253c8f298af3f4d7eb0ae5e23a737252cd90bb4f3b435033b2d"
 dependencies = [
  "dashmap",
- "futures 0.3.28",
+ "futures 0.3.29",
  "lazy_static",
  "log",
  "parking_lot",
