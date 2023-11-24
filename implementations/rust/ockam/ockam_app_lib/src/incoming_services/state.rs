@@ -1,26 +1,24 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
+use crate::state::{AppState, ModelState};
 use ockam::identity::Identifier;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::InvitationWithAccess;
 
-use crate::state::{AppState, ModelState};
-
 /// A Socket port number
 pub type Port = u16;
 
-#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize, PartialEq)]
-#[rustfmt::skip]
-#[cbor(map)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PersistentIncomingService {
-    #[n(1)] pub(crate) invitation_id: String,
-    #[n(2)] pub(crate) enabled: bool,
-    #[n(3)] pub(crate) name: Option<String>,
+    pub(crate) invitation_id: String,
+    pub(crate) enabled: bool,
+    pub(crate) name: Option<String>,
+    pub(crate) port: Option<u16>,
+    pub(crate) scheme: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -58,6 +56,8 @@ impl ModelState {
                     invitation_id: id.to_string(),
                     enabled: true,
                     name: None,
+                    port: None,
+                    scheme: None,
                 });
                 self.incoming_services.last_mut().unwrap()
             }
@@ -74,7 +74,7 @@ impl AppState {
         let mut guard = incoming_services_arc.write().await;
 
         // first let's remove services that are not in the list of accepted invitations
-        // and mark the as removed, so relative resource will be freed before removing
+        // and mark them as removed, so relative resource will be freed before removing
         // them from the list
         for service in guard.services.iter_mut() {
             if !accepted_invitations
@@ -154,6 +154,7 @@ impl AppState {
                 service_access_details.shared_node_identity,
                 original_name,
                 ticket,
+                service_access_details.scheme,
             ));
         }
     }
@@ -191,6 +192,8 @@ pub struct IncomingService {
     // this enrollment ticket is modified to avoid conflicts with 'default' name
     // the name of the project is re-set to 'project_id'
     enrollment_ticket: EnrollmentTicket,
+    // URL scheme to allow opening the service with just a click
+    scheme: Option<String>,
     // When the invitation is removed, the service is marked as removed
     // to clean up the resources before removing the service from the list
     removed: bool,
@@ -208,6 +211,7 @@ impl IncomingService {
         shared_node_identifier: Identifier,
         original_name: String,
         enrollment_ticket: EnrollmentTicket,
+        scheme: Option<String>,
     ) -> Self {
         Self {
             id,
@@ -219,6 +223,7 @@ impl IncomingService {
             shared_node_identifier,
             original_name,
             enrollment_ticket,
+            scheme,
             connected: false,
             removed: false,
         }
@@ -295,6 +300,11 @@ impl IncomingService {
         &self.enrollment_ticket
     }
 
+    /// Returns the URL Scheme
+    pub fn scheme(&self) -> &Option<String> {
+        &self.scheme
+    }
+
     /// The relay name within the target project
     pub fn relay_name(&self) -> String {
         let bare_relay_name = self.shared_node_identifier.to_string();
@@ -331,7 +341,8 @@ mod tests {
     use ockam_api::cli_state::CliState;
     use ockam_api::cloud::project::Project;
     use ockam_api::cloud::share::{
-        InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
+        InvitationStatus, InvitationWithAccess, ReceivedInvitation, RoleInShare,
+        ServiceAccessDetails, ShareScope,
     };
 
     use crate::incoming_services::PersistentIncomingService;
@@ -349,6 +360,11 @@ mod tests {
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
                 ignored: false,
+                owner_name: Some("owner_name".to_string()),
+                picture_url: Some("picture_url".to_string()),
+                status: InvitationStatus::Accepted,
+                scheme: None,
+                name: None,
             },
             service_access_details,
         }
@@ -370,6 +386,7 @@ mod tests {
                     .try_into()
                     .unwrap(),
             shared_node_route: "remote_service_name".to_string(),
+            scheme: None,
             enrollment_ticket: EnrollmentTicket::new(
                 OneTimeCode::new(),
                 Some(Project {
@@ -450,6 +467,11 @@ mod tests {
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
                 ignored: false,
+                owner_name: Some("owner_name".to_string()),
+                picture_url: Some("picture_url".to_string()),
+                status: InvitationStatus::Accepted,
+                name: None,
+                scheme: None,
             },
             service_access_details: invitation.service_access_details.clone(),
         };
@@ -461,6 +483,8 @@ mod tests {
                     invitation_id: "second_invitation_id".to_string(),
                     enabled: false,
                     name: Some("custom_user_name".to_string()),
+                    port: None,
+                    scheme: None,
                 })
             })
             .await

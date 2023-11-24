@@ -226,7 +226,7 @@ extern "C" fn delete_local_service(name: *const c_char) {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async {
-        let result = app_state.tcp_outlet_delete(name).await;
+        let result = app_state.delete_local_service(name).await;
         if let Err(err) = result {
             error!(?err, "Couldn't delete the local service");
         }
@@ -236,8 +236,24 @@ extern "C" fn delete_local_service(name: *const c_char) {
 /// Creates a local service with the provided name and address.
 /// Returns null if successful, otherwise returns an error message.
 #[no_mangle]
-extern "C" fn create_local_service(name: *const c_char, address: *const c_char) -> *const c_char {
+extern "C" fn create_local_service(
+    name: *const c_char,
+    scheme: *const c_char,
+    address: *const c_char,
+) -> *const c_char {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
+    let scheme = unsafe {
+        if scheme.is_null() {
+            None
+        } else {
+            Some(
+                std::ffi::CStr::from_ptr(scheme)
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            )
+        }
+    };
     let address = unsafe {
         std::ffi::CStr::from_ptr(address)
             .to_str()
@@ -247,7 +263,7 @@ extern "C" fn create_local_service(name: *const c_char, address: *const c_char) 
 
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     let result = app_state.context().runtime().block_on(async {
-        let result = app_state.tcp_outlet_create(name, address).await;
+        let result = app_state.create_local_service(name, scheme, address).await;
         app_state.publish_state().await;
         result
     });

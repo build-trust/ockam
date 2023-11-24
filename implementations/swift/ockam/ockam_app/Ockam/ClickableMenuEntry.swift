@@ -3,6 +3,7 @@ import SwiftUI
 // Reproduction of the menu entry since it's not possible
 // to inherit a button with the style in macOS 13
 struct ClickableMenuEntry: View {
+    @State var selected: Bool = false
     @State var text: String
     @State var clicked: String = ""
     @State var icon: String = ""
@@ -47,8 +48,7 @@ struct ClickableMenuEntry: View {
         .padding(.horizontal, HorizontalSpacingUnit)
         .frame(height: compact ? VerticalSpacingUnit*3.5 : VerticalSpacingUnit*4)
         .background(
-            isHovered ? Color.gray.opacity(0.25) : Color.clear
-        )
+            (isHovered || selected) ? Color.gray.opacity(0.25) : Color.clear)
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)
         .contentShape(Rectangle())

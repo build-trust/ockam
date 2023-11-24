@@ -81,12 +81,13 @@ struct AcceptingInvitation: View {
                 
                 HStack {
                     Spacer()
-                    ProfilePicture(url: group.imageUrl, size: 64)
+                    ProfilePicture(url: group.imageUrl)
                     VStack(alignment: .leading) {
                         if let name = group.name {
                             Text(verbatim: name)
                         }
                         Text(verbatim: group.email)
+                            .foregroundStyle(OckamSecondaryTextColor)
                     }
                     Spacer()
                 }
@@ -147,12 +148,13 @@ struct AcceptingInvitation: View {
                 
                 HStack {
                     Spacer()
-                    ProfilePicture(url: group.imageUrl, size: 64)
+                    ProfilePicture(url: group.imageUrl)
                     VStack(alignment: .leading) {
                         if let name = group.name {
                             Text(verbatim: name)
                         }
                         Text(verbatim: group.email)
+                            .foregroundStyle(OckamSecondaryTextColor)
                     }
                     Spacer()
                 }

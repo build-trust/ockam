@@ -13,10 +13,11 @@ mod enroll;
 mod error;
 mod incoming_services;
 mod invitations;
+pub(crate) mod local_service;
 mod log;
 mod projects;
+pub(crate) mod relay;
 mod scheduler;
-mod shared_service;
 mod state;
 
 pub use error::{Error, Result};

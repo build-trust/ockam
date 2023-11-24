@@ -25,7 +25,7 @@ impl AppState {
             let invitations = controller
                 .list_invitations(&self.context(), InvitationListKind::All)
                 .await
-                .map_err(|e| e.to_string())?;
+                .unwrap();
             debug!("Invitations fetched");
             trace!(?invitations);
             invitations
@@ -271,6 +271,8 @@ impl AppState {
             shared_node_identity,
             shared_node_route,
             enrollment_ticket,
+            scheme,
+            name,
         } = invite_args;
         let res = controller
             .create_service_invitation(
@@ -285,6 +287,8 @@ impl AppState {
                 shared_node_identity,
                 shared_node_route,
                 enrollment_ticket,
+                scheme,
+                name.ok_or_else(|| "Service name is required".to_string())?,
             )
             .await
             .map_err(|e| e.to_string())?;

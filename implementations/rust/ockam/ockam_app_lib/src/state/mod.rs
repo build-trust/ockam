@@ -14,7 +14,6 @@ use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
 use ockam_api::logs::WorkerGuard;
-use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
@@ -31,6 +30,7 @@ use crate::api::state::OrchestratorStatus;
 use crate::background_node::{BackgroundNodeClientTrait, Cli};
 use crate::incoming_services::IncomingServicesState;
 use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
+use crate::local_service::PersistentLocalService;
 use crate::scheduler::Scheduler;
 pub(crate) use crate::state::model::ModelState;
 use crate::state::model_state_repository::ModelStateRepository;
@@ -145,6 +145,10 @@ impl AppState {
         let model_state = model_state_repository
             .load()
             .await
+            .map_err(|e| {
+                error!(%e, "Cannot load the model state");
+                e
+            })
             .unwrap_or(ModelState::default());
 
         info!("AppState initialized");
@@ -414,10 +418,10 @@ impl AppState {
         })
     }
 
-    /// Return the list of currently running outlets
-    pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
-        let node_manager = self.node_manager.read().await;
-        node_manager.list_outlets().await.list
+    /// Return the list of local services
+    pub async fn local_services(&self) -> Vec<PersistentLocalService> {
+        let guard = self.model_state.read().await;
+        guard.local_services.clone()
     }
 
     pub async fn user_info(&self) -> Result<UserInfo> {
@@ -515,21 +519,20 @@ impl AppState {
         if enrolled {
             loaded = self.is_state_loaded();
             local_services = self
-                .tcp_outlet_list()
+                .local_services()
                 .await
                 .into_iter()
-                .map(|outlet| LocalService {
-                    name: outlet.worker_addr.address().to_string(),
-                    address: outlet.socket_addr.ip().to_string(),
-                    port: outlet.socket_addr.port(),
-                    scheme: None,
+                .map(|local_service| LocalService {
+                    name: local_service.alias,
+                    address: local_service.socket_addr.ip().to_string(),
+                    port: local_service.socket_addr.port(),
+                    scheme: local_service.scheme,
                     shared_with: vec![],
                     available: true,
                 })
                 .collect();
 
             local_services.sort();
-            let mut group_names = Vec::new();
 
             sent_invitations = invitation_state
                 .sent
@@ -541,16 +544,23 @@ impl AppState {
                 .collect();
             sent_invitations.sort();
 
+            groups = vec![];
             invitation_state
                 .accepted
                 .invitations
                 .iter()
                 .for_each(|invitation| {
-                    if !group_names
+                    if !groups
                         .iter()
-                        .any(|name| name == &invitation.invitation.owner_email)
+                        .any(|group| group.email == invitation.invitation.owner_email)
                     {
-                        group_names.push(invitation.invitation.owner_email.clone());
+                        groups.push(ServiceGroup {
+                            email: invitation.invitation.owner_email.clone(),
+                            name: invitation.invitation.owner_name.clone(),
+                            image_url: invitation.invitation.picture_url.clone(),
+                            invitations: vec![],
+                            incoming_services: vec![],
+                        });
                     }
                 });
 
@@ -559,36 +569,42 @@ impl AppState {
                 .invitations
                 .iter()
                 .for_each(|invitation| {
-                    if !group_names
+                    if !groups
                         .iter()
-                        .any(|name| name == &invitation.owner_email)
+                        .any(|group| group.email == invitation.owner_email)
                     {
-                        group_names.push(invitation.owner_email.clone());
+                        groups.push(ServiceGroup {
+                            email: invitation.owner_email.clone(),
+                            name: invitation.owner_name.clone(),
+                            image_url: invitation.picture_url.clone(),
+                            invitations: vec![],
+                            incoming_services: vec![],
+                        });
                     }
                 });
 
-            group_names.sort();
+            groups.sort();
 
-            groups = group_names
+            groups = groups
                 .into_iter()
-                .map(|email| ServiceGroup {
-                    email: email.clone(),
-                    name: None,
-                    image_url: None,
+                .map(|service_group: ServiceGroup| ServiceGroup {
+                    email: service_group.email.clone(),
+                    name: service_group.name,
+                    image_url: service_group.image_url,
                     invitations: {
                         let mut invitations: Vec<Invitation> = invitation_state
                             .received
                             .invitations
                             .iter()
-                            .filter(|invitation| invitation.owner_email == email)
+                            .filter(|invitation| invitation.owner_email == service_group.email)
                             .map(|invitation| Invitation {
                                 id: invitation.id.clone(),
-                                service_name: {
+                                service_name: invitation.name.clone().unwrap_or_else(|| {
                                     let mut name = invitation.id.clone();
                                     name.truncate(6);
                                     name
-                                },
-                                service_scheme: None,
+                                }),
+                                service_scheme: invitation.scheme.clone(),
                                 accepting: invitation_state
                                     .received
                                     .status
@@ -626,13 +642,13 @@ impl AppState {
                         let mut incoming_services: Vec<Service> = incoming_services_state
                             .services
                             .iter()
-                            .filter(|service| service.email() == &email)
+                            .filter(|service| service.email() == service_group.email)
                             .map(|service| Service {
                                 id: service.id().to_string(),
                                 source_name: service.name().to_string(),
                                 address: service.address().map(|addr| addr.ip().to_string()),
                                 port: service.port(),
-                                scheme: None,
+                                scheme: service.scheme().clone(),
                                 available: service.is_connected(),
                                 enabled: service.enabled(),
                             })

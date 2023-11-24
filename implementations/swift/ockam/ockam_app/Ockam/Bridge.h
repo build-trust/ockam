@@ -181,7 +181,7 @@ void delete_local_service(const char *name);
 /**
  * Creates a local service with the provided name and address.
  */
-const char *create_local_service(const char *name, const char *address);
+const char *create_local_service(const char *name, const char *scheme, const char *address);
 
 /**
  * Synchronously resets the application state to a fresh installation.
