@@ -1,6 +1,5 @@
 use ockam::identity::SecureChannelOptions;
-use ockam::{node, route, Context, MessageReceiveOptions, Result, TcpConnectionOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, route, Context, MessageReceiveOptions, Result, TcpConnectionOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

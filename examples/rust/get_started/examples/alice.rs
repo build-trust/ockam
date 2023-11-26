@@ -1,6 +1,5 @@
 use ockam::identity::SecureChannelOptions;
-use ockam::{node, route, Context, Result, TcpConnectionOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpTransportExtension};
 use std::io;
 
 #[ockam::node]
