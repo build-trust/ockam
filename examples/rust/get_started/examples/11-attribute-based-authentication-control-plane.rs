@@ -8,12 +8,11 @@ use ockam::identity::{
 };
 use ockam::identity::{CredentialsRetriever, OneTimeCode};
 use ockam::remote::RemoteRelayOptions;
-use ockam::{node, route, Context, Result, TcpOutletOptions};
+use ockam::{node, route, Context, Result, TcpOutletOptions, TcpTransportExtension};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::nodes::NodeManager;
 use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::TcpTransportExtension;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///

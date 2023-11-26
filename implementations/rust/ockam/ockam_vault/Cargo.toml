@@ -87,7 +87,6 @@ p256 = { version = "0.13.2", default_features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
-serde_cbor = { version = "0.11.2", optional = true }
 sha2 = { version = "0.10", default-features = false }
 sqlx = { version = "0.7.3", optional = true }
 static_assertions = "1.1.0"
@@ -97,7 +96,6 @@ x25519-dalek = { version = "2.0.0", default_features = false, features = ["preco
 zeroize = { version = "1.7.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-data-encoding = { version = "2.5.0", features = ["alloc"] }
 serde_bare = { version = "0.5.0" }
 serde_json = { version = "1" }
 tempfile = { version = "3.8.0" }

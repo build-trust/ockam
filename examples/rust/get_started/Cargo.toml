@@ -14,7 +14,6 @@ default = ["std"]
 # be available on a standard platform.
 std = [
   "ockam/default",
-  "ockam_transport_websocket",
   "serde_json/default",
   "ockam_multiaddr/std",
   "ockam_api/std",
@@ -42,7 +41,6 @@ ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
 ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
 ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transport_udp" }
 ockam_transport_uds = { path = "../../../implementations/rust/ockam/ockam_transport_uds" }
-ockam_transport_websocket = { path = "../../../implementations/rust/ockam/ockam_transport_websocket", optional = true }
 ockam_vault = { path = "../../../implementations/rust/ockam/ockam_vault" }
 r3bl_ansi_color = "0.6.9"
 serde = { version = "1", default_features = false, features = ["derive"] }

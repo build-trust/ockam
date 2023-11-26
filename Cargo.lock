@@ -2239,7 +2239,6 @@ checksum = "31a7a908b8f32538a2143e59a6e4e2508988832d5d4d6f7c156b3cbc762643a5"
 name = "file_transfer"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "example_test_helper",
  "file_diff",
  "ockam",
@@ -2707,7 +2706,6 @@ dependencies = [
  "ockam_transport_tcp",
  "ockam_transport_udp",
  "ockam_transport_uds",
- "ockam_transport_websocket",
  "ockam_vault",
  "r3bl_ansi_color",
  "rand",
@@ -3888,7 +3886,6 @@ dependencies = [
  "core2",
  "futures-util",
  "hashbrown 0.14.2",
- "heapless",
  "hex",
  "minicbor",
  "ockam_macros",
@@ -3900,12 +3897,10 @@ dependencies = [
  "serde_bare",
  "serde_cbor",
  "spin 0.9.8",
- "subtle",
  "tinyvec",
  "tokio",
  "tracing",
  "tracing-error",
- "zeroize",
 ]
 
 [[package]]
@@ -3930,7 +3925,6 @@ dependencies = [
  "chrono",
  "delegate",
  "group",
- "heapless",
  "hex",
  "minicbor",
  "ockam_core",
@@ -3944,14 +3938,12 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "serde",
- "serde-big-array",
  "serde_bare",
  "serde_json",
  "sha2",
  "sqlx",
  "subtle",
  "tempfile",
- "time",
  "tokio",
  "tokio-retry",
  "tracing",
@@ -3964,7 +3956,6 @@ version = "0.1.0"
 dependencies = [
  "example_test_helper",
  "ockam",
- "ockam_transport_tcp",
 ]
 
 [[package]]
@@ -4131,7 +4122,6 @@ dependencies = [
  "aes-gcm",
  "arrayref",
  "cfg-if",
- "data-encoding",
  "ed25519-dalek",
  "hex",
  "hkdf",
@@ -4144,7 +4134,6 @@ dependencies = [
  "rand_pcg",
  "serde",
  "serde_bare",
- "serde_cbor",
  "serde_json",
  "sha2",
  "sqlx",
@@ -4165,7 +4154,6 @@ dependencies = [
  "aws-config",
  "aws-credential-types",
  "aws-sdk-kms",
- "delegate",
  "hex",
  "ockam_core",
  "ockam_macros",
@@ -5273,15 +5261,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25dd9975e68d0cb5aa1120c288333fc98731bd1dd12f561e468ea4728c042b89"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-big-array"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
-dependencies = [
- "serde",
 ]
 
 [[package]]

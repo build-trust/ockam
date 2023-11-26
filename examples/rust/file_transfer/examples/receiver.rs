@@ -5,9 +5,8 @@ use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteRelayOptions;
 use ockam::{
     errcode::{Kind, Origin},
-    node, Context, Error, Result, Routed, TcpConnectionOptions, Worker,
+    node, Context, Error, Result, Routed, TcpConnectionOptions, TcpTransportExtension, Worker,
 };
-use ockam_transport_tcp::TcpTransportExtension;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
