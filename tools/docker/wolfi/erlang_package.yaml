@@ -48,8 +48,7 @@ pipeline:
         --build="$CBUILD" \
         --enable-threads \
         --enable-shared-zlib \
-        --enable-ssl=dynamic-ssl-lib \
-        --enable-jit
+        --enable-ssl=dynamic-ssl-lib
 
   - uses: autoconf/make
 
