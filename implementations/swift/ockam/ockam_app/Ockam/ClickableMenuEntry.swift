@@ -16,7 +16,6 @@ struct ClickableMenuEntry: View {
         HStack {
             if icon != "" {
                 Image(systemName: icon)
-                    .frame(minWidth: 16, maxWidth: 16)
             }
             Text(verbatim: isDown ? (clicked.isEmpty ? text : clicked) : text)
             Spacer()
@@ -25,8 +24,8 @@ struct ClickableMenuEntry: View {
                     .foregroundColor(Color.gray.opacity(0.5))
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, HorizontalSpacingUnit)
+        .frame(height: VerticalSpacingUnit*3)
         .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)
@@ -49,5 +48,20 @@ struct ClickableMenuEntry: View {
         .onHover { hover in
             isHovered = hover
         }
+    }
+}
+
+struct ClickableMenuEntry_Previews: PreviewProvider {
+    static var previews: some View {
+        VStack(spacing: 0) {
+            ClickableMenuEntry(text: "Hello")
+            ClickableMenuEntry(text: "World!", shortcut: "⌘W")
+            ClickableMenuEntry(
+                text: "Click and hold me!",
+                clicked: "Ough!",
+                icon: "heart.fill"
+            )
+        }
+        .frame(width: 320, height: 200)
     }
 }

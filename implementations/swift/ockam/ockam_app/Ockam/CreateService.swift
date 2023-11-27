@@ -9,7 +9,6 @@ struct CreateServiceView: View {
     @State var errorMessage = ""
     @State var serviceName = ""
     @State var serviceAddress = "localhost:10000"
-    @State var emails = Set<String>()
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -34,18 +33,8 @@ struct CreateServiceView: View {
                     .padding(.top, 6)
                     TextField("Address", text: $serviceAddress)
                 }
-                GridRow {
-                    VStack(alignment: .leading) {
-                        Text(verbatim: "Share")
-                        Text(verbatim: "Optionally, share your service with others").font(
-                            .caption)
-                    }
-                    .padding(.top, 6)
-                }
             }
             .padding(10)
-
-            EmailListView(emailList: $emails)
 
             //use opacity to pre-allocate the space for this component
             Text("Error: \(errorMessage)")
@@ -64,23 +53,18 @@ struct CreateServiceView: View {
                     })
                 Button(
                     action: {
-                        let emails: String
-
-                        emails = Array(self.emails).joined(separator: ";")
                         self.errorMessage = ""
 
                         isProcessing = true
                         let error = create_local_service(
                             self.serviceName,
-                            self.serviceAddress,
-                            emails
+                            self.serviceAddress
                         )
                         isProcessing = false
 
                         if error == nil {
                             self.errorMessage = ""
                             self.serviceName = ""
-                            self.emails = Set<String>()
                             self.serviceAddress = "localhost:10000"
                             self.closeWindow()
                         } else {
@@ -88,14 +72,14 @@ struct CreateServiceView: View {
                         }
                     },
                     label: {
-                        Text("Create and Share")
+                        Text("Create Service")
                     }
                 )
                 .disabled(!canCreateService() && !isProcessing)
                 .keyboardShortcut(.defaultAction)
                 .padding(10)
             }
-            .background(.black.opacity(0.1))
+            .background(OckamDarkerBackground)
         }
         .frame(width: 600)
     }

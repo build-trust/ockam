@@ -30,7 +30,7 @@ struct BrokenStateView: View {
                 .keyboardShortcut(.defaultAction)
                 .padding(10)
             }
-            .background(.black.opacity(0.1))
+            .background(OckamDarkerBackground)
         }
         .frame(width: 300, height: 160)
     }
