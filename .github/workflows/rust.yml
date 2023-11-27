@@ -40,10 +40,6 @@ on:
         description: Commit SHA, to run workflow
       ockam_command_cli_version:
         description: SHA to build Ockam command CLI
-      ockam_crate_version_to_test_with_docs_examples:
-        description: Ockam crate version to tests docs.ockam.io library examples
-      ockam_docs_ref:
-        description: SHA or branch to run ockam docs test
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -334,82 +330,3 @@ jobs:
   #         ockam_repository_ref: ${{ inputs.commit_sha }}
   #         controller_id: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ID }}
   #         controller_addr: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ADDRESS }}
-
-  test_docs_rust_library_examples:
-    name: Rust - test_docs_rust_library_examples
-    runs-on: ubuntu-22.04
-    if: github.event_name == 'workflow_dispatch'
-
-    steps:
-      # Run ockam example code against a different version of ockam library
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          ref: ${{ inputs.commit_sha }}
-          path: ockam_examples
-
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
-          path: ockam_library
-
-      - name: Install Nix
-        uses: ./ockam_library/.github/actions/cache_nix
-        with:
-          cache-unique-id: test_docs_rust_library_examples
-        id: nix-installer
-
-      - uses: ./ockam_library/.github/actions/cache_rust
-        with:
-          directory_to_cache: "ockam_examples"
-          job_name: ${{ github.job }}
-
-      - name: Move Implementation Directory From Ockam Library To Ockam Examples
-        run: |
-          cp -r ockam_library/implementations/rust/ockam ockam_examples/implementations/rust/ockam
-
-      - name: Run Ockam Examples
-        working-directory: ockam_examples
-        shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
-        run: cargo test -p hello_ockam
-
-      - name: Nix Upload Store
-        uses: ./.github/actions/nix_upload_store
-        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
-
-
-  lint_docs_ockam_io_rust_examples:
-    name: Rust - lint_docs_ockam_io_rust_examples
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout Ockam Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          ref: ${{ inputs.commit_sha }}
-          path: ockam
-
-      - name: Checkout Ockam Documentation Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          ref: ${{ inputs.ockam_docs_ref == '' && 'develop' || inputs.ockam_docs_ref }}
-          repository: build-trust/ockam-documentation
-          path: ockam-documentation
-
-      - name: Install Nix
-        uses: ./ockam/.github/actions/cache_nix
-        with:
-          cache-unique-id: lint_docs_ockam_io_rust_examples
-        id: nix-installer
-
-      - name: Build Example Blocks
-        working-directory: ockam
-        run:
-          nix develop ./tools/nix#rust --keep CI --ignore-environment --command cargo install --path ./tools/docs/example_blocks
-
-      - name: Check Rust Documentation
-        if: github.event_name == 'merge_group'
-        run: |
-          CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
-
-      - name: Nix Upload Store
-        uses: ./ockam/.github/actions/nix_upload_store
-        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
