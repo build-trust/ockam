@@ -74,6 +74,7 @@ jobs:
           docker load < builder_image.tar
 
       - name: Push Images
+        id: image_ref
         run: |
           set -ex
           docker image ls
@@ -103,12 +104,12 @@ jobs:
         with:
           cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
-          image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base:latest'
+          image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base@${{ steps.image_ref.outputs.BASE }}'
           ref: ${{ steps.image_ref.outputs.BASE }}
 
       - uses: build-trust/.github/actions/image_cosign@custom-actions
         with:
           cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
-          image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder:latest'
+          image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder@${{ steps.image_ref.outputs.BUILDER }}'
           ref: ${{ steps.image_ref.outputs.BUILDER }}
