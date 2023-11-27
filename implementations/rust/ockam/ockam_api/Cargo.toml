@@ -47,7 +47,7 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 sysinfo = "0.29"
-tempfile = "3.8.0"
+tempfile = "3.8.1"
 thiserror = "1.0"
 time = { version = "0.3.30", default-features = false, features = ["std", "local-offset"] }
 tiny_http = "0.12.0"

@@ -118,7 +118,7 @@ which = "5.0.0"
 assert_cmd = "2"
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0" }
 proptest = "1.4.0"
-tempfile = "3.8.0"
+tempfile = "3.8.1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 
 [features]
