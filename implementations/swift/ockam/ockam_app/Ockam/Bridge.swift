@@ -476,23 +476,20 @@ extension Invitee: CustomDebugStringConvertible {
 
 extension Invitation: CustomDebugStringConvertible {
     var debugDescription: String {
-        return
-        "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
+        return "{ \"id\": \"\(id)\", \"serviceName\": \"\(serviceName)\", \"serviceScheme\": \"\(serviceScheme ?? "nil")\", \"accepting\": \(accepting) }"
     }
 }
 
 extension LocalService: CustomDebugStringConvertible {
     var debugDescription: String {
         let sharedWithJsonStrings = sharedWith.map { $0.debugDescription }.joined(separator: ", ")
-        return
-        "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
+        return "{ \"name\": \"\(name)\", \"address\": \"\(address)\", \"port\": \(port), \"scheme\": \"\(scheme ?? "none")\", \"sharedWith\": [ \(sharedWithJsonStrings) ], \"available\": \(available) }"
     }
 }
 
 extension Service: CustomDebugStringConvertible {
     var debugDescription: String {
-        return
-        "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
+        return "{ \"sourceName\": \"\(sourceName)\", \"address\": \"\(address ?? "nil")\", \"port\": \(String(describing: port)), \"scheme\": \"\(scheme ?? "nil")\", \"available\": \(available), \"enabled\": \(enabled), \"id\": \"\(id)\" }"
     }
 }
 
@@ -501,8 +498,7 @@ extension ServiceGroup: CustomDebugStringConvertible {
         let invitationsStrings = invitations.map { $0.debugDescription }.joined(separator: ", ")
         let incomingServicesStrings = incomingServices.map { $0.debugDescription }.joined(
             separator: ", ")
-        return
-        "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
+        return "{ \"name\": \"\(name ?? "nil")\", \"email\": \"\(email)\", \"imageUrl\": \"\(imageUrl ?? "nil")\", \"invitations\": [ \(invitationsStrings) ], \"incomingServices\" : [ \(incomingServicesStrings) ] }"
     }
 }
 
@@ -510,8 +506,7 @@ extension ApplicationState {
     var debugDescription: String {
         let localServicesStrings = localServices.map { $0.debugDescription }.joined(separator: ", ")
         let groupsStrings = groups.map { $0.debugDescription }.joined(separator: ", ")
-        return
-        "{ \"enrolled\": \(enrolled), \"loaded\": \(loaded), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
+        return "{ \"enrolled\": \(enrolled), \"loaded\": \(loaded), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
     }
 }
 

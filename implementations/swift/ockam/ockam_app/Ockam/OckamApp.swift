@@ -1,10 +1,11 @@
-/*
-    This file is the entrypoint for the application
-*/
+//
+// This file is the entrypoint for the application
+//
 
 import SwiftUI
 import AppKit
 import OSLog
+import FluidMenuBarExtra
 
 
 // you can read the logs inside the console application
@@ -13,17 +14,15 @@ let logger: Logger = Logger(
     category: String(describing: OckamApp.self)
 )
 
-/*
-    This class was needed to allow receiving events from the C library.
-    The idea is to update the state inside a static instance and
-    use a callback to propagate the change back into swift-ui.
-
-    see swift_initialize_application() in Bridge.swift
-*/
+// This class was needed to allow receiving events from the C library.
+// The idea is to update the state inside a static instance and
+// use a callback to propagate the change back into swift-ui.
+//
+// see swift_initialize_application() in Bridge.swift
 class StateContainer {
     static var shared = StateContainer()
 
-    var callback: ((ApplicationState) -> Void)?
+    var callbacks: [((ApplicationState) -> Void)] = []
     var state = ApplicationState(
         enrolled: false,
         loaded: false,
@@ -40,21 +39,57 @@ class StateContainer {
     func update(state: ApplicationState) {
         debugPrint(state)
         self.state = state
-        if let callback = self.callback {
+        for callback in self.callbacks {
             callback(state)
         }
     }
 
     func callback(_ callback: @escaping (ApplicationState) -> Void) {
-        self.callback = callback
+        self.callbacks.append(callback)
         callback(state)
+    }
+}
+
+struct WrapperView: View {
+    @Environment(\.openWindow) var openWindow
+    @State private var state = StateContainer.shared.state
+    @State public var brokenState = broken
+
+    var body: some View {
+        if brokenState {
+            // we need to give the user a way to re-open the window
+            // to provide at least a way to quit the application
+            ClickableMenuEntry(text: "Open Window", action: {
+                openWindow(id: "broken-state")
+            })
+            .frame(width: 120,height: 40)
+        } else {
+            MainView(state: $state)
+                .onAppear {
+                    StateContainer.shared.callback{ state in
+                        self.state = state
+                    }
+                }
+        }
     }
 }
 
 // This is needed to properly receive and handle every url event, swiftui
 // does have a simpler mechanism, however it doesn't handle the first time
 // a link is clicked and the application is not yet started
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    private var menuBarExtra: FluidMenuBarExtra?
+
+    func applicationDidFinishLaunching(_ notification: Foundation.Notification) {
+        self.menuBarExtra = FluidMenuBarExtra(title: "My Menu", image: "MenuBarIcon") {
+            WrapperView()
+        }
+        // we don't want any window to be automatically open at startup
+        if let window = NSApplication.shared.windows.first {
+            window.close()
+        }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             logger.info("Received url: \(url.absoluteString)")
@@ -75,33 +110,24 @@ class InvitationContainer: ObservableObject {
     }
 }
 
+// when the application initialization fails to load we enter a broken state
+// where we only propose a reset to the user
+var broken = false
+
 @main
 struct OckamApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State var state: ApplicationState = StateContainer.shared.state
-    @State var invitation: InvitationContainer = InvitationContainer.shared
-    // when the application initialization fails to load we enter a broken state
-    // where we only propose a reset to the user
-    var broken: Bool = false
+
     @Environment(\.openWindow) var openWindow
 
+    @State var state: ApplicationState = StateContainer.shared.state
+    @State var invitation: InvitationContainer = InvitationContainer.shared
+
     var body: some Scene {
-        MenuBarExtra {
-            if broken {
-                // we need to give the user a way to re-open the window
-                // to provide at least a way to quit the application
-                ClickableMenuEntry(text: "Open Window", action: {
-                    openWindow(id: "broken-state")
-                })
-                .frame(width: 120,height: 40)
-            } else {
-                MainView(state: $state)
-            }
-        } label: {
-            Image("MenuBarIcon")
-                .renderingMode(.template)
-                .contentShape(Rectangle())
-                .buttonStyle(PlainButtonStyle())
+        Window("Accepting invitation", id: "accepting-invitation") {
+            AcceptingInvitation(state: $state, invitationIdContainer: $invitation)
+            // no particular reason to attach .onAppear to this window, we just need a View event
+            // during initialization. onAppear is meant apperance in the hierarchy and not 'visible'.
                 .onAppear(perform: {
                     if broken {
                         openWindow(id: "broken-state")
@@ -116,20 +142,13 @@ struct OckamApp: App {
                         logger.info("opening 'accepting-invitation' window with invitation \(invitationId)")
                         // without this it won't show the window when a link is clicked and the application
                         // has not yet started
-                        NSApp.activate(ignoringOtherApps: true)
                         openWindow(id: "accepting-invitation")
                     }
                 })
         }
-        .menuBarExtraStyle(.window)
-        .commandsRemoved()
-
-        Window("Accepting invitation", id: "accepting-invitation") {
-            AcceptingInvitation(state: $state, invitationIdContainer: $invitation)
-        }
         .windowResizability(.contentSize)
 
-        WindowGroup("Confirmation", id: "ignore-service-confirmation", for: Service.ID.self) { $serviceId in
+        WindowGroup("Confirmation", id: "decline-service-confirmation", for: Service.ID.self) { $serviceId in
             IgnoreServiceView(
                 service: StateContainer.shared.state.lookupIncomingServiceById(
                     serviceId.unsafelyUnwrapped

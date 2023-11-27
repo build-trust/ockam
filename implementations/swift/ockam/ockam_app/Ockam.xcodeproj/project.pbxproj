@@ -10,7 +10,6 @@
 		4CB45C522AEB06C700D27F22 /* AcceptingInvitation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB45C512AEB06C700D27F22 /* AcceptingInvitation.swift */; };
 		7807276C2ACF5AB500C93A44 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */; };
 		7807276F2ACF5B3400C93A44 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */; };
-		781D00042AD05D26009848FE /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781D00032AD05D26009848FE /* Services.swift */; };
 		7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7827D5062AD93EE700F7A20F /* ProfilePicture.swift */; };
 		7827D5092AD93F1700F7A20F /* ClickableMenuEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7827D5082AD93F1700F7A20F /* ClickableMenuEntry.swift */; };
 		782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782D5B482AC1D3D700D1B27F /* OckamApp.swift */; };
@@ -19,9 +18,16 @@
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		785A07302B14A60E002FF30C /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A072F2B14A60E002FF30C /* Constants.swift */; };
+		785A07322B14C810002FF30C /* SentInvitations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07312B14C810002FF30C /* SentInvitations.swift */; };
+		785A07342B14CF29002FF30C /* LocalServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07332B14CF29002FF30C /* LocalServiceView.swift */; };
+		785A07362B14D697002FF30C /* ServiceGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07352B14D697002FF30C /* ServiceGroupView.swift */; };
+		785A07382B14D734002FF30C /* IncomingInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07372B14D734002FF30C /* IncomingInvite.swift */; };
+		785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */; };
+		785A07432B161617002FF30C /* FluidMenuBarExtra in Frameworks */ = {isa = PBXBuildFile; productRef = 785A07422B161617002FF30C /* FluidMenuBarExtra */; };
 		785C8DC12B0BAD5E00926DCD /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785C8DC02B0BAD5E00926DCD /* About.swift */; };
 		789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 789FA6452AE142280009FF7F /* ExportOptions.plist */; };
-		78B7EF702B0F649D0062B2B3 /* IgnoreService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B7EF6F2B0F649D0062B2B3 /* IgnoreService.swift */; };
+		78B7EF702B0F649D0062B2B3 /* DeclineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B7EF6F2B0F649D0062B2B3 /* DeclineService.swift */; };
 		78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BD349C2AFA621500F09058 /* BrokenStateView.swift */; };
 		78BD34A12AFCFDF100F09058 /* RemoteServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BD34A02AFCFDF100F09058 /* RemoteServiceView.swift */; };
 		78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D520822ADD5CAE00F36B64 /* Helpers.swift */; };
@@ -34,7 +40,6 @@
 		4CB45C512AEB06C700D27F22 /* AcceptingInvitation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptingInvitation.swift; sourceTree = "<group>"; };
 		7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
-		781D00032AD05D26009848FE /* Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services.swift; sourceTree = "<group>"; };
 		7827D5062AD93EE700F7A20F /* ProfilePicture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePicture.swift; sourceTree = "<group>"; };
 		7827D5082AD93F1700F7A20F /* ClickableMenuEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickableMenuEntry.swift; sourceTree = "<group>"; };
 		782D5B452AC1D3D700D1B27F /* Ockam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ockam.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -46,10 +51,16 @@
 		782D5BAB2AC33EAD00D1B27F /* Bridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Bridge.h; path = Ockam/Bridge.h; sourceTree = "<group>"; };
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
+		785A072F2B14A60E002FF30C /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		785A07312B14C810002FF30C /* SentInvitations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentInvitations.swift; sourceTree = "<group>"; };
+		785A07332B14CF29002FF30C /* LocalServiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServiceView.swift; sourceTree = "<group>"; };
+		785A07352B14D697002FF30C /* ServiceGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceGroupView.swift; sourceTree = "<group>"; };
+		785A07372B14D734002FF30C /* IncomingInvite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingInvite.swift; sourceTree = "<group>"; };
+		785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnrollmentStatus.swift; sourceTree = "<group>"; };
 		785C8DC02B0BAD5E00926DCD /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		789FA6452AE142280009FF7F /* ExportOptions.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = ExportOptions.plist; sourceTree = "<group>"; };
-		78B7EF6F2B0F649D0062B2B3 /* IgnoreService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IgnoreService.swift; sourceTree = "<group>"; };
+		78B7EF6F2B0F649D0062B2B3 /* DeclineService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeclineService.swift; sourceTree = "<group>"; };
 		78BD349C2AFA621500F09058 /* BrokenStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrokenStateView.swift; sourceTree = "<group>"; };
 		78BD34A02AFCFDF100F09058 /* RemoteServiceView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RemoteServiceView.swift; sourceTree = "<group>"; };
 		78D520822ADD5CAE00F36B64 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
@@ -66,6 +77,7 @@
 				7807276C2ACF5AB500C93A44 /* CoreFoundation.framework in Frameworks */,
 				7807276F2ACF5B3400C93A44 /* SystemConfiguration.framework in Frameworks */,
 				782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */,
+				785A07432B161617002FF30C /* FluidMenuBarExtra in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,7 +105,7 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
-				78B7EF6F2B0F649D0062B2B3 /* IgnoreService.swift */,
+				78B7EF6F2B0F649D0062B2B3 /* DeclineService.swift */,
 				78BD34A02AFCFDF100F09058 /* RemoteServiceView.swift */,
 				789FA6452AE142280009FF7F /* ExportOptions.plist */,
 				785D8D372AD5369100DF5004 /* Info.plist */,
@@ -102,7 +114,6 @@
 				782D5B4C2AC1D3D800D1B27F /* Assets.xcassets */,
 				782D5B512AC1D3D800D1B27F /* Ockam.entitlements */,
 				783B62712AC432B700880261 /* Bridge.swift */,
-				781D00032AD05D26009848FE /* Services.swift */,
 				78F5F3032AD4127C00B8D18E /* EmailInput.swift */,
 				78ED0DA02AD4354400574AE9 /* CreateService.swift */,
 				78ED0DA22AD4501200574AE9 /* ShareService.swift */,
@@ -112,6 +123,12 @@
 				78D520822ADD5CAE00F36B64 /* Helpers.swift */,
 				78BD349C2AFA621500F09058 /* BrokenStateView.swift */,
 				785C8DC02B0BAD5E00926DCD /* About.swift */,
+				785A072F2B14A60E002FF30C /* Constants.swift */,
+				785A07312B14C810002FF30C /* SentInvitations.swift */,
+				785A07332B14CF29002FF30C /* LocalServiceView.swift */,
+				785A07352B14D697002FF30C /* ServiceGroupView.swift */,
+				785A07372B14D734002FF30C /* IncomingInvite.swift */,
+				785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */,
 			);
 			path = Ockam;
 			sourceTree = "<group>";
@@ -155,6 +172,9 @@
 			dependencies = (
 			);
 			name = Ockam;
+			packageProductDependencies = (
+				785A07422B161617002FF30C /* FluidMenuBarExtra */,
+			);
 			productName = Ockam;
 			productReference = 782D5B452AC1D3D700D1B27F /* Ockam.app */;
 			productType = "com.apple.product-type.application";
@@ -183,6 +203,9 @@
 				Base,
 			);
 			mainGroup = 782D5B3C2AC1D3D700D1B27F;
+			packageReferences = (
+				785A07412B161617002FF30C /* XCRemoteSwiftPackageReference "fluid-menu-bar-extra" */,
+			);
 			productRefGroup = 782D5B462AC1D3D700D1B27F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -209,17 +232,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				785A07342B14CF29002FF30C /* LocalServiceView.swift in Sources */,
 				7827D5092AD93F1700F7A20F /* ClickableMenuEntry.swift in Sources */,
 				78BD34A12AFCFDF100F09058 /* RemoteServiceView.swift in Sources */,
+				785A07322B14C810002FF30C /* SentInvitations.swift in Sources */,
 				782D5B4B2AC1D3D700D1B27F /* MainView.swift in Sources */,
-				78B7EF702B0F649D0062B2B3 /* IgnoreService.swift in Sources */,
+				785A07302B14A60E002FF30C /* Constants.swift in Sources */,
+				785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */,
+				78B7EF702B0F649D0062B2B3 /* DeclineService.swift in Sources */,
 				78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */,
 				78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */,
 				78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */,
-				781D00042AD05D26009848FE /* Services.swift in Sources */,
 				7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */,
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
 				785C8DC12B0BAD5E00926DCD /* About.swift in Sources */,
+				785A07382B14D734002FF30C /* IncomingInvite.swift in Sources */,
+				785A07362B14D697002FF30C /* ServiceGroupView.swift in Sources */,
 				78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */,
 				78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */,
 				4CB45C522AEB06C700D27F22 /* AcceptingInvitation.swift in Sources */,
@@ -453,6 +481,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		785A07412B161617002FF30C /* XCRemoteSwiftPackageReference "fluid-menu-bar-extra" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/lfroms/fluid-menu-bar-extra";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		785A07422B161617002FF30C /* FluidMenuBarExtra */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 785A07412B161617002FF30C /* XCRemoteSwiftPackageReference "fluid-menu-bar-extra" */;
+			productName = FluidMenuBarExtra;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 782D5B3D2AC1D3D700D1B27F /* Project object */;
 }

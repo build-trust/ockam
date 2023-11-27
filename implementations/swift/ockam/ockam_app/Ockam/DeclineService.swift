@@ -6,10 +6,11 @@ struct IgnoreServiceView: View {
 
     var body: some View {
         VStack {
+            Spacer()
             Text(
-                "Once you click Ignore, the service '\(service.sourceName)' will no longer show up here.\n" +
+                "Once you click Decline, the service '\(service.sourceName)' will no longer show up here.\n" +
                 "Are you sure you want to do this?\n" +
-                "Once ignored, the only way to get this back is to have the person who sent you the invite, to send another one."
+                "Once declined, the only way to get this back is to have the person who sent you the invite, to send another one."
             )
             .padding()
             Spacer()
@@ -22,7 +23,7 @@ struct IgnoreServiceView: View {
                         self.closeWindow()
                     },
                     label: {
-                        Text("Ignore")
+                        Text("Decline")
                     }
                 )
                 Button(
@@ -36,9 +37,9 @@ struct IgnoreServiceView: View {
                 .keyboardShortcut(.defaultAction)
                 .padding(10)
             }
-            .background(.black.opacity(0.1))
+            .background(OckamDarkerBackground)
         }
-        .frame(width: 300, height: 180)
+        .frame(width: 300, height: 200)
     }
 
     func closeWindow() {
