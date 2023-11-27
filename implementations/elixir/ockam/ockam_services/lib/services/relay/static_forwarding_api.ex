@@ -30,7 +30,6 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
 
   @impl true
   def authorize(:identity, %Request{} = req, _bindings) do
-    # Oposed to the legacy StaticForwarding, here we do enforce authentication of caller
     case Request.caller_identity_id(req) do
       {:ok, identifier} ->
         {true, %{identifier: identifier}}
