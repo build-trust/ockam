@@ -54,10 +54,9 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 credentials-sso = ["aws-config/sso"]
 
 [dependencies]
-aws-config = { version = "1.0.1", default-features = false, features = ["rustls"] }
+aws-config = { version = "1.0.1", default-features = false, features = ["rustls", "rt-tokio"] }
 aws-sdk-kms = { version = "0.39.0", default-features = false, features = ["rustls"] }
 delegate = "0.10.0"
-ockam = { path = "../ockam", version = "^0.105.0", default_features = false }
 ockam_core = { path = "../ockam_core", version = "^0.93.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.98.0", default_features = false }

@@ -1,8 +1,5 @@
-use ockam_core::compat::time::Duration;
-
 use crate::error::Error;
 use aws_config::{BehaviorVersion, SdkConfig};
-use aws_sdk_kms::config::{AsyncSleep, Sleep};
 use aws_sdk_kms::error::SdkError;
 use aws_sdk_kms::operation::schedule_key_deletion::ScheduleKeyDeletionError;
 use aws_sdk_kms::primitives::Blob;
@@ -41,35 +38,10 @@ pub struct AwsKmsConfig {
     initial_keys_discovery: InitialKeysDiscovery,
 }
 
-/// This is copy-pasted from
-/// https://github.com/smithy-lang/smithy-rs/blob/main/rust-runtime/aws-smithy-async/src/rt/sleep.rs
-/// Would had been picked up automatically if we let default features enabled (or at least rt-tokio one)
-/// but that cause conflicts with our no_std check
-/// Implementation of [`AsyncSleep`] for Tokio.
-#[non_exhaustive]
-#[derive(Debug, Default)]
-pub struct TokioSleep;
-
-impl TokioSleep {
-    /// Create a new [`AsyncSleep`] implementation using the Tokio hashed wheel sleep implementation
-    pub fn new() -> TokioSleep {
-        Default::default()
-    }
-}
-
-impl AsyncSleep for TokioSleep {
-    fn sleep(&self, duration: Duration) -> Sleep {
-        Sleep::new(ockam::compat::tokio::time::sleep(duration))
-    }
-}
-
 impl AwsKmsConfig {
     /// Create a new configuration for the AWS KMS
     pub async fn default() -> Result<AwsKmsConfig> {
-        let sdk_config = aws_config::defaults(BehaviorVersion::latest())
-            .sleep_impl(TokioSleep::new())
-            .load()
-            .await;
+        let sdk_config = aws_config::defaults(BehaviorVersion::latest()).load().await;
         Ok(Self::new(sdk_config))
     }
 
