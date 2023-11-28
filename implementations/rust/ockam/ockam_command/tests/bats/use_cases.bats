@@ -71,12 +71,13 @@ teardown() {
 
   port_1=9002
   port_2=9003
+  fwd=$(random_str)
 
   # Administrator
   setup_home_dir
   cp -r $OCKAM_BASE_HOME/. $OCKAM_HOME
 
-  cp1_token=$($OCKAM project ticket --attribute component=control)
+  cp1_token=$($OCKAM project ticket --attribute component=control --relay $fwd)
   ep1_token=$($OCKAM project ticket --attribute component=edge)
   x_token=$($OCKAM project ticket --attribute component=x)
 
@@ -84,7 +85,6 @@ teardown() {
   setup_home_dir
   cp -r $OCKAM_BASE_HOME/. $OCKAM_HOME
 
-  fwd=$(random_str)
   $OCKAM identity create control_identity
   $OCKAM project enroll $cp1_token --project "$PROJECT_NAME" --identity control_identity
   $OCKAM node create control_plane1 --project "$PROJECT_NAME" --identity control_identity
@@ -100,7 +100,7 @@ teardown() {
   $OCKAM project enroll $ep1_token --project "$PROJECT_NAME" --identity edge_identity
   $OCKAM node create edge_plane1 --project "$PROJECT_NAME" --identity edge_identity
   $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
-  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "$fwd"
   run_success curl --fail --head --max-time 5 "127.0.0.1:$port_1"
 
   ## The following is denied
@@ -108,7 +108,7 @@ teardown() {
   $OCKAM project enroll $x_token --project "$PROJECT_NAME" --identity x_identity
   $OCKAM node create x --project "$PROJECT_NAME" --identity x_identity
   $OCKAM policy create --at x --resource tcp-inlet --expression '(= subject.component "control")'
-  $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "$fwd"
   run curl --fail --head --max-time 5 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
 }

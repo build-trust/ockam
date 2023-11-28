@@ -57,7 +57,7 @@ teardown() {
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
 
   run_success "$OCKAM" node create green --project "$PROJECT_NAME"
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
@@ -76,7 +76,8 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
+  fwd="$(random_str)"
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green --relay $fwd
   run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Green isn't enrolled as project member
@@ -86,7 +87,6 @@ teardown() {
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
-  fwd="$(random_str)"
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
@@ -109,7 +109,8 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
+  fwd="$(random_str)"
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green --relay $fwd
   run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Green isn't enrolled as project member
@@ -119,17 +120,18 @@ teardown() {
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
-  fwd="$(random_str)"
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
   # Green can't establish secure channel with blue, because it isn't a member
-  run_failure "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  run_failure "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
 }
 
 @test "portals - inlet/outlet example with credential" {
   port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
+
+  # Setup non-enrolled identities
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
   cp -r $ENROLLED_OCKAM_HOME/. $NON_ENROLLED_OCKAM_HOME
@@ -139,17 +141,19 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
+  fwd="$(random_str)"
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green --relay $fwd
   run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
+  # Add identities as members of the project
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
   run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
   run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
 
+  # Use project from the now enrolled identities
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
-  fwd="$(random_str)"
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
@@ -163,7 +167,8 @@ teardown() {
   port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  green_token=$($OCKAM project ticket --attribute app=app1)
+  fwd="$(random_str)"
+  green_token=$($OCKAM project ticket --attribute app=app1 --allowed-relay $fwd)
   blue_token=$($OCKAM project ticket --attribute app=app1)
 
   setup_home_dir
@@ -183,11 +188,10 @@ teardown() {
 
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
-  fwd="$(random_str)"
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_$fwd/secure/api/service/outlet"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
