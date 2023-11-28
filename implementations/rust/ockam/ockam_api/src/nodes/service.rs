@@ -93,7 +93,7 @@ pub(crate) fn encode_response<T: Encode<()>>(
 ///  - manage persistent data
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
-    node_name: String,
+    pub(crate) node_name: String,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     enable_credential_checks: bool,
@@ -600,15 +600,7 @@ impl NodeManagerWorker {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
             (Get, ["node"]) => {
-                let node_name = &self.node_manager.node_name();
-                Response::ok(req)
-                    .body(NodeStatus::new(
-                        node_name,
-                        "Running",
-                        ctx.list_workers().await?.len() as u32,
-                        std::process::id() as i32,
-                    ))
-                    .to_vec()?
+                encode_response(self.get_node_status(ctx, req).await)?
             }
 
             // ==*== Tcp Connection ==*==

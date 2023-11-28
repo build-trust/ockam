@@ -1,7 +1,10 @@
 //! Nodemanager API types
 
 use minicbor::{Decode, Encode};
-
+use ockam_core::api::{RequestHeader, Response, Error};
+use ockam_core::Result;
+use crate::nodes::{NodeManager, NodeManagerWorker};
+use ockam_node::Context;
 ///////////////////-!  RESPONSE BODIES
 
 /// Response body for a node status
@@ -29,4 +32,23 @@ impl NodeStatus {
             pid,
         }
     }
+}
+impl NodeManagerWorker {
+    pub async fn get_node_status(&self, ctx: &Context, req: &RequestHeader) -> Result<Response<NodeStatus>, Response<Error>> {
+        let node_name = self.node_manager.get_node_name().await;
+        let list_workers_length = ctx.list_workers().await.unwrap().len() as u32;
+        Ok(Response::ok(req).body(NodeStatus::new(
+            node_name,
+            "Running",
+            list_workers_length,
+            std::process::id() as i32,
+        )))
+    }
+}
+
+impl NodeManager {
+    pub async fn get_node_name(&self) -> String {
+        let node_name = self.node_name.clone();
+        node_name
+    }  
 }
