@@ -4167,7 +4167,6 @@ dependencies = [
  "aws-sdk-kms",
  "delegate",
  "hex",
- "ockam",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
