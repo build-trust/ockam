@@ -54,6 +54,10 @@ pub struct TicketCommand {
         conflicts_with = "member"
     )]
     usage_count: Option<u64>,
+
+    /// The name of the relay that the identity using the ticket will be allowed to create
+    #[arg(long = "relay", value_name = "RELAY_NAME")]
+    allowed_relay_name: Option<String>,
 }
 
 impl TicketCommand {
@@ -68,6 +72,9 @@ impl TicketCommand {
             let key = parts.next().ok_or(miette!("key expected"))?;
             let value = parts.next().ok_or(miette!("value expected)"))?;
             attributes.insert(key, value);
+        }
+        if let Some(relay_name) = &self.allowed_relay_name {
+            attributes.insert("ockam-relay", relay_name);
         }
         Ok(attributes)
     }
