@@ -59,8 +59,8 @@ impl CliState {
             Some(project.name()),
             Some(project.id()),
             None,
-            Some(project.authority_identity().await?),
-            Some(project.authority_access_route()?),
+            project.authority_identity().await.ok(),
+            project.authority_access_route().ok(),
         )
         .await?;
         Ok(())
@@ -150,5 +150,29 @@ impl CliState {
             projects.insert(project.name.clone(), project);
         }
         Ok(projects)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ockam_core::env::FromString;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_import_project() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // a project can be created without specifying its authority
+        cli.import_project(
+            "project_id",
+            "project_name",
+            &None,
+            &MultiAddr::from_string("/project/default").unwrap(),
+            &None,
+            &None,
+        )
+        .await?;
+        Ok(())
     }
 }
