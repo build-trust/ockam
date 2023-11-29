@@ -41,7 +41,7 @@ use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
 };
-use crate::nodes::models::base::NodeStatus;
+
 use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
@@ -110,10 +110,6 @@ impl NodeManager {
         &self.identifier
     }
 
-    pub fn node_name(&self) -> String {
-        self.node_name.clone()
-    }
-
     pub(super) fn identities(&self) -> Arc<Identities> {
         self.secure_channels.identities()
     }
@@ -154,14 +150,6 @@ impl NodeManager {
                 })
                 .collect(),
         )
-    }
-
-    /// Delete the cli state related to the current node when launched in-memory
-    pub fn delete_node(&self) -> Result<()> {
-        Ok(self
-            .cli_state
-            .nodes
-            .delete_sigkill(self.node_name().as_str(), false)?)
     }
 }
 
