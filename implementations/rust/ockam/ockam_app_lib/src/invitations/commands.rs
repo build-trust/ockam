@@ -228,7 +228,7 @@ impl AppState {
         }?;
 
         let enrollment_ticket = self
-            .create_enrollment_ticket(project_id)
+            .create_enrollment_ticket(&project_id, &recipient_email)
             .await
             .map_err(|e| e.to_string())?;
 
