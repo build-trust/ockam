@@ -16,18 +16,18 @@ teardown() {
 
 force_kill_node() {
   max_retries=5
-    i=0
-    while [[ $i -lt $max_retries ]]; do
-      pid="$($OCKAM node show $1 --output json | jq .node_pid)"
-      run kill -9 $pid
-      # Killing a node created without `-f` leaves the
-      # process in a defunct state when running within Docker.
-      if ! ps -p $pid || ps -p $pid | grep defunct; then
-        return
-      fi
-      sleep 0.2
-      ((i = i + 1))
-    done
+  i=0
+  while [[ $i -lt $max_retries ]]; do
+    pid="$($OCKAM node show $1 --output json | jq .node_pid)"
+    run kill -9 $pid
+    # Killing a node created without `-f` leaves the
+    # process in a defunct state when running within Docker.
+    if ! ps -p $pid || ps -p $pid | grep defunct; then
+      return
+    fi
+    sleep 0.2
+    ((i = i + 1))
+  done
 }
 
 # ===== TESTS
