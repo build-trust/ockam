@@ -1,50 +1,38 @@
 use core::str::FromStr;
+
 use ockam_core::Result;
+use ockam_identity::identities;
 use ockam_identity::models::Identifier;
-use ockam_identity::{identities, Identity};
 use ockam_vault::SigningKeyType;
 
 #[tokio::test]
 async fn create_and_retrieve() -> Result<()> {
-    let identities = identities();
+    let identities = identities().await?;
     let identities_creation = identities.identities_creation();
-    let repository = identities.repository();
     let identities_keys = identities.identities_keys();
 
     let identifier = identities_creation.create_identity().await?;
-    let actual = repository.get_identity(&identifier).await?;
+    let actual = identities_creation.get_identity(&identifier).await?;
 
-    let actual = Identity::import_from_change_history(
-        Some(&identifier),
-        actual,
-        identities.vault().verifying_vault,
-    )
-    .await?;
     assert_eq!(
         actual.identifier(),
         &identifier,
         "the identity can be retrieved from the repository"
     );
 
-    let actual = repository.retrieve_identity(&identifier).await?;
-    assert!(actual.is_some());
-    let actual = Identity::import_from_change_history(
-        Some(&identifier),
-        actual.unwrap(),
-        identities.vault().verifying_vault,
-    )
-    .await?;
-    assert_eq!(
-        actual.identifier(),
-        &identifier,
-        "the identity can be retrieved from the repository as an Option"
-    );
+    let actual = identities_creation.get_change_history(&identifier).await;
+    assert!(actual.is_ok());
 
-    let another_identifier = Identifier::from_str("Ie92f183eb4c324804ef4d62962dea94cf095a265")?;
-    let missing = repository.retrieve_identity(&another_identifier).await?;
-    assert_eq!(missing, None, "a missing identity returns None");
+    let another_identifier =
+        Identifier::from_str("Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1")?;
+    let missing = identities_creation
+        .get_identity(&another_identifier)
+        .await
+        .ok();
+    assert_eq!(missing, None, "a missing identity returns an error");
 
-    let root_key = identities_keys.get_secret_key(&actual).await;
+    let identity = identities.get_identity(&identifier).await?;
+    let root_key = identities_keys.get_secret_key(&identity).await;
     assert!(root_key.is_ok(), "there is a key for the created identity");
 
     Ok(())
@@ -52,9 +40,8 @@ async fn create_and_retrieve() -> Result<()> {
 
 #[tokio::test]
 async fn create_p256() -> Result<()> {
-    let identities = identities();
+    let identities = identities().await?;
     let identities_creation = identities.identities_creation();
-    let repository = identities.repository();
     let identities_keys = identities.identities_keys();
 
     let identifier = identities_creation
@@ -62,14 +49,8 @@ async fn create_p256() -> Result<()> {
         .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
         .await?;
-    let actual = repository.get_identity(&identifier).await?;
+    let actual = identities_creation.get_identity(&identifier).await?;
 
-    let actual = Identity::import_from_change_history(
-        Some(&identifier),
-        actual,
-        identities.vault().verifying_vault,
-    )
-    .await?;
     assert_eq!(
         actual.identifier(),
         &identifier,

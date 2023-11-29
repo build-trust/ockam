@@ -3,7 +3,7 @@ import SwiftUI
 struct ProfilePicture: View {
     @State var url: String?
     @State var placeholder = "person"
-    @State var size: CGFloat = 64
+    @State var size: CGFloat = 48
 
     var body: some View {
         if let url = url {
@@ -12,7 +12,7 @@ struct ProfilePicture: View {
                 content: { image in
                     image.resizable()
                         .aspectRatio(contentMode: .fit)
-                        .clipShape(Circle())
+                        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
                 },
                 placeholder: {
                     Image(systemName: placeholder)

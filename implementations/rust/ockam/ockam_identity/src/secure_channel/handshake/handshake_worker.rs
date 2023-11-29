@@ -11,7 +11,7 @@ use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};
 
-use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, VersionedData};
 use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::encryptor_worker::EncryptorWorker;
@@ -26,12 +26,12 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    IdentityError, SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannels,
-    TrustContext, TrustPolicy,
+    ChangeHistoryRepository, IdentityError, SecureChannelPurposeKey, SecureChannelRegistryEntry,
+    SecureChannels, TimestampInSeconds, TrustContext, TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
-/// on one side of the secure channel creation as specified with its role: INITIATOR or REPSONDER
+/// on one side of the secure channel creation as specified with its role: INITIATOR or RESPONDER
 pub(crate) struct HandshakeWorker {
     secure_channels: Arc<SecureChannels>,
     callback_sender: Option<CallbackSender<()>>,
@@ -41,6 +41,11 @@ pub(crate) struct HandshakeWorker {
     role: Role,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
+    min_credential_refresh_interval: Duration,
+    min_credential_expiration: Option<TimestampInSeconds>,
+    refresh_credential_time_gap: Duration,
+    trust_context: Option<TrustContext>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
 }
 
 #[ockam_core::worker]
@@ -158,6 +163,8 @@ impl HandshakeWorker {
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         credentials: Vec<CredentialAndPurposeKey>,
+        min_credential_refresh_interval: Duration,
+        refresh_credential_time_gap: Duration,
         trust_context: Option<TrustContext>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
@@ -165,16 +172,26 @@ impl HandshakeWorker {
     ) -> Result<()> {
         let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
+
+        let min_credential_expiration = credentials
+            .iter()
+            .filter_map(|credential| {
+                minicbor::decode::<VersionedData>(&credential.credential.data).ok()
+            })
+            .filter_map(|data| CredentialData::get_data(&data).ok())
+            .map(|data| data.expires_at)
+            .min();
+
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
             Box::new(
                 InitiatorStateMachine::new(
                     vault,
-                    identities,
+                    identities.clone(),
                     identifier.clone(),
                     purpose_key,
                     credentials,
                     trust_policy,
-                    trust_context,
+                    trust_context.clone(),
                 )
                 .await?,
             )
@@ -182,12 +199,12 @@ impl HandshakeWorker {
             Box::new(
                 ResponderStateMachine::new(
                     vault,
-                    identities,
+                    identities.clone(),
                     identifier.clone(),
                     purpose_key,
                     credentials,
                     trust_policy,
-                    trust_context,
+                    trust_context.clone(),
                 )
                 .await?,
             )
@@ -209,6 +226,11 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
+            min_credential_refresh_interval,
+            min_credential_expiration,
+            refresh_credential_time_gap,
+            trust_context,
+            change_history_repository: identities.change_history_repository(),
         };
 
         WorkerBuilder::new(worker)
@@ -290,6 +312,8 @@ impl HandshakeWorker {
     ) -> Result<DecryptorHandler> {
         // create a decryptor to delegate the processing of all messages after the handshake
         let decryptor = DecryptorHandler::new(
+            self.secure_channels.identities.clone(),
+            self.trust_context.clone(),
             self.role.str(),
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
@@ -308,6 +332,12 @@ impl HandshakeWorker {
                     0,
                     self.secure_channels.identities.vault().secure_channel_vault,
                 ),
+                self.identifier.clone(),
+                self.change_history_repository.clone(),
+                self.min_credential_expiration,
+                self.min_credential_refresh_interval,
+                self.refresh_credential_time_gap,
+                self.trust_context.clone(),
             );
 
             let next_hop = self.remote_route()?.next()?.clone();
@@ -321,9 +351,17 @@ impl HandshakeWorker {
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             );
+            let internal_mailbox = Mailbox::new(
+                self.addresses.encryptor_internal.clone(),
+                Arc::new(AllowAll),
+                Arc::new(DenyAll),
+            );
 
             WorkerBuilder::new(encryptor)
-                .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
+                .with_mailboxes(Mailboxes::new(
+                    main_mailbox,
+                    vec![api_mailbox, internal_mailbox],
+                ))
                 .start(context)
                 .await?;
         }

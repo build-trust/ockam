@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use std::time::Duration;
+
 use tokio::spawn;
 
 use ockam::identity::{Identifier, SecureChannel, SecureChannels, SecureClient, DEFAULT_TIMEOUT};
@@ -31,11 +32,15 @@ pub const ORCHESTRATOR_RESTART_TIMEOUT: Duration = Duration::from_secs(180);
 pub const ORCHESTRATOR_AWAIT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
 impl NodeManager {
-    pub(crate) async fn create_controller_client(&self) -> Result<Controller> {
+    pub(crate) async fn create_controller_client(
+        &self,
+        timeout: Option<Duration>,
+    ) -> Result<Controller> {
         NodeManager::controller_node(
             &self.tcp_transport,
             self.secure_channels.clone(),
-            &self.get_identifier(None).await?,
+            &self.identifier(),
+            timeout,
         )
         .await
     }
@@ -92,6 +97,7 @@ impl NodeManager {
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         caller_identifier: &Identifier,
+        timeout: Option<Duration>,
     ) -> Result<Controller> {
         let mut controller_route = Self::controller_route(tcp_transport).await?;
         let controller_identifier = Self::load_controller_identifier()?;
@@ -108,7 +114,7 @@ impl NodeManager {
                 controller_route.route,
                 &controller_identifier,
                 caller_identifier,
-                ORCHESTRATOR_RESTART_TIMEOUT,
+                timeout.unwrap_or(ORCHESTRATOR_RESTART_TIMEOUT),
             ),
             tcp_connection,
         })
@@ -238,10 +244,12 @@ pub struct AuthorityNode {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
+
 pub struct ProjectNode {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
+
 pub struct Controller {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,

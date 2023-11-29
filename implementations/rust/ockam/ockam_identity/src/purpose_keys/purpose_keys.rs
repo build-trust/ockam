@@ -1,13 +1,15 @@
 use ockam_core::compat::sync::Arc;
 
 use crate::purpose_keys::storage::PurposeKeysRepository;
-use crate::{IdentitiesKeys, IdentitiesReader, PurposeKeyCreation, PurposeKeyVerification, Vault};
+use crate::{
+    IdentitiesCreation, IdentitiesKeys, PurposeKeyCreation, PurposeKeyVerification, Vault,
+};
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct PurposeKeys {
     vault: Vault,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    identities_creation: Arc<IdentitiesCreation>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -16,13 +18,13 @@ impl PurposeKeys {
     /// Create a new identities module
     pub fn new(
         vault: Vault,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        identities_creation: Arc<IdentitiesCreation>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {
         Self {
             vault,
-            identities_reader,
+            identities_creation,
             identity_keys,
             repository,
         }
@@ -37,7 +39,7 @@ impl PurposeKeys {
     pub fn purpose_keys_creation(&self) -> Arc<PurposeKeyCreation> {
         Arc::new(PurposeKeyCreation::new(
             self.vault.clone(),
-            self.identities_reader.clone(),
+            self.identities_creation.clone(),
             self.identity_keys.clone(),
             self.repository.clone(),
         ))
@@ -47,19 +49,20 @@ impl PurposeKeys {
     pub fn purpose_keys_verification(&self) -> Arc<PurposeKeyVerification> {
         Arc::new(PurposeKeyVerification::new(
             self.vault.verifying_vault.clone(),
-            self.identities_reader.clone(),
+            self.identities_creation.clone(),
         ))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{identities, Purpose};
     use ockam_core::Result;
+
+    use crate::{identities, Purpose};
 
     #[tokio::test]
     async fn create_purpose_keys() -> Result<()> {
-        let identities = identities();
+        let identities = identities().await?;
         let identities_creation = identities.identities_creation();
         let purpose_keys = identities.purpose_keys();
 
@@ -90,7 +93,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_purpose_keys_are_persisted() -> Result<()> {
-        let identities = identities();
+        let identities = identities().await?;
         let identities_creation = identities.identities_creation();
         let purpose_keys = identities.purpose_keys();
 
@@ -103,12 +106,12 @@ mod tests {
 
         assert!(purpose_keys
             .repository()
-            .retrieve_purpose_key(&identifier, Purpose::Credentials)
+            .get_purpose_key(&identifier, Purpose::Credentials)
             .await?
             .is_some());
         assert!(purpose_keys
             .repository()
-            .retrieve_purpose_key(&identifier, Purpose::SecureChannel)
+            .get_purpose_key(&identifier, Purpose::SecureChannel)
             .await?
             .is_none());
 
@@ -119,7 +122,7 @@ mod tests {
 
         let key = purpose_keys
             .repository()
-            .retrieve_purpose_key(&identifier, Purpose::Credentials)
+            .get_purpose_key(&identifier, Purpose::Credentials)
             .await?
             .unwrap();
         purpose_keys
@@ -131,7 +134,7 @@ mod tests {
 
         let key = purpose_keys
             .repository()
-            .retrieve_purpose_key(&identifier, Purpose::SecureChannel)
+            .get_purpose_key(&identifier, Purpose::SecureChannel)
             .await?
             .unwrap();
         purpose_keys
@@ -148,7 +151,7 @@ mod tests {
 
         let key = purpose_keys
             .repository()
-            .retrieve_purpose_key(&identifier, Purpose::Credentials)
+            .get_purpose_key(&identifier, Purpose::Credentials)
             .await?
             .unwrap();
         purpose_keys

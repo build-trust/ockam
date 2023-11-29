@@ -10,7 +10,7 @@ mod common;
 
 #[tokio::test]
 async fn test_valid_identity() -> Result<()> {
-    let identities = Identities::builder().build();
+    let identities = Identities::builder().await?.build();
     let identities_creation = identities.identities_creation();
     let identifier = identities_creation.create_identity().await?;
 
@@ -25,13 +25,13 @@ async fn test_valid_identity() -> Result<()> {
 
 #[tokio::test]
 async fn test_invalid_signature() -> Result<()> {
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     let crazy_signing_vault = Arc::new(CrazySigningVault::new(0.1, vault.identity_vault));
     vault.identity_vault = crazy_signing_vault.clone();
     vault.verifying_vault = Arc::new(CrazyVerifyingVault {
         verifying_vault: vault.verifying_vault,
     });
-    let identities = Identities::builder().with_vault(vault).build();
+    let identities = Identities::builder().await?.with_vault(vault).build();
     let identities_creation = identities.identities_creation();
     let identifier = identities_creation.create_identity().await?;
     let identity = identities.get_identity(&identifier).await?;
@@ -64,7 +64,7 @@ async fn test_invalid_signature() -> Result<()> {
 
 #[tokio::test]
 async fn test_eject_signatures() -> Result<()> {
-    let identities = Identities::builder().build();
+    let identities = Identities::builder().await?.build();
     let identities_creation = identities.identities_creation();
     let identifier = identities_creation.create_identity().await?;
 
@@ -73,8 +73,8 @@ async fn test_eject_signatures() -> Result<()> {
         identities_creation.rotate_identity(&identifier).await?;
     }
 
-    let identity = identities.repository().get_identity(&identifier).await?;
-    let change_history = eject_random_signature(&identity)?;
+    let change_history = identities.get_change_history(&identifier).await?;
+    let change_history = eject_random_signature(&change_history)?;
     let res = check_change_history(Some(&identifier), change_history).await;
     assert!(res.is_err());
 

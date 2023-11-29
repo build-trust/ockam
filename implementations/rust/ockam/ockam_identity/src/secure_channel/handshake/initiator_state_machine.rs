@@ -39,8 +39,11 @@ impl StateMachine for InitiatorStateMachine {
                 let message2_payload = self.decode_message2(&message).await?;
                 let their_identity_payload: IdentityAndCredentials =
                     minicbor::decode(&message2_payload)?;
-                self.verify_identity(their_identity_payload, &self.handshake.state.rs()?.clone())
-                    .await?;
+                self.process_identity_payload(
+                    their_identity_payload,
+                    self.handshake.state.rs()?.clone(),
+                )
+                .await?;
                 let identity_payload = self
                     .identity_payload
                     .take()
@@ -77,7 +80,7 @@ pub(super) struct InitiatorStateMachine {
 impl InitiatorStateMachine {
     delegate! {
         to self.common {
-            async fn verify_identity(&mut self, peer: IdentityAndCredentials, peer_public_key: &X25519PublicKey) -> Result<()>;
+            async fn process_identity_payload(&mut self, peer: IdentityAndCredentials, peer_public_key: X25519PublicKey) -> Result<()>;
             fn make_handshake_results(&self, handshake_keys: Option<HandshakeKeys>) -> Option<HandshakeResults>;
         }
     }

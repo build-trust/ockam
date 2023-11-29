@@ -1,0 +1,66 @@
+# docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build erlang_package.yaml --arch amd64 -k melange.rsa.pub --signing-key melange.rsa
+# Builds a pinned version of the erlang package
+package:
+  name: erlang-24
+  version: 24.3.4.11
+  epoch: 0
+  description: General-purpose programming language and runtime environment
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      # mnesia depends on the ca-certificates bundle
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - build-base
+      - automake
+      - autoconf
+      - perl-dev
+      - openssl-dev
+      - ncurses-dev
+      - zlib-dev
+
+pipeline:
+  - uses: fetch
+    with:
+      expected-sha256: 0e63cd975f126ae9f17c36062d63e8629bb984e013b18a8a13ad634035dc414f
+      uri: https://github.com/erlang/otp/releases/download/OTP-${{package.version}}/otp_src_${{package.version}}.tar.gz
+
+  - runs: |
+      export CPPFLAGS="-D_BSD_SOURCE $CPPFLAGS"
+
+      ./otp_build autoconf
+      ./configure \
+        --prefix=/usr \
+        --sysconfdir=/etc \
+        --mandir=/usr/share/man \
+        --infodir=/usr/share/info \
+        --host="$CHOST" \
+        --build="$CBUILD" \
+        --enable-threads \
+        --enable-shared-zlib \
+        --enable-ssl=dynamic-ssl-lib
+
+  - uses: autoconf/make
+
+  - uses: autoconf/make-install
+
+  - uses: strip
+
+subpackages:
+  - name: "erlang-24-dev"
+    description: "headers for erlang"
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - erlang-24

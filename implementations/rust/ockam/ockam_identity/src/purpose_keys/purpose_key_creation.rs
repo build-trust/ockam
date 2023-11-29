@@ -1,12 +1,13 @@
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 
 use crate::models::{
-    Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposePublicKey, VersionedData,
+    Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, PurposePublicKey,
 };
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
-    CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesKeys, IdentitiesReader, Identity,
+    CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesCreation, IdentitiesKeys,
     IdentityError, Purpose, PurposeKeyVerification, SecureChannelPurposeKey,
     SecureChannelPurposeKeyBuilder, TimestampInSeconds, Vault,
 };
@@ -15,7 +16,7 @@ use crate::{
 #[derive(Clone)]
 pub struct PurposeKeyCreation {
     vault: Vault,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    identities_creation: Arc<IdentitiesCreation>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -24,13 +25,13 @@ impl PurposeKeyCreation {
     /// Constructor.
     pub(crate) fn new(
         vault: Vault,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        identities_creation: Arc<IdentitiesCreation>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {
         Self {
             vault,
-            identities_reader,
+            identities_creation,
             identity_keys,
             repository,
         }
@@ -45,7 +46,7 @@ impl PurposeKeyCreation {
     pub fn purpose_keys_verification(&self) -> Arc<PurposeKeyVerification> {
         Arc::new(PurposeKeyVerification::new(
             self.vault.verifying_vault.clone(),
-            self.identities_reader.clone(),
+            self.identities_creation.clone(),
         ))
     }
 
@@ -57,7 +58,7 @@ impl PurposeKeyCreation {
         SecureChannelPurposeKeyBuilder::new(
             Arc::new(Self::new(
                 self.vault.clone(),
-                self.identities_reader.clone(),
+                self.identities_creation.clone(),
                 self.identity_keys.clone(),
                 self.repository.clone(),
             )),
@@ -73,7 +74,7 @@ impl PurposeKeyCreation {
         CredentialPurposeKeyBuilder::new(
             Arc::new(Self::new(
                 self.vault.clone(),
-                self.identities_reader.clone(),
+                self.identities_creation.clone(),
                 self.identity_keys.clone(),
                 self.repository.clone(),
             )),
@@ -114,13 +115,7 @@ impl PurposeKeyCreation {
         created_at: TimestampInSeconds,
         expires_at: TimestampInSeconds,
     ) -> Result<(PurposeKeyAttestation, PurposeKeyAttestationData)> {
-        let identity_change_history = self.identities_reader.get_identity(&identifier).await?;
-        let identity = Identity::import_from_change_history(
-            Some(&identifier),
-            identity_change_history,
-            self.vault.verifying_vault.clone(),
-        )
-        .await?;
+        let identity = self.identities_creation.get_identity(&identifier).await?;
 
         let attestation_data = PurposeKeyAttestationData {
             subject: identifier,
@@ -132,10 +127,7 @@ impl PurposeKeyCreation {
 
         let attestation_data_binary = minicbor::to_vec(&attestation_data)?;
 
-        let versioned_data = VersionedData {
-            version: 1,
-            data: attestation_data_binary,
-        };
+        let versioned_data = PurposeKeyAttestation::create_versioned_data(attestation_data_binary);
         let versioned_data = minicbor::to_vec(&versioned_data)?;
 
         let versioned_data_hash = self.vault.verifying_vault.sha256(&versioned_data).await?;
@@ -164,7 +156,6 @@ impl PurposeKeyCreation {
     ) -> Result<SecureChannelPurposeKey> {
         let existent_key = async {
             let purpose_key_attestation = self
-                .repository
                 .get_purpose_key(identifier, Purpose::SecureChannel)
                 .await?;
 
@@ -191,7 +182,6 @@ impl PurposeKeyCreation {
     ) -> Result<CredentialPurposeKey> {
         let existent_key = async {
             let purpose_key_attestation = self
-                .repository
                 .get_purpose_key(identifier, Purpose::Credentials)
                 .await?;
 
@@ -216,7 +206,6 @@ impl PurposeKeyCreation {
         identifier: &Identifier,
     ) -> Result<SecureChannelPurposeKey> {
         let purpose_key_attestation = self
-            .repository
             .get_purpose_key(identifier, Purpose::SecureChannel)
             .await?;
 
@@ -230,7 +219,6 @@ impl PurposeKeyCreation {
         identifier: &Identifier,
     ) -> Result<CredentialPurposeKey> {
         let purpose_key_attestation = self
-            .repository
             .get_purpose_key(identifier, Purpose::Credentials)
             .await?;
 
@@ -309,5 +297,28 @@ impl PurposeKeyCreation {
         );
 
         Ok(purpose_key)
+    }
+}
+
+impl PurposeKeyCreation {
+    /// Get the [`super::super::super::purpose_key::PurposeKey`]
+    /// for given [`Identifier`] and [`Purpose`]
+    async fn get_purpose_key(
+        &self,
+        identifier: &Identifier,
+        purpose: Purpose,
+    ) -> Result<PurposeKeyAttestation> {
+        match self
+            .repository()
+            .get_purpose_key(identifier, purpose)
+            .await?
+        {
+            Some(purpose_key) => Ok(purpose_key),
+            None => Err(Error::new(
+                Origin::Core,
+                Kind::NotFound,
+                format!("purpose_key not found for identifier {}", identifier),
+            )),
+        }
     }
 }

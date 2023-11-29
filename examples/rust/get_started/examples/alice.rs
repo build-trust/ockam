@@ -1,12 +1,11 @@
 use ockam::identity::SecureChannelOptions;
-use ockam::{node, route, Context, Result, TcpConnectionOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpTransportExtension};
 use std::io;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 

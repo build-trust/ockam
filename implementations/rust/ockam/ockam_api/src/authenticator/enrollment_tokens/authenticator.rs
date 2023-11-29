@@ -1,4 +1,4 @@
-use ockam::identity::IdentityAttributesWriter;
+use ockam::identity::IdentityAttributesRepository;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -18,7 +18,7 @@ pub struct EnrollmentTokenAuthenticator {
 impl EnrollmentTokenAuthenticator {
     pub fn new_worker_pair(
         trust_context: String,
-        attributes_writer: Arc<dyn IdentityAttributesWriter>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> (EnrollmentTokenIssuer, EnrollmentTokenAcceptor) {
         let base = Self {
             trust_context,
@@ -26,7 +26,7 @@ impl EnrollmentTokenAuthenticator {
         };
         (
             EnrollmentTokenIssuer(base.clone()),
-            EnrollmentTokenAcceptor(base, attributes_writer),
+            EnrollmentTokenAcceptor(base, identity_attributes_repository),
         )
     }
 }

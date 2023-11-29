@@ -16,14 +16,14 @@ use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
-use ockam_identity::{Identifier, IdentitiesRepository, IdentitySecureChannelLocalInfo};
+use ockam_identity::{Identifier, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
 
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
 /// A similar access control policy is available as [`crate::policy::PolicyAccessControl`] where
-/// as [`crate::PolicyStorage`] can be used to retrieve a specific policy for a given resource and action
+/// as [`crate::PoliciesRepository`] can be used to retrieve a specific policy for a given resource and action
 pub struct AbacAccessControl {
-    repository: Arc<dyn IdentitiesRepository>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     expression: Expr,
     environment: Env,
 }
@@ -39,12 +39,12 @@ impl Debug for AbacAccessControl {
 impl AbacAccessControl {
     /// Create a new AccessControl using a specific policy for checking attributes
     pub fn new(
-        repository: Arc<dyn IdentitiesRepository>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         expression: Expr,
         environment: Env,
     ) -> Self {
         Self {
-            repository,
+            identity_attributes_repository,
             expression,
             environment,
         }
@@ -53,7 +53,7 @@ impl AbacAccessControl {
     /// Create an AccessControl which will verify that the sender of
     /// a message has an authenticated attribute with the correct name and value
     pub fn create(
-        repository: Arc<dyn IdentitiesRepository>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         attribute_name: &str,
         attribute_value: &str,
     ) -> AbacAccessControl
@@ -63,7 +63,7 @@ where {
             Ident(format!("subject.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
-        AbacAccessControl::new(repository, expression, Env::new())
+        AbacAccessControl::new(identity_attributes_repository, expression, Env::new())
     }
 }
 
@@ -73,7 +73,11 @@ impl AbacAccessControl {
         let mut environment = self.environment.clone();
 
         // Get identity attributes and populate the environment:
-        if let Some(attrs) = self.repository.get_attributes(&id).await? {
+        if let Some(attrs) = self
+            .identity_attributes_repository
+            .get_attributes(&id)
+            .await?
+        {
             for (key, value) in attrs.attrs() {
                 let key = match from_utf8(key) {
                     Ok(key) => key,

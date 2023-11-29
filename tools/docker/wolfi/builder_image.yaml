@@ -1,0 +1,33 @@
+# docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build builder_image.yaml -k melange.rsa.pub ghcr.io/build-trust/ockam-elixir-builder:latest builder_image.tar
+# Builds the builder image which comprises of tools to build elixir and rust binaries
+contents:
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+  repositories:
+    - https://packages.wolfi.dev/os
+    - /work/packages
+  packages:
+    - ca-certificates-bundle
+    - build-base
+    - curl
+    - xz
+    - git
+    - bash
+    - ncurses
+    - ncurses-dev
+    - ncurses-terminfo-base
+    - libstdc++
+    - glibc
+    - glibc-dev
+    - gcc
+    - rustup
+    - zlib
+    - zlib-dev
+    - elixir-1_14
+    - erlang-24
+    - erlang-24-dev
+    - openssl
+
+archs:
+  - x86_64
+  - aarch64

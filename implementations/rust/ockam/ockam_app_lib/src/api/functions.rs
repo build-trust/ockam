@@ -226,14 +226,9 @@ extern "C" fn delete_local_service(name: *const c_char) {
 }
 
 /// Creates a local service with the provided name and address.
-/// Emails are separated by ';'.
 /// Returns null if successful, otherwise returns an error message.
 #[no_mangle]
-extern "C" fn create_local_service(
-    name: *const c_char,
-    address: *const c_char,
-    emails: *const c_char,
-) -> *const c_char {
+extern "C" fn create_local_service(name: *const c_char, address: *const c_char) -> *const c_char {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
     let address = unsafe {
         std::ffi::CStr::from_ptr(address)
@@ -241,20 +236,10 @@ extern "C" fn create_local_service(
             .unwrap()
             .to_string()
     };
-    let emails: Vec<String> = unsafe {
-        std::ffi::CStr::from_ptr(emails)
-            .to_str()
-            .unwrap()
-            .to_string()
-    }
-    .split(';')
-    .map(|s| s.to_string())
-    .filter(|s| !s.is_empty())
-    .collect();
 
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     let result = app_state.context().runtime().block_on(async {
-        let result = app_state.tcp_outlet_create(name, address, emails).await;
+        let result = app_state.tcp_outlet_create(name, address).await;
         app_state.publish_state().await;
         result
     });

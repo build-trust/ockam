@@ -1,22 +1,38 @@
-use crate::models::utils::get_versioned_data;
-use crate::models::{
-    Change, ChangeData, ChangeHistory, ChangeSignature, PrimaryPublicKey, VersionedData,
-};
-
+use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
 use ockam_vault::{Signature, VerifyingPublicKey};
 
+use crate::alloc::string::ToString;
+use crate::models::{
+    Change, ChangeData, ChangeHistory, ChangeSignature, PrimaryPublicKey, VersionedData,
+    CHANGE_DATA_TYPE,
+};
+use crate::IdentityError;
+
 impl Change {
-    /// Extract [`VersionedData`]
-    pub fn get_versioned_data(&self) -> Result<VersionedData> {
-        get_versioned_data(&self.data)
+    /// Create [`VersionedData`] with corresponding version and data_type
+    pub fn create_versioned_data(data: Vec<u8>) -> VersionedData {
+        VersionedData {
+            version: 1,
+            data_type: CHANGE_DATA_TYPE,
+            data,
+        }
     }
 }
 
 impl ChangeData {
     /// Extract [`ChangeData`] from [`VersionedData`]
     pub fn get_data(versioned_data: &VersionedData) -> Result<Self> {
+        if versioned_data.version != 1 {
+            return Err(IdentityError::UnknownIdentityVersion.into());
+        }
+
+        if versioned_data.data_type != CHANGE_DATA_TYPE {
+            return Err(IdentityError::InvalidIdentityDataType.into());
+        }
+
         Ok(minicbor::decode(&versioned_data.data)?)
     }
 }
@@ -27,9 +43,22 @@ impl ChangeHistory {
         Ok(minicbor::to_vec(self)?)
     }
 
+    /// Export [`ChangeHistory`] to a hex encoded string
+    pub fn export_as_string(&self) -> Result<String> {
+        Ok(hex::encode(self.export()?))
+    }
+
     /// Import [`ChangeHistory`] from a binary format using CBOR
     pub fn import(data: &[u8]) -> Result<Self> {
         Ok(minicbor::decode(data)?)
+    }
+
+    /// Import [`ChangeHistory`] from a hex-encoded string
+    pub fn import_from_string(data: &str) -> Result<Self> {
+        Self::import(
+            &hex::decode(data)
+                .map_err(|e| Error::new(Origin::Identity, Kind::Serialization, e.to_string()))?,
+        )
     }
 }
 

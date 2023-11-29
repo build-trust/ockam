@@ -24,10 +24,22 @@ pub enum IdentityError {
     UnknownTimestamp,
     /// Unknown Authority
     UnknownAuthority,
+    /// No CredentialsRetriever
+    NoCredentialsRetriever,
+    /// No Credentials set on a trust context
+    NoCredentialsSet,
     /// Unknown version of the Credential
     UnknownCredentialVersion,
+    /// Invalid data_type value for Credential
+    InvalidCredentialDataType,
     /// Unknown version of the Identity
     UnknownIdentityVersion,
+    /// Invalid data_type value for Identity
+    InvalidIdentityDataType,
+    /// Unknown version of the PurposeKeyAttestation
+    UnknownPurposeKeyAttestationVersion,
+    /// Invalid data_type value for PurposeKeyAttestation
+    InvalidPurposeKeyAttestationDataType,
     /// A credential was rejected by the trust context
     SecureChannelVerificationFailedIncorrectCredential,
     /// Credentials could not be checked because the trust context is missing

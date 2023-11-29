@@ -20,7 +20,7 @@ teardown() {
 
   run_success "$OCKAM" vault show "${v1}" --output json
   assert_output --partial "\"name\":\"${v1}\""
-  assert_output --partial "\"aws_kms\":false"
+  assert_output --partial "\"is_kms\":false"
 
   run_success "$OCKAM" vault list --output json
   assert_output --partial "\"is_default\":true"
@@ -30,12 +30,12 @@ teardown() {
 
   run_success "$OCKAM" vault show "${v2}" --output json
   assert_output --partial "\"name\":\"${v2}\""
-  assert_output --partial "\"aws_kms\":false"
+  assert_output --partial "\"is_kms\":false"
 
   run_success "$OCKAM" vault list --output json
   assert_output --partial "\"name\":\"${v1}\""
   assert_output --partial "\"name\":\"${v2}\""
-  assert_output --partial "\"aws_kms\":false"
+  assert_output --partial "\"is_kms\":false"
   assert_output --partial "\"is_default\":true"
   assert_output --partial "\"is_default\":false"
 }

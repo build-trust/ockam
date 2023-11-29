@@ -1,0 +1,7 @@
+# Ignore all files
+*
+
+# Except files with the .yaml extension
+!*.yaml
+!README.md
+!.gitignore

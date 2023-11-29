@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use ockam_core::Result;
 
-use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use crate::cli_state::{CliState, EnrollmentTicket};
 use crate::error::ApiError;
-use crate::identity::EnrollmentTicket;
-use ockam::identity::{identities, Identifier};
+use ockam::identity::Identifier;
 
 use super::{RoleInShare, ShareScope};
 
@@ -50,23 +49,10 @@ impl CreateServiceInvitation {
         service_route: S,
         enrollment_ticket: EnrollmentTicket,
     ) -> Result<Self> {
-        let node_identifier = cli_state.nodes.get(node_name)?.config().identifier()?;
-        let project = cli_state.projects.get(&project_name)?.config().clone();
-        let project_authority_route = project
-            .authority_access_route
-            .ok_or(ApiError::core("Project authority route is missing"))?;
-        let project_authority_identifier = {
-            let identity = project
-                .authority_identity
-                .ok_or(ApiError::core("Project authority identifier is missing"))?;
-            let as_hex = hex::decode(identity.as_str()).map_err(|_| {
-                ApiError::core("Project authority identifier is not a valid hex string")
-            })?;
-            identities()
-                .identities_creation()
-                .import(None, &as_hex)
-                .await?
-        };
+        let node_identifier = cli_state.get_node(node_name.as_ref()).await?.identifier();
+        let project = cli_state.get_project_by_name(project_name.as_ref()).await?;
+        let project_authority_route = project.authority_access_route()?;
+        let project_authority_identifier = project.authority_identifier().await?;
         // see also: ockam_command::project::ticket
         let enrollment_ticket = hex::encode(
             serde_json::to_vec(&enrollment_ticket)
@@ -75,14 +61,12 @@ impl CreateServiceInvitation {
         Ok(CreateServiceInvitation {
             enrollment_ticket,
             expires_at,
-            project_id: project.id.to_string(),
+            project_id: project.id(),
             recipient_email: recipient_email.as_ref().to_string(),
-            project_identity: project
-                .identity
-                .ok_or(ApiError::core("Project identity is missing"))?,
-            project_route: project.access_route,
+            project_identity: project.identifier()?,
+            project_route: project.access_route()?.to_string(),
             project_authority_identity: project_authority_identifier,
-            project_authority_route,
+            project_authority_route: project_authority_route.to_string(),
             shared_node_identity: node_identifier,
             shared_node_route: service_route.as_ref().to_string(),
         })

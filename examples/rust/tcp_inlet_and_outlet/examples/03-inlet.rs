@@ -1,11 +1,10 @@
 use ockam::identity::SecureChannelOptions;
-use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpInletOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpInletOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     let e = node.create_identity().await?;

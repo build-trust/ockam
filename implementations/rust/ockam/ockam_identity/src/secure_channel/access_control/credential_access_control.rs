@@ -4,25 +4,25 @@ use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
 
-use crate::identities::IdentitiesRepository;
 use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
+use crate::IdentityAttributesRepository;
 
 /// Access control checking that message senders have a specific set of attributes
 #[derive(Clone)]
 pub struct CredentialAccessControl {
     required_attributes: Vec<(Vec<u8>, Vec<u8>)>,
-    storage: Arc<dyn IdentitiesRepository>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
 impl CredentialAccessControl {
     /// Create a new credential access control
     pub fn new(
         required_attributes: &[(Vec<u8>, Vec<u8>)],
-        storage: Arc<dyn IdentitiesRepository>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         Self {
             required_attributes: required_attributes.to_vec(),
-            storage,
+            identity_attributes_repository,
         }
     }
 }
@@ -44,7 +44,7 @@ impl IncomingAccessControl for CredentialAccessControl {
             IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
             let attributes = match self
-                .storage
+                .identity_attributes_repository
                 .get_attributes(&msg_identity_id.their_identity_id())
                 .await?
             {

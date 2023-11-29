@@ -2,12 +2,10 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::cloud::project::Projects;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::project::util::refresh_projects;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -57,32 +55,9 @@ async fn run_impl(
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this project?")?
     {
-        let space_id = opts.state.spaces.get(&cmd.space_name)?.config().id.clone();
         let node = InMemoryNode::start(ctx, &opts.state).await?;
-        let controller = node.create_controller().await?;
-
-        // Lookup project
-        let project_id = match opts.state.projects.get(&cmd.project_name) {
-            Ok(state) => state.config().id.clone(),
-            Err(_) => {
-                // The project is not in the config file.
-                // Fetch all available projects from the cloud.
-                refresh_projects(&opts, ctx, &controller).await?;
-
-                // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
-                match opts.state.projects.get(&cmd.project_name) {
-                    Ok(state) => state.config().id.clone(),
-                    Err(_) => {
-                        return Ok(());
-                    }
-                }
-            }
-        };
-
-        // Send request
-        controller.delete_project(ctx, space_id, project_id).await?;
-
-        opts.state.projects.delete(&cmd.project_name)?;
+        node.delete_project_by_name(ctx, &cmd.space_name, &cmd.project_name)
+            .await?;
         opts.terminal
             .stdout()
             .plain(fmt_ok!(

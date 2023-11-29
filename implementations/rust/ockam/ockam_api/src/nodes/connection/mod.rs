@@ -12,8 +12,9 @@ use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnection, TcpTransport};
 
 use crate::error::ApiError;
+use crate::multiaddr_to_route;
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
-use crate::{multiaddr_to_route, DefaultAddress};
 pub(crate) use plain_tcp::PlainTcpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;

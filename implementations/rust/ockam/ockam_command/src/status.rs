@@ -1,23 +1,18 @@
-use std::io::Write;
+use std::fmt::Write;
 use std::time::Duration;
 
 use clap::Args;
-use miette::miette;
-use minicbor::{Decode, Decoder, Encode};
+use miette::IntoDiagnostic;
 use tracing::warn;
 
-use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
-use ockam_api::cli_state::identities::IdentityState;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::cli_state::NodeState;
+use ockam::identity::{Identifier, TimestampInSeconds};
+use ockam::Context;
+use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment};
+use ockam_api::cloud::project::OrchestratorVersionInfo;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
-use ockam_api::nodes::{BackgroundNode, NodeManager};
-use ockam_core::api::{Request, ResponseHeader, Status};
-use ockam_core::route;
-use ockam_node::MessageSendReceiveOptions;
+use ockam_api::nodes::{BackgroundNode, InMemoryNode};
 
-use crate::util::{api, node_rpc};
+use crate::util::{api, duration::duration_parser, node_rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
@@ -28,9 +23,9 @@ pub struct StatusCommand {
     #[arg(long, short)]
     all: bool,
 
-    /// Override default timeout (in seconds)
-    #[arg(long, default_value = "30")]
-    timeout: u64,
+    /// Override the default timeout
+    #[arg(long, default_value = "5", value_parser = duration_parser)]
+    timeout: Duration,
 }
 
 impl StatusCommand {
@@ -48,32 +43,46 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: StatusCommand,
 ) -> miette::Result<()> {
-    let identities_details = get_identities_details(&opts, cmd.all)?;
+    let identities_details = get_identities_details(&opts, cmd.all).await?;
     let nodes_details = get_nodes_details(ctx, &opts).await?;
-    let orchestrator_version =
-        get_orchestrator_version(ctx, &opts, Duration::from_secs(cmd.timeout)).await;
+
+    let node = InMemoryNode::start(ctx, &opts.state)
+        .await?
+        .with_timeout(cmd.timeout);
+    let controller = node.create_controller().await?;
+    let orchestrator_version = controller
+        .get_orchestrator_version_info(ctx)
+        .await
+        .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
+        .unwrap_or_default();
+
     let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
-    print_output(opts, cmd, status)?;
+    opts.terminal
+        .stdout()
+        .plain(build_plain_output(&cmd, &status).await?)
+        .json(serde_json::to_string(&status).into_diagnostic()?)
+        .write_line()?;
     Ok(())
 }
 
 async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Vec<NodeDetails>> {
     let mut node_details: Vec<NodeDetails> = vec![];
 
-    let node_states = opts.state.nodes.list()?;
-    if node_states.is_empty() {
+    let nodes = opts.state.get_nodes().await?;
+    if nodes.is_empty() {
         return Ok(node_details);
     }
-    let default_node_name = opts.state.nodes.default()?.name().to_string();
-    let mut node = BackgroundNode::create(ctx, &opts.state, &default_node_name).await?;
-    node.set_timeout(Duration::from_millis(200));
+    let default_node_name = opts.state.get_default_node().await?.name();
+    let mut node_client =
+        BackgroundNode::create_to_node(ctx, &opts.state, &default_node_name).await?;
+    node_client.set_timeout(Duration::from_millis(200));
 
-    for node_state in &node_states {
-        node.set_node_name(node_state.name());
+    for node in nodes {
+        node_client.set_node_name(&node.name());
         let node_infos = NodeDetails {
-            identifier: node_state.config().identifier()?,
-            state: node_state.clone(),
-            status: get_node_status(ctx, &node).await?,
+            identifier: node.identifier(),
+            name: node.name(),
+            status: get_node_status(ctx, &node_client).await?,
         };
         node_details.push(node_infos);
     }
@@ -89,122 +98,36 @@ async fn get_node_status(ctx: &Context, node: &BackgroundNode) -> Result<String>
         .unwrap_or("Stopped".to_string()))
 }
 
-fn get_identities_details(opts: &CommandGlobalOpts, all: bool) -> Result<Vec<IdentityState>> {
-    let mut identities_details: Vec<IdentityState> = vec![];
-    for identity in opts.state.identities.list()? {
-        if all {
-            identities_details.push(identity)
-        } else {
-            match &identity.config().enrollment_status {
-                Some(_enrollment) => identities_details.push(identity),
-                None => (),
-            }
-        }
-    }
-    Ok(identities_details)
-}
-
-async fn get_orchestrator_version(
-    ctx: &Context,
+async fn get_identities_details(
     opts: &CommandGlobalOpts,
-    timeout: Duration,
-) -> Result<OrchestratorVersionInfo> {
-    // for new we get the controller address directly until we
-    // access a Controller interface from the NodeManager
-    let controller_addr = NodeManager::controller_multiaddr();
-    let controller_identifier = NodeManager::load_controller_identifier()?;
-    let controller_tcp_addr = controller_addr.to_socket_addr()?;
-    let tcp = TcpTransport::create(ctx).await?;
-    let connection = tcp
-        .connect(controller_tcp_addr, TcpConnectionOptions::new())
-        .await?;
-
-    // Create node that will be used to send the request
-    let node = {
-        // Get or create a vault to store the identity
-        let vault = match opts.state.vaults.default() {
-            Ok(v) => v,
-            Err(_) => opts.state.create_vault_state(None).await?,
-        }
-        .get()
-        .await?;
-        let identities_repository = opts.state.identities.identities_repository().await?;
-        Node::builder()
-            .with_vault(vault)
-            .with_identities_repository(identities_repository)
-            .build(ctx)
-            .await?
-    };
-
-    // Establish secure channel with controller
-    let node_identifier = opts
-        .state
-        .default_identities()
-        .await?
-        .identities_creation()
-        .create_identity()
-        .await?;
-    let secure_channel_options = SecureChannelOptions::new()
-        .with_trust_policy(TrustIdentifierPolicy::new(controller_identifier))
-        .with_timeout(timeout);
-    let secure_channel = node
-        .create_secure_channel(
-            &node_identifier,
-            route![connection, "api"],
-            secure_channel_options,
-        )
-        .await?;
-
-    // Send request
-    let buf: Vec<u8> = node
-        .send_and_receive_extended::<Vec<u8>>(
-            route![secure_channel, "version_info"],
-            Request::get("").to_vec()?,
-            MessageSendReceiveOptions::new().with_timeout(timeout),
-        )
-        .await?
-        .body();
-    let mut dec = Decoder::new(&buf);
-
-    // Decode response
-    let hdr = dec.decode::<ResponseHeader>()?;
-    if hdr.status() == Some(Status::Ok) {
-        Ok(dec.decode::<OrchestratorVersionInfo>()?)
+    all: bool,
+) -> Result<Vec<IdentityEnrollment>> {
+    let enrollment_status = if all {
+        EnrollmentStatus::Any
     } else {
-        Err(miette!("Failed to retrieve version information from node.").into())
-    }
+        EnrollmentStatus::Enrolled
+    };
+    Ok(opts
+        .state
+        .get_identity_enrollments(enrollment_status)
+        .await?)
 }
 
-fn print_output(opts: CommandGlobalOpts, cmd: StatusCommand, status: StatusData) -> Result<()> {
-    let plain = build_plain_output(&opts, &cmd, &status)?;
-    let json = serde_json::to_string(&status)?;
-    opts.terminal
-        .stdout()
-        .plain(String::from_utf8(plain).expect("Invalid UTF-8 output"))
-        .json(json)
-        .write_line()?;
-    Ok(())
-}
-
-fn build_plain_output(
-    opts: &CommandGlobalOpts,
-    cmd: &StatusCommand,
-    status: &StatusData,
-) -> Result<Vec<u8>> {
-    let mut plain = Vec::new();
+async fn build_plain_output(cmd: &StatusCommand, status: &StatusData) -> Result<String> {
+    let mut plain = String::new();
     writeln!(
-        &mut plain,
+        plain,
         "Controller version: {}",
-        status.orchestrator_version.controller_version
+        status.orchestrator_version.version()
     )?;
     writeln!(
-        &mut plain,
+        plain,
         "Project version: {}",
-        status.orchestrator_version.project_version
+        status.orchestrator_version.project_version()
     )?;
     if status.identities.is_empty() {
         if cmd.all {
-            writeln!(&mut plain, "No identities found!")?;
+            writeln!(plain, "No identities found")?;
         } else {
             writeln!(
                 &mut plain,
@@ -214,22 +137,25 @@ fn build_plain_output(
             )?;
         }
         return Ok(plain);
-    }
-    let default_identity = opts.state.identities.default()?;
+    };
+
     for (i_idx, i) in status.identities.iter().enumerate() {
-        writeln!(&mut plain, "Identity[{i_idx}]")?;
-        if default_identity.config().identifier() == i.identity.config().identifier() {
-            writeln!(&mut plain, "{:2}Default: yes", "")?;
+        writeln!(plain, "Identity[{i_idx}]")?;
+        if i.is_default() {
+            writeln!(plain, "{:2}Default: yes", "")?;
         }
-        for line in i.identity.to_string().lines() {
-            writeln!(&mut plain, "{:2}{}", "", line)?;
+        if let Some(name) = i.name() {
+            writeln!(&mut plain, "{:2}Name: {}", "", name)?;
         }
+        writeln!(plain, "{:2}Identifier: {}", "", i.identifier())?;
+        writeln!(plain, "{:2}Enrolled: {}", "", i.is_enrolled())?;
+
         if !i.nodes.is_empty() {
-            writeln!(&mut plain, "{:2}Linked Nodes:", "")?;
+            writeln!(plain, "{:2}Linked Nodes:", "")?;
             for (n_idx, node) in i.nodes.iter().enumerate() {
-                writeln!(&mut plain, "{:4}Node[{}]:", "", n_idx)?;
-                writeln!(&mut plain, "{:6}Name: {}", "", node.name)?;
-                writeln!(&mut plain, "{:6}Status: {}", "", node.status)?;
+                writeln!(plain, "{:4}Node[{}]:", "", n_idx)?;
+                writeln!(plain, "{:6}Name: {}", "", node.name)?;
+                writeln!(plain, "{:6}Status: {}", "", node.status)?;
             }
         }
     }
@@ -245,31 +171,24 @@ struct StatusData {
 
 impl StatusData {
     fn from_parts(
-        orchestrator_version: Result<OrchestratorVersionInfo>,
-        identities_details: Vec<IdentityState>,
+        orchestrator_version: OrchestratorVersionInfo,
+        identities_details: Vec<IdentityEnrollment>,
         mut nodes_details: Vec<NodeDetails>,
     ) -> Result<Self> {
-        let orchestrator_version = orchestrator_version
-            .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
-            .unwrap_or(OrchestratorVersionInfo {
-                controller_version: "N/A".to_string(),
-                project_version: "N/A".to_string(),
-            });
         let mut identities = vec![];
         for identity in identities_details.into_iter() {
             let mut identity_status = IdentityWithLinkedNodes {
-                identity,
+                identifier: identity.identifier(),
+                name: identity.name(),
+                is_default: identity.is_default(),
+                enrolled_at: identity
+                    .enrolled_at()
+                    .map(|o| TimestampInSeconds::from(o.unix_timestamp() as u64)),
                 nodes: vec![],
             };
-            nodes_details
-                .retain(|nd| nd.identifier == identity_status.identity.config().identifier());
+            nodes_details.retain(|nd| nd.identifier == identity_status.identifier());
             if !nodes_details.is_empty() {
-                for node in nodes_details.iter() {
-                    identity_status.nodes.push(NodeStatus {
-                        name: node.state.name().to_string(),
-                        status: node.status.clone(),
-                    });
-                }
+                identity_status.nodes = nodes_details.clone();
             }
             identities.push(identity_status);
         }
@@ -282,31 +201,39 @@ impl StatusData {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct IdentityWithLinkedNodes {
-    identity: IdentityState,
-    nodes: Vec<NodeStatus>,
+    identifier: Identifier,
+    name: Option<String>,
+    is_default: bool,
+    enrolled_at: Option<TimestampInSeconds>,
+    nodes: Vec<NodeDetails>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct IdentityStatus {}
+impl IdentityWithLinkedNodes {
+    fn identifier(&self) -> Identifier {
+        self.identifier.clone()
+    }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct NodeStatus {
+    fn name(&self) -> Option<String> {
+        self.name.clone()
+    }
+
+    fn is_default(&self) -> bool {
+        self.is_default
+    }
+
+    fn is_enrolled(&self) -> bool {
+        self.enrolled_at.is_some()
+    }
+
+    #[allow(unused)]
+    fn nodes(&self) -> &Vec<NodeDetails> {
+        &self.nodes
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct NodeDetails {
+    identifier: Identifier,
     name: String,
     status: String,
-}
-
-struct NodeDetails {
-    identifier: Identifier,
-    state: NodeState,
-    status: String,
-}
-
-#[derive(Encode, Decode, Debug, serde::Serialize, serde::Deserialize)]
-#[cfg_attr(test, derive(Clone))]
-#[cbor(map)]
-struct OrchestratorVersionInfo {
-    #[n(1)]
-    controller_version: String,
-    #[n(2)]
-    project_version: String,
 }

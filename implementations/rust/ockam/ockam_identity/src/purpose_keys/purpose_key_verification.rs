@@ -2,9 +2,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::VaultForVerifyingSignatures;
 
-use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
+use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, VersionedData};
 use crate::utils::now;
-use crate::{IdentitiesReader, Identity, IdentityError, TimestampInSeconds};
+use crate::{IdentitiesCreation, IdentityError, TimestampInSeconds};
 
 /// We allow purpose keys to be created in the future related to this machine's time due to
 /// possible time dyssynchronization
@@ -14,18 +14,18 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 #[derive(Clone)]
 pub struct PurposeKeyVerification {
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    identities_creation: Arc<IdentitiesCreation>,
 }
 
 impl PurposeKeyVerification {
     /// Create a new identities module
     pub(crate) fn new(
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        identities_creation: Arc<IdentitiesCreation>,
     ) -> Self {
         Self {
             verifying_vault,
-            identities_reader,
+            identities_creation,
         }
     }
 }
@@ -39,7 +39,7 @@ impl PurposeKeyVerification {
     ) -> Result<PurposeKeyAttestationData> {
         let versioned_data_hash = self.verifying_vault.sha256(&attestation.data).await?;
 
-        let versioned_data = attestation.get_versioned_data()?;
+        let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
 
         if versioned_data.version != 1 {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
@@ -53,18 +53,10 @@ impl PurposeKeyVerification {
                 return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
             }
         }
-
-        let change_history = self
-            .identities_reader
+        let identity = self
+            .identities_creation
             .get_identity(&purpose_key_data.subject)
             .await?;
-        let identity = Identity::import_from_change_history(
-            Some(&purpose_key_data.subject),
-            change_history,
-            self.verifying_vault.clone(),
-        )
-        .await?;
-
         let latest_change = identity.get_latest_change()?;
 
         // TODO: We should inspect purpose_key_data.subject_latest_change_hash, the possibilities are:

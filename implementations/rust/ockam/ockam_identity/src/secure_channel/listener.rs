@@ -1,23 +1,22 @@
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 use ockam_node::Context;
 
-use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::models::Identifier;
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
 use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
 
-pub(crate) struct IdentityChannelListener {
+pub(crate) struct SecureChannelListenerWorker {
     secure_channels: Arc<SecureChannels>,
     identifier: Identifier,
     options: SecureChannelListenerOptions,
 }
 
-impl IdentityChannelListener {
+impl SecureChannelListenerWorker {
     fn new(
         secure_channels: Arc<SecureChannels>,
         identifier: Identifier,
@@ -45,30 +44,10 @@ impl IdentityChannelListener {
 
         Ok(())
     }
-
-    /// If credentials are not provided via list in options
-    /// get them from the trust context
-    async fn get_credentials(&self, ctx: &mut Context) -> Result<Vec<CredentialAndPurposeKey>> {
-        let credentials = if self.options.credentials.is_empty() {
-            if let Some(trust_context) = &self.options.trust_context {
-                vec![
-                    trust_context
-                        .authority()?
-                        .credential(ctx, &self.identifier)
-                        .await?,
-                ]
-            } else {
-                vec![]
-            }
-        } else {
-            self.options.credentials.clone()
-        };
-        Ok(credentials)
-    }
 }
 
 #[ockam_core::worker]
-impl Worker for IdentityChannelListener {
+impl Worker for SecureChannelListenerWorker {
     type Message = Any;
     type Context = Context;
 
@@ -87,7 +66,15 @@ impl Worker for IdentityChannelListener {
             .options
             .create_access_control(ctx.flow_controls(), flow_control_id);
 
-        let credentials = self.get_credentials(ctx).await?;
+        let credentials = SecureChannels::get_credentials(
+            &self.identifier,
+            &self.options.credentials,
+            self.options.trust_context.as_ref(),
+            ctx,
+        )
+        .await
+        .ok()
+        .unwrap_or(vec![]);
 
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
@@ -107,6 +94,8 @@ impl Worker for IdentityChannelListener {
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             credentials,
+            self.options.min_credential_refresh_interval,
+            self.options.refresh_credential_time_gap,
             self.options.trust_context.clone(),
             None,
             None,

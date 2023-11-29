@@ -11,7 +11,7 @@ defmodule Ockam.SecureChannel.IdentityProof do
 
   def decode(data) do
     case CBOR.decode(data) do
-      {:ok, %{1 => change_history, 2 => attestation, 3 => credentials}, ""} ->
+      {:ok, [change_history, attestation, credentials], ""} ->
         {:ok,
          %IdentityProof{
            contact: CBOR.encode(change_history),
@@ -39,12 +39,11 @@ end
 
 defimpl CBOR.Encoder, for: Ockam.SecureChannel.IdentityProof do
   def encode_into(t, acc) do
-    %{
-      1 => t.contact,
-      2 => t.attestation,
-      3 =>
-        Enum.map(t.credentials, fn c -> %Ockam.SecureChannel.IdentityProof.Credential{data: c} end)
-    }
+    [
+      t.contact,
+      t.attestation,
+      Enum.map(t.credentials, fn c -> %Ockam.SecureChannel.IdentityProof.Credential{data: c} end)
+    ]
     |> CBOR.Encoder.encode_into(acc)
   end
 end

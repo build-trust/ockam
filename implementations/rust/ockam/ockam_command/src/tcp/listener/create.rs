@@ -1,18 +1,17 @@
-use crate::util::{node_rpc, parse_node_name};
-use crate::{docs, fmt_log, CommandGlobalOpts};
-use crate::{
-    fmt_ok,
-    node::{get_node_name, initialize_node_if_default},
-};
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::{CreateTcpListener, TransportStatus};
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+
+use crate::util::node_rpc;
+use crate::{docs, CommandGlobalOpts};
+use crate::{fmt_log, fmt_ok};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -21,7 +20,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
     /// Node at which to create the listener
-    #[arg(global = true, long, value_name = "NODE")]
+    #[arg(global = true, long, value_name = "NODE", value_parser = extract_address_value)]
     pub at: Option<String>,
 
     /// Address for this listener (eg. 127.0.0.1:7000)
@@ -30,7 +29,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.at);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -39,9 +37,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.at);
-    let node_name = parse_node_name(&node_name)?;
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
     let transport_status: TransportStatus = node
         .ask(
             &ctx,

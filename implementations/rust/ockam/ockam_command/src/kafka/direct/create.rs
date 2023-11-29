@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use crate::kafka::direct::rpc::{start, ArgOpts};
-use crate::node::initialize_node_if_default;
 use crate::{
     kafka::{
         kafka_default_consumer_port_range, kafka_default_consumer_server,
@@ -41,7 +40,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         let arg_opts = ArgOpts {
             endpoint: "/node/services/kafka_direct".to_string(),
             kafka_entity: "KafkaDirect".to_string(),

@@ -1,7 +1,8 @@
-use minicbor::Decoder;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+use minicbor::Decoder;
 use tokio::time::timeout;
 
 use ockam::identity::Identifier;
@@ -15,21 +16,19 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 
-use crate::cli_state::StateDirTrait;
-use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::policy::Policies;
-use crate::nodes::service::random_alias;
+use crate::nodes::service::{actions, random_alias, resources};
 use crate::nodes::{BackgroundNode, InMemoryNode};
 use crate::session::sessions::{
     ConnectionStatus, Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
 };
-use crate::{actions, resources, DefaultAddress};
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -185,8 +184,8 @@ impl NodeManager {
         reachable_from_default_secure_channel: bool,
     ) -> Result<OutletStatus> {
         info!(
-            "Handling request to create outlet portal at {:?}",
-            socket_addr
+            "Handling request to create outlet portal at {:?} with worker {:?}",
+            socket_addr, worker_addr
         );
         let resource = alias
             .as_deref()
@@ -205,19 +204,17 @@ impl NodeManager {
             ));
         }
 
-        let check_credential = self.enable_credential_checks;
-        let trust_context_id = if check_credential {
-            Some(self.trust_context()?.id())
-        } else {
-            None
-        };
-
         let access_control = self
-            .access_control(&resource, &actions::HANDLE_MESSAGE, trust_context_id, None)
+            .access_control(
+                &resource,
+                &actions::HANDLE_MESSAGE,
+                self.trust_context_id().as_deref(),
+                None,
+            )
             .await?;
 
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
-        let options = if !check_credential {
+        let options = if self.trust_context_id().is_none() {
             options.as_consumer(&self.api_transport_flow_control_id)
         } else {
             options
@@ -359,36 +356,39 @@ impl NodeManager {
         let outlet_route = connection.route(self.tcp_transport()).await?;
         let outlet_route = route![prefix_route.clone(), outlet_route, suffix_route.clone()];
 
-        let projects = self.cli_state.projects.list()?;
-        let projects = ProjectLookup::from_state(projects)
-            .await
-            .map_err(|e| ockam_core::Error::new(Origin::Node, Kind::NotFound, e))?;
-        let check_credential = self.enable_credential_checks;
-        let project_id = if check_credential {
-            let pid = outlet_addr
-                .first()
-                .and_then(|p| {
-                    if let Some(p) = p.cast::<Project>() {
-                        projects.get(&*p).map(|info| &*info.id)
-                    } else {
-                        None
-                    }
-                })
-                .or_else(|| Some(self.trust_context().ok()?.id()));
-            if pid.is_none() {
-                let message = "Credential check requires a project or trust context";
-                return Err(ockam_core::Error::new(Origin::Node, Kind::Invalid, message));
+        let projects = self.cli_state.get_projects_grouped_by_name().await?;
+
+        let project_id = match self.trust_context_id() {
+            Some(trust_context_id) => {
+                let pid = outlet_addr
+                    .first()
+                    .and_then(|p| {
+                        if let Some(p) = p.cast::<Project>() {
+                            projects.get(&*p).map(|project| project.id())
+                        } else {
+                            None
+                        }
+                    })
+                    .or(Some(trust_context_id));
+                if pid.is_none() {
+                    let message = "Credential check requires a project or trust context";
+                    return Err(ockam_core::Error::new(Origin::Node, Kind::Invalid, message));
+                }
+                pid
             }
-            pid
-        } else {
-            None
+            None => None,
         };
 
         let resource = requested_alias
             .map(|a| Resource::new(a.as_str()))
             .unwrap_or(resources::INLET);
         let access_control = self
-            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id, None)
+            .access_control(
+                &resource,
+                &actions::HANDLE_MESSAGE,
+                project_id.as_deref(),
+                None,
+            )
             .await?;
 
         let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
@@ -550,7 +550,7 @@ impl InMemoryNode {
             .make_connection(
                 connection_ctx.clone(),
                 &outlet_addr,
-                None,
+                self.identifier(),
                 authorized.clone(),
                 None,
                 Some(duration),
@@ -670,7 +670,7 @@ impl InMemoryNode {
                         .make_connection(
                             ctx.clone(),
                             &addr,
-                            None,
+                            node_manager.identifier(),
                             authorized,
                             None,
                             Some(MAX_CONNECT_TIME),

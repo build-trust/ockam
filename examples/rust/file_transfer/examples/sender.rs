@@ -4,8 +4,7 @@ use file_transfer::{FileData, FileDescription};
 use ockam::errcode::{Kind, Origin};
 use ockam::identity::SecureChannelOptions;
 use ockam::{node, route, Context, Result};
-use ockam::{Error, TcpConnectionOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{Error, TcpConnectionOptions, TcpTransportExtension};
 
 use std::path::PathBuf;
 
@@ -33,7 +32,7 @@ struct Opt {
 async fn main(ctx: Context) -> Result<()> {
     let opt = Opt::from_args();
 
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Sender.

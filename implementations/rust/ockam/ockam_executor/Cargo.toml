@@ -35,7 +35,7 @@ no_std = ["ockam_core/no_std"]
 [dependencies]
 crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
 futures = { version = "0.3.29", default-features = false, features = ["async-await"] }
-heapless = { version = "0.7", features = ["mpmc_large"] }
+heapless = { version = "0.8", features = ["mpmc_large"] }
 ockam_core = { path = "../ockam_core", version = "^0.93.0", default_features = false }
 pin-project-lite = "0.2"
 pin-utils = "0.1.0"

@@ -6,9 +6,8 @@ use ockam_abac::{Action, Resource};
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
-use crate::node::get_node_name;
 use crate::policy::policy_path;
-use crate::util::{node_rpc, parse_node_name};
+use crate::util::node_rpc;
 use crate::{fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
@@ -42,15 +41,13 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
-    let node_name = parse_node_name(&at)?;
     if opts
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this policy?")?
     {
+        let node = BackgroundNode::create(ctx, &opts.state, &cmd.at).await?;
         let policy_path = policy_path(&cmd.resource, &cmd.action);
         let req = Request::delete(&policy_path);
-        let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
         node.tell(ctx, req).await?;
 
         opts.terminal
@@ -63,7 +60,7 @@ async fn run_impl(
             .json(serde_json::json!({
                 "resource": &cmd.resource.to_string(),
                 "action": &cmd.action.to_string(),
-                "at": &node_name}
+                "at": &node.node_name()}
             ))
             .write_line()?;
     }

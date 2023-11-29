@@ -36,11 +36,11 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   @default_prologue ""
   @default_payloads %{}
 
-  @protocol_name "Noise_XX_25519_AESGCM_SHA256"
-  defmacro zero_padded_protocol_name do
+  @protocol_name "OCKAM_XX_25519_AES256_GCM_SHA256"
+  defmacro zero_padded_protocol_name(protocol_name) do
     quote bind_quoted: binding() do
-      padding_size = (32 - byte_size(@protocol_name)) * 8
-      <<@protocol_name, 0::size(padding_size)>>
+      padding_size = (32 - byte_size(protocol_name)) * 8
+      <<protocol_name::binary, 0::size(padding_size)>>
     end
   end
 
@@ -50,9 +50,11 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
       s: static_keypair
     }
 
+    protocol_name = Keyword.get(options, :protocol_name, @protocol_name)
+
     with {:ok, protocol_state} <- setup_e(options, protocol_state),
-         {:ok, protocol_state} <- setup_h(protocol_state),
-         {:ok, protocol_state} <- setup_ck(protocol_state),
+         {:ok, protocol_state} <- setup_h(protocol_state, protocol_name),
+         {:ok, protocol_state} <- setup_ck(protocol_state, protocol_name),
          {:ok, protocol_state} <- setup_prologue(options, protocol_state) do
       setup_message_payloads(options, protocol_state)
     end
@@ -99,12 +101,12 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp setup_h(state) do
-    {:ok, %{state | h: zero_padded_protocol_name()}}
+  defp setup_h(state, protocol_name) do
+    {:ok, %{state | h: zero_padded_protocol_name(protocol_name)}}
   end
 
-  defp setup_ck(state) do
-    {:ok, %{state | ck: zero_padded_protocol_name()}}
+  defp setup_ck(state, protocol_name) do
+    {:ok, %{state | ck: zero_padded_protocol_name(protocol_name)}}
   end
 
   defp setup_prologue(options, state) do

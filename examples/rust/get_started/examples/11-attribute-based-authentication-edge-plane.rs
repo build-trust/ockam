@@ -1,10 +1,10 @@
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
-use ockam::identity::OneTimeCode;
 use ockam::identity::{
     identities, AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelOptions,
     TrustContext, TrustMultiIdentifiersPolicy,
 };
+use ockam::identity::{CredentialsRetriever, OneTimeCode};
 use ockam::node;
 use ockam::{route, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
@@ -48,7 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
 /// start the edge node
 async fn start_node(ctx: Context, project_information_path: &str, token: OneTimeCode) -> Result<()> {
     // Create a node with default implementations
-    let node = node(ctx);
+    let node = node(ctx).await?;
     // Use the TCP transport
     let tcp = node.create_tcp_transport().await?;
 
@@ -74,26 +74,25 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a trust context that will be used to authenticate credential exchanges
     let tcp_project_session = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
 
+    // Create a trust context that will be used to authenticate credential exchanges
+    let credentials_retriever = Arc::new(RemoteCredentialsRetriever::new(
+        node.secure_channels(),
+        RemoteCredentialsRetrieverInfo::new(
+            project.authority_identifier(),
+            tcp_project_session.route,
+            DefaultAddress::CREDENTIAL_ISSUER.into(),
+        ),
+    ));
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
         Some(AuthorityService::new(
             node.credentials(),
             project.authority_identifier(),
-            Some(Arc::new(RemoteCredentialsRetriever::new(
-                node.secure_channels(),
-                RemoteCredentialsRetrieverInfo::new(
-                    project.authority_identifier(),
-                    tcp_project_session.route,
-                    DefaultAddress::CREDENTIAL_ISSUER.into(),
-                ),
-            ))),
+            Some(credentials_retriever.clone()),
         )),
     );
 
-    let credential = trust_context
-        .authority()?
-        .credential(node.context(), &edge_plane)
-        .await?;
+    let credential = credentials_retriever.retrieve(node.context(), &edge_plane).await?;
 
     // start a credential exchange worker which will be
     // later on to exchange credentials with the control node
@@ -108,7 +107,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control = AbacAccessControl::create(identities().repository(), "component", "control");
+    let access_control = AbacAccessControl::create(
+        identities().await?.identity_attributes_repository(),
+        "component",
+        "control",
+    );
 
     // 4. create a tcp inlet with the above policy
 

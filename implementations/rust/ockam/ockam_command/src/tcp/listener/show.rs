@@ -2,12 +2,11 @@ use clap::Args;
 use indoc::formatdoc;
 
 use ockam::Context;
-use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
@@ -29,7 +28,6 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self));
     }
 }
@@ -38,9 +36,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = extract_address_value(&node_name)?;
-    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let transport_status: TransportStatus = node
         .ask(
             &ctx,

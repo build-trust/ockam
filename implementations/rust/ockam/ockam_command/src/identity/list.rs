@@ -6,14 +6,10 @@ use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::cli_state::traits::StateDirTrait;
-
 use ockam_node::Context;
 use serde::Serialize;
 use serde_json::json;
 use std::fmt::Write;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -38,37 +34,20 @@ impl ListCommand {
         options: (CommandGlobalOpts, ListCommand),
     ) -> miette::Result<()> {
         let (opts, _cmd) = options;
-        let mut identities: Vec<IdentityListOutput> = Vec::new();
+        let mut identities_list: Vec<IdentityListOutput> = Vec::new();
 
-        let idts = opts.state.identities.list()?;
-        for identity in idts.iter() {
-            let is_finished: Mutex<bool> = Mutex::new(false);
-
-            let send_req = async {
-                let i = IdentityListOutput::new(
-                    identity.name().to_string(),
-                    identity.identifier().to_string(),
-                    opts.state.identities.default()?.name() == identity.name(),
-                );
-                *is_finished.lock().await = true;
-                Ok(i)
-            };
-
-            let output_messages = vec![format!(
-                "Retrieving identity {}...\n",
-                &identity.name().color(OckamColor::PrimaryResource.color())
-            )];
-
-            let progress_output = opts
-                .terminal
-                .progress_output(&output_messages, &is_finished);
-
-            let (identity_states, _) = try_join!(send_req, progress_output)?;
-            identities.push(identity_states);
+        let identities = opts.state.get_named_identities().await?;
+        for identity in identities.iter() {
+            let identity_output = IdentityListOutput::new(
+                identity.name(),
+                identity.identifier().to_string(),
+                identity.is_default(),
+            );
+            identities_list.push(identity_output);
         }
 
         let list = opts.terminal.build_list(
-            &identities,
+            &identities_list,
             "Identities",
             "No identities found on this system.",
         )?;

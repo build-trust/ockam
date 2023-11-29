@@ -1,8 +1,11 @@
-use crate::models::{CredentialData, PurposeKeyAttestationData};
-use crate::{CredentialsCreation, CredentialsVerification, IdentitiesRepository, PurposeKeys};
-
 use ockam_core::compat::sync::Arc;
 use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
+
+use crate::models::{CredentialData, PurposeKeyAttestationData};
+use crate::{
+    CredentialsCreation, CredentialsVerification, IdentitiesCreation, IdentityAttributesRepository,
+    PurposeKeys,
+};
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
 /// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
@@ -19,7 +22,8 @@ pub struct Credentials {
     credential_vault: Arc<dyn VaultForSigning>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     purpose_keys: Arc<PurposeKeys>,
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    identities_creation: Arc<IdentitiesCreation>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
 impl Credentials {
@@ -28,13 +32,15 @@ impl Credentials {
         credential_vault: Arc<dyn VaultForSigning>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
         purpose_keys: Arc<PurposeKeys>,
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        identities_creation: Arc<IdentitiesCreation>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         Self {
             credential_vault,
             verifying_vault,
             purpose_keys,
-            identities_repository,
+            identities_creation,
+            identity_attributes_repository,
         }
     }
 
@@ -43,18 +49,13 @@ impl Credentials {
         self.purpose_keys.clone()
     }
 
-    /// [`IdentitiesRepository`]
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities_repository.clone()
-    }
-
     /// Return [`CredentialsCreation`]
     pub fn credentials_creation(&self) -> Arc<CredentialsCreation> {
         Arc::new(CredentialsCreation::new(
             self.purpose_keys.purpose_keys_creation(),
             self.credential_vault.clone(),
             self.verifying_vault.clone(),
-            self.identities_repository.clone(),
+            self.identities_creation.clone(),
         ))
     }
 
@@ -63,24 +64,27 @@ impl Credentials {
         Arc::new(CredentialsVerification::new(
             self.purpose_keys.purpose_keys_verification(),
             self.verifying_vault.clone(),
-            self.identities_repository.clone(),
+            self.identity_attributes_repository.clone(),
         ))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use minicbor::bytes::ByteVec;
+
+    use ockam_core::compat::collections::BTreeMap;
+    use ockam_core::Result;
+
     use crate::identities::identities;
     use crate::models::CredentialSchemaIdentifier;
     use crate::Attributes;
-    use minicbor::bytes::ByteVec;
-    use ockam_core::compat::collections::BTreeMap;
-    use ockam_core::Result;
-    use std::time::Duration;
 
     #[tokio::test]
     async fn test_issue_credential() -> Result<()> {
-        let identities = identities();
+        let identities = identities().await?;
         let creation = identities.identities_creation();
 
         let issuer = creation.create_identity().await?;

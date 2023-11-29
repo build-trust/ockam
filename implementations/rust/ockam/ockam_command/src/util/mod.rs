@@ -1,7 +1,6 @@
 use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
-    str::FromStr,
 };
 
 use miette::Context as _;
@@ -9,15 +8,13 @@ use miette::{miette, IntoDiagnostic};
 use tracing::error;
 
 use ockam::{Address, Context, NodeBuilder};
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::CliState;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
-use ockam_multiaddr::{
-    proto::{self, Node},
-    MultiAddr, Protocol,
-};
+use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
+use crate::error::Error;
 use crate::Result;
 
 pub mod api;
@@ -152,43 +149,15 @@ pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
 
-/// Parses a node's input string for its name in case it's a `MultiAddr` string.
-///
-/// Ensures that the node's name will be returned if the input string is a `MultiAddr` of the `node` type
-/// Examples: `n1` or `/node/n1` returns `n1`; `/project/p1` or `/tcp/n2` returns an error message.
-pub fn parse_node_name(input: &str) -> Result<String> {
-    if input.is_empty() {
-        return Err(miette!("Empty address in node name argument").into());
-    }
-    // Node name was passed as "n1", for example
-    if !input.contains('/') {
-        return Ok(input.to_string());
-    }
-    // Input has "/", so we process it as a MultiAddr
-    let maddr = MultiAddr::from_str(input)
-        .into_diagnostic()
-        .wrap_err("Invalid format for node name argument")?;
-    let err_message = String::from("A node MultiAddr must follow the format /node/<name>");
-    if let Some(p) = maddr.iter().next() {
-        if p.code() == proto::Node::CODE {
-            let node_name = p
-                .cast::<proto::Node>()
-                .ok_or(miette!("Failed to parse the 'node' protocol"))?
-                .to_string();
-            if !node_name.is_empty() {
-                return Ok(node_name);
-            }
-        }
-    }
-    Err(miette!(err_message).into())
-}
-
 /// Replace the node's name with its address or leave it if it's another type of address.
 ///
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate::Result<MultiAddr> {
+pub async fn process_nodes_multiaddr(
+    addr: &MultiAddr,
+    cli_state: &CliState,
+) -> crate::Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {
@@ -196,9 +165,8 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
                 let alias = proto
                     .cast::<Node>()
                     .ok_or_else(|| miette!("Invalid node address protocol"))?;
-                let node_state = cli_state.nodes.get(alias.to_string())?;
-                let node_setup = node_state.config().setup();
-                let addr = node_setup.api_transport()?.maddr()?;
+                let node_info = cli_state.get_node(&alias).await?;
+                let addr = node_info.tcp_listener_multi_address()?;
                 processed_addr.try_extend(&addr)?
             }
             _ => processed_addr.push_back_value(&proto)?,
@@ -210,7 +178,7 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-pub fn clean_nodes_multiaddr(
+pub async fn clean_nodes_multiaddr(
     input: &MultiAddr,
     cli_state: &CliState,
 ) -> Result<(MultiAddr, LookupMeta)> {
@@ -221,10 +189,14 @@ pub fn clean_nodes_multiaddr(
         match p.code() {
             Node::CODE => {
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
-                let node_state = cli_state.nodes.get(alias.to_string())?;
-                let node_setup = node_state.config().setup();
-                let addr = &node_setup.api_transport()?.addr;
-                match addr {
+                let node_info = cli_state.get_node(&alias).await?;
+                let addr = node_info
+                    .tcp_listener_address()
+                    .ok_or(Error::new_internal_error(
+                        "No transport API has been set on the node",
+                        "",
+                    ))?;
+                match &addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
                     InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,
                     InternetAddress::V6(v6) => new_ma.push_back(Ip6(*v6.ip()))?,
@@ -249,10 +221,10 @@ pub fn clean_nodes_multiaddr(
 }
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
-    use itertools::Itertools;
-
-    #[allow(unstable_name_collisions)]
-    data.iter().map(AsRef::as_ref).intersperse(", ").collect()
+    data.iter()
+        .map(AsRef::as_ref)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
@@ -264,142 +236,44 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     Ok(())
 }
 
-pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
-    use is_terminal::IsTerminal;
-    s.is_terminal()
-}
-
-pub fn is_enrolled_guard(cli_state: &CliState, identity_name: Option<&str>) -> miette::Result<()> {
-    if !cli_state
-        .identities
-        .get_or_default(identity_name)
-        .map(|s| s.is_enrolled())
-        .unwrap_or(false)
-    {
-        return Err(miette!(
-            "Please enroll using 'ockam enroll' before using this command"
-        ));
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use ockam_api::address::extract_address_value;
-    use ockam_api::cli_state;
-    use ockam_api::cli_state::identities::IdentityConfig;
-    use ockam_api::cli_state::traits::StateDirTrait;
-    use ockam_api::cli_state::{NodeConfig, VaultConfig};
-    use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+    use std::str::FromStr;
 
     use super::*;
 
-    #[test]
-    fn test_parse_node_name() {
-        let test_cases = vec![
-            ("", Err(())),
-            ("test", Ok("test")),
-            ("/test", Err(())),
-            ("test/", Err(())),
-            ("/node", Err(())),
-            ("/node/", Err(())),
-            ("/node/n1", Ok("n1")),
-            ("/service/s1", Err(())),
-            ("/project/p1", Err(())),
-            ("/randomprotocol/rp1", Err(())),
-            ("/node/n1/tcp", Err(())),
-            ("/node/n1/test", Err(())),
-            ("/node/n1/tcp/22", Ok("n1")),
-        ];
-        for (input, expected) in test_cases {
-            if let Ok(addr) = expected {
-                assert_eq!(parse_node_name(input).unwrap(), addr);
-            } else {
-                assert!(parse_node_name(input).is_err());
-            }
-        }
-    }
-
-    #[test]
-    fn test_extract_address_value() {
-        let test_cases = vec![
-            ("", Err(())),
-            ("test", Ok("test")),
-            ("/test", Err(())),
-            ("test/", Err(())),
-            ("/node", Err(())),
-            ("/node/", Err(())),
-            ("/node/n1", Ok("n1")),
-            ("/service/s1", Ok("s1")),
-            ("/project/p1", Ok("p1")),
-            ("/randomprotocol/rp1", Err(())),
-            ("/node/n1/tcp", Err(())),
-            ("/node/n1/test", Err(())),
-            ("/node/n1/tcp/22", Ok("n1")),
-        ];
-        for (input, expected) in test_cases {
-            if let Ok(addr) = expected {
-                assert_eq!(extract_address_value(input).unwrap(), addr);
-            } else {
-                assert!(extract_address_value(input).is_err());
-            }
-        }
-    }
-
     #[ockam_macros::test(crate = "ockam")]
     async fn test_process_multi_addr(ctx: &mut Context) -> ockam::Result<()> {
-        let cli_state = CliState::test()?;
+        let cli_state = CliState::test().await?;
 
-        let v_name = cli_state::random_name();
-        let v_config = VaultConfig::default();
-        cli_state.vaults.create_async(&v_name, v_config).await?;
-        let v = cli_state.vaults.get(&v_name)?.get().await?;
-        let idt = cli_state
-            .get_identities(v)
-            .await
-            .unwrap()
-            .identities_creation()
-            .create_identity()
-            .await?;
-        let idt_config = IdentityConfig::new(&idt).await;
+        cli_state.create_node("n1").await?;
+
         cli_state
-            .identities
-            .create(cli_state::random_name(), idt_config)?;
-
-        let n_state = cli_state
-            .nodes
-            .create("n1", NodeConfig::try_from(&cli_state)?)?;
-        n_state.set_setup(&n_state.config().setup_mut().set_api_transport(
-            CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, "127.0.0.0:4000")?,
-        ))?;
+            .set_tcp_listener_address("n1", "127.0.0.0:4000".to_string())
+            .await?;
 
         let test_cases = vec![
             (
-                MultiAddr::from_str("/node/n1").unwrap(),
+                MultiAddr::from_str("/node/n1")?,
                 Ok("/ip4/127.0.0.0/tcp/4000"),
             ),
+            (MultiAddr::from_str("/project/p1")?, Ok("/project/p1")),
+            (MultiAddr::from_str("/service/s1")?, Ok("/service/s1")),
             (
-                MultiAddr::from_str("/project/p1").unwrap(),
-                Ok("/project/p1"),
-            ),
-            (
-                MultiAddr::from_str("/service/s1").unwrap(),
-                Ok("/service/s1"),
-            ),
-            (
-                MultiAddr::from_str("/project/p1/node/n1/service/echo").unwrap(),
+                MultiAddr::from_str("/project/p1/node/n1/service/echo")?,
                 Ok("/project/p1/ip4/127.0.0.0/tcp/4000/service/echo"),
             ),
-            (MultiAddr::from_str("/node/n2").unwrap(), Err(())),
+            (MultiAddr::from_str("/node/n2")?, Err(())),
         ];
         for (ma, expected) in test_cases {
             if let Ok(addr) = expected {
                 let result = process_nodes_multiaddr(&ma, &cli_state)
+                    .await
                     .unwrap()
                     .to_string();
                 assert_eq!(result, addr);
             } else {
-                assert!(process_nodes_multiaddr(&ma, &cli_state).is_err());
+                assert!(process_nodes_multiaddr(&ma, &cli_state).await.is_err());
             }
         }
 
@@ -432,5 +306,12 @@ mod tests {
             ctx.stop().await.into_diagnostic()?;
             Err(miette!("boom"))
         }
+    }
+
+    #[test]
+    fn test_comma_separated() {
+        let data = vec!["a", "b", "c"];
+        let result = comma_separated(&data);
+        assert_eq!(result, "a, b, c");
     }
 }

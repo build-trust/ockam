@@ -15,19 +15,7 @@ teardown() {
 # ===== UTILS
 
 force_kill_node() {
-  max_retries=5
-  i=0
-  while [[ $i -lt $max_retries ]]; do
-    pid="$(cat $OCKAM_HOME/nodes/$1/pid)"
-    run kill -9 $pid
-    # Killing a node created without `-f` leaves the
-    # process in a defunct state when running within Docker.
-    if ! ps -p $pid || ps -p $pid | grep defunct; then
-      return
-    fi
-    sleep 0.2
-    ((i = i + 1))
-  done
+  run killall ockam
 }
 
 # ===== TESTS
@@ -55,8 +43,8 @@ force_kill_node() {
   run_failure "$OCKAM" service start authenticated --addr my_authenticated --at n1
 
   # Check we can start service, but only once with the same name
-  run_success "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81a201583ba20101025835a4028201815820984249b1a11c6933002d02019f408ec0bdb7f3058068227a472986ea588ec67003f4041a64e49a5e051a77b09d5e02820181584002c2cc20acf3d7d59d67c420c3c29d4ebb1ebe483bfaba7fb046f59de96284ebfb570d17539e5d4989b74f22af12261b9c1d5eecf731e2d19907b092f6c47d04
-  run_failure "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81a201583ba20101025835a4028201815820984249b1a11c6933002d02019f408ec0bdb7f3058068227a472986ea588ec67003f4041a64e49a5e051a77b09d5e02820181584002c2cc20acf3d7d59d67c420c3c29d4ebb1ebe483bfaba7fb046f59de96284ebfb570d17539e5d4989b74f22af12261b9c1d5eecf731e2d19907b092f6c47d04
+  run_success "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81825837830101583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a654cf97d1a7818fc7d8200815840650c4c939b96142546559aed99c52b64aa8a2f7b242b46534f7f8d0c5cc083d2c97210b93e9bca990e9cb9301acc2b634ffb80be314025f9adc870713e6fde0d
+  run_failure "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81825837830101583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a654cf97d1a7818fc7d8200815840650c4c939b96142546559aed99c52b64aa8a2f7b242b46534f7f8d0c5cc083d2c97210b93e9bca990e9cb9301acc2b634ffb80be314025f9adc870713e6fde0d
 }
 
 @test "node - is restarted with default services" {

@@ -10,7 +10,7 @@ use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::{get_node_name, NodeOpts};
+use crate::node::NodeOpts;
 use crate::service::start::start_service_impl;
 use crate::terminal::OckamColor;
 use crate::util::process_nodes_multiaddr;
@@ -45,15 +45,14 @@ pub async fn start(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> 
     display_parse_logs(&opts);
 
     let consumer_route = if let Some(consumer_route) = consumer_route {
-        Some(process_nodes_multiaddr(&consumer_route, &opts.state)?)
+        Some(process_nodes_multiaddr(&consumer_route, &opts.state).await?)
     } else {
         None
     };
 
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let node_name = get_node_name(&opts.state, &node_opts.at_node);
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_opts.at_node).await?;
 
         let payload = StartKafkaDirectRequest::new(
             bind_address.to_owned(),

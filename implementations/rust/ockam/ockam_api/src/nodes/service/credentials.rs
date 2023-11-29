@@ -11,7 +11,6 @@ use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::cli_state::traits::StateDirTrait;
 use crate::cloud::AuthorityNode;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
@@ -121,24 +120,21 @@ impl NodeManagerWorker {
     ) -> Result<Either<Response<Error>, Response<CredentialAndPurposeKey>>> {
         let request: GetCredentialRequest = dec.decode()?;
 
-        let identifier = if let Some(identity) = &request.identity_name {
-            self.node_manager
-                .cli_state
-                .identities
-                .get(identity)?
-                .identifier()
-        } else {
-            self.node_manager.identifier().clone()
-        };
+        let identifier = self
+            .node_manager
+            .get_identifier_by_name(request.identity_name)
+            .await?;
 
         match self
             .node_manager
-            .trust_context()?
-            .authority()?
-            .credential(ctx, &identifier)
+            .get_credential(ctx, &identifier, None)
             .await
         {
-            Ok(c) => Ok(Either::Right(Response::ok(req).body(c))),
+            Ok(Some(c)) => Ok(Either::Right(Response::ok(req).body(c))),
+            Ok(None) => Ok(Either::Left(Response::not_found(
+                req,
+                &format!("no credential found for {}", identifier),
+            ))),
             Err(e) => Ok(Either::Left(Response::internal_error(
                 req,
                 &format!(
@@ -166,12 +162,12 @@ impl NodeManagerWorker {
         })?;
         let route = local_multiaddr_to_route(&route)?;
 
+        let identifier = self.node_manager.identifier();
         let credential = self
             .node_manager
-            .trust_context()?
-            .authority()?
-            .credential(ctx, self.node_manager.identifier())
-            .await?;
+            .get_credential(ctx, &identifier, None)
+            .await?
+            .unwrap_or_else(|| panic!("A credential must be retrieved for {}", identifier));
 
         if request.oneway {
             self.node_manager
@@ -184,11 +180,7 @@ impl NodeManagerWorker {
                 .present_credential_mutual(
                     ctx,
                     route,
-                    self.node_manager
-                        .trust_context()?
-                        .authorities()
-                        .await?
-                        .as_slice(),
+                    &self.node_manager.trust_context()?.authorities(),
                     credential,
                 )
                 .await?;

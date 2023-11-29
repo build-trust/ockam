@@ -2,7 +2,7 @@ use minicbor::Decoder;
 use ockam::identity::utils::now;
 use ockam::identity::OneTimeCode;
 use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
-use ockam::identity::{AttributesEntry, IdentityAttributesWriter};
+use ockam::identity::{AttributesEntry, IdentityAttributesRepository};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
@@ -14,7 +14,7 @@ use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
 
 pub struct EnrollmentTokenAcceptor(
     pub(super) EnrollmentTokenAuthenticator,
-    pub(super) Arc<dyn IdentityAttributesWriter>,
+    pub(super) Arc<dyn IdentityAttributesRepository>,
 );
 
 impl EnrollmentTokenAcceptor {

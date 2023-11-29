@@ -15,12 +15,11 @@ struct AcceptingInvitation: View {
                 switch state.orchestrator_status {
                 case .Disconnected:
                     Text("You're not currently enrolled")
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
+                        .padding(.vertical, VerticalSpacingUnit)
                         .font(.headline)
                     Text("Please enroll in order to accept the invitation")
                         .padding(.top, 0)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, VerticalSpacingUnit)
                     Button(
                         action: {
                             enroll_user()
@@ -47,8 +46,9 @@ struct AcceptingInvitation: View {
                     )
                     .disabled(state.orchestrator_status != .Disconnected)
                 }
-                .padding(8)
-                .background(.black.opacity(0.1))
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
+                .background(OckamDarkerBackground)
             } else if !state.loaded {
                 Spacer()
                 Text("Loading invitations...").font(.headline)
@@ -66,8 +66,9 @@ struct AcceptingInvitation: View {
                     )
                     .keyboardShortcut(.defaultAction)
                 }
-                .padding(8)
-                .background(.black.opacity(0.1))
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
+                .background(OckamDarkerBackground)
             } else if let (group, invitation) = self.invitation {
                 HStack {
                     Spacer()
@@ -80,11 +81,12 @@ struct AcceptingInvitation: View {
                     }
                     Spacer()
                 }
-                .padding(25)
+                .padding(.vertical, VerticalSpacingUnit * 2)
 
                 Group {
                     Text("Has invited you to the service:")
-                        .padding(5)
+                        .padding(.vertical, VerticalSpacingUnit)
+                        .padding(.horizontal, HorizontalSpacingUnit)
                         .font(.headline)
                     Text(invitation.serviceName)
                     if let scheme = invitation.serviceScheme {
@@ -93,7 +95,7 @@ struct AcceptingInvitation: View {
                 }.padding(0)
 
                 Spacer()
-                    .frame(height: 10)
+                    .frame(height: VerticalSpacingUnit)
                 Spacer()
 
                 HStack {
@@ -114,7 +116,7 @@ struct AcceptingInvitation: View {
                                 self.closeWindow()
                             },
                             label: {
-                                Text("Ignore")
+                                Text("Decline")
                             }
                         )
                     }
@@ -128,8 +130,9 @@ struct AcceptingInvitation: View {
                     )
                     .keyboardShortcut(.defaultAction)
                 }
-                .padding(8)
-                .background(.black.opacity(0.1))
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
+                .background(OckamDarkerBackground)
             } else if let (group, service) = self.service {
                 HStack {
                     Spacer()
@@ -142,10 +145,12 @@ struct AcceptingInvitation: View {
                     }
                     Spacer()
                 }
-                .padding(25)
+                .padding(.horizontal, VerticalSpacingUnit * 2)
+                .padding(.vertical, HorizontalSpacingUnit * 2)
 
                 Text("This invitation has already been accepted.")
-                    .padding(5)
+                    .padding(.vertical, VerticalSpacingUnit)
+                    .padding(.horizontal, HorizontalSpacingUnit)
                     .font(.headline)
 
                 Group {
@@ -171,12 +176,13 @@ struct AcceptingInvitation: View {
                     )
                     .keyboardShortcut(.defaultAction)
                 }
-                .padding(8)
-                .background(.black.opacity(0.1))
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
+                .background(OckamDarkerBackground)
             } else {
                 Spacer()
                 Text("This invitation cannot be accepted.")
-                    .padding(.top, 8)
+                    .padding(.top, VerticalSpacingUnit)
                     .padding(.bottom, 0)
                     .font(.headline)
                 Text("This invitation has either expired, was revoked, or was intended for a different account.\nPlease contact the sender of the invitation for more information.")
@@ -195,8 +201,9 @@ struct AcceptingInvitation: View {
                     )
                     .keyboardShortcut(.defaultAction)
                 }
-                .padding(8)
-                .background(.black.opacity(0.1))
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
+                .background(OckamDarkerBackground)
             }
         }
         .frame(width: 350, height: 250)

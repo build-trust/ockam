@@ -1,14 +1,14 @@
 use clap::Args;
-use ockam::Context;
-use ockam_api::cloud::space::Spaces;
+use colorful::Colorful;
+use miette::miette;
 
 use crate::output::Output;
 use crate::util::api::{self, CloudOpts};
-use crate::util::{is_enrolled_guard, node_rpc};
+use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
-use colorful::Colorful;
+use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
+use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -17,8 +17,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create a new space
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the space - must be unique across all Ockam Orchestrator users.
@@ -48,7 +48,15 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    is_enrolled_guard(&opts.state, None)?;
+    if !opts
+        .state
+        .is_identity_enrolled(&cmd.cloud_opts.identity)
+        .await?
+    {
+        return Err(miette!(
+            "Please enroll using 'ockam enroll' before using this command"
+        ));
+    };
 
     opts.terminal.write_line(format!(
         "\n{}",
@@ -61,24 +69,26 @@ async fn run_impl(
     ))?;
 
     let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
-    let space = controller.create_space(ctx, cmd.name, cmd.admins).await?;
+    let space = node
+        .create_space(
+            ctx,
+            &cmd.name,
+            cmd.admins.iter().map(|a| a.as_ref()).collect(),
+        )
+        .await?;
 
     opts.terminal
         .stdout()
         .plain(space.output()?)
         .json(serde_json::json!(&space))
         .write_line()?;
-    opts.state
-        .spaces
-        .overwrite(&space.name, SpaceConfig::from(&space))?;
     Ok(())
 }
 
 fn validate_space_name(s: &str) -> Result<String, String> {
     match api::validate_cloud_resource_name(s) {
         Ok(_) => Ok(s.to_string()),
-        Err(_e)=> Err(String::from(
+        Err(_e) => Err(String::from(
             "space name can contain only alphanumeric characters and the '-', '_' and '.' separators. \
             Separators must occur between alphanumeric characters. This implies that separators can't \
             occur at the start or end of the name, nor they can occur in sequence.",

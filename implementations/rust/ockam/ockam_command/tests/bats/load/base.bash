@@ -84,7 +84,7 @@ teardown_home_dir() {
       # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
       # For some reason, if the directory is moved, the teardown function gets stuck.
       echo "Failed test dir: $OCKAM_HOME" >&3
-      cp -a "$OCKAM_HOME" "$HOME/.bats-tests"
+      cp -r "$OCKAM_HOME/." "$HOME/.bats-tests"
     fi
     run $OCKAM node delete --all --force --yes
     run $OCKAM reset -y

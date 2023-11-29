@@ -1,6 +1,5 @@
-use crate::traits::PolicyStorage;
 use crate::types::{Action, Resource};
-use crate::AbacAccessControl;
+use crate::{AbacAccessControl, PoliciesRepository};
 use crate::{Env, Expr};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
@@ -9,7 +8,7 @@ use ockam_core::compat::format;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{IncomingAccessControl, Result};
-use ockam_identity::IdentitiesRepository;
+use ockam_identity::IdentityAttributesRepository;
 use tracing as log;
 
 /// Evaluates a policy expression against an environment of attributes.
@@ -19,8 +18,8 @@ use tracing as log;
 pub struct PolicyAccessControl {
     resource: Resource,
     action: Action,
-    policies: Arc<dyn PolicyStorage>,
-    repository: Arc<dyn IdentitiesRepository>,
+    policies: Arc<dyn PoliciesRepository>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     environment: Env,
 }
 
@@ -43,8 +42,8 @@ impl PolicyAccessControl {
     /// the given authenticated storage, adding them the given environment,
     /// which may already contain other resource, action or subject attributes.
     pub fn new(
-        policies: Arc<dyn PolicyStorage>,
-        repository: Arc<dyn IdentitiesRepository>,
+        policies: Arc<dyn PoliciesRepository>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         r: Resource,
         a: Action,
         env: Env,
@@ -53,7 +52,7 @@ impl PolicyAccessControl {
             resource: r,
             action: a,
             policies,
-            repository,
+            identity_attributes_repository,
             environment: env,
         }
     }
@@ -85,8 +84,12 @@ impl IncomingAccessControl for PolicyAccessControl {
             return Ok(false);
         };
 
-        AbacAccessControl::new(self.repository.clone(), expr, self.environment.clone())
-            .is_authorized(msg)
-            .await
+        AbacAccessControl::new(
+            self.identity_attributes_repository.clone(),
+            expr,
+            self.environment.clone(),
+        )
+        .is_authorized(msg)
+        .await
     }
 }

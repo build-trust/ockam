@@ -58,13 +58,15 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
     {:ok, initiator_state} =
       Protocol.setup(test_case.initiator_static,
         ephemeral_keypair: test_case.initiator_ephemeral,
-        payloads: %{message1: test_case.message_1_payload, message3: test_case.message_3_payload}
+        payloads: %{message1: test_case.message_1_payload, message3: test_case.message_3_payload},
+        protocol_name: "Noise_XX_25519_AESGCM_SHA256"
       )
 
     {:ok, responder_state} =
       Protocol.setup(test_case.responder_static,
         ephemeral_keypair: test_case.responder_ephemeral,
-        payloads: %{message2: test_case.message_2_payload}
+        payloads: %{message2: test_case.message_2_payload},
+        protocol_name: "Noise_XX_25519_AESGCM_SHA256"
       )
 
     {:ok, message_1_ciphertext, {:continue, initiator_state}} =

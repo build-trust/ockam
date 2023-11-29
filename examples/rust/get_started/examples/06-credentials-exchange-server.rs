@@ -14,7 +14,7 @@ use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigni
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let identity_vault = SoftwareVaultForSigning::create();
+    let identity_vault = SoftwareVaultForSigning::create().await?;
     // Import the signing secret key to the Vault
     let secret = identity_vault
         .import_key(SigningSecret::EdDSACurve25519(EdDSACurve25519SecretKey::new(
@@ -26,24 +26,24 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Create a default Vault but use the signing vault with our secret in it
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     vault.identity_vault = identity_vault;
 
-    let node = Node::builder().with_vault(vault).build(&ctx).await?;
+    let node = Node::builder().await?.with_vault(vault).build(&ctx).await?;
 
     // Initialize the TCP Transport
     let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity representing the server
     // Load an identity corresponding to the following public identifier
-    // I2c3b0ef15c12fe43d405497fcfc46318da46d0f5
+    // Ife42b412ecdb7fda4421bd5046e33c1017671ce7a320c3342814f0b99df9ab60
     //
     // We're hard coding this specific identity because its public identifier is known
     // to the credential issuer as a member of the production cluster.
-    let change_history = hex::decode("81a201583ba20101025835a40282018158201d387ce453816d91159740a55e9a62ad3b58be9ecf7ef08760c42c0d885b6c2e03f4041a64dd4074051a77a9437402820181584053de69d82c9c4b12476c889b437be1d9d33bd0041655c4836a3a57ac5a67703e7f500af5bacaed291cfd6783d255fe0f0606638577d087a5612bfb4671f2b70a").unwrap();
+    let change_history = hex::decode("81825837830101583285f682008158201d387ce453816d91159740a55e9a62ad3b58be9ecf7ef08760c42c0d885b6c2ef41a654cf9681a7818fc688200815840dc10ba498655dac0ebab81c6e1af45f465408ddd612842f10a6ced53c06d4562117e14d656be85685aa5bfbd5e5ede6f0ecf5eb41c19a5594e7a25b7a42c5c07").unwrap();
     let server = node.import_private_identity(None, &change_history, &secret).await?;
 
-    let issuer_identity = "81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805";
+    let issuer_identity = "81825837830101583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a654cf97d1a7818fc7d8200815840650c4c939b96142546559aed99c52b64aa8a2f7b242b46534f7f8d0c5cc083d2c97210b93e9bca990e9cb9301acc2b634ffb80be314025f9adc870713e6fde0d";
     let issuer = node.import_identity_hex(None, issuer_identity).await?;
 
     // Connect with the credential issuer and authenticate using the latest private
@@ -90,7 +90,7 @@ async fn main(ctx: Context) -> Result<()> {
         DefaultAddress::ECHO_SERVICE,
         &sc_listener_options.spawner_flow_control_id(),
     );
-    let allow_production = AbacAccessControl::create(node.identities_repository(), "cluster", "production");
+    let allow_production = AbacAccessControl::create(node.identity_attributes_repository(), "cluster", "production");
     node.start_worker_with_access_control(DefaultAddress::ECHO_SERVICE, Echoer, allow_production, AllowAll)
         .await?;
 

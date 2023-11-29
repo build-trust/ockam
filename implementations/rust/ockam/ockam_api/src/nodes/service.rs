@@ -1,41 +1,35 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use miette::IntoDiagnostic;
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use miette::IntoDiagnostic;
 use minicbor::{Decoder, Encode};
 
-pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::CredentialsServerModule;
 use ockam::identity::TrustContext;
-use ockam::identity::Vault;
-use ockam::identity::{
-    Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
-};
+use ockam::identity::{Credentials, CredentialsServer, Identities};
+use ockam::identity::{CredentialsServerModule, IdentityAttributesRepository};
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
+use ockam_abac::{Action, Env, Expr, Resource};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
+use ockam_core::AllowAll;
 use ockam_core::IncomingAccessControl;
-use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 
-use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
-use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use crate::cli_state::CliState;
+use crate::cli_state::NamedTrustContext;
 use crate::cloud::{AuthorityNode, ProjectNode};
-use crate::config::cli::TrustContextConfig;
-use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
@@ -46,22 +40,25 @@ use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
 use crate::session::MedicHandle;
-use crate::DefaultAddress;
 
 use super::registry::Registry;
 
+pub mod actions;
 pub(crate) mod background_node;
 pub(crate) mod credentials;
+pub mod default_address;
 mod flow_controls;
 pub(crate) mod in_memory_node;
 pub mod message;
-mod node_identities;
 mod node_services;
 mod policy;
 pub mod portals;
+mod projects;
 pub mod relay;
+pub mod resources;
 mod secure_channel;
 mod transport;
 
@@ -94,32 +91,41 @@ pub(crate) fn encode_response<T: Encode<()>>(
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     pub(crate) node_name: String,
+    node_identifier: Identifier,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
-    enable_credential_checks: bool,
-    identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
-    policies: Arc<dyn PolicyStorage>,
     pub(crate) medic_handle: MedicHandle,
 }
 
 impl NodeManager {
-    pub(super) fn identifier(&self) -> &Identifier {
-        &self.identifier
+    pub fn identifier(&self) -> Identifier {
+        self.node_identifier.clone()
+    }
+
+    pub(crate) async fn get_identifier_by_name(
+        &self,
+        identity_name: Option<String>,
+    ) -> Result<Identifier> {
+        if let Some(name) = identity_name {
+            Ok(self.cli_state.get_identifier_by_name(name.as_ref()).await?)
+        } else {
+            Ok(self.identifier())
+        }
+    }
+
+    pub fn trust_context_id(&self) -> Option<String> {
+        self.trust_context.clone().map(|tc| tc.id().to_string())
     }
 
     pub(super) fn identities(&self) -> Arc<Identities> {
         self.secure_channels.identities()
     }
 
-    pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities().repository().clone()
-    }
-
-    pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
-        self.identities_repository().as_attributes_reader()
+    pub(super) fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
+        self.identities().identity_attributes_repository().clone()
     }
 
     pub(super) fn credentials(&self) -> Arc<Credentials> {
@@ -128,10 +134,6 @@ impl NodeManager {
 
     pub(super) fn credentials_service(&self) -> Arc<dyn CredentialsServer> {
         Arc::new(CredentialsServerModule::new(self.credentials()))
-    }
-
-    pub(super) fn secure_channels_vault(&self) -> Vault {
-        self.secure_channels.identities().vault()
     }
 
     pub fn tcp_transport(&self) -> &TcpTransport {
@@ -164,7 +166,7 @@ impl NodeManager {
             authority_identifier,
             authority_multiaddr,
             &self
-                .get_identifier(caller_identity_name)
+                .get_identifier_by_name(caller_identity_name)
                 .await
                 .into_diagnostic()?,
         )
@@ -182,7 +184,7 @@ impl NodeManager {
             project_identifier,
             project_multiaddr,
             &self
-                .get_identifier(caller_identity_name)
+                .get_identifier_by_name(caller_identity_name)
                 .await
                 .into_diagnostic()?,
         )
@@ -230,7 +232,7 @@ impl NodeManager {
 
             // Check if a policy exists for (resource, action) and if not, then
             // create or use a default entry:
-            if self.policies.get_policy(r, a).await?.is_none() {
+            if self.cli_state.get_policy(r, a).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
                     None => eq([
@@ -238,17 +240,16 @@ impl NodeManager {
                         ident("subject.trust_context_id"),
                     ]),
                 };
-                self.policies.set_policy(r, a, &fallback).await?
+                self.cli_state.set_policy(r, a, &fallback).await?;
             }
-            let policies = self.policies.clone();
-            Ok(Arc::new(PolicyAccessControl::new(
-                policies,
-                self.identities_repository(),
-                r.clone(),
-                a.clone(),
-                env,
-            )))
+            let policy_access_control =
+                self.cli_state.make_policy_access_control(r, a, env).await?;
+            Ok(Arc::new(policy_access_control))
         } else {
+            debug!(
+                "no policy access control set for resource '{}' and action: '{}'",
+                &r, &a
+            );
             Ok(Arc::new(AllowAll))
         }
     }
@@ -318,14 +319,12 @@ impl NodeManagerTransportOptions {
 }
 
 pub struct NodeManagerTrustOptions {
-    trust_context_config: Option<TrustContextConfig>,
+    trust_context: Option<NamedTrustContext>,
 }
 
 impl NodeManagerTrustOptions {
-    pub fn new(trust_context_config: Option<TrustContextConfig>) -> Self {
-        Self {
-            trust_context_config,
-        }
+    pub fn new(trust_context: Option<NamedTrustContext>) -> Self {
+        Self { trust_context }
     }
 }
 
@@ -347,76 +346,51 @@ impl NodeManager {
 
         debug!("create the identity repository");
         let cli_state = general_options.cli_state;
-        let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let repository: Arc<dyn IdentitiesRepository> =
-            cli_state.identities.identities_repository().await?;
+        let secure_channels = cli_state
+            .secure_channels(
+                &general_options.node_name,
+                general_options.pre_trusted_identities,
+            )
+            .await?;
 
-        //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
-        //trait instead),  or pass it from the general_options always.
-        let vault: Vault = node_state.config().vault().await?;
-        let identities_repository: Arc<dyn IdentitiesRepository> =
-            Arc::new(match general_options.pre_trusted_identities {
-                None => BootstrapedIdentityStore::new(
-                    Arc::new(PreTrustedIdentities::new_from_string("{}")?),
-                    repository.clone(),
-                ),
-                Some(f) => BootstrapedIdentityStore::new(Arc::new(f), repository.clone()),
-            });
-
-        debug!("create the secure channels service");
-        let secure_channels = SecureChannels::builder()
-            .with_vault(vault)
-            .with_identities_repository(identities_repository.clone())
-            .build();
-
-        let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
+        debug!("start the medic");
         let medic_handle = MedicHandle::start_medic(ctx).await?;
+
+        debug!("create the trust context");
+        let tcp_transport = transport_options.tcp_transport;
+        let trust_context = match trust_options.trust_context {
+            None => None,
+            Some(tc) => Some(
+                tc.trust_context(&tcp_transport, secure_channels.clone())
+                    .await?,
+            ),
+        };
+
+        debug!("retrieve the node identifier");
+        let node_identifier = cli_state
+            .get_node(&general_options.node_name)
+            .await?
+            .identifier();
 
         let mut s = Self {
             cli_state,
             node_name: general_options.node_name,
+            node_identifier,
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
-            tcp_transport: transport_options.tcp_transport,
-            enable_credential_checks: trust_options.trust_context_config.is_some()
-                && trust_options
-                    .trust_context_config
-                    .as_ref()
-                    .unwrap()
-                    .authority()
-                    .is_ok(),
-            identifier: node_state.config().identifier()?,
+            tcp_transport,
             secure_channels,
-            trust_context: None,
+            trust_context,
             registry: Default::default(),
-            policies,
             medic_handle,
         };
 
-        if let Some(tc) = trust_options.trust_context_config {
-            debug!("configuring trust context");
-            s.configure_trust_context(&tc).await?;
-        }
-
+        debug!("retrieve the node identifier");
         s.initialize_services(ctx, general_options.start_default_services)
             .await?;
         info!("created a node manager for the node: {}", s.node_name);
 
         Ok(s)
-    }
-
-    async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
-        self.trust_context = Some(
-            tc.to_trust_context(
-                self.secure_channels.clone(),
-                Some(self.tcp_transport.async_try_clone().await?),
-            )
-            .await?,
-        );
-
-        info!("NodeManager::configure_trust_context: trust context configured");
-
-        Ok(())
     }
 
     async fn initialize_default_services(
@@ -488,15 +462,11 @@ impl NodeManager {
         &self,
         ctx: Arc<Context>,
         addr: &MultiAddr,
-        identifier: Option<Identifier>,
+        identifier: Identifier,
         authorized: Option<Identifier>,
         credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> Result<Connection> {
-        let identifier = match identifier {
-            Some(identifier) => identifier,
-            None => self.get_identifier(None).await?,
-        };
         let authorized = authorized.map(|authorized| vec![authorized]);
         self.connect(ctx, addr, identifier, authorized, credential, timeout)
             .await
@@ -537,24 +507,8 @@ impl NodeManager {
     }
 
     pub(crate) async fn resolve_project(&self, name: &str) -> Result<(MultiAddr, Identifier)> {
-        let projects = ProjectLookup::from_state(self.cli_state.projects.list()?)
-            .await
-            .map_err(|e| ApiError::core(format!("Cannot load projects: {:?}", e)))?;
-        if let Some(info) = projects.get(name) {
-            let node_route = info
-                .node_route
-                .as_ref()
-                .ok_or_else(|| ApiError::core("Project should have node route set"))?
-                .clone();
-            let identity_id = info
-                .identity_id
-                .as_ref()
-                .ok_or_else(|| ApiError::core("Project should have identity set"))?
-                .clone();
-            Ok((node_route, identity_id))
-        } else {
-            Err(ApiError::core(format!("project {name} not found")))
-        }
+        let project = self.cli_state.get_project_by_name(name).await?;
+        Ok((project.access_route()?, project.identifier()?))
     }
 }
 

@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 /// A full route to a peer.
 #[derive(Serialize, Deserialize, Decode, Encode, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 #[rustfmt::skip]
-#[cbor(map)]
+#[cbor(transparent)]
 pub struct Route {
-    #[n(1)] inner: VecDeque<Address>,
+    #[n(0)] inner: VecDeque<Address>,
 }
 
 impl Route {

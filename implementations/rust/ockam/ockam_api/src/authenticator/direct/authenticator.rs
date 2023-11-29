@@ -1,33 +1,32 @@
+use std::collections::HashMap;
+
 use minicbor::Decoder;
+use tracing::trace;
+
 use ockam::identity::utils::now;
-use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
-use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttributesWriter};
+use ockam::identity::AttributesEntry;
+use ockam::identity::{secure_channel_required, IdentityAttributesRepository, TRUST_CONTEXT_ID};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{CowStr, Result, Routed, Worker};
 use ockam_node::Context;
-use std::collections::HashMap;
-use tracing::trace;
 
 use crate::authenticator::direct::types::AddMember;
 
 pub struct DirectAuthenticator {
     trust_context: String,
-    attributes_writer: Arc<dyn IdentityAttributesWriter>,
-    attributes_reader: Arc<dyn IdentityAttributesReader>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
 impl DirectAuthenticator {
     pub async fn new(
         trust_context: String,
-        attributes_writer: Arc<dyn IdentityAttributesWriter>,
-        attributes_reader: Arc<dyn IdentityAttributesReader>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Result<Self> {
         Ok(Self {
             trust_context,
-            attributes_writer,
-            attributes_reader,
+            identity_attributes_repository,
         })
     }
 
@@ -49,11 +48,16 @@ impl DirectAuthenticator {
             )
             .collect();
         let entry = AttributesEntry::new(auth_attrs, now()?, None, Some(enroller.clone()));
-        self.attributes_writer.put_attributes(id, entry).await
+        self.identity_attributes_repository
+            .put_attributes(id, entry)
+            .await
     }
 
     async fn list_members(&self) -> Result<HashMap<Identifier, AttributesEntry>> {
-        let all_attributes = self.attributes_reader.list().await?;
+        let all_attributes = self
+            .identity_attributes_repository
+            .list_attributes_by_identifier()
+            .await?;
         let attested_by_me = all_attributes.into_iter().collect();
         Ok(attested_by_me)
     }
@@ -98,7 +102,9 @@ impl Worker for DirectAuthenticator {
                 }
                 (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
                     let identifier = Identifier::try_from(id.to_string())?;
-                    self.attributes_writer.delete(&identifier).await?;
+                    self.identity_attributes_repository
+                        .delete(&identifier)
+                        .await?;
 
                     Response::ok(&req).to_vec()?
                 }

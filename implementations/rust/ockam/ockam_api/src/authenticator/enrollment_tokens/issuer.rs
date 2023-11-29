@@ -1,5 +1,10 @@
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+
 use miette::IntoDiagnostic;
 use minicbor::Decoder;
+use tracing::trace;
+
 use ockam::identity::OneTimeCode;
 use ockam::identity::{secure_channel_required, AttributesEntry};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
@@ -7,16 +12,13 @@ use ockam_core::api::{Method, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Result, Routed, Worker};
 use ockam_node::Context;
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use tracing::trace;
 
 use crate::authenticator::direct::types::{AddMember, CreateToken};
 use crate::authenticator::enrollment_tokens::authenticator::MAX_TOKEN_DURATION;
 use crate::authenticator::enrollment_tokens::types::Token;
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
 use crate::cloud::AuthorityNode;
-use crate::DefaultAddress;
+use crate::nodes::service::default_address::DefaultAddress;
 
 pub struct EnrollmentTokenIssuer(pub(super) EnrollmentTokenAuthenticator);
 

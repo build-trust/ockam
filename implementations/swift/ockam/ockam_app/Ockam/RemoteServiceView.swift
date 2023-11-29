@@ -24,7 +24,9 @@ struct RemoteServiceView: View {
                 VStack(alignment: .leading) {
                     Text(service.sourceName).font(.title3).lineLimit(1)
                     if !service.enabled {
-                        Text(verbatim: "Disconnected").font(.caption)
+                        Text(verbatim: "Disconnected")
+                            .foregroundStyle(OckamSecondaryTextColor)
+                            .font(.caption)
                     } else {
                         if service.available {
                             let address =
@@ -35,19 +37,24 @@ struct RemoteServiceView: View {
                                 service.address.unsafelyUnwrapped + ":"
                                 + String(service.port.unsafelyUnwrapped)
                             }
-                            Text(verbatim: address).font(.caption).lineLimit(1)
+                            Text(verbatim: address)
+                                .foregroundStyle(OckamSecondaryTextColor)
+                                .font(.caption)
+                                .lineLimit(1)
                         } else {
-                            Text(verbatim: "Connecting...").font(.caption)
+                            Text(verbatim: "Connecting")
+                                .foregroundStyle(OckamSecondaryTextColor)
+                                .font(.caption)
                         }
                     }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .frame(width: 32, height: 32)
                     .rotationEffect(
                         isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
             }
-            .padding(3)
+            .frame(height: VerticalSpacingUnit*5)
+            .padding(.horizontal, HorizontalSpacingUnit)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation {
@@ -72,7 +79,7 @@ struct RemoteServiceView: View {
                                 scheme + "://" + service.address.unsafelyUnwrapped + ":"
                                 + String(service.port.unsafelyUnwrapped)
                                 ClickableMenuEntry(
-                                    text: "Open " + url,
+                                    text: "Open " + url + "...",
                                     action: {
                                         if let url = URL(string: url) {
                                             NSWorkspace.shared.open(url)
@@ -102,11 +109,12 @@ struct RemoteServiceView: View {
                             })
                     }
                     ClickableMenuEntry(
-                        text: "Ignore",
+                        text: "Decline",
                         action: {
-                            openWindow(id: "ignore-service-confirmation", value: service.id)
+                            openWindow(id: "decline-service-confirmation", value: service.id)
                         })
                 }
+                .padding(.leading, HorizontalSpacingUnit*2)
             }
         }
     }

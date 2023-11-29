@@ -59,7 +59,7 @@ use ockam::{node, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
 
     // Stop the node as soon as it starts.
     info!("Stop the node as soon as it starts.");

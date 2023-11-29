@@ -1,12 +1,11 @@
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteRelayOptions;
-use ockam::{node, Context, Result, TcpConnectionOptions, TcpOutletOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, Context, Result, TcpConnectionOptions, TcpOutletOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let node = node(ctx);
+    let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     let e = node.create_identity().await?;

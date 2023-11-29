@@ -76,7 +76,7 @@ impl MessageSender for NodeManager {
         let msg_length = message.len();
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
         let connection = self
-            .make_connection(connection_ctx, addr, None, None, None, timeout)
+            .make_connection(connection_ctx, addr, self.identifier(), None, None, timeout)
             .await?;
         let route = connection.route(self.tcp_transport()).await?;
 

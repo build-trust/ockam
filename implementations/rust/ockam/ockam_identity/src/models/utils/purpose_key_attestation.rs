@@ -1,22 +1,35 @@
-use crate::models::utils::get_versioned_data;
 use crate::models::{
     CredentialVerifyingKey, PurposeKeyAttestation, PurposeKeyAttestationData,
-    PurposeKeyAttestationSignature, VersionedData,
+    PurposeKeyAttestationSignature, VersionedData, PURPOSE_KEY_ATTESTATION_DATA_TYPE,
 };
+use crate::IdentityError;
 
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{Signature, VerifyingPublicKey};
 
 impl PurposeKeyAttestation {
-    /// Extract [`VersionedData`]
-    pub fn get_versioned_data(&self) -> Result<VersionedData> {
-        get_versioned_data(&self.data)
+    /// Create [`VersionedData`] with corresponding version and data_type
+    pub fn create_versioned_data(data: Vec<u8>) -> VersionedData {
+        VersionedData {
+            version: 1,
+            data_type: PURPOSE_KEY_ATTESTATION_DATA_TYPE,
+            data,
+        }
     }
 }
 
 impl PurposeKeyAttestationData {
     /// Extract [`PurposeKeyAttestationData`] from [`VersionedData`]
     pub fn get_data(versioned_data: &VersionedData) -> Result<Self> {
+        if versioned_data.version != 1 {
+            return Err(IdentityError::UnknownPurposeKeyAttestationVersion.into());
+        }
+
+        if versioned_data.data_type != PURPOSE_KEY_ATTESTATION_DATA_TYPE {
+            return Err(IdentityError::InvalidPurposeKeyAttestationDataType.into());
+        }
+
         Ok(minicbor::decode(&versioned_data.data)?)
     }
 }

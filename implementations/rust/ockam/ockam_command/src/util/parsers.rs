@@ -4,8 +4,11 @@ use std::str::FromStr;
 use miette::miette;
 
 use ockam::identity::Identifier;
+use ockam_api::config::lookup::InternetAddress;
+use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::resolve_peer;
 
+use crate::util::api;
 use crate::Result;
 
 /// Helper function for parsing a socket from user input
@@ -24,10 +27,33 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
         .map_err(|e| miette!("cannot parse the address {address} as a socket address: {e}"))?)
 }
 
-/// Helper fn for parsing an identity from user input by using
+/// Helper fn for parsing an identifier from user input by using
 /// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
     Identifier::from_str(input).map_err(|_| miette!("Invalid identity identifier: {input}").into())
+}
+
+/// Helper fn for parsing a MultiAddr from user input by using
+/// [`ockam_multiaddr::MultiAddr::from_str()`]
+pub(crate) fn multiaddr_parser(input: &str) -> Result<MultiAddr> {
+    MultiAddr::from_str(input).map_err(|_| miette!("Invalid multiaddr: {input}").into())
+}
+
+/// Helper fn for parsing an InternetAddress from user input by using
+/// [`InternetAddress::new()`]
+pub(crate) fn internet_address_parser(input: &str) -> Result<InternetAddress> {
+    InternetAddress::new(input).ok_or_else(|| miette!("Invalid address: {input}").into())
+}
+
+pub(crate) fn validate_project_name(s: &str) -> Result<String> {
+    match api::validate_cloud_resource_name(s) {
+        Ok(_) => Ok(s.to_string()),
+        Err(_e)=> Err(miette!(
+            "project name can contain only alphanumeric characters and the '-', '_' and '.' separators. \
+            Separators must occur between alphanumeric characters. This implies that separators can't \
+            occur at the start or end of the name, nor they can occur in sequence.",
+        ).into()),
+    }
 }
 
 #[cfg(test)]

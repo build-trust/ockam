@@ -2,19 +2,18 @@ use core::fmt;
 use core::fmt::Write;
 use std::fmt::Formatter;
 
-use cli_table::{Cell, Style, Table};
 use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
 use minicbor::Encode;
-use ockam::identity::models::{
-    CredentialAndPurposeKey, CredentialData, CredentialVerifyingKey, PurposeKeyAttestation,
-    PurposeKeyAttestationData, PurposePublicKey,
-};
-use ockam::identity::{Credential, Identifier, Identity, TimestampInSeconds};
 use serde::{Serialize, Serializer};
 
-use ockam_api::cli_state::{ProjectConfigCompact, StateItemTrait, VaultState};
+use ockam::identity::models::{
+    CredentialAndPurposeKey, CredentialData, CredentialVerifyingKey, PurposeKeyAttestation,
+    PurposeKeyAttestationData, PurposePublicKey, VersionedData,
+};
+use ockam::identity::{Credential, Identifier, Identity, TimestampInSeconds};
+use ockam_api::cli_state::vaults::NamedVault;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::portal::{InletStatus, OutletStatus};
@@ -114,38 +113,13 @@ impl Output for Space {
     }
 }
 
-impl Output for Vec<Space> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No spaces found".to_string());
-        }
-        let mut rows = vec![];
-        for Space {
-            id, name, users, ..
-        } in self
-        {
-            rows.push([id.cell(), name.cell(), comma_separated(users).cell()]);
-        }
-        let table = rows
-            .table()
-            .title([
-                "Id".cell().bold(true),
-                "Name".cell().bold(true),
-                "Users".cell().bold(true),
-            ])
-            .display()?
-            .to_string();
-        Ok(table)
-    }
-}
-
 impl Output for Project {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Project")?;
         write!(w, "\n  Id: {}", self.id)?;
         write!(w, "\n  Name: {}", self.name)?;
-        write!(w, "\n  Access route: {}", self.access_route)?;
+        write!(w, "\n  Access route: {}", self.access_route()?)?;
         write!(
             w,
             "\n  Identity identifier: {}",
@@ -179,56 +153,32 @@ Space {}"#,
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectConfigCompact(pub Project);
+
 impl Output for ProjectConfigCompact {
     fn output(&self) -> Result<String> {
         let pi = self
-            .identity
-            .as_ref()
+            .0
+            .identifier()
             .map(|i| i.to_string())
-            .unwrap_or_else(|| "N/A".to_string());
-        let ar = self.authority_access_route.as_deref().unwrap_or("N/A");
-        let ai = self.authority_identity.as_deref().unwrap_or("N/A");
+            .unwrap_or_else(|_| "N/A".to_string());
+        let ar = self
+            .0
+            .authority_access_route()
+            .map(|r| r.to_string())
+            .unwrap_or_else(|_| "N/A".to_string());
+        let ai = self
+            .0
+            .authority_change_history()
+            .map(|r| r.to_string())
+            .unwrap_or_else(|_| "N/A".to_string());
         let mut w = String::new();
-        writeln!(w, "{}: {}", "Project ID".bold(), self.id)?;
+        writeln!(w, "{}: {}", "Project ID".bold(), self.0.id())?;
         writeln!(w, "{}: {}", "Project identity".bold(), pi)?;
         writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
         write!(w, "{}: {}", "Authority identity".bold(), ai)?;
         Ok(w)
-    }
-}
-
-impl Output for Vec<Project> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No projects found".to_string());
-        }
-        let mut rows = vec![];
-        for Project {
-            id,
-            name,
-            users,
-            space_name,
-            ..
-        } in self
-        {
-            rows.push([
-                id.cell(),
-                name.cell(),
-                comma_separated(users).cell(),
-                space_name.cell(),
-            ]);
-        }
-        let table = rows
-            .table()
-            .title([
-                "Id".cell().bold(true),
-                "Name".cell().bold(true),
-                "Users".cell().bold(true),
-                "Space Name".cell().bold(true),
-            ])
-            .display()?
-            .to_string();
-        Ok(table)
     }
 }
 
@@ -361,14 +311,14 @@ From {} to {}"#,
     }
 }
 
-impl Output for VaultState {
+impl Output for NamedVault {
     fn output(&self) -> Result<String> {
         let mut output = String::new();
         writeln!(output, "Name: {}", self.name())?;
         writeln!(
             output,
             "Type: {}",
-            match self.config().is_aws() {
+            match self.is_kms() {
                 true => "AWS KMS",
                 false => "OCKAM",
             }
@@ -470,7 +420,7 @@ pub struct CredentialDisplay(pub Credential);
 
 impl fmt::Display for CredentialDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let versioned_data = match self.0.get_versioned_data() {
+        let versioned_data = match minicbor::decode::<VersionedData>(&self.0.data) {
             Ok(versioned_data) => versioned_data,
             Err(_) => {
                 writeln!(f, "Invalid VersionedData")?;
@@ -536,7 +486,7 @@ pub struct PurposeKeyDisplay(pub PurposeKeyAttestation);
 
 impl fmt::Display for PurposeKeyDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let versioned_data = match self.0.get_versioned_data() {
+        let versioned_data = match minicbor::decode::<VersionedData>(&self.0.data) {
             Ok(versioned_data) => versioned_data,
             Err(_) => {
                 writeln!(f, "Invalid VersionedData")?;

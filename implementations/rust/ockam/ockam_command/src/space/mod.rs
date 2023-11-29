@@ -11,7 +11,6 @@ mod create;
 mod delete;
 mod list;
 mod show;
-mod util;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 

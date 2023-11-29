@@ -5,14 +5,16 @@ mod api;
 mod decryptor;
 mod encryptor;
 mod encryptor_worker;
-mod handshake;
+pub(crate) mod handshake;
 mod key_tracker;
 mod listener;
 mod local_info;
+mod message;
 mod nonce_tracker;
 mod options;
 mod registry;
 mod role;
+
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 
@@ -22,6 +24,7 @@ pub use api::*;
 pub(crate) use handshake::*;
 pub(crate) use listener::*;
 pub use local_info::*;
+pub use message::*;
 pub use options::*;
 pub use registry::*;
 pub(crate) use role::*;
@@ -132,8 +135,8 @@ mod tests {
     }
 
     async fn create_encryptor_decryptor() -> Result<(Encryptor, Decryptor)> {
-        let vault1 = SoftwareVaultForSecureChannels::create();
-        let vault2 = SoftwareVaultForSecureChannels::create();
+        let vault1 = SoftwareVaultForSecureChannels::create().await?;
+        let vault2 = SoftwareVaultForSecureChannels::create().await?;
 
         let mut rng = thread_rng();
         let mut key = [0u8; 32];

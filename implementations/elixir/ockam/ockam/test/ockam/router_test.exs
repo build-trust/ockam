@@ -156,9 +156,12 @@ defmodule Ockam.Router.Tests do
     end
 
     test "Simple TCP Test", %{printer_pid: printer} do
+      assert {:ok, _pid} = TCP.start(listen: [port: 0, ref: :listener])
+      {:ok, lport} = TCP.Listener.get_port(:listener)
+
       message = %{
         onward_route: [
-          TCPAddress.new({127, 0, 0, 1}, 4000),
+          TCPAddress.new({127, 0, 0, 1}, lport),
           "printer"
         ],
         return_route: [],
@@ -166,8 +169,6 @@ defmodule Ockam.Router.Tests do
       }
 
       :erlang.trace(printer, true, [:receive])
-
-      assert {:ok, _address_b} = TCP.start(listen: [port: 4000])
 
       Ockam.Router.route(message)
 
@@ -182,9 +183,12 @@ defmodule Ockam.Router.Tests do
     end
 
     test "Simple TCP with hostname", %{printer_pid: printer} do
+      assert {:ok, _pid} = TCP.start(listen: [port: 0, ref: :listener])
+      {:ok, lport} = TCP.Listener.get_port(:listener)
+
       message = %{
         onward_route: [
-          TCPAddress.new("localhost", 4001),
+          TCPAddress.new("localhost", lport),
           "printer"
         ],
         return_route: [],
@@ -192,8 +196,6 @@ defmodule Ockam.Router.Tests do
       }
 
       :erlang.trace(printer, true, [:receive])
-
-      assert {:ok, _address_b} = TCP.start(listen: [port: 4001])
 
       Ockam.Router.route(message)
 
@@ -207,10 +209,15 @@ defmodule Ockam.Router.Tests do
     end
 
     test "TCP multi hop test", %{printer_pid: printer} do
+      assert {:ok, _address_a} = TCP.start(listen: [port: 0, ref: :listener_a])
+      assert {:ok, _address_b} = TCP.start(listen: [port: 0, ref: :listener_b])
+      {:ok, port_a} = TCP.Listener.get_port(:listener_a)
+      {:ok, port_b} = TCP.Listener.get_port(:listener_b)
+
       message = %{
         onward_route: [
-          TCPAddress.new({127, 0, 0, 1}, 4002),
-          TCPAddress.new({127, 0, 0, 1}, 5002),
+          TCPAddress.new({127, 0, 0, 1}, port_a),
+          TCPAddress.new({127, 0, 0, 1}, port_b),
           "printer"
         ],
         return_route: [],
@@ -218,10 +225,6 @@ defmodule Ockam.Router.Tests do
       }
 
       :erlang.trace(printer, true, [:receive])
-
-      assert {:ok, _address_a} = TCP.start(listen: [port: 5002])
-
-      assert {:ok, _address_b} = TCP.start(listen: [port: 4002])
 
       Ockam.Router.route(message)
 
@@ -236,6 +239,8 @@ defmodule Ockam.Router.Tests do
     end
 
     test "TCP echo test" do
+      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 0, ref: :listener])
+      {:ok, lport} = TCP.Listener.get_port(:listener)
       {:ok, "echo"} = Echo.create(address: "echo")
       {:ok, "client_forwarder"} = Forwarder.create(address: "client_forwarder")
       echo = Ockam.Node.whereis("echo")
@@ -246,7 +251,7 @@ defmodule Ockam.Router.Tests do
         Ockam.Node.stop("client_forwarder")
       end)
 
-      tcp_address = TCPAddress.new({127, 0, 0, 1}, 6000)
+      tcp_address = TCPAddress.new({127, 0, 0, 1}, lport)
 
       # client
       request = %{
@@ -261,8 +266,6 @@ defmodule Ockam.Router.Tests do
 
       :erlang.trace(echo, true, [:receive])
       :erlang.trace(client_forwarder, true, [:receive])
-
-      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 6000])
 
       Ockam.Router.route(request)
 
@@ -331,6 +334,8 @@ defmodule Ockam.Router.Tests do
     end
 
     test "TCP ping pong test" do
+      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 0, ref: :listener])
+      {:ok, lport} = TCP.Listener.get_port(:listener)
       {:ok, "ping_pong_server"} = PingPong.create(address: "ping_pong_server")
       {:ok, "ping_pong_client"} = PingPong.create(address: "ping_pong_client")
       ping_pong_server = Ockam.Node.whereis("ping_pong_server")
@@ -347,7 +352,7 @@ defmodule Ockam.Router.Tests do
       ## Initial request
       request = %{
         onward_route: [
-          TCPAddress.new({127, 0, 0, 1}, 5001),
+          TCPAddress.new({127, 0, 0, 1}, lport),
           "ping_pong_server"
         ],
         return_route: [
@@ -355,8 +360,6 @@ defmodule Ockam.Router.Tests do
         ],
         payload: "ping 1"
       }
-
-      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 5001])
 
       Ockam.Router.route(request)
 

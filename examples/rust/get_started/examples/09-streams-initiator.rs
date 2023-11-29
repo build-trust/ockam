@@ -1,10 +1,9 @@
-use ockam::{node, route, Context, MessageReceiveOptions, Result, TcpConnectionOptions};
-use ockam_transport_tcp::TcpTransportExtension;
+use ockam::{node, route, Context, MessageReceiveOptions, Result, TcpConnectionOptions, TcpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
-    let mut node = node(ctx);
+    let mut node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")

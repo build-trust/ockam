@@ -1,0 +1,115 @@
+name: Build Ockam Distroless Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Git commit sha, on which, to run this workflow
+  push:
+    paths:
+      - 'tools/docker/wolfi/**'
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ARCH_TO_BUILD_IMAGES: amd64,arm64
+  ORGANIZATION: ${{ github.repository_owner }}
+
+jobs:
+  build_base_image:
+    name: "Build Ockam Distroless Base Image"
+    runs-on: ubuntu-20.04
+    permissions:
+      packages: write
+    environment: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+
+      - uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3
+
+      - id: buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
+        # TODO: change after new buildkit version gets fixed
+        # https://github.com/moby/buildkit/issues/3347
+        # https://github.com/docker/build-push-action/issues/761
+        with:
+          driver-opts: |
+            image=moby/buildkit:v0.10.6
+
+      - name: Generate Signing Key
+        run: docker run --rm -v "${PWD}":/work cgr.dev/chainguard/melange keygen
+
+      - name: Build Erlang Image
+        run: docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build tools/docker/wolfi/erlang_package.yaml -k melange.rsa.pub --signing-key melange.rsa --arch ${{ env.ARCH_TO_BUILD_IMAGES }}
+
+      - name: Build Elixir Image
+        run: docker run --rm --privileged -v "${PWD}":/work cgr.dev/chainguard/melange build tools/docker/wolfi/elixir_package.yaml -k melange.rsa.pub --signing-key melange.rsa --arch ${{ env.ARCH_TO_BUILD_IMAGES }}
+
+      - name: Build Builder Image
+        run: docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build tools/docker/wolfi/builder_image.yaml -k melange.rsa.pub ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder:latest builder_image.tar
+
+      - name: Build Base Image
+        run: docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build tools/docker/wolfi/base_image.yaml -k melange.rsa.pub ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base:latest base_image.tar
+
+      - name: Load Images
+        run: |
+          docker load < base_image.tar
+          docker load < builder_image.tar
+
+      - name: Push Images
+        id: image_ref
+        run: |
+          set -ex
+          docker image ls
+          manifests=""
+
+          IFS=',' read -ra ARCHS <<< "$ARCH_TO_BUILD_IMAGES"
+          for arch in "${ARCHS[@]}"; do
+            echo "Pushing for ${arch}"
+            docker push "ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base:latest-${arch}"
+            docker push "ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder:latest-${arch}"
+
+            base_manifests="${base_manifests} --amend ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base:latest-${arch}"
+            builder_manifests="${builder_manifests} --amend ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder:latest-${arch}"
+          done
+
+          # Create manifest
+          docker manifest create ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base:latest $base_manifests
+          docker manifest create ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder:latest $builder_manifests
+
+          base_image_sha=$(docker manifest push ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base:latest)
+          builder_image_sha=$(docker manifest push ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder:latest)
+
+          echo "BUILDER=$builder_image_sha" >> $GITHUB_OUTPUT
+          echo "BASE=$base_image_sha" >> $GITHUB_OUTPUT
+
+      - uses: build-trust/.github/actions/image_cosign@custom-actions
+        with:
+          cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+          image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base@${{ steps.image_ref.outputs.BASE }}'
+          ref: ${{ steps.image_ref.outputs.BASE }}
+
+      - uses: build-trust/.github/actions/image_cosign@custom-actions
+        with:
+          cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+          image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-builder@${{ steps.image_ref.outputs.BUILDER }}'
+          ref: ${{ steps.image_ref.outputs.BUILDER }}

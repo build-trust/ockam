@@ -1,0 +1,24 @@
+# docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build base_image.yaml -k melange.rsa.pub ghcr.io/build-trust/ockam-elixir-base:latest base_image.tar
+# Builds the base image which comprises of tools to host elixir binaries and perform remote connection
+contents:
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+  repositories:
+    - https://packages.wolfi.dev/os
+  packages:
+    - ca-certificates-bundle
+    - glibc
+    - bash
+    - ncurses
+    - ncurses-dev
+    - ncurses-terminfo-base
+    - glibc-dev
+    - openssl
+    - gcc
+    - py3.12-pip
+    - python-3.12
+    - postgresql-16-client
+
+archs:
+  - x86_64
+  - aarch64

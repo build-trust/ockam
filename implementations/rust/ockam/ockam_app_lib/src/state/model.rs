@@ -1,4 +1,4 @@
-use crate::incoming_services::PersistentIncomingServiceState;
+use crate::incoming_services::PersistentIncomingService;
 use ockam_api::nodes::models::portal::OutletStatus;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ pub struct ModelState {
     pub(crate) tcp_outlets: Vec<OutletStatus>,
 
     #[serde(default = "Vec::new")]
-    pub(crate) incoming_services: Vec<PersistentIncomingServiceState>,
+    pub(crate) incoming_services: Vec<PersistentIncomingService>,
 }
 
 impl Default for ModelState {
@@ -21,7 +21,7 @@ impl Default for ModelState {
 impl ModelState {
     pub fn new(
         tcp_outlets: Vec<OutletStatus>,
-        incoming_services: Vec<PersistentIncomingServiceState>,
+        incoming_services: Vec<PersistentIncomingService>,
     ) -> Self {
         Self {
             tcp_outlets,

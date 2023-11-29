@@ -1,16 +1,15 @@
-use crate::terminal::OckamColor;
-use crate::util::node_rpc;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
-use tokio::sync::Mutex;
-use tokio::try_join;
+
+use crate::terminal::OckamColor;
+use crate::util::node_rpc;
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -66,56 +65,37 @@ impl CreateCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {
-            let default_vault_created =
-                self.vault.is_none() && opts.state.vaults.default().is_err();
-            let vault_state = opts.state.create_vault_state(self.vault.as_deref()).await?;
-            if default_vault_created {
+            let existing_vaults = opts.state.get_named_vaults().await?.len();
+
+            let vault = match &self.vault {
+                Some(vault_name) => opts.state.create_named_vault(vault_name).await?,
+                None => opts.state.get_default_named_vault().await?,
+            };
+            let updated_vaults = opts.state.get_named_vaults().await?.len();
+
+            // If a new vault has been created display a message
+            if updated_vaults > existing_vaults {
                 opts.terminal.write_line(&fmt_log!(
                     "Default vault created: {}\n",
-                    &vault_state
-                        .name()
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
+                    vault.name().color(OckamColor::PrimaryResource.color())
                 ))?;
-            }
+            };
 
-            let vault = vault_state.get().await?;
-
-            let identities_creation = opts
-                .state
-                .get_identities(vault)
-                .await?
-                .identities_creation();
-
-            // Create an identity using the KMS key, if provided.
-            let identifier = match &self.key_id {
+            let identity = match &self.key_id {
                 Some(key_id) => {
-                    if !vault_state.config().is_aws() {
-                        Err(miette!(
-                            "Vault {} is not an AWS KMS vault",
-                            self.vault.clone().unwrap_or("default".to_string()),
-                        ))
-                    } else {
-                        let handle = SigningSecretKeyHandle::ECDSASHA256CurveP256(
-                            HandleToSecret::new(key_id.as_bytes().to_vec()),
-                        );
-
-                        Ok(identities_creation
-                            .identity_builder()
-                            .with_existing_key(handle)
-                            .build()
-                            .await?)
-                    }
+                    opts.state
+                        .create_identity_with_key_id(&self.name, &vault.name(), key_id.as_ref())
+                        .await?
                 }
-                None => Ok(identities_creation.create_identity().await?),
-            }?;
-
-            opts.state
-                .create_identity_state(&identifier, Some(&self.name))
-                .await?;
+                None => {
+                    opts.state
+                        .create_identity_with_name_and_vault(&self.name, &vault.name())
+                        .await?
+                }
+            };
 
             *is_finished.lock().await = true;
-            Ok(identifier)
+            Ok(identity.identifier())
         };
 
         let output_messages = vec![format!("Creating identity...")];

@@ -2,10 +2,8 @@ use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::TRUST_CONTEXT_ID;
-use ockam::identity::{
-    AttributesEntry, Identifier, IdentityAttributesWriter, IdentitySecureChannelLocalInfo,
-};
+use ockam::identity::{AttributesEntry, Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::{IdentityAttributesRepository, TRUST_CONTEXT_ID};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
@@ -15,7 +13,7 @@ use std::collections::HashMap;
 use tracing::trace;
 
 pub struct Server {
-    attributes_writer: Arc<dyn IdentityAttributesWriter>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     project: String,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
@@ -42,7 +40,7 @@ impl Worker for Server {
 
 impl Server {
     pub fn new(
-        attributes_writer: Arc<dyn IdentityAttributesWriter>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         project: String,
         tenant_base_url: &str,
         certificate: &str,
@@ -51,7 +49,7 @@ impl Server {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::core(err.to_string()))?;
         Ok(Server {
-            attributes_writer,
+            identity_attributes_repository,
             project,
             tenant_base_url: tenant_base_url.to_string(),
             certificate,
@@ -102,7 +100,9 @@ impl Server {
                             None,
                             None,
                         );
-                        self.attributes_writer.put_attributes(from, entry).await?;
+                        self.identity_attributes_repository
+                            .put_attributes(from, entry)
+                            .await?;
                         Response::ok(&req).to_vec()?
                     } else {
                         Response::forbidden(&req, "Forbidden").to_vec()?

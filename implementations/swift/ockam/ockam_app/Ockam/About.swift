@@ -9,7 +9,9 @@ struct About: View {
             VStack {
                 Image("Logo")
                     .frame(width: 128, height: 128)
-                    .padding(10)
+                    .padding(.vertical, VerticalSpacingUnit)
+                    .padding(.vertical, HorizontalSpacingUnit)
+
                 Spacer()
                 Grid(alignment: .leading) {
                     GridRow {
@@ -45,7 +47,8 @@ struct About: View {
                     }
                     Spacer()
                 }
-                .padding(10)
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
             }
 
             HStack {
@@ -59,9 +62,10 @@ struct About: View {
                     }
                 )
                 .keyboardShortcut(.defaultAction)
-                .padding(10)
+                .padding(.vertical, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit)
             }
-            .background(.black.opacity(0.1))
+            .background(OckamDarkerBackground)
             .padding(0)
         }
         .frame(width: 500, height: 330)

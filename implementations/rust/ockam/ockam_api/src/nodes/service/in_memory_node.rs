@@ -1,22 +1,25 @@
-use miette::IntoDiagnostic;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::time::Duration;
 
+use futures::executor;
+use miette::IntoDiagnostic;
+
+use ockam::identity::SecureChannels;
 use ockam::{Context, Result, TcpTransport};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
 use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::random_name;
-use crate::cli_state::{add_project_info_to_node_state, init_node_state, CliState};
+use crate::cli_state::CliState;
+use crate::cli_state::NamedTrustContext;
 use crate::cloud::Controller;
-use crate::config::cli::TrustContextConfig;
+use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
 use crate::session::sessions::Session;
-use crate::DefaultAddress;
 
 /// An `InMemoryNode` represents a full running node
 /// In addition to a `NodeManager`, which is used to handle all the entities related to a node
@@ -34,6 +37,7 @@ use crate::DefaultAddress;
 pub struct InMemoryNode {
     pub(crate) node_manager: Arc<NodeManager>,
     persistent: bool,
+    timeout: Option<Duration>,
 }
 
 /// This Deref instance makes it easy to access the NodeManager functions from an InMemoryNode
@@ -51,9 +55,12 @@ impl Drop for InMemoryNode {
         // stops. Except if they have been started with the `ockam node create` command
         // because in that case they can be restarted
         if !self.persistent {
-            self.node_manager
-                .delete_node()
-                .unwrap_or_else(|_| panic!("cannot delete the node {}", self.node_name));
+            executor::block_on(async {
+                self.node_manager
+                    .delete_node()
+                    .await
+                    .unwrap_or_else(|e| panic!("cannot delete the node {}: {e:?}", self.node_name))
+            });
         }
     }
 }
@@ -68,58 +75,48 @@ impl InMemoryNode {
     pub async fn start_with_trust_context(
         ctx: &Context,
         cli_state: &CliState,
-        project_path: Option<&PathBuf>,
-        trust_context_config: Option<TrustContextConfig>,
+        project_name: Option<String>,
+        trust_context: Option<NamedTrustContext>,
     ) -> miette::Result<Self> {
-        Self::start_node(
-            ctx,
-            cli_state,
-            None,
-            None,
-            project_path,
-            trust_context_config,
-        )
-        .await
+        Self::start_node(ctx, cli_state, None, None, project_name, trust_context).await
     }
 
     /// Start an in memory node
     pub async fn start_node(
         ctx: &Context,
         cli_state: &CliState,
-        vault: Option<String>,
-        identity: Option<String>,
-        project_path: Option<&PathBuf>,
-        trust_context_config: Option<TrustContextConfig>,
+        identity_name: Option<String>,
+        vault_name: Option<String>,
+        project_name: Option<String>,
+        trust_context: Option<NamedTrustContext>,
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        init_node_state(
-            cli_state,
-            &defaults.node_name,
-            vault.as_deref(),
-            identity.as_deref(),
-        )
-        .await?;
-
-        add_project_info_to_node_state(&defaults.node_name, cli_state, project_path).await?;
+        // if no identity is specified, create one
+        let identity = cli_state
+            .create_identity_with_optional_name_and_optional_vault(&identity_name, &vault_name)
+            .await?;
+        let node = cli_state
+            .create_node_with_optional_values(
+                &defaults.node_name,
+                &Some(identity.name()),
+                &project_name,
+            )
+            .await?;
 
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let bind = defaults.tcp_listener_address;
-
         let options = TcpListenerOptions::new();
         let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
+        cli_state
+            .set_tcp_listener_address(&node.name(), listener.socket_address().to_string())
+            .await?;
 
         let node_manager = Self::new(
             ctx,
-            NodeManagerGeneralOptions::new(
-                cli_state.clone(),
-                defaults.node_name.clone(),
-                None,
-                false,
-                false,
-            ),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node.name(), None, false, false),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
-            NodeManagerTrustOptions::new(trust_context_config),
+            NodeManagerTrustOptions::new(trust_context),
         )
         .await
         .into_diagnostic()?;
@@ -130,7 +127,9 @@ impl InMemoryNode {
 
     /// Return a Controller client to send requests to the Controller
     pub async fn create_controller(&self) -> miette::Result<Controller> {
-        self.create_controller_client().await.into_diagnostic()
+        self.create_controller_client(self.timeout)
+            .await
+            .into_diagnostic()
     }
 
     pub fn add_session(&self, session: Session) {
@@ -139,6 +138,11 @@ impl InMemoryNode {
 
     pub fn remove_session(&self, key: &str) {
         self.medic_handle.remove_session(key);
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
@@ -171,7 +175,12 @@ impl InMemoryNode {
         Ok(Self {
             node_manager: Arc::new(node_manager),
             persistent,
+            timeout: None,
         })
+    }
+
+    pub fn secure_channels(&self) -> Arc<SecureChannels> {
+        self.secure_channels.clone()
     }
 }
 

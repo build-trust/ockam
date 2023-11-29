@@ -41,9 +41,8 @@ pub struct AwsKmsConfig {
 impl AwsKmsConfig {
     /// Create a new configuration for the AWS KMS
     pub async fn default() -> Result<AwsKmsConfig> {
-        Ok(Self::new(
-            aws_config::load_defaults(BehaviorVersion::latest()).await,
-        ))
+        let sdk_config = aws_config::defaults(BehaviorVersion::latest()).load().await;
+        Ok(Self::new(sdk_config))
     }
 
     /// Create a new configuration for the AWS KMS

@@ -4,7 +4,6 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cli_state::{SpaceConfig, StateDirTrait};
 use ockam_api::cloud::space::Spaces;
 
 use ockam_api::nodes::InMemoryNode;
@@ -42,10 +41,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
     let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
 
     let get_spaces = async {
-        let spaces = controller.list_spaces(ctx).await?;
+        let spaces = node.get_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
     };
@@ -64,12 +62,6 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
         "No spaces found. Run 'ockam enroll' to get a space and a project",
     )?;
     let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
-
-    for space in spaces {
-        opts.state
-            .spaces
-            .overwrite(&space.name, SpaceConfig::from(&space))?;
-    }
 
     opts.terminal
         .stdout()

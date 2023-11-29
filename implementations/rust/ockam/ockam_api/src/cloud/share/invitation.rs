@@ -1,8 +1,8 @@
 use std::{fmt::Display, str::FromStr};
 
 use crate::address::extract_address_value;
+use crate::cli_state::EnrollmentTicket;
 use crate::error::ApiError;
-use crate::identity::EnrollmentTicket;
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};

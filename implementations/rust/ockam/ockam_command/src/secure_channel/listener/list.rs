@@ -5,7 +5,6 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::{
     SecureChannelListenersList, ShowSecureChannelListenerResponse,
 };
@@ -13,11 +12,11 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::NodeOpts;
 use crate::output::Output;
 use crate::terminal::OckamColor;
+use crate::util::api;
 use crate::util::node_rpc;
-use crate::util::{api, parse_node_name};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -27,10 +26,10 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 /// List Secure Channel Listeners
 #[derive(Args, Clone, Debug)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ListCommand {
     /// Node of which secure listeners shall be listed
@@ -40,7 +39,6 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(rpc, (opts, self));
     }
 }
@@ -50,14 +48,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
-    let node_name = parse_node_name(&at)?;
-
-    if !opts.state.nodes.get(&node_name)?.is_running() {
-        return Err(miette!("The node '{}' is not running", node_name));
-    }
-
-    let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
+    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_listeners = async {
@@ -69,9 +60,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> m
 
     let output_messages = vec![format!(
         "Listing secure channel listeners on {}...\n",
-        node_name
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
+        node.node_name().color(OckamColor::PrimaryResource.color())
     )];
 
     let progress_output = opts
@@ -82,8 +71,11 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> m
 
     let list = opts.terminal.build_list(
         &secure_channel_listeners.list,
-        &format!("Secure Channel Listeners at Node {}", node_name),
-        &format!("No secure channel listeners found at node {}.", node_name),
+        &format!("Secure Channel Listeners at Node {}", node.node_name()),
+        &format!(
+            "No secure channel listeners found at node {}.",
+            node.node_name()
+        ),
     )?;
     opts.terminal.stdout().plain(list).write_line()?;
 

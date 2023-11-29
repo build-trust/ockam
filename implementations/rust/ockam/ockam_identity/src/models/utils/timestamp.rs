@@ -1,4 +1,5 @@
 use crate::TimestampInSeconds;
+use ockam_core::compat::time::Duration;
 
 impl core::ops::Deref for TimestampInSeconds {
     type Target = u64;
@@ -19,6 +20,22 @@ impl core::ops::Add<TimestampInSeconds> for TimestampInSeconds {
 
     fn add(self, rhs: TimestampInSeconds) -> Self::Output {
         TimestampInSeconds(self.0 + rhs.0)
+    }
+}
+
+impl core::ops::Add<Duration> for TimestampInSeconds {
+    type Output = TimestampInSeconds;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        self + rhs.as_secs()
+    }
+}
+
+impl core::ops::Add<u64> for TimestampInSeconds {
+    type Output = TimestampInSeconds;
+
+    fn add(self, rhs: u64) -> Self::Output {
+        TimestampInSeconds(self.0 + rhs)
     }
 }
 

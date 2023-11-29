@@ -1,4 +1,6 @@
 use core::time::Duration;
+use std::sync::atomic::{AtomicU8, Ordering};
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
@@ -14,11 +16,10 @@ use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use ockam_vault::{
     SoftwareVaultForSecureChannels, SoftwareVaultForSigning, SoftwareVaultForVerifyingSignatures,
 };
-use std::sync::atomic::{AtomicU8, Ordering};
 
 #[ockam_macros::test]
 async fn test_channel(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -82,7 +83,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let authority = identities_creation.create_identity().await?;
@@ -182,7 +183,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
 
     let alice_attributes = secure_channels
         .identities()
-        .repository()
+        .identity_attributes_repository()
         .get_attributes(&alice)
         .await?
         .unwrap();
@@ -201,7 +202,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
 
     let bob_attributes = secure_channels
         .identities()
-        .repository()
+        .identity_attributes_repository()
         .get_attributes(&bob)
         .await?
         .unwrap();
@@ -223,14 +224,15 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
     let alice_broken_trust_policy = TrustIdentifierPolicy::new(
-        Identifier::try_from("Iabababababababababababababababababababab").unwrap(),
+        Identifier::try_from("Iabababababababababababababababababababababababababababababababab")
+            .unwrap(),
     );
 
     secure_channels
@@ -279,7 +281,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -340,7 +342,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
 
 #[ockam_macros::test]
 async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -411,7 +413,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_channel_api(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -521,7 +523,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -596,7 +598,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -687,7 +689,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
 
 #[ockam_macros::test]
 async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -786,7 +788,7 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
         received_count: received_count.clone(),
     };
 
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -836,7 +838,7 @@ async fn access_control__unknown_participant__should_not_pass_messages(
         received_count: received_count.clone(),
     };
 
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
@@ -887,7 +889,7 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
     };
 
     let access_control = IdentityAccessControlBuilder::new_with_id(
-        "Iabababababababababababababababababababab".try_into()?,
+        "Iabababababababababababababababababababababababababababababababab".try_into()?,
     );
     WorkerBuilder::new(receiver)
         .with_address("receiver")
@@ -908,26 +910,32 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
 
 #[ockam_macros::test]
 async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
-    let alice_identity_vault = SoftwareVaultForSigning::create();
-    let alice_sc_vault = SoftwareVaultForSecureChannels::create();
+    let alice_identity_vault = SoftwareVaultForSigning::create().await?;
+    let alice_sc_vault = SoftwareVaultForSecureChannels::create().await?;
     let alice_vault = Vault::new(
         alice_identity_vault.clone(),
         alice_sc_vault.clone(),
-        SoftwareVaultForSigning::create(),
+        SoftwareVaultForSigning::create().await?,
         SoftwareVaultForVerifyingSignatures::create(),
     );
 
-    let bob_identity_vault = SoftwareVaultForSigning::create();
-    let bob_sc_vault = SoftwareVaultForSecureChannels::create();
+    let bob_identity_vault = SoftwareVaultForSigning::create().await?;
+    let bob_sc_vault = SoftwareVaultForSecureChannels::create().await?;
     let bob_vault = Vault::new(
         bob_identity_vault.clone(),
         bob_sc_vault.clone(),
-        SoftwareVaultForSigning::create(),
+        SoftwareVaultForSigning::create().await?,
         SoftwareVaultForVerifyingSignatures::create(),
     );
 
-    let secure_channels_alice = SecureChannels::builder().with_vault(alice_vault).build();
-    let secure_channels_bob = SecureChannels::builder().with_vault(bob_vault).build();
+    let secure_channels_alice = SecureChannels::builder()
+        .await?
+        .with_vault(alice_vault)
+        .build();
+    let secure_channels_bob = SecureChannels::builder()
+        .await?
+        .with_vault(bob_vault)
+        .build();
 
     let identities_creation_alice = secure_channels_alice.identities().identities_creation();
     let identities_creation_bob = secure_channels_bob.identities().identities_creation();
@@ -1030,26 +1038,29 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
 async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     ctx: &mut Context,
 ) -> Result<()> {
-    let secure_channels = secure_channels();
+    let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
 
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
-    let alice_trust_policy = TrustIdentifierPolicy::new(bob.clone());
-
-    let identity_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
     let _bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", identity_options)
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "bob_listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
 
-    let _alice_sc = {
-        let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
-        secure_channels
-            .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
-            .await?
-    };
+    secure_channels
+        .create_secure_channel(
+            ctx,
+            &alice,
+            route!["bob_listener"],
+            SecureChannelOptions::new(),
+        )
+        .await?;
 
     ctx.sleep(Duration::from_millis(100)).await;
 
@@ -1059,28 +1070,9 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let channel1 = sc_list[0].clone();
     let channel2 = sc_list[1].clone();
 
+    // This will stop both ends of the channel
     secure_channels
         .stop_secure_channel(ctx, channel1.encryptor_messaging_address())
-        .await?;
-
-    ctx.sleep(Duration::from_millis(100)).await;
-
-    assert_eq!(
-        secure_channels
-            .secure_channel_registry()
-            .get_channel_list()
-            .len(),
-        1
-    );
-
-    let workers = ctx.list_workers().await?;
-    assert!(!workers.contains(channel1.decryptor_messaging_address()));
-    assert!(!workers.contains(channel1.encryptor_messaging_address()));
-    assert!(workers.contains(channel2.decryptor_messaging_address()));
-    assert!(workers.contains(channel2.encryptor_messaging_address()));
-
-    secure_channels
-        .stop_secure_channel(ctx, channel2.encryptor_messaging_address())
         .await?;
 
     ctx.sleep(Duration::from_millis(100)).await;

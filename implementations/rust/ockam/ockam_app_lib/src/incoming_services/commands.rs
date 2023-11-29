@@ -1,17 +1,19 @@
-use crate::background_node::BackgroundNodeClient;
-use crate::incoming_services::state::{IncomingService, Port};
-use crate::state::AppState;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+
 use miette::IntoDiagnostic;
+use tracing::{debug, info, warn};
+
 use ockam_api::address::get_free_address;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_multiaddr::MultiAddr;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
-use tracing::{debug, info, warn};
+
+use crate::background_node::BackgroundNodeClient;
+use crate::incoming_services::state::{IncomingService, Port};
+use crate::state::AppState;
 
 impl AppState {
     pub(crate) async fn refresh_inlets(&self) -> crate::Result<()> {
@@ -94,7 +96,7 @@ impl AppState {
     /// Returns true if the inlet is already connected to the destination node
     /// if any error occurs, it returns false
     async fn is_connected(&self, service: &IncomingService, inlet_node_name: &str) -> bool {
-        if self.state().await.nodes.exists(inlet_node_name) {
+        if self.state().await.get_node(inlet_node_name).await.is_ok() {
             if let Ok(mut inlet_node) = self.background_node(inlet_node_name).await {
                 inlet_node.set_timeout(Duration::from_secs(5));
                 if let Ok(Reply::Successful(inlet)) = inlet_node

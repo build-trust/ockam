@@ -9,7 +9,7 @@ use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigni
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let identity_vault = SoftwareVaultForSigning::create();
+    let identity_vault = SoftwareVaultForSigning::create().await?;
     // Import the signing secret key to the Vault
     let secret = identity_vault
         .import_key(SigningSecret::EdDSACurve25519(EdDSACurve25519SecretKey::new(
@@ -21,20 +21,20 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Create a default Vault but use the signing vault with our secret in it
-    let mut vault = Vault::create();
+    let mut vault = Vault::create().await?;
     vault.identity_vault = identity_vault;
 
-    let node = Node::builder().with_vault(vault).build(&ctx).await?;
+    let node = Node::builder().await?.with_vault(vault).build(&ctx).await?;
 
-    let issuer_identity = hex::decode("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805").unwrap();
+    let issuer_identity = hex::decode("81825837830101583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a654cf97d1a7818fc7d8200815840650c4c939b96142546559aed99c52b64aa8a2f7b242b46534f7f8d0c5cc083d2c97210b93e9bca990e9cb9301acc2b634ffb80be314025f9adc870713e6fde0d").unwrap();
     let issuer = node.import_private_identity(None, &issuer_identity, &secret).await?;
     println!("issuer identifier {}", issuer);
 
     // Tell the credential issuer about a set of public identifiers that are
     // known, in advance, to be members of the production cluster.
     let known_identifiers = vec![
-        "I6342c580429b9a0733880bea4fa18f8055871130".try_into()?, // Client Identifier
-        "I2c3b0ef15c12fe43d405497fcfc46318da46d0f5".try_into()?, // Server Identifier
+        "Ie70dc5545d64724880257acb32b8851e7dd1dd57076838991bc343165df71bfe".try_into()?, // Client Identifier
+        "Ife42b412ecdb7fda4421bd5046e33c1017671ce7a320c3342814f0b99df9ab60".try_into()?, // Server Identifier
     ];
 
     // Tell this credential issuer about the attributes to include in credentials
@@ -48,14 +48,14 @@ async fn main(ctx: Context) -> Result<()> {
     // For a different application this attested attribute set can be different and
     // distinct for each identifier, but for this example we'll keep things simple.
     let credential_issuer = CredentialsIssuer::new(
-        node.identities().repository(),
+        node.identities().identity_attributes_repository(),
         node.credentials(),
         &issuer,
         "trust_context".into(),
     );
     for identifier in known_identifiers.iter() {
         node.identities()
-            .repository()
+            .identity_attributes_repository()
             .put_attribute_value(identifier, b"cluster".to_vec(), b"production".to_vec())
             .await?;
     }

@@ -1,11 +1,3 @@
-use crate::identity::models::Identifier;
-use crate::identity::storage::Storage;
-use crate::identity::{
-    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
-    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
-};
-use crate::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
@@ -13,10 +5,20 @@ use ockam_core::{
     Address, AsyncTryClone, IncomingAccessControl, Message, OutgoingAccessControl, Processor,
     Result, Route, Routed, Worker,
 };
-use ockam_identity::{PurposeKeys, Vault, VaultStorage};
+use ockam_identity::{IdentityAttributesRepository, PurposeKeys, Vault};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
+use ockam_vault::storage::SecretsRepository;
 use ockam_vault::SigningSecretKeyHandle;
 
+use crate::identity::models::Identifier;
+#[cfg(feature = "storage")]
+use crate::identity::secure_channels;
+use crate::identity::{
+    ChangeHistoryRepository, Credentials, CredentialsServer, Identities, IdentitiesCreation,
+    IdentitiesKeys, SecureChannel, SecureChannelListener, SecureChannelRegistry, SecureChannels,
+    SecureChannelsBuilder,
+};
+use crate::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
 use crate::stream::Stream;
 use crate::OckamError;
@@ -36,33 +38,21 @@ pub struct Node {
 /// use std::sync::Arc;
 /// use ockam::{Node, Result};
 /// use ockam_node::Context;
-/// use ockam_vault::storage::PersistentStorage;
+/// use ockam_vault::storage::SecretsSqlxDatabase;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///   let node = Node::builder().with_vault_storage(PersistentStorage::create(Path::new("vault")).await?).build(&ctx).await?;
+///   let node = Node::builder().await?.with_secrets_repository(SecretsSqlxDatabase::create().await?).build(&ctx).await?;
 ///   Ok(node)
 /// }
 ///
 ///
 /// ```
-/// Here is another example where we specify a local LMDB database to store identity attributes
-/// ```rust
-/// use std::sync::Arc;
-/// use ockam::{Node, Result};
-/// use ockam::LmdbStorage;
-/// use ockam_node::Context;
-///
-/// async fn make_node(ctx: Context) -> Result<Node> {
-///    let lmdb_storage = Arc::new(LmdbStorage::new("identities").await?);
-///    let node = Node::builder().with_identities_storage(lmdb_storage).build(&ctx).await?;
-///    Ok(node)
-/// }
-/// ```
-pub fn node(ctx: Context) -> Node {
-    Node {
+#[cfg(feature = "storage")]
+pub async fn node(ctx: Context) -> Result<Node> {
+    Ok(Node {
         context: ctx,
-        secure_channels: secure_channels(),
-    }
+        secure_channels: secure_channels().await?,
+    })
 }
 
 impl Node {
@@ -309,13 +299,23 @@ impl Node {
     }
 
     /// Return the repository used to store identities data
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.secure_channels.identities().repository()
+    pub fn identities_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
+        self.secure_channels
+            .identities()
+            .change_history_repository()
+    }
+
+    /// Return the repository used to store identities attributes
+    pub fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
+        self.secure_channels
+            .identities()
+            .identity_attributes_repository()
     }
 
     /// Return a new builder for top-level services
-    pub fn builder() -> NodeBuilder {
-        NodeBuilder::new()
+    #[cfg(feature = "storage")]
+    pub async fn builder() -> Result<NodeBuilder> {
+        NodeBuilder::new().await
     }
 }
 
@@ -335,10 +335,11 @@ pub struct NodeBuilder {
 }
 
 impl NodeBuilder {
-    fn new() -> Self {
-        Self {
-            builder: SecureChannels::builder(),
-        }
+    #[cfg(feature = "storage")]
+    async fn new() -> Result<Self> {
+        Ok(Self {
+            builder: SecureChannels::builder().await?,
+        })
     }
 
     /// Set [`Vault`]
@@ -347,21 +348,27 @@ impl NodeBuilder {
         self
     }
 
-    /// With Software Vault with given Storage
-    pub fn with_vault_storage(mut self, storage: VaultStorage) -> Self {
-        self.builder = self.builder.with_vault_storage(storage);
+    /// With Software Vault with given secrets repository
+    pub fn with_secrets_repository(mut self, repository: Arc<dyn SecretsRepository>) -> Self {
+        self.builder = self.builder.with_secrets_repository(repository);
         self
     }
 
-    /// Set a specific storage for identities
-    pub fn with_identities_storage(mut self, storage: Arc<dyn Storage>) -> Self {
-        self.builder = self.builder.with_identities_storage(storage);
+    /// Set a specific change history repository
+    pub fn with_change_history_repository(
+        mut self,
+        repository: Arc<dyn ChangeHistoryRepository>,
+    ) -> Self {
+        self.builder = self.builder.with_change_history_repository(repository);
         self
     }
 
-    /// Set a specific identities repository
-    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
-        self.builder = self.builder.with_identities_repository(repository);
+    /// Set a specific identity attributes repository
+    pub fn with_identity_attributes_repository(
+        mut self,
+        repository: Arc<dyn IdentityAttributesRepository>,
+    ) -> Self {
+        self.builder = self.builder.with_identity_attributes_repository(repository);
         self
     }
 

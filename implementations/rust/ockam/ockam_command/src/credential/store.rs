@@ -1,16 +1,17 @@
-use crate::credential::{identities, identity};
-use crate::{
-    credential::validate_encoded_cred, fmt_log, fmt_ok, terminal::OckamColor, util::node_rpc,
-    vault::default_vault_name, CommandGlobalOpts,
-};
+use std::path::PathBuf;
+
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::IntoDiagnostic;
+use tokio::sync::Mutex;
+use tokio::try_join;
+
+use ockam::identity::Identity;
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cli_state::{CredentialConfig, StateDirTrait};
-use std::path::PathBuf;
-use tokio::{sync::Mutex, try_join};
+
+use crate::credential::verify::verify_credential;
+use crate::{fmt_log, fmt_ok, terminal::OckamColor, util::node_rpc, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {
@@ -50,57 +51,29 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let send_req = async {
-        let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
-            (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
-                .await?
-                .trim()
-                .to_string(),
-            (Some(credential), _) => credential.to_string(),
-            _ => {
-                *is_finished.lock().await = true;
-                return crate::Result::Err(
-                    miette!("Credential or Credential Path argument must be provided").into(),
-                );
-            }
-        };
-
-        let vault_name = cmd
-            .vault
-            .clone()
-            .unwrap_or_else(|| default_vault_name(&opts.state));
-
-        let identities = match identities(&vault_name, &opts).await {
-            Ok(i) => i,
-            Err(_) => {
-                *is_finished.lock().await = true;
-                return Err(miette!("Invalid state").into());
-            }
-        };
-
-        let issuer = match identity(&cmd.issuer, identities.clone()).await {
-            Ok(i) => i,
-            Err(_) => {
-                *is_finished.lock().await = true;
-                return Err(miette!("Issuer is invalid {}", &cmd.issuer).into());
-            }
-        };
-
-        let issuer_exported = identities.export_identity(&issuer).await?;
-        let cred = hex::decode(&cred_as_str)?;
-        if let Err(e) = validate_encoded_cred(&cred, identities, &issuer).await {
-            *is_finished.lock().await = true;
-            return Err(miette!("Credential is invalid\n{}", e).into());
-        }
-
+        let issuer = verify_issuer(&opts, &cmd.issuer, &cmd.vault).await?;
+        let credential_and_purpose_key = verify_credential(
+            &opts,
+            issuer.identifier(),
+            &cmd.credential,
+            &cmd.credential_path,
+            &cmd.vault,
+        )
+        .await?;
         // store
-        opts.state.credentials.create(
-            &cmd.credential_name,
-            CredentialConfig::new(issuer.clone(), issuer_exported, cred)?,
-        )?;
+        opts.state
+            .store_credential(
+                &cmd.credential_name,
+                &issuer,
+                credential_and_purpose_key.clone(),
+            )
+            .await
+            .into_diagnostic()?;
 
         *is_finished.lock().await = true;
-
-        Ok(cred_as_str)
+        Ok(credential_and_purpose_key
+            .encode_as_string()
+            .into_diagnostic()?)
     };
 
     let output_messages = vec![format!("Storing credential...")];
@@ -113,7 +86,7 @@ async fn run_impl(
 
     opts.terminal
         .stdout()
-        .machine(credential.to_string())
+        .machine(credential.clone())
         .json(serde_json::json!(
             {
                 "name": cmd.credential_name,
@@ -130,4 +103,29 @@ async fn run_impl(
         .write_line()?;
 
     Ok(())
+}
+
+async fn verify_issuer(
+    opts: &CommandGlobalOpts,
+    issuer: &str,
+    vault: &Option<String>,
+) -> miette::Result<Identity> {
+    let vault = opts
+        .state
+        .get_named_vault_or_default(vault)
+        .await?
+        .vault()
+        .await?;
+    let identities = opts.state.make_identities(vault).await?;
+
+    let identifier = identities
+        .identities_creation()
+        .import(None, &hex::decode(issuer).into_diagnostic()?)
+        .await
+        .into_diagnostic()?;
+    let identity = identities
+        .get_identity(&identifier)
+        .await
+        .into_diagnostic()?;
+    Ok(identity)
 }

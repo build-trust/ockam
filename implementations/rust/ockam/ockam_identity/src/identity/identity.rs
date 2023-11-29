@@ -1,15 +1,17 @@
-use crate::models::{Change, ChangeHash, ChangeHistory, Identifier};
-use crate::verified_change::VerifiedChange;
-use crate::IdentityError;
-use crate::IdentityHistoryComparison;
-
 use core::cmp::Ordering;
 use core::fmt;
 use core::fmt::{Display, Formatter};
+
+use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::{VaultForVerifyingSignatures, VerifyingPublicKey};
+
+use crate::models::{Change, ChangeHash, ChangeHistory, Identifier};
+use crate::verified_change::VerifiedChange;
+use crate::IdentityHistoryComparison;
+use crate::{IdentityError, Vault};
 
 /// Verified Identity
 #[derive(Clone, Debug)]
@@ -74,6 +76,36 @@ impl Identity {
     /// Export an `Identity` to the binary format
     pub fn export(&self) -> Result<Vec<u8>> {
         self.change_history.export()
+    }
+
+    /// Export an `Identity` to a hex-encoded string
+    pub fn export_as_string(&self) -> Result<String> {
+        self.change_history.export_as_string()
+    }
+
+    /// Import and verify Identity from the ChangeHistory as a string
+    pub async fn import_from_string(
+        expected_identifier: Option<&Identifier>,
+        change_history: &str,
+        vault: Arc<dyn VaultForVerifyingSignatures>,
+    ) -> Result<Identity> {
+        let change_history = ChangeHistory::import_from_string(change_history)?;
+        Self::import_from_change_history(expected_identifier, change_history, vault).await
+    }
+
+    /// Create an identity for its change history as a hex-encoded string
+    pub async fn create(change_history: &str) -> Result<Identity> {
+        Self::import_from_string(None, change_history, Vault::create_verifying_vault()).await
+    }
+
+    /// Create an identity for its change history
+    pub async fn create_from_change_history(change_history: &ChangeHistory) -> Result<Identity> {
+        Self::import_from_change_history(
+            None,
+            change_history.clone(),
+            Vault::create_verifying_vault(),
+        )
+        .await
     }
 
     /// Import and verify Identity from the ChangeHistory
@@ -168,6 +200,12 @@ impl Display for Identity {
         let identifier = self.identifier();
         writeln!(f, "Identifier:     {identifier}")?;
 
+        self.change_history.fmt(f)
+    }
+}
+
+impl Display for ChangeHistory {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let history = hex::encode(self.export().map_err(|_| fmt::Error)?);
         writeln!(f, "Change history: {history}")
     }
@@ -175,21 +213,30 @@ impl Display for Identity {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{identities, Identities, Vault};
     use core::str::FromStr;
-    use ockam_core::compat::rand::RngCore;
-    use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
+
     use rand::thread_rng;
 
+    use ockam_core::compat::rand::RngCore;
+    use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
+
+    use crate::{identities, Identities, Vault};
+
+    use super::*;
+
     #[tokio::test]
-    async fn test_display() {
-        let identities = identities();
-        let data = hex::decode("81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820b23304f9473622847ca80dfda0d10f12eebc03f4041a64c956a9051a64c956a9028201815840c1598a6f85215c118a4744310bebfae71ec19353e1ede1582787592013d65a70c80aa4a4855d16d9b696a887be9bd97b2271245124857d67c07e0203564c3706").unwrap();
+    async fn test_display() -> Result<()> {
+        let identities = identities().await?;
+        let data = hex::decode("81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009").unwrap();
         let identifier = identities
             .identities_creation()
             .import(
-                Some(&Identifier::from_str("Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f").unwrap()),
+                Some(
+                    &Identifier::from_str(
+                        "I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819",
+                    )
+                    .unwrap(),
+                ),
                 &data,
             )
             .await
@@ -197,17 +244,18 @@ mod tests {
         let identity = identities.get_identity(&identifier).await.unwrap();
 
         let actual = format!("{identity}");
-        let expected = r#"Identifier:     Ie2424922b4194cd4ab57f952ef04c44e5e70ab2f
-Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820b23304f9473622847ca80dfda0d10f12eebc03f4041a64c956a9051a64c956a9028201815840c1598a6f85215c118a4744310bebfae71ec19353e1ede1582787592013d65a70c80aa4a4855d16d9b696a887be9bd97b2271245124857d67c07e0203564c3706
+        let expected = r#"Identifier:     I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819
+Change history: 81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009
 "#;
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_compare() -> Result<()> {
-        let signing_vault0 = SoftwareVaultForSigning::create();
-        let signing_vault01 = SoftwareVaultForSigning::create();
-        let signing_vault02 = SoftwareVaultForSigning::create();
+        let signing_vault0 = SoftwareVaultForSigning::create().await?;
+        let signing_vault01 = SoftwareVaultForSigning::create().await?;
+        let signing_vault02 = SoftwareVaultForSigning::create().await?;
 
         let mut key0_bin = [0u8; 32];
         thread_rng().fill_bytes(&mut key0_bin);
@@ -229,10 +277,11 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
             .await?;
 
         let identities0 = Identities::builder()
+            .await?
             .with_vault(Vault::new(
                 signing_vault0,
-                Vault::create_secure_channel_vault(),
-                Vault::create_credential_vault(),
+                Vault::create_secure_channel_vault().await?,
+                Vault::create_credential_vault().await?,
                 Vault::create_verifying_vault(),
             ))
             .build();
@@ -247,18 +296,20 @@ Change history: 81a201583ba20101025835a4028201815820bd144a3f6472ba2215b6b86b2820
         let identity0_bin = identities0.export_identity(&identifier0).await?;
 
         let identities01 = Identities::builder()
+            .await?
             .with_vault(Vault::new(
                 signing_vault01,
-                Vault::create_secure_channel_vault(),
-                Vault::create_credential_vault(),
+                Vault::create_secure_channel_vault().await?,
+                Vault::create_credential_vault().await?,
                 Vault::create_verifying_vault(),
             ))
             .build();
         let identities02 = Identities::builder()
+            .await?
             .with_vault(Vault::new(
                 signing_vault02,
-                Vault::create_secure_channel_vault(),
-                Vault::create_credential_vault(),
+                Vault::create_secure_channel_vault().await?,
+                Vault::create_credential_vault().await?,
                 Vault::create_verifying_vault(),
             ))
             .build();

@@ -30,7 +30,6 @@ extern crate core;
 extern crate alloc;
 
 /// Storage
-#[cfg(feature = "storage")]
 pub mod storage;
 
 /// Errors

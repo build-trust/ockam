@@ -20,6 +20,8 @@ pub(crate) struct Addresses {
     pub(crate) encryptor: Address,
     // Used to decrypt messages that were received though some channel other than Ockam Routing from the other end of the channel
     pub(crate) encryptor_api: Address,
+    // Used by the encryptor itself for timer notifications (to force credentials refresh)
+    pub(crate) encryptor_internal: Address,
 }
 
 impl Addresses {
@@ -35,6 +37,8 @@ impl Addresses {
         let encryptor = Address::random_tagged(&format!("SecureChannel.{}.encryptor", role_str));
         let encryptor_api =
             Address::random_tagged(&format!("SecureChannel.{}.encryptor.api", role_str));
+        let encryptor_internal =
+            Address::random_tagged(&format!("SecureChannel.{}.encryptor.internal", role_str));
 
         Self {
             decryptor_internal,
@@ -42,6 +46,7 @@ impl Addresses {
             decryptor_api,
             encryptor,
             encryptor_api,
+            encryptor_internal,
         }
     }
 }

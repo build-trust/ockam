@@ -127,27 +127,3 @@ impl Output for Subscription {
         Ok(w)
     }
 }
-
-impl Output for Vec<Subscription> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No subscriptions found".to_string());
-        }
-        let mut w = String::new();
-        for (idx, s) in self.iter().enumerate() {
-            write!(w, "\n{idx}:")?;
-            write!(w, "\n  Id: {}", s.id)?;
-            write!(w, "\n  Status: {}", s.status)?;
-            write!(
-                w,
-                "\n  Space id: {}",
-                s.space_id.as_ref().unwrap_or(&"N/A".to_string())
-            )?;
-            write!(w, "\n  Entitlements: {}", s.entitlements)?;
-            write!(w, "\n  Metadata: {}", s.metadata)?;
-            write!(w, "\n  Contact info: {}", s.contact_info)?;
-            writeln!(w)?;
-        }
-        Ok(w)
-    }
-}
