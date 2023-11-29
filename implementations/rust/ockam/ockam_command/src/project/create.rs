@@ -58,6 +58,8 @@ async fn run_impl(
     let controller = node.create_controller().await?;
     check_for_completion(&opts, ctx, &controller, &operation_id).await?;
     let project = check_project_readiness(&opts, ctx, &node, project).await?;
+    // update the project state when it's ready
+    opts.state.store_project(project.clone()).await?;
     opts.println(&project)?;
     Ok(())
 }
