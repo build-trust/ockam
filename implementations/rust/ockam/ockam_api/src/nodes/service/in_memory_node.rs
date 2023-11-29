@@ -78,28 +78,31 @@ impl InMemoryNode {
         project_name: Option<String>,
         trust_context: Option<NamedTrustContext>,
     ) -> miette::Result<Self> {
-        Self::start_node(ctx, cli_state, None, None, project_name, trust_context).await
+        let default_identity_name = cli_state.get_default_named_identity().await?.name();
+        Self::start_node(
+            ctx,
+            cli_state,
+            &default_identity_name,
+            project_name,
+            trust_context,
+        )
+        .await
     }
 
     /// Start an in memory node
     pub async fn start_node(
         ctx: &Context,
         cli_state: &CliState,
-        identity_name: Option<String>,
-        vault_name: Option<String>,
+        identity_name: &str,
         project_name: Option<String>,
         trust_context: Option<NamedTrustContext>,
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        // if no identity is specified, create one
-        let identity = cli_state
-            .create_identity_with_optional_name_and_optional_vault(&identity_name, &vault_name)
-            .await?;
         let node = cli_state
             .create_node_with_optional_values(
                 &defaults.node_name,
-                &Some(identity.name()),
+                &Some(identity_name.to_string()),
                 &project_name,
             )
             .await?;
