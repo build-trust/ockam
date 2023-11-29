@@ -87,7 +87,6 @@ teardown_home_dir() {
       cp -r "$OCKAM_HOME/." "$HOME/.bats-tests"
     fi
     run $OCKAM node delete --all --force --yes
-    run $OCKAM reset -y
   done
 }
 
