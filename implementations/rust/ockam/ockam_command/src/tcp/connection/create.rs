@@ -10,7 +10,6 @@ use ockam_api::nodes::BackgroundNode;
 use ockam_node::Context;
 
 use crate::output::OutputFormat;
-use crate::util::is_tty;
 use crate::{
     docs,
     util::{api, node_rpc},
@@ -53,7 +52,7 @@ impl CreateCommand {
         // if output format is json, write json to stdout.
         match opts.global_args.output_format {
             OutputFormat::Plain => {
-                if !is_tty(std::io::stdout()) {
+                if !opts.terminal.is_tty() {
                     println!("{}", response.multiaddr().into_diagnostic()?);
                     return Ok(());
                 }
