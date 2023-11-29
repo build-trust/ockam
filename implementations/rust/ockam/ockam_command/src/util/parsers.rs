@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use miette::miette;
 
-use ockam::identity::{Identifier, Identity};
+use ockam::identity::Identifier;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::resolve_peer;
@@ -31,16 +31,6 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
 /// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
     Identifier::from_str(input).map_err(|_| miette!("Invalid identity identifier: {input}").into())
-}
-
-/// Helper fn for parsing an identity from user input by using
-/// [`ockam_identity::Identity::create()`]
-pub(crate) fn identity_parser(input: &str) -> Result<Identity> {
-    futures::executor::block_on(async {
-        Identity::create(input)
-            .await
-            .map_err(|_| miette!("Invalid identity: {input}").into())
-    })
 }
 
 /// Helper fn for parsing a MultiAddr from user input by using

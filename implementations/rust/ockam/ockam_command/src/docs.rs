@@ -2,10 +2,9 @@ use crate::terminal::TerminalBackground;
 use colorful::Colorful;
 use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
-use syntect::highlighting::Theme;
 use syntect::{
     easy::HighlightLines,
-    highlighting::{Style, ThemeSet},
+    highlighting::{Style, Theme, ThemeSet},
     parsing::Regex,
     parsing::SyntaxSet,
     util::{as_24_bit_terminal_escaped, LinesWithEndings},

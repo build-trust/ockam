@@ -221,10 +221,10 @@ pub async fn clean_nodes_multiaddr(
 }
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
-    use itertools::Itertools;
-
-    #[allow(unstable_name_collisions)]
-    data.iter().map(AsRef::as_ref).intersperse(", ").collect()
+    data.iter()
+        .map(AsRef::as_ref)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
@@ -306,5 +306,12 @@ mod tests {
             ctx.stop().await.into_diagnostic()?;
             Err(miette!("boom"))
         }
+    }
+
+    #[test]
+    fn test_comma_separated() {
+        let data = vec!["a", "b", "c"];
+        let result = comma_separated(&data);
+        assert_eq!(result, "a, b, c");
     }
 }
