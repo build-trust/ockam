@@ -160,7 +160,8 @@ impl SecureClient {
     /// Create a secure channel to the node
     pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
         let options = SecureChannelOptions::new()
-            .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()));
+            .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()))
+            .with_timeout(self.timeout);
         self.secure_channels
             .create_secure_channel(
                 ctx,
