@@ -16,7 +16,8 @@ use super::error::{Error, Result};
 impl AppState {
     pub(crate) async fn create_enrollment_ticket(
         &self,
-        project_id: String,
+        project_id: &str,
+        invitation_email: &str,
     ) -> Result<EnrollmentTicket> {
         debug!(?project_id, "Creating enrollment ticket");
         let projects = self.projects();
@@ -37,7 +38,7 @@ impl AppState {
         let otc = authority_node
             .create_token(
                 &self.context(),
-                HashMap::new(),
+                HashMap::from([("invitation_email", invitation_email)]),
                 Some(Duration::from_secs(60 * 60 * 24 * 14)),
                 None,
             )
