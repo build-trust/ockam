@@ -49,17 +49,40 @@ impl CliState {
         self.create_identity_with_name_and_vault(name, &vault.name())
             .await
     }
+
     /// Create an identity associated with an optional name and an optional vault name
-    /// If the vault name is not specified then the default vault is used
+    ///  - if the vault name is not specified then the default vault is used
+    ///  - if no name is specified:
+    ///     - if there is no default identity, create an identity with a random name
+    ///     - if there is a default identity with the correct vault, return it
+    ///     - otherwise create a new identity
+    ///  - if a name is given create a new identity with the proper vault (unless it has already been created)
     pub async fn create_identity_with_optional_name_and_optional_vault(
         &self,
         name: &Option<String>,
         vault_name: &Option<String>,
     ) -> Result<NamedIdentity> {
-        let name = name.clone().unwrap_or_else(random_name);
-        let vault = self.get_named_vault_or_default(vault_name).await?.name();
-        self.create_identity_with_name_and_vault(&name, &vault)
-            .await
+        let vault_name = self.get_named_vault_or_default(vault_name).await?.name();
+        match name {
+            Some(name) => {
+                self.create_identity_with_name_and_vault(name, &vault_name)
+                    .await
+            }
+            None => {
+                let default_identity = self
+                    .identities_repository()
+                    .await?
+                    .get_default_named_identity()
+                    .await?;
+                if let Some(default_identity) = default_identity {
+                    if default_identity.vault_name == vault_name {
+                        return Ok(default_identity);
+                    }
+                };
+                self.create_identity_with_name_and_vault(&random_name(), &vault_name)
+                    .await
+            }
+        }
     }
 
     /// Create an identity with specific key id.
@@ -332,7 +355,7 @@ impl CliState {
                     node_names.join(", ")
                 ),
             )
-            .into())
+                .into())
         }
     }
 }
@@ -505,6 +528,112 @@ mod tests {
         // check that the identity uses the default vault
         let default_vault = cli.get_default_named_vault().await?;
         assert_eq!(identity.vault_name, default_vault.name());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_identity_with_a_name_and_no_vault() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // create a named identity using the default vault
+        let identity = cli
+            .create_identity_with_optional_name_and_optional_vault(&Some("name".to_string()), &None)
+            .await?;
+
+        // the created identity becomes the default one
+        let expected = cli.get_default_named_identity().await?;
+        assert_eq!(identity, expected);
+
+        // the identity can be retrieved by name
+        let expected = cli.get_named_identity("name").await?;
+        assert_eq!(identity, expected);
+
+        // the identity will not be recreated a second time
+        let identity = cli
+            .create_identity_with_optional_name_and_optional_vault(&Some("name".to_string()), &None)
+            .await?;
+        assert_eq!(identity, expected);
+        let identities = cli.get_named_identities().await?;
+        assert_eq!(identities.len(), 1);
+
+        // the created identity uses the default vault
+        let default_vault = cli.get_default_named_vault().await?;
+        assert_eq!(identity.vault_name, default_vault.name());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_identity_with_no_name_and_a_vault() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // create a named identity using a given vault
+        let vault = cli.create_named_vault("vault").await?;
+
+        let identity = cli
+            .create_identity_with_optional_name_and_optional_vault(&None, &Some(vault.name()))
+            .await?;
+
+        // the created identity becomes the default one
+        let expected = cli.get_default_named_identity().await?;
+        assert_eq!(identity, expected);
+
+        // the identity can be retrieved by name
+        let expected = cli.get_named_identity(&identity.name()).await?;
+        assert_eq!(identity, expected);
+
+        // the identity will not be recreated a second time
+        let identity = cli
+            .create_identity_with_optional_name_and_optional_vault(
+                &Some(identity.name()),
+                &Some(vault.name()),
+            )
+            .await?;
+        assert_eq!(identity, expected);
+        let identities = cli.get_named_identities().await?;
+        assert_eq!(identities.len(), 1);
+
+        // the created identity uses the specified vault
+        assert_eq!(identity.vault_name, vault.name());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_identity_with_no_name_and_a_non_default_vault() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // create two vaults
+        let _ = cli.create_named_vault("vault1").await?;
+        let vault2 = cli.create_named_vault("vault2").await?;
+
+        // create an identity with vault2 which is not the default vault
+        let identity = cli
+            .create_identity_with_optional_name_and_optional_vault(&None, &Some(vault2.name()))
+            .await?;
+
+        // the created identity becomes the default one
+        let expected = cli.get_default_named_identity().await?;
+        assert_eq!(identity, expected);
+
+        // the identity can be retrieved by name
+        let expected = cli.get_named_identity(&identity.name()).await?;
+        assert_eq!(identity, expected);
+
+        // the identity will not be recreated a second time
+        let identity = cli
+            .create_identity_with_optional_name_and_optional_vault(
+                &Some(identity.name()),
+                &Some(vault2.name()),
+            )
+            .await?;
+        assert_eq!(identity, expected);
+        let identities = cli.get_named_identities().await?;
+        assert_eq!(identities.len(), 1);
+
+        // the created identity uses the specified vault
+        assert_eq!(identity.vault_name, vault2.name());
 
         Ok(())
     }

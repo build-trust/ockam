@@ -1,3 +1,4 @@
+use ockam_core::compat::string::String;
 use ockam_core::{
     errcode::{Kind, Origin},
     Error,
@@ -66,6 +67,7 @@ pub enum IdentityError {
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}
+
 impl core::fmt::Display for IdentityError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(self, f)
