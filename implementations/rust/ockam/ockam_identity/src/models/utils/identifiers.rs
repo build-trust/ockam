@@ -3,17 +3,17 @@ use core::str::FromStr;
 
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use ockam_core::{Error, Result};
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::env::FromString;
+use ockam_core::{Error, Result};
 
+use crate::models::{ChangeHash, CHANGE_HASH_LEN, IDENTIFIER_LEN};
 use crate::{Identifier, IdentityError};
-use crate::models::{CHANGE_HASH_LEN, ChangeHash, IDENTIFIER_LEN};
 
 impl Serialize for Identifier {
     fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&String::from(self))
     }
@@ -21,8 +21,8 @@ impl Serialize for Identifier {
 
 impl<'de> Deserialize<'de> for Identifier {
     fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let str: String = Deserialize::deserialize(deserializer)?;
 
@@ -198,7 +198,7 @@ impl AsRef<[u8]> for ChangeHash {
 
 #[cfg(test)]
 mod test {
-    use quickcheck::{Arbitrary, Gen, quickcheck};
+    use quickcheck::{quickcheck, Arbitrary, Gen};
 
     use super::*;
 

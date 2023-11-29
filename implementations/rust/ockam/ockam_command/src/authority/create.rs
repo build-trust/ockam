@@ -4,11 +4,11 @@ use std::process;
 
 use clap::ArgGroup;
 use clap::Args;
-use miette::{IntoDiagnostic, miette};
+use miette::{miette, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 
-use ockam::Context;
 use ockam::identity::{AttributesEntry, Identifier};
+use ockam::Context;
 use ockam_api::authority_node;
 use ockam_api::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
@@ -17,11 +17,11 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 
-use crate::{CommandGlobalOpts, docs, Result};
 use crate::node::util::run_ockam;
+use crate::util::parsers::internet_address_parser;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
-use crate::util::parsers::internet_address_parser;
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -324,7 +324,7 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 
 #[cfg(test)]
 mod tests {
-    use ockam::identity::{Identifier, identities};
+    use ockam::identity::{identities, Identifier};
     use ockam_core::compat::collections::HashMap;
 
     use super::*;
