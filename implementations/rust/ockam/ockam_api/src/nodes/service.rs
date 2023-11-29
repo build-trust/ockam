@@ -38,7 +38,6 @@ use crate::nodes::connection::{
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
-use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
@@ -61,6 +60,7 @@ pub mod relay;
 pub mod resources;
 mod secure_channel;
 mod transport;
+pub mod workers;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
 
@@ -705,16 +705,7 @@ impl NodeManagerWorker {
             }
 
             // ==*== Workers ==*==
-            (Get, ["node", "workers"]) => {
-                let workers = ctx.list_workers().await?;
-
-                let mut list = Vec::new();
-                workers
-                    .iter()
-                    .for_each(|addr| list.push(WorkerStatus::new(addr.address())));
-
-                Response::ok(req).body(WorkerList::new(list)).to_vec()?
-            }
+            (Get, ["node", "workers"]) => encode_response(self.list_workers(ctx, req).await)?,
             (Post, ["policy", resource, action]) => encode_response(
                 self.node_manager
                     .add_policy(resource, action, req, dec)
