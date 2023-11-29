@@ -3,10 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::trace;
 
-use minicbor::Decoder;
 use minicbor::{Decode, Encode};
 
-use ockam_core::api::{RequestHeader, Response};
+use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::{self, async_trait, AsyncTryClone, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -44,21 +43,20 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
         req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Vec<u8>> {
-        let req_body: SendMessage = dec.decode()?;
-        let multiaddr = req_body.multiaddr()?;
-        let msg = req_body.message.to_vec();
+        send_message: SendMessage,
+    ) -> Result<Response<Vec<u8>>, Response<Error>> {
+        let multiaddr = send_message.multiaddr()?;
+        let msg = send_message.message.to_vec();
 
         let res = self
             .node_manager
             .send_message(ctx, &multiaddr, msg, None)
             .await;
         match res {
-            Ok(r) => Ok(Response::ok(req).body(r).to_vec()?),
+            Ok(r) => Ok(Response::ok(req).body(r)),
             Err(err) => {
                 error!(target: TARGET, ?err, "Failed to send message");
-                Ok(Response::internal_error(req, "Failed to send message").to_vec()?)
+                Err(Response::internal_error(req, "Failed to send message"))
             }
         }
     }

@@ -724,7 +724,9 @@ impl NodeManagerWorker {
             }
 
             // ==*== Messages ==*==
-            (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
+            (Post, ["v0", "message"]) => {
+                encode_response(self.send_message(ctx, req, dec.decode()?).await)?
+            }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
