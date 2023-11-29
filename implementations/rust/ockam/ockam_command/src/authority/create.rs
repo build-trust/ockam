@@ -4,11 +4,11 @@ use std::process;
 
 use clap::ArgGroup;
 use clap::Args;
-use miette::{miette, IntoDiagnostic};
+use miette::{IntoDiagnostic, miette};
 use serde::{Deserialize, Serialize};
 
-use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
+use ockam::identity::{AttributesEntry, Identifier};
 use ockam_api::authority_node;
 use ockam_api::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
@@ -17,11 +17,11 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 
+use crate::{CommandGlobalOpts, docs, Result};
 use crate::node::util::run_ockam;
-use crate::util::parsers::internet_address_parser;
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::util::{local_cmd, node_rpc};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::util::parsers::internet_address_parser;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -110,6 +110,13 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
 ) -> miette::Result<()> {
+    // Create the authority identity if it has not been created before
+    // If no name is specified on the command line, use "authority"
+    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
+    if opts.state.get_named_identity(&identity_name).await.is_err() {
+        opts.state.create_identity_with_name(&identity_name).await?;
+    };
+
     opts.state
         .create_node_with_optional_values(&cmd.node_name, &cmd.identity, &None)
         .await?;
@@ -257,19 +264,13 @@ async fn start_authority_node(
 ) -> miette::Result<()> {
     let (opts, cmd) = args;
 
-    // Retrieve the authority identity if it has been created before
-    // otherwise create a new one
-    let identity_name = match &cmd.identity {
-        Some(identity_name) => opts.state.get_named_identity(identity_name).await?.name(),
-        None => match opts.state.get_default_named_identity().await {
-            Ok(identity) => identity.name(),
-            Err(_) => opts
-                .state
-                .create_identity_with_name("authority")
-                .await?
-                .name(),
-        },
+    // Create the authority identity if it has not been created before
+    // If no name is specified on the command line, use "authority"
+    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
+    if opts.state.get_named_identity(&identity_name).await.is_err() {
+        opts.state.create_identity_with_name(&identity_name).await?;
     };
+
     let node = opts
         .state
         .create_node_with_optional_values(&cmd.node_name, &Some(identity_name), &None)
@@ -323,7 +324,7 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 
 #[cfg(test)]
 mod tests {
-    use ockam::identity::{identities, Identifier};
+    use ockam::identity::{Identifier, identities};
     use ockam_core::compat::collections::HashMap;
 
     use super::*;
