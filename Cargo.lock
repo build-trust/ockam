@@ -24,7 +24,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b613b8e1e3cf911a086f53f03bf286f52fd7a7258e4fa606f0ef220d39d8877"
 dependencies = [
  "generic-array 0.14.7",
- "heapless",
+ "heapless 0.7.16",
  "rand_core",
 ]
 
@@ -2628,6 +2628,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hash32"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2660,9 +2669,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
 dependencies = [
  "atomic-polyfill",
- "hash32",
+ "hash32 0.2.1",
  "rustc_version 0.4.0",
  "spin 0.9.8",
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "heapless"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
+dependencies = [
+ "hash32 0.3.1",
  "stable_deref_trait",
 ]
 
@@ -3903,7 +3922,7 @@ version = "0.61.0"
 dependencies = [
  "crossbeam-queue",
  "futures 0.3.29",
- "heapless",
+ "heapless 0.8.0",
  "ockam_core",
  "pin-project-lite",
  "pin-utils",
@@ -3986,7 +4005,7 @@ dependencies = [
  "cfg-if",
  "fs2",
  "futures 0.3.29",
- "heapless",
+ "heapless 0.8.0",
  "hex",
  "minicbor",
  "ockam_core",
@@ -4018,7 +4037,7 @@ dependencies = [
  "embedded-hal 0.2.7",
  "futures 0.3.29",
  "futures-util",
- "heapless",
+ "heapless 0.8.0",
  "nb 1.1.0",
  "ockam_core",
  "ockam_identity",
