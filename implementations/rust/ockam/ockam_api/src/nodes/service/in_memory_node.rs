@@ -1,4 +1,5 @@
 use std::ops::Deref;
+use std::time::Duration;
 
 use futures::executor;
 use miette::IntoDiagnostic;
@@ -36,6 +37,7 @@ use crate::session::sessions::Session;
 pub struct InMemoryNode {
     pub(crate) node_manager: Arc<NodeManager>,
     persistent: bool,
+    timeout: Option<Duration>,
 }
 
 /// This Deref instance makes it easy to access the NodeManager functions from an InMemoryNode
@@ -104,9 +106,11 @@ impl InMemoryNode {
 
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let bind = defaults.tcp_listener_address;
-
         let options = TcpListenerOptions::new();
         let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
+        cli_state
+            .set_tcp_listener_address(&node.name(), listener.socket_address().to_string())
+            .await?;
 
         let node_manager = Self::new(
             ctx,
@@ -123,7 +127,9 @@ impl InMemoryNode {
 
     /// Return a Controller client to send requests to the Controller
     pub async fn create_controller(&self) -> miette::Result<Controller> {
-        self.create_controller_client().await.into_diagnostic()
+        self.create_controller_client(self.timeout)
+            .await
+            .into_diagnostic()
     }
 
     pub fn add_session(&self, session: Session) {
@@ -132,6 +138,11 @@ impl InMemoryNode {
 
     pub fn remove_session(&self, key: &str) {
         self.medic_handle.remove_session(key);
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
@@ -164,6 +175,7 @@ impl InMemoryNode {
         Ok(Self {
             node_manager: Arc::new(node_manager),
             persistent,
+            timeout: None,
         })
     }
 

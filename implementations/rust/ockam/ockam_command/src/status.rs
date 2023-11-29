@@ -1,7 +1,8 @@
-use std::io::Write;
+use std::fmt::Write;
 use std::time::Duration;
 
 use clap::Args;
+use miette::IntoDiagnostic;
 use tracing::warn;
 
 use ockam::identity::{Identifier, TimestampInSeconds};
@@ -11,7 +12,7 @@ use ockam_api::cloud::project::OrchestratorVersionInfo;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
 use ockam_api::nodes::{BackgroundNode, InMemoryNode};
 
-use crate::util::{api, node_rpc};
+use crate::util::{api, duration::duration_parser, node_rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
@@ -22,9 +23,9 @@ pub struct StatusCommand {
     #[arg(long, short)]
     all: bool,
 
-    /// Override default timeout (in seconds)
-    #[arg(long, default_value = "30")]
-    timeout: u64,
+    /// Override the default timeout
+    #[arg(long, default_value = "5", value_parser = duration_parser)]
+    timeout: Duration,
 }
 
 impl StatusCommand {
@@ -45,16 +46,22 @@ async fn run_impl(
     let identities_details = get_identities_details(&opts, cmd.all).await?;
     let nodes_details = get_nodes_details(ctx, &opts).await?;
 
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, &opts.state)
+        .await?
+        .with_timeout(cmd.timeout);
     let controller = node.create_controller().await?;
-
     let orchestrator_version = controller
         .get_orchestrator_version_info(ctx)
         .await
         .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
         .unwrap_or_default();
+
     let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
-    print_output(opts, cmd, status).await?;
+    opts.terminal
+        .stdout()
+        .plain(build_plain_output(&cmd, &status).await?)
+        .json(serde_json::to_string(&status).into_diagnostic()?)
+        .write_line()?;
     Ok(())
 }
 
@@ -106,36 +113,21 @@ async fn get_identities_details(
         .await?)
 }
 
-async fn print_output(
-    opts: CommandGlobalOpts,
-    cmd: StatusCommand,
-    status: StatusData,
-) -> Result<()> {
-    let plain = build_plain_output(&cmd, &status).await?;
-    let json = serde_json::to_string(&status)?;
-    opts.terminal
-        .stdout()
-        .plain(String::from_utf8(plain).expect("Invalid UTF-8 output"))
-        .json(json)
-        .write_line()?;
-    Ok(())
-}
-
-async fn build_plain_output(cmd: &StatusCommand, status: &StatusData) -> Result<Vec<u8>> {
-    let mut plain = Vec::new();
+async fn build_plain_output(cmd: &StatusCommand, status: &StatusData) -> Result<String> {
+    let mut plain = String::new();
     writeln!(
-        &mut plain,
+        plain,
         "Controller version: {}",
         status.orchestrator_version.version()
     )?;
     writeln!(
-        &mut plain,
+        plain,
         "Project version: {}",
         status.orchestrator_version.project_version()
     )?;
     if status.identities.is_empty() {
         if cmd.all {
-            writeln!(&mut plain, "No identities found!")?;
+            writeln!(plain, "No identities found")?;
         } else {
             writeln!(
                 &mut plain,
@@ -148,22 +140,22 @@ async fn build_plain_output(cmd: &StatusCommand, status: &StatusData) -> Result<
     };
 
     for (i_idx, i) in status.identities.iter().enumerate() {
-        writeln!(&mut plain, "Identity[{i_idx}]")?;
+        writeln!(plain, "Identity[{i_idx}]")?;
         if i.is_default() {
-            writeln!(&mut plain, "{:2}Default: yes", "")?;
+            writeln!(plain, "{:2}Default: yes", "")?;
         }
         if let Some(name) = i.name() {
-            writeln!(&mut plain, "{:2}{}", "Name", name)?;
+            writeln!(&mut plain, "{:2}Name: {}", "", name)?;
         }
-        writeln!(&mut plain, "{:2}{}", "Identifier", i.identifier())?;
-        writeln!(&mut plain, "{:2}{}", "Enrolled", i.is_enrolled())?;
+        writeln!(plain, "{:2}Identifier: {}", "", i.identifier())?;
+        writeln!(plain, "{:2}Enrolled: {}", "", i.is_enrolled())?;
 
         if !i.nodes.is_empty() {
-            writeln!(&mut plain, "{:2}Linked Nodes:", "")?;
+            writeln!(plain, "{:2}Linked Nodes:", "")?;
             for (n_idx, node) in i.nodes.iter().enumerate() {
-                writeln!(&mut plain, "{:4}Node[{}]:", "", n_idx)?;
-                writeln!(&mut plain, "{:6}Name: {}", "", node.name)?;
-                writeln!(&mut plain, "{:6}Status: {}", "", node.status)?;
+                writeln!(plain, "{:4}Node[{}]:", "", n_idx)?;
+                writeln!(plain, "{:6}Name: {}", "", node.name)?;
+                writeln!(plain, "{:6}Status: {}", "", node.status)?;
             }
         }
     }
