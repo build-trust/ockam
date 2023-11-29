@@ -307,7 +307,7 @@ async fn get_user_project(
             let project_name = "default".to_string();
             let get_project = async {
                 let project = node
-                    .create_project(ctx, &space.id, &project_name, vec![])
+                    .create_project(ctx, &space.name, &project_name, vec![])
                     .await?;
                 *is_finished.lock().await = true;
                 Ok(project)

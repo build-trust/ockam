@@ -4,6 +4,7 @@ use ockam_core::{
 };
 
 /// Identity crate error
+#[repr(u8)]
 #[derive(Clone, Debug)]
 pub enum IdentityError {
     /// Invalid key type
@@ -11,7 +12,7 @@ pub enum IdentityError {
     /// Invalid Key Data
     InvalidKeyData,
     /// Invalid Identifier format
-    InvalidIdentifier,
+    InvalidIdentifier(String),
     /// Identity Change History is empty
     EmptyIdentity,
     /// Identity Verification Failed
