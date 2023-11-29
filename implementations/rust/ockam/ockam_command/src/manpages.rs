@@ -4,10 +4,12 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::{ArgAction, Args, Command, CommandFactory};
 use clap_mangen::Man;
 use flate2::{Compression, GzBuilder};
+use miette::IntoDiagnostic;
+use ockam_core::env::get_env_with_default;
 use std::fs::{create_dir_all, File};
 use std::io::{Error, Write};
 use std::path::{Path, PathBuf};
-use std::{env, io, str};
+use std::{env, str};
 use tracing::error;
 
 /// Generate man pages for all existing Ockam commands
@@ -40,14 +42,17 @@ impl ManpagesCommand {
     }
 }
 
-fn get_man_page_directory(cmd_man_dir: &Option<String>) -> io::Result<PathBuf> {
+fn get_man_page_directory(cmd_man_dir: &Option<String>) -> crate::Result<PathBuf> {
     let man_dir = match cmd_man_dir {
         Some(dir) => {
             let mut user_specified_dir = PathBuf::new();
             user_specified_dir.push(dir);
             user_specified_dir
         }
-        None => match home::home_dir() {
+        None => match get_env_with_default("HOME", None::<String>)
+            .into_diagnostic()?
+            .map(PathBuf::from)
+        {
             Some(mut home_dir) => {
                 home_dir.push(".local/share/man/man1");
                 home_dir

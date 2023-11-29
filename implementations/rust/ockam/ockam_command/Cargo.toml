@@ -59,7 +59,6 @@ async-trait = "0.1"
 clap = { version = "4.4.7", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.4.4"
 clap_mangen = "0.2.15"
-cli-table = "0.4"
 colorful = "0.2"
 colors-transform = "0.2.11"
 console = "0.15.7"
@@ -67,12 +66,9 @@ ctrlc = { version = "3.4.1", features = ["termination"] }
 dialoguer = "0.11.0"
 duct = "0.13"
 flate2 = "1.0.28"
-futures = "0.3.28"
 hex = "0.4"
-home = "0.5"
 indicatif = "0.17.7"
 indoc = "2.0.4"
-itertools = "0.11"
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.20.0", features = ["derive", "alloc", "half"] }
 nix = "0.27"

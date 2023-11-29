@@ -161,8 +161,16 @@ async fn run_impl(
             opts.terminal.write_line(&response.output()?)?
         }
         SubscriptionSubcommand::List => {
-            let response = controller.get_subscriptions(&ctx).await.into_diagnostic()?;
-            opts.terminal.write_line(&response.output()?)?
+            let response = controller
+                .get_subscriptions(&ctx)
+                .await
+                .into_diagnostic()?
+                .success()
+                .into_diagnostic()?;
+            let output =
+                opts.terminal
+                    .build_list(&response, "Subscriptions", "No Subscriptions found")?;
+            opts.terminal.write_line(output)?
         }
         SubscriptionSubcommand::Unsubscribe {
             subscription_id,

@@ -38,7 +38,11 @@ async fn run_impl(
     let controller = node.create_controller().await?;
 
     let addons = controller.list_addons(&ctx, project_id).await?;
-
-    opts.println(&addons)?;
+    let output = opts.terminal.build_list(
+        &addons,
+        &format!("Addons for project {project_name}"),
+        &format!("No addons enabled for project {project_name}"),
+    )?;
+    opts.terminal.stdout().plain(output).write_line()?;
     Ok(())
 }

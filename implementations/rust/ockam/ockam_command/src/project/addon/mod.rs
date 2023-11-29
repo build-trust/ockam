@@ -80,23 +80,6 @@ impl Output for Addon {
     }
 }
 
-impl Output for Vec<Addon> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No addons found".to_string());
-        }
-        let mut w = String::new();
-        for (idx, a) in self.iter().enumerate() {
-            write!(w, "\n{idx}:")?;
-            write!(w, "\n  Id: {}", a.id)?;
-            write!(w, "\n  Enabled: {}", a.enabled)?;
-            write!(w, "\n  Description: {}", a.description)?;
-            writeln!(w)?;
-        }
-        Ok(w)
-    }
-}
-
 async fn check_configuration_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,

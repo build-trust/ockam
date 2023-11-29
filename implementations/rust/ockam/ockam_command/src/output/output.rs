@@ -2,7 +2,6 @@ use core::fmt;
 use core::fmt::Write;
 use std::fmt::Formatter;
 
-use cli_table::{Cell, Style, Table};
 use colorful::Colorful;
 use miette::miette;
 use miette::IntoDiagnostic;
@@ -114,31 +113,6 @@ impl Output for Space {
     }
 }
 
-impl Output for Vec<Space> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No spaces found".to_string());
-        }
-        let mut rows = vec![];
-        for Space {
-            id, name, users, ..
-        } in self
-        {
-            rows.push([id.cell(), name.cell(), comma_separated(users).cell()]);
-        }
-        let table = rows
-            .table()
-            .title([
-                "Id".cell().bold(true),
-                "Name".cell().bold(true),
-                "Users".cell().bold(true),
-            ])
-            .display()?
-            .to_string();
-        Ok(table)
-    }
-}
-
 impl Output for Project {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
@@ -205,41 +179,6 @@ impl Output for ProjectConfigCompact {
         writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
         write!(w, "{}: {}", "Authority identity".bold(), ai)?;
         Ok(w)
-    }
-}
-
-impl Output for Vec<Project> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No projects found".to_string());
-        }
-        let mut rows = vec![];
-        for Project {
-            id,
-            name,
-            users,
-            space_name,
-            ..
-        } in self
-        {
-            rows.push([
-                id.cell(),
-                name.cell(),
-                comma_separated(users).cell(),
-                space_name.cell(),
-            ]);
-        }
-        let table = rows
-            .table()
-            .title([
-                "Id".cell().bold(true),
-                "Name".cell().bold(true),
-                "Users".cell().bold(true),
-                "Space Name".cell().bold(true),
-            ])
-            .display()?
-            .to_string();
-        Ok(table)
     }
 }
 

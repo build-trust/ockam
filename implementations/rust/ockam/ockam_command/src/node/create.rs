@@ -35,7 +35,6 @@ use crate::service::config::Config;
 use crate::terminal::OckamColor;
 use crate::util::api::TrustContextOpts;
 use crate::util::embedded_node_that_is_not_stopped;
-use crate::util::parsers::identity_parser;
 use crate::util::{api, exitcode};
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, fmt_log, fmt_ok};
@@ -100,8 +99,9 @@ pub struct CreateCommand {
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 
-    #[arg(long, value_name = "IDENTITY", value_parser = identity_parser)]
-    pub authority_identity: Option<Identity>,
+    /// Hex encoded Identity
+    #[arg(long, value_name = "IDENTITY")]
+    authority_identity: Option<String>,
 
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
@@ -141,7 +141,14 @@ impl CreateCommand {
         }
     }
 
-    pub fn logging_to_file(&self) -> bool {
+    async fn authority_identity(&self) -> Result<Option<Identity>> {
+        match &self.authority_identity {
+            Some(i) => Ok(Some(Identity::create(i).await.into_diagnostic()?)),
+            None => Ok(None),
+        }
+    }
+
+    fn logging_to_file(&self) -> bool {
         // Background nodes will spawn a foreground node in a child process.
         // In that case, the child process will log to files.
         if self.child_process {
@@ -273,7 +280,7 @@ async fn run_foreground_node(
         .retrieve_trust_context(
             &cmd.trust_context_opts.trust_context,
             &cmd.trust_context_opts.project_name,
-            &cmd.authority_identity,
+            &cmd.authority_identity().await?,
             &cmd.credential,
         )
         .await?;

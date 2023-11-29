@@ -1175,29 +1175,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cli-table"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adfbb116d9e2c4be7011360d0c0bee565712c11e969c9609b25b619366dc379d"
-dependencies = [
- "cli-table-derive",
- "csv",
- "termcolor",
- "unicode-width",
-]
-
-[[package]]
-name = "cli-table-derive"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2af3bfb9da627b0a6c467624fb7963921433774ed435493b5c08a3053e829ad4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "clipboard-win"
 version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1553,27 +1530,6 @@ checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array 0.14.7",
  "typenum",
-]
-
-[[package]]
-name = "csv"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac574ff4d437a7b5ad237ef331c17ccca63c46479e5b5453eb8e10bb99a759fe"
-dependencies = [
- "csv-core",
- "itoa",
- "ryu",
- "serde",
-]
-
-[[package]]
-name = "csv-core"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5efa2b3d7902f4b634a20cae3c9c4e6209dc4779feb6863329607560143efa70"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -3822,7 +3778,6 @@ dependencies = [
  "clap 4.4.8",
  "clap_complete",
  "clap_mangen",
- "cli-table",
  "colorful",
  "colors-transform",
  "console",
@@ -3830,12 +3785,9 @@ dependencies = [
  "dialoguer",
  "duct",
  "flate2",
- "futures 0.3.29",
  "hex",
- "home",
  "indicatif",
  "indoc",
- "itertools 0.11.0",
  "miette",
  "minicbor",
  "nix 0.27.1",
