@@ -35,7 +35,7 @@ impl NodeStatus {
 }
 impl NodeManagerWorker {
     pub async fn get_node_status(&self, ctx: &Context, req: &RequestHeader) -> Result<Response<NodeStatus>, Response<Error>> {
-        let node_name = self.node_manager.get_node_name();
+        let node_name = self.node_manager.get_node_name().await;
         let list_workers_length = ctx.list_workers().await.unwrap().len() as u32;
         Ok(Response::ok(req).body(NodeStatus::new(
             node_name,
@@ -47,16 +47,14 @@ impl NodeManagerWorker {
 }
 
 impl NodeManager {
-    pub fn get_node_name(&self) -> String {
+    pub async fn get_node_name(&self) -> String {
         let node_name = self.node_name.clone();
         node_name
     }  
 
     /// Delete the cli state related to the current node when launched in-memory
-    pub fn delete_node(&self) -> Result<()> {
-        Ok(self
-            .cli_state
-            .nodes
-            .delete_sigkill(self.get_node_name().as_str(), false)?)
+    pub async fn delete_node(&self) -> Result<()> {
+        self.cli_state.remove_node(&self.node_name).await?;
+        Ok(())
     }
 }
