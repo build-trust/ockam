@@ -20,11 +20,15 @@ defmodule OcklyTest do
              pub_key2,
              attestation
            ) ==
-             {:error, :invalid_attestation}
+             {:error, {:invalid_attestation, "public key mismatch"}}
 
     # attestation data is junk
-    assert Ockly.Native.verify_secure_channel_key_attestation(exported_identity, pub_key, pub_key) ==
-             {:error, :attestation_decode_error}
+    assert {:error, {:attestation_decode_error, _}} =
+             Ockly.Native.verify_secure_channel_key_attestation(
+               exported_identity,
+               pub_key,
+               pub_key
+             )
 
     assert Ockly.Native.check_identity(exported_identity) == id
 
@@ -35,7 +39,7 @@ defmodule OcklyTest do
     {ttl, verified_attrs} =
       Ockly.Native.verify_credential(subject_id, [exported_identity], credential)
 
-    {:error, :credential_verification_failed} =
+    {:error, {:credential_verification_failed, _}} =
       Ockly.Native.verify_credential(id, [exported_identity], credential)
 
     assert verified_attrs == attrs
@@ -46,6 +50,24 @@ defmodule OcklyTest do
     {_pub, secret} = :crypto.generate_key(:eddsa, :ed25519)
     key_id = Ockly.Native.import_signing_secret(secret)
     {_id, _exported_identity} = Ockly.Native.create_identity(key_id)
+  end
+
+  test "check identity multiple times" do
+    identity =
+      <<129, 130, 88, 55, 131, 1, 1, 88, 50, 133, 246, 130, 0, 129, 88, 32, 226, 222, 83, 42, 195,
+        227, 2, 64, 192, 152, 225, 250, 120, 25, 95, 56, 175, 122, 156, 103, 13, 1, 134, 81, 88,
+        35, 215, 206, 50, 16, 140, 173, 244, 26, 101, 103, 68, 230, 26, 120, 51, 71, 230, 130, 0,
+        129, 88, 64, 71, 168, 32, 116, 45, 2, 107, 170, 78, 248, 230, 241, 40, 116, 195, 174, 222,
+        236, 72, 86, 14, 211, 179, 3, 166, 150, 15, 4, 173, 28, 91, 224, 150, 112, 188, 174, 70,
+        106, 46, 235, 54, 195, 34, 147, 213, 77, 31, 125, 22, 5, 33, 148, 17, 141, 157, 11, 20,
+        188, 126, 183, 42, 193, 136, 6>>
+
+    expected_identifier = "I092d652f05c3af8e93188b92f05d8605a62746ca9bd34dee85586c6c003b4bac"
+
+    # Verifying identities multiple times must work
+    assert expected_identifier == Ockly.Native.check_identity(identity)
+    assert expected_identifier == Ockly.Native.check_identity(identity)
+    assert expected_identifier == Ockly.Native.check_identity(identity)
   end
 
   test "import identity and existing secret" do
@@ -79,7 +101,7 @@ defmodule OcklyTest do
   end
 
   test "junk identity" do
-    assert {:error, :identity_import_error} == Ockly.Native.check_identity("junk")
+    assert {:error, {:identity_import_error, _}} = Ockly.Native.check_identity("junk")
   end
 
   test "hkdf" do
