@@ -598,48 +598,29 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
         req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        delete_service_request: DeleteServiceRequest,
         kind: KafkaServiceKind,
-    ) -> Result<Response, Response<Error>> {
-        let body: DeleteServiceRequest = match dec.decode() {
-            Ok(it) => it,
-            Err(err) => {
-                return Err(Response::bad_request(req, &err.to_string()));
-            }
-        };
-        let address = body.address();
-        let res = match self
+    ) -> Result<Response<()>, Response<Error>> {
+        match self
             .node_manager
-            .registry
-            .kafka_services
-            .get(&address)
+            .delete_kafka_service(ctx, delete_service_request.address(), kind)
             .await
         {
-            None => {
-                return Err(Response::not_found(
+            Ok(DeleteKafkaServiceResult::ServiceDeleted) => Ok(Response::ok(req)),
+            Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }) => {
+                Err(Response::not_found(
                     req,
-                    &format!("Service at address '{}' not found", address),
-                ));
-            }
-            Some(e) => {
-                if kind.eq(e.kind()) {
-                    ctx.stop_worker(address.clone()).await?;
-                    self.node_manager
-                        .registry
-                        .kafka_services
-                        .remove(&address)
-                        .await;
-                    Response::ok(req)
-                } else {
-                    error!(address = %address, "Service is not a kafka {}", kind.to_string());
-                    return Err(Response::internal_error(
-                        req,
-                        &format!("Service at address '{}' is not a kafka {}", address, kind),
-                    ));
-                }
-            }
-        };
-        Ok(res)
+                    &format!("Service at address '{address}' with kind {kind} not found"),
+                ))
+            },
+            Ok(DeleteKafkaServiceResult::IncorrectKind { address, actual, expected }) => {
+                Err(Response::not_found(
+                    req,
+                    &format!("Service at address '{address}' is not a kafka {expected}. A service of kind {actual} was found instead"),
+                ))
+            },
+            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+        }
     }
 
     pub(super) async fn list_services_of_type(
@@ -760,4 +741,44 @@ impl NodeManager {
 
         Ok(list)
     }
+
+    /// Delete a Kafka service from the registry.
+    /// The expected kind must match the actual kind
+    pub async fn delete_kafka_service(
+        &self,
+        ctx: &Context,
+        address: Address,
+        kind: KafkaServiceKind,
+    ) -> Result<DeleteKafkaServiceResult> {
+        match self.registry.kafka_services.get(&address).await {
+            None => Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }),
+            Some(e) => {
+                if kind.eq(e.kind()) {
+                    ctx.stop_worker(address.clone()).await?;
+                    self.registry.kafka_services.remove(&address).await;
+                    Ok(DeleteKafkaServiceResult::ServiceDeleted)
+                } else {
+                    error!(address = %address, "Service is not a kafka {}", kind.to_string());
+                    Ok(DeleteKafkaServiceResult::IncorrectKind {
+                        address,
+                        actual: e.kind().clone(),
+                        expected: kind,
+                    })
+                }
+            }
+        }
+    }
+}
+
+pub enum DeleteKafkaServiceResult {
+    ServiceDeleted,
+    IncorrectKind {
+        address: Address,
+        actual: KafkaServiceKind,
+        expected: KafkaServiceKind,
+    },
+    ServiceNotFound {
+        address: Address,
+        kind: KafkaServiceKind,
+    },
 }
