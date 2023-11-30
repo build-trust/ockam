@@ -5,7 +5,6 @@ use std::time::Duration;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use miette::{Result, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::trace;
@@ -18,8 +17,6 @@ use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::{Reply, Status};
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 
@@ -28,6 +25,7 @@ use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{find_available_port, node_rpc, port_is_free_guard, process_nodes_multiaddr};
+use crate::Error;
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -75,7 +73,7 @@ pub(crate) fn default_from_addr() -> SocketAddr {
 }
 
 fn default_to_addr() -> String {
-    "/project/$PROJECT_NAME/service/forward_to_$RELAY_NAME/secure/api/service/outlet".to_string()
+    "/project/$DEFAULT_PROJECT_NAME/service/forward_to_$DEFAULT_RELAY_NAME/secure/api/service/outlet".to_string()
 }
 
 impl CreateCommand {
@@ -87,7 +85,7 @@ impl CreateCommand {
         MultiAddr::from_str(&self.to).unwrap()
     }
 
-    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> Result<Self> {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
         let default_project_name = &opts
             .state
             .get_default_project()
@@ -95,26 +93,21 @@ impl CreateCommand {
             .ok()
             .map(|p| p.name());
 
-        self.to = Self::parse_arg_to(&opts.state, self.to, default_project_name).await?;
+        self.to = Self::parse_arg_to(&opts.state, self.to, default_project_name.as_deref()).await?;
         Ok(self)
     }
 
     async fn parse_arg_to(
         state: &CliState,
         to: impl Into<String>,
-        default_project_name: &Option<String>,
-    ) -> Result<String> {
+        default_project_name: Option<&str>,
+    ) -> miette::Result<String> {
         let mut to = to.into();
-        let missing_project_error =
-            "There is no default project defined. Please enroll or create a project.";
-
         // Replace the placeholders in the default arg value
         if to.starts_with("/project/") {
-            let project_name = default_project_name
-                .clone()
-                .ok_or(miette!(missing_project_error))?;
-            to = to.replace("$PROJECT_NAME", &project_name);
-            to = to.replace("$RELAY_NAME", "default");
+            let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
+            to = to.replace("$DEFAULT_PROJECT_NAME", project_name);
+            to = to.replace("$DEFAULT_RELAY_NAME", "default");
         }
 
         // Parse the address
@@ -124,25 +117,22 @@ impl CreateCommand {
             // The user provided the name of the relay
             Err(_) => {
                 if to.contains('/') {
-                    return Err(miette!("The relay name can't contain '/'"));
+                    return Err(Error::arg_validation("to", to, None).into());
                 }
-                let project_name = default_project_name
-                    .clone()
-                    .ok_or(miette!(missing_project_error))?;
-
+                let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
                 MultiAddr::from_str(&format!(
                     "/project/{}/service/forward_to_{to}/secure/api/service/outlet",
                     project_name
                 ))
                 .into_diagnostic()
-                .wrap_err("Invalid address value or relay name")?
+                .map_err(|e| Error::arg_validation("to", to, Some(&e.to_string())))?
             }
         };
         Ok(process_nodes_multiaddr(&ma, state).await?.to_string())
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     let cmd = cmd.parse_args(&opts).await?;
     opts.terminal.write_line(&fmt_log!(
         "Creating TCP Inlet at {}...\n",
@@ -180,14 +170,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
                     *is_finished.lock().await = true;
                     break inlet_status;
                 }
-                Reply::Failed(e, s) => {
+                Reply::Failed(_, s) => {
                     if let Some(status) = s {
                         if status == Status::BadRequest {
-                            Err(Error::new(
-                                Origin::Api,
-                                Kind::Invalid,
-                                e.message().unwrap_or("bad request when creating an inlet"),
-                            ))?
+                            Err(miette!("Bad request when creating an inlet"))?
                         }
                     };
                     trace!("the inlet creation returned a non-OK status: {s:?}");
@@ -268,19 +254,20 @@ mod tests {
     #[tokio::test]
     async fn test_parse_arg_to() -> Result<()> {
         let state = CliState::test().await?;
-        let default_project_name = Some("p1".to_string());
+        let default_project_name = Some("p1");
 
         // Invalid values
-        CreateCommand::parse_arg_to(&state, "/alice/service", &default_project_name)
+        CreateCommand::parse_arg_to(&state, "/alice/service", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_to(&state, "alice/forwarder", &default_project_name)
+        CreateCommand::parse_arg_to(&state, "alice/forwarder", default_project_name)
             .await
             .expect_err("Invalid protocol");
 
-        // The placeholders are replaced in the default value
-        let res =
-            CreateCommand::parse_arg_to(&state, default_to_addr(), &default_project_name).await?;
+        // The placeholders are replaced when using the arg's default value
+        let res = CreateCommand::parse_arg_to(&state, default_to_addr(), default_project_name)
+            .await
+            .unwrap();
         assert_eq!(
             res,
             "/project/p1/service/forward_to_default/secure/api/service/outlet"
@@ -288,11 +275,15 @@ mod tests {
 
         // The user provides a full project route
         let addr = "/project/p1/service/forward_to_n1/secure/api/service/outlet";
-        let res = CreateCommand::parse_arg_to(&state, addr, &default_project_name).await?;
+        let res = CreateCommand::parse_arg_to(&state, addr, default_project_name)
+            .await
+            .unwrap();
         assert_eq!(res, addr);
 
         // The user provides the name of the relay
-        let res = CreateCommand::parse_arg_to(&state, "alice", &default_project_name).await?;
+        let res = CreateCommand::parse_arg_to(&state, "alice", default_project_name)
+            .await
+            .unwrap();
         assert_eq!(
             res,
             "/project/p1/service/forward_to_alice/secure/api/service/outlet"

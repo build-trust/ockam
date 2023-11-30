@@ -31,6 +31,14 @@ pub enum Error {
     #[error("Unauthorized to operate on this project as {identity}")]
     Unauthorized { identity: String },
 
+    #[diagnostic(
+        code(OCK401),
+        help("Make sure you are enrolled before running this command"),
+        url("https://docs.ockam.io/errors/OCK401")
+    )]
+    #[error("There is no default project defined. Please enroll or create a project.")]
+    NotEnrolled,
+
     // Conflict
     #[diagnostic(
         code(OCK409),
@@ -80,15 +88,22 @@ impl Error {
         }
     }
 
+    pub fn arg_validation<T: Debug>(arg: &str, value: T, err: Option<&str>) -> Self {
+        let err = err.map(|e| format!(": {e}")).unwrap_or_default();
+        let msg = format!("invalid value '({value:?})' for '{arg}' {err}");
+        Self::new(exitcode::USAGE, miette!(msg))
+    }
+
     pub fn new_internal_error(human_err: &str, inner_err_msg: &str) -> Self {
         let msg = format!("{}\n{}", human_err, fmt_log!("{}", inner_err_msg));
-        Self::new(exitcode::SOFTWARE, miette!("{}", msg))
+        Self::new(exitcode::SOFTWARE, miette!(msg))
     }
 
     pub fn code(&self) -> ExitCode {
         match self {
             Error::NotFound { .. } => exitcode::SOFTWARE,
             Error::Unauthorized { .. } => exitcode::NOPERM,
+            Error::NotEnrolled => exitcode::NOPERM,
             Error::Conflict { .. } => exitcode::SOFTWARE,
             Error::InternalError { exit_code, .. } => *exit_code,
             Error::Unavailable { .. } => exitcode::UNAVAILABLE,
