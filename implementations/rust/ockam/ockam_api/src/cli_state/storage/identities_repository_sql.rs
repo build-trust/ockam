@@ -40,7 +40,6 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         name: &str,
         vault_name: &str,
     ) -> Result<NamedIdentity> {
-        let transaction = self.database.begin().await.into_core()?;
         let is_already_default = self
             .get_default_named_identity()
             .await?
@@ -53,8 +52,6 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
             .bind(vault_name.to_sql())
             .bind(is_already_default.to_sql());
         query.execute(&self.database.pool).await.void()?;
-
-        transaction.commit().await.void()?;
 
         Ok(NamedIdentity::new(
             identifier.clone(),
@@ -147,18 +144,18 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     }
 
     async fn set_as_default_by_identifier(&self, identifier: &Identifier) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
         let query1 = query("UPDATE named_identity SET is_default = ? WHERE identifier = ?")
             .bind(true.to_sql())
             .bind(identifier.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE named_identity SET is_default = ? WHERE identifier <> ?")
             .bind(false.to_sql())
             .bind(identifier.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
 

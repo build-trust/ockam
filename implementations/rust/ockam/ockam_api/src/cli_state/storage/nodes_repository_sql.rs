@@ -89,18 +89,18 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn set_default_node(&self, node_name: &str) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         // set the node as the default one
         let query1 = query("UPDATE node SET is_default = ? WHERE name = ?")
             .bind(true.to_sql())
             .bind(node_name.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE node SET is_default = ? WHERE name <> ?")
             .bind(false.to_sql())
             .bind(node_name.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
 

@@ -30,7 +30,7 @@ impl VaultsSqlxDatabase {
 #[async_trait]
 impl VaultsRepository for VaultsSqlxDatabase {
     async fn store_vault(&self, name: &str, path: PathBuf, is_kms: bool) -> Result<NamedVault> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         let is_already_default = self
             .get_default_vault()
             .await?
@@ -41,7 +41,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
             .bind(path.to_sql())
             .bind(is_already_default.to_sql())
             .bind(is_kms.to_sql());
-        query.execute(&self.database.pool).await.void()?;
+        query.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()?;
 
         Ok(NamedVault::new(
@@ -73,18 +73,18 @@ impl VaultsRepository for VaultsSqlxDatabase {
     }
 
     async fn set_as_default(&self, name: &str) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
         let query1 = query("UPDATE vault SET is_default = ? WHERE name = ?")
             .bind(true.to_sql())
             .bind(name.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE vault SET is_default = ? WHERE name <> ?")
             .bind(false.to_sql())
             .bind(name.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
 

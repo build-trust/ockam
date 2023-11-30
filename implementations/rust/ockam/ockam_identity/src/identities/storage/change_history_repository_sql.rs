@@ -47,13 +47,13 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     }
 
     async fn delete_change_history(&self, identifier: &Identifier) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         let query1 = query("DELETE FROM identity where identifier=?").bind(identifier.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         let query2 =
             query("DELETE FROM identity_attributes where identifier=?").bind(identifier.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()?;
         Ok(())
     }
