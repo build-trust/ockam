@@ -685,13 +685,15 @@ impl NodeManagerWorker {
             }
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "inlet"]) => self.get_inlets(req).await.to_vec()?,
+            (Get, ["node", "inlet"]) => encode_response(self.get_inlets(req).await)?,
             (Get, ["node", "inlet", alias]) => encode_response(self.show_inlet(req, alias).await)?,
             (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
             (Get, ["node", "outlet", alias]) => {
                 encode_response(self.show_outlet(req, alias).await)?
             }
-            (Post, ["node", "inlet"]) => encode_response(self.create_inlet(req, dec, ctx).await)?,
+            (Post, ["node", "inlet"]) => {
+                encode_response(self.create_inlet(ctx, req, dec.decode()?).await)?
+            }
             (Post, ["node", "outlet"]) => {
                 encode_response(self.create_outlet(ctx, req, dec.decode()?).await)?
             }
