@@ -1,4 +1,5 @@
 use core::fmt::{Debug, Formatter};
+use sqlx::pool::PoolOptions;
 use sqlx::sqlite::SqliteConnectOptions;
 use std::ops::Deref;
 use std::path::Path;
@@ -88,7 +89,12 @@ impl SqlxDatabase {
     }
 
     async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
-        let pool = SqlitePool::connect("sqlite::memory:")
+        // SQLite in-memory DB get wiped if there is no connection to it.
+        // The below setting tries to ensure there is always an open connection
+        let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
+
+        let pool = pool_options
+            .connect("sqlite::memory:")
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)
