@@ -1,3 +1,4 @@
+use either::Either;
 use std::net::IpAddr;
 
 use minicbor::Decoder;
@@ -27,9 +28,7 @@ use crate::nodes::models::services::{
     StartKafkaConsumerRequest, StartKafkaDirectRequest, StartKafkaOutletRequest,
     StartKafkaProducerRequest, StartServiceRequest, StartUppercaseServiceRequest,
 };
-use crate::nodes::registry::{
-    CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
-};
+use crate::nodes::registry::{CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind};
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -647,34 +646,47 @@ impl NodeManagerWorker {
         &self,
         req: &RequestHeader,
         service_type: &str,
-    ) -> Result<Vec<u8>> {
-        if !DefaultAddress::is_valid(service_type) {
-            return Ok(Response::bad_request(
-                req,
-                &format!("Service type '{service_type}' doesn't exist"),
-            )
-            .to_vec()?);
+    ) -> Result<Response<ServiceList>, Response<Error>> {
+        match self.node_manager.list_services_of_type(service_type).await {
+            Ok(Either::Left(services)) => Ok(Response::ok(req).body(ServiceList::new(services))),
+            Ok(Either::Right(message)) => Err(Response::bad_request(req, &message)),
+            Err(e) => Err(Response::internal_error(req, &e.to_string())),
         }
-        let services = Self::list_services_impl(&self.node_manager.registry).await;
-        let filtered = services
-            .into_iter()
-            .filter(|service| service.service_type == service_type)
-            .collect();
-        Ok(Response::ok(req)
-            .body(ServiceList::new(filtered))
-            .to_vec()?)
     }
 
-    pub(super) async fn list_services(&self, req: &RequestHeader) -> Result<Vec<u8>> {
-        let services = Self::list_services_impl(&self.node_manager.registry).await;
-        Ok(Response::ok(req)
-            .body(ServiceList::new(services))
-            .to_vec()?)
+    pub(super) async fn list_services(
+        &self,
+        req: &RequestHeader,
+    ) -> Result<Response<ServiceList>, Response<Error>> {
+        match self.node_manager.list_services().await {
+            Ok(services) => Ok(Response::ok(req).body(ServiceList::new(services))),
+            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+        }
+    }
+}
+
+impl NodeManager {
+    pub async fn list_services_of_type(
+        &self,
+        service_type: &str,
+    ) -> Result<Either<Vec<ServiceStatus>, String>> {
+        if !DefaultAddress::is_valid(service_type) {
+            return Ok(Either::Right(format!(
+                "the service {service_type} is not a valid service"
+            )));
+        };
+        let services = self.list_services().await?;
+        Ok(Either::Left(
+            services
+                .into_iter()
+                .filter(|service| service.service_type == service_type)
+                .collect(),
+        ))
     }
 
-    async fn list_services_impl(registry: &Registry) -> Vec<ServiceStatus> {
+    pub async fn list_services(&self) -> Result<Vec<ServiceStatus>> {
         let mut list = Vec::new();
-        registry
+        self.registry
             .authenticated_services
             .keys()
             .await
@@ -685,7 +697,7 @@ impl NodeManagerWorker {
                     DefaultAddress::AUTHENTICATED_SERVICE,
                 ))
             });
-        registry
+        self.registry
             .uppercase_services
             .keys()
             .await
@@ -696,7 +708,7 @@ impl NodeManagerWorker {
                     DefaultAddress::UPPERCASE_SERVICE,
                 ))
             });
-        registry
+        self.registry
             .echoer_services
             .keys()
             .await
@@ -707,13 +719,18 @@ impl NodeManagerWorker {
                     DefaultAddress::ECHO_SERVICE,
                 ))
             });
-        registry.hop_services.keys().await.iter().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::HOP_SERVICE,
-            ))
-        });
-        registry
+        self.registry
+            .hop_services
+            .keys()
+            .await
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::HOP_SERVICE,
+                ))
+            });
+        self.registry
             .credentials_services
             .keys()
             .await
@@ -724,7 +741,7 @@ impl NodeManagerWorker {
                     DefaultAddress::CREDENTIALS_SERVICE,
                 ))
             });
-        registry
+        self.registry
             .kafka_services
             .entries()
             .await
@@ -741,6 +758,6 @@ impl NodeManagerWorker {
                 ))
             });
 
-        list
+        Ok(list)
     }
 }

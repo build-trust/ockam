@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use minicbor::Decoder;
 use tokio::time::timeout;
 
 use ockam::identity::Identifier;

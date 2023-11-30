@@ -666,9 +666,9 @@ impl NodeManagerWorker {
                 self.delete_kafka_service(ctx, req, dec, KafkaServiceKind::Direct)
                     .await,
             )?,
-            (Get, ["node", "services"]) => self.list_services(req).await?,
+            (Get, ["node", "services"]) => encode_response(self.list_services(req).await)?,
             (Get, ["node", "services", service_type]) => {
-                self.list_services_of_type(req, service_type).await?
+                encode_response(self.list_services_of_type(req, service_type).await)?
             }
 
             // ==*== Relay commands ==*==
