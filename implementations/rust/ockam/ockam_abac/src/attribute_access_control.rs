@@ -12,7 +12,7 @@ use tracing as log;
 
 use crate::expr::str;
 use crate::Expr::*;
-use crate::{eval, Env, Expr};
+use crate::{eval, Env, Expr, Policy};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
@@ -24,14 +24,14 @@ use ockam_identity::{Identifier, IdentityAttributesRepository, IdentitySecureCha
 /// as [`crate::PoliciesRepository`] can be used to retrieve a specific policy for a given resource and action
 pub struct AbacAccessControl {
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
-    expression: Expr,
+    policy: Policy,
     environment: Env,
 }
 
 /// Debug implementation printing out the policy expression only
 impl Debug for AbacAccessControl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let expression = self.expression.clone();
+        let expression = self.policy.expression().clone();
         f.write_str(format!("{expression:?}").as_str())
     }
 }
@@ -40,12 +40,12 @@ impl AbacAccessControl {
     /// Create a new AccessControl using a specific policy for checking attributes
     pub fn new(
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
-        expression: Expr,
+        policy: Policy,
         environment: Env,
     ) -> Self {
         Self {
             identity_attributes_repository,
-            expression,
+            policy,
             environment,
         }
     }
@@ -63,7 +63,11 @@ where {
             Ident(format!("subject.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
-        AbacAccessControl::new(identity_attributes_repository, expression, Env::new())
+        AbacAccessControl::new(
+            identity_attributes_repository,
+            Policy::new(expression),
+            Env::new(),
+        )
     }
 }
 
@@ -83,7 +87,7 @@ impl AbacAccessControl {
                     Ok(key) => key,
                     Err(_) => {
                         log::warn! {
-                            policy = %self.expression,
+                            policy = %self.policy,
                             id     = %id,
                             "attribute key is not utf-8"
                         }
@@ -92,7 +96,7 @@ impl AbacAccessControl {
                 };
                 if key.find(|c: char| c.is_whitespace()).is_some() {
                     log::warn! {
-                        policy = %self.expression,
+                        policy = %self.policy,
                         id     = %id,
                         key    = %key,
                         "attribute key with whitespace ignored"
@@ -102,7 +106,7 @@ impl AbacAccessControl {
                     Ok(s) => {
                         if environment.contains(key) {
                             log::debug! {
-                                policy = %self.expression,
+                                policy = %self.policy,
                                 id     = %id,
                                 key    = %key,
                                 "attribute already present"
@@ -113,7 +117,7 @@ impl AbacAccessControl {
                     }
                     Err(e) => {
                         log::warn! {
-                            policy = %self.expression,
+                            policy = %self.policy,
                             id     = %id,
                             key    = %key,
                             err    = %e,
@@ -128,10 +132,10 @@ impl AbacAccessControl {
         environment.put("subject.identifier", str(id.to_string()));
 
         // Finally, evaluate the expression and return the result:
-        match eval(&self.expression, &environment) {
+        match eval(self.policy.expression(), &environment) {
             Ok(Expr::Bool(b)) => {
                 log::debug! {
-                    policy        = %self.expression,
+                    policy        = %self.policy,
                     id            = %id,
                     is_authorized = %b,
                     "policy evaluated"
@@ -140,7 +144,7 @@ impl AbacAccessControl {
             }
             Ok(x) => {
                 log::warn! {
-                    policy = %self.expression,
+                    policy = %self.policy,
                     id     = %id,
                     expr   = %x,
                     "evaluation did not yield a boolean result"
@@ -149,7 +153,7 @@ impl AbacAccessControl {
             }
             Err(e) => {
                 log::warn! {
-                    policy = %self.expression,
+                    policy = %self.policy,
                     id     = %id,
                     err    = %e,
                     "policy evaluation failed"
@@ -169,7 +173,7 @@ impl IncomingAccessControl for AbacAccessControl {
             info.their_identity_id()
         } else {
             log::debug! {
-                policy = %self.expression,
+                policy = %self.policy,
                 "identity identifier not found; access denied"
             }
             return Ok(false);

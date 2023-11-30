@@ -44,13 +44,13 @@ impl PolicyAccessControl {
     pub fn new(
         policies: Arc<dyn PoliciesRepository>,
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
-        r: Resource,
-        a: Action,
+        resource: Resource,
+        action: Action,
         env: Env,
     ) -> Self {
         Self {
-            resource: r,
-            action: a,
+            resource,
+            action,
             policies,
             identity_attributes_repository,
             environment: env,
@@ -62,17 +62,17 @@ impl PolicyAccessControl {
 impl IncomingAccessControl for PolicyAccessControl {
     async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
         // Load the policy expression for resource and action:
-        let expr = if let Some(expr) = self
+        let policy = if let Some(policy) = self
             .policies
             .get_policy(&self.resource, &self.action)
             .await?
         {
-            if let Expr::Bool(b) = expr {
+            if let Expr::Bool(b) = policy.expression() {
                 // If the policy is a constant there is no need to populate
                 // the environment or look for message metadata.
-                return Ok(b);
+                return Ok(*b);
             } else {
-                expr
+                policy
             }
         } else {
             // If no policy exists for this resource and action access is denied:
@@ -86,7 +86,7 @@ impl IncomingAccessControl for PolicyAccessControl {
 
         AbacAccessControl::new(
             self.identity_attributes_repository.clone(),
-            expr,
+            policy,
             self.environment.clone(),
         )
         .is_authorized(msg)

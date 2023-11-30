@@ -4,23 +4,6 @@ use ockam_abac::{Action, Expr};
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Policy {
-    #[n(1)] expression: Expr,
-}
-
-impl Policy {
-    pub fn new(e: Expr) -> Self {
-        Policy { expression: e }
-    }
-
-    pub fn expression(&self) -> &Expr {
-        &self.expression
-    }
-}
-
-#[derive(Debug, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
 pub struct PolicyList {
     #[n(1)] expressions: Vec<Expression>,
 }
