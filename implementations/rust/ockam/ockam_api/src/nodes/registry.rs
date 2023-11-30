@@ -118,7 +118,7 @@ pub(crate) struct VerifierServiceInfo {}
 pub(crate) struct CredentialsServiceInfo {}
 
 #[derive(Eq, PartialEq, Clone)]
-pub(crate) enum KafkaServiceKind {
+pub enum KafkaServiceKind {
     Consumer,
     Producer,
     Outlet,
