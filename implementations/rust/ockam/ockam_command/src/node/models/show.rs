@@ -23,6 +23,7 @@ pub struct ShowNodeResponse {
     pub is_default: bool,
     pub name: String,
     pub is_up: bool,
+    pub node_pid: Option<u32>,
     pub route: RouteToNode,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub identity: Option<String>,
@@ -46,6 +47,7 @@ impl ShowNodeResponse {
         name: &str,
         is_up: bool,
         node_port: Option<u16>,
+        node_pid: Option<u32>,
     ) -> ShowNodeResponse {
         let mut m = MultiAddr::default();
         let short = m.push_back(Node::new(name)).ok().map(|_| m);
@@ -64,6 +66,7 @@ impl ShowNodeResponse {
             is_default,
             name: name.to_owned(),
             is_up,
+            node_pid,
             route: RouteToNode { short, verbose },
             identity: None,
             transports: Default::default(),
@@ -93,6 +96,10 @@ impl Display for ShowNodeResponse {
                 false => "DOWN".light_red(),
             }
         )?;
+
+        if let Some(node_pid) = self.node_pid {
+            writeln!(buffer, "  PID: {}", node_pid)?;
+        }
 
         writeln!(buffer, "  Route To Node:")?;
         if let Some(short) = &self.route.short {

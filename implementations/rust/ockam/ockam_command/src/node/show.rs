@@ -148,6 +148,7 @@ pub async fn print_query_status(
             &node_name,
             is_authority_node,
             node_info.tcp_listener_port(),
+            node_info.pid(),
         )
     } else {
         let mut show_node = ShowNodeResponse::new(
@@ -155,6 +156,7 @@ pub async fn print_query_status(
             &node_name,
             true,
             node_info.tcp_listener_port(),
+            node_info.pid(),
         );
         // Get list of services for the node
         let services: ServiceList = node.ask(ctx, api::list_services()).await?;

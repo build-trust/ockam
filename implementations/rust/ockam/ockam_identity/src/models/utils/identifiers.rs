@@ -1,13 +1,14 @@
+use core::fmt::{Display, Formatter};
+use core::str::FromStr;
+
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::env::FromString;
 use ockam_core::{Error, Result};
 
-use crate::{Identifier, IdentityError};
-
 use crate::models::{ChangeHash, CHANGE_HASH_LEN, IDENTIFIER_LEN};
-use core::fmt::{Display, Formatter};
-use core::str::FromStr;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use crate::{Identifier, IdentityError};
 
 impl Serialize for Identifier {
     fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
@@ -60,10 +61,10 @@ impl TryFrom<&str> for Identifier {
             if let Ok(data) = hex::decode(value) {
                 data.try_into()
             } else {
-                Err(IdentityError::InvalidIdentifier.into())
+                Err(IdentityError::InvalidIdentifier(value.into()).into())
             }
         } else {
-            Err(IdentityError::InvalidIdentifier.into())
+            Err(IdentityError::InvalidIdentifier(value.into()).into())
         }
     }
 }
@@ -75,7 +76,7 @@ impl TryFrom<&[u8]> for Identifier {
         if let Ok(value) = <[u8; IDENTIFIER_LEN]>::try_from(value) {
             Ok(Self(value))
         } else {
-            Err(IdentityError::InvalidIdentifier.into())
+            Err(IdentityError::InvalidIdentifier(hex::encode(value)).into())
         }
     }
 }
@@ -142,7 +143,7 @@ impl TryFrom<&str> for ChangeHash {
         if let Ok(data) = hex::decode(value) {
             data.try_into()
         } else {
-            Err(IdentityError::InvalidIdentifier.into())
+            Err(IdentityError::InvalidIdentifier(value.into()).into())
         }
     }
 }
@@ -154,7 +155,7 @@ impl TryFrom<&[u8]> for ChangeHash {
         if let Ok(value) = <[u8; CHANGE_HASH_LEN]>::try_from(value) {
             Ok(Self(value))
         } else {
-            Err(IdentityError::InvalidIdentifier.into())
+            Err(IdentityError::InvalidIdentifier(hex::encode(value)).into())
         }
     }
 }
@@ -197,8 +198,9 @@ impl AsRef<[u8]> for ChangeHash {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use quickcheck::{quickcheck, Arbitrary, Gen};
+
+    use super::*;
 
     impl Arbitrary for Identifier {
         fn arbitrary(g: &mut Gen) -> Self {

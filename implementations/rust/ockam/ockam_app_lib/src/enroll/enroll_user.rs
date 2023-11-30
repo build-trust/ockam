@@ -190,7 +190,7 @@ impl AppState {
                 });
                 let ctx = &self.context();
                 let project = node_manager
-                    .create_project(ctx, &space.id, PROJECT_NAME, vec![])
+                    .create_project(ctx, &space.name, PROJECT_NAME, vec![])
                     .await?;
                 node_manager
                     .wait_until_project_is_ready(ctx, project)

@@ -109,8 +109,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
             let node_manager = InMemoryNode::start_node(
                 ctx,
                 &opts.state,
-                Some(identity_name.clone()),
-                None,
+                &identity_name,
                 cmd.trust_context_opts.project_name,
                 named_trust_context,
             )
