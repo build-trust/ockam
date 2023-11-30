@@ -1,78 +1,113 @@
-use either::Either;
-use minicbor::Decoder;
-
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::{Action, Resource};
+use ockam_abac::{Action, Policy, Resource};
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::{async_trait, Result};
 use ockam_node::Context;
 
-use crate::nodes::models::policy::{Expression, Policy, PolicyList};
-use crate::nodes::BackgroundNode;
+use crate::nodes::models::policy::{Expression, PolicyList};
+use crate::nodes::{BackgroundNode, NodeManagerWorker};
 
 use super::NodeManager;
 
-impl NodeManager {
+impl NodeManagerWorker {
     pub(super) async fn add_policy(
         &self,
+        req: &RequestHeader,
         resource: &str,
         action: &str,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        policy: Policy,
     ) -> Result<Response<()>, Response<Error>> {
-        let p: Policy = dec.decode()?;
-        let r = Resource::new(resource);
-        let a = Action::new(action);
-        self.cli_state
-            .set_policy(&r, &a, p.expression())
+        let resource = Resource::new(resource);
+        let action = Action::new(action);
+        self.node_manager
+            .set_policy(resource, action, policy)
             .await
-            .map_err(ockam_core::Error::from)?;
-        Ok(Response::ok(req))
+            .map(|_| Response::ok(req))
+            .map_err(|e| Response::internal_error(req, &e.to_string()))
     }
 
-    pub(super) async fn get_policy<'a>(
+    pub(super) async fn get_policy(
         &self,
-        req: &'a RequestHeader,
+        req: &RequestHeader,
         resource: &str,
         action: &str,
-    ) -> Result<Either<Response<Error>, Response<Policy>>> {
-        let r = Resource::new(resource);
-        let a = Action::new(action);
-        if let Some(e) = self.cli_state.get_policy(&r, &a).await? {
-            Ok(Either::Right(Response::ok(req).body(Policy::new(e))))
-        } else {
-            Ok(Either::Left(Response::not_found(req, "policy not found")))
+    ) -> Result<Response<Policy>, Response<Error>> {
+        let resource = Resource::new(resource);
+        let action = Action::new(action);
+        match self
+            .node_manager
+            .get_policy(resource.clone(), action.clone())
+            .await
+        {
+            Ok(Some(policy)) => Ok(Response::ok(req).body(policy)),
+            Ok(None) => Err(Response::not_found(
+                req,
+                &format!("no policy found for {resource}/{action}"),
+            )),
+            Err(e) => Err(Response::internal_error(req, &e.to_string())),
         }
     }
 
     pub(super) async fn list_policies(
         &self,
         req: &RequestHeader,
-        res: &str,
+        resource: &str,
     ) -> Result<Response<PolicyList>, Response<Error>> {
-        let r = Resource::new(res);
-        let p = self
-            .cli_state
-            .get_policies_by_resource(&r)
-            .await
-            .map_err(ockam_core::Error::from)?;
-        let p = p.into_iter().map(|(a, e)| Expression::new(a, e)).collect();
-        Ok(Response::ok(req).body(PolicyList::new(p)))
+        let resource = Resource::new(resource);
+        match self.node_manager.get_policies_by_resource(&resource).await {
+            Ok(policies) => Ok(Response::ok(req).body(PolicyList::new(
+                policies
+                    .into_iter()
+                    .map(|(a, p)| Expression::new(a, p.expression().clone()))
+                    .collect(),
+            ))),
+            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+        }
     }
 
-    pub(super) async fn del_policy(
+    pub(super) async fn delete_policy(
         &self,
         req: &RequestHeader,
-        res: &str,
-        act: &str,
+        resource: &str,
+        action: &str,
     ) -> Result<Response<()>, Response<Error>> {
-        let r = Resource::new(res);
-        let a = Action::new(act);
-        self.cli_state
-            .delete_policy(&r, &a)
-            .await
-            .map_err(ockam_core::Error::from)?;
-        Ok(Response::ok(req))
+        let resource = Resource::new(resource);
+        let action = Action::new(action);
+        match self.node_manager.delete_policy(resource, action).await {
+            Ok(_) => Ok(Response::ok(req)),
+            Err(e) => Err(Response::internal_error(req, &e.to_string())),
+        }
+    }
+}
+
+impl NodeManager {
+    /// Set a policy on a resource accessed with a specific action
+    pub async fn set_policy(
+        &self,
+        resource: Resource,
+        action: Action,
+        policy: Policy,
+    ) -> Result<()> {
+        Ok(self
+            .cli_state
+            .set_policy(&resource, &action, &policy)
+            .await?)
+    }
+
+    /// Return the policy set on a resource for a given action, if there is one
+    pub async fn get_policy(&self, resource: Resource, action: Action) -> Result<Option<Policy>> {
+        Ok(self.cli_state.get_policy(&resource, &action).await?)
+    }
+
+    pub async fn get_policies_by_resource(
+        &self,
+        resource: &Resource,
+    ) -> Result<Vec<(Action, Policy)>> {
+        Ok(self.cli_state.get_policies_by_resource(resource).await?)
+    }
+
+    pub async fn delete_policy(&self, resource: Resource, action: Action) -> Result<()> {
+        Ok(self.cli_state.delete_policy(&resource, &action).await?)
     }
 }
 

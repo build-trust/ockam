@@ -22,6 +22,14 @@ pub enum Expr {
     #[n(7)] List  (#[n(0)] Vec<Expr>)
 }
 
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        self.equals(other).is_ok()
+    }
+}
+
+impl Eq for Expr {}
+
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 pub enum Val {

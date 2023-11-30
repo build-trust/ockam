@@ -7,7 +7,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 
-use crate::{Action, Expr, PoliciesRepository, Resource};
+use crate::{Action, Expr, PoliciesRepository, Policy, Resource};
 
 #[derive(Clone)]
 pub struct PolicySqlxDatabase {
@@ -31,7 +31,7 @@ impl PolicySqlxDatabase {
 
 #[async_trait]
 impl PoliciesRepository for PolicySqlxDatabase {
-    async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Expr>> {
+    async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Policy>> {
         let query = query_as("SELECT * FROM policy WHERE resource=$1 and action=$2")
             .bind(resource.to_sql())
             .bind(action.to_sql());
@@ -39,19 +39,19 @@ impl PoliciesRepository for PolicySqlxDatabase {
             .fetch_optional(&self.database.pool)
             .await
             .into_core()?;
-        Ok(row.map(|r| r.expression()).transpose()?)
+        Ok(row.map(|r| r.policy()).transpose()?)
     }
 
     async fn set_policy(
         &self,
         resource: &Resource,
         action: &Action,
-        expression: &Expr,
+        policy: &Policy,
     ) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO policy VALUES (?, ?, ?)")
             .bind(resource.to_sql())
             .bind(action.to_sql())
-            .bind(minicbor::to_vec(expression)?.to_sql());
+            .bind(minicbor::to_vec(policy.expression())?.to_sql());
         query.execute(&self.database.pool).await.void()
     }
 
@@ -62,12 +62,12 @@ impl PoliciesRepository for PolicySqlxDatabase {
         query.execute(&self.database.pool).await.void()
     }
 
-    async fn get_policies_by_resource(&self, resource: &Resource) -> Result<Vec<(Action, Expr)>> {
+    async fn get_policies_by_resource(&self, resource: &Resource) -> Result<Vec<(Action, Policy)>> {
         let query = query_as("SELECT * FROM policy where resource = $1").bind(resource.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         row.into_iter()
-            .map(|r| r.expression().map(|e| (r.action(), e)))
-            .collect::<Result<Vec<(Action, Expr)>>>()
+            .map(|r| r.policy().map(|e| (r.action(), e)))
+            .collect::<Result<Vec<(Action, Policy)>>>()
     }
 }
 
@@ -106,6 +106,10 @@ impl PolicyRow {
     pub(crate) fn expression(&self) -> Result<Expr> {
         Ok(minicbor::decode(self.expression.as_slice())?)
     }
+
+    pub(crate) fn policy(&self) -> Result<Policy> {
+        Ok(Policy::new(self.expression()?))
+    }
 }
 
 #[cfg(test)]
@@ -121,16 +125,16 @@ mod test {
         // a policy can be associated to a resource and an action
         let r = Resource::from("outlet");
         let a = Action::from("create");
-        let e = eq([ident("name"), str("me")]);
-        repository.set_policy(&r, &a, &e).await?;
-        assert!(repository.get_policy(&r, &a).await?.unwrap().equals(&e)?);
+        let p = Policy::new(eq([ident("name"), str("me")]));
+        repository.set_policy(&r, &a, &p).await?;
+        assert_eq!(repository.get_policy(&r, &a).await?.unwrap(), p);
 
         // we can retrieve all the policies associated to a given resource
         let policies = repository.get_policies_by_resource(&r).await?;
         assert_eq!(policies.len(), 1);
 
         let a = Action::from("delete");
-        repository.set_policy(&r, &a, &e).await?;
+        repository.set_policy(&r, &a, &p).await?;
         let policies = repository.get_policies_by_resource(&r).await?;
         assert_eq!(policies.len(), 2);
 

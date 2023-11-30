@@ -10,7 +10,7 @@ use ockam::identity::{
     TrustEveryonePolicy,
 };
 use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{AbacAccessControl, Env};
+use ockam_abac::{AbacAccessControl, Env, Policy};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
@@ -363,7 +363,7 @@ impl Authority {
         );
         let abac = Arc::new(AbacAccessControl::new(
             self.identity_attributes_repository(),
-            rule,
+            Policy::new(rule),
             env,
         ));
         abac

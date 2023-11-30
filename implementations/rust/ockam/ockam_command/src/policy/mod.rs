@@ -2,8 +2,7 @@ use clap::{Args, Subcommand};
 
 use ockam::Context;
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::{Action, Resource};
-use ockam_api::nodes::models::policy::Policy;
+use ockam_abac::{Action, Policy, Resource};
 use ockam_api::nodes::models::policy::PolicyList;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;

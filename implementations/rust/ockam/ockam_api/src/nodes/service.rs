@@ -18,7 +18,7 @@ use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::{Action, Env, Expr, Resource};
+use ockam_abac::{Action, Env, Expr, Policy, Resource};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
@@ -228,21 +228,21 @@ pub struct IdentityOverride {
 impl NodeManager {
     async fn access_control(
         &self,
-        r: &Resource,
-        a: &Action,
+        resource: &Resource,
+        action: &Action,
         trust_context_id: Option<&str>,
         custom_default: Option<&Expr>,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
         if let Some(tcid) = trust_context_id {
             // Populate environment with known attributes:
             let mut env = Env::new();
-            env.put("resource.id", str(r.as_str()));
-            env.put("action.id", str(a.as_str()));
+            env.put("resource.id", str(resource.as_str()));
+            env.put("action.id", str(action.as_str()));
             env.put("resource.trust_context_id", str(tcid));
 
             // Check if a policy exists for (resource, action) and if not, then
             // create or use a default entry:
-            if self.cli_state.get_policy(r, a).await?.is_none() {
+            if self.cli_state.get_policy(resource, action).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
                     None => eq([
@@ -250,15 +250,19 @@ impl NodeManager {
                         ident("subject.trust_context_id"),
                     ]),
                 };
-                self.cli_state.set_policy(r, a, &fallback).await?;
+                self.cli_state
+                    .set_policy(resource, action, &Policy::new(fallback))
+                    .await?;
             }
-            let policy_access_control =
-                self.cli_state.make_policy_access_control(r, a, env).await?;
+            let policy_access_control = self
+                .cli_state
+                .make_policy_access_control(resource, action, env)
+                .await?;
             Ok(Arc::new(policy_access_control))
         } else {
             debug!(
                 "no policy access control set for resource '{}' and action: '{}'",
-                &r, &a
+                &resource, &action
             );
             Ok(Arc::new(AllowAll))
         }
@@ -701,26 +705,24 @@ impl NodeManagerWorker {
 
             // ==*== Flow Controls ==*==
             (Post, ["node", "flow_controls", "add_consumer"]) => {
-                encode_response(self.add_consumer(ctx, req, dec))?
+                encode_response(self.add_consumer(ctx, req, dec.decode()?).await)?
             }
 
             // ==*== Workers ==*==
             (Get, ["node", "workers"]) => encode_response(self.list_workers(ctx, req).await)?,
-            (Post, ["policy", resource, action]) => encode_response(
-                self.node_manager
-                    .add_policy(resource, action, req, dec)
-                    .await,
-            )?,
-            (Get, ["policy", resource]) => {
-                encode_response(self.node_manager.list_policies(req, resource).await)?
+
+            // ==*== Policies ==*==
+            (Post, ["policy", resource, action]) => {
+                encode_response(self.add_policy(req, resource, action, dec.decode()?).await)?
             }
-            (Get, ["policy", resource, action]) => self
-                .node_manager
-                .get_policy(req, resource, action)
-                .await?
-                .either(Response::to_vec, Response::to_vec)?,
+            (Get, ["policy", resource, action]) => {
+                encode_response(self.get_policy(req, resource, action).await)?
+            }
+            (Get, ["policy", resource]) => {
+                encode_response(self.list_policies(req, resource).await)?
+            }
             (Delete, ["policy", resource, action]) => {
-                encode_response(self.node_manager.del_policy(req, resource, action).await)?
+                encode_response(self.delete_policy(req, resource, action).await)?
             }
 
             // ==*== Messages ==*==

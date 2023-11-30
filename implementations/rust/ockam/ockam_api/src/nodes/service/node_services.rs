@@ -5,7 +5,7 @@ use minicbor::Decoder;
 use ockam::identity::{identities, AuthorityService, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::Resource;
+use ockam_abac::{Policy, Resource};
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::route;
@@ -536,7 +536,7 @@ impl NodeManagerWorker {
                     .set_policy(
                         &resources::INLET,
                         &actions::HANDLE_MESSAGE,
-                        &eq([ident("subject.identifier"), str(project_identifier)]),
+                        &Policy::new(eq([ident("subject.identifier"), str(project_identifier)])),
                     )
                     .await
                     .map_err(ockam_core::Error::from)?
