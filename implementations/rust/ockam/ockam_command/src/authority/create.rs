@@ -110,6 +110,13 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
 ) -> miette::Result<()> {
+    // Create the authority identity if it has not been created before
+    // If no name is specified on the command line, use "authority"
+    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
+    if opts.state.get_named_identity(&identity_name).await.is_err() {
+        opts.state.create_identity_with_name(&identity_name).await?;
+    };
+
     opts.state
         .create_node_with_optional_values(&cmd.node_name, &cmd.identity, &None)
         .await?;
@@ -257,19 +264,13 @@ async fn start_authority_node(
 ) -> miette::Result<()> {
     let (opts, cmd) = args;
 
-    // Retrieve the authority identity if it has been created before
-    // otherwise create a new one
-    let identity_name = match &cmd.identity {
-        Some(identity_name) => opts.state.get_named_identity(identity_name).await?.name(),
-        None => match opts.state.get_default_named_identity().await {
-            Ok(identity) => identity.name(),
-            Err(_) => opts
-                .state
-                .create_identity_with_name("authority")
-                .await?
-                .name(),
-        },
+    // Create the authority identity if it has not been created before
+    // If no name is specified on the command line, use "authority"
+    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
+    if opts.state.get_named_identity(&identity_name).await.is_err() {
+        opts.state.create_identity_with_name(&identity_name).await?;
     };
+
     let node = opts
         .state
         .create_node_with_optional_values(&cmd.node_name, &Some(identity_name), &None)

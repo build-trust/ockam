@@ -1,9 +1,11 @@
+use ockam_core::compat::string::String;
 use ockam_core::{
     errcode::{Kind, Origin},
     Error,
 };
 
 /// Identity crate error
+#[repr(u8)]
 #[derive(Clone, Debug)]
 pub enum IdentityError {
     /// Invalid key type
@@ -11,7 +13,7 @@ pub enum IdentityError {
     /// Invalid Key Data
     InvalidKeyData,
     /// Invalid Identifier format
-    InvalidIdentifier,
+    InvalidIdentifier(String),
     /// Identity Change History is empty
     EmptyIdentity,
     /// Identity Verification Failed
@@ -65,6 +67,7 @@ pub enum IdentityError {
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}
+
 impl core::fmt::Display for IdentityError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(self, f)

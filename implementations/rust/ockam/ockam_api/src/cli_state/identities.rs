@@ -49,18 +49,6 @@ impl CliState {
         self.create_identity_with_name_and_vault(name, &vault.name())
             .await
     }
-    /// Create an identity associated with an optional name and an optional vault name
-    /// If the vault name is not specified then the default vault is used
-    pub async fn create_identity_with_optional_name_and_optional_vault(
-        &self,
-        name: &Option<String>,
-        vault_name: &Option<String>,
-    ) -> Result<NamedIdentity> {
-        let name = name.clone().unwrap_or_else(random_name);
-        let vault = self.get_named_vault_or_default(vault_name).await?.name();
-        self.create_identity_with_name_and_vault(&name, &vault)
-            .await
-    }
 
     /// Create an identity with specific key id.
     /// This method is used when the vault is a KMS vault and we just need to store a key id
@@ -332,7 +320,7 @@ impl CliState {
                     node_names.join(", ")
                 ),
             )
-            .into())
+                .into())
         }
     }
 }
@@ -492,24 +480,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_default_identity() -> Result<()> {
-        let cli = CliState::test().await?;
-
-        // create a default identity using the default vault
-        let identity = cli
-            .create_identity_with_optional_name_and_optional_vault(&None, &None)
-            .await?;
-        let expected = cli.get_default_named_identity().await?;
-        assert_eq!(identity, expected);
-
-        // check that the identity uses the default vault
-        let default_vault = cli.get_default_named_vault().await?;
-        assert_eq!(identity.vault_name, default_vault.name());
-
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn test_get_default_identity() -> Result<()> {
         let cli = CliState::test().await?;
 
@@ -522,6 +492,10 @@ mod tests {
 
         let result = cli.get_named_identity(&identity.name()).await;
         assert!(result.is_ok());
+
+        // check that the identity uses the default vault
+        let default_vault = cli.get_default_named_vault().await?;
+        assert_eq!(identity.vault_name, default_vault.name());
 
         Ok(())
     }

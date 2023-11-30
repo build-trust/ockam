@@ -307,7 +307,7 @@ async fn get_user_project(
             let project_name = "default".to_string();
             let get_project = async {
                 let project = node
-                    .create_project(ctx, &space.id, &project_name, vec![])
+                    .create_project(ctx, &space.name, &project_name, vec![])
                     .await?;
                 *is_finished.lock().await = true;
                 Ok(project)
@@ -346,7 +346,9 @@ async fn get_user_project(
         }
     };
 
-    check_project_readiness(opts, ctx, node, project.clone()).await?;
+    let project = check_project_readiness(opts, ctx, node, project.clone()).await?;
+    // store the updated project
+    opts.state.store_project(project.clone()).await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this project as your default project, on this machine.\n"
