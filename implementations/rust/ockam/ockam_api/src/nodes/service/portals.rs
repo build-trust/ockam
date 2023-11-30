@@ -34,18 +34,20 @@ use super::{NodeManager, NodeManagerWorker};
 
 /// INLETS
 impl NodeManagerWorker {
-    pub(super) async fn get_inlets(&self, req: &RequestHeader) -> Response<InletList> {
+    pub(super) async fn get_inlets(
+        &self,
+        req: &RequestHeader,
+    ) -> Result<Response<InletList>, Response<Error>> {
         let inlets = self.node_manager.list_inlets().await;
-        Response::ok(req).body(inlets)
+        Ok(Response::ok(req).body(inlets))
     }
 
     pub(super) async fn create_inlet(
         &self,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
         ctx: &Context,
+        req: &RequestHeader,
+        create_inlet: CreateInlet,
     ) -> Result<Response<InletStatus>, Response<Error>> {
-        let create_inlet_req: CreateInlet = dec.decode()?;
         let CreateInlet {
             listen_addr,
             outlet_addr,
@@ -54,7 +56,7 @@ impl NodeManagerWorker {
             prefix_route,
             suffix_route,
             wait_for_outlet_duration,
-        } = create_inlet_req;
+        } = create_inlet;
         match self
             .node_manager
             .create_inlet(
