@@ -90,8 +90,8 @@ pub(crate) fn encode_response<T: Encode<()>>(
 ///  - manage persistent data
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
-    node_name: String,
     node_identifier: Identifier,
+    pub(crate) node_name: String,
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) secure_channels: Arc<SecureChannels>,
@@ -551,6 +551,7 @@ impl NodeManagerWorker {
         let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
+<<<<<<< HEAD
             (Get, ["node"]) => Response::ok(req)
                 .body(NodeStatus::new(
                     self.node_manager.node_name.clone(),
@@ -559,6 +560,11 @@ impl NodeManagerWorker {
                     std::process::id() as i32,
                 ))
                 .to_vec()?,
+=======
+            (Get, ["node"]) => {
+                encode_response(self.get_node_status(ctx, req).await)?
+            }
+>>>>>>> 2ab1b3aff (initial commit of issue-6707)
 
             // ==*== Tcp Connection ==*==
             (Get, ["node", "tcp", "connection"]) => self.get_tcp_connections(req).await.to_vec()?,
