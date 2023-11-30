@@ -12,11 +12,14 @@ use ockam_identity::{
     utils::AttributesBuilder,
     Identifier, Identities, Vault,
 };
+use ockam_node::database::SqlxDatabase;
 use ockam_vault::{
     EdDSACurve25519SecretKey, HandleToSecret, SigningKeyType, SigningSecret,
     SigningSecretKeyHandle, SoftwareVaultForSecureChannels, SoftwareVaultForSigning,
     X25519PublicKey, X25519SecretKey,
 };
+use ockam_vault::storage::SecretsRepository;
+use ockam_vault::storage::SecretsSqlxDatabase;
 use ockam_vault_aws::{AwsKmsConfig, AwsSigningVault, InitialKeysDiscovery};
 use rustler::{Atom, Binary, Env, Error, NewBinary, NifResult};
 use std::clone::Clone;
@@ -65,8 +68,8 @@ fn get_runtime() -> Arc<Runtime> {
 }
 
 fn block_future<F>(f: F) -> <F as Future>::Output
-where
-    F: Future,
+    where
+        F: Future,
 {
     let rt = get_runtime();
     task::block_in_place(move || {
@@ -89,17 +92,20 @@ fn identities_ref() -> NifResult<Arc<Identities>> {
 
 fn load_memory_vault() -> bool {
     block_future(async move {
-        let identity_vault = SoftwareVaultForSigning::create().await.unwrap();
-        let secure_channel_vault = SoftwareVaultForSecureChannels::create().await.unwrap();
+        let database = SqlxDatabase::in_memory("in-memory-vault").await.unwrap();
+        let secrets_repository: Arc<dyn SecretsRepository> =
+            Arc::new(SecretsSqlxDatabase::new(database));
+        let identity_vault = Arc::new(SoftwareVaultForSigning::new(secrets_repository.clone()));
+        let secure_channel_vault = Arc::new(SoftwareVaultForSecureChannels::new(secrets_repository.clone()));
         *IDENTITY_MEMORY_VAULT.write().unwrap() = Some(identity_vault.clone());
         *SECURE_CHANNEL_MEMORY_VAULT.write().unwrap() = Some(secure_channel_vault.clone());
         let builder = ockam_identity::Identities::builder()
             .await
             .unwrap()
             .with_vault(Vault::new(
-                identity_vault,
+                identity_vault.clone(),
                 secure_channel_vault,
-                Vault::create_credential_vault().await.unwrap(),
+                identity_vault,
                 Vault::create_verifying_vault(),
             ));
         *IDENTITIES.write().unwrap() = Some(builder.build());
@@ -182,7 +188,7 @@ fn create_identity(env: Env, existing_key: Option<String>) -> NifResult<(Binary,
         let identifier = builder.build().await?;
         identities_ref.get_identity(&identifier).await
     })
-    .map_err(|e| Error::Term(Box::new((atoms::identity_creation_error(), e.to_string()))))?;
+        .map_err(|e| Error::Term(Box::new((atoms::identity_creation_error(), e.to_string()))))?;
 
     let exported = identity
         .export()
@@ -224,7 +230,7 @@ fn attest_secure_channel_key<'a>(
             .build()
             .await
     })
-    .map_err(|e| Error::Term(Box::new((atoms::attest_error(), e.to_string()))))?;
+        .map_err(|e| Error::Term(Box::new((atoms::attest_error(), e.to_string()))))?;
     let encoded = minicbor::to_vec(purpose_key.attestation())
         .map_err(|e| Error::Term(Box::new((atoms::attestation_encode_error(), e.to_string()))))?;
     let mut exp_binary = NewBinary::new(env, encoded.len());
@@ -270,7 +276,7 @@ fn verify_secure_channel_key_attestation(
                 }
             })
     })
-    .map_err(|reason| Error::Term(Box::new(reason)))
+        .map_err(|reason| Error::Term(Box::new(reason)))
 }
 
 #[rustler::nif]
@@ -283,7 +289,7 @@ fn check_identity<'a>(env: Env<'a>, identity: Binary) -> NifResult<Binary<'a>> {
             .await
             .map_err(|e| (atoms::identity_import_error(), e.to_string()))
     })
-    .map_err(|reason| Error::Term(Box::new(reason)))?;
+        .map_err(|reason| Error::Term(Box::new(reason)))?;
     let identifier = identifier.to_string();
     let mut binary = NewBinary::new(env, identifier.len());
     binary.copy_from_slice(identifier.as_bytes());
@@ -323,7 +329,7 @@ fn issue_credential<'a>(
             .await
             .map_err(|e| (atoms::credential_issuing_error(), e.to_string()))
     })
-    .map_err(|reason| Error::Term(Box::new(reason)))?;
+        .map_err(|reason| Error::Term(Box::new(reason)))?;
     let encoded = minicbor::to_vec(credential_and_purpose_key)
         .map_err(|e| Error::Term(Box::new((atoms::credential_encode_error(), e.to_string()))))?;
     let mut binary = NewBinary::new(env, encoded.len());
