@@ -74,17 +74,13 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         attribute_name: Vec<u8>,
         attribute_value: Vec<u8>,
     ) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
-
         let mut attributes = match self.get_attributes(subject).await? {
             Some(entry) => (*entry.attrs()).clone(),
             None => BTreeMap::new(),
         };
         attributes.insert(attribute_name, attribute_value);
         let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.clone()));
-        self.put_attributes(subject, entry).await?;
-
-        transaction.commit().await.void()
+        self.put_attributes(subject, entry).await
     }
 
     async fn delete(&self, identity: &Identifier) -> Result<()> {

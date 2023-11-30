@@ -49,7 +49,6 @@ impl ProjectsSqlxDatabase {
 #[async_trait]
 impl ProjectsRepository for ProjectsSqlxDatabase {
     async fn store_project(&self, project: &Project) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
         let is_already_default = self
             .get_default_project()
             .await?
@@ -57,6 +56,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             .unwrap_or(false);
 
         // store the project data
+        let mut transaction = self.database.begin().await.into_core()?;
         let query1 = query(
             "INSERT OR REPLACE INTO project VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
         )
@@ -72,24 +72,24 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             .bind(project.version.as_ref().map(|r| r.to_sql()))
             .bind(project.running.as_ref().map(|r| r.to_sql()))
             .bind(project.operation_id.as_ref().map(|r| r.to_sql()));
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // remove any existing users related to that project if any
         let query2 =
             query("DELETE FROM user_project WHERE project_id=$1").bind(project.id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         // store the users associated to that project
         for user_email in &project.users {
             let query3 = query("INSERT OR REPLACE INTO user_project VALUES (?, ?)")
                 .bind(user_email.to_sql())
                 .bind(project.id.to_sql());
-            query3.execute(&self.database.pool).await.void()?;
+            query3.execute(&mut *transaction).await.void()?;
         }
 
         // remove any existing user roles related to that project if any
         let query2 = query("DELETE FROM user_role WHERE project_id=$1").bind(project.id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         // store the user roles associated to that project
         for user_role in &project.user_roles {
@@ -99,7 +99,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                 .bind(user_role.email.to_sql())
                 .bind(user_role.role.to_string().to_sql())
                 .bind(user_role.scope.to_string().to_sql());
-            query4.execute(&self.database.pool).await.void()?;
+            query4.execute(&mut *transaction).await.void()?;
         }
 
         // store the okta configuration if any
@@ -110,7 +110,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                 .bind(okta_config.client_id.to_sql())
                 .bind(okta_config.certificate.to_string().to_sql())
                 .bind(okta_config.attributes.join(",").to_string().to_sql());
-            query5.execute(&self.database.pool).await.void()?;
+            query5.execute(&mut *transaction).await.void()?;
         }
 
         // store the confluent configuration if any
@@ -118,7 +118,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             let query6 = query("INSERT OR REPLACE INTO confluent_config VALUES (?, ?)")
                 .bind(project.id.to_sql())
                 .bind(confluent_config.bootstrap_server.to_sql());
-            query6.execute(&self.database.pool).await.void()?;
+            query6.execute(&mut *transaction).await.void()?;
         }
 
         transaction.commit().await.void()
@@ -141,20 +141,17 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
     }
 
     async fn get_project_by_name(&self, name: &str) -> Result<Option<Project>> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
         let query = query_as("SELECT * FROM project WHERE project_name=$1").bind(name.to_sql());
-        let row: Option<ProjectRow> = query
-            .fetch_optional(&self.database.pool)
-            .await
-            .into_core()?;
+        let row: Option<ProjectRow> = query.fetch_optional(&mut *transaction).await.into_core()?;
         let project = match row.map(|r| r.project()).transpose()? {
             Some(mut project) => {
                 // get the project users emails
                 let query2 = query_as("SELECT * FROM user_project WHERE project_id=$1")
                     .bind(project.id.to_sql());
                 let rows: Vec<UserProjectRow> =
-                    query2.fetch_all(&self.database.pool).await.into_core()?;
+                    query2.fetch_all(&mut *transaction).await.into_core()?;
                 let users = rows.into_iter().map(|r| r.user_email).collect();
                 project.users = users;
 
@@ -162,7 +159,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                 let query3 = query_as("SELECT * FROM user_role WHERE project_id=$1")
                     .bind(project.id.to_sql());
                 let rows: Vec<UserRoleRow> =
-                    query3.fetch_all(&self.database.pool).await.into_core()?;
+                    query3.fetch_all(&mut *transaction).await.into_core()?;
                 let user_roles: Vec<ProjectUserRole> = rows
                     .into_iter()
                     .map(|r| r.project_user_role())
@@ -172,19 +169,15 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                 // get the project okta configuration
                 let query4 = query_as("SELECT * FROM okta_config WHERE project_id=$1")
                     .bind(project.id.to_sql());
-                let row: Option<OktaConfigRow> = query4
-                    .fetch_optional(&self.database.pool)
-                    .await
-                    .into_core()?;
+                let row: Option<OktaConfigRow> =
+                    query4.fetch_optional(&mut *transaction).await.into_core()?;
                 project.okta_config = row.map(|r| r.okta_config()).transpose()?;
 
                 // get the project confluent configuration
                 let query5 = query_as("SELECT * FROM confluent_config WHERE project_id=$1")
                     .bind(project.id.to_sql());
-                let row: Option<ConfluentConfigRow> = query5
-                    .fetch_optional(&self.database.pool)
-                    .await
-                    .into_core()?;
+                let row: Option<ConfluentConfigRow> =
+                    query5.fetch_optional(&mut *transaction).await.into_core()?;
                 project.confluent_config = row.map(|r| r.confluent_config());
 
                 Some(project)
@@ -227,39 +220,39 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
     }
 
     async fn set_default_project(&self, project_id: &str) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         // set the project as the default one
         let query1 = query("UPDATE project SET is_default = ? WHERE project_id = ?")
             .bind(true.to_sql())
             .bind(project_id.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE project SET is_default = ? WHERE project_id <> ?")
             .bind(false.to_sql())
             .bind(project_id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
 
     async fn delete_project(&self, project_id: &str) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
         let query1 = query("DELETE FROM project WHERE project_id=?").bind(project_id.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         let query2 = query("DELETE FROM user_project WHERE project_id=?").bind(project_id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         let query3 = query("DELETE FROM user_role WHERE project_id=?").bind(project_id.to_sql());
-        query3.execute(&self.database.pool).await.void()?;
+        query3.execute(&mut *transaction).await.void()?;
 
         let query4 = query("DELETE FROM okta_config WHERE project_id=?").bind(project_id.to_sql());
-        query4.execute(&self.database.pool).await.void()?;
+        query4.execute(&mut *transaction).await.void()?;
 
         let query5 =
             query("DELETE FROM confluent_config WHERE project_id=?").bind(project_id.to_sql());
-        query5.execute(&self.database.pool).await.void()?;
+        query5.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()?;
         Ok(())

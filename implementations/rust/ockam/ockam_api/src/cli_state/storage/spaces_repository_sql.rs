@@ -34,7 +34,7 @@ impl SpacesSqlxDatabase {
 #[async_trait]
 impl SpacesRepository for SpacesSqlxDatabase {
     async fn store_space(&self, space: &Space) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         let is_already_default = self
             .get_default_space()
             .await?
@@ -45,18 +45,18 @@ impl SpacesRepository for SpacesSqlxDatabase {
             .bind(space.id.to_sql())
             .bind(space.name.to_sql())
             .bind(is_already_default.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // remove any existing users related to that space if any
         let query2 = query("DELETE FROM user_space WHERE space_id=$1").bind(space.id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         // store the users associated to that space
         for user_email in &space.users {
             let query3 = query("INSERT OR REPLACE INTO user_space VALUES (?, ?)")
                 .bind(user_email.to_sql())
                 .bind(space.id.to_sql());
-            query3.execute(&self.database.pool).await.void()?;
+            query3.execute(&mut *transaction).await.void()?;
         }
 
         transaction.commit().await.void()
@@ -78,19 +78,16 @@ impl SpacesRepository for SpacesSqlxDatabase {
     }
 
     async fn get_space_by_name(&self, name: &str) -> Result<Option<Space>> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
         let query1 = query_as("SELECT * FROM space WHERE space_name=$1").bind(name.to_sql());
-        let row: Option<SpaceRow> = query1
-            .fetch_optional(&self.database.pool)
-            .await
-            .into_core()?;
+        let row: Option<SpaceRow> = query1.fetch_optional(&mut *transaction).await.into_core()?;
         let space = match row.map(|r| r.space()) {
             Some(mut space) => {
                 let query2 =
                     query_as("SELECT * FROM user_space WHERE space_id=$1").bind(space.id.to_sql());
                 let rows: Vec<UserSpaceRow> =
-                    query2.fetch_all(&self.database.pool).await.into_core()?;
+                    query2.fetch_all(&mut *transaction).await.into_core()?;
                 let users = rows.into_iter().map(|r| r.user_email).collect();
                 space.users = users;
                 Some(space)
@@ -102,17 +99,16 @@ impl SpacesRepository for SpacesSqlxDatabase {
     }
 
     async fn get_spaces(&self) -> Result<Vec<Space>> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
         let query = query_as("SELECT * FROM space");
-        let row: Vec<SpaceRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let row: Vec<SpaceRow> = query.fetch_all(&mut *transaction).await.into_core()?;
 
         let mut spaces = vec![];
         for space_row in row {
             let query2 = query_as("SELECT * FROM user_space WHERE space_id=$1")
                 .bind(space_row.space_id.to_sql());
-            let rows: Vec<UserSpaceRow> =
-                query2.fetch_all(&self.database.pool).await.into_core()?;
+            let rows: Vec<UserSpaceRow> = query2.fetch_all(&mut *transaction).await.into_core()?;
             let users = rows.into_iter().map(|r| r.user_email).collect();
             spaces.push(space_row.space_with_user_emails(users))
         }
@@ -136,29 +132,29 @@ impl SpacesRepository for SpacesSqlxDatabase {
     }
 
     async fn set_default_space(&self, space_id: &str) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
         // set the space as the default one
         let query1 = query("UPDATE space SET is_default = ? WHERE space_id = ?")
             .bind(true.to_sql())
             .bind(space_id.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE space SET is_default = ? WHERE space_id <> ?")
             .bind(false.to_sql())
             .bind(space_id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
 
     async fn delete_space(&self, space_id: &str) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
         let query1 = query("DELETE FROM space WHERE space_id=?").bind(space_id.to_sql());
-        query1.execute(&self.database.pool).await.void()?;
+        query1.execute(&mut *transaction).await.void()?;
 
         let query2 = query("DELETE FROM user_space WHERE space_id=?").bind(space_id.to_sql());
-        query2.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()
     }

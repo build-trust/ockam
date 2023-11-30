@@ -49,7 +49,7 @@ impl ModelStateSqlxDatabase {
 #[async_trait]
 impl ModelStateRepository for ModelStateSqlxDatabase {
     async fn store(&self, model_state: &ModelState) -> Result<()> {
-        let transaction = self.database.begin().await.into_core()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
         for tcp_outlet_status in &model_state.tcp_outlets {
             let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
@@ -57,7 +57,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
                 .bind(tcp_outlet_status.socket_addr.to_sql())
                 .bind(tcp_outlet_status.worker_addr.to_sql())
                 .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
-            query.execute(&self.database.pool).await.void()?;
+            query.execute(&mut *transaction).await.void()?;
         }
 
         for incoming_service in &model_state.incoming_services {
@@ -65,7 +65,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
                 .bind(incoming_service.invitation_id.to_sql())
                 .bind(incoming_service.enabled.to_sql())
                 .bind(incoming_service.name.as_ref().map(|n| n.to_sql()));
-            query.execute(&self.database.pool).await.void()?;
+            query.execute(&mut *transaction).await.void()?;
         }
         transaction.commit().await.void()?;
 
