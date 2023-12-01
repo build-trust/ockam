@@ -51,6 +51,13 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
     async fn store(&self, model_state: &ModelState) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
+        // remove previous tcp_outlet_status state
+        query("DELETE FROM tcp_outlet_status")
+            .execute(&mut *transaction)
+            .await
+            .void()?;
+
+        // re-insert the new state
         for tcp_outlet_status in &model_state.tcp_outlets {
             let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
                 .bind(tcp_outlet_status.alias.to_sql())
@@ -60,6 +67,13 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
             query.execute(&mut *transaction).await.void()?;
         }
 
+        // remove previous incoming_service state
+        query("DELETE FROM incoming_service")
+            .execute(&mut *transaction)
+            .await
+            .void()?;
+
+        // re-insert the new state
         for incoming_service in &model_state.incoming_services {
             let query = query("INSERT OR REPLACE INTO incoming_service VALUES (?, ?, ?)")
                 .bind(incoming_service.invitation_id.to_sql())
@@ -191,6 +205,21 @@ mod tests {
         let loaded = repository.load().await?;
         assert_eq!(state.tcp_outlets.len(), 5);
         assert_eq!(state.incoming_services.len(), 1);
+        assert_eq!(state, loaded);
+
+        // Remove some values from the current state
+        let _ = state.tcp_outlets.split_off(2);
+        state.add_incoming_service(PersistentIncomingService {
+            invitation_id: "4567".to_string(),
+            enabled: true,
+            name: Some("aws".to_string()),
+        });
+
+        repository.store(&state).await?;
+        let loaded = repository.load().await?;
+
+        assert_eq!(state.tcp_outlets.len(), 2);
+        assert_eq!(state.incoming_services.len(), 2);
         assert_eq!(state, loaded);
 
         Ok(())
