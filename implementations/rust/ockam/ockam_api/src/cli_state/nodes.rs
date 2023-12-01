@@ -132,6 +132,12 @@ impl CliState {
             .await?;
 
         if let Some(pid) = node.pid() {
+            // avoid killing the current process, return successfully instead.
+            // this is useful when we need to stop all the nodes, for example
+            // during a reset
+            if pid == process::id() {
+                return Ok(());
+            }
             nix::sys::signal::kill(
                 nix::unistd::Pid::from_raw(pid as i32),
                 if force {
