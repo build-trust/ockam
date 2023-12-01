@@ -35,7 +35,7 @@ use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
 };
-use crate::nodes::models::base::NodeStatus;
+
 use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
@@ -120,10 +120,6 @@ impl NodeManager {
         self.trust_context.clone().map(|tc| tc.id().to_string())
     }
 
-    pub fn node_name(&self) -> String {
-        self.node_name.clone()
-    }
-
     pub(super) fn identities(&self) -> Arc<Identities> {
         self.secure_channels.identities()
     }
@@ -156,12 +152,6 @@ impl NodeManager {
                 })
                 .collect(),
         )
-    }
-
-    /// Delete the current node data
-    pub async fn delete_node(&self) -> Result<()> {
-        self.cli_state.remove_node(&self.node_name).await?;
-        Ok(())
     }
 }
 
@@ -551,20 +541,7 @@ impl NodeManagerWorker {
         let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
-<<<<<<< HEAD
-            (Get, ["node"]) => Response::ok(req)
-                .body(NodeStatus::new(
-                    self.node_manager.node_name.clone(),
-                    "Running",
-                    ctx.list_workers().await?.len() as u32,
-                    std::process::id() as i32,
-                ))
-                .to_vec()?,
-=======
-            (Get, ["node"]) => {
-                encode_response(self.get_node_status(ctx, req).await)?
-            }
->>>>>>> 2ab1b3aff (initial commit of issue-6707)
+            (Get, ["node"]) => encode_response(self.get_node_status(ctx, req).await)?,
 
             // ==*== Tcp Connection ==*==
             (Get, ["node", "tcp", "connection"]) => self.get_tcp_connections(req).await.to_vec()?,

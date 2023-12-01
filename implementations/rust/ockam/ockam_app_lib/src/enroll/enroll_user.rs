@@ -200,7 +200,7 @@ impl AppState {
 
         self.state()
             .await
-            .set_node_project(&node_manager.node_name(), &Some(project.name()))
+            .set_node_project(&node_manager.get_node_name().await, &Some(project.name()))
             .await?;
         Ok(project)
     }

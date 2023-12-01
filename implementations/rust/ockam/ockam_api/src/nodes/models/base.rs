@@ -1,9 +1,8 @@
 //! Nodemanager API types
-
-use minicbor::{Decode, Encode};
-use ockam_core::api::{RequestHeader, Response, Error};
-use ockam_core::Result;
 use crate::nodes::{NodeManager, NodeManagerWorker};
+use minicbor::{Decode, Encode};
+use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::Result;
 use ockam_node::Context;
 ///////////////////-!  RESPONSE BODIES
 
@@ -34,7 +33,11 @@ impl NodeStatus {
     }
 }
 impl NodeManagerWorker {
-    pub async fn get_node_status(&self, ctx: &Context, req: &RequestHeader) -> Result<Response<NodeStatus>, Response<Error>> {
+    pub async fn get_node_status(
+        &self,
+        ctx: &Context,
+        req: &RequestHeader,
+    ) -> Result<Response<NodeStatus>, Response<Error>> {
         let node_name = self.node_manager.get_node_name().await;
         let list_workers_length = ctx.list_workers().await.unwrap().len() as u32;
         Ok(Response::ok(req).body(NodeStatus::new(
@@ -48,7 +51,12 @@ impl NodeManagerWorker {
 
 impl NodeManager {
     pub async fn get_node_name(&self) -> String {
-        let node_name = self.node_name.clone();
-        node_name
-    }  
+        self.node_name.clone()
+    }
+
+    /// Delete the cli state related to the current node when launched in-memory
+    pub async fn delete_node(&self) -> Result<()> {
+        self.cli_state.remove_node(&self.node_name).await?;
+        Ok(())
+    }
 }
