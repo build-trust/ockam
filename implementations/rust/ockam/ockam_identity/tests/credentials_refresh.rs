@@ -303,7 +303,7 @@ impl CredentialsRetriever for LocalCredentialsRetriever {
         }
 
         let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-            .with_attribute(b"name".to_vec(), b"client1".to_vec())
+            .with_attribute("name", "client1")
             .build();
         let credential = self
             .credentials

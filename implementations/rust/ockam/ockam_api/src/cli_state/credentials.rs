@@ -21,12 +21,7 @@ impl CliState {
         let identity_attributes_repository = self.identity_attributes_repository().await?;
         if let Some(subject) = credential_data.subject {
             let attributes_entry = AttributesEntry::new(
-                credential_data
-                    .subject_attributes
-                    .map
-                    .into_iter()
-                    .map(|(k, v)| (k.to_vec(), v.to_vec()))
-                    .collect(),
+                credential_data.subject_attributes.map.into_iter().collect(),
                 credential_data.created_at,
                 Some(credential_data.expires_at),
                 Some(issuer.identifier().clone()),
@@ -163,7 +158,7 @@ mod test {
         let subject = identities.identities_creation().create_identity().await?;
 
         let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-            .with_attribute("name".as_bytes().to_vec(), b"value".to_vec())
+            .with_attribute("name", "value")
             .build();
 
         Ok(identities

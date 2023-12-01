@@ -68,7 +68,7 @@ alloc = [
   "serde_bare/alloc",
 ]
 
-storage = ["ockam_vault/storage", "sqlx", "tokio-retry"]
+storage = ["ockam_vault/storage", "sqlx", "tokio-retry", "serde_json"]
 
 [dependencies]
 async-trait = "0.1.74"

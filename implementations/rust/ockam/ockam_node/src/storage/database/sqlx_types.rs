@@ -134,6 +134,12 @@ impl ToSqlxType for u8 {
     }
 }
 
+impl ToSqlxType for i64 {
+    fn to_sql(&self) -> SqlxType {
+        SqlxType::Integer(*self)
+    }
+}
+
 impl ToSqlxType for i32 {
     fn to_sql(&self) -> SqlxType {
         SqlxType::Integer(*self as i64)

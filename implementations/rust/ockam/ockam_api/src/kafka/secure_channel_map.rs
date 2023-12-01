@@ -2,7 +2,7 @@ use minicbor::Decoder;
 
 use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID_UTF8,
+    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID,
 };
 use ockam_abac::AbacAccessControl;
 use ockam_core::api::{Request, ResponseHeader, Status};
@@ -208,7 +208,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
             secure_channels
                 .identities()
                 .identity_attributes_repository(),
-            TRUST_CONTEXT_ID_UTF8,
+            TRUST_CONTEXT_ID,
             &trust_context_id,
         );
 

@@ -1,4 +1,3 @@
-use core::str::from_utf8;
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::fmt;
@@ -10,7 +9,7 @@ use ockam_core::Result;
 use ockam_core::{IncomingAccessControl, RelayMessage};
 use tracing as log;
 
-use crate::expr::str;
+use crate::expr::{attribute_value, str};
 use crate::Expr::*;
 use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
@@ -78,48 +77,28 @@ impl AbacAccessControl {
             .get_attributes(&id)
             .await?
         {
-            for (key, value) in attrs.attrs() {
-                let key = match from_utf8(key) {
-                    Ok(key) => key,
-                    Err(_) => {
-                        log::warn! {
-                            policy = %self.expression,
-                            id     = %id,
-                            "attribute key is not utf-8"
-                        }
-                        continue;
-                    }
-                };
-                if key.find(|c: char| c.is_whitespace()).is_some() {
+            for (key, value) in attrs.iter() {
+                if key.to_string().find(|c: char| c.is_whitespace()).is_some() {
                     log::warn! {
                         policy = %self.expression,
                         id     = %id,
-                        key    = %key,
+                        key    = ?key,
                         "attribute key with whitespace ignored"
                     }
                 }
-                match str::from_utf8(value) {
-                    Ok(s) => {
-                        if environment.contains(key) {
-                            log::debug! {
-                                policy = %self.expression,
-                                id     = %id,
-                                key    = %key,
-                                "attribute already present"
-                            }
-                        } else {
-                            environment.put(format!("subject.{key}"), str(s.to_string()));
-                        }
+
+                if environment.contains(key.to_string().as_str()) {
+                    log::debug! {
+                        policy = %self.expression,
+                        id     = %id,
+                        key    = ?key,
+                        "attribute already present"
                     }
-                    Err(e) => {
-                        log::warn! {
-                            policy = %self.expression,
-                            id     = %id,
-                            key    = %key,
-                            err    = %e,
-                            "failed to interpret attribute as string"
-                        }
-                    }
+                } else {
+                    environment.put(
+                        format!("subject.{}", key.to_string()),
+                        attribute_value(value.clone()),
+                    );
                 }
             }
         };

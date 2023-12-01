@@ -249,7 +249,7 @@ mod test {
         let subject = identities.identities_creation().create_identity().await?;
 
         let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-            .with_attribute("name".as_bytes().to_vec(), b"value".to_vec())
+            .with_attribute("name", "value")
             .build();
 
         identities

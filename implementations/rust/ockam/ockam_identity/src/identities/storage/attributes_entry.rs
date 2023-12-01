@@ -1,16 +1,21 @@
 use crate::models::{Identifier, TimestampInSeconds};
+use crate::utils::now;
+use crate::AttributeName;
+use crate::AttributeValue;
+use alloc::collections::btree_map::Iter;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::ToOwned;
-use ockam_core::compat::{collections::BTreeMap, vec::Vec};
+use ockam_core::compat::collections::BTreeMap;
+use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
 /// An entry on the AuthenticatedIdentities table.
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Serialize, Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {
     // TODO: Check how it looks serialized with both serde and minicbor
-    #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+    #[n(1)] attrs: BTreeMap<AttributeName, AttributeValue>,
     #[n(2)] added: TimestampInSeconds,
     #[n(3)] expires: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
@@ -23,7 +28,7 @@ impl AttributesEntry {
 
     /// Constructor
     pub fn new(
-        attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+        attrs: BTreeMap<AttributeName, AttributeValue>,
         added: TimestampInSeconds,
         expires: Option<TimestampInSeconds>,
         attested_by: Option<Identifier>,
@@ -36,9 +41,44 @@ impl AttributesEntry {
         }
     }
 
+    /// Create an empty set of attributes with no dates or attestor
+    pub fn empty() -> Result<Self> {
+        Ok(Self::new(BTreeMap::default(), now()?, None, None))
+    }
+
+    /// Create an empty set of attributes with an identity which will attest additional attributes
+    pub fn empty_attested_by(identifier: Identifier) -> Result<Self> {
+        Ok(Self::new(
+            BTreeMap::default(),
+            now()?,
+            None,
+            Some(identifier),
+        ))
+    }
+
+    /// Get the number of attributes
+    pub fn len(&self) -> usize {
+        self.attrs.len()
+    }
+
+    /// Return true if there are no attributes
+    pub fn is_empty(&self) -> bool {
+        self.attrs.is_empty()
+    }
+
+    /// Get an attribute value by name
+    pub fn get(&self, name: AttributeName) -> Option<AttributeValue> {
+        self.attrs.get(&name).cloned()
+    }
+
+    /// Get an attribute value by name
+    pub fn insert(&mut self, name: AttributeName, value: AttributeValue) -> Option<AttributeValue> {
+        self.attrs.insert(name, value)
+    }
+
     /// The entry attributes
-    pub fn attrs(&self) -> &BTreeMap<Vec<u8>, Vec<u8>> {
-        &self.attrs
+    pub fn iter(&self) -> Iter<AttributeName, AttributeValue> {
+        self.attrs.iter()
     }
 
     /// Expiration time for this entry

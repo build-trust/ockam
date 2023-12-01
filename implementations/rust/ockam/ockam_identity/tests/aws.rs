@@ -109,7 +109,7 @@ async fn create_credential_aws_key() -> Result<()> {
         .await?;
 
     let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-        .with_attribute(*b"key", *b"value")
+        .with_attribute("key", "value")
         .build();
 
     let credential = identities

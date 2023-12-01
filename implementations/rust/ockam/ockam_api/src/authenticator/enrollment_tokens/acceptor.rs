@@ -56,12 +56,12 @@ impl EnrollmentTokenAcceptor {
         };
 
         //TODO: fixme:  unify use of hashmap vs btreemap
-        let trust_context = self.0.trust_context.as_bytes().to_vec();
+        let trust_context = self.0.trust_context.clone();
         let attrs = token
             .attrs
             .iter()
-            .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-            .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)])
+            .map(|(k, v)| (k.clone().into(), v.clone().into()))
+            .chain([(TRUST_CONTEXT_ID.into(), trust_context.into())])
             .collect();
         let entry =
             AttributesEntry::new(attrs, now().unwrap(), None, Some(token.issued_by.clone()));

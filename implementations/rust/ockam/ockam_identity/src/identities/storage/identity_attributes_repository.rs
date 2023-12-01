@@ -1,4 +1,4 @@
-use crate::{AttributesEntry, Identifier};
+use crate::{AttributeName, AttributeValue, AttributesEntry, Identifier};
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;
@@ -21,8 +21,8 @@ pub trait IdentityAttributesRepository: Send + Sync + 'static {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: Vec<u8>,
-        attribute_value: Vec<u8>,
+        attribute_name: AttributeName,
+        attribute_value: AttributeValue,
     ) -> Result<()>;
 
     /// Remove all attributes for a given identity identifier

@@ -426,7 +426,7 @@ pub mod test_utils {
         let identity = cli_state.get_identity(&identifier).await?;
 
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
+            .with_attribute(TRUST_CONTEXT_ID, "test_trust_context_id")
             .build();
 
         let vault = cli_state.get_default_named_vault().await?.vault().await?;

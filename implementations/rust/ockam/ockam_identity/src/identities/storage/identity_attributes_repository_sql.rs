@@ -5,13 +5,18 @@ use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
+use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 
 use crate::models::Identifier;
 use crate::utils::now;
-use crate::{AttributesEntry, IdentityAttributesRepository, TimestampInSeconds};
+use crate::{
+    AttributeName, AttributeValue, AttributesEntry, IdentityAttributesRepository,
+    TimestampInSeconds,
+};
 
 /// Implementation of `IdentitiesRepository` trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
@@ -38,54 +43,102 @@ impl IdentityAttributesSqlxDatabase {
 #[async_trait]
 impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     async fn get_attributes(&self, identity: &Identifier) -> Result<Option<AttributesEntry>> {
-        let query = query_as("SELECT * FROM identity_attributes WHERE identifier=$1")
-            .bind(identity.to_sql());
-        let identity_attributes: Option<IdentityAttributesRow> = query
-            .fetch_optional(&self.database.pool)
-            .await
-            .into_core()?;
-        Ok(identity_attributes.map(|r| r.attributes()).transpose()?)
+        let query =
+            query_as("SELECT * FROM identity_attributes WHERE identifier=$1 ORDER BY added DESC")
+                .bind(identity.to_sql());
+        let rows: Vec<IdentityAttributesRow> =
+            query.fetch_all(&self.database.pool).await.into_core()?;
+        let mut attributes_entry: Option<AttributesEntry> = None;
+        for row in rows {
+            if let Some(entry) = &mut attributes_entry {
+                entry.insert(row.attribute_name()?, row.attribute_value()?);
+            } else {
+                attributes_entry = Some(row.attributes()?)
+            }
+        }
+
+        Ok(attributes_entry)
     }
 
     async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
-        let query = query_as("SELECT * FROM identity_attributes");
-        let result: Vec<IdentityAttributesRow> =
+        let query = query_as("SELECT * FROM identity_attributes ORDER BY added DESC");
+        let rows: Vec<IdentityAttributesRow> =
             query.fetch_all(&self.database.pool).await.into_core()?;
-        result
-            .into_iter()
-            .map(|r| r.identifier().and_then(|i| r.attributes().map(|a| (i, a))))
-            .collect::<Result<Vec<_>>>()
+        let mut attributes_entries: HashMap<Identifier, AttributesEntry> = HashMap::default();
+        for row in rows {
+            let identifier = row.identifier()?;
+            if let Some(entry) = attributes_entries.get_mut(&identifier) {
+                entry.insert(row.attribute_name()?, row.attribute_value()?);
+            } else {
+                attributes_entries.insert(identifier, row.attributes()?);
+            };
+        }
+        let mut result: Vec<(Identifier, AttributesEntry)> =
+            attributes_entries.into_iter().collect();
+        result.sort_by_key(|k| k.0.clone());
+        Ok(result)
     }
 
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {
-        let query = query("INSERT OR REPLACE INTO identity_attributes VALUES (?, ?, ?, ?, ?)")
-            .bind(subject.to_sql())
-            .bind(minicbor::to_vec(entry.attrs())?.to_sql())
-            .bind(entry.added().to_sql())
-            .bind(entry.expires().map(|e| e.to_sql()))
-            .bind(entry.attested_by().map(|e| e.to_sql()));
-        query.execute(&self.database.pool).await.void()
+        let transaction = self.database.begin().await.into_core()?;
+        for (attribute_name, attribute_value) in entry.iter() {
+            self.execute_insert_query(
+                subject,
+                entry.expires(),
+                entry.attested_by(),
+                entry.added(),
+                attribute_name.clone(),
+                attribute_value.clone(),
+            )
+            .await?
+        }
+
+        transaction.commit().await.void()
     }
 
     /// Store an attribute name/value pair for a given identity
+    /// The attribute is self-attested
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: Vec<u8>,
-        attribute_value: Vec<u8>,
+        attribute_name: AttributeName,
+        attribute_value: AttributeValue,
     ) -> Result<()> {
-        let mut attributes = match self.get_attributes(subject).await? {
-            Some(entry) => (*entry.attrs()).clone(),
-            None => BTreeMap::new(),
-        };
-        attributes.insert(attribute_name, attribute_value);
-        let entry = AttributesEntry::new(attributes, now()?, None, Some(subject.clone()));
-        self.put_attributes(subject, entry).await
+        self.execute_insert_query(
+            subject,
+            None,
+            Some(subject.clone()),
+            now()?,
+            attribute_name,
+            attribute_value,
+        )
+        .await
     }
 
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         let query =
             query("DELETE FROM identity_attributes WHERE identifier = ?").bind(identity.to_sql());
+        query.execute(&self.database.pool).await.void()
+    }
+}
+
+impl IdentityAttributesSqlxDatabase {
+    async fn execute_insert_query(
+        &self,
+        subject: &Identifier,
+        expires: Option<TimestampInSeconds>,
+        attested_by: Option<Identifier>,
+        created_at: TimestampInSeconds,
+        attribute_name: AttributeName,
+        attribute_value: AttributeValue,
+    ) -> Result<()> {
+        let query = query("INSERT OR REPLACE INTO identity_attributes VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(subject.to_sql())
+            .bind(attribute_name.to_sql())
+            .bind(attribute_value.to_sql())
+            .bind(created_at.to_sql())
+            .bind(expires.map(|e| e.to_sql()))
+            .bind(attested_by.map(|e| e.to_sql()));
         query.execute(&self.database.pool).await.void()
     }
 }
@@ -98,11 +151,24 @@ impl ToSqlxType for TimestampInSeconds {
     }
 }
 
+impl ToSqlxType for AttributeName {
+    fn to_sql(&self) -> SqlxType {
+        self.to_string().to_sql()
+    }
+}
+
+impl ToSqlxType for AttributeValue {
+    fn to_sql(&self) -> SqlxType {
+        self.encode_to_string().unwrap().to_sql()
+    }
+}
+
 // Low-level representation of a table row
 #[derive(FromRow)]
 struct IdentityAttributesRow {
     identifier: String,
-    attributes: Vec<u8>,
+    attribute_name: String,
+    attribute_value: String,
     added: i64,
     expires: Option<i64>,
     attested_by: Option<String>,
@@ -113,9 +179,18 @@ impl IdentityAttributesRow {
         Identifier::from_str(&self.identifier)
     }
 
+    fn attribute_name(&self) -> Result<AttributeName> {
+        Ok(AttributeName::Str(self.attribute_name.clone()))
+    }
+
+    fn attribute_value(&self) -> Result<AttributeValue> {
+        AttributeValue::decode_from_string(self.attribute_value.as_str())
+            .map_err(|e| ockam_core::Error::new(Origin::Core, Kind::Serialization, e.to_string()))
+    }
+
     fn attributes(&self) -> Result<AttributesEntry> {
-        let attributes =
-            minicbor::decode(self.attributes.as_slice()).map_err(SqlxDatabase::map_decode_err)?;
+        let mut attributes = BTreeMap::new();
+        attributes.insert(self.attribute_name()?, self.attribute_value()?);
         let added = TimestampInSeconds(self.added as u64);
         let expires = self.expires.map(|v| TimestampInSeconds(v as u64));
         let attested_by = self
@@ -161,13 +236,13 @@ mod tests {
         assert_eq!(result, Some(attributes1.clone()));
 
         let result = repository.list_attributes_by_identifier().await?;
-        assert_eq!(
-            result,
-            vec![
-                (identifier1.clone(), attributes1.clone()),
-                (identifier2.clone(), attributes2.clone())
-            ]
-        );
+        let mut expected = vec![
+            (identifier1.clone(), attributes1.clone()),
+            (identifier2.clone(), attributes2.clone()),
+        ];
+        expected.sort_by_key(|k| k.0.clone());
+
+        assert_eq!(result, expected);
 
         // delete attributes
         repository.delete(&identifier1).await?;
@@ -177,19 +252,12 @@ mod tests {
         // store just one attribute name / value
         let before_adding = now()?;
         repository
-            .put_attribute_value(
-                &identifier1,
-                "name".as_bytes().to_vec(),
-                "value".as_bytes().to_vec(),
-            )
+            .put_attribute_value(&identifier1, "name".into(), "value".into())
             .await?;
 
         let result = repository.get_attributes(&identifier1).await?.unwrap();
         // the name/value pair is present
-        assert_eq!(
-            result.attrs().get("name".as_bytes()),
-            Some(&"value".as_bytes().to_vec())
-        );
+        assert_eq!(result.get("name".into()), Some("value".into()));
         // there is a timestamp showing when the attributes have been added
         assert!(result.added() >= before_adding);
 
@@ -202,26 +270,21 @@ mod tests {
         // timestamp for tracking attributes
         tokio::time::sleep(Duration::from_millis(1100)).await;
         repository
-            .put_attribute_value(
-                &identifier1,
-                "name2".as_bytes().to_vec(),
-                "value2".as_bytes().to_vec(),
-            )
+            .put_attribute_value(&identifier1, "name2".into(), "value2".into())
             .await?;
 
         let result2 = repository.get_attributes(&identifier1).await?.unwrap();
 
         // both the new and the old name/value pairs are present
-        assert_eq!(
-            result2.attrs().get("name".as_bytes()),
-            Some(&"value".as_bytes().to_vec())
-        );
-        assert_eq!(
-            result2.attrs().get("name2".as_bytes()),
-            Some(&"value2".as_bytes().to_vec())
-        );
+        assert_eq!(result2.get("name".into()), Some("value".into()));
+        assert_eq!(result2.get("name2".into()), Some("value2".into()));
         // The original timestamp has been updated
-        assert!(result2.added() > result.added());
+        assert!(
+            result2.added() > result.added(),
+            "before {:?}, after {:?}",
+            result.added(),
+            result2.added()
+        );
 
         // the attributes are still self-attested
         assert_eq!(result2.attested_by(), Some(identifier1.clone()));
@@ -231,10 +294,7 @@ mod tests {
     /// HELPERS
     async fn create_attributes_entry(identifier: &Identifier) -> Result<AttributesEntry> {
         Ok(AttributesEntry::new(
-            BTreeMap::from([
-                ("name".as_bytes().to_vec(), "alice".as_bytes().to_vec()),
-                ("age".as_bytes().to_vec(), "20".as_bytes().to_vec()),
-            ]),
+            BTreeMap::from([("name".into(), "alice".into()), ("age".into(), "20".into())]),
             TimestampInSeconds(1000),
             Some(TimestampInSeconds(2000)),
             Some(identifier.clone()),
@@ -247,6 +307,9 @@ mod tests {
     }
 
     async fn create_repository() -> Result<Arc<dyn IdentityAttributesRepository>> {
+        // Ok(Arc::new(IdentityAttributesSqlxDatabase::new(Arc::new(
+        //     SqlxDatabase::create("/Users/etorreborre/.ockam/testdb.sqlite").await?,
+        // ))))
         Ok(IdentityAttributesSqlxDatabase::create().await?)
     }
 }

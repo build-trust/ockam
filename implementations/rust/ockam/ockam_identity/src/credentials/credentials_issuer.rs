@@ -5,7 +5,6 @@ use tracing::trace;
 
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::string::String;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -18,10 +17,7 @@ use crate::{Credentials, IdentityAttributesRepository, IdentitySecureChannelLoca
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
-pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
-
-/// The same as above but in string format
-pub const TRUST_CONTEXT_ID_UTF8: &str = "trust_context_id";
+pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
 
 /// Identifier for the schema of a project credential
 pub const PROJECT_MEMBER_SCHEMA: CredentialSchemaIdentifier = CredentialSchemaIdentifier(1);
@@ -43,10 +39,10 @@ impl CredentialsIssuer {
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
-        trust_context: String,
+        trust_context: &str,
     ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec())
+            .with_attribute(TRUST_CONTEXT_ID, trust_context)
             .build();
 
         Self {
@@ -71,10 +67,8 @@ impl CredentialsIssuer {
         };
 
         let mut subject_attributes = self.subject_attributes.clone();
-        for (key, value) in entry.attrs().iter() {
-            subject_attributes
-                .map
-                .insert(key.clone().into(), value.clone().into());
+        for (key, value) in entry.iter() {
+            subject_attributes.map.insert(key.clone(), value.clone());
         }
 
         let credential = self

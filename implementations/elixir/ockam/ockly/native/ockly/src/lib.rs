@@ -309,7 +309,7 @@ fn issue_credential<'a>(
             .map_err(|e| (atoms::identity_import_error(), e.to_string()))?;
         let mut attr_builder = AttributesBuilder::with_schema(CredentialSchemaIdentifier(0));
         for (key, value) in attrs {
-            attr_builder = attr_builder.with_attribute(key, value)
+            attr_builder = attr_builder.with_attribute(key.as_str(), value.as_str())
         }
         identities_ref
             .credentials()
@@ -369,10 +369,7 @@ fn verify_credential(
             .subject_attributes
             .map
         {
-            attr_map.insert(
-                String::from_utf8(k.to_vec()).map_err(|e| (atoms::utf8_error(), e.to_string()))?,
-                String::from_utf8(v.to_vec()).map_err(|e| (atoms::utf8_error(), e.to_string()))?,
-            );
+            attr_map.insert(k.to_string(), v.to_string());
         }
         Ok((
             *credential_and_purpose_key_data

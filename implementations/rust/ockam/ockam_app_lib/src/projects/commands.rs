@@ -38,7 +38,7 @@ impl AppState {
         let otc = authority_node
             .create_token(
                 &self.context(),
-                HashMap::from([("invitation_email", invitation_email)]),
+                HashMap::from([("invitation_email".to_string(), invitation_email.to_string())]),
                 Some(Duration::from_secs(60 * 60 * 24 * 14)),
                 None,
             )

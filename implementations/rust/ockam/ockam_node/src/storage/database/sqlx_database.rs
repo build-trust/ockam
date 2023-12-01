@@ -77,7 +77,7 @@ impl SqlxDatabase {
         Ok(SqlxDatabase { pool })
     }
 
-    async fn create_connection_pool(path: &Path) -> Result<SqlitePool> {
+    pub(super) async fn create_connection_pool(path: &Path) -> Result<SqlitePool> {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
@@ -88,7 +88,7 @@ impl SqlxDatabase {
         Ok(pool)
     }
 
-    async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
+    pub(super) async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
         // SQLite in-memory DB get wiped if there is no connection to it.
         // The below setting tries to ensure there is always an open connection
         let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
@@ -101,8 +101,13 @@ impl SqlxDatabase {
     }
 
     async fn migrate(&self) -> Result<()> {
+        Self::migrate_tables(&self.pool).await?;
+        self.migrate_typed_attributes().await
+    }
+
+    pub(crate) async fn migrate_tables(pool: &SqlitePool) -> Result<()> {
         sqlx::migrate!("./src/storage/database/migrations")
-            .run(&self.pool)
+            .run(pool)
             .await
             .map_err(Self::map_migrate_err)
     }

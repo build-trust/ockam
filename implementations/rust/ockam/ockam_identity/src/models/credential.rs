@@ -1,6 +1,10 @@
 use crate::models::{ChangeHash, Identifier, TimestampInSeconds};
+use crate::{AttributeName, AttributeValue};
+use core::str::{from_utf8, Utf8Error};
 use minicbor::bytes::ByteVec;
-use minicbor::{Decode, Encode};
+use minicbor::encode::Write;
+use minicbor::{Decode, Decoder, Encode, Encoder};
+use ockam_core::compat::string::ToString;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
@@ -31,7 +35,7 @@ pub enum CredentialSignature {
 }
 
 /// Data inside a [`Credential`]
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 #[rustfmt::skip]
 pub struct CredentialData {
     /// To whom this Credential was issued
@@ -54,11 +58,74 @@ pub struct CredentialData {
 pub struct CredentialSchemaIdentifier(#[n(0)] pub u64);
 
 /// Set a keys&values that an Authority (issuer) attests about the Subject
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 #[rustfmt::skip]
 pub struct Attributes {
     /// [`CredentialSchemaIdentifier`] that determines which keys&values to expect in the [`Attributes`]
     #[n(0)] pub schema: CredentialSchemaIdentifier,
-    /// Set of keys&values
-    #[n(1)] pub map: BTreeMap<ByteVec, ByteVec>,
+    /// Set of keys & values
+    /// The values exchanged with the Controller are actually UTF-8 encoded strings
+    /// so we use the 2 functions below to do the decoding
+    #[cbor(decode_with = "decode_attributes")]
+    #[cbor(encode_with = "encode_attributes")]
+    #[n(1)] pub map: BTreeMap<AttributeName, AttributeValue>,
+}
+
+fn decode_attributes<Ctx>(
+    d: &mut Decoder,
+    _ctx: &mut Ctx,
+) -> Result<BTreeMap<AttributeName, AttributeValue>, minicbor::decode::Error> {
+    let attributes: BTreeMap<ByteVec, ByteVec> = d.decode()?;
+    let attributes: Result<BTreeMap<AttributeName, AttributeValue>, Utf8Error> = attributes
+        .iter()
+        .map(|(k, v)| decode_key_value(k, v))
+        .collect();
+    attributes.map_err(|e| minicbor::decode::Error::message(e.to_string()))
+}
+
+fn decode_key_value(
+    k: &Vec<u8>,
+    v: &Vec<u8>,
+) -> Result<(AttributeName, AttributeValue), Utf8Error> {
+    let key = from_utf8(k.as_slice())?.into();
+    let value = from_utf8(v.as_slice())?.into();
+    Ok((key, value))
+}
+
+fn encode_attributes<Ctx, W: Write>(
+    v: &BTreeMap<AttributeName, AttributeValue>,
+    e: &mut Encoder<W>,
+    _ctx: &mut Ctx,
+) -> Result<(), minicbor::encode::Error<W::Error>> {
+    let attributes: BTreeMap<ByteVec, ByteVec> = v
+        .iter()
+        .map(|(k, v)| {
+            (
+                From::from(k.to_string().as_bytes().to_vec()),
+                From::from(v.to_string().as_bytes().to_vec()),
+            )
+        })
+        .collect();
+    e.encode(attributes)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::AttributesBuilder;
+
+    /// decoding what has been encoded should work ok if values are strings
+    #[test]
+    fn test_round_trip() {
+        let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
+            .with_attribute("key1", "value2")
+            .with_attribute("key2", "value2")
+            .build();
+
+        let result = minicbor::decode(&minicbor::to_vec(attributes.clone()).unwrap());
+        assert!(result.is_ok());
+
+        assert_eq!(result.ok(), Some(attributes));
+    }
 }

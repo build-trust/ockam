@@ -5,7 +5,9 @@ use serde_json as json;
 use tracing::trace;
 
 use ockam::identity::utils::now;
-use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesRepository};
+use ockam::identity::{
+    AttributeName, AttributeValue, AttributesEntry, Identifier, IdentityAttributesRepository,
+};
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
@@ -71,8 +73,8 @@ impl IdentityAttributesRepository for BootstrapedIdentityAttributesStore {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: Vec<u8>,
-        attribute_value: Vec<u8>,
+        attribute_name: AttributeName,
+        attribute_value: AttributeValue,
     ) -> Result<()> {
         self.repository
             .put_attribute_value(subject, attribute_name, attribute_value)
@@ -122,7 +124,7 @@ impl PreTrustedIdentities {
             .map(|(identity_id, raw_attrs)| {
                 let attrs = raw_attrs
                     .into_iter()
-                    .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
+                    .map(|(k, v)| (k.into(), v.into()))
                     .collect();
                 (identity_id, AttributesEntry::new(attrs, now, None, None))
             })
@@ -167,8 +169,8 @@ impl IdentityAttributesRepository for PreTrustedIdentities {
     async fn put_attribute_value(
         &self,
         _subject: &Identifier,
-        _attribute_name: Vec<u8>,
-        _attribute_value: Vec<u8>,
+        _attribute_name: AttributeName,
+        _attribute_value: AttributeValue,
     ) -> Result<()> {
         Ok(())
     }

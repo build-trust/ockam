@@ -74,10 +74,9 @@ async fn run_impl(
     let identities = opts.state.make_identities(vault).await?;
 
     let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-        .with_attribute(TRUST_CONTEXT_ID.to_vec(), authority.to_string());
+        .with_attribute(TRUST_CONTEXT_ID, &authority.to_string());
     for (key, value) in cmd.attributes()? {
-        attributes_builder =
-            attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());
+        attributes_builder = attributes_builder.with_attribute(&key, value.as_str());
     }
 
     let credential = identities
