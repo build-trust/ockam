@@ -311,22 +311,22 @@ jobs:
           target: ${{ matrix.target }}
           platform_operating_system: ${{ matrix.os }}
 
-  # test_orchestrator_ockam_command:
-  #   name: Rust - test_orchestrator_ockam_command
-  #   runs-on: ubuntu-20.04
-  #   container: ghcr.io/build-trust/artifacts-helper:latest
-  #   environment: ${{ github.event_name == 'merge_group' && 'merge_queue' || '' }}
-  #   permissions:
-  #     contents: read
-  #     packages: read
+  test_orchestrator_ockam_command:
+    name: Rust - test_orchestrator_ockam_command
+    runs-on: ubuntu-20.04
+    container: ghcr.io/build-trust/artifacts-helper@sha256:78e0bcfb0b0976cd173a1bdaf0ceeb81bb0ce934ae1915ed236be9b864912252
+    environment: ${{ github.event_name == 'merge_group' && 'merge_queue' || '' }}
+    permissions:
+      contents: read
+      packages: read
 
-  #   steps:
-  #     - name: Run Ockam Bats Test On Development Cluster
-  #       if: github.event_name == 'merge_group'
-  #       uses: build-trust/.github/actions/run_bats_test@custom-actions
-  #       with:
-  #         perform_ockam_enroll: 'true'
-  #         script_path: "/artifacts-scripts"
-  #         ockam_repository_ref: ${{ inputs.commit_sha }}
-  #         controller_id: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ID }}
-  #         controller_addr: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ADDRESS }}
+    steps:
+      - name: Run Ockam Bats Test On Development Cluster
+        if: github.event_name == 'merge_group'
+        uses: build-trust/.github/actions/run_bats_test@custom-actions
+        with:
+          perform_ockam_enroll: 'true'
+          script_path: "/artifacts-scripts"
+          ockam_repository_ref: ${{ inputs.commit_sha }}
+          controller_id: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ID }}
+          controller_addr: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ADDRESS }}
