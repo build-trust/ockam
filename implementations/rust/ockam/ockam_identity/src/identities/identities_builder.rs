@@ -1,6 +1,8 @@
 use ockam_core::compat::sync::Arc;
 #[cfg(feature = "storage")]
 use ockam_core::Result;
+#[cfg(feature = "storage")]
+use ockam_node::database::SqlxDatabase;
 use ockam_vault::storage::SecretsRepository;
 
 use crate::identities::{ChangeHistoryRepository, Identities};
@@ -20,6 +22,12 @@ pub struct IdentitiesBuilder {
 #[cfg(feature = "storage")]
 pub async fn identities() -> Result<Arc<Identities>> {
     Ok(Identities::builder().await?.build())
+}
+
+/// Return identities backed by a specific database
+#[cfg(feature = "storage")]
+pub fn create(database: Arc<SqlxDatabase>) -> Arc<Identities> {
+    Identities::create(database).build()
 }
 
 impl IdentitiesBuilder {

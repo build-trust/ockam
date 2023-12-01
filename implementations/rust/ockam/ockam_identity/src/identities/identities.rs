@@ -1,6 +1,8 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
+#[cfg(feature = "storage")]
+use ockam_node::database::SqlxDatabase;
 
 #[cfg(feature = "storage")]
 use crate::identities::storage::ChangeHistorySqlxDatabase;
@@ -134,5 +136,18 @@ impl Identities {
             identity_attributes_repository: IdentityAttributesSqlxDatabase::create().await?,
             purpose_keys_repository: PurposeKeysSqlxDatabase::create().await?,
         })
+    }
+
+    /// Return a builder for identities with a specific database
+    #[cfg(feature = "storage")]
+    pub fn create(database: Arc<SqlxDatabase>) -> IdentitiesBuilder {
+        IdentitiesBuilder {
+            vault: Vault::create_with_database(database.clone()),
+            change_history_repository: Arc::new(ChangeHistorySqlxDatabase::new(database.clone())),
+            identity_attributes_repository: Arc::new(IdentityAttributesSqlxDatabase::new(
+                database.clone(),
+            )),
+            purpose_keys_repository: Arc::new(PurposeKeysSqlxDatabase::new(database.clone())),
+        }
     }
 }
