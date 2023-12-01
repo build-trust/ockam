@@ -8,11 +8,11 @@ use crate::cloud::enroll::auth0::UserInfo;
 impl CliState {
     pub async fn store_user(&self, user: &UserInfo) -> Result<()> {
         let repository = self.users_repository().await?;
-        let default_user_exists = repository.get_default_user().await?.is_none();
+        let is_first_user = repository.get_users().await?.is_empty();
         repository.store_user(user).await?;
 
         // if this is the first user we store we mark it as the default user
-        if !default_user_exists {
+        if is_first_user {
             self.set_default_user(&user.email).await?
         }
         Ok(())
