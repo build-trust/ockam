@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.94.0 - 2023-12-01
+
+### Added
+
+- Add `VersionedData::data_type`. remove hash truncation
+
+### Changed
+
+- Handle close and refresh credentials secure channel messages
+- Persist application data in a database
+- Updated dependencies
+
+### Fixed
+
+- Fix the passing of space name
+- Fix the creation of an identity with optional name and vault
+
 ## 0.93.0 - 2023-11-23
 
 ### Changed
