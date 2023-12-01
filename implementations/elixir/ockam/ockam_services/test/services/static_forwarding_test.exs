@@ -153,15 +153,15 @@ defmodule Test.Services.StaticForwardingTest do
 
     {:ok, channel_alice} =
       create_channel_with_credential(authority, alice, listener, %{
-        "allow_relay_address" => alias_str
+        "ockam-relay" => alias_str
       })
 
     {:ok, channel_bob} =
-      create_channel_with_credential(authority, bob, listener, %{"allow_relay_address" => "*"})
+      create_channel_with_credential(authority, bob, listener, %{"ockam-relay" => "*"})
 
     {:ok, channel_carol} =
       create_channel_with_credential(authority, carol, listener, %{
-        "allow_relay_address" => "other"
+        "ockam-relay" => "other"
       })
 
     {:ok, ^forwarder_address} =

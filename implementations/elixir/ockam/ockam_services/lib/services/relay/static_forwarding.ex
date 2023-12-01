@@ -94,10 +94,10 @@ defmodule Ockam.Services.Relay.StaticForwarding do
 
   def check_authorization(identifier, alias_str) do
     case AttributeStorage.get_attributes(identifier) do
-      %{"allow_relay_address" => "*"} ->
+      %{"ockam-relay" => "*"} ->
         :ok
 
-      %{"allow_relay_address" => ^alias_str} ->
+      %{"ockam-relay" => ^alias_str} ->
         :ok
 
       attrs ->

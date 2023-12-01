@@ -47,13 +47,13 @@ defmodule Test.Services.StaticForwardingApiTest do
     alias_str_2 = "test_static_forwarding_alias_2"
 
     {:ok, bob_credential} =
-      Identity.issue_credential(authority_identity, bob_id, %{"allow_relay_address" => "*"}, 100)
+      Identity.issue_credential(authority_identity, bob_id, %{"ockam-relay" => "*"}, 100)
 
     {:ok, alice_credential} =
       Identity.issue_credential(
         authority_identity,
         alice_id,
-        %{"allow_relay_address" => alias_str_1},
+        %{"ockam-relay" => alias_str_1},
         100
       )
 
