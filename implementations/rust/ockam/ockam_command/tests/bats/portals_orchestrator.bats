@@ -77,12 +77,12 @@ teardown() {
   blue_identifier=$($OCKAM identity show blue)
 
   fwd="$(random_str)"
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green --relay $fwd
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
   run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Green isn't enrolled as project member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
+  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
@@ -110,12 +110,12 @@ teardown() {
   blue_identifier=$($OCKAM identity show blue)
 
   fwd="$(random_str)"
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green --relay $fwd
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
   run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Green isn't enrolled as project member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
+  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
 
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
@@ -142,12 +142,12 @@ teardown() {
   blue_identifier=$($OCKAM identity show blue)
 
   fwd="$(random_str)"
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green --relay $fwd
+  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
   run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
 
   # Add identities as members of the project
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member
+  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
   run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
 
   # Use project from the now enrolled identities
@@ -168,8 +168,8 @@ teardown() {
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
   fwd="$(random_str)"
-  green_token=$($OCKAM project ticket --attribute app=app1 --allowed-relay $fwd)
-  blue_token=$($OCKAM project ticket --attribute app=app1)
+  green_token=$($OCKAM project ticket --attribute app=app1)
+  blue_token=$($OCKAM project ticket --attribute app=app1 --relay $fwd)
 
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
