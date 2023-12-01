@@ -5,8 +5,8 @@ struct About: View {
     @State var runtimeInformation: RuntimeInformation
 
     var body: some View {
-        VStack {
-            VStack {
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
                 Image("Logo")
                     .frame(width: 128, height: 128)
                     .padding(.vertical, VerticalSpacingUnit)
@@ -68,7 +68,7 @@ struct About: View {
             .background(OckamDarkerBackground)
             .padding(0)
         }
-        .frame(width: 500, height: 330)
+        .frame(width: 650, height: 330)
         .padding(0)
     }
 
@@ -85,11 +85,11 @@ struct About_Previews: PreviewProvider {
                 commit: "7d866ec4dbcb238094480a142a7b471f6971a368",
                 home: "/tmp/ockam/my-alternative-home",
                 controllerAddr: "/dnsaddr/..../tcp/1234/service/api",
-                controllerIdentity: "I37ff9a5a7b56be0ec163b8aae68ef7d087bf7fae"
+                controllerIdentity: "I42b962f5b4e4b6693c3796a20572ea64d4f7a9a0ed681518b1c3723ebf685b90"
             ))
             Divider()
             About(runtimeInformation: swift_runtime_information())
         }
-        .frame(width: 500, height: 700)
+        .frame(width: 650, height: 700)
     }
 }
