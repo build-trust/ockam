@@ -62,13 +62,21 @@ impl SecretsRepository for SecretsSqlxDatabase {
         &self,
         handle: &SigningSecretKeyHandle,
     ) -> Result<Option<SigningSecret>> {
-        if let Some(secret) = self.get_signing_secret(handle).await? {
+        let mut transaction = self.database.begin().await.into_core()?;
+        let query1 = query_as("SELECT * FROM signing_secret WHERE handle=?").bind(handle.to_sql());
+        let row: Option<SigningSecretRow> =
+            query1.fetch_optional(&mut *transaction).await.into_core()?;
+        let secret = row.map(|r| r.signing_secret()).transpose()?;
+
+        let result = if let Some(secret) = secret {
             let query = query("DELETE FROM signing_secret WHERE handle = ?").bind(handle.to_sql());
-            query.execute(&self.database.pool).await.void()?;
-            Ok(Some(secret))
+            query.execute(&mut *transaction).await.void()?;
+            Some(secret)
         } else {
-            Ok(None)
-        }
+            None
+        };
+        transaction.commit().await.void()?;
+        Ok(result)
     }
 
     async fn get_signing_secret(
@@ -107,13 +115,21 @@ impl SecretsRepository for SecretsSqlxDatabase {
         &self,
         handle: &X25519SecretKeyHandle,
     ) -> Result<Option<X25519SecretKey>> {
-        if let Some(secret) = self.get_x25519_secret(handle).await? {
+        let mut transaction = self.database.begin().await.into_core()?;
+        let query1 = query_as("SELECT * FROM x25519_secret WHERE handle=?").bind(handle.to_sql());
+        let row: Option<X25519SecretRow> =
+            query1.fetch_optional(&mut *transaction).await.into_core()?;
+        let secret = row.map(|r| r.x25519_secret()).transpose()?;
+
+        let result = if let Some(secret) = secret {
             let query = query("DELETE FROM x25519_secret WHERE handle = ?").bind(handle.to_sql());
-            query.execute(&self.database.pool).await.void()?;
-            Ok(Some(secret))
+            query.execute(&mut *transaction).await.void()?;
+            Some(secret)
         } else {
-            Ok(None)
-        }
+            None
+        };
+        transaction.commit().await.void()?;
+        Ok(result)
     }
 
     async fn get_x25519_secret(

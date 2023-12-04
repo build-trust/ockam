@@ -49,15 +49,16 @@ impl ProjectsSqlxDatabase {
 #[async_trait]
 impl ProjectsRepository for ProjectsSqlxDatabase {
     async fn store_project(&self, project: &Project) -> Result<()> {
-        let is_already_default = self
-            .get_default_project()
-            .await?
-            .map(|p| p.id == project.id)
-            .unwrap_or(false);
-
-        // store the project data
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query(
+
+        let query1 = query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM project WHERE is_default=$1 AND project_id=$2)",
+        )
+        .bind(true.to_sql())
+        .bind(project.id.to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+
+        let query2 = query(
             "INSERT OR REPLACE INTO project VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
         )
             .bind(project.id.to_sql())
@@ -72,53 +73,53 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             .bind(project.version.as_ref().map(|r| r.to_sql()))
             .bind(project.running.as_ref().map(|r| r.to_sql()))
             .bind(project.operation_id.as_ref().map(|r| r.to_sql()));
-        query1.execute(&mut *transaction).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         // remove any existing users related to that project if any
-        let query2 =
+        let query3 =
             query("DELETE FROM user_project WHERE project_id=$1").bind(project.id.to_sql());
-        query2.execute(&mut *transaction).await.void()?;
+        query3.execute(&mut *transaction).await.void()?;
 
         // store the users associated to that project
         for user_email in &project.users {
-            let query3 = query("INSERT OR REPLACE INTO user_project VALUES (?, ?)")
+            let query = query("INSERT OR REPLACE INTO user_project VALUES (?, ?)")
                 .bind(user_email.to_sql())
                 .bind(project.id.to_sql());
-            query3.execute(&mut *transaction).await.void()?;
+            query.execute(&mut *transaction).await.void()?;
         }
 
         // remove any existing user roles related to that project if any
-        let query2 = query("DELETE FROM user_role WHERE project_id=$1").bind(project.id.to_sql());
-        query2.execute(&mut *transaction).await.void()?;
+        let query4 = query("DELETE FROM user_role WHERE project_id=$1").bind(project.id.to_sql());
+        query4.execute(&mut *transaction).await.void()?;
 
         // store the user roles associated to that project
         for user_role in &project.user_roles {
-            let query4 = query("INSERT OR REPLACE INTO user_role VALUES (?, ?, ?, ?, ?)")
+            let query = query("INSERT OR REPLACE INTO user_role VALUES (?, ?, ?, ?, ?)")
                 .bind(user_role.id.to_sql())
                 .bind(project.id.to_sql())
                 .bind(user_role.email.to_sql())
                 .bind(user_role.role.to_string().to_sql())
                 .bind(user_role.scope.to_string().to_sql());
-            query4.execute(&mut *transaction).await.void()?;
+            query.execute(&mut *transaction).await.void()?;
         }
 
         // store the okta configuration if any
         for okta_config in &project.okta_config {
-            let query5 = query("INSERT OR REPLACE INTO okta_config VALUES (?, ?, ?, ?, ?)")
+            let query = query("INSERT OR REPLACE INTO okta_config VALUES (?, ?, ?, ?, ?)")
                 .bind(project.id.to_sql())
                 .bind(okta_config.tenant_base_url.to_string().to_sql())
                 .bind(okta_config.client_id.to_sql())
                 .bind(okta_config.certificate.to_string().to_sql())
                 .bind(okta_config.attributes.join(",").to_string().to_sql());
-            query5.execute(&mut *transaction).await.void()?;
+            query.execute(&mut *transaction).await.void()?;
         }
 
         // store the confluent configuration if any
         for confluent_config in &project.confluent_config {
-            let query6 = query("INSERT OR REPLACE INTO confluent_config VALUES (?, ?)")
+            let query = query("INSERT OR REPLACE INTO confluent_config VALUES (?, ?)")
                 .bind(project.id.to_sql())
                 .bind(confluent_config.bootstrap_server.to_sql());
-            query6.execute(&mut *transaction).await.void()?;
+            query.execute(&mut *transaction).await.void()?;
         }
 
         transaction.commit().await.void()
