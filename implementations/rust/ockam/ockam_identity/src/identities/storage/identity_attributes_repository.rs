@@ -17,14 +17,6 @@ pub trait IdentityAttributesRepository: Send + Sync + 'static {
     /// Previous values gets overridden.
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()>;
 
-    /// Store an attribute name/value pair for a given identity
-    async fn put_attribute_value(
-        &self,
-        subject: &Identifier,
-        attribute_name: Vec<u8>,
-        attribute_value: Vec<u8>,
-    ) -> Result<()>;
-
     /// Remove all attributes for a given identity identifier
     async fn delete(&self, identity: &Identifier) -> Result<()>;
 }

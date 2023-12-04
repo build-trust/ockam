@@ -40,18 +40,23 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         name: &str,
         vault_name: &str,
     ) -> Result<NamedIdentity> {
-        let is_already_default = self
-            .get_default_named_identity()
-            .await?
-            .map(|n| n.name() == *name)
-            .unwrap_or(false);
+        let mut transaction = self.database.begin().await.into_core()?;
 
-        let query = query("INSERT OR REPLACE INTO named_identity VALUES (?, ?, ?, ?)")
+        let query1 = query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM named_identity WHERE is_default=$1 AND name=$2)",
+        )
+        .bind(true.to_sql())
+        .bind(name.to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+
+        let query2 = query("INSERT OR REPLACE INTO named_identity VALUES (?, ?, ?, ?)")
             .bind(identifier.to_sql())
             .bind(name.to_sql())
             .bind(vault_name.to_sql())
             .bind(is_already_default.to_sql());
-        query.execute(&self.database.pool).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
+
+        transaction.commit().await.void()?;
 
         Ok(NamedIdentity::new(
             identifier.clone(),
@@ -62,23 +67,43 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     }
 
     async fn delete_identity(&self, name: &str) -> Result<Option<Identifier>> {
-        let named_identity = self.get_named_identity(name).await?;
-        let is_default = named_identity
-            .clone()
-            .map(|i| i.is_default())
-            .unwrap_or(false);
-        let query = query("DELETE FROM named_identity WHERE name=?").bind(name.to_sql());
-        query.execute(&self.database.pool).await.void()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
-        // if the deleted identity was the default one, select another identity to be the default one
-        if is_default {
-            let identities = self.get_named_identities().await?;
-            if let Some(identity) = identities.first() {
-                self.set_as_default_by_identifier(&identity.identifier())
-                    .await?;
-            };
-        }
-        Ok(named_identity.map(|i| i.identifier()))
+        // get the named identity
+        let query1 = query_as("SELECT * FROM named_identity WHERE name=$1").bind(name.to_sql());
+        let row: Option<NamedIdentityRow> =
+            query1.fetch_optional(&mut *transaction).await.into_core()?;
+        let named_identity = row.map(|r| r.named_identity()).transpose()?;
+
+        let result = match named_identity {
+            // return None if it wasn't found
+            None => None,
+
+            // otherwise delete it and set another identity as the default
+            Some(named_identity) => {
+                let query2 = query("DELETE FROM named_identity WHERE name=?").bind(name.to_sql());
+                query2.execute(&mut *transaction).await.void()?;
+
+                // if the deleted identity was the default one, select another identity to be the default one
+                if named_identity.is_default() {
+                    if let Some(other_name) =
+                        query_scalar::<_, String>("SELECT name FROM named_identity")
+                            .fetch_optional(&mut *transaction)
+                            .await
+                            .into_core()?
+                    {
+                        let query3 =
+                            query("UPDATE named_identity SET is_default = ? WHERE name = ?")
+                                .bind(true.to_sql())
+                                .bind(other_name.to_sql());
+                        query3.execute(&mut *transaction).await.void()?
+                    }
+                }
+                Some(named_identity.identifier())
+            }
+        };
+        transaction.commit().await.void()?;
+        Ok(result)
     }
 
     async fn delete_identity_by_identifier(
@@ -115,6 +140,15 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         Ok(row.map(|r| r.name()))
     }
 
+    async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
+        let query = query_as("SELECT * FROM named_identity WHERE name=$1").bind(name.to_sql());
+        let row: Option<NamedIdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        row.map(|r| r.named_identity()).transpose()
+    }
+
     async fn get_named_identity_by_identifier(
         &self,
         identifier: &Identifier,
@@ -134,13 +168,20 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         row.iter().map(|r| r.named_identity()).collect()
     }
 
-    async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
-        let query = query_as("SELECT * FROM named_identity WHERE name=$1").bind(name.to_sql());
-        let row: Option<NamedIdentityRow> = query
-            .fetch_optional(&self.database.pool)
-            .await
-            .into_core()?;
-        row.map(|r| r.named_identity()).transpose()
+    async fn set_as_default(&self, name: &str) -> Result<()> {
+        let mut transaction = self.database.begin().await.into_core()?;
+        // set the identifier as the default one
+        let query1 = query("UPDATE named_identity SET is_default = ? WHERE name = ?")
+            .bind(true.to_sql())
+            .bind(name.to_sql());
+        query1.execute(&mut *transaction).await.void()?;
+
+        // set all the others as non-default
+        let query2 = query("UPDATE named_identity SET is_default = ? WHERE name <> ?")
+            .bind(false.to_sql())
+            .bind(name.to_sql());
+        query2.execute(&mut *transaction).await.void()?;
+        transaction.commit().await.void()
     }
 
     async fn set_as_default_by_identifier(&self, identifier: &Identifier) -> Result<()> {
@@ -157,13 +198,6 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
             .bind(identifier.to_sql());
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
-    }
-
-    async fn set_as_default(&self, name: &str) -> Result<()> {
-        if let Some(identifier) = self.get_identifier(name).await? {
-            self.set_as_default_by_identifier(&identifier).await?
-        };
-        Ok(())
     }
 
     async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {

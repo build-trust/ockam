@@ -30,19 +30,20 @@ impl VaultsSqlxDatabase {
 #[async_trait]
 impl VaultsRepository for VaultsSqlxDatabase {
     async fn store_vault(&self, name: &str, path: PathBuf, is_kms: bool) -> Result<NamedVault> {
-        let is_already_default = self
-            .get_default_vault()
-            .await?
-            .map(|v| v.name() == name)
-            .unwrap_or(false);
-
         let mut transaction = self.database.begin().await.into_core()?;
-        let query = query("INSERT OR REPLACE INTO vault VALUES (?1, ?2, ?3, ?4)")
+
+        let query1 =
+            query_scalar("SELECT EXISTS(SELECT 1 FROM vault WHERE is_default=$1 AND name=$2)")
+                .bind(true.to_sql())
+                .bind(name.to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+
+        let query2 = query("INSERT OR REPLACE INTO vault VALUES (?1, ?2, ?3, ?4)")
             .bind(name.to_sql())
             .bind(path.to_sql())
             .bind(is_already_default.to_sql())
             .bind(is_kms.to_sql());
-        query.execute(&mut *transaction).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()?;
 
         Ok(NamedVault::new(
@@ -55,22 +56,38 @@ impl VaultsRepository for VaultsSqlxDatabase {
 
     /// Delete a vault by name
     async fn delete_vault(&self, name: &str) -> Result<()> {
-        let is_default = self
-            .get_named_vault(name)
-            .await?
-            .map(|v| v.is_default())
-            .unwrap_or(false);
-        let query = query("DELETE FROM vault WHERE name = $1").bind(name.to_sql());
-        query.execute(&self.database.pool).await.void()?;
+        let mut transaction = self.database.begin().await.into_core()?;
 
-        // if the deleted vault was the default one, select another vault to be the default one
-        if is_default {
-            let vaults = self.get_named_vaults().await?;
-            if let Some(vault) = vaults.first() {
-                self.set_as_default(&vault.name()).await?;
-            };
-        }
-        Ok(())
+        // get the named vault
+        let query1 = query_as("SELECT * FROM vault WHERE name=$1").bind(name.to_sql());
+        let row: Option<VaultRow> = query1.fetch_optional(&mut *transaction).await.into_core()?;
+        let named_vault = row.map(|r| r.named_vault()).transpose()?;
+
+        match named_vault {
+            // return if it wasn't found
+            None => (),
+
+            // otherwise delete it and set another vault as the default
+            Some(named_vault) => {
+                let query2 = query("DELETE FROM vault WHERE name=?").bind(name.to_sql());
+                query2.execute(&mut *transaction).await.void()?;
+
+                // if the deleted vault was the default one, select another vault to be the default one
+                if named_vault.is_default() {
+                    if let Some(other_name) = query_scalar::<_, String>("SELECT name FROM vault")
+                        .fetch_optional(&mut *transaction)
+                        .await
+                        .into_core()?
+                    {
+                        let query3 = query("UPDATE vault SET is_default = ? WHERE name = ?")
+                            .bind(true.to_sql())
+                            .bind(other_name.to_sql());
+                        query3.execute(&mut *transaction).await.void()?
+                    }
+                }
+            }
+        };
+        transaction.commit().await.void()
     }
 
     async fn set_as_default(&self, name: &str) -> Result<()> {
