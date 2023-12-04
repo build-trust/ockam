@@ -5,8 +5,8 @@ use ockam_vault::{SigningSecretKeyHandle, VaultForSigning, VaultForVerifyingSign
 
 use crate::identities::identity_builder::IdentityBuilder;
 use crate::models::{ChangeHistory, Identifier};
+use crate::IdentityOptions;
 use crate::{ChangeHistoryRepository, IdentitiesKeys, Identity, IdentityError};
-use crate::{IdentityHistoryComparison, IdentityOptions};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
@@ -86,9 +86,7 @@ impl IdentitiesCreation {
         options: IdentityOptions,
     ) -> Result<Identifier> {
         let identity = self.identities_keys().create_initial_key(options).await?;
-        self.repository
-            .store_change_history(identity.identifier(), identity.change_history().clone())
-            .await?;
+        self.repository.update_identity(&identity).await?;
         Ok(identity.identifier().clone())
     }
 
@@ -112,9 +110,7 @@ impl IdentitiesCreation {
             .rotate_key_with_options(identity, options)
             .await?;
 
-        self.repository
-            .store_change_history(identity.identifier(), identity.change_history().clone())
-            .await?;
+        self.update_identity(&identity).await?;
 
         Ok(())
     }
@@ -196,39 +192,12 @@ impl IdentitiesCreation {
     ///   - Do nothing if they're equal
     ///   - Throw an error if the received version has conflict or is older that previously observed
     ///   - Update stored Identity if the received version is newer
+    ///
+    /// All the code is performed in the ChangeHistoryRepository so that checking the identity
+    /// new change history and the identity old change history + insert the new change history
+    /// can be done atomically
+    ///
     pub async fn update_identity(&self, identity: &Identity) -> Result<()> {
-        if let Some(known_identity) = self
-            .repository
-            .get_change_history(identity.identifier())
-            .await?
-        {
-            let known_identity = Identity::import_from_change_history(
-                Some(identity.identifier()),
-                known_identity,
-                self.verifying_vault.clone(),
-            )
-            .await?;
-
-            match identity.compare(&known_identity) {
-                IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
-                    return Err(IdentityError::ConsistencyError.into());
-                }
-                IdentityHistoryComparison::Newer => {
-                    self.repository
-                        .store_change_history(
-                            identity.identifier(),
-                            identity.change_history().clone(),
-                        )
-                        .await?;
-                }
-                IdentityHistoryComparison::Equal => {}
-            }
-        } else {
-            self.repository
-                .store_change_history(identity.identifier(), identity.change_history().clone())
-                .await?;
-        }
-
-        Ok(())
+        self.repository.update_identity(identity).await
     }
 }

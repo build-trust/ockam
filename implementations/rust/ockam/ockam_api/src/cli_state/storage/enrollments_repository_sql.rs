@@ -207,9 +207,7 @@ mod tests {
     ) -> Result<Identity> {
         let change_history_repository = create_change_history_repository(db.clone()).await?;
         let identities_repository = create_identities_repository(db).await?;
-        change_history_repository
-            .store_change_history(identity.identifier(), identity.change_history().clone())
-            .await?;
+        change_history_repository.update_identity(&identity).await?;
 
         identities_repository
             .store_named_identity(identity.identifier(), name, "vault")
