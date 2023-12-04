@@ -4272,12 +4272,14 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "petname"
-version = "2.0.0-beta.2"
+version = "2.0.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27039152ff4715ef8e4c40056ed5fd0152f362c662168906994182cde8b66232"
+checksum = "fc5d5297bd7916479f7145aa39a301f4aba00a6ad18bd230e0695607d7df7a8d"
 dependencies = [
  "anyhow",
  "itertools 0.11.0",
+ "proc-macro2",
+ "quote",
  "rand",
 ]
 
