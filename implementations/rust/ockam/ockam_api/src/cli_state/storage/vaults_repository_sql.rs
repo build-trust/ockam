@@ -30,12 +30,13 @@ impl VaultsSqlxDatabase {
 #[async_trait]
 impl VaultsRepository for VaultsSqlxDatabase {
     async fn store_vault(&self, name: &str, path: PathBuf, is_kms: bool) -> Result<NamedVault> {
-        let mut transaction = self.database.begin().await.into_core()?;
         let is_already_default = self
             .get_default_vault()
             .await?
             .map(|v| v.name() == name)
             .unwrap_or(false);
+
+        let mut transaction = self.database.begin().await.into_core()?;
         let query = query("INSERT OR REPLACE INTO vault VALUES (?1, ?2, ?3, ?4)")
             .bind(name.to_sql())
             .bind(path.to_sql())
