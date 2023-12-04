@@ -1,4 +1,4 @@
-use miette::{IntoDiagnostic, WrapErr};
+use miette::IntoDiagnostic;
 use tracing::{debug, error, info};
 
 use ockam_api::cli_state;
@@ -171,16 +171,11 @@ impl AppState {
 
     async fn retrieve_project(&self, space: &Space) -> Result<Project> {
         info!("retrieving the user project");
-        let email = self.user_email().await.wrap_err("User info is not valid")?;
-
         let node_manager = self.node_manager().await;
-        let projects = node_manager.get_projects(&self.context()).await?;
-        let admin_project = projects
-            .iter()
-            .filter(|p| p.has_admin_with_email(&email))
-            .find(|p| p.name == *PROJECT_NAME);
+        let projects = node_manager.get_admin_projects(&self.context()).await?;
+        let main_project = projects.iter().find(|p| p.name == *PROJECT_NAME);
 
-        let project = match admin_project {
+        let project = match main_project {
             Some(project) => project.clone(),
             None => {
                 self.notify(Notification {

@@ -414,10 +414,6 @@ impl AppState {
         Ok(self.state.read().await.get_default_user().await?)
     }
 
-    pub async fn user_email(&self) -> Result<String> {
-        self.user_info().await.map(|u| u.email)
-    }
-
     pub async fn model_mut(&self, f: impl FnOnce(&mut ModelState)) -> Result<()> {
         let mut model_state = self.model_state.write().await;
         trace!(?model_state, "updating model state locally");

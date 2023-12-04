@@ -1,11 +1,11 @@
 use miette::IntoDiagnostic;
 use std::collections::HashMap;
 use std::time::Duration;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace};
 
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::Projects;
 
 use crate::projects::error::Error::ListingFailed;
 use crate::state::{AppState, StateKind};
@@ -51,22 +51,12 @@ impl AppState {
         if !self.is_enrolled().await.unwrap_or(false) {
             return Ok(());
         }
-        let email = match self.user_email().await {
-            Ok(email) => email,
-            Err(_) => {
-                warn!("User info is not available");
-                return Ok(());
-            }
-        };
 
         let node_manager = self.node_manager().await;
         let projects = node_manager
-            .get_projects(&self.context())
+            .get_admin_projects(&self.context())
             .await
-            .map_err(|e| ListingFailed(e.to_string()))?
-            .into_iter()
-            .filter(|p| p.has_admin_with_email(&email))
-            .collect::<Vec<Project>>();
+            .map_err(|e| ListingFailed(e.to_string()))?;
         debug!("Projects fetched");
         trace!(?projects);
 
