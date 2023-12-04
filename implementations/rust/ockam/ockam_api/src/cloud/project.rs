@@ -373,7 +373,7 @@ pub trait Projects {
         ctx: &Context,
     ) -> miette::Result<OrchestratorVersionInfo>;
 
-    async fn get_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
+    async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
 
     async fn wait_until_project_is_ready(
         &self,

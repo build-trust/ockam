@@ -280,7 +280,7 @@ async fn get_user_project(
 
     let is_finished = Mutex::new(false);
     let get_projects = async {
-        let projects = node.get_projects(ctx).await?;
+        let projects = node.get_admin_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
     };
