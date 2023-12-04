@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MainView: View {
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appDelegate: AppDelegate
 
     @Binding var state: ApplicationState
     @State private var selectedGroup: String = ""
@@ -45,7 +45,7 @@ struct MainView: View {
                         text: "Enroll...", icon: "arrow.right.square",
                         action: {
                             enroll_user()
-                            dismiss()
+                            appDelegate.dismissPopover()
                         })
                     .padding(.top, VerticalSpacingUnit)
                     .padding(.horizontal, HorizontalSpacingUnit)
@@ -69,7 +69,6 @@ struct MainView: View {
                             text: "Create a service...",
                             action: {
                                 openWindow(id: "create-service")
-                                dismiss()
                                 bringInFront()
                             }
                         )
@@ -118,7 +117,7 @@ struct MainView: View {
                                 if let url = URL(string: "https://github.com/build-trust/ockam") {
                                     NSWorkspace.shared.open(url)
                                 }
-                                dismiss()
+                                appDelegate.dismissPopover()
                             })
                         ClickableMenuEntry(
                             text: "Learn more from our documentation...", icon: "book",
@@ -126,7 +125,7 @@ struct MainView: View {
                                 if let url = URL(string: "https://docs.ockam.io") {
                                     NSWorkspace.shared.open(url)
                                 }
-                                dismiss()
+                                appDelegate.dismissPopover()
                             })
                     }
                 }
@@ -140,6 +139,7 @@ struct MainView: View {
                                 text: "About", icon: "questionmark.circle",
                                 action: {
                                     openWindow(id: "about")
+                                    bringInFront()
                                 })
                             ClickableMenuEntry(
                                 text: "Reset", icon: "arrow.counterclockwise",
@@ -155,7 +155,7 @@ struct MainView: View {
                                 //even if the graceful shutdown takes a few seconds
                                 //we can give a "acknowledged" feedback to the user
                                 //by closing the window first
-                                dismiss()
+                                appDelegate.dismissPopover()
                                 shutdown_application()
                             }
                         ).keyboardShortcut("Q", modifiers: .command)
