@@ -39,13 +39,15 @@ impl TrustContextsSqlxDatabase {
 #[async_trait]
 impl TrustContextsRepository for TrustContextsSqlxDatabase {
     async fn store_trust_context(&self, trust_context: &NamedTrustContext) -> Result<()> {
-        let is_already_default = self
-            .get_default_trust_context()
-            .await?
-            .map(|tc| tc.name() == trust_context.name())
-            .unwrap_or(false);
+        let mut transaction = self.database.begin().await.into_core()?;
+        let query1 = query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM trust_context WHERE is_default=$1 AND name=$2)",
+        )
+        .bind(true.to_sql())
+        .bind(trust_context.name().to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
 
-        let query = query("INSERT OR REPLACE INTO trust_context VALUES ($1, $2, $3, $4, $5, $6)")
+        let query2 = query("INSERT OR REPLACE INTO trust_context VALUES ($1, $2, $3, $4, $5, $6)")
             .bind(trust_context.name().to_sql())
             .bind(trust_context.trust_context_id().to_sql())
             .bind(is_already_default.to_sql())
@@ -67,7 +69,9 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
                     .as_ref()
                     .map(|r| r.to_string().to_sql()),
             );
-        query.execute(&self.database.pool).await.void()
+        query2.execute(&mut *transaction).await.void()?;
+
+        transaction.commit().await.void()
     }
 
     async fn get_default_trust_context(&self) -> Result<Option<NamedTrustContext>> {

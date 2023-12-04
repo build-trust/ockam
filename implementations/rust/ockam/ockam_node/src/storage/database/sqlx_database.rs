@@ -91,7 +91,10 @@ impl SqlxDatabase {
     async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
         // SQLite in-memory DB get wiped if there is no connection to it.
         // The below setting tries to ensure there is always an open connection
-        let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
+        let pool_options = PoolOptions::new()
+            .idle_timeout(None)
+            .max_lifetime(None)
+            .max_connections(1);
 
         let pool = pool_options
             .connect("sqlite::memory:")

@@ -34,29 +34,30 @@ impl SpacesSqlxDatabase {
 #[async_trait]
 impl SpacesRepository for SpacesSqlxDatabase {
     async fn store_space(&self, space: &Space) -> Result<()> {
-        let is_already_default = self
-            .get_default_space()
-            .await?
-            .map(|s| s.id == space.id)
-            .unwrap_or(false);
-
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query("INSERT OR REPLACE INTO space VALUES (?, ?, ?)")
+
+        let query1 =
+            query_scalar("SELECT EXISTS (SELECT 1 FROM space WHERE is_default=$1 AND space_id=$2)")
+                .bind(true.to_sql())
+                .bind(space.id.to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+
+        let query2 = query("INSERT OR REPLACE INTO space VALUES (?, ?, ?)")
             .bind(space.id.to_sql())
             .bind(space.name.to_sql())
             .bind(is_already_default.to_sql());
-        query1.execute(&mut *transaction).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
 
         // remove any existing users related to that space if any
-        let query2 = query("DELETE FROM user_space WHERE space_id=$1").bind(space.id.to_sql());
-        query2.execute(&mut *transaction).await.void()?;
+        let query3 = query("DELETE FROM user_space WHERE space_id=$1").bind(space.id.to_sql());
+        query3.execute(&mut *transaction).await.void()?;
 
         // store the users associated to that space
         for user_email in &space.users {
-            let query3 = query("INSERT OR REPLACE INTO user_space VALUES (?, ?)")
+            let query4 = query("INSERT OR REPLACE INTO user_space VALUES (?, ?)")
                 .bind(user_email.to_sql())
                 .bind(space.id.to_sql());
-            query3.execute(&mut *transaction).await.void()?;
+            query4.execute(&mut *transaction).await.void()?;
         }
 
         transaction.commit().await.void()

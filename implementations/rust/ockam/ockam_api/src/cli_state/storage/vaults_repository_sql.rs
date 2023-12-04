@@ -30,19 +30,20 @@ impl VaultsSqlxDatabase {
 #[async_trait]
 impl VaultsRepository for VaultsSqlxDatabase {
     async fn store_vault(&self, name: &str, path: PathBuf, is_kms: bool) -> Result<NamedVault> {
-        let is_already_default = self
-            .get_default_vault()
-            .await?
-            .map(|v| v.name() == name)
-            .unwrap_or(false);
-
         let mut transaction = self.database.begin().await.into_core()?;
-        let query = query("INSERT OR REPLACE INTO vault VALUES (?1, ?2, ?3, ?4)")
+
+        let query1 =
+            query_scalar("SELECT EXISTS(SELECT 1 FROM vault WHERE is_default=$1 AND name=$2)")
+                .bind(true.to_sql())
+                .bind(name.to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+
+        let query2 = query("INSERT OR REPLACE INTO vault VALUES (?1, ?2, ?3, ?4)")
             .bind(name.to_sql())
             .bind(path.to_sql())
             .bind(is_already_default.to_sql())
             .bind(is_kms.to_sql());
-        query.execute(&mut *transaction).await.void()?;
+        query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()?;
 
         Ok(NamedVault::new(

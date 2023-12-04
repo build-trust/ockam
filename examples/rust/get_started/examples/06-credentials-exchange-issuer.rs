@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::access_control::IdentityIdAccessControl;
-use ockam::identity::SecureChannelListenerOptions;
+use ockam::identity::{AttributesEntry, SecureChannelListenerOptions};
 use ockam::identity::{CredentialsIssuer, Vault};
 use ockam::{Context, Result, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
@@ -53,10 +53,12 @@ async fn main(ctx: Context) -> Result<()> {
         &issuer,
         "trust_context".into(),
     );
+
+    let attributes = AttributesEntry::singleton(b"cluster".to_vec(), b"production".to_vec(), None, None)?;
     for identifier in known_identifiers.iter() {
         node.identities()
             .identity_attributes_repository()
-            .put_attribute_value(identifier, b"cluster".to_vec(), b"production".to_vec())
+            .put_attributes(identifier, attributes.clone())
             .await?;
     }
 

@@ -68,17 +68,6 @@ impl IdentityAttributesRepository for BootstrapedIdentityAttributesStore {
         }
     }
 
-    async fn put_attribute_value(
-        &self,
-        subject: &Identifier,
-        attribute_name: Vec<u8>,
-        attribute_value: Vec<u8>,
-    ) -> Result<()> {
-        self.repository
-            .put_attribute_value(subject, attribute_name, attribute_value)
-            .await
-    }
-
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         self.repository.delete(identity).await
     }
@@ -161,15 +150,6 @@ impl IdentityAttributesRepository for PreTrustedIdentities {
     }
 
     async fn put_attributes(&self, _identity: &Identifier, _entry: AttributesEntry) -> Result<()> {
-        Ok(())
-    }
-
-    async fn put_attribute_value(
-        &self,
-        _subject: &Identifier,
-        _attribute_name: Vec<u8>,
-        _attribute_value: Vec<u8>,
-    ) -> Result<()> {
         Ok(())
     }
 

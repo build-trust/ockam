@@ -32,13 +32,15 @@ impl UsersSqlxDatabase {
 #[async_trait]
 impl UsersRepository for UsersSqlxDatabase {
     async fn store_user(&self, user: &UserInfo) -> Result<()> {
-        let is_already_default = self
-            .get_default_user()
-            .await?
-            .map(|u| u.email == user.email)
-            .unwrap_or(false);
+        let mut transaction = self.database.begin().await.into_core()?;
 
-        let query = query("INSERT OR REPLACE INTO user VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
+        let query1 =
+            query_scalar("SELECT EXISTS(SELECT email FROM user WHERE is_default=$1 AND email=$2)")
+                .bind(true.to_sql())
+                .bind(user.email.to_sql());
+        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+
+        let query2 = query("INSERT OR REPLACE INTO user VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
             .bind(user.email.to_sql())
             .bind(user.sub.to_sql())
             .bind(user.nickname.to_sql())
@@ -47,7 +49,9 @@ impl UsersRepository for UsersSqlxDatabase {
             .bind(user.updated_at.to_sql())
             .bind(user.email_verified.to_sql())
             .bind(is_already_default.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query2.execute(&mut *transaction).await.void()?;
+
+        transaction.commit().await.void()
     }
 
     async fn get_default_user(&self) -> Result<Option<UserInfo>> {
