@@ -6,7 +6,8 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, Context as _, IntoDiagnostic};
-use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
+use rustls::{ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
+use rustls_pki_types::ServerName;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
@@ -140,7 +141,7 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     let mut root_certificate_store = RootCertStore::empty();
     for c in rustls_native_certs::load_native_certs()? {
         root_certificate_store
-            .add(&Certificate(c.0))
+            .add(c)
             .into_diagnostic()
             .wrap_err("failed to add certificate to root certificate store")?;
     }
@@ -148,17 +149,16 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     // Configure TLS Client
     let client_configuration = Arc::new(
         ClientConfig::builder()
-            .with_safe_defaults()
             .with_root_certificates(root_certificate_store)
             .with_no_client_auth(),
     );
 
     // Make an HTTP request
-    let server_name = domain
+    let server_name: ServerName = domain
         .try_into()
         .into_diagnostic()
         .wrap_err("failed to convert domain to a ServerName")?;
-    let mut client_connection = ClientConnection::new(client_configuration, server_name)
+    let mut client_connection = ClientConnection::new(client_configuration, server_name.to_owned())
         .into_diagnostic()
         .wrap_err("failed to create a client connection")?;
     let mut tcp_stream = TcpStream::connect(domain_with_port)?;
@@ -183,8 +183,8 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     let label = "CERTIFICATE";
     let mut encoded = String::new();
     for certificate in certificate_chain {
-        let bytes = certificate.0.clone();
-        let pem = pem_rfc7468::encode_string(label, pem_rfc7468::LineEnding::LF, &bytes)
+        let bytes = certificate.as_ref();
+        let pem = pem_rfc7468::encode_string(label, pem_rfc7468::LineEnding::LF, bytes)
             .into_diagnostic()
             .wrap_err("could not encode certificate to PEM")?;
         encoded = encoded + &pem;
