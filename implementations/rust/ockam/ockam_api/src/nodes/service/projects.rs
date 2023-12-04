@@ -88,14 +88,17 @@ impl Projects for InMemoryNode {
     async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let projects = self.create_controller().await?.list_projects(ctx).await?;
         let user = self.cli_state.get_default_user().await?;
-        let admin_projects = projects
+        for project in &projects {
+            let mut project = project.clone();
+            if !project.has_admin_with_email(&user.email) {
+                project.name = project.id.clone();
+            }
+            self.cli_state.store_project(project).await?
+        }
+        Ok(projects
             .into_iter()
             .filter(|p| p.has_admin_with_email(&user.email))
-            .collect::<Vec<_>>();
-        for project in &admin_projects {
-            self.cli_state.store_project(project.clone()).await?
-        }
-        Ok(admin_projects)
+            .collect::<Vec<_>>())
     }
 
     async fn wait_until_project_is_ready(
