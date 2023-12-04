@@ -4,27 +4,11 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 use crate::models::{Attributes, CredentialSchemaIdentifier, TimestampInSeconds};
-use crate::IdentityError;
 
 /// Create a new timestamp using the system time
-#[cfg(feature = "std")]
 pub fn now() -> Result<TimestampInSeconds> {
-    if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-        Ok(TimestampInSeconds(now.as_secs()))
-    } else {
-        Err(IdentityError::UnknownTimestamp)?
-    }
-}
-
-/// Create a new timestamp using the system time
-#[cfg(not(feature = "std"))]
-pub fn now() -> Result<TimestampInSeconds> {
-    Err(IdentityError::UnknownTimestamp)?
-}
-
-/// Add a number of seconds to the [`TimestampInSeconds`]
-pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInSeconds {
-    TimestampInSeconds(timestamp.saturating_add(seconds))
+    let utc_seconds = ockam_core::compat::time::now()?;
+    Ok(TimestampInSeconds(utc_seconds))
 }
 
 /// Convenient builder for the [`Attributes`] struct

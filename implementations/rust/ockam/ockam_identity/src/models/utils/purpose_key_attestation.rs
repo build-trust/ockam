@@ -17,6 +17,11 @@ impl PurposeKeyAttestation {
             data,
         }
     }
+
+    /// Extract [`PurposeKeyAttestationData`]
+    pub fn get_attestation_data(&self) -> Result<PurposeKeyAttestationData> {
+        PurposeKeyAttestationData::get_data(&minicbor::decode(&self.data)?)
+    }
 }
 
 impl PurposeKeyAttestationData {

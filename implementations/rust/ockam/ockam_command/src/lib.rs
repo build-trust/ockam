@@ -31,10 +31,8 @@ use opentelemetry::{global, Context};
 use tokio::runtime::Runtime;
 use tracing::instrument;
 
-use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
-use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use environment::EnvironmentCommand;
 use error::{Error, Result};
@@ -69,7 +67,6 @@ use tcp::{
     outlet::TcpOutletCommand,
 };
 use tracing::warn;
-use trust_context::TrustContextCommand;
 use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode};
 use vault::VaultCommand;
@@ -77,7 +74,8 @@ use version::Version;
 use worker::WorkerCommand;
 
 use crate::admin::AdminCommand;
-use crate::authority::AuthorityCommand;
+use crate::authority::{AuthorityCommand, AuthoritySubcommand};
+use crate::credential::CredentialCommand;
 use crate::flow_control::FlowControlCommand;
 use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
@@ -91,7 +89,6 @@ use crate::terminal::color_primary;
 pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 
 mod admin;
-mod authenticated;
 mod authority;
 mod completion;
 mod configuration;
@@ -128,7 +125,6 @@ mod status;
 mod subscription;
 pub mod tcp;
 mod terminal;
-mod trust_context;
 mod upgrade;
 pub mod util;
 mod vault;
@@ -369,13 +365,11 @@ pub enum OckamSubcommand {
     Run(RunCommand),
     Status(StatusCommand),
     Reset(ResetCommand),
-    Authenticated(AuthenticatedCommand),
     Configuration(ConfigurationCommand),
 
     Completion(CompletionCommand),
     Markdown(MarkdownCommand),
     Manpages(ManpagesCommand),
-    TrustContext(TrustContextCommand),
     Environment(EnvironmentCommand),
 
     FlowControl(FlowControlCommand),
@@ -434,12 +428,10 @@ impl OckamSubcommand {
             OckamSubcommand::Run(c) => c.name(),
             OckamSubcommand::Status(c) => c.name(),
             OckamSubcommand::Reset(c) => c.name(),
-            OckamSubcommand::Authenticated(c) => c.name(),
             OckamSubcommand::Configuration(c) => c.name(),
             OckamSubcommand::Completion(c) => c.name(),
             OckamSubcommand::Markdown(c) => c.name(),
             OckamSubcommand::Manpages(c) => c.name(),
-            OckamSubcommand::TrustContext(c) => c.name(),
             OckamSubcommand::Environment(c) => c.name(),
             OckamSubcommand::FlowControl(c) => c.name(),
         }
@@ -591,13 +583,11 @@ impl OckamCommand {
             OckamSubcommand::Run(c) => c.run(options),
             OckamSubcommand::Status(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
-            OckamSubcommand::Authenticated(c) => c.run(options),
             OckamSubcommand::Configuration(c) => c.run(options),
 
             OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Markdown(c) => c.run(),
             OckamSubcommand::Manpages(c) => c.run(),
-            OckamSubcommand::TrustContext(c) => c.run(options),
             OckamSubcommand::Environment(c) => c.run(),
 
             OckamSubcommand::FlowControl(c) => c.run(options),
@@ -617,6 +607,17 @@ impl OckamCommand {
                 // to initialize the node directories before we can get the log path.
                 return Some(opts.state.node_dir(&c.node_name));
             }
+        }
+        // If the subcommand is `authority create` then return the log path
+        // for the node that is being created
+        if let OckamSubcommand::Authority(c) = &self.subcommand {
+            let AuthoritySubcommand::Create(c) = &c.subcommand;
+            if c.logging_to_stdout() {
+                return None;
+            }
+            // In the case where a node is explicitly created in foreground mode, we need
+            // to initialize the node directories before we can get the log path.
+            return Some(opts.state.node_dir(&c.node_name));
         }
         None
     }

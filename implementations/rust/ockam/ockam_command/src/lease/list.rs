@@ -11,10 +11,10 @@ use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use crate::lease::authenticate;
+use crate::lease::create_project_client;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::api::{CloudOpts, TrustOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
@@ -26,20 +26,20 @@ const HELP_DETAIL: &str = "";
 pub struct ListCommand;
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
+    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustOpts) {
         node_rpc(opts.rt.clone(), run_impl, (opts, cloud_opts, trust_opts));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustContextOpts),
+    (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustOpts),
 ) -> miette::Result<()> {
     let is_finished: Mutex<bool> = Mutex::new(false);
-    let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
+    let project_node_client = create_project_client(&ctx, &opts, &cloud_opts, &trust_opts).await?;
 
     let send_req = async {
-        let tokens: Vec<Token> = project_node.list_tokens(&ctx).await?;
+        let tokens: Vec<Token> = project_node_client.list_tokens(&ctx).await?;
         *is_finished.lock().await = true;
         Ok(tokens)
     };

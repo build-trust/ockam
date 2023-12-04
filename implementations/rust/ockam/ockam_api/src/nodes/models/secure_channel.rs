@@ -23,7 +23,6 @@ pub struct CreateSecureChannelRequest {
     #[n(2)] pub authorized_identifiers: Option<Vec<Identifier>>,
     #[n(4)] pub timeout: Option<Duration>,
     #[n(5)] pub identity_name: Option<String>,
-    #[n(6)] pub credential_name: Option<String>,
 }
 
 impl CreateSecureChannelRequest {
@@ -31,14 +30,12 @@ impl CreateSecureChannelRequest {
         addr: &MultiAddr,
         authorized_identifiers: Option<Vec<Identifier>>,
         identity_name: Option<String>,
-        credential_name: Option<String>,
     ) -> Self {
         Self {
             addr: addr.to_owned(),
             authorized_identifiers,
             timeout: Some(DEFAULT_TIMEOUT),
             identity_name,
-            credential_name,
         }
     }
 }

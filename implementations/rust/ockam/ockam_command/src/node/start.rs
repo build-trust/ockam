@@ -162,14 +162,11 @@ async fn run_node(
         node_name,     // The selected node name
         &None,         // Use the default identity
         &node_address, // The selected node api address
-        None,          // No project information available
-        None,          // No trusted identities
-        None,          // "
         None,          // Launch config
-        None,          // Authority Identity
-        None,          // Credential
-        None,          // Trust Context
-        true,          // Restarted nodes will log to files,
+        None,          // No project information available
+        None,          // No Authority Identity
+        None,          // No Authority Address
+        true,          // Restarted nodes will log to files
         None,          // No opentelemetry context
     )
     .await?;

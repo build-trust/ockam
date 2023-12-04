@@ -22,14 +22,10 @@ pub enum IdentityError {
     PurposeKeyAttestationVerificationFailed,
     /// Credential Verification Failed
     CredentialVerificationFailed,
-    /// Error occurred while getting current UTC Timestamp
-    UnknownTimestamp,
     /// Unknown Authority
     UnknownAuthority,
-    /// No CredentialsRetriever
-    NoCredentialsRetriever,
-    /// No Credentials set on a trust context
-    NoCredentialsSet,
+    /// No CredentialRetriever
+    NoCredentialRetriever,
     /// Unknown version of the Credential
     UnknownCredentialVersion,
     /// Invalid data_type value for Credential
@@ -42,10 +38,10 @@ pub enum IdentityError {
     UnknownPurposeKeyAttestationVersion,
     /// Invalid data_type value for PurposeKeyAttestation
     InvalidPurposeKeyAttestationDataType,
-    /// A credential was rejected by the trust context
+    /// A credential was rejected by the Authority
     SecureChannelVerificationFailedIncorrectCredential,
-    /// Credentials could not be checked because the trust context is missing
-    SecureChannelVerificationFailedMissingTrustContext,
+    /// Credentials could not be checked because the Authority is missing
+    SecureChannelVerificationFailedMissingAuthority,
     /// SecureChannelTrustCheckFailed
     SecureChannelTrustCheckFailed,
     /// Invalid Nonce value
@@ -60,10 +56,12 @@ pub enum IdentityError {
     DuplicateSecureChannel,
     /// Consistency Error
     ConsistencyError,
-    /// Invalid Hex
-    InvalidHex,
     /// Secret Key doesn't correspond to the Identity
     WrongSecretKey,
+    /// CredentialRetriever was already set
+    CredentialRetrieverAlreadySet,
+    /// Credential is missing in the cache
+    CachedCredentialMissing,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

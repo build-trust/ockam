@@ -18,9 +18,30 @@ use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
 use crate::utils::now;
 use crate::{
-    ChangeHistoryRepository, Identifier, IdentityError, PlaintextPayloadMessage,
-    RefreshCredentialsMessage, SecureChannelMessage, TimestampInSeconds, TrustContext,
+    ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError,
+    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage, TimestampInSeconds,
 };
+
+#[derive(Debug, Clone)]
+pub(crate) struct SecureChannelSharedState {
+    /// Allows Decryptor to flag that we're closing the channel because we received a Close message from the other side,
+    /// therefore, we don't need to send that message again to the other side
+    pub(crate) should_send_close: Arc<AtomicBool>,
+}
+
+#[derive(Clone)]
+pub(crate) struct EncryptorWorkerCredentialsOptions {
+    /// Expiration timestamp of the credential we presented (or the soonest if there are multiple)
+    pub(crate) min_credential_expiration: Option<TimestampInSeconds>,
+    /// The smallest interval of querying for a new credential from the credential retriever.
+    /// Helps avoid situation when the query returns an error immediately or very fast.
+    pub(crate) min_credential_refresh_interval: Duration,
+    /// The time interval before the credential expiration when we'll ask the credential retriever
+    /// for a new one
+    pub(crate) refresh_credential_time_gap: Duration,
+    /// Used to request a new credential when refresh is needed
+    pub(crate) credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+}
 
 pub(crate) struct EncryptorWorker {
     //for debug purposes only
@@ -30,19 +51,11 @@ pub(crate) struct EncryptorWorker {
     encryptor: Encryptor,
     my_identifier: Identifier,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
-    /// Expiration timestamp of the credential we presented (or the soonest if there are multiple)
-    min_credential_expiration: Option<TimestampInSeconds>,
-    /// The smallest interval of querying for a new credential from the credential retriever.
-    /// Helps avoid situation when the query returns an error immediately or very fast.
-    min_credential_refresh_interval: Duration,
-    /// The time interval before the credential expiration when we'll ask the credential retriever
-    /// for a new one
-    refresh_credential_time_gap: Duration,
-    credential_refresh_event: Option<DelayedEvent<()>>,
-    // TODO: Should be CredentialsRetriever
-    trust_context: Option<TrustContext>,
 
-    should_send_close: Arc<AtomicBool>,
+    credential_options: EncryptorWorkerCredentialsOptions,
+    credential_refresh_event: Option<DelayedEvent<()>>,
+
+    shared_state: SecureChannelSharedState,
 }
 
 impl EncryptorWorker {
@@ -54,11 +67,8 @@ impl EncryptorWorker {
         encryptor: Encryptor,
         my_identifier: Identifier,
         change_history_repository: Arc<dyn ChangeHistoryRepository>,
-        min_credential_expiration: Option<TimestampInSeconds>,
-        min_credential_refresh_interval: Duration,
-        refresh_credential_time_gap: Duration,
-        trust_context: Option<TrustContext>,
-        should_send_close: Arc<AtomicBool>,
+        credential_options: EncryptorWorkerCredentialsOptions,
+        shared_state: SecureChannelSharedState,
     ) -> Self {
         Self {
             role,
@@ -67,12 +77,9 @@ impl EncryptorWorker {
             encryptor,
             my_identifier,
             change_history_repository,
-            min_credential_expiration,
-            min_credential_refresh_interval,
-            refresh_credential_time_gap,
+            credential_options,
             credential_refresh_event: None,
-            trust_context,
-            should_send_close,
+            shared_state,
         }
     }
 
@@ -178,6 +185,40 @@ impl EncryptorWorker {
             self.addresses.encryptor
         );
 
+        let credential = if let Some(credential_retriever) =
+            &self.credential_options.credential_retriever
+        {
+            match credential_retriever
+                .retrieve(ctx, &self.my_identifier)
+                .await
+            {
+                Ok(Some(credential)) => credential,
+                Ok(None) => {
+                    info!("Skipping credential refresh because there is no new Credential");
+                    return Ok(());
+                }
+                Err(err) => {
+                    error!(
+                            "Credentials refresh failed for {} with error={} and is rescheduled in {} seconds",
+                            self.addresses.encryptor,
+                            err,
+                            self.credential_options
+                                .min_credential_refresh_interval
+                                .as_secs()
+                        );
+                    // Will schedule a refresh in self.min_credential_refresh_interval
+                    self.schedule_credentials_refresh(ctx, true).await?;
+                    return Err(err);
+                }
+            }
+        } else {
+            return Err(IdentityError::NoCredentialRetriever)?;
+        };
+
+        let versioned_data: VersionedData = minicbor::decode(&credential.credential.data)?;
+        let data = CredentialData::get_data(&versioned_data)?;
+        self.credential_options.min_credential_expiration = Some(data.expires_at);
+
         let change_history = self
             .change_history_repository
             .get_change_history(&self.my_identifier)
@@ -192,39 +233,6 @@ impl EncryptorWorker {
                     ),
                 )
             })?;
-
-        let credential = if let Some(trust_context) = &self.trust_context {
-            match trust_context.get_credential(ctx, &self.my_identifier).await {
-                Ok(Some(credential)) => credential,
-                // TODO: remove the duplication with the next case when reworking the trust contexts
-                Ok(None) => {
-                    info!(
-                        "Credentials refresh failed for {} and is rescheduled in {} seconds",
-                        self.addresses.encryptor,
-                        self.min_credential_refresh_interval.as_secs()
-                    );
-                    // Will schedule a refresh in self.min_credential_refresh_interval
-                    self.schedule_credentials_refresh(ctx, true).await?;
-                    return Err(IdentityError::NoCredentialsSet)?;
-                }
-                Err(err) => {
-                    info!(
-                        "Credentials refresh failed for {} and is rescheduled in {} seconds",
-                        self.addresses.encryptor,
-                        self.min_credential_refresh_interval.as_secs()
-                    );
-                    // Will schedule a refresh in self.min_credential_refresh_interval
-                    self.schedule_credentials_refresh(ctx, true).await?;
-                    return Err(err);
-                }
-            }
-        } else {
-            return Err(IdentityError::NoCredentialsRetriever)?;
-        };
-
-        let versioned_data: VersionedData = minicbor::decode(&credential.credential.data)?;
-        let data = CredentialData::get_data(&versioned_data)?;
-        self.min_credential_expiration = Some(data.expires_at);
 
         let msg = RefreshCredentialsMessage {
             change_history,
@@ -273,26 +281,33 @@ impl EncryptorWorker {
     /// into EncryptorWorker's own internal mailbox which it will use as a trigger to get a new
     /// credential and present it to the other side.
     async fn schedule_credentials_refresh(&mut self, ctx: &Context, is_retry: bool) -> Result<()> {
-        let min_credential_expiration =
-            if let Some(min_credential_expiration) = self.min_credential_expiration {
-                min_credential_expiration
-            } else {
-                // Do nothing if there is no expiration
-                return Ok(());
-            };
+        let min_credential_expiration = if let Some(min_credential_expiration) =
+            self.credential_options.min_credential_expiration
+        {
+            min_credential_expiration
+        } else {
+            // Do nothing if there is no expiration
+            return Ok(());
+        };
 
         // Cancel the old event
         self.credential_refresh_event = None;
 
         let now = now()?;
 
-        let duration = if min_credential_expiration < now + self.refresh_credential_time_gap {
+        let duration = if min_credential_expiration
+            < now + self.credential_options.refresh_credential_time_gap
+        {
             Duration::from_secs(0)
         } else {
             // Refresh in self.refresh_credential_time_gap before the expiration
             Duration::from_secs(
                 *(min_credential_expiration
-                    - self.refresh_credential_time_gap.as_secs().into()
+                    - self
+                        .credential_options
+                        .refresh_credential_time_gap
+                        .as_secs()
+                        .into()
                     - now),
             )
         };
@@ -300,7 +315,10 @@ impl EncryptorWorker {
         let duration = if is_retry {
             // Avoid too many request to the credential_retriever, the refresh can't be sooner than
             // self.min_credential_refresh_interval if it's a retry
-            max(self.min_credential_refresh_interval, duration)
+            max(
+                self.credential_options.min_credential_refresh_interval,
+                duration,
+            )
         } else {
             duration
         };
@@ -353,7 +371,7 @@ impl Worker for EncryptorWorker {
         let _ = context
             .stop_worker(self.addresses.decryptor_internal.clone())
             .await;
-        if self.should_send_close.load(Ordering::Relaxed) {
+        if self.shared_state.should_send_close.load(Ordering::Relaxed) {
             let _ = self.send_close_channel(context).await;
         }
         self.encryptor.shutdown().await

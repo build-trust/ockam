@@ -453,13 +453,14 @@ mod test {
     use kafka_protocol::protocol::Decodable;
     use kafka_protocol::protocol::Encodable as KafkaEncodable;
     use kafka_protocol::protocol::StrBytes;
-    use ockam::identity::secure_channels;
+    use ockam::identity::{secure_channels, Identifier};
     use ockam_core::compat::sync::{Arc, Mutex};
     use ockam_core::{route, Address, Routed, Worker};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
     use std::collections::BTreeMap;
+    use std::str::FromStr;
     use std::time::Duration;
 
     use crate::kafka::inlet_controller::KafkaInletController;
@@ -741,11 +742,17 @@ mod test {
             PortRange::new(0, 0).unwrap(),
         );
 
+        // Random Identifier, doesn't affect the test
+        let authority_identifier = Identifier::from_str(
+            "I0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        )
+        .unwrap();
+
         let secure_channels = secure_channels().await.unwrap();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(MultiAddr::default()),
-            "test_trust_context_id".to_string(),
+            authority_identifier,
         )
         .into_trait();
 
@@ -795,12 +802,13 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let handler = crate::test_utils::start_manager_for_tests(context).await?;
+        let handle = crate::test_utils::start_manager_for_tests(context).await?;
+        let authority = handle.node_manager.node_manager.authority().unwrap();
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
-            handler.secure_channels.clone(),
+            handle.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::default()),
-            "test_trust_context_id".to_string(),
+            authority,
         )
         .into_trait();
 

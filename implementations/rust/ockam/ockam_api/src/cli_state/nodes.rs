@@ -86,7 +86,7 @@ impl CliState {
 
     /// Delete all created nodes
     pub async fn delete_all_nodes(&self, force: bool) -> Result<()> {
-        let nodes = self.nodes_repository().await?.get_nodes().await?;
+        let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
             self.delete_node(&node.name(), force).await?;
         }
@@ -107,7 +107,6 @@ impl CliState {
 
         if let Some(project) = project {
             self.nodes_repository()
-                .await?
                 .set_node_project_name(node_name, &project.name())
                 .await?
         };
@@ -125,7 +124,7 @@ impl CliState {
         };
 
         // remove the node from the database
-        let repository = self.nodes_repository().await?;
+        let repository = self.nodes_repository();
         let node_exists = repository.get_node(node_name).await.is_ok();
         repository.delete_node(node_name).await?;
         // set another node as the default node
@@ -147,10 +146,7 @@ impl CliState {
     ///  - if force is true, send a SIGKILL signal to the node process
     pub async fn stop_node(&self, node_name: &str, force: bool) -> Result<()> {
         let node = self.get_node(node_name).await?;
-        self.nodes_repository()
-            .await?
-            .set_no_node_pid(node_name)
-            .await?;
+        self.nodes_repository().set_no_node_pid(node_name).await?;
 
         if let Some(pid) = node.pid() {
             // avoid killing the current process, return successfully instead.
@@ -188,11 +184,7 @@ impl CliState {
 
     /// Set a node as the default node
     pub async fn set_default_node(&self, node_name: &str) -> Result<()> {
-        Ok(self
-            .nodes_repository()
-            .await?
-            .set_default_node(node_name)
-            .await?)
+        Ok(self.nodes_repository().set_default_node(node_name).await?)
     }
 
     /// Set a TCP listener address on a node when the TCP listener has been started
@@ -203,7 +195,6 @@ impl CliState {
     ) -> Result<()> {
         Ok(self
             .nodes_repository()
-            .await?
             .set_tcp_listener_address(node_name, address)
             .await?)
     }
@@ -214,7 +205,6 @@ impl CliState {
     pub async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         Ok(self
             .nodes_repository()
-            .await?
             .set_as_authority_node(node_name)
             .await?)
     }
@@ -222,11 +212,7 @@ impl CliState {
     /// Set the current process id on a background node
     /// Keeping track of a background node process id allows us to kill its process when stopping the node
     pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
-        Ok(self
-            .nodes_repository()
-            .await?
-            .set_node_pid(node_name, pid)
-            .await?)
+        Ok(self.nodes_repository().set_node_pid(node_name, pid).await?)
     }
 }
 
@@ -234,7 +220,7 @@ impl CliState {
 impl CliState {
     /// Return a node by name
     pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
-        if let Some(node) = self.nodes_repository().await?.get_node(node_name).await? {
+        if let Some(node) = self.nodes_repository().get_node(node_name).await? {
             Ok(node)
         } else {
             Err(Error::new(
@@ -247,14 +233,13 @@ impl CliState {
 
     /// Return all the created nodes
     pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
-        Ok(self.nodes_repository().await?.get_nodes().await?)
+        Ok(self.nodes_repository().get_nodes().await?)
     }
 
     /// Return information about the default node (if there is one)
     pub async fn get_default_node(&self) -> Result<NodeInfo> {
         Ok(self
             .nodes_repository()
-            .await?
             .get_default_node()
             .await?
             .ok_or(Error::new(
@@ -276,7 +261,6 @@ impl CliState {
     pub async fn get_node_project(&self, node_name: &str) -> Result<Project> {
         match self
             .nodes_repository()
-            .await?
             .get_node_project_name(node_name)
             .await?
         {
@@ -319,7 +303,7 @@ impl CliState {
         node_name: &str,
         identifier: &Identifier,
     ) -> Result<NodeInfo> {
-        let repository = self.nodes_repository().await?;
+        let repository = self.nodes_repository();
         let is_default = repository.is_default_node(node_name).await?
             || repository.get_nodes().await?.is_empty();
         let tcp_listener_address = repository.get_tcp_listener_address(node_name).await?;
@@ -344,7 +328,6 @@ impl CliState {
         let identifier = self.get_identifier_by_name(identity_name).await?;
         Ok(self
             .nodes_repository()
-            .await?
             .get_nodes_by_identifier(&identifier)
             .await?)
     }

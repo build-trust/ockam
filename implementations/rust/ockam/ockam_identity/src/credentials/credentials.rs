@@ -55,7 +55,7 @@ impl Credentials {
             self.purpose_keys.purpose_keys_creation(),
             self.credential_vault.clone(),
             self.verifying_vault.clone(),
-            self.identities_creation.clone(),
+            self.identities_creation.identities_verification(),
         ))
     }
 

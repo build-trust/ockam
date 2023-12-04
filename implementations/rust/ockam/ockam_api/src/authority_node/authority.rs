@@ -2,28 +2,30 @@ use std::path::Path;
 
 use tracing::info;
 
-use ockam::identity::{
-    CredentialsIssuer, Identifier, Identities, IdentityAttributesRepository,
-    IdentityAttributesSqlxDatabase, SecureChannelListenerOptions, SecureChannels,
-    TrustEveryonePolicy,
+use crate::authenticator::credential_issuer::CredentialIssuerWorker;
+use crate::authenticator::direct::DirectAuthenticatorWorker;
+use crate::authenticator::enrollment_tokens::{
+    EnrollmentTokenAcceptorWorker, EnrollmentTokenIssuerWorker,
 };
-use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{AbacAccessControl, Env, Policy};
+use crate::authenticator::{
+    AuthorityEnrollmentTokenRepository, AuthorityEnrollmentTokenSqlxDatabase,
+    AuthorityMembersRepository, AuthorityMembersSqlxDatabase,
+};
+use ockam::identity::{
+    Identifier, Identities, IdentityAttributesRepository, SecureChannelListenerOptions,
+    SecureChannels, TrustEveryonePolicy,
+};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{Error, Result, Worker};
+use ockam_core::{Error, Result};
 use ockam_node::database::SqlxDatabase;
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::Context;
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 
-use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
-use crate::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::authority_node::Configuration;
-use crate::bootstrapped_identities_store::BootstrapedIdentityAttributesStore;
 use crate::echoer::Echoer;
-use crate::nodes::service::actions;
 use crate::nodes::service::default_address::DefaultAddress;
 
 /// This struct represents an Authority, which is an
@@ -36,6 +38,8 @@ use crate::nodes::service::default_address::DefaultAddress;
 pub struct Authority {
     identifier: Identifier,
     secure_channels: Arc<SecureChannels>,
+    members: Arc<dyn AuthorityMembersRepository>,
+    tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
 }
 
 /// Public functions to:
@@ -55,7 +59,7 @@ impl Authority {
     /// Create an identity for an authority from the configured public identity and configured vault
     /// The list of trusted identities in the configuration is used to pre-populate an attributes storage
     /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
-    pub async fn create(configuration: &Configuration) -> Result<Authority> {
+    pub async fn create(configuration: &Configuration) -> Result<Self> {
         debug!(?configuration, "creating the authority");
 
         // create the database
@@ -63,15 +67,12 @@ impl Authority {
         Self::create_ockam_directory_if_necessary(database_path)?;
         let database = SqlxDatabase::create_with_node_name(database_path, "authority").await?;
 
-        // create the bootstrapped identity attributes repository
-        let identity_attributes_repository = Self::bootstrap_repository(
-            Arc::new(IdentityAttributesSqlxDatabase::new(database.clone())),
-            configuration,
-        );
+        let members = Arc::new(AuthorityMembersSqlxDatabase::new(database.clone()));
+        let tokens = Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(database.clone()));
 
-        let identities = Identities::create(database.clone())
-            .with_identity_attributes_repository(identity_attributes_repository)
-            .build();
+        Self::bootstrap_repository(members.clone(), configuration).await?;
+
+        let identities = Identities::create(database).build();
 
         let secure_channels = SecureChannels::builder()
             .await?
@@ -81,9 +82,11 @@ impl Authority {
         let identifier = configuration.identifier();
         info!(identifier=%identifier, "retrieved the authority identifier");
 
-        Ok(Authority {
+        Ok(Self {
             identifier,
             secure_channels,
+            members,
+            tokens,
         })
     }
 
@@ -136,18 +139,13 @@ impl Authority {
             return Ok(());
         }
 
-        let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            configuration.project_identifier(),
-            self.identity_attributes_repository(),
-        )
-        .await?;
+        let direct = DirectAuthenticatorWorker::new(self.members.clone());
 
         let name = configuration.authenticator_name();
         ctx.flow_controls()
             .add_consumer(name.clone(), secure_channel_flow_control_id);
 
-        self.start(ctx, configuration, name.clone(), EnrollerOnly, direct)
-            .await?;
+        ctx.start_worker(name.clone(), direct).await?;
 
         info!("started a direct authenticator at '{name}'");
         Ok(())
@@ -164,10 +162,9 @@ impl Authority {
             return Ok(());
         }
 
-        let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
-            configuration.project_identifier(),
-            self.identity_attributes_repository(),
-        );
+        let issuer = EnrollmentTokenIssuerWorker::new(self.tokens.clone(), self.members.clone());
+        let acceptor =
+            EnrollmentTokenAcceptorWorker::new(self.tokens.clone(), self.members.clone());
 
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
@@ -175,14 +172,7 @@ impl Authority {
         ctx.flow_controls()
             .add_consumer(issuer_address.clone(), secure_channel_flow_control_id);
 
-        self.start(
-            ctx,
-            configuration,
-            issuer_address.clone(),
-            EnrollerOnly,
-            issuer,
-        )
-        .await?;
+        ctx.start_worker(issuer_address.clone(), issuer).await?;
 
         // start an enrollment token acceptor allowing any incoming message as long as
         // it comes through a secure channel. We accept any message since the purpose of
@@ -210,13 +200,11 @@ impl Authority {
         let ttl = get_env("CREDENTIAL_TTL_SECS")?;
 
         // create and start a credential issuer worker
-        let issuer = CredentialsIssuer::new(
-            self.secure_channels
-                .identities()
-                .identity_attributes_repository(),
+        let issuer = CredentialIssuerWorker::new(
+            self.members.clone(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
-            configuration.project_identifier(),
+            Some(configuration.project_identifier()),
             ttl,
         );
 
@@ -224,8 +212,7 @@ impl Authority {
         ctx.flow_controls()
             .add_consumer(address.clone(), secure_channel_flow_control_id);
 
-        self.start(ctx, configuration, address.clone(), AnyMember, issuer)
-            .await?;
+        ctx.start_worker(address.clone(), issuer).await?;
 
         info!("started a credential issuer at '{address}'");
         Ok(())
@@ -241,7 +228,6 @@ impl Authority {
         if let Some(okta) = &configuration.okta {
             let okta_worker = crate::okta::Server::new(
                 self.identity_attributes_repository(),
-                configuration.project_identifier(),
                 okta.tenant_base_url(),
                 okta.certificate(),
                 okta.attributes().as_slice(),
@@ -294,83 +280,12 @@ impl Authority {
     /// Make an identities repository pre-populated with the attributes of some trusted
     /// identities. The values either come from the command line or are read directly from a file
     /// every time we try to retrieve some attributes
-    fn bootstrap_repository(
-        repository: Arc<dyn IdentityAttributesRepository>,
+    async fn bootstrap_repository(
+        members: Arc<dyn AuthorityMembersRepository>,
         configuration: &Configuration,
-    ) -> Arc<dyn IdentityAttributesRepository> {
-        let trusted_identities = &configuration.trusted_identities;
-        Arc::new(BootstrapedIdentityAttributesStore::new(
-            Arc::new(trusted_identities.clone()),
-            repository.clone(),
-        ))
-    }
-
-    /// Start a worker at a given address
-    /// The configuration is used to create an Abac incoming policy checking that
-    /// the sender can indeed call the authority services
-    async fn start<W>(
-        &self,
-        ctx: &Context,
-        configuration: &Configuration,
-        address: String,
-        enroller_check: EnrollerCheck,
-        worker: W,
-    ) -> Result<()>
-    where
-        W: Worker<Context = Context>,
-    {
-        let abac = self.create_abac_policy(configuration, address.clone(), enroller_check);
-        WorkerBuilder::new(worker)
-            .with_address(address)
-            .with_incoming_access_control_arc(abac)
-            .start(ctx)
+    ) -> Result<()> {
+        members
+            .bootstrap_pre_trusted_members(&configuration.trusted_identities)
             .await
     }
-
-    /// Return an Abac incoming policy checking that for the authority services
-    /// The configuration is used to check that
-    ///   - the service is accessed via a secure channel
-    ///   - the sender has the correct project identifier (the same as the authority)
-    ///   - if enroller_check == EnrollerOnly, the sender is an identity with 'enroller' as its 'ockam-role'
-    fn create_abac_policy(
-        &self,
-        configuration: &Configuration,
-        address: String,
-        enroller_check: EnrollerCheck,
-    ) -> Arc<AbacAccessControl> {
-        // create an ABAC policy to only allow messages having
-        // the same project id as the authority
-        let rule = match enroller_check {
-            EnrollerOnly => and([
-                eq([
-                    ident("resource.trust_context_id"),
-                    ident("subject.trust_context_id"),
-                ]),
-                eq([ident("subject.ockam-role"), str("enroller")]),
-            ]),
-            AnyMember => eq([
-                ident("resource.trust_context_id"),
-                ident("subject.trust_context_id"),
-            ]),
-        };
-
-        let mut env = Env::new();
-        env.put("resource.id", str(address.as_str()));
-        env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));
-        env.put(
-            "resource.trust_context_id",
-            str(configuration.project_identifier.clone()),
-        );
-        Arc::new(AbacAccessControl::new(
-            self.identity_attributes_repository(),
-            Policy::new(rule),
-            env,
-        ))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum EnrollerCheck {
-    EnrollerOnly,
-    AnyMember,
 }

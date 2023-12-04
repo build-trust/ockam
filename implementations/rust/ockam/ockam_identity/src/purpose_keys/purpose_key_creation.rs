@@ -7,16 +7,16 @@ use crate::models::{
 };
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
-    CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesCreation, IdentitiesKeys,
-    IdentityError, Purpose, PurposeKeyVerification, SecureChannelPurposeKey,
-    SecureChannelPurposeKeyBuilder, TimestampInSeconds, Vault,
+    ChangeHistoryRepository, CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesKeys,
+    IdentitiesVerification, IdentityError, Purpose, PurposeKeyVerification,
+    SecureChannelPurposeKey, SecureChannelPurposeKeyBuilder, TimestampInSeconds, Vault,
 };
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct PurposeKeyCreation {
     vault: Vault,
-    identities_creation: Arc<IdentitiesCreation>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -25,13 +25,13 @@ impl PurposeKeyCreation {
     /// Constructor.
     pub(crate) fn new(
         vault: Vault,
-        identities_creation: Arc<IdentitiesCreation>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {
         Self {
             vault,
-            identities_creation,
+            change_history_repository,
             identity_keys,
             repository,
         }
@@ -46,7 +46,15 @@ impl PurposeKeyCreation {
     pub fn purpose_keys_verification(&self) -> Arc<PurposeKeyVerification> {
         Arc::new(PurposeKeyVerification::new(
             self.vault.verifying_vault.clone(),
-            self.identities_creation.clone(),
+            self.change_history_repository.clone(),
+        ))
+    }
+
+    /// Return identities verification service
+    pub fn identities_verification(&self) -> Arc<IdentitiesVerification> {
+        Arc::new(IdentitiesVerification::new(
+            self.change_history_repository.clone(),
+            self.vault.verifying_vault.clone(),
         ))
     }
 
@@ -58,7 +66,7 @@ impl PurposeKeyCreation {
         SecureChannelPurposeKeyBuilder::new(
             Arc::new(Self::new(
                 self.vault.clone(),
-                self.identities_creation.clone(),
+                self.change_history_repository.clone(),
                 self.identity_keys.clone(),
                 self.repository.clone(),
             )),
@@ -74,7 +82,7 @@ impl PurposeKeyCreation {
         CredentialPurposeKeyBuilder::new(
             Arc::new(Self::new(
                 self.vault.clone(),
-                self.identities_creation.clone(),
+                self.change_history_repository.clone(),
                 self.identity_keys.clone(),
                 self.repository.clone(),
             )),
@@ -115,7 +123,10 @@ impl PurposeKeyCreation {
         created_at: TimestampInSeconds,
         expires_at: TimestampInSeconds,
     ) -> Result<(PurposeKeyAttestation, PurposeKeyAttestationData)> {
-        let identity = self.identities_creation.get_identity(&identifier).await?;
+        let identity = self
+            .identities_verification()
+            .get_identity(&identifier)
+            .await?;
 
         let attestation_data = PurposeKeyAttestationData {
             subject: identifier,

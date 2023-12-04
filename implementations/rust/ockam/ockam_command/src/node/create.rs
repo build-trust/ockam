@@ -7,7 +7,6 @@ use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use tracing::instrument;
 
-use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
 use ockam_api::logs::TracingGuard;
 use ockam_core::AsyncTryClone;
@@ -17,7 +16,7 @@ use crate::node::create::background::background_mode;
 use crate::node::create::foreground::foreground_mode;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
-use crate::util::api::TrustContextOpts;
+use crate::util::api::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
@@ -70,26 +69,12 @@ pub struct CreateCommand {
     #[arg(long, hide = true, value_parser = parse_launch_config)]
     pub launch_config: Option<Config>,
 
-    #[arg(long, group = "trusted")]
-    pub trusted_identities: Option<String>,
-    #[arg(long, group = "trusted")]
-    pub trusted_identities_file: Option<PathBuf>,
-    #[arg(long, group = "trusted")]
-    pub reload_from_trusted_identities_file: Option<PathBuf>,
-
     /// Name of the Identity that the node will use
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 
-    /// Hex encoded Identity
-    #[arg(long, value_name = "IDENTITY")]
-    authority_identity: Option<String>,
-
-    #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
-    pub credential: Option<String>,
-
     #[command(flatten)]
-    pub trust_context_opts: TrustContextOpts,
+    pub trust_opts: TrustOpts,
 
     /// Serialized opentelemetry context
     #[arg(long, hide = true, value_parser = opentelemetry_context_parser)]
@@ -107,12 +92,7 @@ impl Default for CreateCommand {
             child_process: false,
             launch_config: None,
             identity: None,
-            authority_identity: None,
-            trusted_identities: None,
-            trusted_identities_file: None,
-            reload_from_trusted_identities_file: None,
-            credential: None,
-            trust_context_opts: node_manager_defaults.trust_context_opts,
+            trust_opts: node_manager_defaults.trust_opts,
             opentelemetry_context: None,
         }
     }
@@ -151,13 +131,6 @@ impl CreateCommand {
         }
     }
 
-    async fn authority_identity(&self) -> Result<Option<Identity>> {
-        match &self.authority_identity {
-            Some(i) => Ok(Some(Identity::create(i).await.into_diagnostic()?)),
-            None => Ok(None),
-        }
-    }
-
     fn logging_to_file(&self) -> bool {
         // Background nodes will spawn a foreground node in a child process.
         // In that case, the child process will log to files.
@@ -189,12 +162,13 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
 
 pub async fn guard_node_is_not_already_running(
     opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
+    node_name: &str,
+    child_process: bool,
 ) -> miette::Result<()> {
-    if !cmd.child_process {
-        if let Ok(node) = opts.state.get_node(&cmd.node_name).await {
+    if !child_process {
+        if let Ok(node) = opts.state.get_node(node_name).await {
             if node.is_running() {
-                return Err(miette!("Node {} is already running", &cmd.node_name));
+                return Err(miette!("Node {} is already running", &node_name));
             }
         }
     }

@@ -4,7 +4,7 @@ use crate::cloud::share::{
     InvitationList, InvitationListKind, InvitationWithAccess, ListInvitations, RoleInShare,
     SentInvitation, ShareScope,
 };
-use crate::cloud::ControllerClient;
+use crate::cloud::{ControllerClient, HasSecureClient};
 use miette::IntoDiagnostic;
 use ockam::identity::Identifier;
 use ockam_core::api::Request;
@@ -86,7 +86,7 @@ impl Invitations for ControllerClient {
             target_id,
         };
         let req = Request::post("/v0/invites").body(req_body);
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -122,7 +122,7 @@ impl Invitations for ControllerClient {
             enrollment_ticket,
         };
         let req = Request::post("/v0/invites/service").body(req_body);
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -136,7 +136,7 @@ impl Invitations for ControllerClient {
         invitation_id: String,
     ) -> miette::Result<AcceptedInvitation> {
         let req = Request::post("/v0/redeem_invite").body(AcceptInvitation { id: invitation_id });
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -151,7 +151,7 @@ impl Invitations for ControllerClient {
     ) -> miette::Result<InvitationWithAccess> {
         trace!(?invitation_id, "showing invitation");
         let req = Request::get(format!("/v0/invites/{invitation_id}"));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -166,7 +166,7 @@ impl Invitations for ControllerClient {
     ) -> miette::Result<InvitationList> {
         debug!(?kind, "Sending request to list shares");
         let req = Request::get("/v0/invites").body(ListInvitations { kind });
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -177,7 +177,7 @@ impl Invitations for ControllerClient {
     async fn ignore_invitation(&self, ctx: &Context, invitation_id: String) -> miette::Result<()> {
         debug!(?invitation_id, "sending request to ignore invitation");
         let req = Request::post(format!("/v0/invites/{invitation_id}/ignore"));
-        self.secure_client
+        self.get_secure_client()
             .tell(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?

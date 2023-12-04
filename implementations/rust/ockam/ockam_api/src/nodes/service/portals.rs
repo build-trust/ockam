@@ -203,14 +203,14 @@ impl NodeManager {
             self.access_control(
                 &resource,
                 &actions::HANDLE_MESSAGE,
-                self.trust_context_id().as_deref(),
+                self.authority.clone(),
                 None,
             )
             .await?
         };
 
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
-        let options = if self.trust_context_id().is_none() {
+        let options = if self.authority().is_none() {
             options.as_consumer(&self.api_transport_flow_control_id)
         } else {
             options
@@ -354,37 +354,28 @@ impl NodeManager {
 
         let projects = self.cli_state.get_projects_grouped_by_name().await?;
 
-        let project_id = match self.trust_context_id() {
-            Some(trust_context_id) => {
-                let pid = outlet_addr
-                    .first()
-                    .and_then(|p| {
-                        if let Some(p) = p.cast::<Project>() {
-                            projects.get(&*p).map(|project| project.id())
-                        } else {
-                            None
-                        }
-                    })
-                    .or(Some(trust_context_id));
-                if pid.is_none() {
-                    let message = "Credential check requires a project or trust context";
-                    return Err(ockam_core::Error::new(Origin::Node, Kind::Invalid, message));
+        let authority = {
+            if let Some(p) = outlet_addr.first() {
+                if let Some(p) = p.cast::<Project>() {
+                    if let Some(p) = projects.get(&*p) {
+                        Some(p.authority_identifier().await?)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 }
-                pid
+            } else {
+                None
             }
-            None => None,
         };
+        let authority = authority.or(self.authority());
 
         let resource = requested_alias
             .map(|a| Resource::new(a.as_str()))
             .unwrap_or(resources::INLET);
         let access_control = self
-            .access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                project_id.as_deref(),
-                None,
-            )
+            .access_control(&resource, &actions::HANDLE_MESSAGE, authority, None)
             .await?;
 
         let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
@@ -548,7 +539,6 @@ impl InMemoryNode {
                 &outlet_addr,
                 self.identifier(),
                 authorized.clone(),
-                None,
                 Some(duration),
             )
             .await?;
@@ -668,7 +658,6 @@ impl InMemoryNode {
                             &addr,
                             node_manager.identifier(),
                             authorized,
-                            None,
                             Some(MAX_CONNECT_TIME),
                         )
                         .await?;

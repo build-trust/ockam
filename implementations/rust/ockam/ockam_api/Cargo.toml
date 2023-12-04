@@ -125,6 +125,7 @@ ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.21.2", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 quickcheck = "1.0.1"
+quickcheck_macros = "1.0.0"
 tempfile = "3.9.0"
 tokio = { version = "1.35.1", features = ["full"] }
 tracing-core = "0.1.32"

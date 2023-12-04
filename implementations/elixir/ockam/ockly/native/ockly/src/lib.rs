@@ -153,8 +153,9 @@ fn create_identity(env: Env, existing_key: Option<String>) -> NifResult<(Binary,
         let existing_key = match existing_key {
             Some(handle) => {
                 // Vault Handle
-                let handle = hex::decode(handle)
-                    .map_err(|e| Error::Term(Box::new((atoms::invalid_secret_handle(), e.to_string()))))?;
+                let handle = hex::decode(handle).map_err(|e| {
+                    Error::Term(Box::new((atoms::invalid_secret_handle(), e.to_string())))
+                })?;
 
                 Some(SigningSecretKeyHandle::EdDSACurve25519(
                     HandleToSecret::new(handle),
@@ -248,7 +249,7 @@ fn verify_secure_channel_key_attestation(
     let k = X25519PublicKey(k);
     block_future(async move {
         let identifier = identities_ref
-            .identities_creation()
+            .identities_verification()
             .import(None, &identity)
             .await
             .map_err(|e| (atoms::identity_import_error(), e.to_string()))?;
@@ -263,10 +264,16 @@ fn verify_secure_channel_key_attestation(
                     if x == k {
                         Ok(true)
                     } else {
-                        Err((atoms::invalid_attestation(), "public key mismatch".to_string()))
+                        Err((
+                            atoms::invalid_attestation(),
+                            "public key mismatch".to_string(),
+                        ))
                     }
                 } else {
-                    Err((atoms::purpose_key_type_not_supported(), "key type must be X25519".to_string()))
+                    Err((
+                        atoms::purpose_key_type_not_supported(),
+                        "key type must be X25519".to_string(),
+                    ))
                 }
             })
     })
@@ -278,7 +285,7 @@ fn check_identity<'a>(env: Env<'a>, identity: Binary) -> NifResult<Binary<'a>> {
     let identities_ref = identities_ref()?;
     let identifier = block_future(async move {
         identities_ref
-            .identities_creation()
+            .identities_verification()
             .import(None, &identity)
             .await
             .map_err(|e| (atoms::identity_import_error(), e.to_string()))
@@ -303,7 +310,7 @@ fn issue_credential<'a>(
         .map_err(|e| Error::Term(Box::new((atoms::invalid_identifier(), e.to_string()))))?;
     let credential_and_purpose_key = block_future(async move {
         let issuer = identities_ref
-            .identities_creation()
+            .identities_verification()
             .import(None, &issuer_identity)
             .await
             .map_err(|e| (atoms::identity_import_error(), e.to_string()))?;
@@ -341,13 +348,13 @@ fn verify_credential(
     let expected_subject = Identifier::from_str(&expected_subject)
         .map_err(|e| Error::Term(Box::new((atoms::invalid_identifier(), e.to_string()))))?;
     let attributes = block_future(async move {
-        let credential_and_purpose_key =
-            minicbor::decode(&credential).map_err(|e| (atoms::credential_decode_error(), e.to_string()))?;
+        let credential_and_purpose_key = minicbor::decode(&credential)
+            .map_err(|e| (atoms::credential_decode_error(), e.to_string()))?;
 
         let mut authorities_identities = Vec::new();
         for authority in authorities {
             let authority = identities_ref
-                .identities_creation()
+                .identities_verification()
                 .import(None, &authority)
                 .await
                 .map_err(|e| (atoms::identity_import_error(), e.to_string()))?;

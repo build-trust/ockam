@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use crate::cloud::enroll::enrollment_token::{
     AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
 };
-use crate::cloud::ControllerClient;
+use crate::cloud::{ControllerClient, HasSecureClient};
 
 use ockam::identity::Attributes;
 use ockam_core::api::Request;
@@ -51,7 +51,7 @@ impl Enroll for ControllerClient {
     ) -> miette::Result<EnrollmentToken> {
         trace!(target: TARGET, "generating tokens");
         let req = Request::post("v0/").body(RequestEnrollmentToken::new(attributes));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -68,7 +68,7 @@ impl Enroll for ControllerClient {
             token: enrollment_token.token,
         });
         trace!(target: TARGET, "authenticating token");
-        self.secure_client
+        self.get_secure_client()
             .tell(ctx, "enrollment_token_authenticator", req)
             .await
             .into_diagnostic()?

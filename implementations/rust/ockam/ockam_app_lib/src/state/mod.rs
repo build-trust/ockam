@@ -16,9 +16,7 @@ use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
 use ockam_api::logs::TracingGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::service::{
-    NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
-};
+use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
@@ -382,16 +380,12 @@ impl AppState {
     pub async fn authority_node(
         &self,
         authority_identifier: &Identifier,
-        authority_multiaddr: &MultiAddr,
+        authority_route: &MultiAddr,
         caller_identity_name: Option<String>,
     ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
-            .create_authority_client(
-                authority_identifier,
-                authority_multiaddr,
-                caller_identity_name,
-            )
+            .create_authority_client(authority_identifier, authority_route, caller_identity_name)
             .await?)
     }
 
@@ -704,18 +698,17 @@ pub(crate) async fn make_node_manager(
         .start_node_with_optional_values(NODE_NAME, &None, &None, Some(&listener))
         .await?;
 
+    let trust_options = cli_state
+        .retrieve_trust_options(&None, &None, &None)
+        .await
+        .into_diagnostic()?;
+
     let node_manager = Arc::new(
         InMemoryNode::new(
             &ctx,
-            NodeManagerGeneralOptions::new(
-                cli_state.clone(),
-                NODE_NAME.to_string(),
-                None,
-                true,
-                true,
-            ),
+            NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), true, true),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
-            NodeManagerTrustOptions::new(cli_state.get_default_trust_context().await.ok()),
+            trust_options,
         )
         .await
         .into_diagnostic()?,

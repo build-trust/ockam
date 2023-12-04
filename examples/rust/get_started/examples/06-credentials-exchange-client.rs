@@ -1,11 +1,11 @@
-use ockam::identity::{AuthorityService, SecureChannelOptions, TrustContext, Vault};
+use ockam::identity::{SecureChannelOptions, Vault};
+use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
 use ockam::{route, Context, Result, TcpConnectionOptions};
 use ockam::{Node, TcpTransportExtension};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -65,12 +65,6 @@ async fn main(ctx: Context) -> Result<()> {
         .verify_credential(Some(&client), &[issuer.clone()], &credential)
         .await?;
 
-    // Create a trust context that will be used to authenticate credential exchanges
-    let trust_context = TrustContext::new(
-        "trust_context_id".to_string(),
-        Some(AuthorityService::new(node.credentials(), issuer.clone(), None)),
-    );
-
     // Create a secure channel to the node that is running the Echoer service.
     let server_connection = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
     let channel = node
@@ -78,8 +72,8 @@ async fn main(ctx: Context) -> Result<()> {
             &client,
             route![server_connection, DefaultAddress::SECURE_CHANNEL_LISTENER],
             SecureChannelOptions::new()
-                .with_trust_context(trust_context)
-                .with_credential(credential),
+                .with_authority(issuer.clone())
+                .with_credential(credential)?,
         )
         .await?;
 

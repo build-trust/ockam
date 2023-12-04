@@ -124,7 +124,7 @@ impl SecureRelayOutlet {
 mod tests {
     use super::*;
     use crate::run::parser::{ArgsToCommands, Config};
-    use ockam::identity::OneTimeCode;
+    use ockam_api::authenticator::one_time_code::OneTimeCode;
     use ockam_api::EnrollmentTicket;
     use std::str::FromStr;
 

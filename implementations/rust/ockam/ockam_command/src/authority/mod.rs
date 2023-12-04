@@ -15,7 +15,7 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 )]
 pub struct AuthorityCommand {
     #[command(subcommand)]
-    subcommand: AuthoritySubcommand,
+    pub(crate) subcommand: AuthoritySubcommand,
 }
 
 impl AuthorityCommand {

@@ -8,7 +8,11 @@ use ockam_core::Result;
 #[async_trait]
 pub trait IdentityAttributesRepository: Send + Sync + 'static {
     /// Get the attributes associated with the given identity identifier
-    async fn get_attributes(&self, subject: &Identifier) -> Result<Option<AttributesEntry>>;
+    async fn get_attributes(
+        &self,
+        subject: &Identifier,
+        attested_by: &Identifier,
+    ) -> Result<Option<AttributesEntry>>;
 
     /// List all identities with their attributes
     async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>>;

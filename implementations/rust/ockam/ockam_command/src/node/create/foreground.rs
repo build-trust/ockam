@@ -2,38 +2,31 @@ use std::sync::Arc;
 
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use minicbor::{Decoder, Encode};
 use tokio::time::{sleep, Duration};
 use tracing::{debug, instrument};
 
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::logs::TracingGuard;
-use ockam_api::nodes::service::NodeManagerTrustOptions;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::{
-    bootstrapped_identities_store::PreTrustedIdentities,
-    nodes::{
-        service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
-        NodeManagerWorker, NODEMANAGER_ADDR,
-    },
+use ockam_api::nodes::{
+    service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
+    NodeManagerWorker, NODEMANAGER_ADDR,
 };
-use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::{route, LOCAL};
 
 use crate::fmt_ok;
 use crate::node::{guard_node_is_not_already_running, CreateCommand};
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::util::api;
-use crate::{shutdown, CommandGlobalOpts, Result};
+use crate::{shutdown, CommandGlobalOpts};
 
 #[instrument(skip_all, fields(node_name = cmd.node_name))]
 pub(super) async fn foreground_mode(
     ctx: Context,
     (opts, cmd, tracing_guard): (CommandGlobalOpts, CreateCommand, Option<TracingGuard>),
 ) -> miette::Result<()> {
-    guard_node_is_not_already_running(&opts, &cmd).await?;
+    guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
 
     let node_name = cmd.node_name.clone();
     debug!("create node {node_name} in foreground mode");
@@ -69,37 +62,30 @@ pub(super) async fn foreground_mode(
         .start_node_with_optional_values(
             &node_name,
             &cmd.identity,
-            &cmd.trust_context_opts.project_name,
+            &cmd.trust_opts.project_name,
             Some(&listener),
         )
         .await?;
     debug!("created node {node_info:?}");
 
-    let named_trust_context = state
-        .retrieve_trust_context(
-            &cmd.trust_context_opts.trust_context,
-            &cmd.trust_context_opts.project_name,
-            &cmd.authority_identity().await?,
-            &cmd.credential,
+    let trust_options = opts
+        .state
+        .retrieve_trust_options(
+            &cmd.trust_opts.project_name,
+            &cmd.trust_opts.authority_identity,
+            &cmd.trust_opts.authority_route,
         )
-        .await?;
-
-    let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
+        .await
+        .into_diagnostic()?;
 
     let node_man = InMemoryNode::new(
         &ctx,
-        NodeManagerGeneralOptions::new(
-            state,
-            node_name.clone(),
-            pre_trusted_identities,
-            cmd.launch_config.is_none(),
-            true,
-        ),
+        NodeManagerGeneralOptions::new(state, node_name.clone(), cmd.launch_config.is_none(), true),
         NodeManagerTransportOptions::new(
             listener.flow_control_id().clone(),
             tcp.async_try_clone().await.into_diagnostic()?,
         ),
-        NodeManagerTrustOptions::new(named_trust_context),
+        trust_options,
     )
     .await
     .into_diagnostic()?;
@@ -152,21 +138,6 @@ pub(super) async fn foreground_mode(
     Ok(())
 }
 
-pub fn load_pre_trusted_identities(cmd: &CreateCommand) -> Result<Option<PreTrustedIdentities>> {
-    let command = cmd.clone();
-    let pre_trusted_identities = match (
-        command.trusted_identities,
-        command.trusted_identities_file,
-        command.reload_from_trusted_identities_file,
-    ) {
-        (Some(val), _, _) => Some(PreTrustedIdentities::new_from_string(&val)?),
-        (_, Some(val), _) => Some(PreTrustedIdentities::new_from_disk(val, false)?),
-        (_, _, Some(val)) => Some(PreTrustedIdentities::new_from_disk(val, true)?),
-        _ => None,
-    };
-    Ok(pre_trusted_identities)
-}
-
 async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
@@ -185,35 +156,6 @@ async fn start_services(ctx: &Context, cfg: &Config) -> miette::Result<()> {
             secure_channel_listener::create_listener(ctx, adr, ids, identity, route![]).await?;
         }
     }
-    if let Some(cfg) = config.authenticator {
-        if !cfg.disabled {
-            println!("starting authenticator service ...");
-            let req = api::start_authenticator_service(&cfg.address, &cfg.project);
-            send_req_to_node_manager(ctx, req).await?;
-        }
-    }
-    if let Some(cfg) = config.okta_identity_provider {
-        if !cfg.disabled {
-            println!("starting okta identity provider service ...");
-            let req = api::start_okta_service(&cfg);
-            send_req_to_node_manager(ctx, req).await?;
-        }
-    }
 
-    Ok(())
-}
-
-async fn send_req_to_node_manager<T>(ctx: &Context, req: Request<T>) -> Result<()>
-where
-    T: Encode<()>,
-{
-    let buf: Vec<u8> = ctx
-        .send_and_receive(NODEMANAGER_ADDR, req.to_vec()?)
-        .await?;
-    let mut dec = Decoder::new(&buf);
-    let hdr = dec.decode::<ResponseHeader>()?;
-    if hdr.status() != Some(Status::Ok) {
-        return Err(miette!("Request failed with status: {:?}", hdr.status()))?;
-    }
     Ok(())
 }

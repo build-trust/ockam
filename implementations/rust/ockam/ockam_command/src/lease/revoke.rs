@@ -2,8 +2,8 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::InfluxDbTokenLease;
 
-use crate::lease::authenticate;
-use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::lease::create_project_client;
+use crate::util::api::{CloudOpts, TrustOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 
@@ -19,7 +19,7 @@ pub struct RevokeCommand {
 }
 
 impl RevokeCommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
+    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustOpts) {
         node_rpc(
             opts.rt.clone(),
             run_impl,
@@ -30,15 +30,10 @@ impl RevokeCommand {
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, cmd, trust_opts): (
-        CommandGlobalOpts,
-        CloudOpts,
-        RevokeCommand,
-        TrustContextOpts,
-    ),
+    (opts, cloud_opts, cmd, trust_opts): (CommandGlobalOpts, CloudOpts, RevokeCommand, TrustOpts),
 ) -> miette::Result<()> {
-    let project_node = authenticate(&ctx, &opts, &cloud_opts, &trust_opts).await?;
-    project_node
+    let project_node_client = create_project_client(&ctx, &opts, &cloud_opts, &trust_opts).await?;
+    project_node_client
         .revoke_token(&ctx, cmd.token_id.clone())
         .await?;
     println!("Revoked influxdb token {}.", cmd.token_id);
