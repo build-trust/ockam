@@ -2,7 +2,7 @@ use crate::kafka::outlet_controller::KafkaOutletController;
 use crate::kafka::portal_worker::KafkaPortalWorker;
 use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::{KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS};
-use ockam::identity::{SecureChannels, TRUST_CONTEXT_ID_UTF8};
+use ockam::identity::{Identifier, SecureChannels};
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::AbacAccessControl;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
@@ -26,7 +26,7 @@ impl OutletManagerService {
     pub(crate) async fn create(
         context: &Context,
         secure_channels: Arc<SecureChannels>,
-        trust_context_id: &str,
+        authority: Identifier,
         default_secure_channel_listener_flow_control_id: FlowControlId,
     ) -> Result<()> {
         let flow_controls = context.flow_controls();
@@ -45,15 +45,15 @@ impl OutletManagerService {
         // add the default outlet as consumer for the interceptor
         flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
 
+        let abac = AbacAccessControl::check_credential_only(
+            secure_channels
+                .identities()
+                .identity_attributes_repository(),
+            authority,
+        );
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(),
-            incoming_access_control: Arc::new(AbacAccessControl::create(
-                secure_channels
-                    .identities()
-                    .identity_attributes_repository(),
-                TRUST_CONTEXT_ID_UTF8,
-                trust_context_id,
-            )),
+            incoming_access_control: Arc::new(abac),
             flow_control_id: flow_control_id.clone(),
             outgoing_access_control: Arc::new(FlowControlOutgoingAccessControl::new(
                 flow_controls,

@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Any, Result, Routed, TransportMessage};
@@ -14,9 +14,10 @@ use crate::secure_channel::Addresses;
 use crate::{
     DecryptionRequest, DecryptionResponse, Identities, IdentityError,
     IdentitySecureChannelLocalInfo, PlaintextPayloadMessage, RefreshCredentialsMessage,
-    SecureChannelMessage, TrustContext,
+    SecureChannelMessage,
 };
 
+use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, warn};
 
@@ -28,21 +29,21 @@ pub(crate) struct DecryptorHandler {
     pub(crate) decryptor: Decryptor,
 
     identities: Arc<Identities>,
-    trust_context: Option<TrustContext>,
-    should_send_close: Arc<AtomicBool>,
+    authority: Option<Identifier>,
+    shared_state: SecureChannelSharedState,
 }
 
 impl DecryptorHandler {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         identities: Arc<Identities>,
-        trust_context: Option<TrustContext>,
+        authority: Option<Identifier>,
         role: &'static str,
         addresses: Addresses,
         key: AeadSecretKeyHandle,
         vault: Arc<dyn VaultForSecureChannels>,
         their_identity_id: Identifier,
-        should_send_close: Arc<AtomicBool>,
+        shared_state: SecureChannelSharedState,
     ) -> Self {
         Self {
             role,
@@ -50,8 +51,8 @@ impl DecryptorHandler {
             their_identity_id,
             decryptor: Decryptor::new(key, vault),
             identities,
-            trust_context,
-            should_send_close,
+            authority,
+            shared_state,
         }
     }
 
@@ -122,7 +123,9 @@ impl DecryptorHandler {
 
     async fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
         // Prevent sending another Close message
-        self.should_send_close.store(false, Ordering::Relaxed);
+        self.shared_state
+            .should_send_close
+            .store(false, Ordering::Relaxed);
         // Should be enough to stop the encryptor, since it will stop the decryptor
         ctx.stop_worker(self.addresses.encryptor.clone()).await
     }
@@ -140,7 +143,7 @@ impl DecryptorHandler {
         CommonStateMachine::process_identity_payload_static(
             self.identities.clone(),
             None,
-            self.trust_context.clone(),
+            self.authority.clone(),
             Some(self.their_identity_id.clone()),
             msg.change_history,
             msg.credentials,

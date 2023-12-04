@@ -10,7 +10,7 @@ use super::Result;
 
 impl CliState {
     pub async fn store_project(&self, project: Project) -> Result<()> {
-        let repository = self.projects_repository().await?;
+        let repository = self.projects_repository();
         repository.store_project(&project).await?;
         // If there is no previous default project set this project as the default
         let default_project = repository.get_default_project().await?;
@@ -18,20 +18,11 @@ impl CliState {
             repository.set_default_project(&project.id).await?
         };
 
-        // create a corresponding trust context
-        self.create_trust_context(
-            Some(project.name()),
-            Some(project.id()),
-            None,
-            project.authority_identity().await.ok(),
-            project.authority_access_route().ok(),
-        )
-        .await?;
         Ok(())
     }
 
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
-        let repository = self.projects_repository().await?;
+        let repository = self.projects_repository();
         // delete the project
         let project_exists = repository.get_project(project_id).await.is_ok();
         repository.delete_project(project_id).await?;
@@ -48,19 +39,13 @@ impl CliState {
 
     pub async fn set_default_project(&self, project_id: &str) -> Result<()> {
         self.projects_repository()
-            .await?
             .set_default_project(project_id)
             .await?;
         Ok(())
     }
 
     pub async fn get_default_project(&self) -> Result<Project> {
-        match self
-            .projects_repository()
-            .await?
-            .get_default_project()
-            .await?
-        {
+        match self.projects_repository().get_default_project().await? {
             Some(project) => Ok(project),
             None => Err(Error::new(
                 Origin::Api,
@@ -71,12 +56,7 @@ impl CliState {
     }
 
     pub async fn get_project_by_name(&self, name: &str) -> Result<Project> {
-        match self
-            .projects_repository()
-            .await?
-            .get_project_by_name(name)
-            .await?
-        {
+        match self.projects_repository().get_project_by_name(name).await? {
             Some(project) => Ok(project),
             None => Err(Error::new(
                 Origin::Api,
@@ -87,12 +67,7 @@ impl CliState {
     }
 
     pub async fn get_project(&self, project_id: &str) -> Result<Project> {
-        match self
-            .projects_repository()
-            .await?
-            .get_project(project_id)
-            .await?
-        {
+        match self.projects_repository().get_project(project_id).await? {
             Some(project) => Ok(project),
             None => Err(Error::new(
                 Origin::Api,
@@ -113,7 +88,7 @@ impl CliState {
     }
 
     pub async fn get_projects(&self) -> Result<Vec<Project>> {
-        Ok(self.projects_repository().await?.get_projects().await?)
+        Ok(self.projects_repository().get_projects().await?)
     }
 
     pub async fn get_projects_grouped_by_name(&self) -> Result<HashMap<String, Project>> {

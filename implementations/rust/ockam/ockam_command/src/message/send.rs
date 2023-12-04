@@ -15,7 +15,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
-use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::api::{CloudOpts, TrustOpts};
 use crate::util::duration::duration_parser;
 use crate::util::{clean_nodes_multiaddr, node_rpc};
 use crate::{docs, CommandGlobalOpts};
@@ -53,7 +53,7 @@ pub struct SendCommand {
     cloud_opts: CloudOpts,
 
     #[command(flatten)]
-    pub trust_context_opts: TrustContextOpts,
+    pub trust_opts: TrustOpts,
 }
 
 impl SendCommand {
@@ -91,27 +91,15 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 .get_identity_name_or_default(&cmd.cloud_opts.identity)
                 .await?;
 
-            info!("retrieving the trust context");
-
-            let named_trust_context = opts
-                .state
-                .retrieve_trust_context(
-                    &cmd.trust_context_opts.trust_context,
-                    &cmd.trust_context_opts.project_name,
-                    &None,
-                    &None,
-                )
-                .await?;
-            info!("retrieved the trust context: {named_trust_context:?}");
-
             info!("starting an in memory node to send a message");
 
             let node_manager = InMemoryNode::start_node(
                 ctx,
                 &opts.state,
                 &identity_name,
-                cmd.trust_context_opts.project_name,
-                named_trust_context,
+                cmd.trust_opts.project_name,
+                cmd.trust_opts.authority_identity,
+                cmd.trust_opts.authority_route,
             )
             .await?;
             info!("started an in memory node to send a message");

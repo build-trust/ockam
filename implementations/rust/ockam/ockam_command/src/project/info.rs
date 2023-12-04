@@ -19,9 +19,6 @@ pub struct InfoCommand {
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
-
-    #[arg(long, default_value = "false")]
-    pub as_trust_context: bool,
 }
 
 impl InfoCommand {

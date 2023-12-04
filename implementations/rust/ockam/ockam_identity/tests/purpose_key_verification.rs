@@ -28,7 +28,7 @@ async fn test_invalid_signature() -> Result<()> {
     let purpose_keys = identities.purpose_keys();
 
     identities_remote
-        .identities_creation()
+        .identities_verification()
         .update_identity(&identity)
         .await?;
 

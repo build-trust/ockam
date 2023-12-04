@@ -3,13 +3,11 @@ use miette::IntoDiagnostic;
 
 pub use create::CreateCommand;
 pub use list::ListCommand;
-use ockam_api::cloud::project::Projects;
-use ockam_api::cloud::ProjectNodeClient;
-use ockam_api::nodes::Credentials;
+use ockam_api::cloud::{CredentialsEnabled, ProjectNodeClient};
 use ockam_api::nodes::InMemoryNode;
 pub use show::ShowCommand;
 
-use crate::util::api::{CloudOpts, TrustContextOpts};
+use crate::util::api::{CloudOpts, TrustOpts};
 use crate::CommandGlobalOpts;
 
 use self::revoke::RevokeCommand;
@@ -29,7 +27,7 @@ pub struct LeaseCommand {
     cloud_opts: CloudOpts,
 
     #[command(flatten)]
-    trust_context_opts: TrustContextOpts,
+    trust_opts: TrustOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -43,10 +41,10 @@ pub enum LeaseSubcommand {
 impl LeaseCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(options, self.cloud_opts, self.trust_context_opts),
-            LeaseSubcommand::List(c) => c.run(options, self.cloud_opts, self.trust_context_opts),
-            LeaseSubcommand::Show(c) => c.run(options, self.cloud_opts, self.trust_context_opts),
-            LeaseSubcommand::Revoke(c) => c.run(options, self.cloud_opts, self.trust_context_opts),
+            LeaseSubcommand::Create(c) => c.run(options, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::List(c) => c.run(options, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::Show(c) => c.run(options, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::Revoke(c) => c.run(options, self.cloud_opts, self.trust_opts),
         }
     }
 
@@ -61,54 +59,34 @@ impl LeaseCommand {
     }
 }
 
-async fn authenticate(
+async fn create_project_client(
     ctx: &ockam_node::Context,
     opts: &CommandGlobalOpts,
     cloud_opts: &CloudOpts,
-    trust_opts: &TrustContextOpts,
+    trust_opts: &TrustOpts,
 ) -> miette::Result<ProjectNodeClient> {
-    let trust_context = opts
-        .state
-        .retrieve_trust_context(
-            &trust_opts.trust_context,
-            &trust_opts.project_name,
-            &None,
-            &None,
-        )
-        .await?;
-
-    let node = InMemoryNode::start_with_trust_context(
+    let node = InMemoryNode::start_with_project_name_and_identity(
         ctx,
         &opts.state,
-        trust_opts.project_name(),
-        trust_context,
+        cloud_opts.identity.clone(),
+        trust_opts.project_name.clone(),
     )
     .await?;
+
     let identity = opts
         .state
         .get_identity_name_or_default(&cloud_opts.identity)
         .await?;
-    let project = node
-        .get_project_by_name_or_default(ctx, &trust_opts.project_name())
+    let project = opts
+        .state
+        .get_project_by_name_or_default(&trust_opts.project_name)
         .await?;
 
-    let authority_identity = project.authority_identity().await.into_diagnostic()?;
-
-    let authority_node = node
-        .create_authority_client(
-            authority_identity.identifier(),
-            &project.authority_access_route().into_diagnostic()?,
-            Some(identity.clone()),
-        )
-        .await?;
-
-    authority_node
-        .authenticate(ctx, Some(identity.clone()))
-        .await?;
     node.create_project_client(
         &project.identifier().into_diagnostic()?,
         &project.access_route().into_diagnostic()?,
         Some(identity.clone()),
+        CredentialsEnabled::On,
     )
     .await
 }

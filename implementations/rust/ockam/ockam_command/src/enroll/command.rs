@@ -403,7 +403,6 @@ async fn get_user_project(
     // store the updated project
     opts.state.store_project(project.clone()).await?;
     // set the project as the default one
-    opts.state.set_default_trust_context(&project.name).await?;
     opts.state.set_default_project(&project.id).await?;
 
     opts.terminal.write_line(&fmt_ok!(

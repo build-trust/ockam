@@ -1,1 +1,0 @@
-This command will show the details of a given trust context.

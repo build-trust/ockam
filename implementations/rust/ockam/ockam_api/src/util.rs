@@ -375,8 +375,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 #[cfg(test)]
 pub mod test_utils {
     use ockam::identity::utils::AttributesBuilder;
-    use ockam::identity::DEFAULT_CREDENTIAL_VALIDITY;
-    use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
+    use ockam::identity::SecureChannels;
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
@@ -384,9 +383,13 @@ pub mod test_utils {
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
+    use crate::authenticator::credential_issuer::{
+        DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA,
+    };
     use crate::cli_state::{random_name, CliState};
     use crate::nodes::service::{
-        NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
+        NodeManagerCredentialRetrieverOptions, NodeManagerGeneralOptions,
+        NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::InMemoryNode;
     use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
@@ -423,12 +426,6 @@ pub mod test_utils {
 
         // Premise: we need an identity and a credential before the node manager starts.
         let identifier = cli_state.get_node(&node_name).await?.identifier();
-        let identity = cli_state.get_identity(&identifier).await?;
-
-        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
-            .build();
-
         let vault = cli_state
             .get_or_create_default_named_vault()
             .await?
@@ -436,6 +433,7 @@ pub mod test_utils {
             .await?;
         let identities = cli_state.make_identities(vault).await?;
 
+        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build();
         let credential = identities
             .credentials()
             .credentials_creation()
@@ -448,28 +446,17 @@ pub mod test_utils {
             .await
             .unwrap();
 
-        cli_state
-            .store_credential("credential", &identity, credential)
-            .await?;
-
-        let trust_context = cli_state
-            .create_trust_context(
-                Some("trust-context".to_string()),
-                None,
-                Some("credential".to_string()),
-                None,
-                None,
-            )
-            .await?;
-
         let node_manager = InMemoryNode::new(
             context,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, None, true, false),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, false),
             NodeManagerTransportOptions::new(
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(Some(trust_context)),
+            NodeManagerTrustOptions::new(
+                NodeManagerCredentialRetrieverOptions::InMemory(credential),
+                Some(identifier.clone()),
+            ),
         )
         .await?;
 
@@ -481,11 +468,13 @@ pub mod test_utils {
             .await?;
 
         let secure_channels = node_manager.secure_channels();
-        Ok(NodeManagerHandle {
+        let handle = NodeManagerHandle {
             cli_state,
             node_manager,
             tcp: tcp.async_try_clone().await?,
             secure_channels,
-        })
+        };
+
+        Ok(handle)
     }
 }

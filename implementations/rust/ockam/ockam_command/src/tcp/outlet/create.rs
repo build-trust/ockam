@@ -69,10 +69,8 @@ impl CreateCommand {
         let node_name = opts.state.get_node_or_default(&self.at).await?.name();
         let project = opts.state.get_node_project(&node_name).await.ok();
         let resource = Resource::new("tcp-outlet");
-        if let Some(p) = project {
-            if !has_policy(&node_name, ctx, &opts, &resource).await? {
-                add_default_project_policy(&node_name, ctx, &opts, p.id, &resource).await?;
-            }
+        if project.is_some() && !has_policy(&node_name, ctx, &opts, &resource).await? {
+            add_default_project_policy(&node_name, ctx, &opts, &resource).await?;
         }
 
         let is_finished: Mutex<bool> = Mutex::new(false);

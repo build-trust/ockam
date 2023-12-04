@@ -203,10 +203,6 @@ impl AppState {
             }
         };
         // set the selected project as the default one
-        self.state()
-            .await
-            .set_default_trust_context(&project.name)
-            .await?;
         self.state().await.set_default_project(&project.id).await?;
         self.state()
             .await

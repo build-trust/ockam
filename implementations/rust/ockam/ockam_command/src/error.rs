@@ -80,6 +80,7 @@ pub enum Error {
 }
 
 impl Error {
+    #[track_caller]
     pub fn new(code: ExitCode, err: miette::ErrReport) -> Self {
         assert_ne!(code, 0, "Error's exit code can't be OK");
         Error::InternalError {
@@ -88,12 +89,14 @@ impl Error {
         }
     }
 
+    #[track_caller]
     pub fn arg_validation<T: Debug>(arg: &str, value: T, err: Option<&str>) -> Self {
         let err = err.map(|e| format!(": {e}")).unwrap_or_default();
         let msg = format!("invalid value '({value:?})' for '{arg}' {err}");
         Self::new(exitcode::USAGE, miette!(msg))
     }
 
+    #[track_caller]
     pub fn new_internal_error(human_err: &str, inner_err_msg: &str) -> Self {
         let msg = format!("{}\n{}", human_err, fmt_log!("{}", inner_err_msg));
         Self::new(exitcode::SOFTWARE, miette!(msg))

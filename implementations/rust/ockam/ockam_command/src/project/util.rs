@@ -8,7 +8,7 @@ use tokio_retry::Retry;
 use tracing::debug;
 
 use ockam_api::cloud::project::{Project, Projects};
-use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT;
+use ockam_api::cloud::{CredentialsEnabled, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::service::relay::SecureChannelsCreation;
@@ -79,7 +79,6 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 &project_access_route,
                 project_identity_id,
                 identity_name.clone(),
-                None,
                 timeout,
             )
             .await?;
@@ -177,7 +176,12 @@ async fn check_project_node_accessible(
         .as_ref()
         .ok_or(miette!("Project identity is not set."))?;
     let project_node = node
-        .create_project_client(project_identity, &project_route, None)
+        .create_project_client(
+            project_identity,
+            &project_route,
+            None,
+            CredentialsEnabled::Off,
+        )
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {

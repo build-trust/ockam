@@ -6,7 +6,7 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
-use crate::cloud::ControllerClient;
+use crate::cloud::{ControllerClient, HasSecureClient};
 use crate::nodes::InMemoryNode;
 
 const TARGET: &str = "ockam_api::cloud::space";
@@ -165,7 +165,7 @@ impl ControllerClient {
             name.into(),
             users.iter().map(|u| u.to_string()).collect(),
         ));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "spaces", req)
             .await
             .into_diagnostic()?
@@ -176,7 +176,7 @@ impl ControllerClient {
     pub async fn get_space(&self, ctx: &Context, space_id: &str) -> miette::Result<Space> {
         trace!(target: TARGET, space = %space_id, "getting space");
         let req = Request::get(format!("/v0/{space_id}"));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "spaces", req)
             .await
             .into_diagnostic()?
@@ -187,7 +187,7 @@ impl ControllerClient {
     pub async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()> {
         trace!(target: TARGET, space = %space_id, "deleting space");
         let req = Request::delete(format!("/v0/{space_id}"));
-        self.secure_client
+        self.get_secure_client()
             .tell(ctx, "spaces", req)
             .await
             .into_diagnostic()?
@@ -197,7 +197,7 @@ impl ControllerClient {
 
     pub async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
         trace!(target: TARGET, "listing spaces");
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "spaces", Request::get("/v0/"))
             .await
             .into_diagnostic()?

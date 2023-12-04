@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 use clap::Args;
@@ -7,7 +7,8 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::authenticator::enrollment_tokens::{Members, TokenIssuer};
+use ockam_api::authenticator::direct::Members;
+use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cli_state::CliState;
 use ockam_api::cloud::project::Project;
@@ -18,12 +19,16 @@ use crate::{docs, CommandGlobalOpts, Result};
 use crate::{fmt_ok, util::node_rpc};
 use crate::{
     output::OutputFormat,
-    util::api::{CloudOpts, TrustContextOpts},
+    util::api::{CloudOpts, TrustOpts},
 };
 use crate::{terminal::color_primary, util::duration::duration_parser};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");
+
+/// This attribute in credential allows member to create a relay on the Project node, the name of the relay should be
+/// equal to the value of that attribute. If the value is `*` then any name is allowed
+pub const OCKAM_RELAY_ATTRIBUTE: &str = "ockam-relay";
 
 /// Add members to a project, as an authorized enroller, directly or via an enrollment ticket
 #[derive(Clone, Debug, Args)]
@@ -37,7 +42,7 @@ pub struct TicketCommand {
     cloud_opts: CloudOpts,
 
     #[command(flatten)]
-    trust_opts: TrustContextOpts,
+    trust_opts: TrustOpts,
 
     /// Bypass ticket creation, add this member directly to the project's authority, with the given attributes
     #[arg(value_name = "IDENTIFIER", long, short, conflicts_with = "expires_in")]
@@ -79,16 +84,16 @@ impl TicketCommand {
         node_rpc(opts.rt.clone(), run_impl, (opts, self));
     }
 
-    fn attributes(&self) -> Result<HashMap<&str, &str>> {
-        let mut attributes = HashMap::new();
+    fn attributes(&self) -> Result<BTreeMap<String, String>> {
+        let mut attributes = BTreeMap::new();
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
             let key = parts.next().ok_or(miette!("key expected"))?;
             let value = parts.next().ok_or(miette!("value expected)"))?;
-            attributes.insert(key, value);
+            attributes.insert(key.to_string(), value.to_string());
         }
-        if let Some(relay_name) = &self.allowed_relay_name {
-            attributes.insert("ockam-relay", relay_name);
+        if let Some(relay_name) = self.allowed_relay_name.clone() {
+            attributes.insert(OCKAM_RELAY_ATTRIBUTE.to_string(), relay_name);
         }
         Ok(attributes)
     }
@@ -105,49 +110,16 @@ async fn run_impl(
         ));
     }
 
-    let trust_context = opts
-        .state
-        .retrieve_trust_context(
-            &cmd.trust_opts.trust_context,
-            &cmd.trust_opts.project_name,
-            &None,
-            &None,
-        )
-        .await?;
-    let node = InMemoryNode::start_with_trust_context(
+    let node = InMemoryNode::start_with_project_name(
         &ctx,
         &opts.state,
         cmd.trust_opts.project_name.clone(),
-        trust_context,
     )
     .await?;
 
-    let mut project: Option<Project> = None;
+    let project: Option<Project>;
 
-    let authority_node_client = if let Some(name) = cmd.trust_opts.trust_context.as_ref() {
-        let authority = if let Some(authority) = opts
-            .state
-            .get_trust_context(name)
-            .await?
-            .authority()
-            .await
-            .into_diagnostic()?
-        {
-            authority
-        } else {
-            return Err(miette!(
-                "Trust context must be configured with a credential issuer"
-            ));
-        };
-
-        let identity = opts
-            .state
-            .get_identity_name_or_default(&cmd.cloud_opts.identity)
-            .await?;
-
-        node.create_authority_client(&authority.identifier(), &authority.route(), Some(identity))
-            .await?
-    } else if let Some(p) = get_project(&opts.state, &cmd.to).await? {
+    let authority_node_client = if let Some(p) = get_project(&opts.state, &cmd.to).await? {
         let identity = opts
             .state
             .get_identity_name_or_default(&cmd.cloud_opts.identity)

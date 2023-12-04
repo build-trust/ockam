@@ -325,8 +325,8 @@ impl IncomingService {
 
 #[cfg(test)]
 mod tests {
-    use ockam::identity::OneTimeCode;
     use ockam::Context;
+    use ockam_api::authenticator::one_time_code::OneTimeCode;
     use ockam_api::cli_state::enrollments::EnrollmentTicket;
     use ockam_api::cli_state::CliState;
     use ockam_api::cloud::project::Project;

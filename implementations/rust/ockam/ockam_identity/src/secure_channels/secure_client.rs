@@ -1,4 +1,4 @@
-use crate::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{CredentialRetriever, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
 use minicbor::{Decode, Encode};
 
 use crate::{SecureChannel, SecureChannels};
@@ -7,9 +7,10 @@ use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{self, route, Result, Route};
+use ockam_core::{self, route, Address, Result, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
+use ockam_transport_core::Transport;
 
 /// This client creates a secure channel to a node
 /// and can then send a typed request to that node (and receive a typed response)
@@ -28,6 +29,10 @@ use ockam_node::Context;
 pub struct SecureClient {
     // secure_channels is used to create a secure channel before sending a request
     secure_channels: Arc<SecureChannels>,
+    // Credential retriever
+    credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+    // transport to instantiate connections
+    transport: Arc<dyn Transport>,
     // destination for the secure channel
     secure_route: Route,
     // identifier of the secure channel responder
@@ -44,6 +49,8 @@ impl SecureClient {
     ///          involved in the Route when it's no longer used (like TCP connections or Secure Channels)
     pub fn new(
         secure_channels: Arc<SecureChannels>,
+        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+        transport: Arc<dyn Transport>,
         server_route: Route,
         server_identifier: &Identifier,
         client_identifier: &Identifier,
@@ -51,11 +58,48 @@ impl SecureClient {
     ) -> SecureClient {
         Self {
             secure_channels,
+            credential_retriever,
+            transport,
             secure_route: server_route,
             server_identifier: server_identifier.clone(),
             client_identifier: client_identifier.clone(),
             timeout,
         }
+    }
+
+    /// Secure Channels
+    pub fn secure_channels(&self) -> Arc<SecureChannels> {
+        self.secure_channels.clone()
+    }
+
+    /// CredentialRetriever
+    pub fn credential_retriever(&self) -> Option<Arc<dyn CredentialRetriever>> {
+        self.credential_retriever.clone()
+    }
+
+    /// Transport
+    pub fn transport(&self) -> Arc<dyn Transport> {
+        self.transport.clone()
+    }
+
+    /// Route
+    pub fn secure_route(&self) -> &Route {
+        &self.secure_route
+    }
+
+    /// Server Identifier
+    pub fn server_identifier(&self) -> &Identifier {
+        &self.server_identifier
+    }
+
+    /// Client Identifier
+    pub fn client_identifier(&self) -> &Identifier {
+        &self.client_identifier
+    }
+
+    /// Timeout
+    pub fn timeout(&self) -> Duration {
+        self.timeout
     }
 }
 
@@ -146,38 +190,62 @@ impl SecureClient {
     where
         T: Encode<()>,
     {
-        let sc = self.create_secure_channel(ctx).await?;
-        let route = route![sc.clone(), api_service];
+        let (secure_channel, transport_address) = self.create_secure_channel(ctx).await?;
+        let route = route![secure_channel.clone(), api_service];
         let client = Client::new(&route, Some(timeout));
         let response = client.request(ctx, req).await;
-        self.secure_channels
-            .stop_secure_channel(ctx, sc.encryptor_address())
-            .await?;
+        let _ = self
+            .secure_channels
+            .stop_secure_channel(ctx, secure_channel.encryptor_address())
+            .await;
+        if let Some(transport_address) = transport_address {
+            let _ = self.transport.disconnect(transport_address).await;
+        }
         // we delay the unwrapping of the response to make sure that the secure channel is
         // properly stopped first
         response
     }
 
     /// Create a secure channel to the node
-    pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
+    pub async fn create_secure_channel(
+        &self,
+        ctx: &Context,
+    ) -> Result<(SecureChannel, Option<Address>)> {
+        let transport_type = self.transport.transport_type();
+        let (resolved_route, transport_address) = Context::resolve_transport_route_static(
+            self.secure_route.clone(),
+            [(transport_type, self.transport.clone())].into(),
+        )
+        .await?;
         let options = SecureChannelOptions::new()
             .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()))
             .with_timeout(self.timeout);
-        self.secure_channels
-            .create_secure_channel(
-                ctx,
-                &self.client_identifier,
-                self.secure_route.clone(),
-                options,
-            )
-            .await
+
+        let options = if let Some(credential_retriever) = self.credential_retriever.clone() {
+            options.with_credential_retriever(credential_retriever)?
+        } else {
+            options
+        };
+
+        let secure_channel = self
+            .secure_channels
+            .create_secure_channel(ctx, &self.client_identifier, resolved_route, options)
+            .await?;
+
+        Ok((secure_channel, transport_address))
     }
 
     /// Check if a secure channel can be created to the node
     pub async fn check_secure_channel(&self, ctx: &Context) -> Result<()> {
-        let sc = self.create_secure_channel(ctx).await?;
-        self.secure_channels
-            .stop_secure_channel(ctx, sc.encryptor_address())
-            .await
+        let (secure_channel, transport_address) = self.create_secure_channel(ctx).await?;
+        let _ = self
+            .secure_channels
+            .stop_secure_channel(ctx, secure_channel.encryptor_address())
+            .await;
+        if let Some(transport_address) = transport_address {
+            let _ = self.transport.disconnect(transport_address).await;
+        }
+
+        Ok(())
     }
 }

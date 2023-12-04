@@ -3,15 +3,23 @@ use std::sync::Arc;
 
 use clap::Args;
 use colorful::Colorful;
+use console::Term;
 use miette::{miette, IntoDiagnostic};
 use tokio::{sync::Mutex, try_join};
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::{Identifier, Identities};
+use ockam::identity::{
+    ChangeHistoryRepository, ChangeHistorySqlxDatabase, CredentialsVerification, Identifier,
+    PurposeKeyVerification,
+};
 use ockam::Context;
+use ockam_api::CliState;
+use ockam_vault::{SoftwareVaultForVerifyingSignatures, VaultForVerifyingSignatures};
 
 use crate::util::parsers::identity_identifier_parser;
-use crate::{fmt_err, fmt_log, fmt_ok, util::node_rpc, CommandGlobalOpts};
+use crate::{
+    fmt_err, fmt_log, fmt_ok, util::node_rpc, CommandGlobalOpts, Terminal, TerminalStream,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
@@ -23,10 +31,6 @@ pub struct VerifyCommand {
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_FILE", long)]
     pub credential_path: Option<PathBuf>,
-
-    /// Name of the Vault that was used to issue the credential
-    #[arg(value_name = "VAULT_NAME")]
-    pub vault: Option<String>,
 }
 
 impl VerifyCommand {
@@ -44,11 +48,11 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, VerifyCommand),
 ) -> miette::Result<()> {
     let (is_valid, plain_text) = match verify_credential(
-        &opts,
+        &opts.state,
+        &opts.terminal,
         cmd.issuer(),
         &cmd.credential,
         &cmd.credential_path,
-        &cmd.vault,
     )
     .await
     {
@@ -70,14 +74,13 @@ async fn run_impl(
 }
 
 pub async fn verify_credential(
-    opts: &CommandGlobalOpts,
+    state: &CliState,
+    terminal: &Terminal<TerminalStream<Term>>,
     issuer: &Identifier,
     credential: &Option<String>,
     credential_path: &Option<PathBuf>,
-    vault: &Option<String>,
 ) -> miette::Result<CredentialAndPurposeKey> {
-    opts.terminal
-        .write_line(&fmt_log!("Verifying credential...\n"))?;
+    terminal.write_line(&fmt_log!("Verifying credential...\n"))?;
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -96,30 +99,23 @@ pub async fn verify_credential(
             }
         };
 
-        let vault = opts
-            .state
-            .get_named_vault_or_default(vault)
-            .await?
-            .vault()
-            .await?;
-        let identities = match opts.state.make_identities(vault).await {
-            Ok(i) => i,
-            Err(e) => {
-                *is_finished.lock().await = true;
-                return Err(e)?;
-            }
-        };
+        let change_history_repository = ChangeHistorySqlxDatabase::new(state.database());
 
-        let result = validate_encoded_credential(identities, issuer, &credential_as_str).await;
+        let result = validate_encoded_credential(
+            Arc::new(change_history_repository),
+            SoftwareVaultForVerifyingSignatures::create(),
+            issuer,
+            &credential_as_str,
+        )
+        .await;
+
         *is_finished.lock().await = true;
         Ok(result.map_err(|e| e.wrap_err("Credential is invalid"))?)
     };
 
     let output_messages = vec!["Verifying credential...".to_string()];
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+    let progress_output = terminal.progress_output(&output_messages, &is_finished);
 
     let (credential_and_purpose_key, _) = try_join!(send_req, progress_output)?;
 
@@ -127,16 +123,24 @@ pub async fn verify_credential(
 }
 
 async fn validate_encoded_credential(
-    identities: Arc<Identities>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     issuer: &Identifier,
     credential_as_str: &str,
 ) -> miette::Result<CredentialAndPurposeKey> {
-    let verification = identities.credentials().credentials_verification();
     let credential_and_purpose_key: CredentialAndPurposeKey =
         minicbor::decode(&hex::decode(credential_as_str).into_diagnostic()?).into_diagnostic()?;
-    verification
-        .verify_credential(None, &[issuer.clone()], &credential_and_purpose_key)
-        .await
-        .into_diagnostic()?;
+    CredentialsVerification::verify_credential_static(
+        Arc::new(PurposeKeyVerification::new(
+            verifying_vault.clone(),
+            change_history_repository,
+        )),
+        verifying_vault,
+        None,
+        &[issuer.clone()],
+        &credential_and_purpose_key,
+    )
+    .await
+    .into_diagnostic()?;
     Ok(credential_and_purpose_key)
 }

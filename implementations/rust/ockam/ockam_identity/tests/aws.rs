@@ -38,7 +38,7 @@ async fn create_identity_with_aws_pregenerated_key() -> Result<()> {
     let identity = identities.get_identity(&identifier).await?;
 
     identities
-        .identities_creation()
+        .identities_verification()
         .import(Some(&identifier), &identity.export()?)
         .await?;
 
@@ -67,7 +67,7 @@ async fn create_identity_with_aws_random_key() -> Result<()> {
     let identity = identities.get_identity(&identifier).await?;
 
     identities
-        .identities_creation()
+        .identities_verification()
         .import(Some(&identifier), &identity.export()?)
         .await?;
 

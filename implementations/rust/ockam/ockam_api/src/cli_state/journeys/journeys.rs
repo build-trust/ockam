@@ -86,7 +86,7 @@ impl CliState {
 
     /// Return a list of journeys for which we want to add spans
     async fn get_journeys(&self) -> Result<Vec<HostJourney>> {
-        let repository = self.user_journey_repository().await?;
+        let repository = self.user_journey_repository();
         let mut result = vec![];
         if let Some(host_journey) = repository.get_host_journey().await? {
             result.push(host_journey)

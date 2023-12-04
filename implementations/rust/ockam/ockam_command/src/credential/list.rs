@@ -1,50 +1,64 @@
-use clap::{arg, Args};
-
+use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
+
+use ockam::identity::{CredentialSqlxDatabase, Identifier};
 use ockam::Context;
 
-use crate::{fmt_log, terminal::OckamColor, util::node_rpc, CommandGlobalOpts};
-
-use super::CredentialOutput;
+use crate::credential::CredentialOutput;
+use crate::node::NodeOpts;
+use crate::util::node_rpc;
+use crate::util::parsers::identity_identifier_parser;
+use crate::Result;
+use crate::{CommandGlobalOpts, OckamColor};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    /// Name of the Vault from which to retrieve the credentials
-    #[arg(value_name = "VAULT_NAME")]
-    pub vault: Option<String>,
+    #[command(flatten)]
+    pub node_opts: NodeOpts,
+
+    /// Subject Identifier
+    #[arg(long, value_name = "SUBJECT", value_parser = identity_identifier_parser)]
+    subject: Option<Identifier>,
+
+    /// Issuer Identifier
+    #[arg(long, value_name = "ISSUER", value_parser = identity_identifier_parser)]
+    issuer: Option<Identifier>,
 }
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
 }
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> miette::Result<()> {
-    opts.terminal
-        .write_line(&fmt_log!("Listing Credentials...\n"))?;
+async fn rpc(_ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
+    run_impl(opts, cmd).await
+}
 
-    let vault_name = opts
-        .state
-        .get_named_vault_or_default(&cmd.vault)
-        .await?
-        .name();
-    let mut credentials: Vec<CredentialOutput> = Vec::new();
+async fn run_impl(mut opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
+    let node_name = match cmd.node_opts.at_node.clone() {
+        Some(name) => name,
+        None => opts.state.get_default_node().await?.name(),
+    };
+    opts.state.set_node_name(node_name.clone());
 
-    for credential in opts.state.get_credentials().await? {
-        let credential_output = CredentialOutput::new(credential).await;
-        credentials.push(credential_output);
-    }
+    let database = opts.state.database();
+    let storage = CredentialSqlxDatabase::new(database);
+
+    let credentials = storage.get_all().await.into_diagnostic()?;
+
+    let credentials = credentials
+        .into_iter()
+        .map(|c| CredentialOutput::from_credential(c, true))
+        .collect::<Result<Vec<CredentialOutput>>>()?;
 
     let list = opts.terminal.build_list(
         &credentials,
-        "Credentials",
+        &format!("Credentials on {}", node_name),
         &format!(
-            "No Credentials found for vault: {}",
-            vault_name.color(OckamColor::PrimaryResource.color())
+            "No Credentials found on {}",
+            node_name.color(OckamColor::PrimaryResource.color())
         ),
     )?;
 

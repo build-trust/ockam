@@ -6,6 +6,9 @@ use ockam_node::database::SqlxDatabase;
 
 #[cfg(feature = "storage")]
 use crate::identities::storage::ChangeHistorySqlxDatabase;
+use crate::identities::storage::CredentialRepository;
+#[cfg(feature = "storage")]
+use crate::identities::storage::CredentialSqlxDatabase;
 #[cfg(feature = "storage")]
 use crate::identities::storage::IdentityAttributesSqlxDatabase;
 use crate::identities::{ChangeHistoryRepository, IdentitiesKeys};
@@ -16,8 +19,8 @@ use crate::purpose_keys::storage::PurposeKeysSqlxDatabase;
 #[cfg(feature = "storage")]
 use crate::IdentitiesBuilder;
 use crate::{
-    Credentials, CredentialsServer, CredentialsServerModule, Identifier, IdentitiesCreation,
-    Identity, IdentityAttributesRepository, PurposeKeys, Vault,
+    Credentials, Identifier, IdentitiesCreation, IdentitiesVerification, Identity,
+    IdentityAttributesRepository, PurposeKeys, Vault,
 };
 
 /// This struct supports all the services related to identities
@@ -27,6 +30,7 @@ pub struct Identities {
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
+    cached_credentials_repository: Arc<dyn CredentialRepository>,
 }
 
 impl Identities {
@@ -50,14 +54,21 @@ impl Identities {
         self.purpose_keys_repository.clone()
     }
 
+    /// Return the cached credentials repository
+    pub fn cached_credentials_repository(&self) -> Arc<dyn CredentialRepository> {
+        self.cached_credentials_repository.clone()
+    }
+
     /// Get an [`Identity`] from the repository
     pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
-        self.identities_creation().get_identity(identifier).await
+        self.identities_verification()
+            .get_identity(identifier)
+            .await
     }
 
     /// Return the change history of a persisted identity
     pub async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
-        self.identities_creation()
+        self.identities_verification()
             .get_change_history(identifier)
             .await
     }
@@ -71,7 +82,7 @@ impl Identities {
     pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
         Arc::new(PurposeKeys::new(
             self.vault.clone(),
-            self.identities_creation().clone(),
+            self.change_history_repository.clone(),
             self.identities_keys(),
             self.purpose_keys_repository.clone(),
         ))
@@ -94,6 +105,14 @@ impl Identities {
         ))
     }
 
+    /// Return the identities verification service
+    pub fn identities_verification(&self) -> Arc<IdentitiesVerification> {
+        Arc::new(IdentitiesVerification::new(
+            self.change_history_repository(),
+            self.vault.verifying_vault.clone(),
+        ))
+    }
+
     /// Return the identities credentials service
     pub fn credentials(&self) -> Arc<Credentials> {
         Arc::new(Credentials::new(
@@ -104,11 +123,6 @@ impl Identities {
             self.identity_attributes_repository.clone(),
         ))
     }
-
-    /// Return the identities credentials server
-    pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-        Arc::new(CredentialsServerModule::new(self.credentials()))
-    }
 }
 
 impl Identities {
@@ -118,12 +132,14 @@ impl Identities {
         change_history_repository: Arc<dyn ChangeHistoryRepository>,
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
+        cached_credentials_repository: Arc<dyn CredentialRepository>,
     ) -> Identities {
         Identities {
             vault,
             change_history_repository,
             identity_attributes_repository,
             purpose_keys_repository,
+            cached_credentials_repository,
         }
     }
 
@@ -145,6 +161,7 @@ impl Identities {
                 database.clone(),
             )),
             purpose_keys_repository: Arc::new(PurposeKeysSqlxDatabase::new(database.clone())),
+            cached_credentials_repository: Arc::new(CredentialSqlxDatabase::new(database)),
         }
     }
 }

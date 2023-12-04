@@ -3,8 +3,8 @@ use std::str;
 
 use anyhow::anyhow;
 
-use ockam::identity::OneTimeCode;
 use ockam::Result;
+use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;

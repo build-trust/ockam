@@ -2,14 +2,14 @@ use ockam_core::compat::sync::Arc;
 
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
-    IdentitiesCreation, IdentitiesKeys, PurposeKeyCreation, PurposeKeyVerification, Vault,
+    ChangeHistoryRepository, IdentitiesKeys, PurposeKeyCreation, PurposeKeyVerification, Vault,
 };
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct PurposeKeys {
     vault: Vault,
-    identities_creation: Arc<IdentitiesCreation>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -18,13 +18,13 @@ impl PurposeKeys {
     /// Create a new identities module
     pub fn new(
         vault: Vault,
-        identities_creation: Arc<IdentitiesCreation>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {
         Self {
             vault,
-            identities_creation,
+            change_history_repository,
             identity_keys,
             repository,
         }
@@ -39,7 +39,7 @@ impl PurposeKeys {
     pub fn purpose_keys_creation(&self) -> Arc<PurposeKeyCreation> {
         Arc::new(PurposeKeyCreation::new(
             self.vault.clone(),
-            self.identities_creation.clone(),
+            self.change_history_repository.clone(),
             self.identity_keys.clone(),
             self.repository.clone(),
         ))
@@ -49,7 +49,7 @@ impl PurposeKeys {
     pub fn purpose_keys_verification(&self) -> Arc<PurposeKeyVerification> {
         Arc::new(PurposeKeyVerification::new(
             self.vault.verifying_vault.clone(),
-            self.identities_creation.clone(),
+            self.change_history_repository.clone(),
         ))
     }
 }

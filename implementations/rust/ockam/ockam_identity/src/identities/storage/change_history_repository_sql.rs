@@ -12,7 +12,7 @@ use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, To
 use crate::models::{ChangeHistory, Identifier};
 use crate::{ChangeHistoryRepository, Identity, IdentityError, IdentityHistoryComparison, Vault};
 
-/// Implementation of `IdentitiesRepository` trait based on an underlying database
+/// Implementation of [`ChangeHistoryRepository`] trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
 #[derive(Clone)]
 pub struct ChangeHistorySqlxDatabase {
@@ -210,6 +210,7 @@ mod tests {
     async fn test_update_identity() -> Result<()> {
         let identities = identities().await?;
         let identities_creation = identities.identities_creation();
+        let identities_verification = identities.identities_verification();
         let identifier = identities_creation.create_identity().await?;
 
         // rotating the identity twice
@@ -218,7 +219,7 @@ mod tests {
         identities_creation.rotate_identity(&identifier).await?;
 
         // try to update the identity with an old rotated version
-        let result = identities_creation.update_identity(&rotated).await;
+        let result = identities_verification.update_identity(&rotated).await;
         assert!(result.is_err());
         Ok(())
     }

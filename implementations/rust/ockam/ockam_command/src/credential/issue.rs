@@ -3,8 +3,10 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
-use ockam::identity::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
 use ockam::Context;
+use ockam_api::authenticator::credential_issuer::{
+    DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA,
+};
 use ockam_core::compat::collections::HashMap;
 
 use crate::output::{CredentialAndPurposeKeyDisplay, EncodeFormat};
@@ -69,8 +71,7 @@ async fn run_impl(
         .await?;
     let identities = opts.state.make_identities(vault).await?;
 
-    let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-        .with_attribute(TRUST_CONTEXT_ID.to_vec(), authority.to_string());
+    let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA);
     for (key, value) in cmd.attributes()? {
         attributes_builder =
             attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());

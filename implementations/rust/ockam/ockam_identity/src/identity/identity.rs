@@ -229,7 +229,7 @@ mod tests {
         let identities = identities().await?;
         let data = hex::decode("81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009").unwrap();
         let identifier = identities
-            .identities_creation()
+            .identities_verification()
             .import(
                 Some(
                     &Identifier::from_str(

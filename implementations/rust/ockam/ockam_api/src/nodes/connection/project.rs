@@ -9,7 +9,6 @@ use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
-use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::Identifier;
 use std::time::Duration;
 
@@ -17,19 +16,13 @@ use std::time::Duration;
 pub(crate) struct ProjectInstantiator {
     identifier: Identifier,
     timeout: Option<Duration>,
-    credential: Option<CredentialAndPurposeKey>,
 }
 
 impl ProjectInstantiator {
-    pub fn new(
-        identifier: Identifier,
-        timeout: Option<Duration>,
-        credential: Option<CredentialAndPurposeKey>,
-    ) -> Self {
+    pub fn new(identifier: Identifier, timeout: Option<Duration>) -> Self {
         Self {
             identifier,
             timeout,
-            credential,
         }
     }
 }
@@ -77,7 +70,6 @@ impl Instantiator for ProjectInstantiator {
                 &self.identifier.clone(),
                 Some(vec![project_identifier]),
                 self.timeout,
-                self.credential.clone(),
             )
             .await?;
 

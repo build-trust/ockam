@@ -1,4 +1,4 @@
-use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
+use crate::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_core::Result;
 use sqlx::sqlite::SqliteRow;
 use sqlx::*;
@@ -9,10 +9,11 @@ pub struct NodeNameIdentityAttributes;
 impl NodeNameIdentityAttributes {
     /// Duplicate all attributes entry for every known node
     pub(crate) async fn migrate_attributes_node_name(pool: &SqlitePool) -> Result<()> {
+        let mut conn = pool.acquire().await.into_core()?;
         // don't run the migration twice
         let data_migration_needed: Option<SqliteRow> =
-            query(&Self::table_exists("identity_attributes_old"))
-                .fetch_optional(pool)
+            query(&SqlxDatabase::table_exists("identity_attributes_old"))
+                .fetch_optional(&mut *conn)
                 .await
                 .into_core()?;
         let data_migration_needed = data_migration_needed.map(|r| r.get(0)).unwrap_or(false);
@@ -21,7 +22,7 @@ impl NodeNameIdentityAttributes {
             return Ok(());
         };
 
-        let mut transaction = pool.begin().await.into_core()?;
+        let mut transaction = conn.begin().await.into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names
@@ -30,9 +31,8 @@ impl NodeNameIdentityAttributes {
             .into_core()?;
 
         // read values from the previous table
-        let query_all = query_as("SELECT * FROM identity_attributes_old");
         let rows: Vec<IdentityAttributesRow> =
-            query_all.fetch_all(&mut *transaction).await.into_core()?;
+            query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes_old").fetch_all(&mut *transaction).await.into_core()?;
 
         for row in rows {
             for node_name in &node_names {
@@ -57,10 +57,6 @@ impl NodeNameIdentityAttributes {
         transaction.commit().await.void()?;
 
         Ok(())
-    }
-
-    fn table_exists(table_name: &str) -> String {
-        format!("SELECT EXISTS(SELECT name FROM sqlite_schema WHERE type = 'table' AND name = '{table_name}')")
     }
 }
 
@@ -111,13 +107,13 @@ mod test {
         // now create a database and apply the migrations
         let db = SqlxDatabase::create(db_file.path()).await?;
         let rows1: Vec<IdentityAttributesRow> =
-            query_as("SELECT * FROM identity_attributes WHERE node_name = ?")
+            query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind("node1".to_string().to_sql())
                 .fetch_all(&*db.pool)
                 .await
                 .into_core()?;
         let rows2: Vec<IdentityAttributesRow> =
-            query_as("SELECT * FROM identity_attributes WHERE node_name = ?")
+            query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind("node2".to_string().to_sql())
                 .fetch_all(&*db.pool)
                 .await

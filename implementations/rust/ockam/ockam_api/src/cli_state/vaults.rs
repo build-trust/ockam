@@ -45,7 +45,7 @@ impl CliState {
     /// Delete an existing vault
     pub async fn delete_named_vault(&self, vault_name: &str) -> Result<()> {
         // first check that no identity is using the vault
-        let identities_repository = self.identities_repository().await?;
+        let identities_repository = self.identities_repository();
         let identities_using_the_vault = identities_repository
             .get_named_identities_by_vault_name(vault_name)
             .await?;
@@ -65,7 +65,7 @@ impl CliState {
         };
 
         // now delete the vault and its file if there is a separate one
-        let repository = self.vaults_repository().await?;
+        let repository = self.vaults_repository();
         let vault = repository.get_named_vault(vault_name).await?;
         if let Some(vault) = vault {
             repository.delete_named_vault(vault_name).await?;
@@ -76,8 +76,8 @@ impl CliState {
                 let _ = std::fs::remove_file(vault.path);
             } else {
                 // otherwise delete the tables used by the database vault
-                self.purpose_keys_repository().await?.delete_all().await?;
-                self.secrets_repository().await?.delete_all().await?;
+                self.purpose_keys_repository().delete_all().await?;
+                self.secrets_repository().delete_all().await?;
             }
         }
         Ok(())
@@ -85,7 +85,7 @@ impl CliState {
 
     /// Delete all named identities
     pub async fn delete_all_named_identities(&self) -> Result<()> {
-        let identities_repository = self.identities_repository().await?;
+        let identities_repository = self.identities_repository();
         let identities = identities_repository.get_named_identities().await?;
         for identity in identities {
             identities_repository
@@ -97,7 +97,7 @@ impl CliState {
 
     /// Delete all vaults and their files
     pub async fn delete_all_named_vaults(&self) -> Result<()> {
-        let vaults = self.vaults_repository().await?.get_named_vaults().await?;
+        let vaults = self.vaults_repository().get_named_vaults().await?;
         for vault in vaults {
             self.delete_named_vault(&vault.name()).await?;
         }
@@ -109,17 +109,13 @@ impl CliState {
 impl CliState {
     /// Return all the named vaults
     pub async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
-        Ok(self.vaults_repository().await?.get_named_vaults().await?)
+        Ok(self.vaults_repository().get_named_vaults().await?)
     }
 
     /// Return the vault with a given name
     /// and raise an error if the vault is not found
     pub async fn get_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
-        let result = self
-            .vaults_repository()
-            .await?
-            .get_named_vault(vault_name)
-            .await?;
+        let result = self.vaults_repository().get_named_vault(vault_name).await?;
         Ok(result.ok_or_else(|| {
             ockam_core::Error::new(
                 Origin::Api,
@@ -133,7 +129,7 @@ impl CliState {
     /// Create a new vault using a default path: either the database path for the first vault
     /// or a path using the vault name
     pub async fn get_or_create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
-        let vaults_repository = self.vaults_repository().await?;
+        let vaults_repository = self.vaults_repository();
         if let Ok(Some(existing_vault)) = vaults_repository.get_named_vault(vault_name).await {
             return Ok(existing_vault);
         }
@@ -145,7 +141,7 @@ impl CliState {
     /// If it doesn't exist, the vault is created with the name 'default'
     /// If there are more than one vaults, return an error
     pub async fn get_or_create_default_named_vault(&self) -> Result<NamedVault> {
-        let vaults = self.vaults_repository().await?.get_named_vaults().await?;
+        let vaults = self.vaults_repository().get_named_vaults().await?;
         match &vaults[..] {
             [] => self.get_or_create_named_vault("default").await,
             [vault] => Ok(vault.clone()),
@@ -175,7 +171,7 @@ impl CliState {
     /// Move a vault file to another location if the vault is not the default vault
     /// contained in the main database
     pub async fn move_vault(&self, vault_name: &str, path: &Path) -> Result<()> {
-        let repository = self.vaults_repository().await?;
+        let repository = self.vaults_repository();
         let vault = self.get_named_vault(vault_name).await?;
         if vault.path() == self.database_path() {
             return Err(ockam_core::Error::new(Origin::Api, Kind::Invalid, format!("The vault at path {:?} cannot be moved to {path:?} because this is the default vault", vault.path())))?;
@@ -212,7 +208,7 @@ impl CliState {
         path: &Option<PathBuf>,
         is_kms: bool,
     ) -> Result<NamedVault> {
-        let vaults_repository = self.vaults_repository().await?;
+        let vaults_repository = self.vaults_repository();
 
         // determine the vault name to use if not given by the user
         let vault_name = match vault_name {
@@ -272,7 +268,7 @@ impl CliState {
     ///  - finally create a random name
     ///
     async fn make_vault_name(&self) -> Result<String> {
-        let vaults_repository = self.vaults_repository().await?;
+        let vaults_repository = self.vaults_repository();
         if vaults_repository.get_named_vaults().await?.is_empty() {
             Ok("default".to_string())
         } else {
@@ -285,7 +281,7 @@ impl CliState {
     ///   - otherwise return a new path alongside the database $OCKAM_HOME/vault-{vault_name}
     ///
     async fn make_vault_path(&self, vault_name: &str) -> Result<PathBuf> {
-        let vaults_repository = self.vaults_repository().await?;
+        let vaults_repository = self.vaults_repository();
         // is there already a vault using the main database?
         let is_database_path_available = vaults_repository
             .get_named_vaults()
@@ -302,7 +298,6 @@ impl CliState {
     async fn get_named_vault_with_path(&self, path: &Path) -> Result<Option<NamedVault>> {
         Ok(self
             .vaults_repository()
-            .await?
             .get_named_vault_with_path(path)
             .await?)
     }
@@ -584,7 +579,7 @@ mod tests {
         // create a vault and populate the tables used by the vault
         let vault = cli.create_named_vault(&None, &None).await?;
 
-        let purpose_keys_repository = cli.purpose_keys_repository().await?;
+        let purpose_keys_repository = cli.purpose_keys_repository();
         let identity = cli.create_identity_with_name("name").await?;
         let purpose_key_attestation = PurposeKeyAttestation {
             data: vec![1, 2, 3],
@@ -601,7 +596,7 @@ mod tests {
             )
             .await?;
 
-        let secrets_repository = cli.secrets_repository().await?;
+        let secrets_repository = cli.secrets_repository();
         let handle1 =
             SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(vec![1, 2, 3]));
         let secret1 =

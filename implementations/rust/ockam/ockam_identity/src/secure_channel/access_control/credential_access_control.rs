@@ -5,12 +5,14 @@ use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
 
 use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
-use crate::IdentityAttributesRepository;
+use crate::{Identifier, IdentityAttributesRepository};
 
 /// Access control checking that message senders have a specific set of attributes
 #[derive(Clone)]
 pub struct CredentialAccessControl {
+    // FIXME: Can we use ABAC instead?
     required_attributes: Vec<(Vec<u8>, Vec<u8>)>,
+    authority: Identifier,
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
@@ -18,10 +20,12 @@ impl CredentialAccessControl {
     /// Create a new credential access control
     pub fn new(
         required_attributes: &[(Vec<u8>, Vec<u8>)],
+        authority: Identifier,
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         Self {
             required_attributes: required_attributes.to_vec(),
+            authority,
             identity_attributes_repository,
         }
     }
@@ -45,7 +49,7 @@ impl IncomingAccessControl for CredentialAccessControl {
         {
             let attributes = match self
                 .identity_attributes_repository
-                .get_attributes(&msg_identity_id.their_identity_id())
+                .get_attributes(&msg_identity_id.their_identity_id(), &self.authority)
                 .await?
             {
                 Some(a) => a,
