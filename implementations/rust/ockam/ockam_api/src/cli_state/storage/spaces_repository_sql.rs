@@ -34,13 +34,13 @@ impl SpacesSqlxDatabase {
 #[async_trait]
 impl SpacesRepository for SpacesSqlxDatabase {
     async fn store_space(&self, space: &Space) -> Result<()> {
-        let mut transaction = self.database.begin().await.into_core()?;
         let is_already_default = self
             .get_default_space()
             .await?
             .map(|s| s.id == space.id)
             .unwrap_or(false);
 
+        let mut transaction = self.database.begin().await.into_core()?;
         let query1 = query("INSERT OR REPLACE INTO space VALUES (?, ?, ?)")
             .bind(space.id.to_sql())
             .bind(space.name.to_sql())
