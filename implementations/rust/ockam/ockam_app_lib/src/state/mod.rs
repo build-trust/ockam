@@ -97,8 +97,7 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state =
-            CliState::with_default_dir().expect("Failed to load the local Ockam configuration");
+        let cli_state = CliState::with_default_dir()?;
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
 
@@ -612,6 +611,7 @@ impl AppState {
                         let mut incoming_services: Vec<Service> = incoming_services_state
                             .services
                             .iter()
+                            .filter(|service| service.email() == email)
                             .map(|service| Service {
                                 id: service.id().to_string(),
                                 source_name: service.name().to_string(),

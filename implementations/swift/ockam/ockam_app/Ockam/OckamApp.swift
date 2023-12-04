@@ -5,7 +5,7 @@
 import SwiftUI
 import AppKit
 import OSLog
-import FluidMenuBarExtra
+import UserNotifications
 
 
 // you can read the logs inside the console application
@@ -81,13 +81,51 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var menuBarExtra: FluidMenuBarExtra?
 
     func applicationDidFinishLaunching(_ notification: Foundation.Notification) {
-        self.menuBarExtra = FluidMenuBarExtra(title: "My Menu", image: "MenuBarIcon") {
-            WrapperView()
+        // we don't want any swiftui window to be automatically open at startup
+        // and the first window is "accepting-invitation"
+        for window in NSApplication.shared.windows {
+            if let id = window.identifier {
+                if id.rawValue == "accepting-invitation" {
+                    window.close()
+                }
+            }
         }
-        // we don't want any window to be automatically open at startup
-        if let window = NSApplication.shared.windows.first {
-            window.close()
+
+        // this instance is responsible to handle the notifications
+        setupNotifications()
+
+        self.menuBarExtra = FluidMenuBarExtra(title: "Ockam", image: "MenuBarIcon") {
+            // create the view and expose the AppDelegate instance to allow
+            // the user to close the popover at will
+            WrapperView().environmentObject(self)
         }
+
+        // shows the main window at bootstrap, the idea is that new users may not notice
+        // the menu extra icon and by opening it by default it becomes evident, and
+        // when opening the application the user is likely to interact with it right away.
+
+        // the position of the popover is dependent on the menuextra status position
+        // which is not yet defined, we need to wait a bit to correctly position the
+        // popover
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.showPopover()
+        }
+    }
+
+    // avoid opening the default window when clickin on notifications
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        return false
+    }
+
+    // avoid closing the application when closing the last window
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return false
+    }
+
+    // we don't want the OS to keep track of which windows were open, it only causes
+    // extra confusion
+    func applicationSupportsSecureRestorableState(_ application: NSApplication) -> Bool {
+        return false
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -97,6 +135,40 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 InvitationContainer.shared.update(invitationId: invitationId)
             }
         }
+    }
+
+    func setupNotifications() {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { (granted, error) in
+            if granted {
+                print("Notification permission granted.")
+            } else {
+                print("Notification permission denied.")
+            }
+        }
+    }
+
+    func showPopover() {
+        self.menuBarExtra?.showWindow()
+    }
+
+    func dismissPopover() {
+        // needed an explicit dismissal since the default @Environmet(\.dismiss\)
+        // is not working properly for the popover window
+        self.menuBarExtra?.dismissWindow()
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.sound, .badge])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // upon receiving a notification show the popover window
+        showPopover()
+        completionHandler()
     }
 }
 

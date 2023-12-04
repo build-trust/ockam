@@ -18,13 +18,18 @@
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		7859A4862B1DD4960085C7F7 /* UpdateSizeAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4802B1DD4960085C7F7 /* UpdateSizeAction.swift */; };
+		7859A4872B1DD4960085C7F7 /* FluidMenuBarExtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4812B1DD4960085C7F7 /* FluidMenuBarExtra.swift */; };
+		7859A4882B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4822B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift */; };
+		7859A4892B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4832B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift */; };
+		7859A48A2B1DD4960085C7F7 /* EventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4842B1DD4960085C7F7 /* EventMonitor.swift */; };
+		7859A48B2B1DD4960085C7F7 /* RootViewModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4852B1DD4960085C7F7 /* RootViewModifier.swift */; };
 		785A07302B14A60E002FF30C /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A072F2B14A60E002FF30C /* Constants.swift */; };
 		785A07322B14C810002FF30C /* SentInvitations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07312B14C810002FF30C /* SentInvitations.swift */; };
 		785A07342B14CF29002FF30C /* LocalServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07332B14CF29002FF30C /* LocalServiceView.swift */; };
 		785A07362B14D697002FF30C /* ServiceGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07352B14D697002FF30C /* ServiceGroupView.swift */; };
 		785A07382B14D734002FF30C /* IncomingInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07372B14D734002FF30C /* IncomingInvite.swift */; };
 		785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */; };
-		785A07432B161617002FF30C /* FluidMenuBarExtra in Frameworks */ = {isa = PBXBuildFile; productRef = 785A07422B161617002FF30C /* FluidMenuBarExtra */; };
 		785C8DC12B0BAD5E00926DCD /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785C8DC02B0BAD5E00926DCD /* About.swift */; };
 		789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 789FA6452AE142280009FF7F /* ExportOptions.plist */; };
 		78B7EF702B0F649D0062B2B3 /* DeclineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B7EF6F2B0F649D0062B2B3 /* DeclineService.swift */; };
@@ -51,6 +56,12 @@
 		782D5BAB2AC33EAD00D1B27F /* Bridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Bridge.h; path = Ockam/Bridge.h; sourceTree = "<group>"; };
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
+		7859A4802B1DD4960085C7F7 /* UpdateSizeAction.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UpdateSizeAction.swift; sourceTree = "<group>"; };
+		7859A4812B1DD4960085C7F7 /* FluidMenuBarExtra.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FluidMenuBarExtra.swift; sourceTree = "<group>"; };
+		7859A4822B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FluidMenuBarExtraStatusItem.swift; sourceTree = "<group>"; };
+		7859A4832B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FluidMenuBarExtraWindow.swift; sourceTree = "<group>"; };
+		7859A4842B1DD4960085C7F7 /* EventMonitor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventMonitor.swift; sourceTree = "<group>"; };
+		7859A4852B1DD4960085C7F7 /* RootViewModifier.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RootViewModifier.swift; sourceTree = "<group>"; };
 		785A072F2B14A60E002FF30C /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		785A07312B14C810002FF30C /* SentInvitations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentInvitations.swift; sourceTree = "<group>"; };
 		785A07332B14CF29002FF30C /* LocalServiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServiceView.swift; sourceTree = "<group>"; };
@@ -77,7 +88,6 @@
 				7807276C2ACF5AB500C93A44 /* CoreFoundation.framework in Frameworks */,
 				7807276F2ACF5B3400C93A44 /* SystemConfiguration.framework in Frameworks */,
 				782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */,
-				785A07432B161617002FF30C /* FluidMenuBarExtra in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +115,7 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
+				7859A47F2B1DD4960085C7F7 /* FluidMenuBarExtra */,
 				78B7EF6F2B0F649D0062B2B3 /* DeclineService.swift */,
 				78BD34A02AFCFDF100F09058 /* RemoteServiceView.swift */,
 				789FA6452AE142280009FF7F /* ExportOptions.plist */,
@@ -144,6 +155,19 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		7859A47F2B1DD4960085C7F7 /* FluidMenuBarExtra */ = {
+			isa = PBXGroup;
+			children = (
+				7859A4802B1DD4960085C7F7 /* UpdateSizeAction.swift */,
+				7859A4812B1DD4960085C7F7 /* FluidMenuBarExtra.swift */,
+				7859A4822B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift */,
+				7859A4832B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift */,
+				7859A4842B1DD4960085C7F7 /* EventMonitor.swift */,
+				7859A4852B1DD4960085C7F7 /* RootViewModifier.swift */,
+			);
+			path = FluidMenuBarExtra;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -173,7 +197,6 @@
 			);
 			name = Ockam;
 			packageProductDependencies = (
-				785A07422B161617002FF30C /* FluidMenuBarExtra */,
 			);
 			productName = Ockam;
 			productReference = 782D5B452AC1D3D700D1B27F /* Ockam.app */;
@@ -242,16 +265,22 @@
 				78B7EF702B0F649D0062B2B3 /* DeclineService.swift in Sources */,
 				78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */,
 				78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */,
+				7859A4892B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift in Sources */,
+				7859A48A2B1DD4960085C7F7 /* EventMonitor.swift in Sources */,
 				78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */,
+				7859A4862B1DD4960085C7F7 /* UpdateSizeAction.swift in Sources */,
 				7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */,
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
 				785C8DC12B0BAD5E00926DCD /* About.swift in Sources */,
 				785A07382B14D734002FF30C /* IncomingInvite.swift in Sources */,
+				7859A4882B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift in Sources */,
+				7859A4872B1DD4960085C7F7 /* FluidMenuBarExtra.swift in Sources */,
 				785A07362B14D697002FF30C /* ServiceGroupView.swift in Sources */,
 				78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */,
 				78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */,
 				4CB45C522AEB06C700D27F22 /* AcceptingInvitation.swift in Sources */,
 				783B62722AC432B700880261 /* Bridge.swift in Sources */,
+				7859A48B2B1DD4960085C7F7 /* RootViewModifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -492,14 +521,6 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		785A07422B161617002FF30C /* FluidMenuBarExtra */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 785A07412B161617002FF30C /* XCRemoteSwiftPackageReference "fluid-menu-bar-extra" */;
-			productName = FluidMenuBarExtra;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 782D5B3D2AC1D3D700D1B27F /* Project object */;
 }

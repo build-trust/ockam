@@ -145,6 +145,7 @@ impl AppState {
 
             guard.services.push(IncomingService::new(
                 invite.invitation.id,
+                invite.invitation.owner_email,
                 name.unwrap_or_else(|| original_name.clone()),
                 None,
                 enabled,
@@ -167,6 +168,8 @@ impl AppState {
 pub struct IncomingService {
     // it's assumed the id is also the accepted invitation id
     id: String,
+    // the email of the inviter
+    email: String,
     // user-defined name, by default it's the same as the original name
     name: String,
     // this field contains the current port number
@@ -194,6 +197,7 @@ impl IncomingService {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: String,
+        email: String,
         name: String,
         port: Option<Port>,
         enabled: bool,
@@ -204,6 +208,7 @@ impl IncomingService {
     ) -> Self {
         Self {
             id,
+            email,
             name,
             port,
             enabled,
@@ -218,6 +223,11 @@ impl IncomingService {
     /// This is the id of the service as well as of the relative invitation
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// This is the email of the inviter
+    pub fn email(&self) -> &str {
+        &self.email
     }
 
     /// This is the user-defined name of the service

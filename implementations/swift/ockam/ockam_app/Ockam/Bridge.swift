@@ -282,22 +282,15 @@ func swift_initialize_application() -> Bool {
 
     let notificationClosure: @convention(c) (C_Notification) -> Void = { cNotification in
         let notification = convertNotification(cNotification: cNotification)
-        let center = UNUserNotificationCenter.current()
 
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { (granted, error) in
-            if granted {
-                let content = UNMutableNotificationContent()
-                content.title = notification.title
-                content.body = notification.message
+        let content = UNMutableNotificationContent()
+        content.title = notification.title
+        content.body = notification.message
 
-                let request = UNNotificationRequest(
-                    identifier: UUID().uuidString, content: content, trigger: nil)
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString, content: content, trigger: nil)
 
-                UNUserNotificationCenter.current().add(request)
-            } else {
-                print("Notification permission denied.")
-            }
-        }
+        UNUserNotificationCenter.current().add(request)
     }
 
     let result = initialize_application(applicationStateClosure, notificationClosure)
