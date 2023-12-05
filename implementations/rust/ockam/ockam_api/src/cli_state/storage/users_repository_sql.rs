@@ -75,7 +75,7 @@ impl UsersRepository for UsersSqlxDatabase {
     }
 
     async fn get_user(&self, email: &str) -> Result<Option<UserInfo>> {
-        let query = query_as("SELECT * FROM user WHERE email=$1").bind(email.to_sql());
+        let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE email=$1").bind(email.to_sql());
         let row: Option<UserRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -84,7 +84,7 @@ impl UsersRepository for UsersSqlxDatabase {
     }
 
     async fn get_users(&self) -> Result<Vec<UserInfo>> {
-        let query = query_as("SELECT * FROM user");
+        let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user");
         let rows: Vec<UserRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         Ok(rows.iter().map(|u| u.user()).collect())
     }

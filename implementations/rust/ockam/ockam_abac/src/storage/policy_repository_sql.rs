@@ -32,9 +32,11 @@ impl PolicySqlxDatabase {
 #[async_trait]
 impl PoliciesRepository for PolicySqlxDatabase {
     async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Policy>> {
-        let query = query_as("SELECT * FROM policy WHERE resource=$1 and action=$2")
-            .bind(resource.to_sql())
-            .bind(action.to_sql());
+        let query = query_as(
+            "SELECT resource, action, expression FROM policy WHERE resource=$1 and action=$2",
+        )
+        .bind(resource.to_sql())
+        .bind(action.to_sql());
         let row: Option<PolicyRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -63,7 +65,8 @@ impl PoliciesRepository for PolicySqlxDatabase {
     }
 
     async fn get_policies_by_resource(&self, resource: &Resource) -> Result<Vec<(Action, Policy)>> {
-        let query = query_as("SELECT * FROM policy where resource = $1").bind(resource.to_sql());
+        let query = query_as("SELECT resource, action, expression FROM policy where resource = $1")
+            .bind(resource.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.policy().map(|e| (r.action(), e)))

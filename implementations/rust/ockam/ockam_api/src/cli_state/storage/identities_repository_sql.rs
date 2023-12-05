@@ -70,7 +70,10 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         // get the named identity
-        let query1 = query_as("SELECT * FROM named_identity WHERE name=$1").bind(name.to_sql());
+        let query1 = query_as(
+            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
+        )
+        .bind(name.to_sql());
         let row: Option<NamedIdentityRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
         let named_identity = row.map(|r| r.named_identity()).transpose()?;
@@ -119,7 +122,10 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     }
 
     async fn get_identifier(&self, name: &str) -> Result<Option<Identifier>> {
-        let query = query_as("SELECT * FROM named_identity WHERE name=$1").bind(name.to_sql());
+        let query = query_as(
+            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
+        )
+        .bind(name.to_sql());
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -132,7 +138,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         identifier: &Identifier,
     ) -> Result<Option<String>> {
         let query =
-            query_as("SELECT * FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -141,7 +147,10 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     }
 
     async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
-        let query = query_as("SELECT * FROM named_identity WHERE name=$1").bind(name.to_sql());
+        let query = query_as(
+            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
+        )
+        .bind(name.to_sql());
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -154,7 +163,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         identifier: &Identifier,
     ) -> Result<Option<NamedIdentity>> {
         let query =
-            query_as("SELECT * FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -163,7 +172,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     }
 
     async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
-        let query = query_as("SELECT * FROM named_identity");
+        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity");
         let row: Vec<NamedIdentityRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_identity()).collect()
     }
@@ -202,7 +211,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
     async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {
         let query =
-            query_as("SELECT * FROM named_identity WHERE is_default=$1").bind(true.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE is_default=$1").bind(true.to_sql());
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&self.database.pool)
             .await

@@ -50,13 +50,13 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
-        let query = query_as("SELECT * FROM node");
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node");
         let rows: Vec<NodeRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.node_info()).collect()
     }
 
     async fn get_node(&self, node_name: &str) -> Result<Option<NodeInfo>> {
-        let query = query_as("SELECT * FROM node WHERE name = ?").bind(node_name.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE name = ?").bind(node_name.to_sql());
         let row: Option<NodeRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -65,13 +65,13 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn get_nodes_by_identifier(&self, identifier: &Identifier) -> Result<Vec<NodeInfo>> {
-        let query = query_as("SELECT * FROM node WHERE identifier = ?").bind(identifier.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE identifier = ?").bind(identifier.to_sql());
         let rows: Vec<NodeRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.node_info()).collect()
     }
 
     async fn get_default_node(&self) -> Result<Option<NodeInfo>> {
-        let query = query_as("SELECT * FROM node WHERE is_default = ?").bind(true.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE is_default = ?").bind(true.to_sql());
         let row: Option<NodeRow> = query
             .fetch_optional(&self.database.pool)
             .await

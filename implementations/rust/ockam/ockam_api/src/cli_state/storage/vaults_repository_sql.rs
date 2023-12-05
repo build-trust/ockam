@@ -59,7 +59,8 @@ impl VaultsRepository for VaultsSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         // get the named vault
-        let query1 = query_as("SELECT * FROM vault WHERE name=$1").bind(name.to_sql());
+        let query1 = query_as("SELECT name, path, is_default, is_kms FROM vault WHERE name=$1")
+            .bind(name.to_sql());
         let row: Option<VaultRow> = query1.fetch_optional(&mut *transaction).await.into_core()?;
         let named_vault = row.map(|r| r.named_vault()).transpose()?;
 
@@ -107,7 +108,8 @@ impl VaultsRepository for VaultsSqlxDatabase {
     }
 
     async fn is_default(&self, name: &str) -> Result<bool> {
-        let query = query_as("SELECT * FROM vault WHERE name = $1").bind(name.to_sql());
+        let query = query_as("SELECT name, path, is_default, is_kms FROM vault WHERE name = $1")
+            .bind(name.to_sql());
         let row: Option<VaultRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -116,13 +118,14 @@ impl VaultsRepository for VaultsSqlxDatabase {
     }
 
     async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
-        let query = query_as("SELECT * FROM vault");
+        let query = query_as("SELECT name, path, is_default, is_kms FROM vault");
         let rows: Vec<VaultRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.named_vault()).collect()
     }
 
     async fn get_named_vault(&self, name: &str) -> Result<Option<NamedVault>> {
-        let query = query_as("SELECT * FROM vault WHERE name = $1").bind(name.to_sql());
+        let query = query_as("SELECT name, path, is_default, is_kms FROM vault WHERE name = $1")
+            .bind(name.to_sql());
         let row: Option<VaultRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -131,7 +134,9 @@ impl VaultsRepository for VaultsSqlxDatabase {
     }
 
     async fn get_default_vault(&self) -> Result<Option<NamedVault>> {
-        let query = query_as("SELECT * FROM vault WHERE is_default = $1").bind(true.to_sql());
+        let query =
+            query_as("SELECT name, path, is_default, is_kms FROM vault WHERE is_default = $1")
+                .bind(true.to_sql());
         let row: Option<VaultRow> = query
             .fetch_optional(&self.database.pool)
             .await

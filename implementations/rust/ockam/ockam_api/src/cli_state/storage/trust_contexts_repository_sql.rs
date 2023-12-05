@@ -75,7 +75,7 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
     }
 
     async fn get_default_trust_context(&self) -> Result<Option<NamedTrustContext>> {
-        let query = query_as("SELECT * FROM trust_context WHERE is_default=$1").bind(true.to_sql());
+        let query = query_as("SELECT name, trust_context_id, is_default, credential, authority_change_history, authority_route FROM trust_context WHERE is_default=$1").bind(true.to_sql());
         let row: Option<NamedTrustContextRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -100,7 +100,7 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
     }
 
     async fn get_trust_context(&self, name: &str) -> Result<Option<NamedTrustContext>> {
-        let query = query_as("SELECT * FROM trust_context WHERE name=$1").bind(name.to_sql());
+        let query = query_as("SELECT name, trust_context_id, is_default, credential, authority_change_history, authority_route FROM trust_context WHERE name=$1").bind(name.to_sql());
         let row: Option<NamedTrustContextRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -109,7 +109,7 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
     }
 
     async fn get_trust_contexts(&self) -> Result<Vec<NamedTrustContext>> {
-        let query = query_as("SELECT * FROM trust_context");
+        let query = query_as("SELECT name, trust_context_id, is_default, credential, authority_change_history, authority_route FROM trust_context");
         let rows: Vec<NamedTrustContextRow> =
             query.fetch_all(&self.database.pool).await.into_core()?;
         rows.iter().map(|u| u.named_trust_context()).collect()

@@ -151,20 +151,21 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
     async fn get_project_by_name(&self, name: &str) -> Result<Option<Project>> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query = query_as("SELECT * FROM project WHERE project_name=$1").bind(name.to_sql());
+        let query = query_as("SELECT project_id, project_name, is_default, space_id, space_name, identifier, access_route, authority_identity, authority_access_route, version, running, operation_id FROM project WHERE project_name=$1").bind(name.to_sql());
         let row: Option<ProjectRow> = query.fetch_optional(&mut *transaction).await.into_core()?;
         let project = match row.map(|r| r.project()).transpose()? {
             Some(mut project) => {
                 // get the project users emails
-                let query2 = query_as("SELECT * FROM user_project WHERE project_id=$1")
-                    .bind(project.id.to_sql());
+                let query2 =
+                    query_as("SELECT project_id, user_email FROM user_project WHERE project_id=$1")
+                        .bind(project.id.to_sql());
                 let rows: Vec<UserProjectRow> =
                     query2.fetch_all(&mut *transaction).await.into_core()?;
                 let users = rows.into_iter().map(|r| r.user_email).collect();
                 project.users = users;
 
                 // get the project users roles
-                let query3 = query_as("SELECT * FROM user_role WHERE project_id=$1")
+                let query3 = query_as("SELECT user_id, project_id, user_email, role, scope FROM user_role WHERE project_id=$1")
                     .bind(project.id.to_sql());
                 let rows: Vec<UserRoleRow> =
                     query3.fetch_all(&mut *transaction).await.into_core()?;
@@ -175,15 +176,17 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                 project.user_roles = user_roles;
 
                 // get the project okta configuration
-                let query4 = query_as("SELECT * FROM okta_config WHERE project_id=$1")
+                let query4 = query_as("SELECT project_id, tenant_base_url, client_id, certificate, attributes FROM okta_config WHERE project_id=$1")
                     .bind(project.id.to_sql());
                 let row: Option<OktaConfigRow> =
                     query4.fetch_optional(&mut *transaction).await.into_core()?;
                 project.okta_config = row.map(|r| r.okta_config()).transpose()?;
 
                 // get the project confluent configuration
-                let query5 = query_as("SELECT * FROM confluent_config WHERE project_id=$1")
-                    .bind(project.id.to_sql());
+                let query5 = query_as(
+                    "SELECT project_id, bootstrap_server FROM confluent_config WHERE project_id=$1",
+                )
+                .bind(project.id.to_sql());
                 let row: Option<ConfluentConfigRow> =
                     query5.fetch_optional(&mut *transaction).await.into_core()?;
                 project.confluent_config = row.map(|r| r.confluent_config());
