@@ -109,9 +109,9 @@ struct RemoteServiceView: View {
                             })
                     }
                     ClickableMenuEntry(
-                        text: "Decline",
+                        text: "Delete",
                         action: {
-                            openWindow(id: "decline-service-confirmation", value: service.id)
+                            openWindow(id: "delete-service-confirmation", value: service.id)
                         })
                 }
                 .padding(.leading, HorizontalSpacingUnit*2)
