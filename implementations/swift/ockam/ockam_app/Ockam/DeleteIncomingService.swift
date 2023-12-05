@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct IgnoreServiceView: View {
+struct DeleteIncomingServiceView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @State var service: Service
 
@@ -8,9 +8,9 @@ struct IgnoreServiceView: View {
         VStack {
             Spacer()
             Text(
-                "Once you click Decline, the service '\(service.sourceName)' will no longer show up here.\n" +
+                "Once you click Delete, the service '\(service.sourceName)' will no longer show up here.\n" +
                 "Are you sure you want to do this?\n" +
-                "Once declined, the only way to get this back is to have the person who sent you the invite, to send another one."
+                "Once deleted, the only way to get this back is to have the person who sent you the invite, to send another one."
             )
             .padding()
             Spacer()
@@ -23,7 +23,7 @@ struct IgnoreServiceView: View {
                         self.closeWindow()
                     },
                     label: {
-                        Text("Decline")
+                        Text("Delete")
                     }
                 )
                 Button(
@@ -52,6 +52,6 @@ struct IgnoreServiceView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
 
     static var previews: some View {
-        IgnoreServiceView(service: state.groups[1].incomingServices[0])
+        DeleteIncomingServiceView(service: state.groups[1].incomingServices[0])
     }
 }

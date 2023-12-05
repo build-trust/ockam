@@ -55,10 +55,13 @@ struct MainView: View {
             if state.enrolled {
                 if selectedGroup == "" {
                     Group {
+                        Divider()
+                            .padding(.top, VerticalSpacingUnit*2)
+                            .padding(.bottom, VerticalSpacingUnit)
+
                         Text("Your services:")
                             .font(.body).bold()
                             .foregroundColor(OckamSecondaryTextColor)
-                            .padding(.top, VerticalSpacingUnit*2)
                             .padding(.bottom, VerticalSpacingUnit)
 
                         ForEach(state.localServices) { localService in
@@ -78,10 +81,13 @@ struct MainView: View {
                 }
 
                 if !state.groups.isEmpty {
+                    Divider()
+                        .padding(.top, VerticalSpacingUnit*2)
+                        .padding(.bottom, VerticalSpacingUnit)
+
                     Text("Services shared with you:")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
-                        .padding(.top, VerticalSpacingUnit*2)
                         .padding(.bottom, VerticalSpacingUnit)
 
                     ForEach(state.groups) { group in
@@ -102,8 +108,10 @@ struct MainView: View {
 
             if selectedGroup == "" {
                 if !state.sent_invitations.isEmpty {
-                    SentInvitations(state: self.state)
+                    Divider()
                         .padding(.top, VerticalSpacingUnit)
+                        .padding(.bottom, VerticalSpacingUnit)
+                    SentInvitations(state: self.state)
                 }
 
                 Group {

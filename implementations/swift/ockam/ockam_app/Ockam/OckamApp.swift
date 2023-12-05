@@ -220,8 +220,8 @@ struct OckamApp: App {
         }
         .windowResizability(.contentSize)
 
-        WindowGroup("Confirmation", id: "decline-service-confirmation", for: Service.ID.self) { $serviceId in
-            IgnoreServiceView(
+        WindowGroup("Confirmation", id: "delete-service-confirmation", for: Service.ID.self) { $serviceId in
+            DeleteIncomingServiceView(
                 service: StateContainer.shared.state.lookupIncomingServiceById(
                     serviceId.unsafelyUnwrapped
                 ).unsafelyUnwrapped.1

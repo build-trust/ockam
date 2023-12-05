@@ -17,7 +17,7 @@ struct IncomingInvite: View {
                             .font(.caption)
                             .foregroundStyle(OckamSecondaryTextColor)
                     } else if invite.ignoring {
-                        Text(verbatim: "Ignoring")
+                        Text(verbatim: "Declining")
                             .font(.caption)
                             .foregroundStyle(OckamSecondaryTextColor)
                     } else {
