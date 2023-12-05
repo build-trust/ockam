@@ -5,6 +5,7 @@ use console::Term;
 use ockam::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::node_rpc;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
@@ -56,7 +57,8 @@ async fn run_impl(
 
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: &'static str = "identity";
+    const ITEM_NAME: PluralTerm = PluralTerm::Identity;
+
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.name.as_deref()
     }

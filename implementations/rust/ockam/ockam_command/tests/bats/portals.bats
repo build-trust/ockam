@@ -64,7 +64,7 @@ teardown() {
 
   # Test deletion of a previously deleted TCP outlet
   run_success $OCKAM tcp-outlet delete "test-outlet" --yes
-  assert_output --partial "There are no tcp-outlets to delete"
+  assert_output --partial "There are no outlets to delete"
 }
 
 @test "portals - list inlets on a node" {

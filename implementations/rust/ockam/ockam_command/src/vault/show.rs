@@ -6,6 +6,7 @@ use ockam_node::Context;
 
 use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::node_rpc;
 use crate::vault::util::VaultOutput;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
@@ -56,7 +57,7 @@ impl ShowTui {
 
 #[ockam_core::async_trait]
 impl ShowCommandTui for ShowTui {
-    const ITEM_NAME: &'static str = "vault";
+    const ITEM_NAME: PluralTerm = PluralTerm::Vault;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.vault_name.as_deref()

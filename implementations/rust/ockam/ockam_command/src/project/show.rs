@@ -11,6 +11,7 @@ use tokio::try_join;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::output::{Output, ProjectConfigCompact};
+use crate::terminal::PluralTerm;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -47,16 +48,16 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    ProjectShowTui::run(ctx, opts, cmd.name).await
+    ShowTui::run(ctx, opts, cmd.name).await
 }
 
-pub struct ProjectShowTui {
+pub struct ShowTui {
     ctx: Context,
     opts: CommandGlobalOpts,
     project_name: Option<String>,
     node: InMemoryNode,
 }
-impl ProjectShowTui {
+impl ShowTui {
     pub async fn run(
         ctx: Context,
         opts: CommandGlobalOpts,
@@ -74,8 +75,8 @@ impl ProjectShowTui {
 }
 
 #[ockam_core::async_trait]
-impl ShowCommandTui for ProjectShowTui {
-    const ITEM_NAME: &'static str = "project";
+impl ShowCommandTui for ShowTui {
+    const ITEM_NAME: PluralTerm = PluralTerm::Project;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.project_name.as_deref()

@@ -7,6 +7,7 @@ use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::terminal::tui::DeleteCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
@@ -72,7 +73,7 @@ impl DeleteTui {
 
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: &'static str = "space";
+    const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.space_name.as_deref()

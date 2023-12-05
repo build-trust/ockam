@@ -8,6 +8,7 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
@@ -71,7 +72,7 @@ impl ShowTui {
 
 #[ockam_core::async_trait]
 impl ShowCommandTui for ShowTui {
-    const ITEM_NAME: &'static str = "space";
+    const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.space_name.as_deref()
