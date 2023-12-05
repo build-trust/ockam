@@ -127,7 +127,7 @@ impl CliState {
         Ok(state)
     }
 
-    pub(super) fn database(&self) -> Arc<SqlxDatabase> {
+    pub(crate) fn database(&self) -> Arc<SqlxDatabase> {
         self.database.clone()
     }
 

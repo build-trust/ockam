@@ -2,8 +2,6 @@ use std::path::Path;
 
 use tracing::info;
 
-use ockam::identity::storage::PurposeKeysSqlxDatabase;
-use ockam::identity::{ChangeHistorySqlxDatabase, Vault};
 use ockam::identity::{
     CredentialsIssuer, Identifier, Identities, IdentityAttributesRepository,
     IdentityAttributesSqlxDatabase, SecureChannelListenerOptions, SecureChannels,
@@ -64,21 +62,19 @@ impl Authority {
         Self::create_ockam_directory_if_necessary(database_path)?;
         let database = Arc::new(SqlxDatabase::create(database_path).await?);
 
-        // create the repositories
-        let vault = Vault::create_with_database(database.clone());
-        let identity_attributes_repository =
-            Arc::new(IdentityAttributesSqlxDatabase::new(database.clone()));
-        let identity_attributes_repository =
-            Self::bootstrap_repository(identity_attributes_repository, configuration);
-        let change_history_repository = Arc::new(ChangeHistorySqlxDatabase::new(database.clone()));
-        let purpose_keys_repository = Arc::new(PurposeKeysSqlxDatabase::new(database));
+        // create the bootstrapped identity attributes repository
+        let identity_attributes_repository = Self::bootstrap_repository(
+            Arc::new(IdentityAttributesSqlxDatabase::new(database.clone())),
+            configuration,
+        );
+
+        let identities = Identities::create(database.clone())
+            .with_identity_attributes_repository(identity_attributes_repository)
+            .build();
 
         let secure_channels = SecureChannels::builder()
             .await?
-            .with_vault(vault)
-            .with_identity_attributes_repository(identity_attributes_repository)
-            .with_change_history_repository(change_history_repository)
-            .with_purpose_keys_repository(purpose_keys_repository)
+            .with_identities(identities)
             .build();
 
         let identifier = configuration.identifier();

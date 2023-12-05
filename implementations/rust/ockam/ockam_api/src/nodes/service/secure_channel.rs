@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
     Identifier, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
+use ockam::identity::{Identities, TrustEveryonePolicy};
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Response};
@@ -470,19 +470,13 @@ impl NodeManager {
             return Ok(self.secure_channels.clone());
         }
         let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
-        let registry = self.secure_channels.secure_channel_registry();
+        let identities = Identities::create(self.cli_state.database())
+            .with_vault(vault)
+            .build();
         Ok(SecureChannels::builder()
             .await?
-            .with_vault(vault)
-            .with_change_history_repository(
-                self.secure_channels
-                    .identities()
-                    .change_history_repository(),
-            )
-            .with_purpose_keys_repository(
-                self.secure_channels.identities().purpose_keys_repository(),
-            )
-            .with_secure_channels_registry(registry)
+            .with_identities(identities)
+            .with_secure_channels_registry(self.secure_channels.secure_channel_registry())
             .build())
     }
 

@@ -118,12 +118,8 @@ impl CliState {
 impl CliState {
     /// Return an Identities struct using a specific Vault
     pub async fn make_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
-        Ok(Identities::builder()
-            .await?
+        Ok(Identities::create(self.database())
             .with_vault(vault)
-            .with_change_history_repository(self.change_history_repository().await?)
-            .with_identity_attributes_repository(self.identity_attributes_repository().await?)
-            .with_purpose_keys_repository(self.purpose_keys_repository().await?)
             .build())
     }
 }

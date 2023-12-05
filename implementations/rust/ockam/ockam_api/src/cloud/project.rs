@@ -7,7 +7,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
 use ockam::identity::models::ChangeHistory;
-use ockam::identity::{identities, Identifier, Identity};
+use ockam::identity::{Identifier, Identity};
 use ockam_core::api::Request;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Result};
@@ -158,16 +158,9 @@ impl Project {
     /// Return the identity of the project's authority
     pub async fn authority_identity(&self) -> Result<Identity> {
         match &self.authority_identity {
-            Some(authority_identity) => {
-                let decoded = hex::decode(authority_identity.as_bytes())
-                    .map_err(|e| Error::new(Origin::Api, Kind::Serialization, e.to_string()))?;
-                let identities = identities().await?;
-                let identifier = identities
-                    .identities_creation()
-                    .import(None, &decoded)
-                    .await?;
-                Ok(identities.get_identity(&identifier).await?)
-            }
+            Some(authority_identity) => Ok(Identity::create(authority_identity)
+                .await
+                .map_err(|e| Error::new(Origin::Api, Kind::Serialization, e.to_string()))?),
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,

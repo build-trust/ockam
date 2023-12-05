@@ -1,4 +1,3 @@
-use ockam::identity::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
 use ockam::identity::{
     ChangeHistoryRepository, ChangeHistorySqlxDatabase, IdentityAttributesRepository,
     IdentityAttributesSqlxDatabase,
@@ -34,10 +33,6 @@ impl CliState {
 
     pub(super) async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
         Ok(Arc::new(IdentitiesSqlxDatabase::new(self.database())))
-    }
-
-    pub(super) async fn purpose_keys_repository(&self) -> Result<Arc<dyn PurposeKeysRepository>> {
-        Ok(Arc::new(PurposeKeysSqlxDatabase::new(self.database())))
     }
 
     pub(super) async fn vaults_repository(&self) -> Result<Arc<dyn VaultsRepository>> {
