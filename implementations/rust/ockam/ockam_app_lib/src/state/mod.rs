@@ -572,7 +572,11 @@ impl AppState {
                             .filter(|invitation| invitation.owner_email == email)
                             .map(|invitation| Invitation {
                                 id: invitation.id.clone(),
-                                service_name: invitation.id.clone(),
+                                service_name: {
+                                    let mut name = invitation.id.clone();
+                                    name.truncate(6);
+                                    name
+                                },
                                 service_scheme: None,
                                 accepting: invitation_state
                                     .received
