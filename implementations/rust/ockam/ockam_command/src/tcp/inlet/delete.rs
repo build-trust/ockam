@@ -9,12 +9,11 @@ use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
-use crate::fmt_ok;
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
-use crate::{docs, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -112,32 +111,10 @@ impl DeleteCommandTui for DeleteTui {
             .stdout()
             .plain(fmt_ok!(
                 "TCP inlet with alias {} on Node {} has been deleted",
-                item_name.light_magenta(),
-                node_name.light_magenta()
+                color!(item_name, OckamColor::PrimaryResource),
+                color!(node_name, OckamColor::PrimaryResource)
             ))
             .write_line()?;
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let node_name = self.node.node_name();
-        let mut plain = String::new();
-        for item_name in items_names {
-            if self.node.delete_inlet(&self.ctx, &item_name).await.is_ok() {
-                plain.push_str(&fmt_ok!(
-                    "TCP inlet with alias {} on Node {} has been deleted\n",
-                    item_name.light_magenta(),
-                    node_name.clone().light_magenta()
-                ));
-            } else {
-                plain.push_str(&fmt_warn!(
-                    "Failed to delete TCP inlet with alias {} on Node {}\n",
-                    item_name.light_magenta(),
-                    node_name.clone().light_magenta()
-                ));
-            }
-        }
-        self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ use ockam_api::nodes::InMemoryNode;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -116,18 +116,11 @@ impl DeleteCommandTui for DeleteTui {
             .stdout()
             .plain(fmt_ok!(
                 "The space with name {} has been deleted",
-                item_name.light_magenta()
+                color!(item_name, OckamColor::PrimaryResource)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "name": item_name }))
             .write_line()?;
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        for item_name in items_names {
-            self.delete_single(&item_name).await?;
-        }
         Ok(())
     }
 }

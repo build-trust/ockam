@@ -6,7 +6,7 @@ use ockam::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -99,31 +99,12 @@ impl DeleteCommandTui for DeleteTui {
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "The identity named '{}' has been deleted",
-                item_name
+                "The identity named {} has been deleted",
+                color!(item_name, OckamColor::PrimaryResource)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "name": item_name }))
             .write_line()?;
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let mut plain = String::new();
-        for name in selected_items_names {
-            if self
-                .opts
-                .state
-                .delete_identity_by_name(name.as_ref())
-                .await
-                .is_ok()
-            {
-                plain.push_str(&fmt_ok!("Identity '{name}' deleted\n"))
-            } else {
-                plain.push_str(&fmt_warn!("Failed to delete identity '{name}'\n"))
-            }
-        }
-        self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }
 }
