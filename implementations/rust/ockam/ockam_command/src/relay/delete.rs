@@ -12,7 +12,7 @@ use ockam_core::api::Request;
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -121,39 +121,10 @@ impl DeleteCommandTui for DeleteTui {
             .stdout()
             .plain(fmt_ok!(
                 "Relay with name {} on Node {} has been deleted",
-                item_name.light_magenta(),
-                node_name.light_magenta()
+                color!(item_name, OckamColor::PrimaryResource),
+                color!(node_name, OckamColor::PrimaryResource)
             ))
             .write_line()?;
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let node_name = self.node.node_name();
-        let mut plain = String::new();
-        for item_name in items_names {
-            let res = self
-                .node
-                .tell(
-                    &self.ctx,
-                    Request::delete(format!("/node/forwarder/{item_name}")),
-                )
-                .await;
-            if res.is_ok() {
-                plain.push_str(&fmt_ok!(
-                    "Relay with name {} on Node {} has been deleted\n",
-                    item_name.light_magenta(),
-                    node_name.clone().light_magenta()
-                ));
-            } else {
-                plain.push_str(&fmt_warn!(
-                    "Failed to delete relay with name {} on Node {}\n",
-                    item_name.light_magenta(),
-                    node_name.clone().light_magenta()
-                ));
-            }
-        }
-        self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }
 }

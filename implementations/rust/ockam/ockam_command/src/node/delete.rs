@@ -5,7 +5,7 @@ use ockam_node::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -112,30 +112,6 @@ impl DeleteCommandTui for DeleteTui {
             ))
             .machine(item_name)
             .json(serde_json::json!({ "name": &item_name }))
-            .write_line()?;
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let mut plain: Vec<String> = vec![];
-        for name in items_names {
-            let result = if self
-                .opts
-                .state
-                .delete_node(&name, self.cmd.force)
-                .await
-                .is_ok()
-            {
-                fmt_ok!("Node {} deleted\n", name.light_magenta())
-            } else {
-                fmt_warn!("Failed to delete node {}\n", name.light_magenta())
-            };
-            plain.push(result);
-        }
-
-        self.terminal()
-            .stdout()
-            .plain(plain.join("\n"))
             .write_line()?;
         Ok(())
     }

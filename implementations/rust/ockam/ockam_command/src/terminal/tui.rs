@@ -1,4 +1,4 @@
-use crate::{fmt_info, Terminal, TerminalStream};
+use crate::{color, fmt_info, fmt_warn, OckamColor, Terminal, TerminalStream};
 use colorful::Colorful;
 use console::Term;
 use miette::miette;
@@ -32,7 +32,7 @@ pub trait ShowCommandTui {
                 return Err(miette!(
                     "The {} {} was not found",
                     Self::ITEM_NAME,
-                    item_name.light_magenta()
+                    color!(item_name, OckamColor::PrimaryResource)
                 ));
             }
             self.show_single(&item_name).await?;
@@ -88,7 +88,21 @@ pub trait DeleteCommandTui {
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String>;
     async fn list_items_names(&self) -> miette::Result<Vec<String>>;
     async fn delete_single(&self, item_name: &str) -> miette::Result<()>;
-    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()>;
+    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
+        for item_name in items_names {
+            if self.delete_single(&item_name).await.is_err() {
+                self.terminal()
+                    .stdout()
+                    .plain(fmt_warn!(
+                        "Failed to delete {} {}",
+                        Self::ITEM_NAME,
+                        color!(item_name, OckamColor::PrimaryResource)
+                    ))
+                    .write_line()?;
+            }
+        }
+        Ok(())
+    }
 
     async fn delete(&self) -> miette::Result<()> {
         let terminal = self.terminal();
@@ -117,7 +131,7 @@ pub trait DeleteCommandTui {
                 return Err(miette!(
                     "The {} {} was not found",
                     Self::ITEM_NAME,
-                    item_name.light_magenta()
+                    color!(item_name, OckamColor::PrimaryResource)
                 ));
             }
             if terminal.confirmed_with_flag_or_prompt(

@@ -6,7 +6,7 @@ use ockam::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
-use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -103,30 +103,14 @@ impl DeleteCommandTui for DeleteTui {
         self.opts.state.delete_named_vault(item_name).await?;
         self.terminal()
             .stdout()
-            .plain(fmt_ok!("Vault with name '{item_name}' has been deleted"))
+            .plain(fmt_ok!(
+                "Vault with name {} has been deleted",
+                color!(item_name, OckamColor::PrimaryResource)
+            ))
             .machine(item_name)
             .json(serde_json::json!({ "name": &item_name }))
             .write_line()?;
 
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let mut plain = String::new();
-        for name in selected_items_names {
-            if self
-                .opts
-                .state
-                .delete_named_vault(name.as_ref())
-                .await
-                .is_ok()
-            {
-                plain.push_str(&fmt_ok!("Vault '{name}' deleted\n"))
-            } else {
-                plain.push_str(&fmt_warn!("Failed to delete vault '{name}'\n"))
-            }
-        }
-        self.terminal().stdout().plain(plain).write_line()?;
         Ok(())
     }
 }

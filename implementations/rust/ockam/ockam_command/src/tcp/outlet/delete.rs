@@ -12,8 +12,7 @@ use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::util::node_rpc;
-use crate::{docs, fmt_warn, CommandGlobalOpts};
-use crate::{fmt_ok, Terminal, TerminalStream};
+use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -118,38 +117,14 @@ impl DeleteCommandTui for DeleteTui {
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "TCP outlet with alias {item_name} on Node {node_name} has been deleted"
+                "TCP outlet with alias {} on Node {} has been deleted",
+                color!(item_name, OckamColor::PrimaryResource),
+                color!(node_name, OckamColor::PrimaryResource)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "alias": item_name, "node": node_name }))
             .write_line()
             .unwrap();
-        Ok(())
-    }
-
-    async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let mut plain_delete_result: Vec<String> = Vec::with_capacity(items_names.len());
-        for alias in items_names {
-            let outlet_path = format!("/node/outlet/{}", alias);
-            match self
-                .node
-                .tell(&self.ctx, Request::delete(outlet_path))
-                .await
-            {
-                Ok(_) => plain_delete_result.push(fmt_ok!(
-                    "TCP outlet with alias {} deleted\n",
-                    alias.light_magenta()
-                )),
-                Err(_) => plain_delete_result.push(fmt_warn!(
-                    "Failed to delete TCP outlet with alias {} \n",
-                    alias.light_magenta()
-                )),
-            }
-        }
-        self.terminal()
-            .stdout()
-            .plain(plain_delete_result.concat())
-            .write_line()?;
         Ok(())
     }
 }
