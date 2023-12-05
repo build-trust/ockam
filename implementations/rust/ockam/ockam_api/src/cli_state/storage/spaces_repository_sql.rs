@@ -81,12 +81,14 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn get_space_by_name(&self, name: &str) -> Result<Option<Space>> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query1 = query_as("SELECT * FROM space WHERE space_name=$1").bind(name.to_sql());
+        let query1 = query_as("SELECT space_id, space_name FROM space WHERE space_name=$1")
+            .bind(name.to_sql());
         let row: Option<SpaceRow> = query1.fetch_optional(&mut *transaction).await.into_core()?;
         let space = match row.map(|r| r.space()) {
             Some(mut space) => {
                 let query2 =
-                    query_as("SELECT * FROM user_space WHERE space_id=$1").bind(space.id.to_sql());
+                    query_as("SELECT space_id, user_email FROM user_space WHERE space_id=$1")
+                        .bind(space.id.to_sql());
                 let rows: Vec<UserSpaceRow> =
                     query2.fetch_all(&mut *transaction).await.into_core()?;
                 let users = rows.into_iter().map(|r| r.user_email).collect();
@@ -102,12 +104,12 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn get_spaces(&self) -> Result<Vec<Space>> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query = query_as("SELECT * FROM space");
+        let query = query_as("SELECT space_id, space_name FROM space");
         let row: Vec<SpaceRow> = query.fetch_all(&mut *transaction).await.into_core()?;
 
         let mut spaces = vec![];
         for space_row in row {
-            let query2 = query_as("SELECT * FROM user_space WHERE space_id=$1")
+            let query2 = query_as("SELECT space_id, user_email FROM user_space WHERE space_id=$1")
                 .bind(space_row.space_id.to_sql());
             let rows: Vec<UserSpaceRow> = query2.fetch_all(&mut *transaction).await.into_core()?;
             let users = rows.into_iter().map(|r| r.user_email).collect();

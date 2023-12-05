@@ -48,7 +48,7 @@ impl CredentialsRepository for CredentialsSqlxDatabase {
     }
 
     async fn get_credential(&self, name: &str) -> Result<Option<NamedCredential>> {
-        let query = query_as("SELECT * FROM credential WHERE name=$1").bind(name.to_sql());
+        let query = query_as("SELECT name, issuer_identifier, issuer_change_history, credential FROM credential WHERE name=$1").bind(name.to_sql());
         let row: Option<CredentialRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -57,7 +57,9 @@ impl CredentialsRepository for CredentialsSqlxDatabase {
     }
 
     async fn get_credentials(&self) -> Result<Vec<NamedCredential>> {
-        let query = query_as("SELECT * FROM credential");
+        let query = query_as(
+            "SELECT name, issuer_identifier, issuer_change_history, credential FROM credential",
+        );
         let row: Vec<CredentialRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_credential()).collect()
     }
