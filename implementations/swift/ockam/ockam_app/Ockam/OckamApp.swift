@@ -64,7 +64,7 @@ struct WrapperView: View {
             })
             .frame(width: 120,height: 40)
         } else {
-            MainView(state: $state)
+            PopOver(state: $state)
                 .onAppear {
                     StateContainer.shared.callback{ state in
                         self.state = state
