@@ -622,7 +622,7 @@ impl AppState {
                                 address: service.address().map(|addr| addr.ip().to_string()),
                                 port: service.port(),
                                 scheme: None,
-                                available: service.port().is_some(),
+                                available: service.is_connected(),
                                 enabled: service.enabled(),
                             })
                             .collect();

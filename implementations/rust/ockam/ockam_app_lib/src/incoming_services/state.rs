@@ -175,6 +175,8 @@ pub struct IncomingService {
     // this field contains the current port number
     // it also reflects if the inlet is connected with the destination node
     port: Option<Port>,
+    // true when connected to the destination node
+    connected: bool,
     // whether the service should be enabled or not, this is the driver for the inlet
     // and may not reflect the current status
     enabled: bool,
@@ -216,6 +218,7 @@ impl IncomingService {
             shared_node_identifier,
             original_name,
             enrollment_ticket,
+            connected: false,
             removed: false,
         }
     }
@@ -240,6 +243,11 @@ impl IncomingService {
         self.port
     }
 
+    /// Returns true if the inlet is connected to the destination node
+    pub fn is_connected(&self) -> bool {
+        self.connected
+    }
+
     /// The address of the inlet, if service is connected to the destination node
     pub fn address(&self) -> Option<SocketAddr> {
         self.port
@@ -259,8 +267,8 @@ impl IncomingService {
         self.port = Some(port);
     }
 
-    pub fn remove_port(&mut self) {
-        self.port = None;
+    pub fn set_connected(&mut self, connected: bool) {
+        self.connected = connected;
     }
 
     pub fn enable(&mut self) {
@@ -268,7 +276,6 @@ impl IncomingService {
     }
     pub fn disable(&mut self) {
         self.enabled = false;
-        self.port = None;
     }
 
     /// True when the service is marked as removed
