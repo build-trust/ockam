@@ -31,6 +31,8 @@
 		785A07382B14D734002FF30C /* IncomingInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A07372B14D734002FF30C /* IncomingInvite.swift */; };
 		785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */; };
 		785C8DC12B0BAD5E00926DCD /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785C8DC02B0BAD5E00926DCD /* About.swift */; };
+		7893D4092B1F54F800454933 /* PopOver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7893D4072B1F54F800454933 /* PopOver.swift */; };
+		7893D40A2B1F54F800454933 /* GuidedIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7893D4082B1F54F800454933 /* GuidedIntro.swift */; };
 		789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 789FA6452AE142280009FF7F /* ExportOptions.plist */; };
 		78B7EF702B0F649D0062B2B3 /* DeleteIncomingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B7EF6F2B0F649D0062B2B3 /* DeleteIncomingService.swift */; };
 		78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BD349C2AFA621500F09058 /* BrokenStateView.swift */; };
@@ -70,6 +72,8 @@
 		785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnrollmentStatus.swift; sourceTree = "<group>"; };
 		785C8DC02B0BAD5E00926DCD /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7893D4072B1F54F800454933 /* PopOver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PopOver.swift; sourceTree = "<group>"; };
+		7893D4082B1F54F800454933 /* GuidedIntro.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GuidedIntro.swift; sourceTree = "<group>"; };
 		789FA6452AE142280009FF7F /* ExportOptions.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = ExportOptions.plist; sourceTree = "<group>"; };
 		78B7EF6F2B0F649D0062B2B3 /* DeleteIncomingService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeleteIncomingService.swift; sourceTree = "<group>"; };
 		78BD349C2AFA621500F09058 /* BrokenStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrokenStateView.swift; sourceTree = "<group>"; };
@@ -115,6 +119,8 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
+				7893D4082B1F54F800454933 /* GuidedIntro.swift */,
+				7893D4072B1F54F800454933 /* PopOver.swift */,
 				7859A47F2B1DD4960085C7F7 /* FluidMenuBarExtra */,
 				78B7EF6F2B0F649D0062B2B3 /* DeleteIncomingService.swift */,
 				78BD34A02AFCFDF100F09058 /* RemoteServiceView.swift */,
@@ -268,6 +274,7 @@
 				7859A4892B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift in Sources */,
 				7859A48A2B1DD4960085C7F7 /* EventMonitor.swift in Sources */,
 				78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */,
+				7893D4092B1F54F800454933 /* PopOver.swift in Sources */,
 				7859A4862B1DD4960085C7F7 /* UpdateSizeAction.swift in Sources */,
 				7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */,
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
@@ -280,6 +287,7 @@
 				78BD349D2AFA621500F09058 /* BrokenStateView.swift in Sources */,
 				4CB45C522AEB06C700D27F22 /* AcceptingInvitation.swift in Sources */,
 				783B62722AC432B700880261 /* Bridge.swift in Sources */,
+				7893D40A2B1F54F800454933 /* GuidedIntro.swift in Sources */,
 				7859A48B2B1DD4960085C7F7 /* RootViewModifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
