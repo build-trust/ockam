@@ -537,3 +537,42 @@ impl<W: TerminalWriter> Terminal<W> {
         Ok(())
     }
 }
+
+pub enum PluralTerm {
+    Vault,
+    Identity,
+    Node,
+    Relay,
+    Space,
+    Project,
+    Inlet,
+    Outlet,
+}
+
+impl PluralTerm {
+    fn singular(&self) -> &'static str {
+        match self {
+            PluralTerm::Vault => "vault",
+            PluralTerm::Identity => "identity",
+            PluralTerm::Node => "node",
+            PluralTerm::Relay => "relay",
+            PluralTerm::Space => "space",
+            PluralTerm::Project => "project",
+            PluralTerm::Inlet => "inlet",
+            PluralTerm::Outlet => "outlet",
+        }
+    }
+
+    fn plural(&self) -> &'static str {
+        match self {
+            PluralTerm::Vault => "vaults",
+            PluralTerm::Identity => "identities",
+            PluralTerm::Node => "nodes",
+            PluralTerm::Relay => "relays",
+            PluralTerm::Space => "spaces",
+            PluralTerm::Project => "projects",
+            PluralTerm::Inlet => "inlets",
+            PluralTerm::Outlet => "outlets",
+        }
+    }
+}

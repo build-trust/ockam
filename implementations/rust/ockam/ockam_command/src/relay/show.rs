@@ -15,6 +15,7 @@ use serde::Serialize;
 use crate::output::Output;
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::ShowCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
@@ -76,7 +77,7 @@ impl ShowTui {
 
 #[ockam_core::async_trait]
 impl ShowCommandTui for ShowTui {
-    const ITEM_NAME: &'static str = "nodes";
+    const ITEM_NAME: PluralTerm = PluralTerm::Relay;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.relay_name.as_deref()

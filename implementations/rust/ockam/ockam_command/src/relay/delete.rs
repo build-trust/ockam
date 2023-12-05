@@ -11,6 +11,7 @@ use ockam_core::api::Request;
 
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::DeleteCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::node_rpc;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
@@ -72,7 +73,7 @@ impl DeleteTui {
 
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: &'static str = "relay";
+    const ITEM_NAME: PluralTerm = PluralTerm::Relay;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.relay_name.as_deref()

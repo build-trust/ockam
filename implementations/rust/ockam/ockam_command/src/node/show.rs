@@ -14,6 +14,7 @@ use ockam_node::Context;
 
 use crate::node::list;
 use crate::terminal::tui::ShowCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::{api, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result, Terminal, TerminalStream};
 
@@ -78,7 +79,7 @@ impl ShowTui {
 
 #[ockam_core::async_trait]
 impl ShowCommandTui for ShowTui {
-    const ITEM_NAME: &'static str = "node";
+    const ITEM_NAME: PluralTerm = PluralTerm::Node;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.node_name.as_deref()

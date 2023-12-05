@@ -11,6 +11,7 @@ use ockam_core::api::Request;
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::DeleteCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::node_rpc;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
@@ -75,7 +76,7 @@ pub async fn run_impl(
 
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: &'static str = "tcp-outlet";
+    const ITEM_NAME: PluralTerm = PluralTerm::Outlet;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.alias.as_deref()
@@ -117,7 +118,7 @@ impl DeleteCommandTui for DeleteTui {
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "TCP outlet with alias {} on Node {} has been deleted",
+                "Outlet with alias {} on Node {} has been deleted",
                 color!(item_name, OckamColor::PrimaryResource),
                 color!(node_name, OckamColor::PrimaryResource)
             ))

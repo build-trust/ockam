@@ -4,6 +4,7 @@ use console::Term;
 use ockam_node::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
+use crate::terminal::PluralTerm;
 use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
 
@@ -61,7 +62,7 @@ impl DeleteTui {
 
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: &'static str = "node";
+    const ITEM_NAME: PluralTerm = PluralTerm::Node;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.node_name.as_deref()

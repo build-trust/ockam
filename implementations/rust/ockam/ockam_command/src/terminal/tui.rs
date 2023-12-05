@@ -1,3 +1,4 @@
+use crate::terminal::PluralTerm;
 use crate::{color, fmt_info, fmt_warn, OckamColor, Terminal, TerminalStream};
 use colorful::Colorful;
 use console::Term;
@@ -5,7 +6,7 @@ use miette::miette;
 
 #[ockam_core::async_trait]
 pub trait ShowCommandTui {
-    const ITEM_NAME: &'static str;
+    const ITEM_NAME: PluralTerm;
 
     fn cmd_arg_item_name(&self) -> Option<&str>;
     fn terminal(&self) -> Terminal<TerminalStream<Term>>;
@@ -21,7 +22,10 @@ pub trait ShowCommandTui {
         if items_names.is_empty() {
             terminal
                 .stdout()
-                .plain(fmt_info!("There are no {} to show", Self::ITEM_NAME))
+                .plain(fmt_info!(
+                    "There are no {} to show",
+                    Self::ITEM_NAME.plural()
+                ))
                 .write_line()?;
             return Ok(());
         }
@@ -31,7 +35,7 @@ pub trait ShowCommandTui {
             if !items_names.contains(&item_name) {
                 return Err(miette!(
                     "The {} {} was not found",
-                    Self::ITEM_NAME,
+                    Self::ITEM_NAME.singular(),
                     color!(item_name, OckamColor::PrimaryResource)
                 ));
             }
@@ -51,7 +55,7 @@ pub trait ShowCommandTui {
                 let selected_item_names = terminal.select_multiple(
                     format!(
                         "Select one or more {} that you want to show",
-                        Self::ITEM_NAME
+                        Self::ITEM_NAME.plural()
                     ),
                     items_names,
                 );
@@ -59,7 +63,10 @@ pub trait ShowCommandTui {
                     0 => {
                         terminal
                             .stdout()
-                            .plain(fmt_info!("No {} selected to show", Self::ITEM_NAME))
+                            .plain(fmt_info!(
+                                "No {} selected to show",
+                                Self::ITEM_NAME.plural()
+                            ))
                             .write_line()?;
                     }
                     1 => {
@@ -78,7 +85,7 @@ pub trait ShowCommandTui {
 
 #[ockam_core::async_trait]
 pub trait DeleteCommandTui {
-    const ITEM_NAME: &'static str;
+    const ITEM_NAME: PluralTerm;
 
     fn cmd_arg_item_name(&self) -> Option<&str>;
     fn cmd_arg_delete_all(&self) -> bool;
@@ -95,7 +102,7 @@ pub trait DeleteCommandTui {
                     .stdout()
                     .plain(fmt_warn!(
                         "Failed to delete {} {}",
-                        Self::ITEM_NAME,
+                        Self::ITEM_NAME.singular(),
                         color!(item_name, OckamColor::PrimaryResource)
                     ))
                     .write_line()?;
@@ -110,7 +117,10 @@ pub trait DeleteCommandTui {
         if items_names.is_empty() {
             terminal
                 .stdout()
-                .plain(fmt_info!("There are no {}s to delete", Self::ITEM_NAME))
+                .plain(fmt_info!(
+                    "There are no {} to delete",
+                    Self::ITEM_NAME.plural()
+                ))
                 .write_line()?;
             return Ok(());
         }
@@ -118,7 +128,10 @@ pub trait DeleteCommandTui {
         if self.cmd_arg_delete_all()
             && terminal.confirmed_with_flag_or_prompt(
                 self.cmd_arg_confirm_deletion(),
-                format!("Are you sure you want to delete all {}?", Self::ITEM_NAME),
+                format!(
+                    "Are you sure you want to delete all {}?",
+                    Self::ITEM_NAME.plural()
+                ),
             )?
         {
             self.delete_multiple(items_names).await?;
@@ -130,7 +143,7 @@ pub trait DeleteCommandTui {
             if !items_names.contains(&item_name) {
                 return Err(miette!(
                     "The {} {} was not found",
-                    Self::ITEM_NAME,
+                    Self::ITEM_NAME.singular(),
                     color!(item_name, OckamColor::PrimaryResource)
                 ));
             }
@@ -159,8 +172,8 @@ pub trait DeleteCommandTui {
             _ => {
                 let selected_item_names = terminal.select_multiple(
                     format!(
-                        "Select one or more {}s that you want to delete",
-                        Self::ITEM_NAME
+                        "Select one or more {} that you want to delete",
+                        Self::ITEM_NAME.plural()
                     ),
                     items_names,
                 );
@@ -168,7 +181,10 @@ pub trait DeleteCommandTui {
                     0 => {
                         terminal
                             .stdout()
-                            .plain(fmt_info!("No {}s selected to delete", Self::ITEM_NAME))
+                            .plain(fmt_info!(
+                                "No {} selected to delete",
+                                Self::ITEM_NAME.plural()
+                            ))
                             .write_line()?;
                     }
                     1 => {
