@@ -187,12 +187,13 @@ impl AppState {
                 let project = node_manager
                     .create_project(ctx, &space.name, PROJECT_NAME, vec![])
                     .await?;
-                node_manager
+                let project = node_manager
                     .wait_until_project_is_ready(ctx, project)
-                    .await?
+                    .await?;
+                self.state().await.store_project(project.clone()).await?;
+                project
             }
         };
-
         self.state()
             .await
             .set_node_project(&node_manager.node_name(), &Some(project.name()))
