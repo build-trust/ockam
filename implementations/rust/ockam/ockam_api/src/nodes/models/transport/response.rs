@@ -6,6 +6,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result};
 use ockam_multiaddr::proto::Worker;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
@@ -29,14 +30,7 @@ pub struct TransportStatus {
 
 impl TransportStatus {
     pub fn new(api_transport: ApiTransport) -> Self {
-        Self {
-            tt: api_transport.tt,
-            tm: api_transport.tm,
-            socket_addr: api_transport.socket_address.to_string(),
-            worker_addr: api_transport.worker_address.clone(),
-            processor_address: api_transport.processor_address.clone(),
-            flow_control_id: api_transport.flow_control_id,
-        }
+        api_transport.into()
     }
 
     pub fn socket_addr(&self) -> Result<SocketAddrV4> {
@@ -54,6 +48,71 @@ impl TransportStatus {
         m.push_back(Worker::new(worker_address))?;
 
         Ok(m)
+    }
+}
+
+impl From<ApiTransport> for TransportStatus {
+    fn from(value: ApiTransport) -> Self {
+        Self {
+            tt: value.tt,
+            tm: value.tm,
+            socket_addr: value.socket_address.to_string(),
+            worker_addr: value.worker_address.clone(),
+            processor_address: value.processor_address.clone(),
+            flow_control_id: value.flow_control_id,
+        }
+    }
+}
+
+impl From<TcpSenderInfo> for TransportStatus {
+    fn from(value: TcpSenderInfo) -> Self {
+        Self {
+            tt: TransportType::Tcp,
+            tm: (*value.mode()).into(),
+            socket_addr: value.socket_address().to_string(),
+            worker_addr: value.address().to_string(),
+            processor_address: value.receiver_address().to_string(),
+            flow_control_id: value.flow_control_id().clone(),
+        }
+    }
+}
+
+impl From<TcpListenerInfo> for TransportStatus {
+    fn from(value: TcpListenerInfo) -> Self {
+        Self {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Listen,
+            socket_addr: value.socket_address().to_string(),
+            worker_addr: "<none>".into(),
+            processor_address: value.address().to_string(),
+            flow_control_id: value.flow_control_id().clone(),
+        }
+    }
+}
+
+impl From<TcpConnection> for TransportStatus {
+    fn from(value: TcpConnection) -> Self {
+        Self {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Outgoing,
+            socket_addr: value.socket_address().to_string(),
+            worker_addr: value.sender_address().to_string(),
+            processor_address: value.receiver_address().to_string(),
+            flow_control_id: value.flow_control_id().clone(),
+        }
+    }
+}
+
+impl From<TcpListener> for TransportStatus {
+    fn from(value: TcpListener) -> Self {
+        Self {
+            tt: TransportType::Tcp,
+            tm: TransportMode::Listen,
+            socket_addr: value.socket_address().to_string(),
+            worker_addr: "<none>".into(),
+            processor_address: value.processor_address().to_string(),
+            flow_control_id: value.flow_control_id().clone(),
+        }
     }
 }
 

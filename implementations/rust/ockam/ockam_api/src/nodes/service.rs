@@ -563,10 +563,10 @@ impl NodeManagerWorker {
                 encode_response(self.get_tcp_connection(req, address.to_string()).await)?
             }
             (Post, ["node", "tcp", "connection"]) => {
-                encode_response(self.create_tcp_connection(req, dec, ctx).await)?
+                encode_response(self.create_tcp_connection(ctx, req, dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "connection"]) => {
-                encode_response(self.delete_tcp_connection(req, dec).await)?
+                encode_response(self.delete_tcp_connection(req, dec.decode()?).await)?
             }
 
             // ==*== Tcp Listeners ==*==
@@ -575,10 +575,10 @@ impl NodeManagerWorker {
                 encode_response(self.get_tcp_listener(req, address.to_string()).await)?
             }
             (Post, ["node", "tcp", "listener"]) => {
-                encode_response(self.create_tcp_listener(req, dec).await)?
+                encode_response(self.create_tcp_listener(req, dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "listener"]) => {
-                encode_response(self.delete_tcp_listener(req, dec).await)?
+                encode_response(self.delete_tcp_listener(req, dec.decode()?).await)?
             }
 
             // ==*== Credential ==*==

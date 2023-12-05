@@ -2,9 +2,10 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::{TcpConnectionOptions, TcpRegistry, TcpTransport, TCP};
+use crate::{TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, TCP};
 
 impl TcpTransport {
     /// Create a TCP transport
@@ -38,6 +39,70 @@ impl TcpTransport {
     /// Registry of all active connections
     pub fn registry(&self) -> &TcpRegistry {
         &self.registry
+    }
+
+    /// Search for a connection with the provided socket address
+    pub fn find_connection_by_socketaddr(
+        &self,
+        socket_address: SocketAddr,
+    ) -> Option<TcpSenderInfo> {
+        self.registry()
+            .get_all_sender_workers()
+            .into_iter()
+            .find(|x| x.socket_address() == socket_address)
+    }
+
+    /// Search for a connection with the provided address
+    pub fn find_connection(&self, address: String) -> Option<TcpSenderInfo> {
+        match address.parse::<SocketAddr>() {
+            Ok(socket_address) => self.find_connection_by_socketaddr(socket_address),
+            Err(_err) => {
+                let address: Address = address.into();
+
+                // Check if it's a Receiver Address
+                let address = if let Some(receiver) = self
+                    .registry()
+                    .get_all_receiver_processors()
+                    .into_iter()
+                    .find(|x| x.address() == &address)
+                {
+                    receiver.sender_address().clone()
+                } else {
+                    address
+                };
+
+                self.registry()
+                    .get_all_sender_workers()
+                    .into_iter()
+                    .find(|x| x.address() == &address)
+            }
+        }
+    }
+
+    /// Search for a listener with the provided socket address
+    pub fn find_listener_by_socketaddress(
+        &self,
+        socket_address: SocketAddr,
+    ) -> Option<TcpListenerInfo> {
+        self.registry()
+            .get_all_listeners()
+            .into_iter()
+            .find(|x| x.socket_address() == socket_address)
+    }
+
+    /// Search for a listener with the provided address
+    pub fn find_listener(&self, address: String) -> Option<TcpListenerInfo> {
+        match address.parse::<SocketAddr>() {
+            Ok(socket_address) => self.find_listener_by_socketaddress(socket_address),
+            Err(_err) => {
+                let address: Address = address.into();
+
+                self.registry()
+                    .get_all_listeners()
+                    .into_iter()
+                    .find(|x| x.address() == &address)
+            }
+        }
     }
 }
 
