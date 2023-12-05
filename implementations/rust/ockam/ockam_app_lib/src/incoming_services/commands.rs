@@ -44,14 +44,15 @@ impl AppState {
                     Ok(port) => {
                         if let Some(service) = guard.find_mut_by_id(service.id()) {
                             if let Some(port) = port {
-                                service.set_port(port)
+                                service.set_port(port);
                             }
+                            service.set_connected(true);
                         }
                     }
                     Err(err) => {
                         warn!(%err, "Failed to refresh TCP inlet for accepted invitation");
                         if let Some(service) = guard.find_mut_by_id(service.id()) {
-                            service.remove_port()
+                            service.set_connected(false);
                         }
                     }
                 }
