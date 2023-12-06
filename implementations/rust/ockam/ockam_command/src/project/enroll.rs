@@ -178,6 +178,7 @@ async fn retrieve_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Resu
         }
     }
 
+    opts.state.store_project(project.clone()).await?;
     opts.state
         .create_trust_context(
             Some(trust_context_name.clone()),
