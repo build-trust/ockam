@@ -1,12 +1,8 @@
 mod get;
-mod get_default_node;
 mod list;
-mod set_default_node;
 
 use get::GetCommand;
-use get_default_node::GetDefaultNodeCommand;
 use list::ListCommand;
-use set_default_node::SetDefaultNodeCommand;
 
 use crate::docs;
 use crate::CommandGlobalOpts;
@@ -24,18 +20,14 @@ pub struct ConfigurationCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum ConfigurationSubcommand {
     Get(GetCommand),
-    GetDefaultNode(GetDefaultNodeCommand),
     List(ListCommand),
-    SetDefaultNode(SetDefaultNodeCommand),
 }
 
 impl ConfigurationCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
             ConfigurationSubcommand::Get(c) => c.run(options),
-            ConfigurationSubcommand::GetDefaultNode(c) => c.run(options),
             ConfigurationSubcommand::List(c) => c.run(options),
-            ConfigurationSubcommand::SetDefaultNode(c) => c.run(options),
         }
     }
 }

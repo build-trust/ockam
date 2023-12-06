@@ -78,7 +78,10 @@ impl InMemoryNode {
         project_name: Option<String>,
         trust_context: Option<NamedTrustContext>,
     ) -> miette::Result<Self> {
-        let default_identity_name = cli_state.get_default_named_identity().await?.name();
+        let default_identity_name = cli_state
+            .get_or_create_default_named_identity()
+            .await?
+            .name();
         Self::start_node(
             ctx,
             cli_state,
