@@ -64,7 +64,7 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
         identifier: &Identifier,
         purpose: Purpose,
     ) -> Result<Option<PurposeKeyAttestation>> {
-        let query = query_as("SELECT * FROM purpose_key WHERE identifier=$1 and purpose=$2")
+        let query = query_as("SELECT identifier, purpose, purpose_key_attestation FROM purpose_key WHERE identifier=$1 and purpose=$2")
             .bind(identifier.to_sql())
             .bind(purpose.to_sql());
         let row: Option<PurposeKeyRow> = query

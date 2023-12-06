@@ -39,8 +39,9 @@ impl ChangeHistorySqlxDatabase {
 impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     async fn update_identity(&self, identity: &Identity) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query_as("SELECT * FROM identity WHERE identifier=$1")
-            .bind(identity.identifier().to_sql());
+        let query1 =
+            query_as("SELECT identifier, change_history FROM identity WHERE identifier=$1")
+                .bind(identity.identifier().to_sql());
         let row: Option<ChangeHistoryRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
 
@@ -96,8 +97,8 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     }
 
     async fn get_change_history(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>> {
-        let query =
-            query_as("SELECT * FROM identity WHERE identifier=$1").bind(identifier.to_sql());
+        let query = query_as("SELECT identifier, change_history FROM identity WHERE identifier=$1")
+            .bind(identifier.to_sql());
         let row: Option<ChangeHistoryRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -106,7 +107,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     }
 
     async fn get_change_histories(&self) -> Result<Vec<ChangeHistory>> {
-        let query = query_as("SELECT * FROM identity");
+        let query = query_as("SELECT identifier, change_history FROM identity");
         let row: Vec<ChangeHistoryRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         row.iter().map(|r| r.change_history()).collect()
     }
