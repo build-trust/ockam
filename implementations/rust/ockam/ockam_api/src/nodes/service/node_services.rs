@@ -2,7 +2,7 @@ use either::Either;
 
 use minicbor::Decoder;
 
-use ockam::identity::{identities, AuthorityService, TrustContext};
+use ockam::identity::{AuthorityService, Identifier, Identity, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Error, RequestHeader, Response};
@@ -82,36 +82,24 @@ impl NodeManagerWorker {
     pub(super) async fn start_credentials_service(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        request_header: &RequestHeader,
+        request: StartCredentialsService,
     ) -> Result<Response, Response<Error>> {
-        let body: StartCredentialsService = dec.decode()?;
-        let addr: Address = body.address().into();
-        let oneway = body.oneway();
-        let encoded_identity = body.public_identity();
-
-        let decoded_identity =
-            &hex::decode(encoded_identity).map_err(|_| ApiError::core("Unable to decode trust context's public identity when starting credential service."))?;
-        let i = identities()
-            .await?
-            .identities_creation()
-            .import(None, decoded_identity)
-            .await?;
-
-        let trust_context = TrustContext::new(
-            encoded_identity.to_string(),
-            Some(AuthorityService::new(
-                self.node_manager.identities().credentials(),
-                i,
-                None,
-            )),
-        );
-
-        self.node_manager
-            .start_credentials_service_impl(ctx, trust_context, addr, oneway)
-            .await?;
-
-        Ok(Response::ok(req))
+        let addr: Address = request.address().into();
+        let oneway = request.oneway();
+        let encoded_identity = request.public_identity();
+        let identifier = match Identity::create(encoded_identity).await {
+            Ok(identity) => identity.identifier().clone(),
+            Err(e) => return Err(Response::bad_request(request_header, &e.to_string())),
+        };
+        match self
+            .node_manager
+            .start_credentials_service_with_trusted_identity(ctx, &identifier, addr, oneway)
+            .await
+        {
+            Ok(_) => Ok(Response::ok(request_header)),
+            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+        }
     }
 
     pub(super) async fn list_services_of_type(
@@ -233,7 +221,7 @@ impl NodeManager {
         Ok(list)
     }
 
-    pub(super) async fn start_credentials_service_impl(
+    pub(super) async fn start_credentials_service(
         &self,
         ctx: &Context,
         trust_context: TrustContext,
@@ -254,6 +242,26 @@ impl NodeManager {
             .await;
 
         Ok(())
+    }
+
+    pub(super) async fn start_credentials_service_with_trusted_identity(
+        &self,
+        ctx: &Context,
+        identifier: &Identifier,
+        addr: Address,
+        oneway: bool,
+    ) -> Result<()> {
+        let trust_context = TrustContext::new(
+            identifier.to_string(),
+            Some(AuthorityService::new(
+                self.identities().credentials(),
+                identifier.clone(),
+                None,
+            )),
+        );
+
+        self.start_credentials_service(ctx, trust_context, addr, oneway)
+            .await
     }
 
     pub(super) async fn start_authenticated_service_impl(
