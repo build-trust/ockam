@@ -590,12 +590,11 @@ impl NodeManagerWorker {
             }
 
             // ==*== Credential ==*==
-            (Post, ["node", "credentials", "actions", "get"]) => self
-                .get_credential(req, dec, ctx)
-                .await?
-                .either(Response::to_vec, Response::to_vec)?,
+            (Post, ["node", "credentials", "actions", "get"]) => {
+                encode_response(self.get_credential(ctx, req, dec.decode()?).await)?
+            }
             (Post, ["node", "credentials", "actions", "present"]) => {
-                encode_response(self.present_credential(req, dec, ctx).await)?
+                encode_response(self.present_credential(ctx, req, dec.decode()?).await)?
             }
 
             // ==*== Secure channels ==*==

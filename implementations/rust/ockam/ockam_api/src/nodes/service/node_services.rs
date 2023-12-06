@@ -1,7 +1,5 @@
 use either::Either;
 
-use minicbor::Decoder;
-
 use ockam::identity::{AuthorityService, Identifier, Identity, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::Resource;

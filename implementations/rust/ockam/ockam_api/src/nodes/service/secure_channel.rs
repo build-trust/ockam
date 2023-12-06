@@ -340,6 +340,16 @@ impl NodeManager {
         }
     }
 
+    pub async fn get_credential_by_identity_name(
+        &self,
+        ctx: &Context,
+        name: Option<String>,
+        timeout: Option<Duration>,
+    ) -> Result<Option<CredentialAndPurposeKey>> {
+        let identifier = self.get_identifier_by_name(name).await?;
+        self.get_credential(ctx, &identifier, timeout).await
+    }
+
     pub(crate) async fn create_secure_channel_internal(
         &self,
         ctx: &Context,
