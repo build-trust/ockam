@@ -135,6 +135,14 @@ struct MainView: View {
                                 }
                                 appDelegate.dismissPopover()
                             })
+                        ClickableMenuEntry(
+                            text: "Share your thoughts on Discord…", icon: "message",
+                            action: {
+                                if let url = URL(string: "https://discord.gg/RAbjRr3kds") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                                appDelegate.dismissPopover()
+                            })
                     }
                 }
 
