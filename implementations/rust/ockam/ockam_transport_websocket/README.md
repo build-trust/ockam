@@ -84,7 +84,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_websocket = "0.88.0"
+ockam_transport_websocket = "0.89.0"
 ```
 
 ## License

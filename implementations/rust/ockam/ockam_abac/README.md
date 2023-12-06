@@ -17,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_abac = "0.40.0"
+ockam_abac = "0.41.0"
 ```
 
 ## License
