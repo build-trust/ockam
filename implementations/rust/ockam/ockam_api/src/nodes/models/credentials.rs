@@ -1,7 +1,6 @@
 //! Credential request/response types
 
 use minicbor::{Decode, Encode};
-use ockam_core::compat::borrow::Cow;
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Decode, Encode)]
@@ -28,15 +27,15 @@ impl GetCredentialRequest {
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct PresentCredentialRequest<'a> {
-    #[b(1)] pub route: Cow<'a, str>,
+pub struct PresentCredentialRequest {
+    #[b(1)] pub route: String,
     #[n(2)] pub oneway: bool,
 }
 
-impl<'a> PresentCredentialRequest<'a> {
+impl PresentCredentialRequest {
     pub fn new(route: &MultiAddr, oneway: bool) -> Self {
         Self {
-            route: route.to_string().into(),
+            route: route.to_string(),
             oneway,
         }
     }
