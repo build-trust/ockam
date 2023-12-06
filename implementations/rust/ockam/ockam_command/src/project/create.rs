@@ -5,7 +5,7 @@ use ockam_api::cli_state::random_name;
 use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::operation::util::check_for_completion;
+use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -54,12 +54,8 @@ async fn run_impl(
     let project = node
         .create_project(ctx, &cmd.space_name, &cmd.project_name, vec![])
         .await?;
-    let operation_id = project.operation_id.clone().unwrap();
-    let controller = node.create_controller().await?;
-    check_for_completion(&opts, ctx, &controller, &operation_id).await?;
+    let project = check_for_project_completion(&opts, ctx, &node, project).await?;
     let project = check_project_readiness(&opts, ctx, &node, project).await?;
-    // update the project state when it's ready
-    opts.state.store_project(project.clone()).await?;
     opts.println(&project)?;
     Ok(())
 }

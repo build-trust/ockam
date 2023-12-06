@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::cloud::addon::Addons;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::operation::util::check_for_completion;
+use crate::operation::util::check_for_operation_completion;
 use crate::util::node_rpc;
 use crate::{fmt_ok, CommandGlobalOpts};
 
@@ -54,7 +54,8 @@ async fn run_impl(
         .disable_addon(&ctx, project_id, &addon_id)
         .await?;
     let operation_id = response.operation_id;
-    check_for_completion(&opts, &ctx, &controller, &operation_id).await?;
+    check_for_operation_completion(&opts, &ctx, &node, &operation_id, "the addon disabling")
+        .await?;
 
     opts.terminal
         .write_line(&fmt_ok!("Addon disabled successfully"))?;

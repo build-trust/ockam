@@ -188,10 +188,11 @@ impl AppState {
                     .create_project(ctx, &space.name, PROJECT_NAME, vec![])
                     .await?;
                 let project = node_manager
-                    .wait_until_project_is_ready(ctx, project)
+                    .wait_until_project_creation_operation_is_complete(ctx, project)
                     .await?;
-                self.state().await.store_project(project.clone()).await?;
-                project
+                node_manager
+                    .wait_until_project_is_ready(ctx, project)
+                    .await?
             }
         };
         self.state()

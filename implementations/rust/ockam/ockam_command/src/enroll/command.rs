@@ -20,7 +20,7 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::operation::util::check_for_completion;
+use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
@@ -329,11 +329,7 @@ async fn get_user_project(
                     .color(OckamColor::PrimaryResource.color())
             ))?;
 
-            let operation_id = project.operation_id.clone().unwrap();
-            check_for_completion(opts, ctx, &node.create_controller().await?, &operation_id)
-                .await?;
-
-            project.to_owned()
+            check_for_project_completion(opts, ctx, node, project).await?
         }
         Some(project) => {
             opts.terminal.write_line(&fmt_log!(
@@ -346,7 +342,7 @@ async fn get_user_project(
         }
     };
 
-    let project = check_project_readiness(opts, ctx, node, project.clone()).await?;
+    let project = check_project_readiness(opts, ctx, node, project).await?;
     // store the updated project
     opts.state.store_project(project.clone()).await?;
 

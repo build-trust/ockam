@@ -15,11 +15,12 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::{tokio, Context};
 
 use crate::cloud::addon::ConfluentConfig;
-use crate::cloud::operation::Operations;
+use crate::cloud::operation::{Operation, Operations};
 use crate::cloud::share::ShareScope;
 use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
+use crate::nodes::InMemoryNode;
 
 use super::share::RoleInShare;
 
@@ -375,6 +376,12 @@ pub trait Projects {
 
     async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
 
+    async fn wait_until_project_creation_operation_is_complete(
+        &self,
+        ctx: &Context,
+        project: Project,
+    ) -> miette::Result<Project>;
+
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
@@ -451,37 +458,77 @@ impl Controller {
             .into_diagnostic()
     }
 
+    pub async fn wait_until_project_creation_operation_is_complete(
+        &self,
+        ctx: &Context,
+        project: Project,
+    ) -> miette::Result<Project> {
+        let operation_id = match &project.operation_id {
+            Some(operation_id) => operation_id,
+            // if no operation id is present this means that the operation is already complete
+            None => return Ok(project),
+        };
+
+        let result = self
+            .wait_until_operation_is_complete(ctx, operation_id)
+            .await;
+        match result {
+            Ok(()) => self.get_project(ctx, &project.id).await,
+            Err(e) => Err(miette!("The project creation did not complete: {:?}", e)),
+        }
+    }
+
     pub async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
         project: Project,
     ) -> miette::Result<Project> {
-        if project.is_ready() {
-            return Ok(project);
-        }
-        let operation_id = match &project.operation_id {
-            Some(operation_id) => operation_id,
-            None => {
-                return Err(miette!("Project has no operation id"));
-            }
-        };
         let retry_strategy = FixedInterval::from_millis(5000)
             .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
-        let operation = Retry::spawn(retry_strategy.clone(), || async {
-            if let Some(operation) = self.get_operation(ctx, operation_id).await? {
-                if operation.is_completed() {
-                    return Ok(operation);
+        Retry::spawn(retry_strategy.clone(), || async {
+            if let Ok(project) = self.get_project(ctx, &project.id).await {
+                if project.is_ready() {
+                    Ok(project)
+                } else {
+                    debug!("the project {} is not ready yet. Retrying...", &project.id);
+                    Err(miette!(
+                        "The project {} is not ready. Please try again.",
+                        &project.id
+                    ))
                 }
+            } else {
+                Err(miette!(
+                    "The project {} could not be retrieved",
+                    &project.id
+                ))
             }
-            Err(miette!("Project is not reachable yet. Retrying..."))
         })
-        .await?;
+        .await
+    }
+}
 
-        if operation.is_successful() {
-            self.get_project(ctx, &project.id).await
-        } else {
-            Err(miette!("Operation failed. Please try again."))
-        }
+#[async_trait]
+impl Operations for InMemoryNode {
+    async fn get_operation(
+        &self,
+        ctx: &Context,
+        operation_id: &str,
+    ) -> miette::Result<Option<Operation>> {
+        self.create_controller()
+            .await?
+            .get_operation(ctx, operation_id)
+            .await
+    }
+
+    async fn wait_until_operation_is_complete(
+        &self,
+        ctx: &Context,
+        operation_id: &str,
+    ) -> miette::Result<()> {
+        self.create_controller()
+            .await?
+            .wait_until_operation_is_complete(ctx, operation_id)
+            .await
     }
 }
 
