@@ -28,43 +28,49 @@ impl NodeManagerWorker {
     pub(super) async fn start_authenticated_service(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        request_header: &RequestHeader,
+        request: StartAuthenticatedServiceRequest,
     ) -> Result<Response, Response<Error>> {
-        let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        self.node_manager
-            .start_authenticated_service_impl(ctx, addr)
-            .await?;
-        Ok(Response::ok(req))
+        match self
+            .node_manager
+            .start_authenticated_service(ctx, request.addr.into())
+            .await
+        {
+            Ok(_) => Ok(Response::ok(request_header)),
+            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+        }
     }
 
     pub(super) async fn start_uppercase_service(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        request_header: &RequestHeader,
+        request: StartUppercaseServiceRequest,
     ) -> Result<Response, Response<Error>> {
-        let req_body: StartUppercaseServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        self.node_manager
-            .start_uppercase_service_impl(ctx, addr)
-            .await?;
-        Ok(Response::ok(req))
+        match self
+            .node_manager
+            .start_uppercase_service(ctx, request.addr.into())
+            .await
+        {
+            Ok(_) => Ok(Response::ok(request_header)),
+            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+        }
     }
 
     pub(super) async fn start_echoer_service(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        request_header: &RequestHeader,
+        request: StartEchoerServiceRequest,
     ) -> Result<Response, Response<Error>> {
-        let req_body: StartEchoerServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        self.node_manager
-            .start_echoer_service_impl(ctx, addr)
-            .await?;
-        Ok(Response::ok(req))
+        match self
+            .node_manager
+            .start_echoer_service(ctx, request.addr.into())
+            .await
+        {
+            Ok(_) => Ok(Response::ok(request_header)),
+            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+        }
     }
 
     pub(super) async fn start_hop_service(
@@ -268,7 +274,7 @@ impl NodeManager {
             .await
     }
 
-    pub(super) async fn start_authenticated_service_impl(
+    pub(super) async fn start_authenticated_service(
         &self,
         ctx: &Context,
         addr: Address,
@@ -295,11 +301,7 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_uppercase_service_impl(
-        &self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
+    pub(super) async fn start_uppercase_service(&self, ctx: &Context, addr: Address) -> Result<()> {
         if self.registry.uppercase_services.contains_key(&addr).await {
             return Err(ApiError::core("Uppercase service exists at this address"));
         }
@@ -314,11 +316,7 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_echoer_service_impl(
-        &self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
+    pub(super) async fn start_echoer_service(&self, ctx: &Context, addr: Address) -> Result<()> {
         if self.registry.echoer_services.contains_key(&addr).await {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
