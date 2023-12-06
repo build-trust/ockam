@@ -416,7 +416,7 @@ impl NodeManager {
         // Start services
         ctx.flow_controls()
             .add_consumer(DefaultAddress::UPPERCASE_SERVICE, api_flow_control_id);
-        self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
+        self.start_uppercase_service(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
         RelayService::create(
@@ -467,7 +467,7 @@ impl NodeManager {
         // started unconditionally on every node. It's used for liveliness checks.
         ctx.flow_controls()
             .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
-        self.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+        self.start_echoer_service(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
         Ok(())
@@ -624,14 +624,15 @@ impl NodeManagerWorker {
             }
 
             // ==*== Services ==*==
-            (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => {
-                encode_response(self.start_authenticated_service(ctx, req, dec).await)?
-            }
+            (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => encode_response(
+                self.start_authenticated_service(ctx, req, dec.decode()?)
+                    .await,
+            )?,
             (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => {
-                encode_response(self.start_uppercase_service(ctx, req, dec).await)?
+                encode_response(self.start_uppercase_service(ctx, req, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => {
-                encode_response(self.start_echoer_service(ctx, req, dec).await)?
+                encode_response(self.start_echoer_service(ctx, req, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 encode_response(self.start_hop_service(ctx, req, dec.decode()?).await)?
