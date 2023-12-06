@@ -36,7 +36,7 @@ impl IdentityAttributesSqlxDatabase {
 #[async_trait]
 impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     async fn get_attributes(&self, identity: &Identifier) -> Result<Option<AttributesEntry>> {
-        let query = query_as("SELECT * FROM identity_attributes WHERE identifier=$1")
+        let query = query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1")
             .bind(identity.to_sql());
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&self.database.pool)
@@ -46,7 +46,9 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     }
 
     async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
-        let query = query_as("SELECT * FROM identity_attributes");
+        let query = query_as(
+            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes",
+        );
         let result: Vec<IdentityAttributesRow> =
             query.fetch_all(&self.database.pool).await.into_core()?;
         result

@@ -80,7 +80,7 @@ impl Encode<'_, Sqlite> for SqlxType {
 /// }
 ///
 /// let timestamp = TimestampInSeconds(10000000);
-/// let query = query_as("SELECT * FROM identity WHERE created_at >= $1").bind(timestamp.as_sql());
+/// let query = query_as("SELECT identifier, change_history FROM identity WHERE created_at >= $1").bind(timestamp.as_sql());
 ///
 ///
 pub trait ToSqlxType {

@@ -87,7 +87,8 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
     }
 
     async fn load(&self) -> Result<ModelState> {
-        let query1 = query_as("SELECT * FROM tcp_outlet_status");
+        let query1 =
+            query_as("SELECT alias, socket_addr, worker_addr, payload FROM tcp_outlet_status");
         let result: Vec<TcpOutletStatusRow> =
             query1.fetch_all(&self.database.pool).await.into_core()?;
         let tcp_outlets = result
@@ -95,7 +96,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
             .map(|r| r.tcp_outlet_status())
             .collect::<Result<Vec<_>>>()?;
 
-        let query2 = query_as("SELECT * FROM incoming_service");
+        let query2 = query_as("SELECT invitation_id, enabled, name FROM incoming_service");
         let result: Vec<PersistentIncomingServiceRow> =
             query2.fetch_all(&self.database.pool).await.into_core()?;
         let incoming_services = result

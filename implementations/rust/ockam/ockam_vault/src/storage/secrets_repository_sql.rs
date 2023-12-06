@@ -63,7 +63,9 @@ impl SecretsRepository for SecretsSqlxDatabase {
         handle: &SigningSecretKeyHandle,
     ) -> Result<Option<SigningSecret>> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query_as("SELECT * FROM signing_secret WHERE handle=?").bind(handle.to_sql());
+        let query1 =
+            query_as("SELECT handle, secret_type, secret FROM signing_secret WHERE handle=?")
+                .bind(handle.to_sql());
         let row: Option<SigningSecretRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
         let secret = row.map(|r| r.signing_secret()).transpose()?;
@@ -83,7 +85,9 @@ impl SecretsRepository for SecretsSqlxDatabase {
         &self,
         handle: &SigningSecretKeyHandle,
     ) -> Result<Option<SigningSecret>> {
-        let query = query_as("SELECT * FROM signing_secret WHERE handle=?").bind(handle.to_sql());
+        let query =
+            query_as("SELECT handle, secret_type, secret FROM signing_secret WHERE handle=?")
+                .bind(handle.to_sql());
         let row: Option<SigningSecretRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -92,7 +96,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
     }
 
     async fn get_signing_secret_handles(&self) -> Result<Vec<SigningSecretKeyHandle>> {
-        let query = query_as("SELECT * FROM signing_secret");
+        let query = query_as("SELECT handle, secret_type, secret FROM signing_secret");
         let rows: Vec<SigningSecretRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         Ok(rows
             .iter()
@@ -116,7 +120,8 @@ impl SecretsRepository for SecretsSqlxDatabase {
         handle: &X25519SecretKeyHandle,
     ) -> Result<Option<X25519SecretKey>> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query_as("SELECT * FROM x25519_secret WHERE handle=?").bind(handle.to_sql());
+        let query1 = query_as("SELECT handle, secret FROM x25519_secret WHERE handle=?")
+            .bind(handle.to_sql());
         let row: Option<X25519SecretRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
         let secret = row.map(|r| r.x25519_secret()).transpose()?;
@@ -136,7 +141,8 @@ impl SecretsRepository for SecretsSqlxDatabase {
         &self,
         handle: &X25519SecretKeyHandle,
     ) -> Result<Option<X25519SecretKey>> {
-        let query = query_as("SELECT * FROM x25519_secret WHERE handle=?").bind(handle.to_sql());
+        let query = query_as("SELECT handle, secret FROM x25519_secret WHERE handle=?")
+            .bind(handle.to_sql());
         let row: Option<X25519SecretRow> = query
             .fetch_optional(&self.database.pool)
             .await
@@ -145,7 +151,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
     }
 
     async fn get_x25519_secret_handles(&self) -> Result<Vec<X25519SecretKeyHandle>> {
-        let query = query_as("SELECT * FROM x25519_secret");
+        let query = query_as("SELECT handle, secret FROM x25519_secret");
         let rows: Vec<X25519SecretRow> = query.fetch_all(&self.database.pool).await.into_core()?;
         Ok(rows
             .iter()
