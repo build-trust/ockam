@@ -37,7 +37,7 @@ impl CliState {
 
         let identity = match identity_name {
             Some(name) => self.get_named_identity(name).await?,
-            None => self.get_default_named_identity().await?,
+            None => self.get_or_create_default_named_identity().await?,
         };
         let node = self
             .create_node_with_identifier(node_name, &identity.identifier())
@@ -228,15 +228,11 @@ impl CliState {
 
     /// Return information about the default node (if there is one)
     pub async fn get_default_node(&self) -> Result<NodeInfo> {
-        if let Some(node) = self.nodes_repository().await?.get_default_node().await? {
-            Ok(node)
-        } else {
-            let identity = self.get_default_named_identity().await?;
-            let node = self
-                .create_node_with_identifier(&random_name(), &identity.identifier())
-                .await?;
-            Ok(node)
-        }
+        self.nodes_repository()
+            .await?
+            .get_default_node()
+            .await?
+            .ok_or(Error::new(Origin::Api, Kind::NotFound, "There is no default node").into())
     }
 
     /// Return the node information for the given node name, otherwise for the default node
@@ -465,10 +461,10 @@ mod tests {
         assert_eq!(result, node_name.to_string());
 
         // as a consequence, a default identity must have been created
-        let result = cli.get_default_named_vault().await.ok();
+        let result = cli.get_or_create_default_named_vault().await.ok();
         assert!(result.is_some());
 
-        let result = cli.get_default_named_identity().await.ok();
+        let result = cli.get_or_create_default_named_identity().await.ok();
         assert!(result.is_some());
 
         // that identity is associated to the node

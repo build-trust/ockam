@@ -48,7 +48,7 @@ async fn run_impl(
             }
         }
         None => {
-            let identity = opts.state.get_default_named_identity().await?;
+            let identity = opts.state.get_or_create_default_named_identity().await?;
             opts.terminal
                 .stdout()
                 .plain(fmt_ok!(

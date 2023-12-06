@@ -45,7 +45,7 @@ impl CliState {
     /// Create an identity associated with a name, using the default vault
     /// If there is already an identity with that name, return its identifier
     pub async fn create_identity_with_name(&self, name: &str) -> Result<NamedIdentity> {
-        let vault = self.get_default_named_vault().await?;
+        let vault = self.get_or_create_default_named_vault().await?;
         self.create_identity_with_name_and_vault(name, &vault.name())
             .await
     }
@@ -131,7 +131,7 @@ impl CliState {
     ) -> Result<NamedIdentity> {
         match name {
             Some(name) => self.get_named_identity(name).await,
-            None => self.get_default_named_identity().await,
+            None => self.get_or_create_default_named_identity().await,
         }
     }
 
@@ -182,7 +182,7 @@ impl CliState {
                 Ok(Identity::import_from_change_history(
                     Some(&identity.identifier()),
                     change_history,
-                    self.get_default_named_vault()
+                    self.get_or_create_default_named_vault()
                         .await?
                         .vault()
                         .await?
@@ -217,12 +217,12 @@ impl CliState {
     /// Return the name of the default identity.
     /// This function creates the default identity if it does not exist!
     pub async fn get_default_identity_name(&self) -> Result<String> {
-        Ok(self.get_default_named_identity().await?.name())
+        Ok(self.get_or_create_default_named_identity().await?.name())
     }
 
     /// Return the default named identity
     /// This function creates the default identity if it does not exist!
-    pub async fn get_default_named_identity(&self) -> Result<NamedIdentity> {
+    pub async fn get_or_create_default_named_identity(&self) -> Result<NamedIdentity> {
         match self
             .identities_repository()
             .await?
@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(identity, expected);
 
         // check that the identity uses the default vault
-        let default_vault = cli.get_default_named_vault().await?;
+        let default_vault = cli.get_or_create_default_named_vault().await?;
         assert_eq!(identity.vault_name, default_vault.name());
 
         Ok(())
@@ -484,7 +484,7 @@ mod tests {
         let cli = CliState::test().await?;
 
         // when we retrieve the default identity, we create it if it doesn't exist
-        let identity = cli.get_default_named_identity().await?;
+        let identity = cli.get_or_create_default_named_identity().await?;
 
         // when the identity is created there is a change history + a named identity
         let result = cli.get_change_history(&identity.identifier()).await;
@@ -494,7 +494,7 @@ mod tests {
         assert!(result.is_ok());
 
         // check that the identity uses the default vault
-        let default_vault = cli.get_default_named_vault().await?;
+        let default_vault = cli.get_or_create_default_named_vault().await?;
         assert_eq!(identity.vault_name, default_vault.name());
 
         Ok(())

@@ -93,7 +93,7 @@ impl CliState {
 
     /// Return the default vault
     /// If it doesn't exist, the vault is created with a random name
-    pub async fn get_default_named_vault(&self) -> Result<NamedVault> {
+    pub async fn get_or_create_default_named_vault(&self) -> Result<NamedVault> {
         let result = self.vaults_repository().await?.get_default_vault().await?;
         match result {
             Some(vault) => Ok(vault),
@@ -109,7 +109,7 @@ impl CliState {
     ) -> Result<NamedVault> {
         match vault_name {
             Some(name) => self.get_named_vault(name).await,
-            None => self.get_default_named_vault().await,
+            None => self.get_or_create_default_named_vault().await,
         }
     }
 }
@@ -258,17 +258,17 @@ mod tests {
         assert_eq!(result, vec![named_vault1.clone(), named_vault2.clone()]);
 
         // the first created vault is the default one
-        let result = cli.get_default_named_vault().await?;
+        let result = cli.get_or_create_default_named_vault().await?;
         assert_eq!(result, named_vault1.clone());
 
         // the default vault can be changed
         cli.set_default_vault("vault2").await?;
-        let result = cli.get_default_named_vault().await?;
+        let result = cli.get_or_create_default_named_vault().await?;
         assert_eq!(result, named_vault2.set_as_default());
 
         // a vault can be deleted
         cli.delete_named_vault("vault2").await?;
-        let result = cli.get_default_named_vault().await?;
+        let result = cli.get_or_create_default_named_vault().await?;
         assert_eq!(result, named_vault1.set_as_default());
 
         // all the vaults can be deleted
@@ -284,7 +284,7 @@ mod tests {
         let cli = CliState::test().await?;
 
         // the default vault is always available
-        let vault = cli.get_default_named_vault().await?;
+        let vault = cli.get_or_create_default_named_vault().await?;
         assert!(vault.is_default());
         assert!(vault.path().starts_with(cli.dir()));
 

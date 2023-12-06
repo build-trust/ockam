@@ -134,7 +134,7 @@ async fn relay_name(cli_state: &CliState) -> ockam::Result<String> {
 
 async fn bare_relay_name(cli_state: &CliState) -> ockam::Result<String> {
     Ok(cli_state
-        .get_default_named_identity()
+        .get_or_create_default_named_identity()
         .await?
         .identifier()
         .to_string())

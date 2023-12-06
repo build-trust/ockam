@@ -429,7 +429,11 @@ pub mod test_utils {
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
             .build();
 
-        let vault = cli_state.get_default_named_vault().await?.vault().await?;
+        let vault = cli_state
+            .get_or_create_default_named_vault()
+            .await?
+            .vault()
+            .await?;
         let identities = cli_state.make_identities(vault).await?;
 
         let credential = identities
