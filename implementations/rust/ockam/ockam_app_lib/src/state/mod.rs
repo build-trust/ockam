@@ -635,7 +635,13 @@ impl AppState {
             groups.sort();
 
             let user_info = self.user_info().await?;
-            enrollment_name = Some(user_info.name);
+            // when enrolling with email, the name is just a duplicate of the
+            // email, in case case it's better to just omit the name
+            if user_info.name == user_info.email {
+                enrollment_name = None;
+            } else {
+                enrollment_name = Some(user_info.name);
+            }
             enrollment_email = Some(user_info.email);
             enrollment_image = Some(user_info.picture);
             enrollment_github_user = Some(user_info.nickname);

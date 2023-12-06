@@ -1,10 +1,9 @@
 import SwiftUI
 
-struct CreateServiceView: View {
+struct OpenPortal: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @FocusState private var isFocused: Bool
 
-    @Binding var state_loaded: Bool
     @State var isProcessing = false
     @State var errorMessage = ""
     @State var serviceName = ""
@@ -16,10 +15,10 @@ struct CreateServiceView: View {
                 GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Name")
-                        Text(verbatim: "A name for your service").font(.caption)
+                        Text(verbatim: "A name for your portal").font(.caption)
                     }
                     .padding(.top, 6)
-                    TextField("Service name", text: $serviceName)
+                    TextField("Portal name", text: $serviceName)
                         .focused($isFocused)
                         .onAppear(perform: {
                             isFocused = true
@@ -72,7 +71,7 @@ struct CreateServiceView: View {
                         }
                     },
                     label: {
-                        Text("Create Service")
+                        Text("Create")
                     }
                 )
                 .disabled(!canCreateService() && !isProcessing)
@@ -89,12 +88,12 @@ struct CreateServiceView: View {
     }
 
     func canCreateService() -> Bool {
-        return !self.serviceName.isEmpty && !self.serviceAddress.isEmpty && state_loaded
+        return !self.serviceName.isEmpty && !self.serviceAddress.isEmpty
     }
 }
 
 struct CreateServiceView_Previews: PreviewProvider {
     static var previews: some View {
-        CreateServiceView(state_loaded: .constant(true))
+        OpenPortal()
     }
 }

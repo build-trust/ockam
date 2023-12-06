@@ -67,7 +67,7 @@ struct ServiceGroupView: View {
                     IncomingInvite(invite: invite)
                 }
                 ForEach(group.incomingServices) { service in
-                    RemoteServiceView(service: service)
+                    RemotePortalView(service: service)
                 }
             }
             .padding(.leading, VerticalSpacingUnit*2)

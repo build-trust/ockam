@@ -42,7 +42,7 @@ struct MainView: View {
 
                 if state.orchestrator_status == OrchestratorStatus.Disconnected {
                     ClickableMenuEntry(
-                        text: "Enroll...", icon: "arrow.right.square",
+                        text: "Enroll…", icon: "arrow.right.square",
                         action: {
                             enroll_user()
                             appDelegate.dismissPopover()
@@ -59,50 +59,67 @@ struct MainView: View {
                             .padding(.top, VerticalSpacingUnit*2)
                             .padding(.bottom, VerticalSpacingUnit)
 
-                        Text("Your services:")
-                            .font(.body).bold()
-                            .foregroundColor(OckamSecondaryTextColor)
-                            .padding(.bottom, VerticalSpacingUnit)
+                        if !state.localServices.isEmpty {
+                            Text("Your portals:")
+                                .font(.body).bold()
+                                .foregroundColor(OckamSecondaryTextColor)
+                                .padding(.bottom, VerticalSpacingUnit)
 
-                        ForEach(state.localServices) { localService in
-                            LocalServiceView(localService: localService)
+                            // TODO: add scrollPosition() support after ventura has been dropped
+                            ScrollView {
+                                ForEach(state.localServices) { localService in
+                                    LocalPortalView(
+                                        localService: localService
+                                    )
+                                }
+                            }
+                            .scrollIndicators(ScrollIndicatorVisibility.hidden)
+                            .frame(maxHeight: 250)
+
+                            Divider()
+                                .padding(.top, VerticalSpacingUnit)
+                                .padding(.bottom, VerticalSpacingUnit)
                         }
 
                         ClickableMenuEntry(
-                            text: "Create a service...",
+                            text: "Open a portal…",
                             action: {
-                                openWindow(id: "create-service")
+                                openWindow(id: "open-portal")
                                 bringInFront()
                             }
                         )
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.top, VerticalSpacingUnit)
                     }
                 }
 
                 if !state.groups.isEmpty {
                     Divider()
-                        .padding(.top, VerticalSpacingUnit*2)
+                        .padding(.top, VerticalSpacingUnit)
                         .padding(.bottom, VerticalSpacingUnit)
 
-                    Text("Services shared with you:")
+                    Text("Portals open to you:")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
                         .padding(.bottom, VerticalSpacingUnit)
 
-                    ForEach(state.groups) { group in
-                        if selectedGroup == "" || selectedGroup == group.email {
-                            ServiceGroupView(
-                                group: group,
-                                back: {
-                                    selectedGroup = ""
-                                },
-                                action: {
-                                    selectedGroup = group.email
-                                }
-                            )
+                    ScrollView {
+                        ForEach(state.groups) { group in
+                            if selectedGroup == "" || selectedGroup == group.email {
+                                ServiceGroupView(
+                                    group: group,
+                                    back: {
+                                        selectedGroup = ""
+                                    },
+                                    action: {
+                                        selectedGroup = group.email
+                                    }
+                                )
+                            }
                         }
                     }
+                    .scrollIndicators(ScrollIndicatorVisibility.hidden)
+                    .frame(maxHeight: selectedGroup == "" ? 175 : 500)
+
                 }
             }
 
@@ -120,7 +137,7 @@ struct MainView: View {
                     VStack(spacing: 0) {
                         @Environment(\.openWindow) var openWindow
                         ClickableMenuEntry(
-                            text: "Star us on Github...", icon: "star",
+                            text: "Star us on Github…", icon: "star",
                             action: {
                                 if let url = URL(string: "https://github.com/build-trust/ockam") {
                                     NSWorkspace.shared.open(url)
@@ -128,7 +145,7 @@ struct MainView: View {
                                 appDelegate.dismissPopover()
                             })
                         ClickableMenuEntry(
-                            text: "Learn more from our documentation...", icon: "book",
+                            text: "Learn more from our documentation…", icon: "book",
                             action: {
                                 if let url = URL(string: "https://docs.ockam.io") {
                                     NSWorkspace.shared.open(url)
@@ -193,5 +210,6 @@ struct MainView_Previews: PreviewProvider {
 
     static var previews: some View {
         MainView(state: $state)
+            .frame(height: 500)
     }
 }

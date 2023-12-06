@@ -68,15 +68,24 @@ When you run Enroll, the following steps take place:
                         Text("Enroll using email & password or GitHub")
                             .font(.title)
                             .padding(.vertical, VerticalSpacingUnit*2)
-                        Text(
-"""
-During the enrollment process, your web browser will be launched with a link that will ask you to authenticate.
-"""                     )
 
-                        Image("EnrollmentPage")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 300)
+                        if status == OrchestratorStatus.Disconnected {
+                            Text(
+    """
+    During the enrollment process, your web browser will be launched with a link that will ask you to authenticate.
+    """                     )
+
+                            Image("EnrollmentPage")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 300)
+                        } else {
+                            if status == OrchestratorStatus.Connecting ||
+                                status == OrchestratorStatus.Connected {
+                                Text("Your are now enrolled with Ockam Orchestrator!").font(.title3)
+                            }
+                            EnrollmentStatus(status: $status)
+                        }
 
                     case 4:
                         Text("How to create a service")
@@ -198,7 +207,7 @@ You can click on an invitation to open it. And then you can click on Accept to s
                             Button(action: {
                                 enroll_user()
                             }) {
-                                Text("Enroll...")
+                                Text("Enroll…")
                                     .font(.title3)
                                     .frame(
                                         width: HorizontalSpacingUnit*16,
@@ -223,8 +232,35 @@ You can click on an invitation to open it. And then you can click on Accept to s
                             .keyboardShortcut(.defaultAction)
                             .padding(.vertical, VerticalSpacingUnit)
                         }
+                        Spacer()
+                    } else if page == 0 {
+                        Spacer()
+                        HStack {
+                            Button(action: {
+                                if let onFinish = onFinish {
+                                    onFinish()
+                                }
+                            }) {
+                                Text("Skip")
+                                    .font(.title3)
+                                    .frame(
+                                        width: HorizontalSpacingUnit*16,
+                                        height: VerticalSpacingUnit*4
+                                    )
+                            }
 
-                        EnrollmentStatus(status: $status)
+                            Button(action: {
+                                page += 1
+                            }) {
+                                Text("Next")
+                                    .font(.title3)
+                                    .frame(
+                                        width: HorizontalSpacingUnit*16,
+                                        height: VerticalSpacingUnit*4
+                                    )
+                            }
+                            .keyboardShortcut(.defaultAction)
+                        }
                         Spacer()
                     } else if page != lastPage {
                         Spacer()

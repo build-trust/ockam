@@ -25,13 +25,13 @@ struct AcceptingInvitation: View {
                             enroll_user()
                         },
                         label: {
-                            Text("Enroll...")
+                            Text("Enroll…")
                         }
                     )
                     .keyboardShortcut(.defaultAction)
                 default:
-                    Text("Your enrollment is in progress...").font(.headline)
-                    Text("This might take a few minutes...").font(.caption)
+                    Text("Your enrollment is in progress").font(.headline)
+                    Text("This might take a few minutes").font(.caption)
                 }
                 Spacer()
                 HStack {
@@ -51,7 +51,7 @@ struct AcceptingInvitation: View {
                 .background(OckamDarkerBackground)
             } else if !state.loaded {
                 Spacer()
-                Text("Loading invitations...").font(.headline)
+                Text("Loading invitations").font(.headline)
                 Spacer()
 
                 HStack {
@@ -84,7 +84,7 @@ struct AcceptingInvitation: View {
                 .padding(.vertical, VerticalSpacingUnit * 2)
 
                 Group {
-                    Text("Has invited you to the service:")
+                    Text("Has invited you to the portal:")
                         .padding(.vertical, VerticalSpacingUnit)
                         .padding(.horizontal, HorizontalSpacingUnit)
                         .font(.headline)

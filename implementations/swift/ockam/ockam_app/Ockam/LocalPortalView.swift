@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct LocalServiceView: View {
+struct LocalPortalView: View {
     @Environment(\.openWindow) private var openWindow
 
     @State private var isHovered = false
@@ -59,7 +59,7 @@ struct LocalServiceView: View {
                 if let scheme = localService.scheme {
                     let url = scheme + "://" + address
                     ClickableMenuEntry(
-                        text: "Open " + url + "...",
+                        text: "Open " + url + "…",
                         action: {
                             if let url = URL(string: url) {
                                 NSWorkspace.shared.open(url)
@@ -74,9 +74,9 @@ struct LocalServiceView: View {
                         self.closeWindow()
                     })
                 ClickableMenuEntry(
-                    text: "Share...",
+                    text: "Share…",
                     action: {
-                        openWindow(id: "share-service", value: localService.id)
+                        openWindow(id: "invite-to-portal", value: localService.id)
                         bringInFront()
                         self.closeWindow()
                     })
@@ -97,8 +97,8 @@ struct LocalServiceView_Previews: PreviewProvider {
 
     static var previews: some View {
         VStack(spacing: 0) {
-            LocalServiceView(localService: state.localServices[0])
-            LocalServiceView(localService: state.localServices[1])
+            LocalPortalView(localService: state.localServices[0])
+            LocalPortalView(localService: state.localServices[1])
         }
         .frame(width: 320, height: 200)
     }

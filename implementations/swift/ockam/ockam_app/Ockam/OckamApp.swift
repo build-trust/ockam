@@ -220,8 +220,8 @@ struct OckamApp: App {
         }
         .windowResizability(.contentSize)
 
-        WindowGroup("Confirmation", id: "delete-service-confirmation", for: Service.ID.self) { $serviceId in
-            DeleteIncomingServiceView(
+        WindowGroup("Confirmation", id: "delete-portal-confirmation", for: Service.ID.self) { $serviceId in
+            DeleteIncomingPortalView(
                 service: StateContainer.shared.state.lookupIncomingServiceById(
                     serviceId.unsafelyUnwrapped
                 ).unsafelyUnwrapped.1
@@ -241,15 +241,15 @@ struct OckamApp: App {
         .windowResizability(.contentSize)
 
         // Declare a state-independent window, not open by default
-        Window("Create an outlet to a tcp service", id: "create-service") {
-            CreateServiceView(state_loaded: $state.loaded)
+        Window("Open a portal to a tcp service", id: "open-portal") {
+            OpenPortal()
         }
         .windowResizability(.contentSize)
 
         // Declare a "template" of windows, dependent on the LocalService.ID, not open by default
-        WindowGroup("Share a service", id: "share-service", for: LocalService.ID.self) {
+        WindowGroup("Invite you friends to this portal", id: "invite-to-portal", for: LocalService.ID.self) {
             $localServiceId in
-            ShareServiceView(
+            InviteToPortal(
                 state_loaded: $state.loaded,
                 localService: StateContainer.shared.state.getLocalService(
                     localServiceId.unsafelyUnwrapped
