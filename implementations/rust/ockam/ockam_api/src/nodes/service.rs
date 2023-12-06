@@ -439,7 +439,7 @@ impl NodeManager {
 
         // If we've been configured with a trust context, we can start Credential Exchange service
         if let Ok(tc) = self.trust_context() {
-            self.start_credentials_service_impl(
+            self.start_credentials_service(
                 ctx,
                 tc.clone(),
                 DefaultAddress::CREDENTIALS_SERVICE.into(),
@@ -636,9 +636,10 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 encode_response(self.start_hop_service(ctx, req, dec).await)?
             }
-            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
-                encode_response(self.start_credentials_service(ctx, req, dec).await)?
-            }
+            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => encode_response(
+                self.start_credentials_service(ctx, req, dec.decode()?)
+                    .await,
+            )?,
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
                 self.start_kafka_outlet_service(ctx, req, dec.decode()?)
                     .await,
