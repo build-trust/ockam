@@ -634,7 +634,7 @@ impl NodeManagerWorker {
                 encode_response(self.start_echoer_service(ctx, req, dec).await)?
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
-                encode_response(self.start_hop_service(ctx, req, dec).await)?
+                encode_response(self.start_hop_service(ctx, req, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => encode_response(
                 self.start_credentials_service(ctx, req, dec.decode()?)

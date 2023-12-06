@@ -70,13 +70,17 @@ impl NodeManagerWorker {
     pub(super) async fn start_hop_service(
         &self,
         ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
+        request_header: &RequestHeader,
+        request: StartHopServiceRequest,
     ) -> Result<Response, Response<Error>> {
-        let req_body: StartHopServiceRequest = dec.decode()?;
-        let addr = req_body.addr.to_string().into();
-        self.node_manager.start_hop_service_impl(ctx, addr).await?;
-        Ok(Response::ok(req))
+        match self
+            .node_manager
+            .start_hop_service(ctx, request.addr.into())
+            .await
+        {
+            Ok(_) => Ok(Response::ok(request_header)),
+            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
+        }
     }
 
     pub(super) async fn start_credentials_service(
@@ -344,7 +348,7 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_hop_service_impl(&self, ctx: &Context, addr: Address) -> Result<()> {
+    pub(super) async fn start_hop_service(&self, ctx: &Context, addr: Address) -> Result<()> {
         if self.registry.hop_services.contains_key(&addr).await {
             return Err(ApiError::core("Hop service exists at this address"));
         }
