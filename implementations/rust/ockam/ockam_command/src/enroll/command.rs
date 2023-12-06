@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use clap::Args;
 use colorful::Colorful;
-use miette::{IntoDiagnostic, WrapErr};
+use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{info, warn};
@@ -153,9 +153,13 @@ pub async fn retrieve_user_project(
         return Ok(project);
     };
 
-    let space = get_user_space(opts, ctx, node)
-        .await
-        .wrap_err("Unable to retrieve and set a space as default")?;
+    let space = get_user_space(opts, ctx, node).await.map_err(|e| {
+        miette!(
+            "Unable to retrieve and set a space as default {:?}",
+            e.to_string()
+        )
+    })?;
+
     info!("Retrieved the user default space {:?}", space);
 
     let project = get_user_project(opts, ctx, node, &space)
