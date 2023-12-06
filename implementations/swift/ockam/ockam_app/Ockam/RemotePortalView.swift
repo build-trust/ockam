@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct RemoteServiceView: View {
+struct RemotePortalView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @Environment(\.openWindow) var openWindow
 
@@ -79,7 +79,7 @@ struct RemoteServiceView: View {
                                 scheme + "://" + service.address.unsafelyUnwrapped + ":"
                                 + String(service.port.unsafelyUnwrapped)
                                 ClickableMenuEntry(
-                                    text: "Open " + url + "...",
+                                    text: "Open " + url + "…",
                                     action: {
                                         if let url = URL(string: url) {
                                             NSWorkspace.shared.open(url)
@@ -111,7 +111,7 @@ struct RemoteServiceView: View {
                     ClickableMenuEntry(
                         text: "Delete",
                         action: {
-                            openWindow(id: "delete-service-confirmation", value: service.id)
+                            openWindow(id: "delete-portal-confirmation", value: service.id)
                         })
                 }
                 .padding(.leading, HorizontalSpacingUnit*2)
@@ -127,13 +127,13 @@ struct RemoteServiceView_Previews: PreviewProvider {
     static var previews: some View {
         VStack {
             ForEach(state.groups[0].incomingServices) { service in
-                RemoteServiceView(service: service)
+                RemotePortalView(service: service)
             }
             ForEach(state.groups[1].incomingServices) { service in
-                RemoteServiceView(service: service)
+                RemotePortalView(service: service)
             }
             ForEach(state.groups[2].incomingServices) { service in
-                RemoteServiceView(service: service)
+                RemotePortalView(service: service)
             }
         }
         .frame(width: 300, height: 600)

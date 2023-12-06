@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ShareServiceView: View {
+struct InviteToPortal: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
 
     @Binding var state_loaded: Bool
@@ -46,7 +46,7 @@ struct ShareServiceView: View {
                         }
                     },
                     label: {
-                        Text("Share")
+                        Text("Invite")
                     }
                 )
                 .disabled(!canShareService() && !isProcessing)
@@ -69,7 +69,7 @@ struct ShareServiceView: View {
 
 struct ShareServiceView_Previews: PreviewProvider {
     static var previews: some View {
-        ShareServiceView(
+        InviteToPortal(
             state_loaded: .constant(true),
             localService: LocalService(
                 name: "my-service",

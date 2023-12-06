@@ -9,12 +9,12 @@ struct EnrollmentStatus: View {
             case .Disconnected:
                 Text("Please enroll to get started")
             case .Connected:
-                Text("Enrolled with Ockam Orchestrator")
+                Text("Connected to Ockam Orchestrator")
             case .Connecting:
                 Text("Connecting to Ockam Orchestrator")
             case .WaitingForToken:
                 Text("Opened account.ockam.io/activate")
-                Text("Waiting for you to authenticate in your browser...").font(.caption)
+                Text("Waiting for you to authenticate in your browser").font(.caption)
             case .RetrievingSpace:
                 Text("Getting available spaces in your account")
             case .RetrievingProject:

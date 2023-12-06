@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct DeleteIncomingServiceView: View {
+struct DeleteIncomingPortalView: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @State var service: Service
 
@@ -8,7 +8,7 @@ struct DeleteIncomingServiceView: View {
         VStack {
             Spacer()
             Text(
-                "Once you click Delete, the service '\(service.sourceName)' will no longer show up here.\n" +
+                "Once you click Delete, the portal '\(service.sourceName)' will no longer show up here.\n" +
                 "Are you sure you want to do this?\n" +
                 "Once deleted, the only way to get this back is to have the person who sent you the invite, to send another one."
             )
@@ -48,10 +48,10 @@ struct DeleteIncomingServiceView: View {
 }
 
 
-struct IgnoreServiceView_Previews: PreviewProvider {
+struct DeleteIncomingPortalView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
 
     static var previews: some View {
-        DeleteIncomingServiceView(service: state.groups[1].incomingServices[0])
+        DeleteIncomingPortalView(service: state.groups[1].incomingServices[0])
     }
 }
