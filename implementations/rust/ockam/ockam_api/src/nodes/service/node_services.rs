@@ -10,6 +10,7 @@ use crate::auth::Server;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
+use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartCredentialsService,
     StartEchoerServiceRequest, StartHopServiceRequest, StartUppercaseServiceRequest,
@@ -129,6 +130,17 @@ impl NodeManagerWorker {
         match self.node_manager.list_services().await {
             Ok(services) => Ok(Response::ok(req).body(ServiceList::new(services))),
             Err(e) => Err(Response::internal_error(req, &e.to_string())),
+        }
+    }
+
+    pub(super) async fn get_node_status(
+        &self,
+        context: &Context,
+        request_header: &RequestHeader,
+    ) -> Result<Response<NodeStatus>, Response<Error>> {
+        match self.node_manager.get_node_status(context).await {
+            Ok(node_status) => Ok(Response::ok(request_header).body(node_status)),
+            Err(e) => Err(Response::internal_error(request_header, &e.to_string())),
         }
     }
 }
@@ -360,5 +372,14 @@ impl NodeManager {
             .await;
 
         Ok(())
+    }
+
+    pub async fn get_node_status(&self, ctx: &Context) -> Result<NodeStatus> {
+        Ok(NodeStatus::new(
+            self.node_name.clone(),
+            "Running",
+            ctx.list_workers().await?.len() as u32,
+            std::process::id() as i32,
+        ))
     }
 }
