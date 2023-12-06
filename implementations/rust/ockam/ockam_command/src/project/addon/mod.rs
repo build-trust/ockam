@@ -3,10 +3,11 @@ use core::fmt::Write;
 use clap::{Args, Subcommand};
 
 use ockam_api::cloud::addon::Addon;
+use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
-use crate::operation::util::check_for_completion;
+use crate::operation::util::check_for_operation_completion;
 use crate::output::Output;
 use crate::project::addon::configure_confluent::AddonConfigureConfluentSubcommand;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
@@ -87,9 +88,9 @@ async fn check_configuration_completion(
     project_id: &str,
     operation_id: &str,
 ) -> Result<()> {
-    let controller = node.create_controller().await?;
-    check_for_completion(opts, ctx, &controller, operation_id).await?;
-    let project = controller.get_project(ctx, project_id).await?;
+    check_for_operation_completion(opts, ctx, node, operation_id, "the addon configuration")
+        .await?;
+    let project = node.get_project(ctx, project_id).await?;
     let _ = check_project_readiness(opts, ctx, node, project).await?;
     Ok(())
 }

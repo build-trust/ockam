@@ -1,10 +1,12 @@
-use crate::cloud::Controller;
-use miette::IntoDiagnostic;
+use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
+use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::Retry;
 use tracing::trace;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
@@ -54,6 +56,12 @@ pub trait Operations {
         ctx: &Context,
         operation_id: &str,
     ) -> miette::Result<Option<Operation>>;
+
+    async fn wait_until_operation_is_complete(
+        &self,
+        ctx: &Context,
+        operation_id: &str,
+    ) -> miette::Result<()>;
 }
 
 const TARGET: &str = "ockam_api::cloud::operation";
@@ -74,5 +82,38 @@ impl Operations for Controller {
             .into_diagnostic()?
             .found()
             .into_diagnostic()
+    }
+
+    async fn wait_until_operation_is_complete(
+        &self,
+        ctx: &Context,
+        operation_id: &str,
+    ) -> miette::Result<()> {
+        let retry_strategy = FixedInterval::from_millis(5000)
+            .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
+        let operation = Retry::spawn(retry_strategy.clone(), || async {
+            if let Some(operation) = self.get_operation(ctx, operation_id).await? {
+                if operation.is_completed() {
+                    Ok(operation)
+                } else {
+                    Err(miette!(
+                        "The operation {operation_id} did not complete in time. Please try again"
+                    ))
+                }
+            } else {
+                Err(miette!(
+                    "The operation {operation_id} could not be retrieved. Please try again."
+                ))
+            }
+        })
+        .await?;
+
+        if operation.is_successful() {
+            Ok(())
+        } else {
+            Err(miette!(
+                "The operation {operation_id} completed but was not successful."
+            ))
+        }
     }
 }

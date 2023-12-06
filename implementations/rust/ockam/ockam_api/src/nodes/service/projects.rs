@@ -101,15 +101,35 @@ impl Projects for InMemoryNode {
             .collect::<Vec<_>>())
     }
 
+    /// Wait until the operation associated with the project creation is complete
+    /// At this stage the project node must be up and running
+    async fn wait_until_project_creation_operation_is_complete(
+        &self,
+        ctx: &Context,
+        project: Project,
+    ) -> miette::Result<Project> {
+        let project = self
+            .create_controller()
+            .await?
+            .wait_until_project_creation_operation_is_complete(ctx, project)
+            .await?;
+        self.cli_state.store_project(project.clone()).await?;
+        Ok(project)
+    }
+
+    /// Wait until the project is ready to be used
+    /// At this stage the project authority node must be up and running
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
         project: Project,
     ) -> miette::Result<Project> {
-        Ok(self
+        let project = self
             .create_controller()
             .await?
             .wait_until_project_is_ready(ctx, project)
-            .await?)
+            .await?;
+        self.cli_state.store_project(project.clone()).await?;
+        Ok(project)
     }
 }

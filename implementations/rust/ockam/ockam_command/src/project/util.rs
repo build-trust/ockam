@@ -7,8 +7,8 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
+use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::ORCHESTRATOR_AWAIT_TIMEOUT;
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::service::relay::SecureChannelsCreation;
@@ -108,7 +108,7 @@ pub async fn check_project_readiness(
     let spinner_option = opts.terminal.progress_spinner();
     let project = check_project_ready(
         ctx,
-        &node.create_controller().await?,
+        node,
         project,
         retry_strategy.clone(),
         spinner_option.clone(),
@@ -134,7 +134,7 @@ pub async fn check_project_readiness(
 
 async fn check_project_ready(
     ctx: &Context,
-    controller: &Controller,
+    node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
@@ -152,7 +152,7 @@ async fn check_project_ready(
     let project: Project = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the project show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let project = controller.get_project(ctx, &project_id).await?;
+        let project = node.get_project(ctx, &project_id).await?;
         let result: miette::Result<Project> = if project.is_ready() {
             Ok(project)
         } else {
