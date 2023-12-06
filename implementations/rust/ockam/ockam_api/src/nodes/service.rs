@@ -51,6 +51,7 @@ pub(crate) mod credentials;
 pub mod default_address;
 mod flow_controls;
 pub(crate) mod in_memory_node;
+pub mod kafka_services;
 pub mod message;
 mod node_services;
 mod policy;
@@ -638,30 +639,34 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
                 encode_response(self.start_credentials_service(ctx, req, dec).await)?
             }
-            (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
-                self.start_kafka_outlet_service(ctx, req, dec).await?
-            }
+            (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
+                self.start_kafka_outlet_service(ctx, req, dec.decode()?)
+                    .await,
+            )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
                 self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Outlet)
                     .await,
             )?,
-            (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
-                self.start_kafka_consumer_service(ctx, req, dec).await?
-            }
+            (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
+                self.start_kafka_consumer_service(ctx, req, dec.decode()?)
+                    .await,
+            )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
                 self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Consumer)
                     .await,
             )?,
-            (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
-                self.start_kafka_producer_service(ctx, req, dec).await?
-            }
+            (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
+                self.start_kafka_producer_service(ctx, req, dec.decode()?)
+                    .await,
+            )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
                 self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Producer)
                     .await,
             )?,
-            (Post, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => {
-                self.start_kafka_direct_service(ctx, req, dec).await?
-            }
+            (Post, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_response(
+                self.start_kafka_direct_service(ctx, req, dec.decode()?)
+                    .await,
+            )?,
             (Delete, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_response(
                 self.delete_kafka_service(ctx, req, dec.decode()?, KafkaServiceKind::Direct)
                     .await,
