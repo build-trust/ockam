@@ -210,7 +210,7 @@ impl AppState {
             .iter()
             .filter(|p|
                 // filter out projects that are not owned by the user
-                p.has_admin_with_email(&user_email))
+                p.has_admin_role(&user_email))
             .find(|p| p.id == ticket_project.id)
         {
             debug!(

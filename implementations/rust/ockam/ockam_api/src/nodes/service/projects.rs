@@ -96,7 +96,10 @@ impl Projects for InMemoryNode {
             Ok(projects) => {
                 for project in &projects {
                     let mut project = project.clone();
-                    if !project.has_admin_with_email(&user.email) {
+                    // If the project has no admin role, the name is set to the project id
+                    // to avoid collisions with other projects with the same name that
+                    // belong to other spaces.
+                    if !project.has_admin_role(&user.email) {
                         project.name = project.id.clone();
                     }
                     self.cli_state.store_project(project).await?
@@ -111,7 +114,7 @@ impl Projects for InMemoryNode {
             .get_projects()
             .await?
             .into_iter()
-            .filter(|p| p.has_admin_with_email(&user.email))
+            .filter(|p| p.has_admin_role(&user.email))
             .collect::<Vec<_>>())
     }
 
