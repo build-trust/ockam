@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::process;
 
 use nix::errno::Errno;
+use serde::Serialize;
 use sysinfo::{Pid, ProcessExt, ProcessStatus, System, SystemExt};
 
 use ockam::identity::Identifier;
@@ -330,6 +331,14 @@ impl CliState {
     }
 }
 
+#[derive(Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "lowercase", tag = "status", content = "pid")]
+pub enum NodeProcessStatus {
+    Running(u32),
+    Zombie(u32),
+    Stopped,
+}
+
 /// This struct contains all the data associated to a node
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NodeInfo {
@@ -422,6 +431,11 @@ impl NodeInfo {
 
     /// Return true if there is a running process corresponding to the node process id
     pub fn is_running(&self) -> bool {
+        matches!(self.status(), NodeProcessStatus::Running(_))
+    }
+
+    /// Return the status of the node process corresponding to the node process id
+    pub fn status(&self) -> NodeProcessStatus {
         if let Some(pid) = self.pid() {
             let mut sys = System::new();
             sys.refresh_processes();
@@ -429,12 +443,16 @@ impl NodeInfo {
                 // Under certain circumstances the process can be in a state where it's not running
                 // and we are unable to kill it. For example, `kill -9` a process created by
                 // `node create` in a Docker environment will result in a zombie process.
-                !matches!(p.status(), ProcessStatus::Dead | ProcessStatus::Zombie)
+                if matches!(p.status(), ProcessStatus::Dead | ProcessStatus::Zombie) {
+                    NodeProcessStatus::Zombie(pid)
+                } else {
+                    NodeProcessStatus::Running(pid)
+                }
             } else {
-                false
+                NodeProcessStatus::Stopped
             }
         } else {
-            false
+            NodeProcessStatus::Stopped
         }
     }
 }

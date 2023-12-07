@@ -8,6 +8,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::cli_state::nodes::NodeInfo;
+use ockam_api::NodeProcessStatus;
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
@@ -109,13 +110,18 @@ pub fn print_nodes_info(
 #[derive(Serialize)]
 pub struct NodeListOutput {
     pub node_name: String,
-    pub status: String,
+    pub status: NodeProcessStatus,
     pub pid: Option<u32>,
     pub is_default: bool,
 }
 
 impl NodeListOutput {
-    pub fn new(node_name: String, status: String, pid: Option<u32>, is_default: bool) -> Self {
+    pub fn new(
+        node_name: String,
+        status: NodeProcessStatus,
+        pid: Option<u32>,
+        is_default: bool,
+    ) -> Self {
         Self {
             node_name,
             status,
@@ -125,14 +131,9 @@ impl NodeListOutput {
     }
 
     pub fn from_node_info(node_info: &NodeInfo) -> Self {
-        let status = if node_info.is_running() {
-            "Running"
-        } else {
-            "Not running"
-        };
         Self::new(
             node_info.name(),
-            status.to_string(),
+            node_info.status(),
             node_info.pid(),
             node_info.is_default(),
         )
@@ -141,19 +142,27 @@ impl NodeListOutput {
 
 impl Output for NodeListOutput {
     fn output(&self) -> Result<String> {
-        let (status, pid) = match self.pid {
-            Some(pid) => (
+        let (status, process) = match self.status {
+            NodeProcessStatus::Running(pid) => (
                 "UP".color(OckamColor::Success.color()),
                 format!(
                     "Process id {}",
                     pid.to_string().color(OckamColor::PrimaryResource.color())
                 ),
             ),
-            _ => (
+            NodeProcessStatus::Zombie(pid) => (
+                "ZOMBIE".color(OckamColor::Failure.color()),
+                format!(
+                    "Process id {}",
+                    pid.to_string().color(OckamColor::PrimaryResource.color())
+                ),
+            ),
+            NodeProcessStatus::Stopped => (
                 "DOWN".color(OckamColor::Failure.color()),
                 "No process running".to_string(),
             ),
         };
+
         let default = match self.is_default {
             true => " (default)".to_string(),
             false => "".to_string(),
@@ -161,7 +170,7 @@ impl Output for NodeListOutput {
 
         let output = formatdoc! {"
         Node {node_name}{default} {status}
-        {pid}",
+        {process}",
         node_name = self
             .node_name
             .to_string()
