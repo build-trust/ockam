@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
-use ockam::identity::{Identifier, Identity};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
-use ockam_multiaddr::MultiAddr;
 
 use crate::cli_state::CliState;
 use crate::cloud::project::Project;
@@ -11,40 +9,6 @@ use crate::cloud::project::Project;
 use super::Result;
 
 impl CliState {
-    pub async fn import_project(
-        &self,
-        project_id: &str,
-        project_name: &str,
-        project_identifier: &Option<Identifier>,
-        project_access_route: &MultiAddr,
-        authority_identity: &Option<Identity>,
-        authority_access_route: &Option<MultiAddr>,
-    ) -> Result<Project> {
-        let authority_identity = match authority_identity {
-            Some(identity) => Some(identity.change_history().export_as_string()?),
-            None => None,
-        };
-        let project = Project {
-            id: project_id.to_string(),
-            name: project_name.to_string(),
-            space_name: "".to_string(),
-            access_route: project_access_route.to_string(),
-            users: vec![],
-            space_id: "".to_string(),
-            identity: project_identifier.clone(),
-            authority_access_route: authority_access_route.clone().map(|r| r.to_string()),
-            authority_identity,
-            okta_config: None,
-            confluent_config: None,
-            version: None,
-            running: None,
-            operation_id: None,
-            user_roles: vec![],
-        };
-        self.store_project(project.clone()).await?;
-        Ok(project)
-    }
-
     pub async fn store_project(&self, project: Project) -> Result<()> {
         let repository = self.projects_repository().await?;
         repository.store_project(&project).await?;
@@ -158,29 +122,5 @@ impl CliState {
             projects.insert(project.name.clone(), project);
         }
         Ok(projects)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use ockam_core::env::FromString;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_import_project() -> Result<()> {
-        let cli = CliState::test().await?;
-
-        // a project can be created without specifying its authority
-        cli.import_project(
-            "project_id",
-            "project_name",
-            &None,
-            &MultiAddr::from_string("/project/default").unwrap(),
-            &None,
-            &None,
-        )
-        .await?;
-        Ok(())
     }
 }

@@ -1,1 +1,2 @@
-This command will import a project in the local database. If the project already exists, an error is returned
+This command will import a project in the local database from a json file produce with `ockam project show --output json`.
+If the project already exists, an error is returned

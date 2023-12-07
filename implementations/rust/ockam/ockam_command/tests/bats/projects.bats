@@ -14,14 +14,32 @@ teardown() {
 
 # ===== TESTS
 
-@test "projects - a project can be imported" {
-  run_success bash -c "$OCKAM project import \
-      --project-name awesome \
-      --project-id 1 \
-      --project-identifier Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1 \
-      --project-access-route /dnsaddr/127.0.0.1/tcp/4000/service/api \
-      --authority-identity 81825837830101583285f68200815820f02eb8b3f7b97e73f4866cc76953e0fe8aa8765b69bac1bc630b3756c587aa9bf41a6565bf201a7831c2208200815840f2474f917cac6a315a780034ec54786be9368ea0e50b713eb4847571efca8f98ece6f470ef7d18deefc134752db175e7f40e154b1a7c002d9b29db0c65892a08 \
-      --authority-access-route /dnsaddr/127.0.0.1/tcp/5000/service/api"
+@test "projects - a project can be imported from a JSON file" {
+  cat <<EOF >>"$OCKAM_HOME/project.json"
+{
+  "id": "66529571-169f-44c6-8a6f-5282c1eda44c",
+  "name": "awesome",
+  "space_name": "together-porgy",
+  "access_route": "/dnsaddr/k8s-hubdev-nginxing-9096afe9cf-7f601c51a0c807d3.elb.us-west-1.amazonaws.com/tcp/4017/service/api",
+  "users": [],
+  "space_id": "758623ff-5ecd-4671-8ac7-2cf269de4784",
+  "identity": "I6443a2339360a81ce37b3ea14185d118e128ad3bd7e420ac1491937d10e026e6",
+  "authority_access_route": "/dnsaddr/k8s-hubdev-nginxing-9096afe9cf-7f601c51a0c807d3.elb.us-west-1.amazonaws.com/tcp/4018/service/api",
+  "authority_identity": "81825837830101583285f6820081582066253eb5d5ad69eac74a380293c47deb0449bb4c2d9907e51d4a481ed3dfb8c1f41a656f0afb1a783b0dfb8200815840c0f408b2164ab86b42d03ba7d3cbeffe8ba5fa13fbf32ac882ad5188414688c54076de19cb25737c120f1f8a915e10442b743012802865a9cf21dffa0197d105",
+  "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",
+  "running": true,
+  "operation_id": null,
+  "user_roles": [
+    {
+      "email": "etorreborre@gmail.com",
+      "id": 28,
+      "role": "Admin",
+      "scope": "Space"
+    }
+  ]
+}
+EOF
 
+  run_success "$OCKAM" project import --project-file $OCKAM_HOME/project.json
   assert_output --partial "Successfully imported project awesome"
 }

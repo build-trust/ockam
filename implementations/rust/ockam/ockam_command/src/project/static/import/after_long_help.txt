@@ -1,10 +1,4 @@
 ```sh
 # To import a project
-$ ockam project import
-      --project-name name \\
-      --project-id 12345 \\
-      --project-identifier I1234561234561234561234561234561234561234 \\
-      --project-access-route /dnsaddr/127.0.0.1/tcp/4000/service/api \\
-      --authority-identity I1234561234561234561234561234561234561234 \\
-      --authority-access-route /dnsaddr/127.0.0.1/tcp/5000/service/api
+$ ockam project import --project-file project.json
 ```

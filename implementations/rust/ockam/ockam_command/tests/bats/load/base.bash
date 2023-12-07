@@ -66,6 +66,7 @@ python_pid_file_path() {
 # Sets the CLI directory to a random directory under /tmp
 setup_home_dir() {
   dir="$BATS_FILE_TMPDIR/$(openssl rand -hex 8)"
+  mkdir -p $dir
   export OCKAM_HOME="$dir"
   if [[ -z "$HOME_DIRS" ]]; then
     export HOME_DIRS="$OCKAM_HOME"

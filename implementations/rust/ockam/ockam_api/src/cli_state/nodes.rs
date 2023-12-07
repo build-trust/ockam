@@ -441,8 +441,6 @@ impl NodeInfo {
 
 #[cfg(test)]
 mod tests {
-    use ockam_core::env::FromString;
-
     use crate::config::lookup::InternetAddress;
 
     use super::*;
@@ -556,17 +554,24 @@ mod tests {
         assert_eq!(result.identifier(), identity.identifier());
 
         // a node can be created with a name, an existing identity and an existing project
-        let authority = cli.get_identity(&identity.identifier()).await?;
-        let project = cli
-            .import_project(
-                "project_id",
-                "project_name",
-                &None,
-                &MultiAddr::from_string("/project/default").unwrap(),
-                &Some(authority),
-                &Some(MultiAddr::from_string("/project/authority").unwrap()),
-            )
-            .await?;
+        let project = Project {
+            id: "project_id".to_string(),
+            name: "project_name".to_string(),
+            space_name: "1".to_string(),
+            access_route: "".to_string(),
+            users: vec![],
+            space_id: "1".to_string(),
+            identity: None,
+            authority_access_route: None,
+            authority_identity: None,
+            okta_config: None,
+            confluent_config: None,
+            version: None,
+            running: None,
+            operation_id: None,
+            user_roles: vec![],
+        };
+        cli.store_project(project.clone()).await?;
 
         let node = cli
             .create_node_with_optional_values(

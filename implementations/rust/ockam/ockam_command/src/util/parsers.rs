@@ -5,7 +5,6 @@ use miette::miette;
 
 use ockam::identity::Identifier;
 use ockam_api::config::lookup::InternetAddress;
-use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::resolve_peer;
 
 use crate::util::api;
@@ -31,12 +30,6 @@ pub(crate) fn socket_addr_parser(input: &str) -> Result<SocketAddr> {
 /// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
     Identifier::from_str(input).map_err(|_| miette!("Invalid identity identifier: {input}").into())
-}
-
-/// Helper fn for parsing a MultiAddr from user input by using
-/// [`ockam_multiaddr::MultiAddr::from_str()`]
-pub(crate) fn multiaddr_parser(input: &str) -> Result<MultiAddr> {
-    MultiAddr::from_str(input).map_err(|_| miette!("Invalid multiaddr: {input}").into())
 }
 
 /// Helper fn for parsing an InternetAddress from user input by using
