@@ -12,7 +12,7 @@ pub trait BackgroundNodeClient: Send + Sync + 'static {
 
 #[async_trait]
 pub trait Nodes: Send + Sync + 'static {
-    async fn create(&mut self, node_name: &str) -> Result<()>;
+    async fn create(&mut self, node_name: &str, trust_context_name: &str) -> Result<()>;
 }
 
 #[async_trait]
@@ -57,9 +57,10 @@ impl BackgroundNodeClient for Cli {
 
 #[async_trait]
 impl Nodes for Cli {
-    async fn create(&mut self, node_name: &str) -> Result<()> {
+    async fn create(&mut self, node_name: &str, trust_context_name: &str) -> Result<()> {
         let bin = self.bin.clone();
         let node_name = node_name.to_string();
+        let trust_context_name = trust_context_name.to_string();
         spawn_blocking(move || {
             let _ = duct::cmd!(
                 &bin,
@@ -68,7 +69,7 @@ impl Nodes for Cli {
                 "create",
                 &node_name,
                 "--trust-context",
-                &node_name
+                &trust_context_name
             )
             .before_spawn(log_command)
             .stderr_null()
