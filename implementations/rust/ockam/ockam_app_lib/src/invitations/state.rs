@@ -38,6 +38,7 @@ impl InvitationState {
             .unwrap_or_default()
             .into_iter()
             .filter(|i| !i.ignored)
+            .filter(|i| !i.is_expired().unwrap_or(true))
             .collect::<Vec<_>>();
         if self.received.invitations != new_received {
             status.new_received_invitation = new_received
@@ -108,7 +109,7 @@ mod tests {
             received: Some(vec![
                 ReceivedInvitation {
                     id: "id1".to_string(),
-                    expires_at: "expires_at".to_string(),
+                    expires_at: "2100-09-12T15:07:14.00".to_string(),
                     grant_role: RoleInShare::Admin,
                     owner_email: "owner_email".to_string(),
                     scope: ShareScope::Project,
@@ -117,7 +118,7 @@ mod tests {
                 },
                 ReceivedInvitation {
                     id: "id2".to_string(),
-                    expires_at: "expires_at".to_string(),
+                    expires_at: "2100-09-12T15:07:14.00".to_string(),
                     grant_role: RoleInShare::Admin,
                     owner_email: "owner_email".to_string(),
                     scope: ShareScope::Project,
