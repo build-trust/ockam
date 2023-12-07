@@ -245,7 +245,7 @@ impl IncomingService {
 
     /// Returns true if the inlet is connected to the destination node
     pub fn is_connected(&self) -> bool {
-        self.connected
+        self.connected && self.port.is_some() && self.enabled
     }
 
     /// The address of the inlet, if service is connected to the destination node

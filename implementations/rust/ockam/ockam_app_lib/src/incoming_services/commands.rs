@@ -178,6 +178,8 @@ impl AppState {
                     return Ok(());
                 }
                 service.disable();
+                // we are going to delete the relative inlet
+                service.set_connected(false);
                 service.clone()
             } else {
                 return Ok(());
