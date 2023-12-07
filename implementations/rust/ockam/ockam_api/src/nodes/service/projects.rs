@@ -24,9 +24,13 @@ impl Projects for InMemoryNode {
 
     async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
         let controller = self.create_controller().await?;
-        let project = controller.get_project(ctx, project_id).await?;
-        self.cli_state.store_project(project.clone()).await?;
-        Ok(project)
+
+        // try to refresh the project from the controller
+        match controller.get_project(ctx, project_id).await {
+            Ok(project) => self.cli_state.store_project(project.clone()).await?,
+            Err(e) => warn!("could no get the project {project_id} from the controller: {e:?}"),
+        }
+        Ok(self.cli_state.get_project(project_id).await?)
     }
 
     async fn get_project_by_name_or_default(
@@ -86,16 +90,26 @@ impl Projects for InMemoryNode {
     }
 
     async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
-        let projects = self.create_controller().await?.list_projects(ctx).await?;
         let user = self.cli_state.get_default_user().await?;
-        for project in &projects {
-            let mut project = project.clone();
-            if !project.has_admin_with_email(&user.email) {
-                project.name = project.id.clone();
+        // try to refresh the list of projects with the controller
+        match self.create_controller().await?.list_projects(ctx).await {
+            Ok(projects) => {
+                for project in &projects {
+                    let mut project = project.clone();
+                    if !project.has_admin_with_email(&user.email) {
+                        project.name = project.id.clone();
+                    }
+                    self.cli_state.store_project(project).await?
+                }
             }
-            self.cli_state.store_project(project).await?
+            Err(e) => warn!("could not get the list of projects from the controller {e:?}"),
         }
-        Ok(projects
+
+        // return the admin projects
+        Ok(self
+            .cli_state
+            .get_projects()
+            .await?
             .into_iter()
             .filter(|p| p.has_admin_with_email(&user.email))
             .collect::<Vec<_>>())
