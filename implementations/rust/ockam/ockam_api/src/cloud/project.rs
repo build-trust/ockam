@@ -179,7 +179,7 @@ impl Project {
         }
     }
 
-    pub fn has_admin_with_email(&self, email: &str) -> bool {
+    pub fn has_admin_role(&self, email: &str) -> bool {
         self.user_roles
             .iter()
             .any(|ur| ur.role == RoleInShare::Admin && ur.email == email)

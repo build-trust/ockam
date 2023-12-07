@@ -33,7 +33,8 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ResetCommand)) -> mi
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ResetCommand) -> miette::Result<()> {
-    let delete_orchestrator_resources = cmd.all && opts.state.is_enrolled().await?;
+    let delete_orchestrator_resources =
+        cmd.all && opts.state.is_enrolled().await.unwrap_or_default();
     if !cmd.yes {
         let msg = if delete_orchestrator_resources {
             "This will delete the local Ockam configuration and remove your spaces from the Orchestrator. Are you sure?"
