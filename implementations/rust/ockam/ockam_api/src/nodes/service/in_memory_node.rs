@@ -92,6 +92,15 @@ impl InMemoryNode {
         .await
     }
 
+    /// Start an in memory node with a specific identity
+    pub async fn start_node_with_identity(
+        ctx: &Context,
+        cli_state: &CliState,
+        identity_name: &str,
+    ) -> miette::Result<InMemoryNode> {
+        Self::start_node(ctx, cli_state, identity_name, None, None).await
+    }
+
     /// Start an in memory node
     pub async fn start_node(
         ctx: &Context,

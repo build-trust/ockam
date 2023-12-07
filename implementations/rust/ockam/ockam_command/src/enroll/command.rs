@@ -91,7 +91,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
 async fn run_impl(
     ctx: &Context,
     opts: CommandGlobalOpts,
-    _cmd: EnrollCommand,
+    cmd: EnrollCommand,
 ) -> miette::Result<()> {
     opts.terminal.write_line(&fmt_log!(
         "Enrolling your default Ockam identity with Ockam Orchestrator...\n"
@@ -101,7 +101,7 @@ async fn run_impl(
     display_parse_logs(&opts);
 
     let oidc_service = OidcService::default();
-    let token = if _cmd.authorization_code_flow {
+    let token = if cmd.authorization_code_flow {
         oidc_service.get_token_with_pkce().await.into_diagnostic()?
     } else {
         oidc_service.get_token_interactively(&opts).await?
@@ -112,7 +112,12 @@ async fn run_impl(
         .await?;
     opts.state.store_user(&user_info).await?;
 
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let identity_name = opts
+        .state
+        .get_named_identity_or_default(&cmd.identity)
+        .await?
+        .name();
+    let node = InMemoryNode::start_node_with_identity(ctx, &opts.state, &identity_name).await?;
     let controller = node.create_controller().await?;
 
     enroll_with_node(&controller, ctx, token)
@@ -121,6 +126,7 @@ async fn run_impl(
 
     let project = retrieve_user_project(&opts, ctx, &node).await?;
     let identifier = node.identifier();
+
     opts.state
         .set_identifier_as_enrolled(&identifier)
         .await
