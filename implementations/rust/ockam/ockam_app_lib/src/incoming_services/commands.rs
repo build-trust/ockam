@@ -127,20 +127,31 @@ impl AppState {
         );
 
         let local_node_name = service.local_node_name();
-        background_node_client
-            .projects()
-            .enroll(
-                &local_node_name,
-                &service.enrollment_ticket().hex_encoded()?,
-            )
-            .await?;
+
+        // skip enrollment if the ticket is referring to one of our own projects
+        // this is useful for testing and in the case the user is connecting
+        // multiple devices on the same account
+        let (trust_context_name, project_name) = match self.match_owned_projects(service).await? {
+            Some((trust_context_name, project_name)) => (trust_context_name, Some(project_name)),
+            None => {
+                background_node_client
+                    .projects()
+                    .enroll(
+                        &local_node_name,
+                        &service.enrollment_ticket().hex_encoded()?,
+                    )
+                    .await?;
+                // the node name is the trust context for enrolled nodes
+                (local_node_name.clone(), None)
+            }
+        };
 
         // Recreate the node using the trust context
         debug!(node = %local_node_name, "Creating node to host TCP inlet");
         let _ = self.delete_background_node(&local_node_name).await;
         background_node_client
             .nodes()
-            .create(&local_node_name)
+            .create(&local_node_name, &trust_context_name)
             .await?;
         tokio::time::sleep(Duration::from_millis(250)).await;
 
@@ -156,13 +167,61 @@ impl AppState {
             .create_inlet(
                 &self.context(),
                 &bind_address.to_string(),
-                &MultiAddr::from_str(&service.service_route()).into_diagnostic()?,
+                &MultiAddr::from_str(&service.service_route(project_name.as_deref()))
+                    .into_diagnostic()?,
                 &Some(service.inlet_name().to_string()),
                 &None,
                 Duration::from_secs(5),
             )
-            .await?;
+            .await
+            .map_err(|err| {
+                warn!(
+                    "Failed to create TCP inlet for accepted invitation: {}",
+                    err
+                );
+                err
+            })?;
         Ok(bind_address.port())
+    }
+
+    /// Returns the trust context name and project name if one of user own projects matches with
+    /// the project in the enrollment ticket
+    async fn match_owned_projects(
+        &self,
+        service: &IncomingService,
+    ) -> crate::Result<Option<(String, String)>> {
+        let ticket_project = service
+            .enrollment_ticket()
+            .project
+            .as_ref()
+            .ok_or_else(|| {
+                format!(
+                    "The enrollment ticket for the accepted invitation {} should have a project",
+                    service.name()
+                )
+            })?;
+
+        let state = self.state().await;
+
+        let user_email = state.get_default_user().await?.email;
+        if let Some(my_project) = state
+            .get_projects()
+            .await?
+            .iter()
+            .filter(|p|
+                // filter out projects that are not owned by the user
+                p.has_admin_with_email(&user_email))
+            .find(|p| p.id == ticket_project.id)
+        {
+            debug!(
+                "Skipping enrollment, the project {} is owned by the user",
+                my_project.name
+            );
+            // the project name is also the trust context name
+            Ok(Some((my_project.name.clone(), my_project.name.clone())))
+        } else {
+            Ok(None)
+        }
     }
 
     pub(crate) async fn disable_tcp_inlet(&self, invitation_id: &str) -> crate::Result<()> {

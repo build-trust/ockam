@@ -301,11 +301,12 @@ impl IncomingService {
     }
 
     /// Returns the full route to the outlet service
-    pub fn service_route(&self) -> String {
-        let project_id = &self.project_id;
+    pub fn service_route(&self, project_name: Option<&str>) -> String {
+        // when dealing with accepted invitations, the project name is the project id
+        let project_name = project_name.unwrap_or(&self.project_id);
         let relay_name = self.relay_name();
         let service_name = &self.original_name;
-        format!("/project/{project_id}/service/{relay_name}/secure/api/service/{service_name}")
+        format!("/project/{project_name}/service/{relay_name}/secure/api/service/{service_name}")
     }
 
     /// The name of the node that hosts the inlet
@@ -432,7 +433,8 @@ mod tests {
             "forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1",
             service.relay_name()
         );
-        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route());
+        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route(None));
+        assert_eq!("/project/custom-project-name/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route(Some("custom-project-name")));
         assert_eq!(
             "ockam_app_project_id_invitation_id",
             service.local_node_name()
@@ -473,7 +475,7 @@ mod tests {
         assert_eq!("second_invitation_id", service.id());
         assert!(!service.enabled());
         assert_eq!("custom_user_name", service.name());
-        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route());
+        assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route(None));
 
         context.stop().await
     }
