@@ -103,6 +103,13 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             query.execute(&mut *transaction).await.void()?;
         }
 
+        // make sure that the project space is also saved
+        let query5 = query("INSERT OR IGNORE INTO space VALUES ($1, $2, $3)")
+            .bind(project.space_id.to_sql())
+            .bind(project.space_name.to_sql())
+            .bind(true.to_sql());
+        query5.execute(&mut *transaction).await.void()?;
+
         // store the okta configuration if any
         for okta_config in &project.okta_config {
             let query = query("INSERT OR REPLACE INTO okta_config VALUES (?, ?, ?, ?, ?)")
@@ -394,6 +401,7 @@ impl ConfluentConfigRow {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{SpacesRepository, SpacesSqlxDatabase};
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
@@ -450,6 +458,22 @@ mod test {
 
         let result = repository.get_projects().await?;
         assert_eq!(result, vec![project1.clone()]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_store_project_space() -> Result<()> {
+        let db = SqlxDatabase::in_memory("projects").await?;
+        let projects_repository = ProjectsSqlxDatabase::new(db.clone());
+        let project = create_project("1", "name1", vec![], vec![]);
+        projects_repository.store_project(&project).await?;
+
+        // the space information coming from the project must also be stored in the spaces table
+        let spaces_repository: Arc<dyn SpacesRepository> = Arc::new(SpacesSqlxDatabase::new(db));
+        let space = spaces_repository.get_default_space().await?.unwrap();
+        assert_eq!(project.space_id, space.id);
+        assert_eq!(project.space_name, space.name);
+
         Ok(())
     }
 
