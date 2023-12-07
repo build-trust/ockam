@@ -82,6 +82,14 @@ impl CliState {
         Ok(())
     }
 
+    pub async fn set_default_project(&self, project_id: &str) -> Result<()> {
+        self.projects_repository()
+            .await?
+            .set_default_project(project_id)
+            .await?;
+        Ok(())
+    }
+
     pub async fn get_default_project(&self) -> Result<Project> {
         match self
             .projects_repository()

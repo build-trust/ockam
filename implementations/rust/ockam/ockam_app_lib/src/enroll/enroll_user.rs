@@ -195,6 +195,12 @@ impl AppState {
                     .await?
             }
         };
+        // set the selected project as the default one
+        self.state()
+            .await
+            .set_default_trust_context(&project.name)
+            .await?;
+        self.state().await.set_default_project(&project.id).await?;
         self.state()
             .await
             .set_node_project(&node_manager.node_name(), &Some(project.name()))
