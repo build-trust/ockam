@@ -43,6 +43,7 @@ teardown() {
   # Change new home directories for two un-enrolled identities
   setup_home_dir
   GREEN_OCKAM_HOME=$OCKAM_HOME
+  run_success "$OCKAM" project import --project-file $PROJECT_PATH
 
   run_success "$OCKAM" identity create green
   green_identifier=$($OCKAM identity show green)
@@ -51,10 +52,12 @@ teardown() {
 
   setup_home_dir
   BLUE_OCKAM_HOME=$OCKAM_HOME
+  run_success "$OCKAM" project import --project-file $PROJECT_PATH
+
   run_success "$OCKAM" identity create blue
   blue_identifier=$($OCKAM identity show blue)
   # blue hasn't been added by enroller yet
-  run_failure "$OCKAM" project enroll --identity green
+  run_failure "$OCKAM" project enroll --identity blue
 
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
   $OCKAM project ticket --member "$green_identifier" --attribute role=member
@@ -63,7 +66,6 @@ teardown() {
 
   # Green' identity was added by enroller
   OCKAM_HOME=$GREEN_OCKAM_HOME
-  run_success "$OCKAM" project import --project-file $PROJECT_PATH
 
   run_success "$OCKAM" project enroll --identity green
   assert_output --partial "$green_identifier"
@@ -90,18 +92,19 @@ teardown() {
   run_success "$OCKAM" identity create green
   green_identifier=$($OCKAM identity show green)
 
-  # Create node for the non-enrolled identity using the exported project information
+  # Create a node for the non-enrolled identity using the exported project information
+  # This is the default node for $NON_ENROLLED_OCKAM_HOME, and it uses the green identity, which is also the default identity
   run_success "$OCKAM" node create green
 
-  # Node can't create relay as it isn't a member
+  # The green identity can't create relay as it isn't a member
   fwd=$(random_str)
   run_failure "$OCKAM" relay create "$fwd"
 
-  # Add node as a member
+  # Add the green identity as a member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
   run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $fwd
 
-  # The node can now access the project's services
+  # Now the green node, with its green identity, can now access the project's services
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" relay create "$fwd"
 }
