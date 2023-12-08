@@ -4,7 +4,6 @@ use std::time::Duration;
 use miette::{IntoDiagnostic, WrapErr};
 use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
-use tracing_appender::non_blocking::WorkerGuard;
 
 pub use kind::StateKind;
 use ockam::identity::Identifier;
@@ -14,6 +13,7 @@ use ockam_api::cli_state::CliState;
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{AuthorityNode, Controller};
+use ockam_api::logs::WorkerGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,

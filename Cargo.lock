@@ -3773,6 +3773,9 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
+ "tracing-appender",
+ "tracing-error",
+ "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -3800,9 +3803,6 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
- "tracing-appender",
- "tracing-error",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3864,9 +3864,6 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
- "tracing-appender",
- "tracing-error",
- "tracing-subscriber",
  "url",
  "which",
 ]

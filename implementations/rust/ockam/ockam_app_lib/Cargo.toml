@@ -44,10 +44,7 @@ sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite", "migrate"] }
 thiserror = "1.0"
 tokio = { version = "1.34.0", features = ["full"] }
 tokio-retry = "0.3"
-tracing = { version = "0.1", features = ["attributes"] }
-tracing-appender = "0.2.2"
-tracing-error = "0.2"
-tracing-subscriber = { version = "0.3.18", features = ["json"] }
+tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 tempfile = { version = "3.8.0" }
