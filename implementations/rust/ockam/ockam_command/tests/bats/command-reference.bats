@@ -180,8 +180,8 @@ teardown() {
   a="$(random_str)"
   b="$(random_str)"
 
-  run_success "$OCKAM" node create "$a" --project $PROJECT_NAME
-  run_success "$OCKAM" node create "$b" --project $PROJECT_NAME
+  run_success "$OCKAM" node create "$a"
+  run_success "$OCKAM" node create "$b"
   run_success "$OCKAM" relay create "$b" --at /project/default --to "/node/$a"
 
   output=$("$OCKAM" secure-channel create --from "$a" --to "/project/default/service/forward_to_$b/service/api" |
@@ -289,8 +289,8 @@ teardown() {
   a="$(random_str)"
   b="$(random_str)"
 
-  run_success "$OCKAM" node create "$a" --project $PROJECT_NAME
-  run_success "$OCKAM" node create "$b" --project $PROJECT_NAME
+  run_success "$OCKAM" node create "$a"
+  run_success "$OCKAM" node create "$b"
 
   run_success "$OCKAM" relay create "$b" --at /project/default --to "/node/$a/service/forward_to_$b"
 

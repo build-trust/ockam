@@ -89,6 +89,8 @@ teardown_home_dir() {
     fi
     run $OCKAM node delete --all --force --yes
   done
+  export OCKAM_HOME=$OCKAM_HOME_BASE
+  run $OCKAM node delete --all --force --yes
 }
 
 to_uppercase() {
