@@ -48,7 +48,6 @@ force_kill_node() {
 
 @test "node - start services" {
   run_success "$OCKAM" node create n1
-  assert_success
 
   # Check we can start service, but only once with the same name
   run_success "$OCKAM" service start authenticated --addr my_authenticated --at n1
@@ -137,20 +136,14 @@ force_kill_node() {
   QUIET=0
   n="$(random_str)"
   run_success "$OCKAM" node create $n
-
-  log_file="$($OCKAM node logs $n)"
-  if [ ! -s $log_file ]; then
-    fail "Log file shouldn't be empty"
-  fi
+  run_success ls -l "$OCKAM_HOME/nodes/$n"
+  assert_output --partial "stdout"
 }
 
 @test "node - foreground node logs to stdout only" {
   n="$(random_str)"
   run_success "$OCKAM" node create $n -vv -f &
   sleep 1
-
-  log_file="$($OCKAM node logs $n)"
-  if [ -s $log_file ]; then
-    fail "Log file should be empty"
-  fi
+  # It should even create the node directory
+  run_failure ls -l "$OCKAM_HOME/nodes/$n"
 }
