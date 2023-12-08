@@ -1,5 +1,5 @@
 use crate::util::exitcode;
-
+use atty::Stream;
 use miette::IntoDiagnostic;
 use ockam_core::env::get_env_with_default;
 use std::io::Write;
@@ -36,8 +36,17 @@ fn paginate_with(pager_binary_path: PathBuf, help: clap::Error) -> miette::Resul
             .stdin
             .take()
             .expect("Failed to get pager's stdin");
+        // Check if the output is a terminal
+        let rendered_text = if atty::is(Stream::Stdout) {
+            // Text will appear in the terminal, so we apply ANSI formatting
+            help.render().ansi().to_string()
+        } else {
+            // Text is piped or redirected, so we disable ANSI formatting
+            help.render().to_string()
+        };
+        // Write the formatted text to the pager's stdin
         pager_stdin
-            .write_all(help.render().ansi().to_string().as_bytes())
+            .write_all(rendered_text.as_bytes())
             .into_diagnostic()?;
     }
     let _ = pager_process.wait();

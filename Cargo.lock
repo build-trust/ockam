@@ -3813,6 +3813,7 @@ dependencies = [
  "arboard",
  "assert_cmd",
  "async-trait",
+ "atty",
  "clap 4.4.11",
  "clap_complete",
  "clap_mangen",
