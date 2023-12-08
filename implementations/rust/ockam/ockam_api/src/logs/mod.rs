@@ -16,7 +16,7 @@ impl Logging {
     pub fn setup(
         level: LevelFilter,
         color: bool,
-        log_path: Option<PathBuf>,
+        node_dir: Option<PathBuf>,
         crates: &[&str],
     ) -> Option<WorkerGuard> {
         let filter = {
@@ -32,22 +32,21 @@ impl Logging {
         let subscriber = tracing_subscriber::registry()
             .with(filter)
             .with(tracing_error::ErrorLayer::default());
-        let (appender, guard) = match log_path {
-            // If a log path is not provided, log to stdout.
+        let (appender, guard) = match node_dir {
+            // If a node dir path is not provided, log to stdout.
             None => {
                 let (n, guard) = tracing_appender::non_blocking(stdout());
                 let appender = layer().with_ansi(color).with_writer(n);
                 (Box::new(appender), guard)
             }
             // If a log path is provided, log to a rolling file appender.
-            Some(log_path) => {
-                let log_dir = log_path.parent().expect("Failed to get log directory");
+            Some(node_dir) => {
                 let r = RollingFileAppender::builder()
-                    .rotation(Rotation::DAILY)
+                    .rotation(Rotation::MINUTELY)
                     .max_log_files(log_max_files())
                     .filename_prefix("stdout")
                     .filename_suffix("log")
-                    .build(log_dir)
+                    .build(node_dir)
                     .expect("Failed to create rolling file appender");
                 let (n, guard) = tracing_appender::non_blocking(r);
                 let appender = layer().with_ansi(false).with_writer(n);

@@ -12,15 +12,13 @@ impl AppState {
             .map(|s| LevelFilter::from_str(&s))
             .and_then(Result::ok)
             .unwrap_or(LevelFilter::INFO);
-        let log_path = {
+        let node_dir = {
             let this = self.clone();
             let state = self
                 .context()
                 .runtime()
                 .block_on(async move { this.state().await });
-            state
-                .stdout_logs(NODE_NAME)
-                .expect("Failed to get stdout log path for node")
+            state.node_dir(NODE_NAME)
         };
         let ockam_crates = [
             "ockam",
@@ -33,7 +31,7 @@ impl AppState {
             "ockam_command",
             "ockam_app_lib",
         ];
-        if let Some(guard) = Logging::setup(level, false, Some(log_path), &ockam_crates) {
+        if let Some(guard) = Logging::setup(level, false, Some(node_dir), &ockam_crates) {
             self.tracing_guard
                 .set(guard)
                 .expect("Failed to initialize logs");

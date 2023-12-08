@@ -477,10 +477,7 @@ impl OckamCommand {
                 }
                 // In the case where a node is explicitly created in foreground mode, we need
                 // to initialize the node directories before we can get the log path.
-                let path = opts.state.stdout_logs(&c.node_name).unwrap_or_else(|_| {
-                    panic!("Failed to initialize logs file for node {}", c.node_name)
-                });
-                return Some(path);
+                return Some(opts.state.node_dir(&c.node_name));
             }
         }
         None

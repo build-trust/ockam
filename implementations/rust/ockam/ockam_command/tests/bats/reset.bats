@@ -24,8 +24,10 @@ teardown() {
   run_success touch "$OCKAM_HOME"/bin/ockam
 
   # create some state in the OCKAM_HOME directory
-  run_success "$OCKAM" node create
+  refute_output --partial "nodes"
+  QUIET=0 "$OCKAM" node create -vv
   run_success ls "$OCKAM_HOME"
+  assert_output --partial "database.sqlite3"
   assert_output --partial "nodes"
 
   # reset the OCKAM_HOME directory

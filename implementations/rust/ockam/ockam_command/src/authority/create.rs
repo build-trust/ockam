@@ -192,7 +192,7 @@ async fn spawn_background_node(
     }
     args.push(cmd.node_name.to_string());
 
-    run_ockam(opts, &cmd.node_name, args, cmd.logging_to_file()).await
+    run_ockam(args).await
 }
 
 impl CreateCommand {

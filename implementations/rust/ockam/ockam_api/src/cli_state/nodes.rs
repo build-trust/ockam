@@ -264,12 +264,23 @@ impl CliState {
 
     /// Return the stdout log file used by a node
     pub fn stdout_logs(&self, node_name: &str) -> Result<PathBuf> {
-        Ok(self.create_node_dir(node_name)?.join("stdout.log"))
-    }
-
-    /// Return the stderr log file used by a node
-    pub fn stderr_logs(&self, node_name: &str) -> Result<PathBuf> {
-        Ok(self.create_node_dir(node_name)?.join("stderr.log"))
+        let node_dir = self.create_node_dir(node_name)?;
+        let current_log_file = std::fs::read_dir(node_dir)?
+            .flatten()
+            .filter(|entry| {
+                if let (Some(name), Ok(metadata)) = (entry.file_name().to_str(), entry.metadata()) {
+                    name.contains("stdout") && metadata.is_file()
+                } else {
+                    false
+                }
+            })
+            .max_by_key(|file| file.metadata().unwrap().modified().unwrap())
+            .ok_or(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("there is no log file for the node {node_name}"),
+            ))?;
+        Ok(current_log_file.path())
     }
 }
 
@@ -326,7 +337,7 @@ impl CliState {
     }
 
     /// Return the directory used by a node
-    fn node_dir(&self, node_name: &str) -> PathBuf {
+    pub fn node_dir(&self, node_name: &str) -> PathBuf {
         Self::make_node_dir_path(&self.dir(), node_name)
     }
 }
