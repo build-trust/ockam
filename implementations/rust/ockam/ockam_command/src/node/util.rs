@@ -1,5 +1,4 @@
 use std::env::current_exe;
-use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -138,47 +137,20 @@ pub async fn spawn_node(
 
     args.push(name.to_owned());
 
-    run_ockam(opts, name, args, logging_to_file).await
+    run_ockam(args).await
 }
 
 /// Run the ockam command line with specific arguments
-pub async fn run_ockam(
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-    args: Vec<String>,
-    logging_to_file: bool,
-) -> miette::Result<()> {
+pub async fn run_ockam(args: Vec<String>) -> miette::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
     let ockam_exe = get_env_with_default("OCKAM", current_exe().unwrap_or_else(|_| "ockam".into()))
         .into_diagnostic()?;
-
-    let mut cmd = Command::new(ockam_exe);
-
-    if logging_to_file {
-        let (mlog, elog) = {
-            (
-                opts.state.stdout_logs(node_name)?,
-                opts.state.stderr_logs(node_name)?,
-            )
-        };
-        let main_log_file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(mlog)
-            .into_diagnostic()
-            .context("failed to open log path")?;
-        let stderr_log_file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(elog)
-            .into_diagnostic()
-            .context("failed to open stderr log path")?;
-        cmd.stdout(main_log_file).stderr(stderr_log_file);
-    }
-
-    cmd.args(args)
+    Command::new(ockam_exe)
+        .args(args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .stdin(Stdio::null())
         .spawn()
         .into_diagnostic()
