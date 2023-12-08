@@ -3848,7 +3848,7 @@ dependencies = [
  "rand",
  "regex",
  "reqwest",
- "rustls 0.22.0",
+ "rustls 0.22.1",
  "rustls-native-certs 0.7.0",
  "rustls-pki-types",
  "serde",
@@ -5061,9 +5061,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.22.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bc238b76c51bbc449c55ffbc39d03772a057cc8cf783c49d4af4c2537b74a8b"
+checksum = "fe6b63262c9fcac8659abfaa96cac103d28166d3ff3eaf8f412e19f3ae9e5a48"
 dependencies = [
  "log",
  "ring",
