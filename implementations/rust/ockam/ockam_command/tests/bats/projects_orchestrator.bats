@@ -38,9 +38,6 @@ teardown() {
 }
 
 @test "projects - enrollment with controller" {
-  PROJECT_PATH="$OCKAM_HOME/project.json"
-  "$OCKAM" project show -q --output json >$PROJECT_PATH
-
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
   # Change new home directories for two un-enrolled identities
@@ -87,26 +84,25 @@ teardown() {
   # Change to a new home directory where there are no enrolled identities
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
-  cp -r $ENROLLED_OCKAM_HOME/. $NON_ENROLLED_OCKAM_HOME
+  "$OCKAM" project import --project-file $PROJECT_PATH
 
   # Create a named default identity
   run_success "$OCKAM" identity create green
   green_identifier=$($OCKAM identity show green)
 
   # Create node for the non-enrolled identity using the exported project information
-  run_success "$OCKAM" node create green --project $PROJECT_NAME
+  run_success "$OCKAM" node create green
 
   # Node can't create relay as it isn't a member
   fwd=$(random_str)
-  run_failure "$OCKAM" relay create --identity green "$fwd"
+  run_failure "$OCKAM" relay create "$fwd"
 
   # Add node as a member
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
+  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $fwd
 
   # The node can now access the project's services
   OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  fwd=$(random_str)
   run_success "$OCKAM" relay create "$fwd"
 }
 
@@ -115,26 +111,29 @@ teardown() {
   #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
   #       it present credential? would read authority info from project.json?
 
-  cp -r $OCKAM_HOME/. /tmp/ockam
-  export OCKAM_HOME=/tmp/ockam
+  ADMIN_HOME=$OCKAM_HOME
+
+  setup_home_dir
+  USER_HOME=$OCKAM_HOME
+  run_success "$OCKAM" project import --project-file $PROJECT_PATH
 
   run_success "$OCKAM" identity create m2
   run_success "$OCKAM" identity create m1
   m1_identifier=$($OCKAM identity show m1)
 
-  unset OCKAM_HOME
+  export OCKAM_HOME=$ADMIN_HOME
   run_success "$OCKAM" project ticket --member $m1_identifier --attribute role=member
 
-  export OCKAM_HOME=/tmp/ockam
+  export OCKAM_HOME=$USER_HOME
   # m1' identity was added by enroller
-  run_success $OCKAM project enroll --identity m1 --project $PROJECT_NAME
+  run_success $OCKAM project enroll --identity m1
 
   # m1 is a member,  must be able to contact the project' service
-  run_success $OCKAM message send --timeout 5 --identity m1 --project $PROJECT_NAME --to /project/default/service/echo hello
+  run_success $OCKAM message send --timeout 5 --identity m1 --to /project/default/service/echo hello
   assert_output "hello"
 
   # m2 is not a member,  must not be able to contact the project' service
-  run_failure $OCKAM message send --timeout 5 --identity m2 --project $PROJECT_NAME --to /project/default/service/echo hello
+  run_failure $OCKAM message send --timeout 5 --identity m2 --to /project/default/service/echo hello
 }
 
 @test "projects - list addons" {
@@ -174,8 +173,11 @@ teardown() {
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon
 
-  cp -r $OCKAM_HOME/. /tmp/ockam
-  export OCKAM_HOME=/tmp/ockam
+  ADMIN_HOME=$OCKAM_HOME
+
+  setup_home_dir
+  USER_HOME=$OCKAM_HOME
+  run_success "$OCKAM" project import --project-file $PROJECT_PATH
 
   run_success "$OCKAM" identity create m1
   run_success "$OCKAM" identity create m2
@@ -184,39 +186,37 @@ teardown() {
   m1_identifier=$($OCKAM identity show m1)
   m2_identifier=$($OCKAM identity show m2)
 
-  unset OCKAM_HOME
+  export OCKAM_HOME=$ADMIN_HOME
   run_success "$OCKAM" project ticket --member $m1_identifier --attribute service=sensor
   run_success "$OCKAM" project ticket --member $m2_identifier --attribute service=web
 
-  cp -r $OCKAM_HOME/. /tmp/ockam
-  export OCKAM_HOME=/tmp/ockam
+  export OCKAM_HOME=$USER_HOME
 
   # m1 and m2 identity was added by enroller
-  run_success "$OCKAM" project enroll --identity m1 --project $PROJECT_NAME
+  run_success "$OCKAM" project enroll --identity m1
   assert_output --partial $green_identifier
 
-  run_success "$OCKAM" project enroll --identity m2 --project $PROJECT_NAME
+  run_success "$OCKAM" project enroll --identity m2
   assert_output --partial $green_identifier
 
   # m1 and m2 can use the lease manager
-  run_success "$OCKAM" lease --identity m1 --project $PROJECT_NAME create
-  run_success "$OCKAM" lease --identity m2 --project $PROJECT_NAME create
+  run_success "$OCKAM" lease --identity m1 create
+  run_success "$OCKAM" lease --identity m2 create
 
   # m3 can't
-  run_success "$OCKAM" lease --identity m3 --project $PROJECT_NAME create
+  run_success "$OCKAM" lease --identity m3 create
   assert_failure
 
-  unset OCKAM_HOME
+  export OCKAM_HOME=$ADMIN_HOME
   run_success "$OCKAM" project addon configure influxdb --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon
 
-  cp -r $OCKAM_HOME/. /tmp/ockam
-  export OCKAM_HOME=/tmp/ockam
+  export OCKAM_HOME=$USER_HOME
 
   # m1 can use the lease manager (it has a service=sensor attribute attested by authority)
-  run_success "$OCKAM" lease --identity m1 --project $PROJECT_NAME create
+  run_success "$OCKAM" lease --identity m1 create
 
   # m2 can't use the  lease manager now (it doesn't have a service=sensor attribute attested by authority)
-  run_failure "$OCKAM" lease --identity m2 --project $PROJECT_NAME create
+  run_failure "$OCKAM" lease --identity m2 create
 }

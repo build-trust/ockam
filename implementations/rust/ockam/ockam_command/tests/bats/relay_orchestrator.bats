@@ -45,8 +45,8 @@ teardown() {
   run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd_blue
   run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $fwd_green
 
-  run_success "$OCKAM" node create green --project "$PROJECT_NAME" --identity green
-  run_success "$OCKAM" node create blue --project "$PROJECT_NAME" --identity blue
+  run_success "$OCKAM" node create green --identity green
+  run_success "$OCKAM" node create blue --identity blue
 
   # Blue can take its relay
   run_success "$OCKAM" relay create $fwd_blue --to /node/blue
@@ -55,7 +55,7 @@ teardown() {
   # But can take its the one it was assigned to in the ticket
   run_success "$OCKAM" relay create $fwd_green --to /node/green
 
-  run_success "$OCKAM" node create admin_node --project "$PROJECT_NAME"
+  run_success "$OCKAM" node create admin_node
 
   # Admin can take any relay (has wildcard *)
   run_success "$OCKAM" relay create $fwd_blue --to /node/admin_node
