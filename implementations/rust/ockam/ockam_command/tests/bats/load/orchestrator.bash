@@ -23,6 +23,6 @@ function copy_local_orchestrator_data() {
     OCKAM_HOME=$OCKAM_HOME_BASE "$OCKAM" project show -q --output json >$PROJECT_PATH
 
     # import it to the current OCKAM_HOME directory
-    "$OCKAM" project import --project-file $PROJECT_PATH
+    cp -r $OCKAM_HOME_BASE/. $OCKAM_HOME
   fi
 }
