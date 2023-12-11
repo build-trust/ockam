@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use core::sync::atomic::AtomicBool;
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
@@ -46,6 +47,7 @@ pub(crate) struct HandshakeWorker {
     refresh_credential_time_gap: Duration,
     trust_context: Option<TrustContext>,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
+    should_send_close: Arc<AtomicBool>,
 }
 
 #[ockam_core::worker]
@@ -231,6 +233,7 @@ impl HandshakeWorker {
             refresh_credential_time_gap,
             trust_context,
             change_history_repository: identities.change_history_repository(),
+            should_send_close: Arc::new(AtomicBool::new(true)),
         };
 
         WorkerBuilder::new(worker)
@@ -319,6 +322,7 @@ impl HandshakeWorker {
             handshake_results.handshake_keys.decryption_key,
             self.secure_channels.identities.vault().secure_channel_vault,
             handshake_results.their_identifier.clone(),
+            self.should_send_close.clone(),
         );
 
         // create a separate encryptor worker which will be started independently
@@ -338,6 +342,7 @@ impl HandshakeWorker {
                 self.min_credential_refresh_interval,
                 self.refresh_credential_time_gap,
                 self.trust_context.clone(),
+                self.should_send_close.clone(),
             );
 
             let next_hop = self.remote_route()?.next()?.clone();

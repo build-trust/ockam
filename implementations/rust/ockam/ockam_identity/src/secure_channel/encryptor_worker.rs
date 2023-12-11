@@ -1,4 +1,5 @@
 use core::cmp::max;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use tracing::{debug, error, info};
 
@@ -40,6 +41,8 @@ pub(crate) struct EncryptorWorker {
     credential_refresh_event: Option<DelayedEvent<()>>,
     // TODO: Should be CredentialsRetriever
     trust_context: Option<TrustContext>,
+
+    should_send_close: Arc<AtomicBool>,
 }
 
 impl EncryptorWorker {
@@ -55,6 +58,7 @@ impl EncryptorWorker {
         min_credential_refresh_interval: Duration,
         refresh_credential_time_gap: Duration,
         trust_context: Option<TrustContext>,
+        should_send_close: Arc<AtomicBool>,
     ) -> Self {
         Self {
             role,
@@ -68,6 +72,7 @@ impl EncryptorWorker {
             refresh_credential_time_gap,
             credential_refresh_event: None,
             trust_context,
+            should_send_close,
         }
     }
 
@@ -348,7 +353,9 @@ impl Worker for EncryptorWorker {
         let _ = context
             .stop_worker(self.addresses.decryptor_internal.clone())
             .await;
-        let _ = self.send_close_channel(context).await;
+        if self.should_send_close.load(Ordering::Relaxed) {
+            let _ = self.send_close_channel(context).await;
+        }
         self.encryptor.shutdown().await
     }
 }
