@@ -1,5 +1,5 @@
 use crate::util::exitcode;
-
+use crate::Term;
 use miette::IntoDiagnostic;
 use ockam_core::env::get_env_with_default;
 use std::io::Write;
@@ -36,8 +36,15 @@ fn paginate_with(pager_binary_path: PathBuf, help: clap::Error) -> miette::Resul
             .stdin
             .take()
             .expect("Failed to get pager's stdin");
+        // Strip ANSI escape sequences if stdout is not a TTY (e.g. when piping to another command)
+        let rendered_text = if Term::stdout().is_term() {
+            help.render().ansi().to_string()
+        } else {
+            help.render().to_string()
+        };
+        // Write the rendered text to the pager's stdin
         pager_stdin
-            .write_all(help.render().ansi().to_string().as_bytes())
+            .write_all(rendered_text.as_bytes())
             .into_diagnostic()?;
     }
     let _ = pager_process.wait();
