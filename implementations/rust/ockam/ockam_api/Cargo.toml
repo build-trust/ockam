@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.51.0"
+version = "0.52.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
@@ -62,23 +62,23 @@ tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
 url = "2.4.1"
 
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.40.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.99.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.41.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.100.0" }
 
 [dependencies.ockam_core]
-version = "0.96.0"
+version = "0.97.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.101.0"
+version = "0.102.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.94.0"
+version = "0.95.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -86,19 +86,19 @@ default-features = false
 features = ["std"]
 
 [dependencies.ockam_vault_aws]
-version = "0.19.0"
+version = "0.20.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.108.0"
+version = "^0.109.0"
 path = "../ockam"
 default-features = false
 features = ["ockam_transport_tcp", "storage"]
 
 [dependencies.ockam_abac]
-version = "0.42.0"
+version = "0.43.0"
 path = "../ockam_abac"
 default-features = false
 
