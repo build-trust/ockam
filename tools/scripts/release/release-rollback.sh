@@ -5,11 +5,22 @@ set -ex
 log=$(mktemp)
 echo "Log directory is $log"
 
-exec 5>"$log"
-BASH_XTRACEFD="5"
+exec &>>"$log"
 
-OWNER="build-trust"
-USER_TYPE="orgs"
+if [[ -z $OWNER ]]; then
+  OWNER="build-trust"
+fi
+
+USER_TYPE="users"
+
+user_type=$(gh api \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "/users/${OWNER}" | jq -r '.type')
+
+if [[ "$user_type" == "Organization" ]]; then
+  USER_TYPE="orgs"
+fi
 
 if [[ -z $TAG_NAME || $TAG_NAME != *"ockam_v"* ]]; then
   echo "Invalid tag name, please set TAG_NAME variable"
