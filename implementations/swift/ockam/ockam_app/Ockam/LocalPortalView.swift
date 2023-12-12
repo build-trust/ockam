@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LocalPortalView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
 
     @State private var isHovered = false
@@ -50,7 +51,14 @@ struct LocalPortalView: View {
         .onHover { hover in
             isHovered = hover
         }
-        .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
+//        .overlay(
+//            RoundedRectangle(cornerRadius: 4)
+//                .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
+//        )
+        .background( isHovered ?
+            AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+            AnyShapeStyle(colorScheme == .dark ? Color.black.opacity(0.1) : Color.white.opacity(0.3))
+        )
         .cornerRadius(4)
 
         if isOpen {
@@ -74,14 +82,13 @@ struct LocalPortalView: View {
                         self.closeWindow()
                     })
                 ClickableMenuEntry(
-                    text: "Share…",
+                    text: "Invite…",
                     action: {
                         OpenWindowWorkaround.shared.openWindow(
                             windowName: "invite-to-portal",
                             value: localService.id
                         )
                         bringInFront()
-                        self.closeWindow()
                     })
                 ClickableMenuEntry(
                     text: "Delete",
@@ -89,7 +96,6 @@ struct LocalPortalView: View {
                         delete_local_service(self.localService.name)
                     })
             }
-            .padding(.leading, HorizontalSpacingUnit)
         }
     }
 }
@@ -99,7 +105,7 @@ struct LocalServiceView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
 
     static var previews: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: VerticalSpacingUnit) {
             LocalPortalView(localService: state.localServices[0])
             LocalPortalView(localService: state.localServices[1])
         }

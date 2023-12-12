@@ -81,6 +81,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var menuBarExtra: FluidMenuBarExtra?
 
     func applicationDidFinishLaunching(_ notification: Foundation.Notification) {
+        // avoid creating the menubar extra for preview purposes
+        if isRunningPreviewMode() {
+            return
+        }
+
         // we don't want any swiftui window to be automatically open at startup
         // and the first window is "accepting-invitation"
         for window in NSApplication.shared.windows {
@@ -220,7 +225,7 @@ struct OckamApp: App {
 
     var body: some Scene {
         Window("Accepting invitation", id: "accepting-invitation") {
-            AcceptingInvitation(state: $state, invitationIdContainer: $invitation)
+            AcceptingInvitationWrapper(state: $state, invitationIdContainer: $invitation)
             // no particular reason to attach .onAppear to this window, we just need a View event
             // during initialization. onAppear is meant apperance in the hierarchy and not 'visible'.
                 .onAppear(perform: {
@@ -238,6 +243,7 @@ struct OckamApp: App {
                         // without this it won't show the window when a link is clicked and the application
                         // has not yet started
                         openWindow(id: "accepting-invitation")
+                        bringInFront()
                     }
                 })
             // hack for ventura, see OpenWindowWorkaround comment
@@ -279,8 +285,8 @@ struct OckamApp: App {
         .windowResizability(.contentSize)
 
         // Declare a state-independent window, not open by default
-        Window("Open a portal to a tcp service", id: "open-portal") {
-            OpenPortal()
+        Window("Open a portal to a TCP service", id: "open-portal") {
+            OpenPortal(localServices: $state.localServices)
         }
         .windowResizability(.contentSize)
 
@@ -297,6 +303,11 @@ struct OckamApp: App {
     }
 
     init() {
+        // avoid initialization when previewing
+        if isRunningPreviewMode() {
+            return
+        }
+
         logger.info("Application started")
         if !swift_initialize_application() {
             broken = true

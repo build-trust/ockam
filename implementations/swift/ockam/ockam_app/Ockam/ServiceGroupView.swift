@@ -29,7 +29,12 @@ struct ServiceGroupView: View {
                     .opacity(group.invitations.isEmpty ? 0 : 1)
                     .padding(.trailing, HorizontalSpacingUnit)
 
-                ProfilePicture(url: group.imageUrl, size: 32)
+                ProfilePicture(
+                    url: group.imageUrl,
+                    size: 32,
+                    placeholder: ""
+                )
+
                 Image(systemName: "chevron.right")
                     .rotationEffect( isOpen ? Angle(degrees: 90) : Angle(degrees: 0))
             }
@@ -40,7 +45,6 @@ struct ServiceGroupView: View {
         }
         .padding(.horizontal, HorizontalSpacingUnit)
         .frame(height: VerticalSpacingUnit*5)
-        .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
         .onTapGesture {
             withAnimation {
                 isOpen = !isOpen
@@ -59,6 +63,14 @@ struct ServiceGroupView: View {
             // when out of view
             isHovered = false
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
+        )
+        .background( isHovered ?
+            AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+            AnyShapeStyle(Color.clear)
+        )
         .cornerRadius(4)
 
         if isOpen {
@@ -80,7 +92,7 @@ struct ServiceGroupView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
 
     static var previews: some View {
-        VStack(spacing: 0){
+        VStack(spacing: VerticalSpacingUnit){
             ServiceGroupView(group: state.groups[1])
             ServiceGroupView(group: state.groups[2])
         }

@@ -8,7 +8,7 @@ struct SentInvitations: View {
     var body: some View {
         VStack(alignment: .leading, spacing: VerticalSpacingUnit) {
             HStack(spacing: HorizontalSpacingUnit) {
-                Text("Sent Invitations")
+                Text("Sent invitations")
                     .font(.body)
                     .padding(.horizontal, HorizontalSpacingUnit)
                 Spacer()
