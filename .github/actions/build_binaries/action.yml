@@ -77,10 +77,36 @@ runs:
       if: inputs.build_app == 'true'
       run: |
         set -x
+
+        use_cross_build=${{ inputs.use_cross_build }}
+
+        # depending on the target, we may build the x86 or arm variant
+        # regardless of the host machine
+
         # if any macos, also build the swiftui
         if [[ ${{ inputs.target }} == *apple-darwin* ]]; then
+
+          # first we build the rust library, cross compiling if needed
+          if [[ $use_cross_build == "true" ]]; then
+            cross build -p ockam_app_lib --target ${{ inputs.target }} --release
+          else
+            cargo build -p ockam_app_lib --target ${{ inputs.target }} --release
+          fi
+
+          # copy the ockam_app_lib and ockam binary in target/release/ where xcode is expecting them
+          cp target/${{ inputs.target }}/release/ockam target/release/
+          cp target/${{ inputs.target }}/release/libockam_app_lib.a target/release/
+          cp target/${{ inputs.target }}/release/libockam_app_lib.d target/release/
+
+          # address dependencies for the swiftui app
           sudo xcode-select --switch /Applications/Xcode_15.0.app/
           brew install create-dmg
-          make swift_package
+
+          if [[ ${{ inputs.target }} == *x86_64* ]]; then
+            make swift_xcode_build ARCH=x86_64
+          else
+            make swift_xcode_build ARCH=arm64
+          fi
+          make swift_package_only
         fi
 
