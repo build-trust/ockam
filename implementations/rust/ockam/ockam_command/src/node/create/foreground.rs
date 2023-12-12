@@ -47,12 +47,25 @@ pub(super) async fn foreground_mode(
         return Err(miette!("Node {} is already running", &node_name));
     };
 
+    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
+    let options = TcpListenerOptions::new();
+    let listener = tcp
+        .listen(&cmd.tcp_listener_address, options)
+        .await
+        .into_diagnostic()?;
+
+    debug!(
+        "set the node {node_name} listener address to {:?}",
+        listener.socket_address()
+    );
+
     let node_info = opts
         .state
-        .create_node_with_optional_values(
+        .start_node_with_optional_values(
             &node_name,
             &cmd.identity,
             &cmd.trust_context_opts.project_name,
+            Some(&listener),
         )
         .await?;
     debug!("created node {node_info:?}");
@@ -66,21 +79,6 @@ pub(super) async fn foreground_mode(
             &cmd.credential,
         )
         .await?;
-
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
-    let options = TcpListenerOptions::new();
-    let listener = tcp
-        .listen(&cmd.tcp_listener_address, options)
-        .await
-        .into_diagnostic()?;
-
-    opts.state
-        .set_tcp_listener_address(&node_name, listener.socket_address().to_string())
-        .await?;
-    debug!(
-        "set the node {node_name} listener address to {:?}",
-        listener.socket_address()
-    );
 
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 

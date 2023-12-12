@@ -42,7 +42,11 @@ pub trait NodesRepository: Send + Sync + 'static {
     async fn delete_node(&self, node_name: &str) -> Result<()>;
 
     /// Set the TCP listener of a node
-    async fn set_tcp_listener_address(&self, node_name: &str, address: &str) -> Result<()>;
+    async fn set_tcp_listener_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()>;
 
     /// Set that node as an authority node
     async fn set_as_authority_node(&self, node_name: &str) -> Result<()>;

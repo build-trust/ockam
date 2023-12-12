@@ -9,6 +9,7 @@ use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::TcpListener;
 
 use crate::cli_state::{random_name, Result};
 use crate::cli_state::{CliState, CliStateError};
@@ -19,6 +20,31 @@ use crate::NamedVault;
 /// The methods below support the creation and update of local nodes
 ///
 impl CliState {
+    /// Create a node, with some optional associated values, and start it
+    pub async fn start_node_with_optional_values(
+        &self,
+        node_name: &str,
+        identity_name: &Option<String>,
+        project_name: &Option<String>,
+        tcp_listener: Option<&TcpListener>,
+    ) -> Result<NodeInfo> {
+        let mut node = self
+            .create_node_with_optional_values(node_name, identity_name, project_name)
+            .await?;
+        let pid = process::id();
+        self.set_node_pid(node_name, pid).await?;
+        node = node.set_pid(pid);
+
+        if let Some(tcp_listener) = tcp_listener {
+            let address = (*tcp_listener.socket_address()).into();
+            self.set_tcp_listener_address(&node.name(), &address)
+                .await?;
+            node = node.set_tcp_listener_address(address)
+        }
+
+        Ok(node)
+    }
+
     /// Create a node, with some optional associated values:
     ///
     ///  - an identity name. That identity is used by the `NodeManager` to create secure channels
@@ -29,13 +55,6 @@ impl CliState {
         identity_name: &Option<String>,
         project_name: &Option<String>,
     ) -> Result<NodeInfo> {
-        // Return the node if it has already been created
-        // and update its process id
-        if let Ok(node) = self.get_node(node_name).await {
-            self.set_node_pid(node_name, process::id()).await?;
-            return Ok(node);
-        };
-
         let identity = match identity_name {
             Some(name) => self.get_named_identity(name).await?,
             None => self.get_or_create_default_named_identity().await?,
@@ -176,11 +195,15 @@ impl CliState {
     }
 
     /// Set a TCP listener address on a node when the TCP listener has been started
-    pub async fn set_tcp_listener_address(&self, node_name: &str, address: String) -> Result<()> {
+    pub async fn set_tcp_listener_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()> {
         Ok(self
             .nodes_repository()
             .await?
-            .set_tcp_listener_address(node_name, address.as_str())
+            .set_tcp_listener_address(node_name, address)
             .await?)
     }
 
@@ -440,6 +463,12 @@ impl NodeInfo {
         result
     }
 
+    pub fn set_tcp_listener_address(&self, address: InternetAddress) -> NodeInfo {
+        let mut result = self.clone();
+        result.tcp_listener_address = Some(address);
+        result
+    }
+
     /// Return true if there is a running process corresponding to the node process id
     pub fn is_running(&self) -> bool {
         matches!(self.status(), NodeProcessStatus::Running(_))
@@ -471,6 +500,8 @@ impl NodeInfo {
 #[cfg(test)]
 mod tests {
     use crate::config::lookup::InternetAddress;
+    use std::net::SocketAddr;
+    use std::str::FromStr;
 
     use super::*;
 
@@ -508,8 +539,11 @@ mod tests {
         // create a node
         let node_name = "node-1";
         let _ = cli.create_node(node_name).await?;
-        cli.set_tcp_listener_address(node_name, "127.0.0.1:0".to_string())
-            .await?;
+        cli.set_tcp_listener_address(
+            node_name,
+            &SocketAddr::from_str("127.0.0.1:0").unwrap().into(),
+        )
+        .await?;
 
         // recreate the node with the same name
         let _ = cli.create_node(node_name).await?;

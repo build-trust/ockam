@@ -1,6 +1,5 @@
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
-use std::process;
 
 use clap::ArgGroup;
 use clap::Args;
@@ -273,13 +272,9 @@ async fn start_authority_node(
 
     let node = opts
         .state
-        .create_node_with_optional_values(&cmd.node_name, &Some(identity_name), &None)
-        .await?;
-    opts.state
-        .set_tcp_listener_address(&node.name(), cmd.tcp_listener_address.to_string())
+        .start_node_with_optional_values(&cmd.node_name, &Some(identity_name), &None, None)
         .await?;
     opts.state.set_as_authority_node(&node.name()).await?;
-    opts.state.set_node_pid(&node.name(), process::id()).await?;
 
     let okta_configuration = match (&cmd.tenant_base_url, &cmd.certificate, &cmd.attributes) {
         (Some(tenant_base_url), Some(certificate), Some(attributes)) => Some(OktaConfiguration {

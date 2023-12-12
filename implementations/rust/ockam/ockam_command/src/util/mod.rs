@@ -249,7 +249,10 @@ mod tests {
         cli_state.create_node("n1").await?;
 
         cli_state
-            .set_tcp_listener_address("n1", "127.0.0.0:4000".to_string())
+            .set_tcp_listener_address(
+                "n1",
+                &SocketAddr::from_str("127.0.0.0:4000").unwrap().into(),
+            )
             .await?;
 
         let test_cases = vec![

@@ -111,32 +111,35 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
+        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp_listener = tcp
+            .listen(
+                defaults.tcp_listener_address.as_str(),
+                TcpListenerOptions::new(),
+            )
+            .await
+            .into_diagnostic()?;
+
         let node = cli_state
-            .create_node_with_optional_values(
+            .start_node_with_optional_values(
                 &defaults.node_name,
                 &Some(identity_name.to_string()),
                 &project_name,
+                Some(&tcp_listener),
             )
-            .await?;
-
-        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-        let bind = defaults.tcp_listener_address;
-        let options = TcpListenerOptions::new();
-        let listener = tcp.listen(&bind, options).await.into_diagnostic()?;
-        cli_state
-            .set_tcp_listener_address(&node.name(), listener.socket_address().to_string())
-            .await?;
+            .await
+            .into_diagnostic()?;
 
         let node_manager = Self::new(
             ctx,
             NodeManagerGeneralOptions::new(cli_state.clone(), node.name(), None, false, false),
-            NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
+            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),
             NodeManagerTrustOptions::new(trust_context),
         )
         .await
         .into_diagnostic()?;
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
         Ok(node_manager)
     }
 
