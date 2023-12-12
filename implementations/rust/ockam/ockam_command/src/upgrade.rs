@@ -1,46 +1,45 @@
+use crate::{fmt_info, GlobalArgs, Terminal};
 use clap::crate_version;
 use colorful::Colorful;
 use ockam_core::env::get_env_with_default;
 use serde::Deserialize;
 use std::env;
-use tokio::runtime::Builder;
 
 #[derive(Deserialize)]
-struct UpgradeFile {
-    upgrade_message: Option<String>,
-    upgrade_message_macos: Option<String>,
+pub struct UpgradeFile {
+    #[serde(default = "default_upgrade_message")]
+    pub upgrade_message: String,
+    #[serde(default = "default_upgrade_message_macos")]
+    pub upgrade_message_macos: String,
 }
 
-pub fn check_if_an_upgrade_is_available() {
-    if !upgrade_check_is_disabled() {
-        // check if a new version has been released
-        Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(check());
+fn default_upgrade_message() -> String {
+    "Check out the latest release at https://github.com/build-trust/ockam/releases".to_string()
+}
+
+fn default_upgrade_message_macos() -> String {
+    "Run the following command to upgrade the Ockam Command: 'brew install build-trust/ockam/ockam'"
+        .to_string()
+}
+
+pub fn check_if_an_upgrade_is_available(global_args: &GlobalArgs) {
+    if upgrade_check_is_disabled() || global_args.test_argument_parser {
+        return;
     }
-}
-
-async fn check() {
     let url = format!(
         "https://github.com/build-trust/ockam/releases/download/ockam_v{}/upgrade.json",
         crate_version!()
     );
-    let resp = reqwest::get(url).await;
-
-    if let Ok(r) = resp {
-        if let Ok(upgrade) = r.json::<UpgradeFile>().await {
-            if let Some(message) = upgrade.upgrade_message {
-                eprintln!("\n{}", message.yellow());
-
-                if cfg!(target_os = "macos") {
-                    if let Some(message) = upgrade.upgrade_message_macos {
-                        eprintln!("\n{}", message.yellow());
-                    }
-                }
-
-                eprintln!();
+    if let Ok(r) = reqwest::blocking::get(url) {
+        if let Ok(f) = r.json::<UpgradeFile>() {
+            let terminal = Terminal::from(global_args);
+            terminal
+                .write_line(fmt_info!("{}", f.upgrade_message))
+                .unwrap();
+            if cfg!(target_os = "macos") {
+                terminal
+                    .write_line(fmt_info!("{}", f.upgrade_message_macos))
+                    .unwrap();
             }
         }
     }

@@ -6,6 +6,7 @@ use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_project_completion;
+use crate::output::Output;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
@@ -56,6 +57,10 @@ async fn run_impl(
         .await?;
     let project = check_for_project_completion(&opts, ctx, &node, project).await?;
     let project = check_project_readiness(&opts, ctx, &node, project).await?;
-    opts.println(&project)?;
+    opts.terminal
+        .stdout()
+        .plain(project.output()?)
+        .json(serde_json::json!(&project))
+        .write_line()?;
     Ok(())
 }

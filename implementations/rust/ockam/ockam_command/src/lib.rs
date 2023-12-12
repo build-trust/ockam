@@ -17,6 +17,7 @@
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
 
+use std::process::exit;
 use std::{path::PathBuf, sync::Mutex};
 
 use clap::{ArgAction, Args, Parser, Subcommand};
@@ -70,7 +71,7 @@ use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
 use crate::logs::setup_logging;
 use crate::node::NodeSubcommand;
-use crate::output::{Output, OutputFormat};
+use crate::output::OutputFormat;
 use crate::run::RunCommand;
 use crate::sidecar::SidecarCommand;
 use crate::subscription::SubscriptionCommand;
@@ -242,30 +243,22 @@ pub struct CommandGlobalOpts {
 
 impl CommandGlobalOpts {
     pub fn new(global_args: GlobalArgs) -> Self {
+        let terminal = Terminal::from(&global_args);
         let state = match CliState::with_default_dir() {
             Ok(state) => state,
-            Err(err) => {
-                eprintln!("Failed to initialize state: {}", err);
-                if std::env::var("OCKAM_NO_AUTOMATIC_RESET").is_ok() {
-                    std::process::exit(exitcode::CONFIG);
-                }
-                let state = CliState::backup_and_reset().expect(
-                    "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
-                );
-                let dir = state.dir();
-                let backup_dir = CliState::backup_default_dir().unwrap();
-                eprintln!(
-                    "The {dir:?} directory has been reset and has been backed up to {backup_dir:?}"
-                );
-                state
+            Err(_) => {
+                terminal
+                    .write_line(fmt_err!("Failed to initialize local state"))
+                    .unwrap();
+                terminal
+                    .write_line(fmt_log!(
+                        "Consider upgrading to the latest version of Ockam Command, \
+                        or try removing the local state directory at ~/.ockam"
+                    ))
+                    .unwrap();
+                exit(exitcode::SOFTWARE);
             }
         };
-        let terminal = Terminal::new(
-            global_args.quiet,
-            global_args.no_color,
-            global_args.no_input,
-            global_args.output_format.clone(),
-        );
         Self {
             global_args,
             state,
@@ -278,15 +271,6 @@ impl CommandGlobalOpts {
         clone.global_args = clone.global_args.set_quiet();
         clone.terminal = clone.terminal.set_quiet();
         clone
-    }
-
-    /// Print a value on the console.
-    /// TODO: replace this implementation with a call to the terminal instead
-    pub fn println<T>(&self, t: &T) -> Result<()>
-    where
-        T: Output + serde::Serialize,
-    {
-        self.global_args.output_format.println_value(t)
     }
 }
 
@@ -374,10 +358,7 @@ pub fn run() {
 
     match OckamCommand::try_parse_from(input) {
         Ok(command) => {
-            if !command.global_args.test_argument_parser {
-                check_if_an_upgrade_is_available();
-            }
-
+            check_if_an_upgrade_is_available(&command.global_args);
             command.run();
         }
         Err(help) => pager::render_help(help),
