@@ -162,21 +162,27 @@ impl InternalMap {
     }
 
     /// Retrieve the next cluster in reverse-initialisation order
+    /// Return None if there is no next cluster or if the cluster
+    /// contained no more active addresses
     pub(super) fn next_cluster(&mut self) -> Option<Vec<&mut AddressRecord>> {
         let name = self.cluster_order.pop()?;
         let addrs = self.clusters.remove(&name)?;
-        Some(
-            self.address_records_map
-                .iter_mut()
-                .filter_map(|(primary, rec)| {
-                    if addrs.contains(primary) {
-                        Some(rec)
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
+        let active_addresses: Vec<&mut AddressRecord> = self
+            .address_records_map
+            .iter_mut()
+            .filter_map(|(primary, rec)| {
+                if addrs.contains(primary) {
+                    Some(rec)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if active_addresses.is_empty() {
+            None
+        } else {
+            Some(active_addresses)
+        }
     }
 
     /// Mark this address as "having started to stop"
