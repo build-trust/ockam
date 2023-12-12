@@ -75,7 +75,6 @@ extern "C" fn initialize_application(
 
     #[cfg(target_os = "macos")]
     crate::cli::add_homebrew_to_path();
-    crate::cli::set_no_automatic_reset();
 
     if let Err(err) = check_ockam_executable() {
         error!(?err, "Couldn't find the ockam executable");
