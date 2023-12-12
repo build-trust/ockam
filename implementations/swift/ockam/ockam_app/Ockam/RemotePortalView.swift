@@ -111,7 +111,10 @@ struct RemotePortalView: View {
                     ClickableMenuEntry(
                         text: "Delete",
                         action: {
-                            openWindow(id: "delete-portal-confirmation", value: service.id)
+                            OpenWindowWorkaround.shared.openWindow(
+                                windowName: "delete-portal-confirmation",
+                                value: service.id
+                            )
                         })
                 }
                 .padding(.leading, HorizontalSpacingUnit*2)
