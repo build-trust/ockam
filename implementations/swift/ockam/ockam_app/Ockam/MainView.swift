@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct MainView: View {
-    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var appDelegate: AppDelegate
 
     @Binding var state: ApplicationState
@@ -73,7 +72,7 @@ struct MainView: View {
                                     )
                                 }
                             }
-                            .scrollIndicators(ScrollIndicatorVisibility.hidden)
+                            .scrollIndicators(ScrollIndicatorVisibility.never)
                             .frame(maxHeight: 250)
 
                             Divider()
@@ -84,7 +83,9 @@ struct MainView: View {
                         ClickableMenuEntry(
                             text: "Open a portal…",
                             action: {
-                                openWindow(id: "open-portal")
+                                OpenWindowWorkaround.shared.openWindow(
+                                    windowName: "open-portal"
+                                )
                                 bringInFront()
                             }
                         )
@@ -117,7 +118,7 @@ struct MainView: View {
                             }
                         }
                     }
-                    .scrollIndicators(ScrollIndicatorVisibility.hidden)
+                    .scrollIndicators(ScrollIndicatorVisibility.never)
                     .frame(maxHeight: selectedGroup == "" ? 175 : 500)
 
                 }
@@ -171,7 +172,9 @@ struct MainView: View {
                             ClickableMenuEntry(
                                 text: "About", icon: "questionmark.circle",
                                 action: {
-                                    openWindow(id: "about")
+                                    OpenWindowWorkaround.shared.openWindow(
+                                        windowName: "about"
+                                    )
                                     bringInFront()
                                 })
                             ClickableMenuEntry(

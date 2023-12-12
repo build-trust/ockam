@@ -182,6 +182,29 @@ class InvitationContainer: ObservableObject {
     }
 }
 
+// On macOS ventura openWindow() doesn't work since the SwiftUI
+// lifecycle is not recognized for some reason when using NSHostingView,
+// this has been fixed in sonoma.
+// The idea is to trigger an event to trigger an openWindow from another
+// context where NSHostingView is a parent view.
+// Only openWindow() used within the PopOver is affected.
+class OpenWindowWorkaround: ObservableObject {
+    static var shared = OpenWindowWorkaround()
+    @Published var windowName = ""
+    @Published var value = ""
+
+    func openWindow(windowName: String) {
+        self.windowName = windowName;
+        self.value = "";
+    }
+
+    func openWindow(windowName: String, value: String) {
+        self.windowName = windowName;
+        self.value = value;
+    }
+}
+
+
 // when the application initialization fails to load we enter a broken state
 // where we only propose a reset to the user
 var broken = false
@@ -217,15 +240,30 @@ struct OckamApp: App {
                         openWindow(id: "accepting-invitation")
                     }
                 })
+            // hack for ventura, see OpenWindowWorkaround comment
+                .onReceive(OpenWindowWorkaround.shared.$windowName) { _ in
+                    if OpenWindowWorkaround.shared.value == "" {
+                        openWindow(
+                            id: OpenWindowWorkaround.shared.windowName
+                        )
+                    } else {
+                        openWindow(
+                            id: OpenWindowWorkaround.shared.windowName,
+                            value: OpenWindowWorkaround.shared.value
+                        )
+                    }
+                }
         }
         .windowResizability(.contentSize)
 
         WindowGroup("Confirmation", id: "delete-portal-confirmation", for: Service.ID.self) { $serviceId in
-            DeleteIncomingPortalView(
-                service: StateContainer.shared.state.lookupIncomingServiceById(
-                    serviceId.unsafelyUnwrapped
-                ).unsafelyUnwrapped.1
-            )
+            if let serviceId = serviceId {
+                DeleteIncomingPortalView(
+                    service: StateContainer.shared.state.lookupIncomingServiceById(
+                        serviceId
+                    ).unsafelyUnwrapped.1
+                )
+            }
         }
         .windowResizability(.contentSize)
 

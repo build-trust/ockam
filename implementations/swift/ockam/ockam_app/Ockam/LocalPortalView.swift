@@ -76,7 +76,10 @@ struct LocalPortalView: View {
                 ClickableMenuEntry(
                     text: "Share…",
                     action: {
-                        openWindow(id: "invite-to-portal", value: localService.id)
+                        OpenWindowWorkaround.shared.openWindow(
+                            windowName: "invite-to-portal",
+                            value: localService.id
+                        )
                         bringInFront()
                         self.closeWindow()
                     })

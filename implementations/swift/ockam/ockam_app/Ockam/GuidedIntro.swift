@@ -113,6 +113,7 @@ For more information check out the [user guide](https://docs.ockam.io/reference/
                                         height: VerticalSpacingUnit*4
                                     )
                             }
+                            .controlSize(.large)
                             .keyboardShortcut(.defaultAction)
                             .padding(.vertical, VerticalSpacingUnit)
                         } else if status == OrchestratorStatus.Connecting ||
@@ -128,6 +129,7 @@ For more information check out the [user guide](https://docs.ockam.io/reference/
                                     )
                                     .focusable()
                             }
+                            .controlSize(.large)
                             .keyboardShortcut(.defaultAction)
                             .padding(.vertical, VerticalSpacingUnit)
                         }
@@ -147,6 +149,7 @@ For more information check out the [user guide](https://docs.ockam.io/reference/
                                         height: VerticalSpacingUnit*4
                                     )
                             }
+                            .controlSize(.large)
 
                             Button(action: {
                                 page += 1
@@ -158,6 +161,7 @@ For more information check out the [user guide](https://docs.ockam.io/reference/
                                         height: VerticalSpacingUnit*4
                                     )
                             }
+                            .controlSize(.large)
                             .keyboardShortcut(.defaultAction)
                         }
                         Spacer()
@@ -173,6 +177,7 @@ For more information check out the [user guide](https://docs.ockam.io/reference/
                                     height: VerticalSpacingUnit*4
                                 )
                         }
+                        .controlSize(.large)
                         .keyboardShortcut(.defaultAction)
                         Spacer()
                     } else {
@@ -189,6 +194,7 @@ For more information check out the [user guide](https://docs.ockam.io/reference/
                                 )
                                 .focusable()
                         }
+                        .controlSize(.large)
                         .keyboardShortcut(.defaultAction)
                         .padding(.vertical, VerticalSpacingUnit)
                     }

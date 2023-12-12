@@ -351,7 +351,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Ockam;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"LIBRARY_SEARCH_PATHS[arch=*]" = ../../../../target/debug/;
-				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -412,7 +412,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Ockam;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"LIBRARY_SEARCH_PATHS[arch=*]" = ../../../../target/release/;
-				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -449,7 +449,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -485,7 +485,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 0.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
