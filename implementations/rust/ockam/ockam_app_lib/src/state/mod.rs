@@ -684,7 +684,7 @@ pub(crate) async fn make_node_manager(
         .into_diagnostic()?;
 
     let _ = cli_state
-        .create_node_with_optional_values(NODE_NAME, &None, &None)
+        .start_node_with_optional_values(NODE_NAME, &None, &None, Some(&listener))
         .await?;
 
     let node_manager = Arc::new(

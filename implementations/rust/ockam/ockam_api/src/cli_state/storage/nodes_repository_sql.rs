@@ -109,9 +109,13 @@ impl NodesRepository for NodesSqlxDatabase {
         query.execute(&self.database.pool).await.void()
     }
 
-    async fn set_tcp_listener_address(&self, node_name: &str, address: &str) -> Result<()> {
+    async fn set_tcp_listener_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()> {
         let query = query("UPDATE node SET tcp_listener_address = ? WHERE name = ?")
-            .bind(address.to_sql())
+            .bind(address.to_string().to_sql())
             .bind(node_name.to_sql());
         query.execute(&self.database.pool).await.void()
     }
