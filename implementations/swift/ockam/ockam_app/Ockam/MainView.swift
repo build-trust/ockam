@@ -138,7 +138,7 @@ struct MainView: View {
                     VStack(spacing: 0) {
                         @Environment(\.openWindow) var openWindow
                         ClickableMenuEntry(
-                            text: "Star us on Github…", icon: "star",
+                            text: "Star us on GitHub…", icon: "star",
                             action: {
                                 if let url = URL(string: "https://github.com/build-trust/ockam") {
                                     NSWorkspace.shared.open(url)
@@ -148,7 +148,7 @@ struct MainView: View {
                         ClickableMenuEntry(
                             text: "Learn more from our documentation…", icon: "book",
                             action: {
-                                if let url = URL(string: "https://docs.ockam.io") {
+                                if let url = URL(string: "https://docs.ockam.io/reference/app") {
                                     NSWorkspace.shared.open(url)
                                 }
                                 appDelegate.dismissPopover()
@@ -221,6 +221,6 @@ struct MainView_Previews: PreviewProvider {
 
     static var previews: some View {
         MainView(state: $state)
-            .frame(height: 500)
+            .frame(height: 600)
     }
 }

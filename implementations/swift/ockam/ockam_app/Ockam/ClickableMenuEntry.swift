@@ -3,22 +3,30 @@ import SwiftUI
 // Reproduction of the menu entry since it's not possible
 // to inherit a button with the style in macOS 13
 struct ClickableMenuEntry: View {
-    @State private var isHovered = false
-
     @State var text: String
     @State var clicked: String = ""
     @State var icon: String = ""
     @State var shortcut: String = ""
     @State var action: (() -> Void)? = nil
-    @State var isDown = false
+    @State var textPadding = HorizontalSpacingUnit
+
+    @State private var isHovered = false
+    @State private var isDown = false
 
     var body: some View {
         HStack {
             if icon != "" {
                 Image(systemName: icon)
             }
-            Text(verbatim: isDown ? (clicked.isEmpty ? text : clicked) : text)
+            Text(
+                verbatim: isDown ? (
+                    clicked.isEmpty ? text : clicked
+                ) : text
+            )
+            .padding(.leading, textPadding)
+
             Spacer()
+
             if shortcut != "" {
                 Text(shortcut)
                     .foregroundColor(Color.gray.opacity(0.5))

@@ -13,10 +13,19 @@ struct InviteToPortal: View {
         VStack(alignment: .leading) {
             EmailListView(emailList: $emails)
 
-            //use opacity to pre-allocate the space for this component
-            Text("Error: \(errorMessage)")
-                .opacity(errorMessage.isEmpty ? 0 : 1)
-                .foregroundColor(.red)
+            if !errorMessage.isEmpty {
+                Text("Error: \(errorMessage)")
+                    .foregroundColor(.red)
+            }
+
+            Spacer()
+
+            Hint(
+"""
+Once you've invited your friends to the portal, they'll get an email with this invitation. They can access your portal from their computer after they have installed Ockam app.
+"""
+            )
+
 
             HStack {
                 Spacer()
@@ -25,7 +34,7 @@ struct InviteToPortal: View {
                         self.closeWindow()
                     },
                     label: {
-                        Text("Close")
+                        Text("Cancel")
                     })
                 Button(
                     action: {
@@ -46,7 +55,7 @@ struct InviteToPortal: View {
                         }
                     },
                     label: {
-                        Text("Invite")
+                        Text("Invite to Portal")
                     }
                 )
                 .disabled(!canShareService() && !isProcessing)
@@ -55,7 +64,7 @@ struct InviteToPortal: View {
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600)
+        .frame(width: 600, height: 330)
     }
 
     func closeWindow() {
@@ -77,6 +86,8 @@ struct ShareServiceView_Previews: PreviewProvider {
                 port: 1234, scheme: nil,
                 sharedWith: [],
                 available: false
-            ))
+            )
+        )
+        .frame(height: 330)
     }
 }

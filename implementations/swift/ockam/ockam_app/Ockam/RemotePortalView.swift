@@ -64,7 +64,14 @@ struct RemotePortalView: View {
             .onHover { hover in
                 isHovered = hover
             }
-            .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
+            )
+            .background( isHovered ?
+                AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+                AnyShapeStyle(Color.clear)
+            )
             .cornerRadius(4)
 
             if isOpen {

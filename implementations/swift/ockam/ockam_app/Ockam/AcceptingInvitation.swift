@@ -1,55 +1,72 @@
 import SwiftUI
 
+
+struct AcceptingInvitationWrapper: View {
+    @Environment(\.openWindow) private var openWindow
+
+    @Binding var state: ApplicationState
+    @Binding var invitationIdContainer: InvitationContainer
+
+    @State private var showIntro: Bool = false
+    @State private var enrollClickedFromHere: Bool = false
+    @State private var showWindowOnEnrollment: Bool = true
+
+    var body: some View {
+        if showIntro {
+            GuidedIntro(
+                status: $state.orchestrator_status,
+                onEnroll: {
+                    enrollClickedFromHere = true
+                },
+                onFinish: {
+                    self.showIntro = false
+                    bringInFront()
+                },
+                canSkip: false
+            )
+            .onReceive(state.$orchestrator_status, perform: { newValue in
+                if enrollClickedFromHere {
+                    if newValue != .WaitingForToken && newValue != .Disconnected {
+                        if showWindowOnEnrollment {
+                            openWindow(id: "accepting-invitation")
+                            bringInFront()
+                            // only works once
+                            showWindowOnEnrollment = false
+                        }
+                    }
+                } else {
+                    if newValue == .Connecting || newValue == .Connecting {
+                        // if the user enrolled from another window, we can safely
+                        // hide the tour
+                        showIntro = false
+                    }
+                }
+            })
+        } else {
+            AcceptingInvitation(
+                state: $state,
+                invitationIdContainer: $invitationIdContainer
+            )
+            .onAppear(perform: {
+                self.showIntro = !state.enrolled
+            })
+        }
+    }
+}
+
 struct AcceptingInvitation: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @Environment(\.openWindow) var openWindow
+
     @Binding var state: ApplicationState
     @Binding var invitationIdContainer: InvitationContainer
-    @State var invitation: Optional<(ServiceGroup,Invitation)> = nil
-    @State var service: Optional<(ServiceGroup,Service)> = nil
+
+    @State private var invitation: Optional<(ServiceGroup,Invitation)> = nil
+    @State private var service: Optional<(ServiceGroup,Service)> = nil
 
     var body: some View {
         VStack(alignment: .center) {
-            if !state.enrolled {
-                Spacer()
-                switch state.orchestrator_status {
-                case .Disconnected:
-                    Text("You're not currently enrolled")
-                        .padding(.vertical, VerticalSpacingUnit)
-                        .font(.headline)
-                    Text("Please enroll in order to accept the invitation")
-                        .padding(.top, 0)
-                        .padding(.bottom, VerticalSpacingUnit)
-                    Button(
-                        action: {
-                            enroll_user()
-                        },
-                        label: {
-                            Text("Enroll…")
-                        }
-                    )
-                    .keyboardShortcut(.defaultAction)
-                default:
-                    Text("Your enrollment is in progress").font(.headline)
-                    Text("This might take a few minutes").font(.caption)
-                }
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(
-                        action: {
-                            self.closeWindow()
-                        },
-                        label: {
-                            Text("Dismiss")
-                        }
-                    )
-                    .disabled(state.orchestrator_status != .Disconnected)
-                }
-                .padding(.vertical, VerticalSpacingUnit)
-                .padding(.horizontal, HorizontalSpacingUnit)
-                .background(OckamDarkerBackground)
-            } else if !state.loaded {
+            if !state.loaded {
                 Spacer()
                 Text("Loading invitations").font(.headline)
                 Spacer()
@@ -236,7 +253,7 @@ struct OpenUrlView_Previews: PreviewProvider {
     @State static var invitationIdContainer = InvitationContainer()
 
     static var previews: some View {
-        AcceptingInvitation(state: $state, invitationIdContainer: $invitationIdContainer )
+        AcceptingInvitationWrapper(state: $state, invitationIdContainer: $invitationIdContainer )
             .onAppear(perform: {
                 Self.invitationIdContainer.id = "5373"
             })

@@ -4,10 +4,11 @@ struct OpenPortal: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @FocusState private var isFocused: Bool
 
-    @State var isProcessing = false
-    @State var errorMessage = ""
-    @State var serviceName = ""
-    @State var serviceAddress = "localhost:10000"
+    @Binding var localServices: [LocalService]
+    @State private var isProcessing = false
+    @State private var errorMessage = ""
+    @State private var serviceName = ""
+    @State private var serviceAddress = "localhost:10000"
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -35,11 +36,26 @@ struct OpenPortal: View {
             }
             .padding(10)
 
-            //use opacity to pre-allocate the space for this component
-            Text("Error: \(errorMessage)")
-                .opacity(errorMessage.isEmpty ? 0 : 1)
-                .foregroundColor(.red)
-                .padding(10)
+
+            if !errorMessage.isEmpty {
+                Text("Error: \(errorMessage)")
+                    .foregroundColor(.red)
+                    .padding(10)
+            }
+
+            Spacer()
+
+            if localServices.isEmpty {
+                Hint(
+"""
+One of the main things that you might want to do with the Ockam.app is open a portal, which allows a TCP service, to be shared with your friends.
+
+Once you open a portal, you can invite your friends to access it, without exposing your computer to the Internet or having to change any network settings.
+
+After you've opened a portal, don't forget to share it with your friends!
+"""
+                )
+            }
 
             HStack {
                 Spacer()
@@ -48,7 +64,7 @@ struct OpenPortal: View {
                         self.closeWindow()
                     },
                     label: {
-                        Text("Close")
+                        Text("Cancel")
                     })
                 Button(
                     action: {
@@ -71,7 +87,7 @@ struct OpenPortal: View {
                         }
                     },
                     label: {
-                        Text("Create")
+                        Text("Open Portal")
                     }
                 )
                 .disabled(!canCreateService() && !isProcessing)
@@ -80,7 +96,7 @@ struct OpenPortal: View {
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600)
+        .frame(width: 600, height: localServices.isEmpty ? 340 : 150)
     }
 
     func closeWindow() {
@@ -94,6 +110,6 @@ struct OpenPortal: View {
 
 struct CreateServiceView_Previews: PreviewProvider {
     static var previews: some View {
-        OpenPortal()
+        OpenPortal(localServices: .constant([]))
     }
 }

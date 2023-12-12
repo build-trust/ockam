@@ -2,8 +2,8 @@ import SwiftUI
 
 struct ProfilePicture: View {
     @State var url: String?
-    @State var placeholder = "person"
     @State var size: CGFloat = 48
+    @State var placeholder = "person.crop.square"
 
     var body: some View {
         if let url = url {
@@ -15,10 +15,14 @@ struct ProfilePicture: View {
                         .clipShape(RoundedRectangle(cornerSize: CGSize(width: 10, height: 10)))
                 },
                 placeholder: {
-                    Image(systemName: placeholder)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: size, maxHeight: size)
+                    if placeholder != "" {
+                        Image(systemName: placeholder)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: size, maxHeight: size)
+                    } else {
+                        Color.clear
+                    }
                 }
             ).frame(width: size, height: size)
         } else {

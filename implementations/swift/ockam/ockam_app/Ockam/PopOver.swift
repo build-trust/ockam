@@ -3,18 +3,34 @@ import SwiftUI
 
 struct PopOver: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    @EnvironmentObject private var appDelegate: AppDelegate
+
     @Binding var state: ApplicationState
+
     @State private var showIntro: Bool
+    //move back the focus to the popover after the browser interaction is complete
+    @State private var showPopOnEnrollment: Bool = false
 
     var body: some View {
         if showIntro {
             GuidedIntro(
                 status: $state.orchestrator_status,
+                onEnroll: {
+                    self.showPopOnEnrollment = true
+                },
                 onFinish: {
                     self.showIntro = false
                     bringInFront()
                 }
             )
+            .onReceive(state.$orchestrator_status, perform: { newValue in
+                if newValue != .WaitingForToken && newValue != .Disconnected {
+                    if self.showPopOnEnrollment  {
+                        appDelegate.showPopover()
+                    }
+                    self.showPopOnEnrollment = false
+                }
+            })
         } else {
             MainView(state: $state)
         }
