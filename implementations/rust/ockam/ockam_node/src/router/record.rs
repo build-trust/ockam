@@ -164,24 +164,29 @@ impl InternalMap {
     /// Retrieve the next cluster in reverse-initialisation order
     /// Return None if there is no next cluster or if the cluster
     /// contained no more active addresses
-    pub(super) fn next_cluster(&mut self) -> Option<Vec<&mut AddressRecord>> {
-        let name = self.cluster_order.pop()?;
-        let addrs = self.clusters.remove(&name)?;
-        let active_addresses: Vec<&mut AddressRecord> = self
-            .address_records_map
-            .iter_mut()
-            .filter_map(|(primary, rec)| {
-                if addrs.contains(primary) {
-                    Some(rec)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        if active_addresses.is_empty() {
-            None
-        } else {
-            Some(active_addresses)
+    pub(super) fn next_cluster(&mut self) -> Option<Vec<Address>> {
+        // loop until either:
+        //  - there are no more clusters
+        //  - we found a non-empty list of active addresses in a cluster
+        loop {
+            let name = self.cluster_order.pop()?;
+            let addrs = self.clusters.remove(&name)?;
+            let active_addresses: Vec<Address> = self
+                .address_records_map
+                .iter()
+                .filter_map(|(primary, _)| {
+                    if addrs.contains(primary) {
+                        Some(primary.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if active_addresses.is_empty() {
+                continue;
+            } else {
+                return Some(active_addresses);
+            }
         }
     }
 
@@ -343,4 +348,56 @@ pub enum ReadyState {
     Ready,
     /// The runner is still processing user init code and contains a list of waiting polling addresses
     Initialising(Vec<SmallSender<NodeReplyResult>>),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::channel_types::small_channel;
+    use crate::router::record::InternalMap;
+
+    #[test]
+    fn test_next_cluster() {
+        let mut map = InternalMap::new(&FlowControls::new());
+
+        // create 3 clusters
+        //   cluster 1 has one active address
+        //   cluster 2 has no active address
+        //   cluster 3 has one active address
+        map.address_records_map
+            .insert("address1".into(), create_address_record("address1"));
+        let _ = map.set_cluster("CLUSTER1".into(), "address1".into());
+
+        map.address_records_map
+            .insert("address2".into(), create_address_record("address2"));
+        let _ = map.set_cluster("CLUSTER2".into(), "address2".into());
+        map.free_address("address2".into());
+
+        map.address_records_map
+            .insert("address3".into(), create_address_record("address3"));
+        let _ = map.set_cluster("CLUSTER3".into(), "address3".into());
+
+        // get the active addresses for cluster 3, clusters are popped in reverse order
+        assert_eq!(map.next_cluster(), Some(vec!["address3".into()]));
+        // get the active addresses for cluster 1, cluster 2 is skipped
+        assert_eq!(map.next_cluster(), Some(vec!["address1".into()]));
+        // finally there are no more clusters with active addresses
+        assert_eq!(map.next_cluster(), None);
+    }
+
+    /// HELPERS
+    fn create_address_record(primary: &str) -> AddressRecord {
+        let (tx1, _) = small_channel();
+        let (tx2, _) = small_channel();
+        AddressRecord::new(
+            vec![primary.into()],
+            tx1,
+            tx2,
+            Arc::new(AtomicUsize::new(1)),
+            AddressMeta {
+                processor: false,
+                detached: false,
+            },
+        )
+    }
 }

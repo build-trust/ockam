@@ -4,6 +4,7 @@ use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
 };
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Result};
 
 /// Register a stop ACK
@@ -22,15 +23,28 @@ pub(super) async fn ack(router: &mut Router, addr: Address) -> Result<bool> {
     }
 
     // Check if there is a next cluster
-    stop_next_cluster(router).await
+    router.stop_next_cluster().await
 }
 
-async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
-    match r.map.next_cluster() {
-        Some(mut vec) => {
-            let mut addrs = vec![];
+impl Router {
+    async fn stop_next_cluster(&mut self) -> Result<bool> {
+        let next_cluster_addresses = self.map.next_cluster();
 
-            for record in vec.iter_mut() {
+        match next_cluster_addresses {
+            Some(vec) => {
+                self.stop_cluster_addresses(vec).await?;
+                Ok(false)
+            }
+            // If not, we are done!
+            None => Ok(true),
+        }
+    }
+
+    async fn stop_cluster_addresses(&mut self, addresses: Vec<Address>) -> Result<()> {
+        let mut addrs = vec![];
+
+        for address in addresses.iter() {
+            if let Some(record) = self.map.get_address_record_mut(address) {
                 record.stop().await?;
                 if let Some(first_address) = record.address_set().first().cloned() {
                     addrs.push(first_address);
@@ -38,12 +52,10 @@ async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
                     error!("Empty Address Set during cluster stop");
                 }
             }
-
-            addrs.into_iter().for_each(|addr| r.map.init_stop(addr));
-            Ok(false)
         }
-        // If not, we are done!
-        None => Ok(true),
+
+        addrs.into_iter().for_each(|addr| self.map.init_stop(addr));
+        Ok(())
     }
 }
 
@@ -73,7 +85,7 @@ pub(super) async fn graceful(
 
     // If there _are_ no clusterless workers we go to the next cluster
     if cluster.is_empty() {
-        return stop_next_cluster(router).await;
+        return router.stop_next_cluster().await;
     }
 
     // Otherwise: keep track of addresses we are stopping
