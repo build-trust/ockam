@@ -139,19 +139,20 @@ pub trait DeleteCommandTui {
         }
 
         if self.cmd_arg_item_name().is_some() || !terminal.can_ask_for_user_input() {
-            let item_name = self.get_arg_item_name_or_default().await?;
-            if !items_names.contains(&item_name) {
-                return Err(miette!(
-                    "The {} {} was not found",
-                    Self::ITEM_NAME.singular(),
-                    color!(item_name, OckamColor::PrimaryResource)
-                ));
-            }
-            if terminal.confirmed_with_flag_or_prompt(
-                self.cmd_arg_confirm_deletion(),
-                "Are you sure you want to proceed?",
-            )? {
-                self.delete_single(&item_name).await?;
+            if let Some(item_name) = self.cmd_arg_item_name() {
+                if !items_names.contains(&item_name.to_string()) {
+                    return Err(miette!(
+                        "The {} {} was not found",
+                        Self::ITEM_NAME.singular(),
+                        color!(item_name, OckamColor::PrimaryResource)
+                    ));
+                }
+                if terminal.confirmed_with_flag_or_prompt(
+                    self.cmd_arg_confirm_deletion(),
+                    "Are you sure you want to proceed?",
+                )? {
+                    self.delete_single(&item_name).await?;
+                }
             }
             return Ok(());
         }

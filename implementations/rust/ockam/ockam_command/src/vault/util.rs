@@ -28,7 +28,7 @@ impl Output for VaultOutput {
         Ok(formatdoc!(
             r#"
             Vault:
-                Name: {name} {default}
+                Name: {name}
                 Type: {vault_type}
             "#,
             name = self
@@ -36,11 +36,6 @@ impl Output for VaultOutput {
                 .name()
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            default = if self.vault.is_default() {
-                "(default)"
-            } else {
-                ""
-            },
             vault_type = match self.vault.is_kms() {
                 true => "AWS KMS",
                 false => "OCKAM",
@@ -52,18 +47,13 @@ impl Output for VaultOutput {
 
     fn list_output(&self) -> crate::error::Result<String> {
         Ok(formatdoc!(
-            r#"Name: {name} {default}
+            r#"Name: {name}
             Type: {vault_type}"#,
             name = self
                 .vault
                 .name()
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            default = if self.vault.is_default() {
-                "(default)"
-            } else {
-                ""
-            },
             vault_type = match self.vault.is_kms() {
                 true => "AWS KMS",
                 false => "OCKAM",
