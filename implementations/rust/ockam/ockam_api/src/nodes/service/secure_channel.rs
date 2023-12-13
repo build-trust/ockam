@@ -113,20 +113,13 @@ impl NodeManagerWorker {
         let CreateSecureChannelListenerRequest {
             addr,
             authorized_identifiers,
-            vault_name,
             identity_name,
             ..
         } = create_secure_channel_listener;
 
         let response = self
             .node_manager
-            .create_secure_channel_listener(
-                addr,
-                authorized_identifiers,
-                vault_name,
-                identity_name,
-                ctx,
-            )
+            .create_secure_channel_listener(addr, authorized_identifiers, identity_name, ctx)
             .await
             .map(|_| Response::ok())?;
         Ok(response)
@@ -363,7 +356,6 @@ impl NodeManager {
         &self,
         address: Address,
         authorized_identifiers: Option<Vec<Identifier>>,
-        vault_name: Option<String>,
         identity_name: Option<String>,
         ctx: &Context,
     ) -> Result<SecureChannelListener> {
@@ -372,8 +364,22 @@ impl NodeManager {
             address
         );
 
-        let secure_channels = self.build_secure_channels(vault_name.clone()).await?;
-        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
+        let named_identity = match identity_name {
+            Some(identity_name) => self.cli_state.get_named_identity(&identity_name).await?,
+            None => {
+                self.cli_state
+                    .get_named_identity_by_identifier(&self.identifier())
+                    .await?
+            }
+        };
+        let identifier = named_identity.identifier();
+        let vault = self
+            .cli_state
+            .get_named_vault(&named_identity.vault_name())
+            .await?
+            .vault()
+            .await?;
+        let secure_channels = self.build_secure_channels(vault).await?;
 
         let options =
             SecureChannelListenerOptions::new().as_consumer(&self.api_transport_flow_control_id);
@@ -460,16 +466,8 @@ impl NodeManager {
 }
 
 impl NodeManager {
-    /// Build a SecureChannels struct for a specific vault if one is specified
-    /// Otherwise return the shared SecureChannels
-    pub(crate) async fn build_secure_channels(
-        &self,
-        vault_name: Option<String>,
-    ) -> Result<Arc<SecureChannels>> {
-        if vault_name.is_none() {
-            return Ok(self.secure_channels.clone());
-        }
-        let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
+    /// Build a SecureChannels struct for a specific vault
+    pub(crate) async fn build_secure_channels(&self, vault: Vault) -> Result<Arc<SecureChannels>> {
         let registry = self.secure_channels.secure_channel_registry();
         Ok(SecureChannels::builder()
             .await?
@@ -484,19 +482,5 @@ impl NodeManager {
             )
             .with_secure_channels_registry(registry)
             .build())
-    }
-
-    async fn get_secure_channels_vault(&self, vault_name: Option<String>) -> Result<Vault> {
-        if let Some(vault_name) = vault_name {
-            let existing_vault = self
-                .cli_state
-                .get_named_vault(&vault_name)
-                .await?
-                .vault()
-                .await?;
-            Ok(existing_vault)
-        } else {
-            Ok(self.secure_channels.vault())
-        }
     }
 }

@@ -142,21 +142,18 @@ impl CreateSecureChannelResponse {
 pub struct CreateSecureChannelListenerRequest {
     #[n(1)] pub addr: Address,
     #[n(2)] pub authorized_identifiers: Option<Vec<Identifier>>,
-    #[n(3)] pub vault_name: Option<String>,
-    #[n(4)] pub identity_name: Option<String>,
+    #[n(3)] pub identity_name: Option<String>,
 }
 
 impl CreateSecureChannelListenerRequest {
     pub fn new(
         addr: &Address,
         authorized_identifiers: Option<Vec<Identifier>>,
-        vault_name: Option<String>,
         identity_name: Option<String>,
     ) -> Self {
         Self {
             addr: addr.to_owned(),
             authorized_identifiers,
-            vault_name,
             identity_name,
         }
     }
