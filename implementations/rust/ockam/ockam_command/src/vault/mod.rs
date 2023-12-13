@@ -1,12 +1,10 @@
 mod create;
-mod default;
 mod delete;
 mod list;
 mod show;
 mod util;
 
 use crate::vault::create::CreateCommand;
-use crate::vault::default::DefaultCommand;
 use crate::vault::delete::DeleteCommand;
 use crate::vault::list::ListCommand;
 use crate::vault::show::ShowCommand;
@@ -34,7 +32,6 @@ pub enum VaultSubcommand {
     Show(ShowCommand),
     Delete(DeleteCommand),
     List(ListCommand),
-    Default(DefaultCommand),
 }
 
 impl VaultCommand {
@@ -44,7 +41,6 @@ impl VaultCommand {
             VaultSubcommand::Show(cmd) => cmd.run(opts),
             VaultSubcommand::List(cmd) => cmd.run(opts),
             VaultSubcommand::Delete(cmd) => cmd.run(opts),
-            VaultSubcommand::Default(cmd) => cmd.run(opts),
         }
     }
 }
