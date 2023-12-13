@@ -33,6 +33,28 @@ impl CliState {
 
     /// Delete an existing vault
     pub async fn delete_named_vault(&self, vault_name: &str) -> Result<()> {
+        // first check that no identity is using the vault
+        let identities_repository = self.identities_repository().await?;
+        let identities_using_the_vault = identities_repository
+            .get_named_identities_by_vault_name(vault_name)
+            .await?;
+        if !identities_using_the_vault.is_empty() {
+            let identities_names = identities_using_the_vault
+                .iter()
+                .map(|i| i.name())
+                .collect::<Vec<String>>();
+            return Err(ockam_core::Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                format!(
+                    "the vault {vault_name} cannot be deleted. It is used by identities {}",
+                    identities_names.join(", ")
+                ),
+            )
+            .into());
+        };
+
+        // now delete the vault and its file if there is a separate one
         let repository = self.vaults_repository().await?;
         let vault = repository.get_named_vault(vault_name).await?;
         if let Some(vault) = vault {
@@ -43,6 +65,18 @@ impl CliState {
             if vault.path != self.database_path() {
                 let _ = std::fs::remove_file(vault.path);
             }
+        }
+        Ok(())
+    }
+
+    /// Delete all named identities
+    pub async fn delete_all_named_identities(&self) -> Result<()> {
+        let identities_repository = self.identities_repository().await?;
+        let identities = identities_repository.get_named_identities().await?;
+        for identity in identities {
+            identities_repository
+                .delete_identity(&identity.name())
+                .await?;
         }
         Ok(())
     }

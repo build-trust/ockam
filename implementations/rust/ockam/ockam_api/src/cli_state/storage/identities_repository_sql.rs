@@ -177,6 +177,15 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         row.iter().map(|r| r.named_identity()).collect()
     }
 
+    async fn get_named_identities_by_vault_name(
+        &self,
+        vault_name: &str,
+    ) -> Result<Vec<NamedIdentity>> {
+        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE vault_name=?").bind(vault_name.to_sql());
+        let row: Vec<NamedIdentityRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        row.iter().map(|r| r.named_identity()).collect()
+    }
+
     async fn set_as_default(&self, name: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
@@ -332,6 +341,35 @@ mod tests {
 
         let result = repository.get_default_named_identity().await?;
         assert_eq!(result.map(|i| i.name()), Some("name2".to_string()));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_identities_by_vault_name() -> Result<()> {
+        let repository = create_repository().await?;
+
+        // A name can be associated to an identity
+        let identifier1 = create_identity().await?;
+        repository
+            .store_named_identity(&identifier1, "name1", "vault1")
+            .await?;
+
+        let identifier2 = create_identity().await?;
+        repository
+            .store_named_identity(&identifier2, "name2", "vault2")
+            .await?;
+
+        let identifier3 = create_identity().await?;
+        repository
+            .store_named_identity(&identifier3, "name3", "vault1")
+            .await?;
+
+        let result = repository
+            .get_named_identities_by_vault_name("vault1")
+            .await?;
+        let names: Vec<String> = result.iter().map(|i| i.name()).collect();
+        assert_eq!(names, vec!["name1", "name3"]);
 
         Ok(())
     }

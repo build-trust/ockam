@@ -56,6 +56,12 @@ pub trait IdentitiesRepository: Send + Sync + 'static {
     /// Return identities which have been given a name
     async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>>;
 
+    /// Return identities which have been given a name, and are using a specific vault
+    async fn get_named_identities_by_vault_name(
+        &self,
+        vault_name: &str,
+    ) -> Result<Vec<NamedIdentity>>;
+
     /// Set an identity as the default one, given its name
     async fn set_as_default(&self, name: &str) -> Result<()>;
 

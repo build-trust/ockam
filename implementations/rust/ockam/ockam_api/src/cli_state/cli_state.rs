@@ -55,6 +55,7 @@ impl CliState {
     /// Stop nodes and remove all the directories storing state
     pub async fn reset(&self) -> Result<()> {
         self.delete_all_nodes(true).await?;
+        self.delete_all_named_identities().await?;
         self.delete_all_named_vaults().await?;
         self.delete()
     }

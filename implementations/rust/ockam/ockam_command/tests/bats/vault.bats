@@ -50,13 +50,15 @@ teardown() {
   run_success "$OCKAM" vault delete "${v}" --yes
   run_failure "$OCKAM" vault show "${v}"
 
-  # Delete vault and leave identities untouched
+  # Deleting a vault can only be done if no identity is using it
   v=$(random_str)
   i=$(random_str)
 
   run_success "$OCKAM" vault create "${v}"
   run_success "$OCKAM" identity create "${i}" --vault "${v}"
+  run_failure "$OCKAM" vault delete "${v}" --yes
+
+  run_success "$OCKAM" identity delete "${i}" --yes
   run_success "$OCKAM" vault delete "${v}" --yes
   run_failure "$OCKAM" vault show "${v}"
-  run_success "$OCKAM" identity show "${i}"
 }
