@@ -119,7 +119,7 @@ async fn create_credential_aws_key() -> Result<()> {
             &identifier,
             &identifier,
             attributes,
-            Duration::from_secs(120),
+            Duration::from_secs(60 * 60),
         )
         .await?;
 
