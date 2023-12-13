@@ -8,21 +8,23 @@ struct RemotePortalView: View {
     @State private var isOpen = false
     @ObservedObject var service: Service
 
+    @State var padding = 0.0
+
     func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()
     }
 
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: HorizontalSpacingUnit) {
                 Image(systemName: "circle")
                     .foregroundColor(
                         service.enabled ? (service.available ? .green : .red) : .orange
                     )
-                    .frame(maxWidth: 16, maxHeight: 16)
+                    .padding(.trailing, StandardIconTextSpacing)
 
-                VStack(alignment: .leading) {
-                    Text(service.sourceName).font(.title3).lineLimit(1)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(service.sourceName).lineLimit(1)
                     if !service.enabled {
                         Text(verbatim: "Disconnected")
                             .foregroundStyle(OckamSecondaryTextColor)
@@ -53,7 +55,8 @@ struct RemotePortalView: View {
                     .rotationEffect(
                         isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
             }
-            .frame(height: VerticalSpacingUnit*5)
+            .padding(.leading, padding)
+            .frame(height: VerticalSpacingUnit*4)
             .padding(.horizontal, HorizontalSpacingUnit)
             .contentShape(Rectangle())
             .onTapGesture {
@@ -64,17 +67,15 @@ struct RemotePortalView: View {
             .onHover { hover in
                 isHovered = hover
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
-            )
             .background( isHovered ?
                 AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
                 AnyShapeStyle(Color.clear)
             )
             .cornerRadius(4)
+            .padding(.horizontal, WindowBorderSize)
 
             if isOpen {
+                Divider()
                 VStack(spacing: 0) {
                     if service.available {
                         if service.enabled {
@@ -91,14 +92,18 @@ struct RemotePortalView: View {
                                         if let url = URL(string: url) {
                                             NSWorkspace.shared.open(url)
                                         }
-                                    })
+                                    },
+                                    textPadding: padding + HorizontalSpacingUnit*2
+                                )
                             }
                             ClickableMenuEntry(
                                 text: "Copy " + address, clicked: "Copied!",
                                 action: {
                                     copyToClipboard(address)
                                     self.closeWindow()
-                                })
+                                },
+                                textPadding: padding + HorizontalSpacingUnit*2
+                            )
                         }
                     }
 
@@ -107,13 +112,17 @@ struct RemotePortalView: View {
                             text: "Disconnect",
                             action: {
                                 disable_accepted_service(service.id)
-                            })
+                            },
+                            textPadding: padding + HorizontalSpacingUnit*2
+                        )
                     } else {
                         ClickableMenuEntry(
                             text: "Connect",
                             action: {
                                 enable_accepted_service(service.id)
-                            })
+                            },
+                            textPadding: padding + HorizontalSpacingUnit*2
+                        )
                     }
                     ClickableMenuEntry(
                         text: "Delete",
@@ -122,9 +131,13 @@ struct RemotePortalView: View {
                                 windowName: "delete-portal-confirmation",
                                 value: service.id
                             )
-                        })
+                        },
+                        textPadding: padding + HorizontalSpacingUnit*2
+                    )
                 }
-                .padding(.leading, HorizontalSpacingUnit*2)
+                .padding(.horizontal, WindowBorderSize)
+                .background(HierarchicalShapeStyle.quinary)
+                Divider()
             }
         }
     }

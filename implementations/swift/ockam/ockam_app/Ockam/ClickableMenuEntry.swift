@@ -8,22 +8,32 @@ struct ClickableMenuEntry: View {
     @State var icon: String = ""
     @State var shortcut: String = ""
     @State var action: (() -> Void)? = nil
-    @State var textPadding = HorizontalSpacingUnit
+    @State var textPadding = 0.0
 
     @State private var isHovered = false
     @State private var isDown = false
 
     var body: some View {
-        HStack {
+        HStack(spacing: 0) {
             if icon != "" {
                 Image(systemName: icon)
+                    .padding(.leading, textPadding)
+                    .padding(.trailing, StandardIconTextSpacing)
+
+                Text(
+                    verbatim: isDown ? (
+                        clicked.isEmpty ? text : clicked
+                    ) : text
+                )
+            } else {
+                Text(
+                    verbatim: isDown ? (
+                        clicked.isEmpty ? text : clicked
+                    ) : text
+                )
+                .padding(.leading, textPadding)
             }
-            Text(
-                verbatim: isDown ? (
-                    clicked.isEmpty ? text : clicked
-                ) : text
-            )
-            .padding(.leading, textPadding)
+
 
             Spacer()
 

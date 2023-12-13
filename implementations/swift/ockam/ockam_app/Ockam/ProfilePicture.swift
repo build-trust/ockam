@@ -26,10 +26,12 @@ struct ProfilePicture: View {
                 }
             ).frame(width: size, height: size)
         } else {
-            Image(systemName: placeholder)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size, height: size)
+            if placeholder != "" {
+                Image(systemName: placeholder)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ struct SentInvitations: View {
     @ObservedObject var state: ApplicationState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: VerticalSpacingUnit) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: HorizontalSpacingUnit) {
                 Text("Sent invitations")
                     .font(.body)
@@ -30,14 +30,23 @@ struct SentInvitations: View {
             }
             .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
             .cornerRadius(4)
+            .padding(.horizontal, WindowBorderSize)
 
             if isOpen {
-                Group {
-                    ForEach(state.sent_invitations) { invitation in
-                        Text(invitation.email)
+                Divider()
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(state.sent_invitations) { invitation in
+                            Text(invitation.email)
+                                .frame(height: VerticalSpacingUnit*2)
+                        }
                     }
+                    .padding(.horizontal, HorizontalSpacingUnit*2)
+                    Spacer()
                 }
-                .padding(.horizontal, HorizontalSpacingUnit*2)
+                .padding(.vertical, VerticalSpacingUnit)
+                .background(HierarchicalShapeStyle.quinary)
+                Divider()
             }
         }
     }
