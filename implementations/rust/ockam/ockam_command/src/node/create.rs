@@ -70,10 +70,6 @@ pub struct CreateCommand {
     #[arg(long, group = "trusted")]
     pub reload_from_trusted_identities_file: Option<PathBuf>,
 
-    /// Name of the Vault that the node will use.
-    #[arg(long = "vault", value_name = "VAULT_NAME")]
-    vault: Option<String>,
-
     /// Name of the Identity that the node will use
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
@@ -99,7 +95,6 @@ impl Default for CreateCommand {
             foreground: false,
             child_process: false,
             launch_config: None,
-            vault: None,
             identity: None,
             authority_identity: None,
             trusted_identities: None,

@@ -94,10 +94,6 @@ pub struct CreateCommand {
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     foreground: bool,
 
-    /// Vault that authority will use
-    #[arg(long = "vault", value_name = "VAULT_NAME")]
-    vault: Option<String>,
-
     /// Name of the Identity that the authority will use
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
@@ -178,11 +174,6 @@ async fn spawn_background_node(
             args.push("--attributes".to_string());
             args.push(attr.clone());
         });
-    }
-
-    if let Some(vault) = &cmd.vault {
-        args.push("--vault".to_string());
-        args.push(vault.clone());
     }
 
     if let Some(identity) = &cmd.identity {
