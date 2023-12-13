@@ -65,7 +65,7 @@ impl BackgroundNode {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            timeout: None,
+            timeout: Some(Duration::from_secs(30)),
             tcp_transport: Arc::new(tcp_transport.async_try_clone().await.into_diagnostic()?),
         })
     }
