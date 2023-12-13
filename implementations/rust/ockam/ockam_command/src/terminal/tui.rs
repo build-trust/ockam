@@ -151,7 +151,7 @@ pub trait DeleteCommandTui {
                     self.cmd_arg_confirm_deletion(),
                     "Are you sure you want to proceed?",
                 )? {
-                    self.delete_single(&item_name).await?;
+                    self.delete_single(item_name).await?;
                 }
             }
             return Ok(());
