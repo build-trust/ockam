@@ -22,11 +22,11 @@ struct LocalPortalView: View {
                         .lineLimit(1)
 
                     let address =
-                        if let scheme = localService.scheme {
-                            scheme + "://" + localService.address + ":" + String(localService.port)
-                        } else {
-                            localService.address + ":" + String(localService.port)
-                        }
+                    if let scheme = localService.scheme {
+                        scheme + "://" + localService.address + ":" + String(localService.port)
+                    } else {
+                        localService.address + ":" + String(localService.port)
+                    }
 
                     Text(verbatim: address)
                         .foregroundColor(OckamSecondaryTextColor)
@@ -39,62 +39,71 @@ struct LocalPortalView: View {
                         isOpen ? Angle.degrees(90.0) : Angle.degrees(0), anchor: .center)
                     .padding(0)
             }
-        }
-        .contentShape(Rectangle())
-        .padding(.horizontal, HorizontalSpacingUnit)
-        .frame(height: VerticalSpacingUnit*5)
-        .onTapGesture {
-            withAnimation {
-                isOpen = !isOpen
-            }
-        }
-        .onHover { hover in
-            isHovered = hover
-        }
-//        .overlay(
-//            RoundedRectangle(cornerRadius: 4)
-//                .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
-//        )
-        .background( isHovered ?
-            AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
-            AnyShapeStyle(colorScheme == .dark ? Color.black.opacity(0.1) : Color.white.opacity(0.3))
-        )
-        .cornerRadius(4)
-
-        if isOpen {
-            VStack(spacing: 0) {
-                let address = localService.address + ":" + String(localService.port)
-                if let scheme = localService.scheme {
-                    let url = scheme + "://" + address
-                    ClickableMenuEntry(
-                        text: "Open " + url + "…",
-                        action: {
-                            if let url = URL(string: url) {
-                                NSWorkspace.shared.open(url)
-                                self.closeWindow()
-                            }
-                        })
+            .contentShape(Rectangle())
+            .padding(.horizontal, HorizontalSpacingUnit)
+            .frame(height: VerticalSpacingUnit*4)
+            .onTapGesture {
+                withAnimation {
+                    isOpen = !isOpen
                 }
-                ClickableMenuEntry(
-                    text: "Copy " + address, clicked: "Copied!",
-                    action: {
-                        copyToClipboard(address)
-                        self.closeWindow()
-                    })
-                ClickableMenuEntry(
-                    text: "Invite…",
-                    action: {
-                        OpenWindowWorkaround.shared.openWindow(
-                            windowName: "invite-to-portal",
-                            value: localService.id
+            }
+            .onHover { hover in
+                isHovered = hover
+            }
+            .background( isHovered ?
+                AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+                AnyShapeStyle(Color.clear)
+            )
+            .cornerRadius(4)
+            .padding(.horizontal, WindowBorderSize)
+
+            if isOpen {
+                Divider()
+                VStack(spacing: 0) {
+                    let address = localService.address + ":" + String(localService.port)
+                    if let scheme = localService.scheme {
+                        let url = scheme + "://" + address
+                        ClickableMenuEntry(
+                            text: "Open " + url + "…",
+                            action: {
+                                if let url = URL(string: url) {
+                                    NSWorkspace.shared.open(url)
+                                    self.closeWindow()
+                                }
+                            },
+                            textPadding: HorizontalSpacingUnit*2
                         )
-                        bringInFront()
-                    })
-                ClickableMenuEntry(
-                    text: "Delete",
-                    action: {
-                        delete_local_service(self.localService.name)
-                    })
+                    }
+                    ClickableMenuEntry(
+                        text: "Copy " + address, clicked: "Copied!",
+                        action: {
+                            copyToClipboard(address)
+                            self.closeWindow()
+                        },
+                        textPadding: HorizontalSpacingUnit*2
+                    )
+                    ClickableMenuEntry(
+                        text: "Invite…",
+                        action: {
+                            OpenWindowWorkaround.shared.openWindow(
+                                windowName: "invite-to-portal",
+                                value: localService.id
+                            )
+                            bringInFront()
+                        },
+                        textPadding: HorizontalSpacingUnit*2
+                    )
+                    ClickableMenuEntry(
+                        text: "Delete",
+                        action: {
+                            delete_local_service(self.localService.name)
+                        },
+                        textPadding: HorizontalSpacingUnit*2
+                    )
+                }
+                .padding(.horizontal, WindowBorderSize)
+                .background(HierarchicalShapeStyle.quinary)
+                Divider()
             }
         }
     }
@@ -105,7 +114,7 @@ struct LocalServiceView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
 
     static var previews: some View {
-        VStack(spacing: VerticalSpacingUnit) {
+        VStack(spacing: 0) {
             LocalPortalView(localService: state.localServices[0])
             LocalPortalView(localService: state.localServices[1])
         }

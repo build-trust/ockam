@@ -31,58 +31,61 @@ struct ServiceGroupView: View {
 
                 ProfilePicture(
                     url: group.imageUrl,
-                    size: 32,
+                    size: 28,
                     placeholder: ""
                 )
 
                 Image(systemName: "chevron.right")
                     .rotationEffect( isOpen ? Angle(degrees: 90) : Angle(degrees: 0))
             }
-        }
-        .contentShape(Rectangle())
-        .onHover { hover in
-            isHovered = hover
-        }
-        .padding(.horizontal, HorizontalSpacingUnit)
-        .frame(height: VerticalSpacingUnit*5)
-        .onTapGesture {
-            withAnimation {
-                isOpen = !isOpen
-
-                if isOpen {
-                    if let action = self.action {
-                        action()
-                    }
-                } else {
-                    if let back = self.back {
-                        back()
-                    }
-                }
+            .contentShape(Rectangle())
+            .onHover { hover in
+                isHovered = hover
             }
-            // for some reason hover doesn't change back to false
-            // when out of view
-            isHovered = false
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
-        )
-        .background( isHovered ?
-            AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
-            AnyShapeStyle(Color.clear)
-        )
-        .cornerRadius(4)
+            .padding(.horizontal, HorizontalSpacingUnit)
+            .frame(height: VerticalSpacingUnit*4)
+            .onTapGesture {
+                withAnimation {
+                    isOpen = !isOpen
 
-        if isOpen {
-            Group {
-                ForEach(group.invitations) { invite in
-                    IncomingInvite(invite: invite)
+                    if isOpen {
+                        if let action = self.action {
+                            action()
+                        }
+                    } else {
+                        if let back = self.back {
+                            back()
+                        }
+                    }
                 }
-                ForEach(group.incomingServices) { service in
-                    RemotePortalView(service: service)
-                }
+                // for some reason hover doesn't change back to false
+                // when out of view
+                isHovered = false
             }
-            .padding(.leading, VerticalSpacingUnit*2)
+            .background( isHovered ?
+                AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+                AnyShapeStyle(Color.clear)
+            )
+            .cornerRadius(4)
+            .padding(.horizontal, WindowBorderSize)
+
+            if isOpen {
+                VStack(spacing: 0) {
+                    Divider()
+                    ForEach(group.invitations) { invite in
+                        IncomingInvite(
+                            invite: invite,
+                            padding: HorizontalSpacingUnit*2
+                        )
+                    }
+                    ForEach(group.incomingServices) { service in
+                        RemotePortalView(
+                            service: service,
+                            padding: HorizontalSpacingUnit*2
+                        )
+                    }
+                }.background(HierarchicalShapeStyle.quinary)
+            }
         }
     }
 }
@@ -92,7 +95,7 @@ struct ServiceGroupView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
 
     static var previews: some View {
-        VStack(spacing: VerticalSpacingUnit){
+        VStack(spacing: 0){
             ServiceGroupView(group: state.groups[1])
             ServiceGroupView(group: state.groups[2])
         }

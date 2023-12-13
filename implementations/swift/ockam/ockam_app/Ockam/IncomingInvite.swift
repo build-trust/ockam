@@ -4,14 +4,17 @@ struct IncomingInvite: View {
     @State private var isHovered = false
     @State private var isOpen = false
     @ObservedObject var invite: Invitation
+    @State var padding = 0.0
 
     var body: some View {
         let pending = !invite.accepting && !invite.ignoring
-        VStack(alignment: .leading) {
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
                 Image(systemName: invite.accepting ? "envelope.open" : "envelope")
+                    .padding(.trailing, StandardIconTextSpacing)
+
                 VStack(alignment: .leading) {
-                    Text(verbatim: invite.serviceName).font(.title3).lineLimit(1)
+                    Text(verbatim: invite.serviceName).lineLimit(1)
                     if invite.accepting {
                         Text(verbatim: "Accepting")
                             .font(.caption)
@@ -35,8 +38,9 @@ struct IncomingInvite: View {
                         )
                 }
             }
+            .padding(.leading, padding)
             .contentShape(Rectangle())
-            .frame(height: VerticalSpacingUnit*5)
+            .frame(height: VerticalSpacingUnit*4)
             .padding(.horizontal, HorizontalSpacingUnit)
             .onTapGesture {
                 withAnimation {
@@ -48,17 +52,15 @@ struct IncomingInvite: View {
             .onHover { hover in
                 isHovered = hover
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
-            )
             .background( isHovered ?
                 AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
                 AnyShapeStyle(Color.clear)
             )
             .cornerRadius(4)
+            .padding(.horizontal, WindowBorderSize)
 
             if isOpen {
+                Divider()
                 VStack(spacing: 0) {
                     if pending {
                         ClickableMenuEntry(
@@ -66,16 +68,22 @@ struct IncomingInvite: View {
                             action: {
                                 accept_invitation(invite.id)
                                 isOpen = false
-                            })
+                            },
+                            textPadding: padding + HorizontalSpacingUnit*2
+                        )
                         ClickableMenuEntry(
                             text: "Decline",
                             action: {
                                 ignore_invitation(invite.id)
                                 isOpen = false
-                            })
+                            },
+                            textPadding: padding + HorizontalSpacingUnit*2
+                        )
                     }
                 }
-                .padding(.leading, HorizontalSpacingUnit*2)
+                .padding(.horizontal, WindowBorderSize)
+                .background(HierarchicalShapeStyle.quinary)
+                Divider()
             }
         }
     }

@@ -37,7 +37,8 @@ struct MainView: View {
                 EnrollmentStatus(
                     status: $state.orchestrator_status
                 )
-                .padding(.horizontal, HorizontalSpacingUnit)
+                .padding(.top, VerticalSpacingUnit)
+                .padding(.horizontal, HorizontalSpacingUnit*2)
 
                 if state.orchestrator_status == OrchestratorStatus.Disconnected {
                     ClickableMenuEntry(
@@ -59,25 +60,28 @@ struct MainView: View {
                             .padding(.bottom, VerticalSpacingUnit)
 
                         if !state.localServices.isEmpty {
-                            Text("Your portals:")
+                            Text("Your portals")
                                 .font(.body).bold()
                                 .foregroundColor(OckamSecondaryTextColor)
                                 .padding(.bottom, VerticalSpacingUnit)
+                                .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                             // TODO: add scrollPosition() support after ventura has been dropped
                             ScrollView {
-                                ForEach(state.localServices) { localService in
-                                    LocalPortalView(
-                                        localService: localService
-                                    )
+                                VStack(spacing: 0) {
+                                    ForEach(state.localServices) { localService in
+                                        LocalPortalView(
+                                            localService: localService
+                                        )
+                                    }
                                 }
                             }
                             .scrollIndicators(ScrollIndicatorVisibility.never)
                             .frame(maxHeight: 250)
 
                             Divider()
-                                .padding(.top, VerticalSpacingUnit)
-                                .padding(.bottom, VerticalSpacingUnit)
+                                .padding(.vertical, VerticalSpacingUnit)
+                                .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                         }
 
                         ClickableMenuEntry(
@@ -89,6 +93,7 @@ struct MainView: View {
                                 bringInFront()
                             }
                         )
+                        .padding(.horizontal, WindowBorderSize)
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
@@ -97,24 +102,28 @@ struct MainView: View {
                     Divider()
                         .padding(.top, VerticalSpacingUnit)
                         .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
-                    Text("Portals open to you:")
+                    Text("Portals open to you")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
                         .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                     ScrollView {
-                        ForEach(state.groups) { group in
-                            if selectedGroup == "" || selectedGroup == group.email {
-                                ServiceGroupView(
-                                    group: group,
-                                    back: {
-                                        selectedGroup = ""
-                                    },
-                                    action: {
-                                        selectedGroup = group.email
-                                    }
-                                )
+                        VStack(spacing: 0) {
+                            ForEach(state.groups) { group in
+                                if selectedGroup == "" || selectedGroup == group.email {
+                                    ServiceGroupView(
+                                        group: group,
+                                        back: {
+                                            selectedGroup = ""
+                                        },
+                                        action: {
+                                            selectedGroup = group.email
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -127,14 +136,16 @@ struct MainView: View {
             if selectedGroup == "" {
                 if !state.sent_invitations.isEmpty {
                     Divider()
-                        .padding(.top, VerticalSpacingUnit)
-                        .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.vertical, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                     SentInvitations(state: self.state)
                 }
 
                 Group {
                     Divider()
+                        .padding(.horizontal, HorizontalSpacingUnit)
                         .padding(.vertical, VerticalSpacingUnit)
+
                     VStack(spacing: 0) {
                         @Environment(\.openWindow) var openWindow
                         ClickableMenuEntry(
@@ -163,9 +174,11 @@ struct MainView: View {
                             })
                     }
                 }
+                .padding(.horizontal, WindowBorderSize)
 
                 Group {
                     Divider()
+                        .padding(.horizontal, HorizontalSpacingUnit)
                         .padding(.vertical, VerticalSpacingUnit)
                     VStack(spacing: 0) {
                         if self.optionPressed {
@@ -197,11 +210,11 @@ struct MainView: View {
                         ).keyboardShortcut("Q", modifiers: .command)
                     }
                 }
+                .padding(.horizontal, WindowBorderSize)
             }
         }
-        .padding(.vertical, VerticalSpacingUnit)
-        .padding(.horizontal, HorizontalSpacingUnit)
-        .frame(width: 320)
+        .padding(.vertical, WindowBorderSize)
+        .frame(width: 300)
         .onReceive(timer) { time in
             optionPressed = NSEvent.modifierFlags.contains(.option)
         }
