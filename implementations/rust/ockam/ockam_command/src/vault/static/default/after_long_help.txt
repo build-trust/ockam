@@ -1,8 +1,0 @@
-```sh
-# The first created vault will be set as the default vault
-$ ockam vault create v1
-
-# Let's create a second vault and assign it as default
-$ ockam vault create v2
-$ ockam vault default v2
-```

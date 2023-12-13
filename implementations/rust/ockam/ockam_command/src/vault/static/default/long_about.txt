@@ -1,1 +1,0 @@
-This command will change the default vault. The default vault is used when creating a node if not specified otherwise.
