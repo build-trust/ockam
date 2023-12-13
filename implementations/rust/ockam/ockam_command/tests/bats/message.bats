@@ -42,8 +42,8 @@ teardown() {
   run_success "$OCKAM" identity create i2 --vault v2
   idt2=$($OCKAM identity show i2)
 
-  run_success "$OCKAM" node create n1 --vault v1 --identity i1
-  run_success "$OCKAM" node create n2 --vault v1 --identity i1
+  run_success "$OCKAM" node create n1 --identity i1
+  run_success "$OCKAM" node create n2 --identity i1
 
   msg=$(random_str)
   run_success "$OCKAM" secure-channel-listener create l --at n2 --identity i2 --authorized "$idt1"

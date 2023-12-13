@@ -164,7 +164,6 @@ async fn run_node(
         opts,
         node_name,     // The selected node name
         &None,         // Use the default identity
-        &None,         // Use the default vault
         &node_address, // The selected node api address
         None,          // No project information available
         None,          // No trusted identities
