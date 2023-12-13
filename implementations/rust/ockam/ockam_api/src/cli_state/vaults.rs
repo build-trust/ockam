@@ -31,21 +31,12 @@ impl CliState {
         self.create_a_vault(vault_name, true).await
     }
 
-    /// Select a different vault to be the default vault
-    pub async fn set_default_vault(&self, vault_name: &str) -> Result<()> {
-        Ok(self
-            .vaults_repository()
-            .await?
-            .set_as_default(vault_name)
-            .await?)
-    }
-
     /// Delete an existing vault
     pub async fn delete_named_vault(&self, vault_name: &str) -> Result<()> {
         let repository = self.vaults_repository().await?;
         let vault = repository.get_named_vault(vault_name).await?;
         if let Some(vault) = vault {
-            repository.delete_vault(vault_name).await?;
+            repository.delete_named_vault(vault_name).await?;
 
             // if the vault is stored in a separate file
             // remove that file
@@ -91,13 +82,23 @@ impl CliState {
         })
     }
 
-    /// Return the default vault
+    /// Return the existing vault if there is only one
     /// If it doesn't exist, the vault is created with a random name
+    /// If there are more than one vaults, return an error
     pub async fn get_or_create_default_named_vault(&self) -> Result<NamedVault> {
-        let result = self.vaults_repository().await?.get_default_vault().await?;
-        match result {
-            Some(vault) => Ok(vault),
-            None => self.create_named_vault(&random_name()).await,
+        let vaults = self.vaults_repository().await?.get_named_vaults().await?;
+        match &vaults[..] {
+            [] => self.create_named_vault(&random_name()).await,
+            [vault] => Ok(vault.clone()),
+            _ => Err(ockam_core::Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                format!(
+                    "there are {} vaults, please specify which vault should be used",
+                    vaults.len()
+                ),
+            )
+            .into()),
         }
     }
 
@@ -132,29 +133,25 @@ impl CliState {
 impl CliState {
     /// Create a vault with the given name and indicate if it is going to be used as a KMS vault
     /// The vault path is either
-    /// - the database path if this is the first created vault (it is set as the default vault)
+    /// - the database path if this is the first created vault
     /// - a file next to the database file, named 'vault_name'
     async fn create_a_vault(&self, vault_name: &str, is_kms: bool) -> Result<NamedVault> {
         let vaults_repository = self.vaults_repository().await?;
 
-        // the first created vault is the default one
-        let is_default_vault = vaults_repository.get_default_vault().await?.is_none();
+        // is this the first created vault?
+        let is_first_vault = vaults_repository.get_named_vaults().await?.is_empty();
 
-        // if the vault is the default vault we store the data directly in the main database
+        // if the vault is the first vault we store the data directly in the main database
         // otherwise we open a new file with the vault name
-        let path = if is_default_vault {
+        let path = if is_first_vault {
             self.database_path()
         } else {
             self.dir().join(vault_name)
         };
 
-        let mut vault = vaults_repository
+        let vault = vaults_repository
             .store_vault(vault_name, path, is_kms)
             .await?;
-        if is_default_vault {
-            vaults_repository.set_as_default(vault_name).await?;
-            vault = vault.set_as_default();
-        }
         Ok(vault)
     }
 }
@@ -163,17 +160,15 @@ impl CliState {
 pub struct NamedVault {
     name: String,
     path: PathBuf,
-    is_default: bool,
     is_kms: bool,
 }
 
 impl NamedVault {
     /// Create a new named vault
-    pub fn new(name: &str, path: PathBuf, is_default: bool, is_kms: bool) -> Self {
+    pub fn new(name: &str, path: PathBuf, is_kms: bool) -> Self {
         Self {
             name: name.to_string(),
             path,
-            is_default,
             is_kms,
         }
     }
@@ -186,18 +181,6 @@ impl NamedVault {
     /// Return the vault path
     pub fn path(&self) -> PathBuf {
         self.path.clone()
-    }
-
-    /// Return true if this vault is the default one
-    pub fn is_default(&self) -> bool {
-        self.is_default
-    }
-
-    /// Return a copy of this vault as vault with the is_default flag set to true
-    pub fn set_as_default(&self) -> NamedVault {
-        let mut result = self.clone();
-        result.is_default = true;
-        result
     }
 
     /// Return true if this vault is a KMS vault
@@ -251,42 +234,29 @@ mod tests {
         let result = cli.get_named_vault("vault1").await?;
         assert_eq!(result, named_vault1.clone());
 
+        // the first created vault is the default one if it is the only one
+        let result = cli.get_or_create_default_named_vault().await?;
+        assert_eq!(result, named_vault1.clone());
+
         // create another vault
         let named_vault2 = cli.create_named_vault("vault2").await?;
 
         let result = cli.get_named_vaults().await?;
         assert_eq!(result, vec![named_vault1.clone(), named_vault2.clone()]);
 
-        // the first created vault is the default one
-        let result = cli.get_or_create_default_named_vault().await?;
-        assert_eq!(result, named_vault1.clone());
-
-        // the default vault can be changed
-        cli.set_default_vault("vault2").await?;
-        let result = cli.get_or_create_default_named_vault().await?;
-        assert_eq!(result, named_vault2.set_as_default());
+        // if there are more than 2 vaults then there is no default one
+        let result = cli.get_or_create_default_named_vault().await.ok();
+        assert_eq!(result, None);
 
         // a vault can be deleted
         cli.delete_named_vault("vault2").await?;
         let result = cli.get_or_create_default_named_vault().await?;
-        assert_eq!(result, named_vault1.set_as_default());
+        assert_eq!(result, named_vault1);
 
         // all the vaults can be deleted
         cli.delete_all_named_vaults().await?;
         let result = cli.get_named_vaults().await?;
         assert!(result.is_empty());
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_get_default_named_vault() -> Result<()> {
-        let cli = CliState::test().await?;
-
-        // the default vault is always available
-        let vault = cli.get_or_create_default_named_vault().await?;
-        assert!(vault.is_default());
-        assert!(vault.path().starts_with(cli.dir()));
 
         Ok(())
     }

@@ -129,7 +129,7 @@ teardown() {
   authority_identity=$($OCKAM identity show --full --encoding hex authority)
 
   trusted="{\"$bob_id\": {}, \"$alice_id\": {}}"
-  run_success "$OCKAM" authority create --identity authority --tcp-listener-address="127.0.0.1:$auth_port" --project-identifier "test-context" --trusted-identities "$trusted"
+  run_success "$OCKAM" authority create --identity authority --tcp-listener-address="127.0.0.1:$auth_port" --project-identifier test-context --trusted-identities "$trusted"
   assert_success
   sleep 1
 
@@ -148,5 +148,5 @@ teardown() {
   assert_output "$msg"
 
   run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context test-context $msg
-  run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo --trust-context $msg
+  run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo $msg
 }

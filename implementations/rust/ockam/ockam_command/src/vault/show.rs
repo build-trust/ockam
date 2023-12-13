@@ -68,13 +68,15 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        Ok(self.vault_name.clone().unwrap_or(
-            self.opts
+        match &self.vault_name {
+            Some(vault_name) => Ok(vault_name.clone()),
+            None => Ok(self
+                .opts
                 .state
                 .get_or_create_default_named_vault()
                 .await?
-                .name(),
-        ))
+                .name()),
+        }
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {

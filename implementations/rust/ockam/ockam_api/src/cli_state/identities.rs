@@ -179,14 +179,15 @@ impl CliState {
         match named_identity {
             Some(identity) => {
                 let change_history = self.get_change_history(&identity.identifier()).await?;
+                let identity_vault = self
+                    .get_named_vault(&identity.vault_name)
+                    .await?
+                    .vault()
+                    .await?;
                 Ok(Identity::import_from_change_history(
                     Some(&identity.identifier()),
                     change_history,
-                    self.get_or_create_default_named_vault()
-                        .await?
-                        .vault()
-                        .await?
-                        .verifying_vault,
+                    identity_vault.verifying_vault,
                 )
                 .await?)
             }

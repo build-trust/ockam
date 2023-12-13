@@ -477,6 +477,11 @@ impl NodeManager {
                     .identities()
                     .change_history_repository(),
             )
+            .with_identity_attributes_repository(
+                self.secure_channels
+                    .identities()
+                    .identity_attributes_repository(),
+            )
             .with_purpose_keys_repository(
                 self.secure_channels.identities().purpose_keys_repository(),
             )
