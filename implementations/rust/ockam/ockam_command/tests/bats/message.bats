@@ -46,7 +46,7 @@ teardown() {
   run_success "$OCKAM" node create n2 --vault v1 --identity i1
 
   msg=$(random_str)
-  run_success "$OCKAM" secure-channel-listener create l --at n2 --vault v2 --identity i2 --authorized "$idt1"
+  run_success "$OCKAM" secure-channel-listener create l --at n2 --identity i2 --authorized "$idt1"
   run_success bash -c "$OCKAM secure-channel create --from n1 --to /node/n2/service/l --authorized $idt2 \
               | $OCKAM message send $msg --from /node/n1 --to -/service/echo"
   assert_output "$msg"

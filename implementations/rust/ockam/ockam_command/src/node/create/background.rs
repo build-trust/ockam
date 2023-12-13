@@ -94,7 +94,6 @@ pub(crate) async fn spawn_background_node(
         opts,
         &cmd.node_name,
         &cmd.identity,
-        &cmd.vault,
         &cmd.tcp_listener_address,
         cmd.trusted_identities.as_ref(),
         cmd.trusted_identities_file.as_ref(),

@@ -433,7 +433,6 @@ impl NodeManager {
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
             None, // Not checking identifiers here in favor of credential check
             None,
-            None,
             ctx,
         )
         .await?;
