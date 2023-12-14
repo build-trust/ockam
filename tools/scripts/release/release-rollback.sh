@@ -5,7 +5,12 @@ set -ex
 log=$(mktemp)
 echo "Log directory is $log"
 
-exec &>>"$log"
+# Create a file descriptor that pipes stdout, stderr, and xtrace to a file and
+# only logs stdout and stderr to terminal.
+exec 3>"$log"
+exec > >(tee -a /dev/fd/3) 2>&1
+
+export BASH_XTRACEFD=3
 
 if [[ -z $OWNER ]]; then
   OWNER="build-trust"
@@ -13,12 +18,12 @@ fi
 
 USER_TYPE="users"
 
-user_type=$(gh api \
+type=$(gh api \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
   "/users/${OWNER}" | jq -r '.type')
 
-if [[ "$user_type" == "Organization" ]]; then
+if [[ "$type" == "Organization" ]]; then
   USER_TYPE="orgs"
 fi
 
@@ -96,7 +101,7 @@ function delete_ockam_package() {
 
 function fail_if_release_is_already_in_production() {
   echo "Checking if release is a draft release"
-  is_draft=$(gh release view $TAG_NAME -R ${OWNER}/ockam --json isDraft | jq '.isDraft')
+  is_draft=$(gh release view $TAG_NAME -R ${OWNER}/ockam --json isDraft | jq -r '.isDraft')
   if [[ $is_draft == 'false' ]]; then
     echo "Tag name $TAG_NAME does not exist"
     exit 1
