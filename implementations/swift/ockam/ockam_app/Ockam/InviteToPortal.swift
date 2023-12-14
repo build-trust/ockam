@@ -10,7 +10,11 @@ struct InviteToPortal: View {
     @State var errorMessage = ""
 
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .center) {
+            Text("Invite your friends to access: **\(localService.name)**")
+                .font(.title)
+                .padding(.top, VerticalSpacingUnit)
+
             EmailListView(emailList: $emails)
 
             if !errorMessage.isEmpty {
@@ -22,9 +26,10 @@ struct InviteToPortal: View {
 
             Hint(
 """
-Once you've invited your friends to the portal, they'll get an email with this invitation. They can access your portal from their computer after they have installed Ockam app.
+Once your friends accept their invitation, the '\(localService.name)' service is shared securely over an end-to-end encrypted Ockam Portal. They will have access to it on their localhost!
 """
             )
+            .frame(height: 130)
 
 
             HStack {
@@ -64,7 +69,7 @@ Once you've invited your friends to the portal, they'll get an email with this i
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: 330)
+        .frame(width: 600, height: 400)
     }
 
     func closeWindow() {
@@ -88,6 +93,6 @@ struct ShareServiceView_Previews: PreviewProvider {
                 available: false
             )
         )
-        .frame(height: 330)
+        .frame(height: 400)
     }
 }

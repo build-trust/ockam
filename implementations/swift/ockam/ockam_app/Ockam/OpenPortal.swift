@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OpenPortal: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    @EnvironmentObject private var appDelegate: AppDelegate
     @FocusState private var isFocused: Bool
 
     @Binding var localServices: [LocalService]
@@ -28,7 +29,7 @@ struct OpenPortal: View {
                 GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Address")
-                        Text(verbatim: "The tcp address where your service is running").font(.caption)
+                        Text(verbatim: "The TCP address where your service is running").font(.caption)
                     }
                     .padding(.top, 6)
                     TextField("Address", text: $serviceAddress)
@@ -48,11 +49,9 @@ struct OpenPortal: View {
             if localServices.isEmpty {
                 Hint(
 """
-One of the main things that you might want to do with the Ockam.app is open a portal, which allows a TCP service, to be shared with your friends.
+Before you can privately share a TCP or HTTP service with your friends, you have to open a Portal Outlet to it. And then, invite your friends to the Portal.
 
-Once you open a portal, you can invite your friends to access it, without exposing your computer to the Internet or having to change any network settings.
-
-After you've opened a portal, don't forget to share it with your friends!
+Please input the name of your portal and the IP:Port of your service.
 """
                 )
             }
@@ -82,6 +81,7 @@ After you've opened a portal, don't forget to share it with your friends!
                             self.serviceName = ""
                             self.serviceAddress = "localhost:10000"
                             self.closeWindow()
+                            appDelegate.showPopover()
                         } else {
                             self.errorMessage = String(cString: error.unsafelyUnwrapped)
                         }
@@ -96,7 +96,7 @@ After you've opened a portal, don't forget to share it with your friends!
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: localServices.isEmpty ? 340 : 150)
+        .frame(width: 600, height: localServices.isEmpty ? 300 : 150)
     }
 
     func closeWindow() {

@@ -64,7 +64,7 @@ struct WrapperView: View {
             })
             .frame(width: 120,height: 40)
         } else {
-            PopOver(state: $state)
+            MainView(state: $state)
                 .onAppear {
                     StateContainer.shared.callback{ state in
                         self.state = state
@@ -79,6 +79,8 @@ struct WrapperView: View {
 // a link is clicked and the application is not yet started
 class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var menuBarExtra: FluidMenuBarExtra?
+    private var urlOpened = false
+    private var didFinishLaunching = false
 
     func applicationDidFinishLaunching(_ notification: Foundation.Notification) {
         // avoid creating the menubar extra for preview purposes
@@ -113,8 +115,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         // which is not yet defined, we need to wait a bit to correctly position the
         // popover
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.showPopover()
+            // we don't want to hide the acceptance window when we start
+            // the application from a link
+            if !self.urlOpened {
+                self.showPopover()
+            }
         }
+        didFinishLaunching = true
     }
 
     // avoid opening the default window when clickin on notifications
@@ -135,9 +142,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            logger.info("Received url: \(url.absoluteString)")
+            logger.info("Received url: \(url.absoluteString, privacy: .public)")
             if let invitationId = parseInvitationIdFromUrl(url: url) {
-                InvitationContainer.shared.update(invitationId: invitationId)
+                urlOpened = true
+                if didFinishLaunching {
+                    InvitationContainer.shared.update(invitationId: invitationId)
+                } else {
+                    // window doesn't open up if started right away
+                    // this is true once, when the application gets started from an url
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        InvitationContainer.shared.update(invitationId: invitationId)
+                    }
+                }
             }
         }
     }
@@ -226,6 +242,7 @@ struct OckamApp: App {
     var body: some Scene {
         Window("Accepting invitation", id: "accepting-invitation") {
             AcceptingInvitationWrapper(state: $state, invitationIdContainer: $invitation)
+                .frame(height: 340)
             // no particular reason to attach .onAppear to this window, we just need a View event
             // during initialization. onAppear is meant apperance in the hierarchy and not 'visible'.
                 .onAppear(perform: {
@@ -239,11 +256,10 @@ struct OckamApp: App {
                 })
                 .onReceive(invitation.$id, perform: { invitationId in
                     if invitationId != "" {
-                        logger.info("opening 'accepting-invitation' window with invitation \(invitationId)")
+                        logger.info("opening 'accepting-invitation' window with invitation \(invitationId, privacy: .public)")
                         // without this it won't show the window when a link is clicked and the application
                         // has not yet started
                         openWindow(id: "accepting-invitation")
-                        bringInFront()
                     }
                 })
             // hack for ventura, see OpenWindowWorkaround comment
@@ -285,13 +301,13 @@ struct OckamApp: App {
         .windowResizability(.contentSize)
 
         // Declare a state-independent window, not open by default
-        Window("Open a portal to a TCP service", id: "open-portal") {
+        Window("Open a Portal Outlet to a TCP service", id: "open-portal") {
             OpenPortal(localServices: $state.localServices)
         }
         .windowResizability(.contentSize)
 
         // Declare a "template" of windows, dependent on the LocalService.ID, not open by default
-        WindowGroup("Invite you friends to this portal", id: "invite-to-portal", for: LocalService.ID.self) {
+        WindowGroup("Invite your friends to this Portal", id: "invite-to-portal", for: LocalService.ID.self) {
             $localServiceId in
             InviteToPortal(
                 state_loaded: $state.loaded,
@@ -309,7 +325,9 @@ struct OckamApp: App {
         }
 
         logger.info("Application started")
-        if !swift_initialize_application() {
+        if swift_initialize_application() {
+            logger.info("Application successfully initialized")
+        } else {
             broken = true
             logger.error("Could not initialize application: entering broken state")
         }

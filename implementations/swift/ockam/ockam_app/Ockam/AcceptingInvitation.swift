@@ -13,32 +13,31 @@ struct AcceptingInvitationWrapper: View {
 
     var body: some View {
         if showIntro {
-            GuidedIntro(
+            EnrollmentBlock(
                 status: $state.orchestrator_status,
                 onEnroll: {
                     enrollClickedFromHere = true
-                },
-                onFinish: {
-                    self.showIntro = false
-                    bringInFront()
-                },
-                canSkip: false
+                }
             )
+            .frame(height: 340)
+            .padding(WindowBorderSize)
+            .padding(.vertical, VerticalSpacingUnit)
             .onReceive(state.$orchestrator_status, perform: { newValue in
-                if enrollClickedFromHere {
-                    if newValue != .WaitingForToken && newValue != .Disconnected {
-                        if showWindowOnEnrollment {
-                            openWindow(id: "accepting-invitation")
-                            bringInFront()
-                            // only works once
-                            showWindowOnEnrollment = false
+                if newValue == .Connecting || newValue == .Connecting {
+                    // if the user enrolled from another window, we can safely
+                    // hide the tour
+                    showIntro = false
+                }
+                else {
+                    if enrollClickedFromHere {
+                        if newValue != .WaitingForToken && newValue != .Disconnected {
+                            if showWindowOnEnrollment {
+                                openWindow(id: "accepting-invitation")
+                                bringInFront()
+                                // only works once
+                                showWindowOnEnrollment = false
+                            }
                         }
-                    }
-                } else {
-                    if newValue == .Connecting || newValue == .Connecting {
-                        // if the user enrolled from another window, we can safely
-                        // hide the tour
-                        showIntro = false
                     }
                 }
             })
@@ -223,7 +222,6 @@ struct AcceptingInvitation: View {
                 .background(OckamDarkerBackground)
             }
         }
-        .frame(width: 350, height: 250)
         .onReceive(state.$groups) { _ in
             refreshStateFromInvitationId(self.invitationIdContainer.id)
         }
