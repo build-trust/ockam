@@ -55,7 +55,7 @@ credentials-sso = ["aws-config/sso"]
 
 [dependencies]
 aws-config = { version = "1.0.3", default-features = false, features = ["rustls", "rt-tokio"] }
-aws-sdk-kms = { version = "1.4.0", default-features = false, features = ["rustls"] }
+aws-sdk-kms = { version = "1.6.0", default-features = false, features = ["rustls"] }
 ockam_core = { path = "../ockam_core", version = "^0.97.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.102.0", default_features = false }
@@ -66,6 +66,5 @@ thiserror = { version = "1.0.50" }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-aws-credential-types = { version = "1.0.3", default-features = false, features = ["test-util"] }
 hex = { version = "0.4", default-features = false }
 tokio = { version = "1.35", features = ["full"] }
