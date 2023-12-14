@@ -114,7 +114,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    initialize_default_node(&opts).await?;
+    initialize_default_node(&ctx, &opts).await?;
     let cmd = cmd.parse_args(&opts).await?;
     let at = cmd.at();
     let alias = cmd.relay_name();

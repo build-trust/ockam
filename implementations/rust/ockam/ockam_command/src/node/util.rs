@@ -7,9 +7,12 @@ use miette::{miette, Context as _};
 use rand::random;
 
 use ockam_api::cli_state::NamedTrustContext;
+use ockam_api::nodes::BackgroundNode;
 use ockam_core::env::get_env_with_default;
+use ockam_node::Context;
 
 use crate::node::background::spawn_background_node;
+use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
 use crate::CommandGlobalOpts;
@@ -47,9 +50,16 @@ pub async fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::
     Ok(())
 }
 
-pub async fn initialize_default_node(opts: &CommandGlobalOpts) -> miette::Result<()> {
+pub async fn initialize_default_node(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+) -> miette::Result<()> {
     if opts.state.get_default_node().await.is_err() {
-        spawn_background_node(opts, CreateCommand::default()).await?;
+        let cmd = CreateCommand::default();
+        let node_name = cmd.node_name.clone();
+        spawn_background_node(opts, cmd).await?;
+        let mut node = BackgroundNode::create_to_node(ctx, &opts.state, &node_name).await?;
+        is_node_up(ctx, &mut node, true).await?;
     }
     Ok(())
 }
