@@ -9,6 +9,7 @@ use ockam_api::nodes::{BackgroundNode, NODEMANAGER_ADDR};
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
+use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
 use crate::util::{api, exitcode, node_rpc};
 use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
@@ -57,6 +58,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
+    initialize_default_node(&opts).await?;
     let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(

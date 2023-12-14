@@ -13,6 +13,7 @@ use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
+use crate::node::util::initialize_default_node;
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
@@ -58,6 +59,7 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
+    initialize_default_node(&opts).await?;
     opts.terminal.write_line(&fmt_log!(
         "Creating TCP Outlet to {}...\n",
         &cmd.to

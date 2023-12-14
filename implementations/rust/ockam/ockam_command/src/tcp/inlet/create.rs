@@ -20,6 +20,7 @@ use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 
+use crate::node::util::initialize_default_node;
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
@@ -133,6 +134,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
+    initialize_default_node(&opts).await?;
     let cmd = cmd.parse_args(&opts).await?;
     opts.terminal.write_line(&fmt_log!(
         "Creating TCP Inlet at {}...\n",
