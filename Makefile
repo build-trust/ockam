@@ -9,10 +9,10 @@ elixir_%:
 	@cd implementations/elixir && $(MAKE) $(@:elixir_%=%)
 
 rust_%:
-	$(MAKE) -C implementations/rust $(@:rust_%=%)
+	$(MAKE) -f implementations/rust/Makefile $(@:rust_%=%)
 
 swift_%:
-	$(MAKE) -C implementations/swift $(@:swift_%=%)
+	$(MAKE) -f implementations/swift/Makefile $(@:swift_%=%)
 
 typescript_%:
 	@cd implementations/typescript && $(MAKE) $(@:typescript_%=%)
