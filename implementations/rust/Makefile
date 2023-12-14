@@ -17,7 +17,7 @@ check_no_std:
 	cargo --version
 	cargo check --locked --target thumbv7em-none-eabihf -p ockam --no-default-features --features 'no_std alloc software_vault'
 	# no_std example project
-	cd examples/rust/example_projects/no_std
+	cd examples/rust/no_std
 	cargo check --example hello
 check_cargo_update:
 	cargo --version
