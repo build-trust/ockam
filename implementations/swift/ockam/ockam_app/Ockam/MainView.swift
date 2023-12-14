@@ -6,6 +6,8 @@ struct MainView: View {
     @Binding var state: ApplicationState
     @State private var selectedGroup: String = ""
     @State private var optionPressed: Bool = false
+    @State private var enrollClickedFromHere: Bool = false
+    @State private var showWindowOnEnrollment: Bool = true
 
     var timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -31,80 +33,90 @@ struct MainView: View {
                         Spacer()
                     }
                 }
-                .padding(.top, VerticalSpacingUnit)
-                .padding(.horizontal, HorizontalSpacingUnit)
-            } else {
-                EnrollmentStatus(
-                    status: $state.orchestrator_status
-                )
-                .padding(.top, VerticalSpacingUnit)
-                .padding(.horizontal, HorizontalSpacingUnit*2)
-
-                if state.orchestrator_status == OrchestratorStatus.Disconnected {
-                    ClickableMenuEntry(
-                        text: "Enroll…", icon: "arrow.right.square",
-                        action: {
-                            enroll_user()
-                            appDelegate.dismissPopover()
-                        })
-                    .padding(.top, VerticalSpacingUnit)
-                    .padding(.horizontal, HorizontalSpacingUnit)
-                }
+                .padding(.top, WindowBorderSize)
+                .padding(.bottom, 3)
+                .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
             }
+
+            if state.localServices.isEmpty && selectedGroup == "" {
+                Divider()
+                    .padding(.top, VerticalSpacingUnit)
+                    .padding(.bottom, VerticalSpacingUnit)
+
+                // hide it completely once the first portal has been
+                // created
+                EnrollmentBlock(
+                    status: $state.orchestrator_status,
+                    onEnroll: {
+                        enrollClickedFromHere = true
+                    }
+                )
+                .padding(.top, WindowBorderSize )
+                .padding(.bottom, 4 )
+                .onReceive(state.$orchestrator_status, perform: { newValue in
+                    if enrollClickedFromHere {
+                        if newValue != .WaitingForToken && newValue != .Disconnected {
+                            if showWindowOnEnrollment {
+                                appDelegate.showPopover()
+                                bringInFront()
+                                // only works once
+                                showWindowOnEnrollment = false
+                            }
+                        }
+                    }
+                })
+            }
+
+            Divider()
+                .padding(.top, VerticalSpacingUnit)
+                .padding(.bottom, VerticalSpacingUnit)
 
             if state.enrolled {
                 if selectedGroup == "" {
-                    Group {
-                        Divider()
-                            .padding(.top, VerticalSpacingUnit*2)
+                    ClickableMenuEntry(
+                        text: "Open a new Portal Outlet…",
+                        action: {
+                            OpenWindowWorkaround.shared.openWindow(
+                                windowName: "open-portal"
+                            )
+                            bringInFront()
+                        }
+                    )
+                    .padding(.horizontal, WindowBorderSize)
+
+                    Divider()
+                        .padding(.top, VerticalSpacingUnit)
+                        .padding(.bottom, VerticalSpacingUnit)
+
+                    if !state.localServices.isEmpty {
+                        Text("Opened Portal Outlets")
+                            .font(.body).bold()
+                            .foregroundColor(OckamSecondaryTextColor)
                             .padding(.bottom, VerticalSpacingUnit)
+                            .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
-                        if !state.localServices.isEmpty {
-                            Text("Your portals")
-                                .font(.body).bold()
-                                .foregroundColor(OckamSecondaryTextColor)
-                                .padding(.bottom, VerticalSpacingUnit)
-                                .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-
-                            // TODO: add scrollPosition() support after ventura has been dropped
-                            ScrollView {
-                                VStack(spacing: 0) {
-                                    ForEach(state.localServices) { localService in
-                                        LocalPortalView(
-                                            localService: localService
-                                        )
-                                    }
+                        // TODO: add scrollPosition() support after ventura has been dropped
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(state.localServices) { localService in
+                                    LocalPortalView(
+                                        localService: localService
+                                    )
                                 }
                             }
-                            .scrollIndicators(ScrollIndicatorVisibility.never)
-                            .frame(maxHeight: 250)
-
-                            Divider()
-                                .padding(.vertical, VerticalSpacingUnit)
-                                .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                         }
+                        .scrollIndicators(ScrollIndicatorVisibility.never)
+                        .frame(maxHeight: 250)
 
-                        ClickableMenuEntry(
-                            text: "Open a portal…",
-                            action: {
-                                OpenWindowWorkaround.shared.openWindow(
-                                    windowName: "open-portal"
-                                )
-                                bringInFront()
-                            }
-                        )
-                        .padding(.horizontal, WindowBorderSize)
-                        .buttonStyle(PlainButtonStyle())
+                        Divider()
+                            .padding(.top, VerticalSpacingUnit)
+                            .padding(.bottom, VerticalSpacingUnit)
+                            .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                     }
                 }
 
                 if !state.groups.isEmpty {
-                    Divider()
-                        .padding(.top, VerticalSpacingUnit)
-                        .padding(.bottom, VerticalSpacingUnit)
-                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-
-                    Text("Portals open to you")
+                    Text("Accessible Portal Inlets")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
                         .padding(.bottom, VerticalSpacingUnit)
@@ -130,22 +142,24 @@ struct MainView: View {
                     .scrollIndicators(ScrollIndicatorVisibility.never)
                     .frame(maxHeight: selectedGroup == "" ? 175 : 500)
 
+                    if selectedGroup == "" {
+                        Divider()
+                            .padding(.top, VerticalSpacingUnit)
+                            .padding(.bottom, VerticalSpacingUnit)
+                            .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
+                    }
                 }
             }
 
             if selectedGroup == "" {
                 if !state.sent_invitations.isEmpty {
+                    SentInvitations(state: self.state)
                     Divider()
                         .padding(.vertical, VerticalSpacingUnit)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-                    SentInvitations(state: self.state)
                 }
 
                 Group {
-                    Divider()
-                        .padding(.horizontal, HorizontalSpacingUnit)
-                        .padding(.vertical, VerticalSpacingUnit)
-
                     VStack(spacing: 0) {
                         @Environment(\.openWindow) var openWindow
                         ClickableMenuEntry(
@@ -157,9 +171,9 @@ struct MainView: View {
                                 appDelegate.dismissPopover()
                             })
                         ClickableMenuEntry(
-                            text: "Learn more from our documentation…", icon: "book",
+                            text: "Learn how we built this app…", icon: "lightbulb.min",
                             action: {
-                                if let url = URL(string: "https://docs.ockam.io/reference/app") {
+                                if let url = URL(string: "https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md") {
                                     NSWorkspace.shared.open(url)
                                 }
                                 appDelegate.dismissPopover()
@@ -167,7 +181,7 @@ struct MainView: View {
                         ClickableMenuEntry(
                             text: "Share your thoughts on Discord…", icon: "message",
                             action: {
-                                if let url = URL(string: "https://discord.gg/RAbjRr3kds") {
+                                if let url = URL(string: "https://discord.ockam.io") {
                                     NSWorkspace.shared.open(url)
                                 }
                                 appDelegate.dismissPopover()
@@ -180,6 +194,7 @@ struct MainView: View {
                     Divider()
                         .padding(.horizontal, HorizontalSpacingUnit)
                         .padding(.vertical, VerticalSpacingUnit)
+
                     VStack(spacing: 0) {
                         if self.optionPressed {
                             ClickableMenuEntry(

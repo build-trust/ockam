@@ -4,22 +4,22 @@ struct EnrollmentStatus: View {
     @Binding var status: OrchestratorStatus
 
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .center) {
             switch status {
             case .Disconnected:
                 Text("Please enroll to get started")
-            case .Connected:
-                Text("Connected to Ockam Orchestrator")
-            case .Connecting:
-                Text("Connecting to Ockam Orchestrator")
             case .WaitingForToken:
-                Text("Opened account.ockam.io/activate")
-                Text("Waiting for you to authenticate in your browser").font(.caption)
+                Text("Opened account.ockam.io")
+                Text("Please finish enrolling in your browser.").font(.caption)
             case .RetrievingSpace:
-                Text("Getting available spaces in your account")
+                Text("Fetching your spaces...")
             case .RetrievingProject:
-                Text("Getting available projects")
+                AnimatedEllipsis(text: "Fetching your projects", interval: 1.0)
                 Text("This might take a few minutes").font(.caption)
+            case .Connecting:
+                Text("Connecting to Orchestrator")
+            case .Connected:
+                Text("Encrypted relay is active.")
             }
         }
         .padding(0)

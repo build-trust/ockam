@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct Hint: View {
-    @State var title: String = "Hint"
+    @State var title: String = "Guide"
     @State var text: String
 
     init(_ text: String) {
