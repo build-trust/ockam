@@ -75,7 +75,7 @@ pub(crate) async fn background_mode(
     Ok(())
 }
 
-pub async fn spawn_background_node(
+pub(crate) async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {

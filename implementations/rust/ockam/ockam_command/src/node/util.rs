@@ -9,6 +9,8 @@ use rand::random;
 use ockam_api::cli_state::NamedTrustContext;
 use ockam_core::env::get_env_with_default;
 
+use crate::node::background::spawn_background_node;
+use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
 use crate::CommandGlobalOpts;
 
@@ -45,11 +47,11 @@ pub async fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::
     Ok(())
 }
 
-pub async fn check_default(opts: &CommandGlobalOpts, name: &str) -> bool {
-    if let Ok(default_name) = opts.state.get_default_node().await.map(|n| n.name()) {
-        return default_name == name;
+pub async fn initialize_default_node(opts: &CommandGlobalOpts) -> miette::Result<()> {
+    if opts.state.get_default_node().await.is_err() {
+        spawn_background_node(opts, CreateCommand::default()).await?;
     }
-    false
+    Ok(())
 }
 
 /// A utility function to spawn a new node into foreground mode

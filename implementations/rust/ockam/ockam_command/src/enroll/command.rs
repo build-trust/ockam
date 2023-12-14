@@ -20,6 +20,7 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
+use crate::node::util::initialize_default_node;
 use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
@@ -58,8 +59,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> m
             "The flag --output json is invalid for this command."
         ));
     }
-
-    run_impl(&ctx, opts, cmd).await
+    run_impl(&ctx, opts.clone(), cmd).await?;
+    initialize_default_node(&opts).await?;
+    Ok(())
 }
 
 fn ctrlc_handler(opts: CommandGlobalOpts) {
