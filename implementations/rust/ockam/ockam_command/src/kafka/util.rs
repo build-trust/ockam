@@ -10,6 +10,7 @@ use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
 use crate::service::start::start_service_impl;
 use crate::terminal::OckamColor;
@@ -27,6 +28,7 @@ pub struct ArgOpts {
 }
 
 pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {
+    initialize_default_node(&ctx, &opts).await?;
     let ArgOpts {
         endpoint,
         kafka_entity,

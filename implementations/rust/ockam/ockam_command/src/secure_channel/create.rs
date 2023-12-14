@@ -15,6 +15,7 @@ use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::util::initialize_default_node;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -98,6 +99,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
+    initialize_default_node(&ctx, &opts).await?;
     let node = BackgroundNode::create_to_node(&ctx, &opts.state, &cmd.from).await?;
 
     opts.terminal

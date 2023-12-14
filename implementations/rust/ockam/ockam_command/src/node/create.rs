@@ -16,8 +16,8 @@ use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
-mod background;
-mod foreground;
+pub mod background;
+pub mod foreground;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");

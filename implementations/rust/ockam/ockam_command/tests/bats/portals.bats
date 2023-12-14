@@ -14,6 +14,14 @@ teardown() {
 
 # ===== TESTS
 
+@test "portals - create tcp outlet on implicit default node" {
+  run_success "$OCKAM" node delete --all -y
+
+  outlet_port="$(random_port)"
+  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port" --alias "test-outlet"
+  assert_output --partial "/service/outlet"
+}
+
 @test "portals - tcp inlet CRUD" {
   outlet_port="$(random_port)"
   inlet_port="$(random_port)"

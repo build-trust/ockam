@@ -10,6 +10,7 @@ use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
 
+use crate::node::util::initialize_default_node;
 use crate::{
     fmt_log, fmt_ok,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
@@ -40,6 +41,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
+    initialize_default_node(&ctx, &opts).await?;
     opts.terminal
         .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
     let CreateCommand {

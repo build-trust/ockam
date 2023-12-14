@@ -17,6 +17,7 @@ use ockam_api::{is_local_node, CliState};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
+use crate::node::util::initialize_default_node;
 use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::{node_rpc, process_nodes_multiaddr};
@@ -113,6 +114,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
+    initialize_default_node(&ctx, &opts).await?;
     let cmd = cmd.parse_args(&opts).await?;
     let at = cmd.at();
     let alias = cmd.relay_name();
