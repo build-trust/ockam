@@ -149,7 +149,7 @@
     TcpSendWorker_tx_addr_initiator_70
     TcpSendWorker_tx_addr_responder_86
     ```
-    Also `TcpSendWorker_tx_addr_responder_86` and `TcpRecvProcessor_responder_88` were not found since it's the TCP connection used to handle `ockam worker list` command and it's termninated immediately after you see the result in the command line.
+    Also `TcpSendWorker_tx_addr_responder_86` and `TcpRecvProcessor_responder_88` were not found since it's the TCP connection used to handle `ockam worker list` command and it's terminated immediately after you see the result in the command line.
 
    - Reachable `Address`es:
       ```
