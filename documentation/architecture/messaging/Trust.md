@@ -1,3 +1,0 @@
-# Autheniticity and authorization
-
-# TODO
