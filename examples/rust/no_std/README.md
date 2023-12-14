@@ -1,5 +1,7 @@
 # no_std example
 
+This example project shows how to create a node running in a `no_std` environment.
+
 ## Setup
 
 ```
