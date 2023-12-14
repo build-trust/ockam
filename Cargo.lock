@@ -3019,6 +3019,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3729,6 +3738,7 @@ dependencies = [
  "hex",
  "home",
  "indexmap 2.1.0",
+ "itertools 0.12.0",
  "kafka-protocol",
  "miette",
  "minicbor",
