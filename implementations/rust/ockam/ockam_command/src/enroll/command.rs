@@ -60,7 +60,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> m
         ));
     }
     run_impl(&ctx, opts.clone(), cmd).await?;
-    initialize_default_node(&opts).await?;
+    initialize_default_node(&ctx, &opts).await?;
     Ok(())
 }
 

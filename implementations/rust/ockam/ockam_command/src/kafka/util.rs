@@ -28,7 +28,7 @@ pub struct ArgOpts {
 }
 
 pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {
-    initialize_default_node(&opts).await?;
+    initialize_default_node(&ctx, &opts).await?;
     let ArgOpts {
         endpoint,
         kafka_entity,

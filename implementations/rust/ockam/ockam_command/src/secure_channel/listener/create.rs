@@ -58,7 +58,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    initialize_default_node(&opts).await?;
+    initialize_default_node(ctx, &opts).await?;
     let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(

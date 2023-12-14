@@ -40,7 +40,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    initialize_default_node(&opts).await?;
+    initialize_default_node(ctx, &opts).await?;
     let node = BackgroundNode::create(ctx, &opts.state, &cmd.at).await?;
     let bdy = Policy::new(cmd.expression);
     let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);
