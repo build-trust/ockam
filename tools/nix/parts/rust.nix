@@ -34,7 +34,6 @@ in {
       devShells = let
         compilerTools = with pkgs; [
           clang
-          cmake
           lld
         ];
 
