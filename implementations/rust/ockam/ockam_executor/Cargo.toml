@@ -33,7 +33,7 @@ alloc = ["futures/alloc", "ockam_core/alloc"]
 no_std = ["ockam_core/no_std"]
 
 [dependencies]
-crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
+crossbeam-queue = { version = "0.3.9", default_features = false, features = ["alloc"] }
 futures = { version = "0.3.29", default-features = false, features = ["async-await"] }
 heapless = { version = "0.8", features = ["mpmc_large"] }
 ockam_core = { path = "../ockam_core", version = "^0.97.0", default_features = false }
