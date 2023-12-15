@@ -16,7 +16,7 @@ nix_rust_%:
 	nix develop ./tools/nix#rust --command make rust_$*
 
 swift_%:
-	$(MAKE) -C implementations/swift $(@:swift_%=%)
+	$(MAKE) -f implementations/swift/Makefile $(@:swift_%=%)n
 
 typescript_%:
 	$(MAKE) -C implementations/typescript $(@:typescript_%=%)
