@@ -56,7 +56,7 @@ struct LocalPortalView: View {
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
-            .padding(.vertical, 4)
+            .padding(.vertical, WindowBorderSize)
 
             if isOpen {
                 Divider()
@@ -103,6 +103,7 @@ struct LocalPortalView: View {
                     )
                 }
                 .padding(.horizontal, WindowBorderSize)
+                .padding(.vertical, WindowBorderSize)
                 .background(HierarchicalShapeStyle.quinary)
                 Divider()
             }

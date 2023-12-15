@@ -20,6 +20,18 @@ struct ServiceGroupView: View {
                     } else {
                         Text(verbatim: group.email)
                             .lineLimit(1)
+
+                        let subtitle =
+                        if group.invitations.isEmpty {
+                            "\(group.incomingServices.count) portals accessible"
+                        } else {
+                            "\(group.incomingServices.count) portals accessible, \(group.invitations.count) invitations"
+                        }
+
+                        Text(verbatim: subtitle)
+                            .font(.caption)
+                            .foregroundColor(OckamSecondaryTextColor)
+                            .lineLimit(1)
                     }
                 }
                 Spacer()
@@ -62,13 +74,17 @@ struct ServiceGroupView: View {
                 // when out of view
                 isHovered = false
             }
+//            .overlay(
+//                RoundedRectangle(cornerRadius: 4)
+//                    .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
+//            )
             .background( isHovered ?
                 AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
                 AnyShapeStyle(Color.clear)
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
-            .padding(.vertical, 4)
+            .padding(.vertical, WindowBorderSize)
 
             if isOpen {
                 VStack(spacing: 0) {

@@ -73,7 +73,7 @@ struct RemotePortalView: View {
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
-            .padding(.vertical, 4)
+            .padding(.vertical, WindowBorderSize)
 
             if isOpen {
                 Divider()
@@ -94,7 +94,8 @@ struct RemotePortalView: View {
                                             NSWorkspace.shared.open(url)
                                         }
                                     },
-                                    textPadding: padding + HorizontalSpacingUnit*2
+                                    textPadding: padding + 27,
+                                    compact: false
                                 )
                             }
                             ClickableMenuEntry(
@@ -103,7 +104,8 @@ struct RemotePortalView: View {
                                     copyToClipboard(address)
                                     self.closeWindow()
                                 },
-                                textPadding: padding + HorizontalSpacingUnit*2
+                                textPadding: padding + 27,
+                                compact: false
                             )
                         }
                     }
@@ -114,7 +116,8 @@ struct RemotePortalView: View {
                             action: {
                                 disable_accepted_service(service.id)
                             },
-                            textPadding: padding + HorizontalSpacingUnit*2
+                            textPadding: padding + 27,
+                            compact: false
                         )
                     } else {
                         ClickableMenuEntry(
@@ -122,7 +125,8 @@ struct RemotePortalView: View {
                             action: {
                                 enable_accepted_service(service.id)
                             },
-                            textPadding: padding + HorizontalSpacingUnit*2
+                            textPadding: padding + 27,
+                            compact: false
                         )
                     }
                     ClickableMenuEntry(
@@ -133,10 +137,12 @@ struct RemotePortalView: View {
                                 value: service.id
                             )
                         },
-                        textPadding: padding + HorizontalSpacingUnit*2
+                        textPadding: padding + 27,
+                        compact: false
                     )
                 }
                 .padding(.horizontal, WindowBorderSize)
+                .padding(.vertical, WindowBorderSize)
                 .background(HierarchicalShapeStyle.quinary)
                 Divider()
             }
