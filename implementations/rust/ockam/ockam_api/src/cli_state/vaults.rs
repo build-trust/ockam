@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ockam::identity::{Identities, Vault};
@@ -8,6 +9,7 @@ use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 
 use crate::cli_state::{random_name, CliState, Result};
+use crate::CliStateError;
 
 /// The methods below support the creation and update of local vaults
 ///
@@ -17,18 +19,27 @@ use crate::cli_state::{random_name, CliState, Result};
 ///
 impl CliState {
     /// Create a vault with a given name
-    /// The secrets persisted with this vault are stored under $OCKAM_HOME/vault_name
-    pub async fn create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
-        self.create_a_vault(vault_name, false).await
+    /// If the path is not specified then:
+    ///   - if this is the first vault then secrets are persisted in the main database
+    ///   - if this is a new vault then secrets are persisted in $OCKAM_HOME/vault_name
+    pub async fn create_named_vault(
+        &self,
+        vault_name: &Option<String>,
+        path: &Option<PathBuf>,
+    ) -> Result<NamedVault> {
+        self.create_a_vault(vault_name, path, false).await
     }
 
-    /// Create a KMS vault with a given name.
-    /// A KMS vault only stores identifiers to secrets physically stored in a KMS like
-    /// an AWS KMS (the only supported KMS implementation at the moment).
-    ///
-    /// The secrets persisted with this vault are stored under $OCKAM_HOME/vault_name
-    pub async fn create_kms_vault(&self, vault_name: &str) -> Result<NamedVault> {
-        self.create_a_vault(vault_name, true).await
+    /// Create a KMS vault with a given name
+    /// If the path is not specified then:
+    ///   - if this is the first vault then secrets are persisted in the main database
+    ///   - if this is a new vault then secrets are persisted in $OCKAM_HOME/vault_name
+    pub async fn create_kms_vault(
+        &self,
+        vault_name: &Option<String>,
+        path: &Option<PathBuf>,
+    ) -> Result<NamedVault> {
+        self.create_a_vault(vault_name, path, true).await
     }
 
     /// Delete an existing vault
@@ -47,7 +58,7 @@ impl CliState {
                 Origin::Api,
                 Kind::Invalid,
                 format!(
-                    "the vault {vault_name} cannot be deleted. It is used by identities {}",
+                    "the vault {vault_name} cannot be deleted. It is used by the following identities: {}",
                     identities_names.join(", ")
                 ),
             )
@@ -64,6 +75,10 @@ impl CliState {
             // remove that file
             if vault.path != self.database_path() {
                 let _ = std::fs::remove_file(vault.path);
+            } else {
+                // otherwise delete the tables used by the database vault
+                self.purpose_keys_repository().await?.delete_all().await?;
+                self.secrets_repository().await?.delete_all().await?;
             }
         }
         Ok(())
@@ -116,13 +131,25 @@ impl CliState {
         })
     }
 
+    /// Return a vault if it already exists, otherwise
+    /// Create a new vault using a default path: either the database path for the first vault
+    /// or a path using the vault name
+    pub async fn get_or_create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
+        let vaults_repository = self.vaults_repository().await?;
+        if let Ok(Some(existing_vault)) = vaults_repository.get_named_vault(vault_name).await {
+            return Ok(existing_vault);
+        }
+        self.create_a_vault(&Some(vault_name.to_string()), &None, false)
+            .await
+    }
+
     /// Return the existing vault if there is only one
-    /// If it doesn't exist, the vault is created with a random name
+    /// If it doesn't exist, the vault is created with the name 'default'
     /// If there are more than one vaults, return an error
     pub async fn get_or_create_default_named_vault(&self) -> Result<NamedVault> {
         let vaults = self.vaults_repository().await?.get_named_vaults().await?;
         match &vaults[..] {
-            [] => self.create_named_vault(&random_name()).await,
+            [] => self.get_or_create_named_vault("default").await,
             [vault] => Ok(vault.clone()),
             _ => Err(ockam_core::Error::new(
                 Origin::Api,
@@ -147,6 +174,18 @@ impl CliState {
             None => self.get_or_create_default_named_vault().await,
         }
     }
+
+    /// Move a vault file to another location if the vault is not the default vault
+    /// contained in the main database
+    pub async fn move_vault(&self, vault_name: &str, path: &Path) -> Result<()> {
+        let repository = self.vaults_repository().await?;
+        let vault = self.get_named_vault(vault_name).await?;
+        if vault.path() == self.database_path() {
+            return Err(ockam_core::Error::new(Origin::Api, Kind::Invalid, format!("The vault at path {:?} cannot be moved to {path:?} because this is the default vault", vault.path())).into());
+        };
+        std::fs::rename(vault.path(), path)?;
+        Ok(repository.update_vault(vault_name, path).await?)
+    }
 }
 
 /// Builder functions
@@ -166,27 +205,92 @@ impl CliState {
 /// Private functions
 impl CliState {
     /// Create a vault with the given name and indicate if it is going to be used as a KMS vault
-    /// The vault path is either
-    /// - the database path if this is the first created vault
-    /// - a file next to the database file, named 'vault_name'
-    async fn create_a_vault(&self, vault_name: &str, is_kms: bool) -> Result<NamedVault> {
+    /// If the vault with the same name already exists then an error is returned
+    /// If there is already a file at the provided path, then an error is returned
+    async fn create_a_vault(
+        &self,
+        vault_name: &Option<String>,
+        path: &Option<PathBuf>,
+        is_kms: bool,
+    ) -> Result<NamedVault> {
         let vaults_repository = self.vaults_repository().await?;
 
-        // is this the first created vault?
-        let is_first_vault = vaults_repository.get_named_vaults().await?.is_empty();
-
-        // if the vault is the first vault we store the data directly in the main database
-        // otherwise we open a new file with the vault name
-        let path = if is_first_vault {
-            self.database_path()
-        } else {
-            self.dir().join(vault_name)
+        // determine the vault name to use if not given by the user
+        let vault_name = match vault_name {
+            Some(vault_name) => vault_name.clone(),
+            None => self.make_vault_name().await?,
         };
 
-        let vault = vaults_repository
-            .store_vault(vault_name, path, is_kms)
-            .await?;
-        Ok(vault)
+        // verify that a vault with that name does not exist
+        if vaults_repository
+            .get_named_vault(&vault_name)
+            .await?
+            .is_some()
+        {
+            return Err(CliStateError::AlreadyExists {
+                resource: "vault".to_string(),
+                name: vault_name.to_string(),
+            });
+        }
+
+        // determine the vault path
+        // if the vault is the first vault we store the data directly in the main database
+        // otherwise we open a new file with the vault name
+        let path = match path {
+            Some(path) => path.clone(),
+            None => self.make_vault_path(&vault_name).await?,
+        };
+
+        // check if the new file can be created
+        if path != self.database_path() {
+            if path.exists() {
+                return Err(CliStateError::AlreadyExists {
+                    resource: "vault path".to_string(),
+                    name: format!("{path:?}"),
+                });
+            } else {
+                File::create(&path)?;
+            }
+        };
+
+        // store the vault metadata
+        Ok(vaults_repository
+            .store_vault(&vault_name, &path, is_kms)
+            .await?)
+    }
+
+    /// Return the vault name to use for a vault:
+    ///
+    ///  - if a user has specified a name, use it
+    ///  - otherwise if this is the first vault that is created, use the name 'default'
+    ///  - finally create a random name
+    ///
+    async fn make_vault_name(&self) -> Result<String> {
+        let vaults_repository = self.vaults_repository().await?;
+        if vaults_repository.get_named_vaults().await?.is_empty() {
+            Ok("default".to_string())
+        } else {
+            Ok(random_name())
+        }
+    }
+
+    /// Decide which path to use for a vault path:
+    ///   - if no vault has been using the main database, use it
+    ///   - otherwise return a new path alongside the database $OCKAM_HOME/vault-{vault_name}
+    ///
+    async fn make_vault_path(&self, vault_name: &str) -> Result<PathBuf> {
+        let vaults_repository = self.vaults_repository().await?;
+        // is there already a vault using the main database?
+        let is_database_path_available = vaults_repository
+            .get_named_vaults()
+            .await?
+            .iter()
+            .all(|v| v.path() != self.database_path());
+        if is_database_path_available {
+            Ok(self.database_path())
+        } else {
+            Ok(self.dir().join(format!("vault-{vault_name}")))
+        }
     }
 }
 
@@ -215,6 +319,11 @@ impl NamedVault {
     /// Return the vault path
     pub fn path(&self) -> PathBuf {
         self.path.clone()
+    }
+
+    /// Return the vault path as a String
+    pub fn path_as_string(&self) -> String {
+        self.path.clone().to_string_lossy().to_string()
     }
 
     /// Return true if this vault is a KMS vault
@@ -257,13 +366,20 @@ impl Display for NamedVault {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam::identity::models::{PurposeKeyAttestation, PurposeKeyAttestationSignature};
+    use ockam::identity::Purpose;
+    use ockam_vault::{
+        ECDSASHA256CurveP256SecretKey, ECDSASHA256CurveP256Signature, HandleToSecret,
+        SigningSecret, SigningSecretKeyHandle, X25519SecretKey, X25519SecretKeyHandle,
+    };
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_create_named_vault() -> Result<()> {
         let cli = CliState::test().await?;
 
         // create a vault
-        let named_vault1 = cli.create_named_vault("vault1").await?;
+        let named_vault1 = cli.get_or_create_named_vault("vault1").await?;
 
         let result = cli.get_named_vault("vault1").await?;
         assert_eq!(result, named_vault1.clone());
@@ -273,7 +389,7 @@ mod tests {
         assert_eq!(result, named_vault1.clone());
 
         // create another vault
-        let named_vault2 = cli.create_named_vault("vault2").await?;
+        let named_vault2 = cli.get_or_create_named_vault("vault2").await?;
 
         let result = cli.get_named_vaults().await?;
         assert_eq!(result, vec![named_vault1.clone(), named_vault2.clone()]);
@@ -291,6 +407,152 @@ mod tests {
         cli.delete_all_named_vaults().await?;
         let result = cli.get_named_vaults().await?;
         assert!(result.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_move_vault() -> Result<()> {
+        let db_file = NamedTempFile::new().unwrap();
+        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+        let cli = CliState::create(cli_state_directory.clone()).await?;
+
+        // create a vault
+        let _ = cli.get_or_create_named_vault("vault1").await?;
+
+        // try to move it. That should fail because the first vault is
+        // stored in the main database
+        let new_vault_path = cli_state_directory.join("new-vault-name");
+        let result = cli.move_vault("vault1", &new_vault_path).await;
+        assert!(result.is_err());
+
+        // create a second vault
+        let _ = cli.get_or_create_named_vault("vault2").await?;
+
+        // try to move it. This should succeed
+        let result = cli
+            .move_vault("vault2", &cli_state_directory.join("new-vault-name"))
+            .await;
+        if let Err(e) = result {
+            panic!("{}", e.to_string())
+        };
+
+        let vault = cli.get_named_vault("vault2").await?;
+        assert_eq!(vault.path(), new_vault_path);
+        assert!(vault.path().exists());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_vault_with_no_user_path() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // the first vault is stored in the main database with the name 'default'
+        let result = cli.create_named_vault(&None, &None).await?;
+        assert_eq!(result.name(), "default".to_string());
+        assert_eq!(result.path(), cli.database_path());
+
+        // the second vault is stored in a separate file, with a random name
+        // that name is used to create the file name
+        let result = cli.create_named_vault(&None, &None).await?;
+        assert!(result
+            .path_as_string()
+            .ends_with(&format!("vault-{}", result.name())));
+
+        // a third vault with a name is also stored in a separate file
+        let result = cli
+            .create_named_vault(&Some("secrets".to_string()), &None)
+            .await?;
+        assert_eq!(result.name(), "secrets".to_string());
+        assert!(result.path_as_string().contains("vault-secrets"));
+
+        // if we reset, we can check that the first vault gets the user defined name
+        // instead of default
+        cli.reset().await?;
+        let cli = CliState::test().await?;
+        let result = cli
+            .create_named_vault(&Some("secrets".to_string()), &None)
+            .await?;
+        assert_eq!(result.name(), "secrets".to_string());
+        assert_eq!(result.path(), cli.database_path());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_vault_with_a_user_path() -> Result<()> {
+        let cli = CliState::test().await?;
+        let vault_path = cli.database_path().parent().unwrap().join(random_name());
+
+        let result = cli
+            .create_named_vault(&Some("secrets".to_string()), &Some(vault_path.clone()))
+            .await?;
+        assert_eq!(result.name(), "secrets".to_string());
+        assert_eq!(result.path(), vault_path);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_delete_vault() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // create a vault and populate the tables used by the vault
+        let vault = cli.create_named_vault(&None, &None).await?;
+
+        let purpose_keys_repository = cli.purpose_keys_repository().await?;
+        let identity = cli.create_identity_with_name("name").await?;
+        let purpose_key_attestation = PurposeKeyAttestation {
+            data: vec![1, 2, 3],
+            signature: PurposeKeyAttestationSignature::ECDSASHA256CurveP256(
+                ECDSASHA256CurveP256Signature([1; 64]),
+            ),
+        };
+
+        purpose_keys_repository
+            .set_purpose_key(
+                &identity.identifier(),
+                Purpose::Credentials,
+                &purpose_key_attestation,
+            )
+            .await?;
+
+        let secrets_repository = cli.secrets_repository().await?;
+        let handle1 =
+            SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(vec![1, 2, 3]));
+        let secret1 =
+            SigningSecret::ECDSASHA256CurveP256(ECDSASHA256CurveP256SecretKey::new([1; 32]));
+        secrets_repository
+            .store_signing_secret(&handle1, secret1)
+            .await?;
+
+        let handle2 = X25519SecretKeyHandle(HandleToSecret::new(vec![1, 2, 3]));
+        let secret2 = X25519SecretKey::new([1; 32]);
+        secrets_repository
+            .store_x25519_secret(&handle2, secret2)
+            .await?;
+
+        // the vault cannot be deleted if it still uses some identities
+        let result = cli.delete_named_vault(&vault.name()).await;
+        assert!(result.is_err());
+
+        // when the vault is deleted, all the tables used by the vault are deleted too
+        cli.delete_identity_by_name(&identity.name()).await?;
+        cli.delete_named_vault(&vault.name()).await?;
+
+        assert_eq!(
+            purpose_keys_repository
+                .get_purpose_key(&identity.identifier(), Purpose::Credentials)
+                .await?,
+            None
+        );
+
+        let result = secrets_repository.get_signing_secret(&handle1).await?;
+        assert!(result.is_none());
+
+        let result = secrets_repository.get_x25519_secret(&handle2).await?;
+        assert!(result.is_none());
 
         Ok(())
     }

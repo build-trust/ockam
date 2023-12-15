@@ -1,8 +1,8 @@
 use clap::Args;
 use colorful::Colorful;
+use std::path::PathBuf;
 
 use ockam::Context;
-use ockam_api::cli_state::random_name;
 
 use crate::util::node_rpc;
 use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
@@ -17,8 +17,11 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    #[arg(hide_default_value = true, default_value_t = random_name())]
-    name: String,
+    #[arg()]
+    name: Option<String>,
+
+    #[arg(long)]
+    path: Option<PathBuf>,
 
     #[arg(long, default_value = "false")]
     aws_kms: bool,
@@ -44,16 +47,16 @@ async fn run_impl(
             "This is the first vault to be created in this environment. It will be set as the default vault"
         ))?;
     }
-    if cmd.aws_kms {
-        opts.state.create_kms_vault(&cmd.name).await?;
+    let vault = if cmd.aws_kms {
+        opts.state.create_kms_vault(&cmd.name, &cmd.path).await?
     } else {
-        opts.state.create_named_vault(&cmd.name).await?;
-    }
+        opts.state.create_named_vault(&cmd.name, &cmd.path).await?
+    };
 
     opts.terminal
         .stdout()
-        .plain(fmt_ok!("Vault created with name '{}'!", &cmd.name))
-        .machine(&cmd.name)
+        .plain(fmt_ok!("Vault created with name '{}'!", vault.name()))
+        .machine(vault.name())
         .json(serde_json::json!({ "name": &cmd.name }))
         .write_line()?;
     Ok(())

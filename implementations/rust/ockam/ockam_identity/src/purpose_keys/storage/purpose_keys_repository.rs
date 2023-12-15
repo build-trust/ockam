@@ -30,4 +30,7 @@ pub trait PurposeKeysRepository: Send + Sync + 'static {
         identifier: &Identifier,
         purpose: Purpose,
     ) -> Result<Option<PurposeKeyAttestation>>;
+
+    /// Delete all keys
+    async fn delete_all(&self) -> Result<()>;
 }

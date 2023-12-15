@@ -1,0 +1,4 @@
+```sh
+# To move a vault to a new path
+$ ockam vault move my_vault --path new/path
+```

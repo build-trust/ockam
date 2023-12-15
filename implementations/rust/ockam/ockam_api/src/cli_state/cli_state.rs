@@ -185,13 +185,13 @@ mod tests {
     #[tokio::test]
     async fn test_reset() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let cli_state_directory = db_file.path().parent().unwrap().join("cli");
+        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
         let cli = CliState::create(cli_state_directory.clone()).await?;
 
         // create 2 vaults
         // the second vault is using a separate file
-        let _vault1 = cli.create_named_vault("vault1").await?;
-        let _vault2 = cli.create_named_vault("vault2").await?;
+        let _vault1 = cli.get_or_create_named_vault("vault1").await?;
+        let _vault2 = cli.get_or_create_named_vault("vault2").await?;
 
         // create 2 identities
         let identity1 = cli
@@ -212,7 +212,7 @@ mod tests {
         let file_names = list_file_names(&cli_state_directory);
         assert_eq!(
             file_names.iter().sorted().as_slice(),
-            ["vault2".to_string(), "database.sqlite3".to_string()]
+            ["vault-vault2".to_string(), "database.sqlite3".to_string()]
                 .iter()
                 .sorted()
                 .as_slice()

@@ -1,0 +1,6 @@
+This command will move an existing vault file to a new path:
+
+  - the vault needs to exist
+  - the vault data should not be stored in the main database
+  - the vault path should exist
+  - the new vault path should not exist

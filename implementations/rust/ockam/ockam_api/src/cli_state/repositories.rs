@@ -5,6 +5,7 @@ use ockam::identity::{
 };
 use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
 use ockam_core::compat::sync::Arc;
+use ockam_vault::storage::{SecretsRepository, SecretsSqlxDatabase};
 
 use crate::cli_state::error::Result;
 use crate::cli_state::storage::*;
@@ -38,6 +39,10 @@ impl CliState {
 
     pub(super) async fn purpose_keys_repository(&self) -> Result<Arc<dyn PurposeKeysRepository>> {
         Ok(Arc::new(PurposeKeysSqlxDatabase::new(self.database())))
+    }
+
+    pub(super) async fn secrets_repository(&self) -> Result<Arc<dyn SecretsRepository>> {
+        Ok(Arc::new(SecretsSqlxDatabase::new(self.database())))
     }
 
     pub(super) async fn vaults_repository(&self) -> Result<Arc<dyn VaultsRepository>> {

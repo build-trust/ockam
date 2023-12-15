@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
@@ -10,7 +10,10 @@ use crate::NamedVault;
 #[async_trait]
 pub trait VaultsRepository: Send + Sync + 'static {
     /// Store a new vault path with an associated name
-    async fn store_vault(&self, name: &str, path: PathBuf, is_kms: bool) -> Result<NamedVault>;
+    async fn store_vault(&self, name: &str, path: &Path, is_kms: bool) -> Result<NamedVault>;
+
+    /// Update a vault path
+    async fn update_vault(&self, name: &str, path: &Path) -> Result<()>;
 
     /// Delete a vault given its name
     async fn delete_named_vault(&self, name: &str) -> Result<()>;

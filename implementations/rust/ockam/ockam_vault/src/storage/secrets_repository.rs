@@ -50,4 +50,7 @@ pub trait SecretsRepository: Send + Sync + 'static {
 
     /// Get the list of all X25519 secret handles
     async fn get_x25519_secret_handles(&self) -> Result<Vec<X25519SecretKeyHandle>>;
+
+    /// Delete all secrets
+    async fn delete_all(&self) -> Result<()>;
 }

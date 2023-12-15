@@ -8,6 +8,7 @@ _: {
   }: {
     devShells.tooling = pkgs.mkShell {
       packages = with pkgs; [
+        broot
         config.packages.bats
         commitlint
         curl
