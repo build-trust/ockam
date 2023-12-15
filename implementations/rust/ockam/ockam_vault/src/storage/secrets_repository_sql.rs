@@ -158,6 +158,16 @@ impl SecretsRepository for SecretsSqlxDatabase {
             .map(|r| r.handle())
             .collect::<Result<Vec<_>>>()?)
     }
+
+    async fn delete_all(&self) -> Result<()> {
+        let mut transaction = self.database.begin().await.into_core()?;
+        let query1 = query("DELETE FROM signing_secret");
+        query1.execute(&mut *transaction).await.void()?;
+
+        let query2 = query("DELETE FROM x25519_secret");
+        query2.execute(&mut *transaction).await.void()?;
+        transaction.commit().await.void()
+    }
 }
 
 impl ToSqlxType for SigningSecret {

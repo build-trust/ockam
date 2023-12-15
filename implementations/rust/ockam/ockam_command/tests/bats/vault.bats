@@ -62,3 +62,22 @@ teardown() {
   run_success "$OCKAM" vault delete "${v}" --yes
   run_failure "$OCKAM" vault show "${v}"
 }
+
+@test "vault - move a vault" {
+  # Create a first vault with no path
+  v=$(random_str)
+  run_success "$OCKAM" vault create "${v}"
+
+  # Since this is the first vault it is stored in the main database
+  # and cannot be moved
+  run_failure "$OCKAM" vault move "${v}" --path "$OCKAM_HOME/new-vault-path"
+
+  # Create a vault with random name at a specific path
+  v=$(random_str)
+  run_success "$OCKAM" vault create "${v}" --path "$OCKAM_HOME/vault-path"
+
+  # Move to a different path
+  run_success "$OCKAM" vault move "${v}" --path "$OCKAM_HOME/new-vault-path"
+  run_success "$OCKAM" vault show --output json "${v}"
+  assert_output --partial new-vault-path
+}

@@ -1,12 +1,14 @@
 mod create;
 mod delete;
 mod list;
+mod move_vault;
 mod show;
 mod util;
 
 use crate::vault::create::CreateCommand;
 use crate::vault::delete::DeleteCommand;
 use crate::vault::list::ListCommand;
+use crate::vault::move_vault::MoveCommand;
 use crate::vault::show::ShowCommand;
 use crate::{docs, CommandGlobalOpts};
 
@@ -29,6 +31,7 @@ pub struct VaultCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum VaultSubcommand {
     Create(CreateCommand),
+    Move(MoveCommand),
     Show(ShowCommand),
     Delete(DeleteCommand),
     List(ListCommand),
@@ -38,6 +41,7 @@ impl VaultCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         match self.subcommand {
             VaultSubcommand::Create(cmd) => cmd.run(opts),
+            VaultSubcommand::Move(cmd) => cmd.run(opts),
             VaultSubcommand::Show(cmd) => cmd.run(opts),
             VaultSubcommand::List(cmd) => cmd.run(opts),
             VaultSubcommand::Delete(cmd) => cmd.run(opts),

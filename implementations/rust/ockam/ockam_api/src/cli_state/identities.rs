@@ -443,7 +443,7 @@ mod tests {
 
         // create a vault first
         let vault_name = "vault-name";
-        let _ = cli.create_named_vault(vault_name).await?;
+        let _ = cli.get_or_create_named_vault(vault_name).await?;
 
         // then create an identity
         let identity_name = "identity-name";

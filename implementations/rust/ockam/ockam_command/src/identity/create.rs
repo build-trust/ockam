@@ -68,7 +68,7 @@ impl CreateCommand {
             let existing_vaults = opts.state.get_named_vaults().await?.len();
 
             let vault = match &self.vault {
-                Some(vault_name) => opts.state.create_named_vault(vault_name).await?,
+                Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
                 None => opts.state.get_or_create_default_named_vault().await?,
             };
             let updated_vaults = opts.state.get_named_vaults().await?.len();

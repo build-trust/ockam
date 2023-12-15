@@ -73,6 +73,13 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
             .into_core()?;
         Ok(row.map(|r| r.purpose_key_attestation()).transpose()?)
     }
+
+    async fn delete_all(&self) -> Result<()> {
+        query("DELETE FROM purpose_key")
+            .execute(&self.database.pool)
+            .await
+            .void()
+    }
 }
 
 // Database serialization / deserialization

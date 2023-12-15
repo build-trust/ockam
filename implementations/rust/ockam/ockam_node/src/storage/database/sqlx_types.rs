@@ -1,5 +1,5 @@
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use ockam_core::Address;
 use sqlx::database::HasArguments;
@@ -184,9 +184,14 @@ impl ToSqlxType for Address {
 
 impl ToSqlxType for PathBuf {
     fn to_sql(&self) -> SqlxType {
+        self.as_path().to_sql()
+    }
+}
+
+impl ToSqlxType for &Path {
+    fn to_sql(&self) -> SqlxType {
         SqlxType::Text(
-            self.as_path()
-                .to_str()
+            self.to_str()
                 .unwrap_or("a path should be a valid string")
                 .into(),
         )

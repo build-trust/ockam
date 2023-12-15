@@ -30,6 +30,7 @@ impl Output for VaultOutput {
             Vault:
                 Name: {name}
                 Type: {vault_type}
+                Path: {vault_path}
             "#,
             name = self
                 .vault
@@ -42,13 +43,18 @@ impl Output for VaultOutput {
             }
             .to_string()
             .color(OckamColor::PrimaryResource.color()),
+            vault_path = self
+                .vault
+                .path_as_string()
+                .color(OckamColor::PrimaryResource.color()),
         ))
     }
 
     fn list_output(&self) -> crate::error::Result<String> {
         Ok(formatdoc!(
             r#"Name: {name}
-            Type: {vault_type}"#,
+            Type: {vault_type}
+            Path: {vault_path}"#,
             name = self
                 .vault
                 .name()
@@ -60,6 +66,10 @@ impl Output for VaultOutput {
             }
             .to_string()
             .color(OckamColor::PrimaryResource.color()),
+            vault_path = self
+                .vault
+                .path_as_string()
+                .color(OckamColor::PrimaryResource.color()),
         ))
     }
 }
