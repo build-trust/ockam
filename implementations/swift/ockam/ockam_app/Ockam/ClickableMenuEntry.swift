@@ -9,6 +9,7 @@ struct ClickableMenuEntry: View {
     @State var shortcut: String = ""
     @State var action: (() -> Void)? = nil
     @State var textPadding = 0.0
+    @State var compact = true
 
     @State private var isHovered = false
     @State private var isDown = false
@@ -44,11 +45,9 @@ struct ClickableMenuEntry: View {
             }
         }
         .padding(.horizontal, HorizontalSpacingUnit)
-        .frame(height: VerticalSpacingUnit*3.5)
+        .frame(height: compact ? VerticalSpacingUnit*3.5 : VerticalSpacingUnit*4)
         .background(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(isHovered ? Color.gray.opacity(0.25) : Color.clear)
-                .padding(.vertical, 3)
+            isHovered ? Color.gray.opacity(0.25) : Color.clear
         )
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)

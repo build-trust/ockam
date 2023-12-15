@@ -122,7 +122,7 @@ struct MainView: View {
                     Text("Accessible Portal Inlets")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
-                        .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.bottom, 2)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                     ScrollView {

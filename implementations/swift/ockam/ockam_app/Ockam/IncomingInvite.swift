@@ -14,7 +14,7 @@ struct IncomingInvite: View {
                     .padding(.trailing, StandardIconTextSpacing)
 
                 VStack(alignment: .leading) {
-                    Text(verbatim: invite.serviceName).lineLimit(1)
+                    Text(verbatim: "Invitation: " + invite.serviceName).lineLimit(1)
                     if invite.accepting {
                         Text(verbatim: "Accepting")
                             .font(.caption)
@@ -58,6 +58,7 @@ struct IncomingInvite: View {
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
+            .padding(.vertical, WindowBorderSize)
 
             if isOpen {
                 Divider()
@@ -69,7 +70,8 @@ struct IncomingInvite: View {
                                 accept_invitation(invite.id)
                                 isOpen = false
                             },
-                            textPadding: padding + HorizontalSpacingUnit*2
+                            textPadding: padding + 27,
+                            compact: false
                         )
                         ClickableMenuEntry(
                             text: "Decline",
@@ -77,11 +79,13 @@ struct IncomingInvite: View {
                                 ignore_invitation(invite.id)
                                 isOpen = false
                             },
-                            textPadding: padding + HorizontalSpacingUnit*2
+                            textPadding: padding + 27,
+                            compact: false
                         )
                     }
                 }
                 .padding(.horizontal, WindowBorderSize)
+                .padding(.vertical, WindowBorderSize)
                 .background(HierarchicalShapeStyle.quinary)
                 Divider()
             }
