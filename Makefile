@@ -9,7 +9,11 @@ elixir_%:
 	$(MAKE) -C implementations/elixir $(@:elixir_%=%)
 
 rust_%:
-	$(MAKE) -C implementations/rust $(@:rust_%=%)
+	$(MAKE) -f implementations/rust/Makefile $(@:rust_%=%)
+
+# run a rust command in a nix environment, so that all tools are installed
+nix_rust_%:
+	nix develop ./tools/nix#rust --command make rust_$*
 
 swift_%:
 	$(MAKE) -C implementations/swift $(@:swift_%=%)
@@ -19,4 +23,5 @@ typescript_%:
 
 .PHONY: \
 	build build_release test lint clean very_clean \
-	elixir_% rust_% swift_% typescript_%
+	elixir_% rust_% swift_% typescript_% \
+	nix_rust_%

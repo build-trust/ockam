@@ -14,6 +14,7 @@ _: {
         git
         graphviz
         jq
+        parallel
         which
       ];
 

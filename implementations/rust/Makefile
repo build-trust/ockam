@@ -1,3 +1,5 @@
+ROOT_DIR := $(realpath $(dir $(firstword $(MAKEFILE_LIST)))/../..)
+
 build_docs:
 	cargo doc --locked --no-deps
 build_examples:
@@ -11,13 +13,16 @@ build_release_%:
 build_%:
 	cargo build --locked --package $*
 
+cargo_fmt:
+	cargo fmt --all
+
 check:
 	cargo check --locked
 check_no_std:
 	cargo --version
 	cargo check --locked --target thumbv7em-none-eabihf -p ockam --no-default-features --features 'no_std alloc software_vault'
 	# no_std example project
-	cd examples/rust/no_std
+	cd $(ROOT_DIR)/examples/rust/no_std
 	cargo check --example hello
 check_cargo_update:
 	cargo --version
@@ -38,26 +43,24 @@ test_%:
 		cargo --locked test --package $*; \
 	fi
 nextest:
-	cargo --locked nextest --config-file tools/nextest/.config/nextest.toml run
+	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run
 	cargo --locked test --doc
 nextest_%:
-	cargo --locked nextest --config-file tools/nextest/.config/nextest.toml run -E 'package($*)'
+	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run -E 'package($*)'
 	cargo --locked test --doc
 
 lint: lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy
 lint_cargo_fmt_check:
 	cargo fmt --all -- --check
 lint_cargo_deny:
-	cargo deny --all-features \
-		check licenses advisories\
-		--config=tools/cargo-deny/deny.toml
+	cargo deny --all-features check licenses advisories --config=$(ROOT_DIR)/tools/cargo-deny/deny.toml
 lint_cargo_clippy:
 	cargo clippy --no-deps --all-targets -- -D warnings
 lint_cargo_toml_files:
-	dprint check --config tools/dprint/dprint.json
+	dprint check --config $(ROOT_DIR)/tools/dprint/dprint.json
 lint_cargo_readme:
 	@set -e;	\
-	for dir in implementations/rust/ockam/*; do \
+	for dir in $(ROOT_DIR)/implementations/rust/ockam/*; do \
 		if [ -d "$$dir" ]; then	\
 			$(MAKE) -f $(MAKEFILE_LIST) lint_cargo_readme_$$(basename $$dir); \
 		fi \
@@ -66,10 +69,10 @@ lint_cargo_readme:
 lint_cargo_readme_%:
 	@set -e; \
 	crate=$*; \
-	cargo readme --project-root implementations/rust/ockam/$$crate --template ../README.tpl -o README-updated.md; \
-	cmp -s implementations/rust/ockam/$$crate/README.md implementations/rust/ockam/$$crate/README-updated.md; \
+	cargo readme --project-root $(ROOT_DIR)/implementations/rust/ockam/$$crate --template ../README.tpl -o README-updated.md; \
+	cmp -s $(ROOT_DIR)/implementations/rust/ockam/$$crate/README.md $(ROOT_DIR)/implementations/rust/ockam/$$crate/README-updated.md; \
 	retval=$$?; \
-	rm -f implementations/rust/ockam/$$crate/README-updated.md; \
+	rm -f $(ROOT_DIR)/implementations/rust/ockam/$$crate/README-updated.md; \
 	if [ $$retval -ne 0 ] ; then \
 		echo "Readme defined in $$crate directory is not up to update";	\
 		exit 1;	\
@@ -77,7 +80,7 @@ lint_cargo_readme_%:
 
 update_readmes:
 	@set -e; \
-	for dir in implementations/rust/ockam/*; do \
+	for dir in $(ROOT_DIR)/implementations/rust/ockam/*; do \
 		if [ -d "$$dir" ]; then	\
 			cargo readme --project-root $$dir --template ../README.tpl -o README.md; \
 		fi \
@@ -94,10 +97,18 @@ very_clean:
 format:
 	cargo fmt --all
 
+bats:
+	bats $(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats --jobs 4
+
+bats_%:
+	bats $(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats/$*.bats --jobs 4
+
 .PHONY:
 	build_docs build_examples build_packages build_release build_release_% build_% \
+	cargo_fmt \
 	check check_no_std check_cargo_update \
 	test test_% nextest nextest_%\
 	lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_toml_files lint_cargo_readme lint_cargo_readme_% lint_cargo_toml_files \
-	clean clean_% very_clean format
-	update_readmes
+	clean clean_% very_clean format \
+	update_readmes \
+	bats bats_%
