@@ -42,6 +42,7 @@ struct MainView: View {
                 Divider()
                     .padding(.top, VerticalSpacingUnit)
                     .padding(.bottom, VerticalSpacingUnit)
+                    .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                 // hide it completely once the first portal has been
                 // created
@@ -52,7 +53,7 @@ struct MainView: View {
                     }
                 )
                 .padding(.top, WindowBorderSize )
-                .padding(.bottom, 4 )
+                .padding(.bottom, WindowBorderSize )
                 .onReceive(state.$orchestrator_status, perform: { newValue in
                     if enrollClickedFromHere {
                         if newValue != .WaitingForToken && newValue != .Disconnected {
@@ -70,11 +71,12 @@ struct MainView: View {
             Divider()
                 .padding(.top, VerticalSpacingUnit)
                 .padding(.bottom, VerticalSpacingUnit)
+                .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
             if state.enrolled {
                 if selectedGroup == "" {
                     ClickableMenuEntry(
-                        text: "Open a new Portal Outlet…",
+                        text: "Open a new Portal Outlet…", icon: "arrow.down.backward.and.arrow.up.forward",
                         action: {
                             OpenWindowWorkaround.shared.openWindow(
                                 windowName: "open-portal"
@@ -87,6 +89,7 @@ struct MainView: View {
                     Divider()
                         .padding(.top, VerticalSpacingUnit)
                         .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                     if !state.localServices.isEmpty {
                         Text("Opened Portal Outlets")
@@ -171,7 +174,15 @@ struct MainView: View {
                                 appDelegate.dismissPopover()
                             })
                         ClickableMenuEntry(
-                            text: "Learn how we built this app…", icon: "lightbulb.min",
+                            text: "Co-sponsor open source maintainers...", icon: "heart",
+                            action: {
+                                if let url = URL(string: "https://github.com/sponsors/build-trust") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                                appDelegate.dismissPopover()
+                            })
+                        ClickableMenuEntry(
+                            text: "Learn how we built this app…", icon: "book.pages",
                             action: {
                                 if let url = URL(string: "https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md") {
                                     NSWorkspace.shared.open(url)
@@ -179,13 +190,14 @@ struct MainView: View {
                                 appDelegate.dismissPopover()
                             })
                         ClickableMenuEntry(
-                            text: "Share your thoughts on Discord…", icon: "message",
+                            text: "Share your thoughts on Discord…", icon: "message.badge",
                             action: {
                                 if let url = URL(string: "https://discord.ockam.io") {
                                     NSWorkspace.shared.open(url)
                                 }
                                 appDelegate.dismissPopover()
                             })
+
                     }
                 }
                 .padding(.horizontal, WindowBorderSize)
@@ -198,7 +210,7 @@ struct MainView: View {
                     VStack(spacing: 0) {
                         if self.optionPressed {
                             ClickableMenuEntry(
-                                text: "About", icon: "questionmark.circle",
+                                text: "About...", icon: "questionmark.circle",
                                 action: {
                                     OpenWindowWorkaround.shared.openWindow(
                                         windowName: "about"
@@ -212,6 +224,7 @@ struct MainView: View {
                                 })
                             Divider()
                                 .padding([.top,.bottom], VerticalSpacingUnit)
+                                .padding(.horizontal, HorizontalSpacingUnit)
                         }
                         ClickableMenuEntry(
                             text: "Quit Ockam", icon: "power", shortcut: "⌘Q",

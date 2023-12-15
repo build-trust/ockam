@@ -9,7 +9,7 @@ struct OpenPortal: View {
     @State private var isProcessing = false
     @State private var errorMessage = ""
     @State private var serviceName = ""
-    @State private var serviceAddress = "localhost:10000"
+    @State private var serviceAddress = ""
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -17,10 +17,10 @@ struct OpenPortal: View {
                 GridRow {
                     VStack(alignment: .leading) {
                         Text(verbatim: "Name")
-                        Text(verbatim: "A name for your portal").font(.caption)
+                        Text(verbatim: "This is the name your friends will see.").font(.caption)
                     }
                     .padding(.top, 6)
-                    TextField("Portal name", text: $serviceName)
+                    TextField("ex: My Web App", text: $serviceName)
                         .focused($isFocused)
                         .onAppear(perform: {
                             isFocused = true
@@ -32,7 +32,7 @@ struct OpenPortal: View {
                         Text(verbatim: "The TCP address where your service is running").font(.caption)
                     }
                     .padding(.top, 6)
-                    TextField("Address", text: $serviceAddress)
+                    TextField("ex: localhost:3333 or 192.168.1.6:4444 or my-nas:5555", text: $serviceAddress)
                 }
             }
             .padding(10)
@@ -49,9 +49,7 @@ struct OpenPortal: View {
             if localServices.isEmpty {
                 Hint(
 """
-Before you can privately share a TCP or HTTP service with your friends, you have to open a Portal Outlet to it. And then, invite your friends to the Portal.
-
-Please input the name of your portal and the IP:Port of your service.
+Here we will pick the TCP or HTTP service that you want to share with your friends. After you click 'Open Portal', invite your friends to this Portal from the main application menu.
 """
                 )
             }
@@ -79,7 +77,7 @@ Please input the name of your portal and the IP:Port of your service.
                         if error == nil {
                             self.errorMessage = ""
                             self.serviceName = ""
-                            self.serviceAddress = "localhost:10000"
+                            self.serviceAddress = ""
                             self.closeWindow()
                             appDelegate.showPopover()
                         } else {
@@ -96,7 +94,7 @@ Please input the name of your portal and the IP:Port of your service.
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: localServices.isEmpty ? 300 : 150)
+        .frame(width: 600, height: localServices.isEmpty ? 280 : 150)
     }
 
     func closeWindow() {

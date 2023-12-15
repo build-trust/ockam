@@ -26,6 +26,8 @@ struct InviteToPortal: View {
 
             Hint(
 """
+Here we will add a list of email addresses to invite to this Portal.
+
 Once your friends accept their invitation, the '\(localService.name)' service is shared securely over an end-to-end encrypted Ockam Portal. They will have access to it on their localhost!
 """
             )

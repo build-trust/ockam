@@ -17,7 +17,8 @@ struct ClickableMenuEntry: View {
         HStack(spacing: 0) {
             if icon != "" {
                 Image(systemName: icon)
-                    .padding(.leading, textPadding)
+                    .frame(width: 20)
+                    .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
 
                 Text(
@@ -39,11 +40,11 @@ struct ClickableMenuEntry: View {
 
             if shortcut != "" {
                 Text(shortcut)
-                    .foregroundColor(Color.gray.opacity(0.5))
+                    .foregroundColor(Color.gray.opacity(0.6))
             }
         }
         .padding(.horizontal, HorizontalSpacingUnit)
-        .frame(height: VerticalSpacingUnit*3)
+        .frame(height: VerticalSpacingUnit*3.5)
         .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)
