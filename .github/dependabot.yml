@@ -100,3 +100,14 @@ updates:
     labels:
       - "Type: Dependencies"
       - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_typed_cbor application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_typed_cbor"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
