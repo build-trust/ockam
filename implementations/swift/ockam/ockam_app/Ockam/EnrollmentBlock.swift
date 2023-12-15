@@ -5,7 +5,6 @@ import SwiftUI
 struct EnrollmentBlock: View {
     @Environment(\.colorScheme) var colorScheme
 
-
     @State var invitation: InvitationContainer = InvitationContainer.shared
     @Binding var appState: ApplicationState
     @State var onEnroll: (() -> Void)? = nil
@@ -25,6 +24,7 @@ Privately share a TCP or HTTP service from this Mac to anyone, anywhere. It is s
 Your friends will have access to it on their **localhost**!
 """
                     )
+                    .multilineTextAlignment(.center)
 
                     EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
@@ -59,12 +59,12 @@ Your friends will have access to it on their **localhost**!
                     }
 
                     if appState.orchestrator_status == OrchestratorStatus.RetrievingSpace ||
-                         appState.orchestrator_status == OrchestratorStatus.RetrievingProject {
+                        appState.orchestrator_status == OrchestratorStatus.RetrievingProject {
                         RotatingText(
                             texts: [
                                 "Ockam Orchestrator runs Encrypted Cloud Relays for your services so that they can be accessible from anywhere over end-to-end encrypted Portals.",
                                 "Portals can traverse NATs, firewalls, and clouds without any change to networks or infrastructure.",
-                                "Portals are always mutually authenticated. Your data is only available to you and your invited friends. No one, not even Ockam Orchestrator, can see or tamper with your data."
+                                "Portals are mutually authenticated. Your data and services are only available to you and your invited friends.\n\nNo one, not even Ockam Orchestrator, can see or tamper with your data."
                             ],
                             interval: 15.0
                         )
@@ -92,38 +92,38 @@ Your friends will have access to it on their **localhost**!
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
 
-                        if appState.localServices.isEmpty {
-                            Text(
+                    if appState.localServices.isEmpty {
+                        Text(
 """
 You are now enrolled with Ockam Orchestrator. We've set up an encrypted relay for you.
 
 First, open a new Portal Outlet to a service that is accessible from your computer. Then, invite your friends to it.
 """
-                            )
-                        } else {
-                            if appState.sent_invitations.isEmpty {
-                            Text(
+                        )
+                        .multilineTextAlignment(.center)
+                    } else  if appState.sent_invitations.isEmpty {
+                        Text(
 """
-You can now share the Portal with your friends by clicking the "Invite…" button.
+Expand a Portal's menu and click the "Invite…" button to give your friends access to a service.
 """
-                            )
-                        }
+                        )
+                        .multilineTextAlignment(.center)
                     }
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(VerticalSpacingUnit*2)
             .background( colorScheme == .dark ?
-                Color.black.opacity(0.1) :
-                Color.white.opacity(0.2)
+                         Color.black.opacity(0.1) :
+                            Color.white.opacity(0.2)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .stroke( colorScheme == .dark ?
-                        AnyShapeStyle(Color.white.opacity(0.2)) :
-                        AnyShapeStyle(Color.black.opacity(0.1)),
-                    lineWidth: 1
-                )
+                             AnyShapeStyle(Color.white.opacity(0.2)) :
+                                AnyShapeStyle(Color.black.opacity(0.1)),
+                             lineWidth: 1
+                           )
             )
             .cornerRadius(4)
         }
@@ -140,5 +140,9 @@ struct EnrollmentBlock_Previews: PreviewProvider {
             appState: $state
         )
         .frame(width: 300, height: 440)
+        .onAppear {
+            state.sent_invitations = []
+            state.orchestrator_status = .Connected
+        }
     }
 }

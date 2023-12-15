@@ -9,32 +9,126 @@ struct InviteToPortal: View {
     @State var emails = Set<String>()
     @State var errorMessage = ""
 
-    var body: some View {
-        VStack(alignment: .center) {
-            Text("Invite your friends to access: **\(localService.name)**")
-                .font(.title)
-                .padding(.top, VerticalSpacingUnit)
+    @Environment(\.colorScheme) var colorScheme
 
-            EmailListView(emailList: $emails)
+    @State private var emailInput: String = ""
 
-            if !errorMessage.isEmpty {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
+    var email: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: HorizontalSpacingUnit) {
+                TextField(
+                    "ex: email@example.com",
+                    text: $emailInput
+                )
+                .padding(.leading, 1)
+                .onSubmit {
+                    if validateEmail(email: self.emailInput) {
+                        self.emails.insert(self.emailInput)
+                        self.emailInput = ""
+                    }
+                }
+
+                Button(action: {
+                    self.emails.insert(self.emailInput)
+                    self.emailInput = ""
+
+                }) {
+                    Text("Add").padding([.leading, .trailing], 5)
+                }
+                .padding([.leading, .trailing], 10)
+                .disabled(!validateEmail(email: emailInput))
             }
+            .padding(.bottom, 4)
+            
+            Text("Type an email address and then press enter to add it to the invitation list.")
+                .font(.caption)
+                .foregroundStyle(OckamSecondaryTextColor)
+                .padding(.bottom, VerticalSpacingUnit*2)
+                .padding(.leading, 4)
 
-            Spacer()
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(Array(emails), id: \.self) { email in
+                        HStack {
+                            Text(email)
+                            Spacer()
+                            Button(action: {
+                                self.emails.remove(email)
+                            }) {
+                                Text("Remove")
+                                    .padding([.leading, .trailing], 5)
+                                    .foregroundColor(.red)
+                                    .underline()
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            .scrollIndicators(ScrollIndicatorVisibility.never)
+            .frame(width: 540, height: 100)
+            .padding(VerticalSpacingUnit*2)
+            .background( colorScheme == .dark ?
+                         Color.black.opacity(0.1) :
+                            Color.white.opacity(0.2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke( colorScheme == .dark ?
+                             AnyShapeStyle(Color.white.opacity(0.2)) :
+                                AnyShapeStyle(Color.black.opacity(0.1)),
+                             lineWidth: 1
+                           )
+            )
+            .cornerRadius(4)
+
+            Text("Grant access to: \(localService.name)")
+                .font(.caption)
+                .foregroundStyle(OckamSecondaryTextColor)
+                .padding(.leading, 4)
+                .padding(.top, 4)
+        }
+    }
+
+    private func validateEmail(email: String) -> Bool {
+        // keeping the email regex very loose since unicode is allowed
+        // company-specific TLDs are a possibility
+        let emailFormat = "[^@]+@[^@]+"
+        let emailPredicate = NSPredicate(
+            format: "SELF MATCHES %@",
+            emailFormat
+        )
+        return emailPredicate.evaluate(with: email)
+    }
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 0) {
+
+            self.email
+                .padding(.top, VerticalSpacingUnit*3)
+                .padding(.horizontal, HorizontalSpacingUnit*6)
 
             Hint(
 """
-Here we will add a list of email addresses to invite to this Portal.
+Add a list of email addresses to invite to this Portal.
 
-Once your friends accept their invitation, the '\(localService.name)' service is shared securely over an end-to-end encrypted Ockam Portal. They will have access to it on their localhost!
+Once your friends accept their invitation, the '\(localService.name)' service is shared securely over an end-to-end encrypted Portal.
+
+They will have access to it on their localhost.
 """
             )
-            .frame(height: 130)
+            .padding(.horizontal, HorizontalSpacingUnit*5)
+            .padding(.top, VerticalSpacingUnit*2)
 
+            Spacer()
 
             HStack {
+                if !errorMessage.isEmpty {
+                    Text("Error: \(errorMessage)")
+                        .foregroundColor(Color(hex: OckamErrorColor))
+                        .padding(.leading, HorizontalSpacingUnit*3)
+                }
                 Spacer()
                 Button(
                     action: {
@@ -71,7 +165,7 @@ Once your friends accept their invitation, the '\(localService.name)' service is
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: 420)
+        .frame(width: 600, height: 470)
     }
 
     func closeWindow() {
@@ -95,6 +189,6 @@ struct ShareServiceView_Previews: PreviewProvider {
                 available: false
             )
         )
-        .frame(height: 400)
+        .frame(height: 470)
     }
 }

@@ -16,37 +16,46 @@ struct RemotePortalView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: HorizontalSpacingUnit) {
-                Image(systemName: "circle")
-                    .foregroundColor(
-                        service.enabled ? (service.available ? .green : .red) : .orange
-                    )
+            HStack(spacing: 0) {
+                Image(systemName: "arrow.left.arrow.right")
+                    .frame(width: 20)
+                    .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(service.sourceName).lineLimit(1)
-                    if !service.enabled {
-                        Text(verbatim: "Disconnected")
-                            .foregroundStyle(OckamSecondaryTextColor)
-                            .font(.caption)
-                    } else {
-                        if service.available {
-                            let address =
-                            if let scheme = service.scheme {
-                                scheme + "://" + service.address.unsafelyUnwrapped + ":"
-                                + String(service.port.unsafelyUnwrapped)
-                            } else {
-                                service.address.unsafelyUnwrapped + ":"
-                                + String(service.port.unsafelyUnwrapped)
-                            }
-                            Text(verbatim: address)
+
+                    HStack(spacing: 0) {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 7))
+                            .foregroundColor( service.enabled ? (service.available ? .green : Color.init(hex: OckamErrorColor)) : .orange
+                            )
+                            .padding(.top, 1)
+                            .padding(.trailing, 4)
+
+                        if !service.enabled {
+                            Text(verbatim: "Disconnected")
                                 .foregroundStyle(OckamSecondaryTextColor)
                                 .font(.caption)
-                                .lineLimit(1)
                         } else {
-                            Text(verbatim: "Connecting")
-                                .foregroundStyle(OckamSecondaryTextColor)
-                                .font(.caption)
+                            if service.available {
+                                let address =
+                                if let scheme = service.scheme {
+                                    scheme + "://" + service.address.unsafelyUnwrapped + ":"
+                                    + String(service.port.unsafelyUnwrapped)
+                                } else {
+                                    service.address.unsafelyUnwrapped + ":"
+                                    + String(service.port.unsafelyUnwrapped)
+                                }
+                                Text(verbatim: address)
+                                    .foregroundStyle(OckamSecondaryTextColor)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            } else {
+                                Text(verbatim: "Connecting")
+                                    .foregroundStyle(OckamSecondaryTextColor)
+                                    .font(.caption)
+                            }
                         }
                     }
                 }

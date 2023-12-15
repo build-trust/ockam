@@ -12,49 +12,46 @@ struct OpenPortal: View {
     @State private var serviceAddress = ""
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Grid(alignment: .leading) {
-                GridRow {
-                    VStack(alignment: .leading) {
-                        Text(verbatim: "Name")
-                        Text(verbatim: "This is the name your friends will see.").font(.caption)
-                    }
-                    .padding(.top, 6)
-                    TextField("ex: My Web App", text: $serviceName)
-                        .focused($isFocused)
-                        .onAppear(perform: {
-                            isFocused = true
-                        })
-                }
-                GridRow {
-                    VStack(alignment: .leading) {
-                        Text(verbatim: "Address")
-                        Text(verbatim: "The TCP address where your service is running").font(.caption)
-                    }
-                    .padding(.top, 6)
-                    TextField("ex: localhost:3333 or 192.168.1.6:4444 or my-nas:5555", text: $serviceAddress)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            Form {
+                TextField("Name:", text: $serviceName)
+                    .focused($isFocused)
+                    .onAppear(perform: {
+                        //give focus to the text field on open
+                        isFocused = true
+                    })
+                Text("This is the name your friends will see, ex: My Web App")
+                    .font(.caption)
+                    .foregroundStyle(OckamSecondaryTextColor)
+                    .padding(.bottom, VerticalSpacingUnit)
+                    .padding(.leading, 4)
+
+                TextField("Address:", text: $serviceAddress)
+                Text("This is the address where your service is listening, ex: localhost:3333 or my-nas:5555")
+                    .font(.caption)
+                    .foregroundStyle(OckamSecondaryTextColor)
+                    .padding(.leading, 4)
             }
-            .padding(10)
+            .padding(.top, VerticalSpacingUnit*3)
+            .padding(.bottom, VerticalSpacingUnit*2)
+            .padding(.horizontal, VerticalSpacingUnit*7)
 
 
-            if !errorMessage.isEmpty {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
-                    .padding(10)
-            }
+            Hint(
+"""
+Pick the TCP or HTTP service you want to share with your friends. After you click 'Open Portal', invite your friends to this Portal from the application menu.
+"""
+            )
+            .padding(.horizontal, HorizontalSpacingUnit*6)
 
             Spacer()
 
-            if localServices.isEmpty {
-                Hint(
-"""
-Here we will pick the TCP or HTTP service that you want to share with your friends. After you click 'Open Portal', invite your friends to this Portal from the main application menu.
-"""
-                )
-            }
-
             HStack {
+                if !errorMessage.isEmpty {
+                    Text("Error: \(errorMessage)")
+                        .foregroundColor(Color(hex: OckamErrorColor))
+                        .padding(.leading, HorizontalSpacingUnit*3)
+                }
                 Spacer()
                 Button(
                     action: {
@@ -94,7 +91,7 @@ Here we will pick the TCP or HTTP service that you want to share with your frien
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: localServices.isEmpty ? 300 : 170)
+        .frame(width: 600, height: 320)
     }
 
     func closeWindow() {

@@ -34,6 +34,8 @@ struct SentInvitations: View {
 
             if isOpen {
                 Divider()
+                    .padding(.top, WindowBorderSize)
+                
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(state.sent_invitations) { invitation in

@@ -38,7 +38,7 @@ struct MainView: View {
                 .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
             }
 
-            if state.localServices.isEmpty || state.sent_invitations.isEmpty {
+            if state.localServices.isEmpty || (state.loaded && state.sent_invitations.isEmpty) {
                 if state.enrolled {
                     Divider()
                         .padding(.top, VerticalSpacingUnit)
