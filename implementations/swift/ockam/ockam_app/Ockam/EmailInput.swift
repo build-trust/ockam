@@ -36,9 +36,7 @@ struct EmailListView: View {
                         Button(action: {
                             self.emailList.remove(email)
                         }) {
-                            Image(systemName: "xmark.circle")
-                                .imageScale(.large)
-                                .foregroundColor(.red)
+                            Text("Remove").padding([.leading, .trailing], 5).foregroundColor(.red).underline()
                         }
                         .buttonStyle(.plain)
                     }
