@@ -56,6 +56,7 @@ struct LocalPortalView: View {
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
+            .padding(.vertical, 4)
 
             if isOpen {
                 Divider()
@@ -64,7 +65,7 @@ struct LocalPortalView: View {
                     if let scheme = localService.scheme {
                         let url = scheme + "://" + address
                         ClickableMenuEntry(
-                            text: "Open " + url + "…",
+                            text: "Open address…",
                             action: {
                                 if let url = URL(string: url) {
                                     NSWorkspace.shared.open(url)
@@ -75,7 +76,7 @@ struct LocalPortalView: View {
                         )
                     }
                     ClickableMenuEntry(
-                        text: "Copy " + address, clicked: "Copied!",
+                        text: "Copy", clicked: "Copied!",
                         action: {
                             copyToClipboard(address)
                             self.closeWindow()

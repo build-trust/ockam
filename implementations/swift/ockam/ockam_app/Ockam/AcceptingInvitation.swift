@@ -7,14 +7,14 @@ struct AcceptingInvitationWrapper: View {
     @Binding var state: ApplicationState
     @Binding var invitationIdContainer: InvitationContainer
 
-    @State private var showIntro: Bool = false
     @State private var enrollClickedFromHere: Bool = false
     @State private var showWindowOnEnrollment: Bool = true
 
     var body: some View {
-        if showIntro {
+        if state.orchestrator_status != .Connecting &&
+           state.orchestrator_status != .Connected {
             EnrollmentBlock(
-                status: $state.orchestrator_status,
+                appState: $state,
                 onEnroll: {
                     enrollClickedFromHere = true
                 }
@@ -23,20 +23,13 @@ struct AcceptingInvitationWrapper: View {
             .padding(WindowBorderSize)
             .padding(.vertical, VerticalSpacingUnit)
             .onReceive(state.$orchestrator_status, perform: { newValue in
-                if newValue == .Connecting || newValue == .Connecting {
-                    // if the user enrolled from another window, we can safely
-                    // hide the tour
-                    showIntro = false
-                }
-                else {
-                    if enrollClickedFromHere {
-                        if newValue != .WaitingForToken && newValue != .Disconnected {
-                            if showWindowOnEnrollment {
-                                openWindow(id: "accepting-invitation")
-                                bringInFront()
-                                // only works once
-                                showWindowOnEnrollment = false
-                            }
+                if enrollClickedFromHere {
+                    if newValue != .WaitingForToken && newValue != .Disconnected {
+                        if showWindowOnEnrollment {
+                            openWindow(id: "accepting-invitation")
+                            bringInFront()
+                            // only works once
+                            showWindowOnEnrollment = false
                         }
                     }
                 }
@@ -46,9 +39,7 @@ struct AcceptingInvitationWrapper: View {
                 state: $state,
                 invitationIdContainer: $invitationIdContainer
             )
-            .onAppear(perform: {
-                self.showIntro = !state.enrolled
-            })
+            .frame(width: 400, height: 300)
         }
     }
 }
@@ -86,6 +77,8 @@ struct AcceptingInvitation: View {
                 .padding(.horizontal, HorizontalSpacingUnit)
                 .background(OckamDarkerBackground)
             } else if let (group, invitation) = self.invitation {
+                Spacer()
+
                 HStack {
                     Spacer()
                     ProfilePicture(url: group.imageUrl, size: 64)
@@ -150,6 +143,8 @@ struct AcceptingInvitation: View {
                 .padding(.horizontal, HorizontalSpacingUnit)
                 .background(OckamDarkerBackground)
             } else if let (group, service) = self.service {
+                Spacer()
+
                 HStack {
                     Spacer()
                     ProfilePicture(url: group.imageUrl, size: 64)
@@ -251,9 +246,12 @@ struct OpenUrlView_Previews: PreviewProvider {
     @State static var invitationIdContainer = InvitationContainer()
 
     static var previews: some View {
-        AcceptingInvitationWrapper(state: $state, invitationIdContainer: $invitationIdContainer )
-            .onAppear(perform: {
-                Self.invitationIdContainer.id = "5373"
-            })
+        AcceptingInvitationWrapper(
+            state: $state,
+            invitationIdContainer: $invitationIdContainer
+        )
+        .onAppear(perform: {
+            Self.invitationIdContainer.id = "5373"
+        })
     }
 }

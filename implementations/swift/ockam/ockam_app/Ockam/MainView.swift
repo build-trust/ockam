@@ -38,16 +38,18 @@ struct MainView: View {
                 .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
             }
 
-            if state.localServices.isEmpty && selectedGroup == "" {
-                Divider()
-                    .padding(.top, VerticalSpacingUnit)
-                    .padding(.bottom, VerticalSpacingUnit)
-                    .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
+            if state.localServices.isEmpty || state.sent_invitations.isEmpty {
+                if state.enrolled {
+                    Divider()
+                        .padding(.top, VerticalSpacingUnit)
+                        .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
+                }
 
                 // hide it completely once the first portal has been
                 // created
                 EnrollmentBlock(
-                    status: $state.orchestrator_status,
+                    appState: $state,
                     onEnroll: {
                         enrollClickedFromHere = true
                     }
@@ -74,48 +76,46 @@ struct MainView: View {
                 .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
             if state.enrolled {
-                if selectedGroup == "" {
-                    ClickableMenuEntry(
-                        text: "Open a new Portal Outlet…", icon: "arrow.down.backward.and.arrow.up.forward",
-                        action: {
-                            OpenWindowWorkaround.shared.openWindow(
-                                windowName: "open-portal"
-                            )
-                            bringInFront()
+                ClickableMenuEntry(
+                    text: "Open a new Portal Outlet…", icon: "arrow.down.backward.and.arrow.up.forward",
+                    action: {
+                        OpenWindowWorkaround.shared.openWindow(
+                            windowName: "open-portal"
+                        )
+                        bringInFront()
+                    }
+                )
+                .padding(.horizontal, WindowBorderSize)
+
+                Divider()
+                    .padding(.top, VerticalSpacingUnit)
+                    .padding(.bottom, VerticalSpacingUnit)
+                    .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
+
+                if !state.localServices.isEmpty {
+                    Text("Opened Portal Outlets")
+                        .font(.body).bold()
+                        .foregroundColor(OckamSecondaryTextColor)
+                        .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
+
+                    // TODO: add scrollPosition() support after ventura has been dropped
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(state.localServices) { localService in
+                                LocalPortalView(
+                                    localService: localService
+                                )
+                            }
                         }
-                    )
-                    .padding(.horizontal, WindowBorderSize)
+                    }
+                    .scrollIndicators(ScrollIndicatorVisibility.never)
+                    .frame(maxHeight: 250)
 
                     Divider()
                         .padding(.top, VerticalSpacingUnit)
                         .padding(.bottom, VerticalSpacingUnit)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-
-                    if !state.localServices.isEmpty {
-                        Text("Opened Portal Outlets")
-                            .font(.body).bold()
-                            .foregroundColor(OckamSecondaryTextColor)
-                            .padding(.bottom, VerticalSpacingUnit)
-                            .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-
-                        // TODO: add scrollPosition() support after ventura has been dropped
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                ForEach(state.localServices) { localService in
-                                    LocalPortalView(
-                                        localService: localService
-                                    )
-                                }
-                            }
-                        }
-                        .scrollIndicators(ScrollIndicatorVisibility.never)
-                        .frame(maxHeight: 250)
-
-                        Divider()
-                            .padding(.top, VerticalSpacingUnit)
-                            .padding(.bottom, VerticalSpacingUnit)
-                            .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-                    }
                 }
 
                 if !state.groups.isEmpty {
@@ -128,77 +128,64 @@ struct MainView: View {
                     ScrollView {
                         VStack(spacing: 0) {
                             ForEach(state.groups) { group in
-                                if selectedGroup == "" || selectedGroup == group.email {
-                                    ServiceGroupView(
-                                        group: group,
-                                        back: {
-                                            selectedGroup = ""
-                                        },
-                                        action: {
-                                            selectedGroup = group.email
-                                        }
-                                    )
-                                }
+                                ServiceGroupView(
+                                    group: group
+                                )
                             }
                         }
                     }
                     .scrollIndicators(ScrollIndicatorVisibility.never)
                     .frame(maxHeight: selectedGroup == "" ? 175 : 500)
 
-                    if selectedGroup == "" {
-                        Divider()
-                            .padding(.top, VerticalSpacingUnit)
-                            .padding(.bottom, VerticalSpacingUnit)
-                            .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-                    }
+                    Divider()
+                        .padding(.top, VerticalSpacingUnit)
+                        .padding(.bottom, VerticalSpacingUnit)
+                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                 }
             }
 
-            if selectedGroup == "" {
-                if !state.sent_invitations.isEmpty {
-                    SentInvitations(state: self.state)
-                    Divider()
-                        .padding(.vertical, VerticalSpacingUnit)
-                        .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
-                }
+            if !state.sent_invitations.isEmpty {
+                SentInvitations(state: self.state)
+                Divider()
+                    .padding(.vertical, VerticalSpacingUnit)
+                    .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
+            }
 
-                Group {
-                    VStack(spacing: 0) {
-                        @Environment(\.openWindow) var openWindow
-                        ClickableMenuEntry(
-                            text: "Star us on GitHub…", icon: "star",
-                            action: {
-                                if let url = URL(string: "https://github.com/build-trust/ockam") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                                appDelegate.dismissPopover()
-                            })
-                        ClickableMenuEntry(
-                            text: "Co-sponsor open source maintainers...", icon: "heart",
-                            action: {
-                                if let url = URL(string: "https://github.com/sponsors/build-trust") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                                appDelegate.dismissPopover()
-                            })
-                        ClickableMenuEntry(
-                            text: "Learn how we built this app…", icon: "book.pages",
-                            action: {
-                                if let url = URL(string: "https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                                appDelegate.dismissPopover()
-                            })
-                        ClickableMenuEntry(
-                            text: "Share your thoughts on Discord…", icon: "message.badge",
-                            action: {
-                                if let url = URL(string: "https://discord.ockam.io") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                                appDelegate.dismissPopover()
-                            })
-
-                    }
+            Group {
+                VStack(spacing: 0) {
+                    @Environment(\.openWindow) var openWindow
+                    ClickableMenuEntry(
+                        text: "Star us on GitHub…", icon: "star",
+                        action: {
+                            if let url = URL(string: "https://github.com/build-trust/ockam") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            appDelegate.dismissPopover()
+                        })
+                    ClickableMenuEntry(
+                        text: "Co-sponsor open source maintainers...", icon: "heart",
+                        action: {
+                            if let url = URL(string: "https://github.com/sponsors/build-trust") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            appDelegate.dismissPopover()
+                        })
+                    ClickableMenuEntry(
+                        text: "Learn how we built this app…", icon: "book.pages",
+                        action: {
+                            if let url = URL(string: "https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            appDelegate.dismissPopover()
+                        })
+                    ClickableMenuEntry(
+                        text: "Share your thoughts on Discord…", icon: "message.badge",
+                        action: {
+                            if let url = URL(string: "https://discord.ockam.io") {
+                                NSWorkspace.shared.open(url)
+                            }
+                            appDelegate.dismissPopover()
+                        })
                 }
                 .padding(.horizontal, WindowBorderSize)
 

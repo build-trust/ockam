@@ -94,7 +94,7 @@ Here we will pick the TCP or HTTP service that you want to share with your frien
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: localServices.isEmpty ? 280 : 150)
+        .frame(width: 600, height: localServices.isEmpty ? 300 : 170)
     }
 
     func closeWindow() {

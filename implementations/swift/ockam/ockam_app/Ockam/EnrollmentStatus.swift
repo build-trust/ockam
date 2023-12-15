@@ -15,7 +15,7 @@ struct EnrollmentStatus: View {
                 Text("Fetching your spaces...")
             case .RetrievingProject:
                 AnimatedEllipsis(text: "Provisioning a dedicated project", interval: 1.0)
-                Text("This may take upto 3 minutes.").font(.caption)
+                Text("This may take up to 3 minutes.").font(.caption)
             case .Connecting:
                 Text("Connecting to Orchestrator")
             case .Connected:
