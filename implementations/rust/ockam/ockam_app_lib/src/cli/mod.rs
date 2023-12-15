@@ -8,10 +8,10 @@ pub(crate) fn cli_bin() -> Result<String> {
     match ockam_path {
         Some(path) => Ok(path),
         None => {
-            // check if the `ockam_command` executable was bundled with the application
+            // check if the `ockam` command executable was bundled with the application
             let mut current_executable = std::env::current_exe()?;
             current_executable.pop();
-            current_executable.push("ockam_command");
+            current_executable.push("ockam");
             match current_executable.into_os_string().into_string() {
                 Ok(path) => {
                     if std::path::Path::new(&path).exists() {
