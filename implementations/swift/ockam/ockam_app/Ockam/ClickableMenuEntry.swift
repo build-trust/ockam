@@ -45,7 +45,11 @@ struct ClickableMenuEntry: View {
         }
         .padding(.horizontal, HorizontalSpacingUnit)
         .frame(height: VerticalSpacingUnit*3.5)
-        .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isHovered ? Color.gray.opacity(0.25) : Color.clear)
+                .padding(.vertical, 3)
+        )
         .buttonStyle(PlainButtonStyle())
         .cornerRadius(4)
         .contentShape(Rectangle())

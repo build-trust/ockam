@@ -71,7 +71,7 @@ Once your friends accept their invitation, the '\(localService.name)' service is
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: 400)
+        .frame(width: 600, height: 420)
     }
 
     func closeWindow() {

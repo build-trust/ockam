@@ -5,15 +5,15 @@ import SwiftUI
 struct EnrollmentBlock: View {
     @Environment(\.colorScheme) var colorScheme
 
-    @Binding var status: OrchestratorStatus
 
     @State var invitation: InvitationContainer = InvitationContainer.shared
+    @Binding var appState: ApplicationState
     @State var onEnroll: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                if status == OrchestratorStatus.Disconnected {
+                if appState.orchestrator_status == OrchestratorStatus.Disconnected {
                     Text("Portals, by Ockam")
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
@@ -26,7 +26,7 @@ Your friends will have access to it on their **localhost**!
 """
                     )
 
-                    EnrollmentStatus(status: $status)
+                    EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
 
                     Button(action: {
@@ -44,22 +44,22 @@ Your friends will have access to it on their **localhost**!
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
 
-                } else if status != OrchestratorStatus.Connecting &&
-                            status != OrchestratorStatus.Connected {
+                } else if appState.orchestrator_status != OrchestratorStatus.Connecting &&
+                            appState.orchestrator_status != OrchestratorStatus.Connected {
                     Text("Portals, by Ockam")
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
 
 
-                    if status == OrchestratorStatus.WaitingForToken {
+                    if appState.orchestrator_status == OrchestratorStatus.WaitingForToken {
                         Image("EnrollmentPage")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(height: 150)
                     }
 
-                    if status == OrchestratorStatus.RetrievingSpace ||
-                         status == OrchestratorStatus.RetrievingProject {
+                    if appState.orchestrator_status == OrchestratorStatus.RetrievingSpace ||
+                         appState.orchestrator_status == OrchestratorStatus.RetrievingProject {
                         RotatingText(
                             texts: [
                                 "Ockam Orchestrator runs Encrypted Cloud Relays for your services so that they can be accessible from anywhere over end-to-end encrypted Portals.",
@@ -70,10 +70,10 @@ Your friends will have access to it on their **localhost**!
                         )
                     }
 
-                    EnrollmentStatus(status: $status)
+                    EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
 
-                    if status == OrchestratorStatus.WaitingForToken {
+                    if appState.orchestrator_status == OrchestratorStatus.WaitingForToken {
                         Button(action: {
                             restartCurrentProcess()
                         }) {
@@ -85,20 +85,30 @@ Your friends will have access to it on their **localhost**!
                         }
                         .controlSize(.large)
                     }
-                } else if status == OrchestratorStatus.Connecting ||
-                            status == OrchestratorStatus.Connected {
+                } else if appState.orchestrator_status == OrchestratorStatus.Connecting ||
+                            appState.orchestrator_status == OrchestratorStatus.Connected {
+
                     Text("Portals, by Ockam")
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
 
-
-                    Text(
+                        if appState.localServices.isEmpty {
+                            Text(
 """
 You are now enrolled with Ockam Orchestrator. We've set up an encrypted relay for you.
 
 First, open a new Portal Outlet to a service that is accessible from your computer. Then, invite your friends to it.
 """
-                    )
+                            )
+                        } else {
+                            if appState.sent_invitations.isEmpty {
+                            Text(
+"""
+You can now share the Portal with your friends by clicking the "Invite…" button.
+"""
+                            )
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -123,9 +133,11 @@ First, open a new Portal Outlet to a service that is accessible from your comput
 
 
 struct EnrollmentBlock_Previews: PreviewProvider {
+    @State static var state = swift_demo_application_state()
+
     static var previews: some View {
         EnrollmentBlock(
-            status: .constant(.Connected)
+            appState: $state
         )
         .frame(width: 300, height: 440)
     }

@@ -68,6 +68,7 @@ struct ServiceGroupView: View {
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
+            .padding(.vertical, 4)
 
             if isOpen {
                 VStack(spacing: 0) {

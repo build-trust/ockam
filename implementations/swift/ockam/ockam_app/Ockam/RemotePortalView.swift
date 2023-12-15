@@ -73,6 +73,7 @@ struct RemotePortalView: View {
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
+            .padding(.vertical, 4)
 
             if isOpen {
                 Divider()
@@ -87,7 +88,7 @@ struct RemotePortalView: View {
                                 scheme + "://" + service.address.unsafelyUnwrapped + ":"
                                 + String(service.port.unsafelyUnwrapped)
                                 ClickableMenuEntry(
-                                    text: "Open " + url + "…",
+                                    text: "Open address…",
                                     action: {
                                         if let url = URL(string: url) {
                                             NSWorkspace.shared.open(url)
@@ -97,7 +98,7 @@ struct RemotePortalView: View {
                                 )
                             }
                             ClickableMenuEntry(
-                                text: "Copy " + address, clicked: "Copied!",
+                                text: "Copy", clicked: "Copied!",
                                 action: {
                                     copyToClipboard(address)
                                     self.closeWindow()

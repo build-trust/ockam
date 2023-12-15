@@ -36,7 +36,10 @@ struct EmailListView: View {
                         Button(action: {
                             self.emailList.remove(email)
                         }) {
-                            Text("Remove").padding([.leading, .trailing], 5).foregroundColor(.red).underline()
+                            Text("Remove")
+                                .padding([.leading, .trailing], 5)
+                                .foregroundColor(.red)
+                                .underline()
                         }
                         .buttonStyle(.plain)
                     }

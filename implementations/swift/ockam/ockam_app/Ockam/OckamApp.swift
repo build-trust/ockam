@@ -80,7 +80,6 @@ struct WrapperView: View {
 class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var menuBarExtra: FluidMenuBarExtra?
     private var urlOpened = false
-    private var didFinishLaunching = false
 
     func applicationDidFinishLaunching(_ notification: Foundation.Notification) {
         // avoid creating the menubar extra for preview purposes
@@ -121,7 +120,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self.showPopover()
             }
         }
-        didFinishLaunching = true
     }
 
     // avoid opening the default window when clickin on notifications
@@ -145,15 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             logger.info("Received url: \(url.absoluteString, privacy: .public)")
             if let invitationId = parseInvitationIdFromUrl(url: url) {
                 urlOpened = true
-                if didFinishLaunching {
-                    InvitationContainer.shared.update(invitationId: invitationId)
-                } else {
-                    // window doesn't open up if started right away
-                    // this is true once, when the application gets started from an url
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        InvitationContainer.shared.update(invitationId: invitationId)
-                    }
-                }
+                InvitationContainer.shared.update(invitationId: invitationId)
             }
         }
     }
@@ -242,7 +232,6 @@ struct OckamApp: App {
     var body: some Scene {
         Window("Accepting invitation", id: "accepting-invitation") {
             AcceptingInvitationWrapper(state: $state, invitationIdContainer: $invitation)
-                .frame(height: 340)
             // no particular reason to attach .onAppear to this window, we just need a View event
             // during initialization. onAppear is meant apperance in the hierarchy and not 'visible'.
                 .onAppear(perform: {
