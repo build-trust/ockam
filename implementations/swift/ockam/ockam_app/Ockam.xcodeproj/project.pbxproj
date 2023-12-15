@@ -18,6 +18,7 @@
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		7847A44A2B31C26B0082887C /* ockam in Embed Ockam Command */ = {isa = PBXBuildFile; fileRef = 7847A4492B31C26B0082887C /* ockam */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		7859A4862B1DD4960085C7F7 /* UpdateSizeAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4802B1DD4960085C7F7 /* UpdateSizeAction.swift */; };
 		7859A4872B1DD4960085C7F7 /* FluidMenuBarExtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4812B1DD4960085C7F7 /* FluidMenuBarExtra.swift */; };
 		7859A4882B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7859A4822B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift */; };
@@ -44,6 +45,20 @@
 		78ED0DA32AD4501200574AE9 /* InviteToPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA22AD4501200574AE9 /* InviteToPortal.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		7847A4482B31C2390082887C /* Embed Ockam Command */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				7847A44A2B31C26B0082887C /* ockam in Embed Ockam Command */,
+			);
+			name = "Embed Ockam Command";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		4CB45C512AEB06C700D27F22 /* AcceptingInvitation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptingInvitation.swift; sourceTree = "<group>"; };
 		7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
@@ -59,6 +74,7 @@
 		782D5BAB2AC33EAD00D1B27F /* Bridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Bridge.h; path = Ockam/Bridge.h; sourceTree = "<group>"; };
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
+		7847A4492B31C26B0082887C /* ockam */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = ockam; path = ../../../../target/release/ockam; sourceTree = "<group>"; };
 		7859A4802B1DD4960085C7F7 /* UpdateSizeAction.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UpdateSizeAction.swift; sourceTree = "<group>"; };
 		7859A4812B1DD4960085C7F7 /* FluidMenuBarExtra.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FluidMenuBarExtra.swift; sourceTree = "<group>"; };
 		7859A4822B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FluidMenuBarExtraStatusItem.swift; sourceTree = "<group>"; };
@@ -103,6 +119,7 @@
 		782D5B3C2AC1D3D700D1B27F = {
 			isa = PBXGroup;
 			children = (
+				7847A4492B31C26B0082887C /* ockam */,
 				782D5BAB2AC33EAD00D1B27F /* Bridge.h */,
 				782D5B472AC1D3D700D1B27F /* Ockam */,
 				782D5B462AC1D3D700D1B27F /* Products */,
@@ -199,6 +216,7 @@
 				782D5B412AC1D3D700D1B27F /* Sources */,
 				782D5B422AC1D3D700D1B27F /* Frameworks */,
 				782D5B432AC1D3D700D1B27F /* Resources */,
+				7847A4482B31C2390082887C /* Embed Ockam Command */,
 			);
 			buildRules = (
 			);
@@ -218,7 +236,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1430;
+				LastSwiftUpdateCheck = 1510;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					782D5B442AC1D3D700D1B27F = {
@@ -437,6 +455,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Ockam/Info.plist;
@@ -450,7 +469,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
+				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.portals;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";
@@ -473,6 +492,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Ockam/Info.plist;
@@ -487,7 +507,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 0.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
+				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.portals;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "";

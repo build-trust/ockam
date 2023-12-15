@@ -99,14 +99,23 @@ runs:
           cp target/${{ inputs.target }}/release/libockam_app_lib.d target/release/
 
           # address dependencies for the swiftui app
-          sudo xcode-select --switch /Applications/Xcode_15.0.app/
           brew install create-dmg
 
           if [[ ${{ inputs.target }} == *x86_64* ]]; then
-            make swift_xcode_build ARCH=x86_64
+            make swift_xcode_signed_build \
+              DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+              PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
+              CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
+              OTHER_CODE_SIGN_FLAGS="--keychain \"${keychain_path}\"" \
+              ARCH=x86_64
           else
-            make swift_xcode_build ARCH=arm64
+            make swift_xcode_signed_build \
+              DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+              PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
+              CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
+              OTHER_CODE_SIGN_FLAGS="--keychain \"${keychain_path}\"" \
+              ARCH=arm64
           fi
+
           make swift_package_only
         fi
-

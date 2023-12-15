@@ -8,7 +8,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>io.ockam.app</string>
+			<string>io.ockam.portals</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>ockam</string>

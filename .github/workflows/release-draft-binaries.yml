@@ -188,6 +188,10 @@ jobs:
     name: Build Binaries
     needs: create_release
     environment: release
+    env:
+      DEVELOPMENT_TEAM: ${{ vars.DEVELOPMENT_TEAM }}
+      PROVISIONING_PROFILE_SPECIFIER: ${{ vars.PROVISIONING_PROFILE_SPECIFIER }}
+      CODE_SIGN_IDENTITY: ${{ vars.CODE_SIGN_IDENTITY }}
     permissions:
       contents: write
 
@@ -242,6 +246,41 @@ jobs:
 
     - name: Echo Link
       run: echo "${{ needs.create_release.outputs.upload_url }}"
+
+    - name: Apple Signing Initialization
+      if: ${{ matrix.os == 'macos-13' }}
+      shell: bash
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        set -ex
+        # Switch to xcode 15
+        sudo xcode-select --switch /Applications/Xcode_15.0.app/
+
+        # create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        PP_PATH=$RUNNER_TEMP/build_pp.provisionprofile
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # import certificate and provisioning profile from secrets
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+        # create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+        # apply provisioning profile
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
     - uses: ./.github/actions/build_binaries
       with:
