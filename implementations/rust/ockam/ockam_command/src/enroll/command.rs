@@ -246,8 +246,8 @@ async fn get_user_space(
             opts.terminal
                 .write_line(&fmt_para!("No spaces are defined in your account."))?
                 .write_line(&fmt_para!(
-                    "Creating a trial space for you ({}) ...",
-                    "everything in it will be deleted in 15 days"
+                    "Provisioning a space for you ({}) ...",
+                    "if you don't use it for a few weeks, we'll automatically delete everything in it"
                         .to_string()
                         .color(OckamColor::FmtWARNBackground.color())
                 ))?
