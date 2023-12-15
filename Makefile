@@ -8,6 +8,10 @@ very_clean: typescript_very_clean rust_very_clean elixir_very_clean
 elixir_%:
 	$(MAKE) -C implementations/elixir $(@:elixir_%=%)
 
+# run an elixir command in a nix environment, so that all tools are installed
+nix_elixir_%:
+	nix develop ./tools/nix#elixir --command make elixir_$*
+
 rust_%:
 	$(MAKE) -f implementations/rust/Makefile $(@:rust_%=%)
 
