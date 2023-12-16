@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.54.0 - 2023-12-16
+
+### Added
+
+- Add `VersionedData::data_type`. remove hash truncation
+
+### Changed
+
+- Persist application data in a database
+- Slim down the node manager worker(s_ch)
+- Updated dependencies
+
+### Fixed
+
+- Don't create default node when retrieving it and doesn't exist
+
+### Removed
+
+- Remove recursive calls in repository implementations
+
 ## 0.53.0 - 2023-12-15
 
 ### Changed
