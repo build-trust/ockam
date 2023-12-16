@@ -4,7 +4,7 @@ struct SentInvitations: View {
     @State private var isHovered = false
     @State private var isOpen = false
     @ObservedObject var state: ApplicationState
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
@@ -37,7 +37,7 @@ struct SentInvitations: View {
             .background(isHovered ? Color.gray.opacity(0.25) : Color.clear)
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
-
+            
             if isOpen {
                 Divider()
                     .padding(.top, WindowBorderSize)
@@ -63,7 +63,7 @@ struct SentInvitations: View {
 
 struct SentInvitations_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
-
+    
     static var previews: some View {
         SentInvitations(state: state)
             .frame(width: 320, height: 200)

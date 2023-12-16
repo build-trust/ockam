@@ -6,7 +6,7 @@ struct ServiceGroupView: View {
     @State var action: (() -> Void)? = nil
     @State private var isHovered = false
     @State private var isOpen = false
-
+    
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
@@ -25,7 +25,7 @@ struct ServiceGroupView: View {
                     } else {
                         Text(verbatim: group.email)
                             .lineLimit(1)
-
+                        
                         let subtitle =
                         if group.invitations.isEmpty {
                             if group.incomingServices.count == 1 {
@@ -48,7 +48,7 @@ struct ServiceGroupView: View {
                                 }
                             }
                         }
-
+                        
                         Text(verbatim: subtitle)
                             .font(.caption)
                             .foregroundColor(OckamSecondaryTextColor)
@@ -61,13 +61,13 @@ struct ServiceGroupView: View {
                     .frame(width: 8, height: 8)
                     .opacity(group.invitations.isEmpty ? 0 : 1)
                     .padding(.trailing, HorizontalSpacingUnit)
-
+                
                 ProfilePicture(
                     url: group.imageUrl,
                     size: 28,
                     placeholder: ""
                 )
-
+                
                 Image(systemName: "chevron.right")
                     .rotationEffect( isOpen ? Angle(degrees: 90) : Angle(degrees: 0))
             }
@@ -80,7 +80,7 @@ struct ServiceGroupView: View {
             .onTapGesture {
                 withAnimation {
                     isOpen = !isOpen
-
+                    
                     if isOpen {
                         if let action = self.action {
                             action()
@@ -96,13 +96,13 @@ struct ServiceGroupView: View {
                 isHovered = false
             }
             .background( isHovered ?
-                AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
-                AnyShapeStyle(Color.clear)
+                         AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+                            AnyShapeStyle(Color.clear)
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
             .padding(.vertical, WindowBorderSize)
-
+            
             if isOpen {
                 VStack(spacing: 0) {
                     Divider()
@@ -127,7 +127,7 @@ struct ServiceGroupView: View {
 
 struct ServiceGroupView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
-
+    
     static var previews: some View {
         VStack(spacing: 0){
             ServiceGroupView(group: state.groups[1])

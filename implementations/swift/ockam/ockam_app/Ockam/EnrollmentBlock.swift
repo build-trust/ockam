@@ -4,11 +4,11 @@ import SwiftUI
 
 struct EnrollmentBlock: View {
     @Environment(\.colorScheme) var colorScheme
-
+    
     @State var invitation: InvitationContainer = InvitationContainer.shared
     @Binding var appState: ApplicationState
     @State var onEnroll: (() -> Void)? = nil
-
+    
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
@@ -16,7 +16,7 @@ struct EnrollmentBlock: View {
                     Text("Portals, by Ockam")
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
-
+                    
                     Text(
 """
 Privately share a TCP or HTTP service from this Mac to anyone, anywhere. It is shared securely over an end-to-end encrypted Ockam Portal.
@@ -24,10 +24,10 @@ Privately share a TCP or HTTP service from this Mac to anyone, anywhere. It is s
 Your friends will have access to it on their **localhost**!
 """
                     )
-
+                    
                     EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
-
+                    
                     Button(action: {
                         enroll_user()
                         if let onEnroll = onEnroll {
@@ -42,21 +42,21 @@ Your friends will have access to it on their **localhost**!
                     }
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
-
+                    
                 } else if appState.orchestrator_status != OrchestratorStatus.Connecting &&
                             appState.orchestrator_status != OrchestratorStatus.Connected {
                     Text("Portals, by Ockam")
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
-
-
+                    
+                    
                     if appState.orchestrator_status == OrchestratorStatus.WaitingForToken {
                         Image("EnrollmentPage")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(height: 150)
                     }
-
+                    
                     if appState.orchestrator_status == OrchestratorStatus.RetrievingSpace ||
                         appState.orchestrator_status == OrchestratorStatus.RetrievingProject {
                         RotatingText(
@@ -68,10 +68,10 @@ Your friends will have access to it on their **localhost**!
                             interval: 15.0
                         )
                     }
-
+                    
                     EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
-
+                    
                     if appState.orchestrator_status == OrchestratorStatus.WaitingForToken {
                         Button(action: {
                             restartCurrentProcess()
@@ -86,11 +86,11 @@ Your friends will have access to it on their **localhost**!
                     }
                 } else if appState.orchestrator_status == OrchestratorStatus.Connecting ||
                             appState.orchestrator_status == OrchestratorStatus.Connected {
-
+                    
                     Text("Portals, by Ockam")
                         .bold()
                         .padding(.bottom, VerticalSpacingUnit*2)
-
+                    
                     if appState.localServices.isEmpty {
                         Text(
 """
@@ -133,7 +133,7 @@ Expand a Portal's menu and then click the 'Invite a friend…' button to give yo
 
 struct EnrollmentBlock_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
-
+    
     static var previews: some View {
         EnrollmentBlock(
             appState: $state

@@ -2,17 +2,17 @@ import SwiftUI
 
 struct InviteToPortal: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
-
+    
     @Binding var state_loaded: Bool
     @State var isProcessing = false
     @State public var localService: LocalService
     @State var emails = Set<String>()
     @State var errorMessage = ""
-
+    
     @Environment(\.colorScheme) var colorScheme
-
+    
     @State private var emailInput: String = ""
-
+    
     var email: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: HorizontalSpacingUnit) {
@@ -27,11 +27,11 @@ struct InviteToPortal: View {
                         self.emailInput = ""
                     }
                 }
-
+                
                 Button(action: {
                     self.emails.insert(self.emailInput)
                     self.emailInput = ""
-
+                    
                 }) {
                     Text("Add").padding([.leading, .trailing], 5)
                 }
@@ -45,7 +45,7 @@ struct InviteToPortal: View {
                 .foregroundStyle(OckamSecondaryTextColor)
                 .padding(.bottom, VerticalSpacingUnit*2)
                 .padding(.leading, 4)
-
+            
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(Array(emails), id: \.self) { email in
@@ -82,7 +82,7 @@ struct InviteToPortal: View {
                            )
             )
             .cornerRadius(4)
-
+            
             Text("Grant access to the portal: \(localService.name)")
                 .font(.caption)
                 .foregroundStyle(OckamSecondaryTextColor)
@@ -90,7 +90,7 @@ struct InviteToPortal: View {
                 .padding(.top, 4)
         }
     }
-
+    
     private func validateEmail(email: String) -> Bool {
         // keeping the email regex very loose since unicode is allowed
         // company-specific TLDs are a possibility
@@ -101,14 +101,14 @@ struct InviteToPortal: View {
         )
         return emailPredicate.evaluate(with: email)
     }
-
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
-
+            
             self.email
                 .padding(.top, VerticalSpacingUnit*3)
                 .padding(.horizontal, HorizontalSpacingUnit*6)
-
+            
             Hint(
 """
 Add a list of email addresses to invite to this Portal.
@@ -118,13 +118,13 @@ Once your friends accept their invitation, the '\(localService.name)' service is
 They will have access to it on their localhost.
 """
             )
-
+            
             .padding(.leading, HorizontalSpacingUnit*2)
             .padding(.trailing, HorizontalSpacingUnit*2)
             .padding(.top, VerticalSpacingUnit*2)
-
+            
             Spacer()
-
+            
             HStack {
                 if !errorMessage.isEmpty {
                     Text("Error: \(errorMessage)")
@@ -142,14 +142,14 @@ They will have access to it on their localhost.
                 Button(
                     action: {
                         let emails = Array(self.emails).joined(separator: ";")
-
+                        
                         isProcessing = true
                         let error = share_local_service(
                             localService.name,
                             emails
                         )
                         isProcessing = false
-
+                        
                         if error == nil {
                             self.errorMessage = ""
                             self.closeWindow()
@@ -169,11 +169,11 @@ They will have access to it on their localhost.
         }
         .frame(width: 600, height: 470)
     }
-
+    
     func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()
     }
-
+    
     func canShareService() -> Bool {
         return !self.emails.isEmpty && state_loaded
     }

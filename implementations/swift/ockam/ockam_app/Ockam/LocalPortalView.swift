@@ -3,17 +3,17 @@ import SwiftUI
 struct LocalPortalView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
-
+    
     @State private var isHovered = false
     @State private var isOpen = false
     @ObservedObject var localService: LocalService
-
+    
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
-
+    
     func closeWindow() {
         self.presentationMode.wrappedValue.dismiss()
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
@@ -25,14 +25,14 @@ struct LocalPortalView: View {
                 VStack(alignment: .leading) {
                     Text(verbatim: localService.name)
                         .lineLimit(1)
-
+                    
                     let address =
                     if let scheme = localService.scheme {
                         scheme + "://" + localService.address + ":" + String(localService.port)
                     } else {
                         localService.address + ":" + String(localService.port)
                     }
-
+                    
                     Text(verbatim: address)
                         .foregroundColor(OckamSecondaryTextColor)
                         .font(.caption)
@@ -56,13 +56,13 @@ struct LocalPortalView: View {
                 isHovered = hover
             }
             .background( isHovered ?
-                AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
-                AnyShapeStyle(Color.clear)
+                         AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
+                            AnyShapeStyle(Color.clear)
             )
             .cornerRadius(4)
             .padding(.horizontal, WindowBorderSize)
             .padding(.vertical, WindowBorderSize)
-
+            
             if isOpen {
                 Divider()
                 VStack(spacing: 0) {
@@ -111,7 +111,7 @@ struct LocalPortalView: View {
 
 struct LocalServiceView_Previews: PreviewProvider {
     @State static var state = swift_demo_application_state()
-
+    
     static var previews: some View {
         VStack(spacing: 0) {
             LocalPortalView(localService: state.localServices[0])
