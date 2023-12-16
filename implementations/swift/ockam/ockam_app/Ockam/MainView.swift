@@ -96,7 +96,7 @@ struct MainView: View {
                     Text("Opened Portal Outlets")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
-                        .padding(.bottom, 2)
+                        .padding(.bottom, 4)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                     // TODO: add scrollPosition() support after ventura has been dropped
@@ -122,7 +122,7 @@ struct MainView: View {
                     Text("Accessible Portal Inlets")
                         .font(.body).bold()
                         .foregroundColor(OckamSecondaryTextColor)
-                        .padding(.bottom, 2)
+                        .padding(.bottom, 4)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
 
                     ScrollView {

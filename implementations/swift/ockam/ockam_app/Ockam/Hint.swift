@@ -27,8 +27,8 @@ struct Hint: View {
                 .background(Color.blue.opacity(0.10))
 
                 Text(text)
-                    .padding(.vertical, VerticalSpacingUnit)
-                    .padding(.horizontal, HorizontalSpacingUnit)
+                    .padding(.vertical, VerticalSpacingUnit*2)
+                    .padding(.horizontal, HorizontalSpacingUnit*2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .background(Color.blue.opacity(0.2))

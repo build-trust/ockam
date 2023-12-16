@@ -7,10 +7,16 @@ struct SentInvitations: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: HorizontalSpacingUnit) {
+            HStack(spacing: 0) {
+                Image(systemName: "arrowshape.turn.up.left.2")
+                    .frame(width: 20)
+                    .font(.system(size: 12, weight: .bold))
+                    .padding(.trailing, StandardIconTextSpacing)
+                    .padding(.leading, HorizontalSpacingUnit)
+                
                 Text("Sent invitations")
                     .font(.body)
-                    .padding(.horizontal, HorizontalSpacingUnit)
+                    .padding(.trailing, HorizontalSpacingUnit)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .rotationEffect(
@@ -18,7 +24,7 @@ struct SentInvitations: View {
                     )
                     .padding([.trailing], HorizontalSpacingUnit)
             }
-            .frame(height: VerticalSpacingUnit*3)
+            .frame(height: VerticalSpacingUnit*3.5)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation {

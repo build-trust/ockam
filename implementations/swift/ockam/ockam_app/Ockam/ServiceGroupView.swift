@@ -9,7 +9,12 @@ struct ServiceGroupView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: HorizontalSpacingUnit) {
+            HStack(spacing: 0) {
+                Image(systemName: "shared.with.you")
+                    .frame(width: 20)
+                    .font(.system(size: 12, weight: .bold))
+                    .padding(.trailing, StandardIconTextSpacing)
+                
                 VStack(alignment: .leading, spacing: 0) {
                     if let name = group.name {
                         Text(verbatim: name).lineLimit(1)
@@ -23,9 +28,25 @@ struct ServiceGroupView: View {
 
                         let subtitle =
                         if group.invitations.isEmpty {
-                            "\(group.incomingServices.count) portals accessible"
+                            if group.incomingServices.count == 1 {
+                                "\(group.incomingServices.count) portal accessible"
+                            } else {
+                                "\(group.incomingServices.count) portals accessible"
+                            }
                         } else {
-                            "\(group.incomingServices.count) portals accessible, \(group.invitations.count) invitations"
+                            if group.incomingServices.count == 1 {
+                                if group.invitations.count == 1 {
+                                    "\(group.incomingServices.count) portal accessible, \(group.invitations.count) invitation"
+                                } else {
+                                    "\(group.incomingServices.count) portal accessible, \(group.invitations.count) invitations"
+                                }
+                            } else {
+                                if group.invitations.count == 1 {
+                                    "\(group.incomingServices.count) portals accessible, \(group.invitations.count) invitation"
+                                } else {
+                                    "\(group.incomingServices.count) portals accessible, \(group.invitations.count) invitations"
+                                }
+                            }
                         }
 
                         Text(verbatim: subtitle)
@@ -74,10 +95,6 @@ struct ServiceGroupView: View {
                 // when out of view
                 isHovered = false
             }
-//            .overlay(
-//                RoundedRectangle(cornerRadius: 4)
-//                    .stroke(AnyShapeStyle(HierarchicalShapeStyle.quaternary), lineWidth: 1)
-//            )
             .background( isHovered ?
                 AnyShapeStyle(HierarchicalShapeStyle.quaternary) :
                 AnyShapeStyle(Color.clear)

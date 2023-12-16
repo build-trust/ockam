@@ -24,7 +24,6 @@ Privately share a TCP or HTTP service from this Mac to anyone, anywhere. It is s
 Your friends will have access to it on their **localhost**!
 """
                     )
-                    .multilineTextAlignment(.center)
 
                     EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
@@ -97,17 +96,17 @@ Your friends will have access to it on their **localhost**!
 """
 You are now enrolled with Ockam Orchestrator. We've set up an encrypted relay for you.
 
-First, open a new Portal Outlet to a service that is accessible from your computer. Then, invite your friends to it.
+First, open a new Portal Outlet to a service accessible from your computer.
+
+Then, invite your friends to it.
 """
                         )
-                        .multilineTextAlignment(.center)
                     } else  if appState.sent_invitations.isEmpty {
                         Text(
 """
-Expand a Portal's menu and click the "Invite…" button to give your friends access to a service.
+Expand a Portal's menu and then click the 'Invite a friend…' button to give your friends access to a service.
 """
                         )
-                        .multilineTextAlignment(.center)
                     }
                 }
             }

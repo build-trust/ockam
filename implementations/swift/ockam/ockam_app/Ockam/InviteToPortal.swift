@@ -17,7 +17,7 @@ struct InviteToPortal: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: HorizontalSpacingUnit) {
                 TextField(
-                    "ex: email@example.com",
+                    "ex: alice@example.com",
                     text: $emailInput
                 )
                 .padding(.leading, 1)
@@ -40,7 +40,7 @@ struct InviteToPortal: View {
             }
             .padding(.bottom, 4)
             
-            Text("Type an email address and then press enter to add it to the invitation list.")
+            Text("Type an email address and click Add to add it to the invitation list.")
                 .font(.caption)
                 .foregroundStyle(OckamSecondaryTextColor)
                 .padding(.bottom, VerticalSpacingUnit*2)
@@ -76,14 +76,14 @@ struct InviteToPortal: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .stroke( colorScheme == .dark ?
-                             AnyShapeStyle(Color.white.opacity(0.2)) :
-                                AnyShapeStyle(Color.black.opacity(0.1)),
+                             AnyShapeStyle(Color.white.opacity(0.3)) :
+                                AnyShapeStyle(Color.black.opacity(0.2)),
                              lineWidth: 1
                            )
             )
             .cornerRadius(4)
 
-            Text("Grant access to: \(localService.name)")
+            Text("Grant access to the portal: \(localService.name)")
                 .font(.caption)
                 .foregroundStyle(OckamSecondaryTextColor)
                 .padding(.leading, 4)
@@ -118,7 +118,9 @@ Once your friends accept their invitation, the '\(localService.name)' service is
 They will have access to it on their localhost.
 """
             )
-            .padding(.horizontal, HorizontalSpacingUnit*5)
+
+            .padding(.leading, HorizontalSpacingUnit*2)
+            .padding(.trailing, HorizontalSpacingUnit*2)
             .padding(.top, VerticalSpacingUnit*2)
 
             Spacer()

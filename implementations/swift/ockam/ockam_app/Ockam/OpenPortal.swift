@@ -27,14 +27,14 @@ struct OpenPortal: View {
                     .padding(.leading, 4)
 
                 TextField("Address:", text: $serviceAddress)
-                Text("This is the address where your service is listening, ex: localhost:3333 or my-nas:5555")
+                Text("This is the address where your service is listening, ex: 127.0.0.1:3000 or my-nas:5555")
                     .font(.caption)
                     .foregroundStyle(OckamSecondaryTextColor)
                     .padding(.leading, 4)
             }
             .padding(.top, VerticalSpacingUnit*3)
             .padding(.bottom, VerticalSpacingUnit*2)
-            .padding(.horizontal, VerticalSpacingUnit*7)
+            .padding(.horizontal, VerticalSpacingUnit*4)
 
 
             Hint(
@@ -42,10 +42,11 @@ struct OpenPortal: View {
 Pick the TCP or HTTP service you want to share with your friends. After you click 'Open Portal', invite your friends to this Portal from the application menu.
 """
             )
-            .padding(.horizontal, HorizontalSpacingUnit*6)
+            .padding(.leading, HorizontalSpacingUnit*10)
+            .padding(.trailing, HorizontalSpacingUnit*2)
+            .padding(.top, VerticalSpacingUnit)
 
             Spacer()
-
             HStack {
                 if !errorMessage.isEmpty {
                     Text("Error: \(errorMessage)")

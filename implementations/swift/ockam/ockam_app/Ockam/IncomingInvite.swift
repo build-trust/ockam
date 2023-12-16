@@ -11,6 +11,8 @@ struct IncomingInvite: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Image(systemName: invite.accepting ? "envelope.open" : "envelope")
+                    .frame(width: 20)
+                    .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
 
                 VStack(alignment: .leading) {
@@ -41,7 +43,7 @@ struct IncomingInvite: View {
             .padding(.leading, padding)
             .contentShape(Rectangle())
             .frame(height: VerticalSpacingUnit*4)
-            .padding(.horizontal, HorizontalSpacingUnit)
+            .padding(.horizontal, HorizontalSpacingUnit*2)
             .onTapGesture {
                 withAnimation {
                     if pending {
@@ -65,21 +67,21 @@ struct IncomingInvite: View {
                 VStack(spacing: 0) {
                     if pending {
                         ClickableMenuEntry(
-                            text: "Accept",
+                            text: "Accept the invitation",
                             action: {
                                 accept_invitation(invite.id)
                                 isOpen = false
                             },
-                            textPadding: padding + 27,
+                            textPadding: padding + 35,
                             compact: false
                         )
                         ClickableMenuEntry(
-                            text: "Decline",
+                            text: "Decline the invitation",
                             action: {
                                 ignore_invitation(invite.id)
                                 isOpen = false
                             },
-                            textPadding: padding + 27,
+                            textPadding: padding + 35,
                             compact: false
                         )
                     }

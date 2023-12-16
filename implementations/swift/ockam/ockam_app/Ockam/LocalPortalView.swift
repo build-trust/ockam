@@ -17,6 +17,11 @@ struct LocalPortalView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
+                Image(systemName: "rectangle.stack")
+                    .frame(width: 20)
+                    .font(.system(size: 12, weight: .bold))
+                    .padding(.trailing, StandardIconTextSpacing)
+                
                 VStack(alignment: .leading) {
                     Text(verbatim: localService.name)
                         .lineLimit(1)
@@ -76,15 +81,7 @@ struct LocalPortalView: View {
                         )
                     }
                     ClickableMenuEntry(
-                        text: "Copy", clicked: "Copied!",
-                        action: {
-                            copyToClipboard(address)
-                            self.closeWindow()
-                        },
-                        textPadding: HorizontalSpacingUnit*2
-                    )
-                    ClickableMenuEntry(
-                        text: "Invite…",
+                        text: "Invite a friend…",
                         action: {
                             OpenWindowWorkaround.shared.openWindow(
                                 windowName: "invite-to-portal",
@@ -92,14 +89,14 @@ struct LocalPortalView: View {
                             )
                             bringInFront()
                         },
-                        textPadding: HorizontalSpacingUnit*2
+                        textPadding: 27
                     )
                     ClickableMenuEntry(
-                        text: "Delete",
+                        text: "Close the portal",
                         action: {
                             delete_local_service(self.localService.name)
                         },
-                        textPadding: HorizontalSpacingUnit*2
+                        textPadding: 27
                     )
                 }
                 .padding(.horizontal, WindowBorderSize)

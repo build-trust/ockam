@@ -8,9 +8,8 @@ struct DeleteIncomingPortalView: View {
         VStack {
             Spacer()
             Text(
-                "Once you click Delete, the portal '\(service.sourceName)' will no longer show up here.\n" +
-                "Are you sure you want to do this?\n" +
-                "Once deleted, the only way to get this back is to have the person who sent you the invite, to send another one."
+                "This will permanently delete '\(service.sourceName)'. If you need access to it in the furture, your friend would have to invite you again." +
+                "\n\nAre you sure you want to delete: '\(service.sourceName)'?"
             )
             .padding()
             Spacer()

@@ -17,7 +17,7 @@ struct RemotePortalView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
-                Image(systemName: "arrow.left.arrow.right")
+                Image(systemName: "arrow.up.left.arrow.down.right")
                     .frame(width: 20)
                     .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
@@ -30,6 +30,7 @@ struct RemotePortalView: View {
                             .font(.system(size: 7))
                             .foregroundColor( service.enabled ? (service.available ? .green : Color.init(hex: OckamErrorColor)) : .orange
                             )
+                            .opacity(0.9)
                             .padding(.top, 1)
                             .padding(.trailing, 4)
 
@@ -66,7 +67,7 @@ struct RemotePortalView: View {
             }
             .padding(.leading, padding)
             .frame(height: VerticalSpacingUnit*4)
-            .padding(.horizontal, HorizontalSpacingUnit)
+            .padding(.horizontal, HorizontalSpacingUnit*2)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation {
@@ -103,17 +104,17 @@ struct RemotePortalView: View {
                                             NSWorkspace.shared.open(url)
                                         }
                                     },
-                                    textPadding: padding + 27,
+                                    textPadding: padding + 35,
                                     compact: false
                                 )
                             }
                             ClickableMenuEntry(
-                                text: "Copy", clicked: "Copied!",
+                                text: "Copy localhost address", clicked: "Copied!",
                                 action: {
                                     copyToClipboard(address)
                                     self.closeWindow()
                                 },
-                                textPadding: padding + 27,
+                                textPadding: padding + 35,
                                 compact: false
                             )
                         }
@@ -121,32 +122,32 @@ struct RemotePortalView: View {
 
                     if service.enabled {
                         ClickableMenuEntry(
-                            text: "Disconnect",
+                            text: "Disconnect from the portal",
                             action: {
                                 disable_accepted_service(service.id)
                             },
-                            textPadding: padding + 27,
+                            textPadding: padding + 35,
                             compact: false
                         )
                     } else {
                         ClickableMenuEntry(
-                            text: "Connect",
+                            text: "Connect to the portal",
                             action: {
                                 enable_accepted_service(service.id)
                             },
-                            textPadding: padding + 27,
+                            textPadding: padding + 35,
                             compact: false
                         )
                     }
                     ClickableMenuEntry(
-                        text: "Delete",
+                        text: "Delete the portal inlet",
                         action: {
                             OpenWindowWorkaround.shared.openWindow(
                                 windowName: "delete-portal-confirmation",
                                 value: service.id
                             )
                         },
-                        textPadding: padding + 27,
+                        textPadding: padding + 35,
                         compact: false
                     )
                 }
