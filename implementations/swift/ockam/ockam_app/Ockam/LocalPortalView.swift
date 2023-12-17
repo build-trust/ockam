@@ -21,22 +21,31 @@ struct LocalPortalView: View {
                     .frame(width: 20)
                     .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
-                
-                VStack(alignment: .leading) {
+
+                VStack(alignment: .leading, spacing: 0) {
                     Text(verbatim: localService.name)
                         .lineLimit(1)
-                    
+
                     let address =
                     if let scheme = localService.scheme {
                         scheme + "://" + localService.address + ":" + String(localService.port)
                     } else {
                         localService.address + ":" + String(localService.port)
                     }
-                    
-                    Text(verbatim: address)
-                        .foregroundColor(OckamSecondaryTextColor)
-                        .font(.caption)
-                        .lineLimit(1)
+
+                    HStack(spacing: 0) {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 7))
+                            .foregroundColor(.green)
+                            .opacity(0.9)
+                            .padding(.top, 1)
+                            .padding(.trailing, 4)
+
+                        Text(verbatim: address)
+                            .foregroundColor(OckamSecondaryTextColor)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
