@@ -15,7 +15,7 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 0) {
             if state.enrolled {
                 Group {
-                    HStack(spacing: HorizontalSpacingUnit) {
+                    HStack(alignment: .top, spacing: HorizontalSpacingUnit) {
                         ProfilePicture(url: state.enrollmentImage)
                         VStack(alignment: .leading) {
                             EnrollmentStatus(
@@ -94,7 +94,7 @@ struct MainView: View {
 
                 if !state.localServices.isEmpty {
                     Text("Opened Portal Outlets")
-                        .font(.body).bold()
+                        .font(.subheadline).bold()
                         .foregroundColor(OckamSecondaryTextColor)
                         .padding(.bottom, 4)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
@@ -120,7 +120,7 @@ struct MainView: View {
 
                 if !state.groups.isEmpty {
                     Text("Accessible Portal Inlets")
-                        .font(.body).bold()
+                        .font(.subheadline).bold()
                         .foregroundColor(OckamSecondaryTextColor)
                         .padding(.bottom, 4)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
