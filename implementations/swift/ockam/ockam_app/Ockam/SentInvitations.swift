@@ -43,13 +43,17 @@ struct SentInvitations: View {
                     .padding(.top, WindowBorderSize)
                 
                 HStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(state.sent_invitations) { invitation in
-                            Text(invitation.email)
-                                .frame(height: VerticalSpacingUnit*2)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(state.sent_invitations) { invitation in
+                                Text(invitation.email)
+                                    .frame(height: VerticalSpacingUnit*3)
+                            }
                         }
+                        .padding(.horizontal, HorizontalSpacingUnit*5)
                     }
-                    .padding(.horizontal, HorizontalSpacingUnit*2)
+                    .scrollIndicators(ScrollIndicatorVisibility.never)
+                    .frame(maxHeight: 350)
                     Spacer()
                 }
                 .padding(.vertical, VerticalSpacingUnit)
