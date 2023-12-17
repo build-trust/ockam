@@ -21,6 +21,7 @@ struct RemotePortalView: View {
                     .frame(width: 20)
                     .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
+                    .opacity((service.enabled && service.available) ? 1.0 : 0.4)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(service.sourceName).lineLimit(1)
@@ -35,7 +36,7 @@ struct RemotePortalView: View {
                             .padding(.trailing, 4)
 
                         if !service.enabled {
-                            Text(verbatim: "Disconnected")
+                            Text(verbatim: "Not connected")
                                 .foregroundStyle(OckamSecondaryTextColor)
                                 .font(.caption)
                         } else {
@@ -88,6 +89,38 @@ struct RemotePortalView: View {
             if isOpen {
                 Divider()
                 VStack(spacing: 0) {
+
+                    if service.enabled {
+                        ClickableMenuEntry(
+                            text: "Temporarily disconnect",
+                            action: {
+                                disable_accepted_service(service.id)
+                            },
+                            textPadding: padding + 35,
+                            compact: false
+                        )
+                    } else {
+                        ClickableMenuEntry(
+                            text: "Connect to the portal",
+                            action: {
+                                enable_accepted_service(service.id)
+                            },
+                            textPadding: padding + 35,
+                            compact: false
+                        )
+                    }
+                    ClickableMenuEntry(
+                        text: "Delete the portal inlet",
+                        action: {
+                            OpenWindowWorkaround.shared.openWindow(
+                                windowName: "delete-portal-confirmation",
+                                value: service.id
+                            )
+                        },
+                        textPadding: padding + 35,
+                        compact: false
+                    )
+                    
                     if service.available {
                         if service.enabled {
                             let address =
@@ -119,37 +152,6 @@ struct RemotePortalView: View {
                             )
                         }
                     }
-
-                    if service.enabled {
-                        ClickableMenuEntry(
-                            text: "Disconnect from the portal",
-                            action: {
-                                disable_accepted_service(service.id)
-                            },
-                            textPadding: padding + 35,
-                            compact: false
-                        )
-                    } else {
-                        ClickableMenuEntry(
-                            text: "Connect to the portal",
-                            action: {
-                                enable_accepted_service(service.id)
-                            },
-                            textPadding: padding + 35,
-                            compact: false
-                        )
-                    }
-                    ClickableMenuEntry(
-                        text: "Delete the portal inlet",
-                        action: {
-                            OpenWindowWorkaround.shared.openWindow(
-                                windowName: "delete-portal-confirmation",
-                                value: service.id
-                            )
-                        },
-                        textPadding: padding + 35,
-                        compact: false
-                    )
                 }
                 .padding(.horizontal, WindowBorderSize)
                 .padding(.vertical, WindowBorderSize)
