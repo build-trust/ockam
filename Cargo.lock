@@ -3665,7 +3665,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.111.0"
+version = "0.112.0"
 dependencies = [
  "arrayref",
  "dyn-clone",
@@ -3714,7 +3714,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.54.0"
+version = "0.55.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -3769,7 +3769,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_app_lib"
-version = "0.111.0"
+version = "0.112.0"
 dependencies = [
  "cbindgen",
  "duct",
@@ -3794,7 +3794,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.111.0"
+version = "0.112.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -4049,7 +4049,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "bytes 1.5.0",
  "futures-util",
@@ -4129,7 +4129,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "aws-config",
  "aws-sdk-kms",

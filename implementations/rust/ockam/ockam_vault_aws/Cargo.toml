@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_aws"
-version = "0.22.0"
+version = "0.23.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
