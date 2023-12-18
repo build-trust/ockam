@@ -46,12 +46,13 @@ for crate in implementations/rust/ockam/*; do
   fi
 done
 
-crates_that_must_be_bumped="ockam ockam_app_lib ockam_command"
-for crate in ${crates_that_must_be_bumped[@]}; do
+crates_that_must_be_bumped=("ockam" "ockam_app_lib" "ockam_command")
+for crate in "${crates_that_must_be_bumped[@]}"; do
   if [[ $updated_crates == *"$crate"* ]]; then
     continue
   fi
 
+  echo "$crate wasn't updated but is intended to be released"
   updated_crates="$updated_crates $crate"
 done
 
