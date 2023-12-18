@@ -374,7 +374,7 @@ fi
 
 # If we are to release to production, we check if all draft release was successful.
 if [[ $IS_DRAFT_RELEASE == false ]]; then
-  success_info "Check if recent draft release was successful...."
+  success_info "Checking if recent draft release was successful...."
 
   # Check if the SHAsum file exists for the released binaries. We generate shasum file
   # after all binaries are released.
@@ -387,15 +387,6 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
     gh release download "$latest_tag_name" -p "**SHA256SUMS" -R $OWNER/terraform-provider-ockam -O "$(mktemp -d)/sha256sums.txt"
   fi
 
-  # To release crates to crates.io, we need to ensure that there's a bump PR that's open.
-  if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE == false ]]; then
-    ockam_prs=$(gh api -H "Accept: application/vnd.github+json" /repos/${OWNER}/ockam/pulls)
-    if [[ $ockam_prs != *"Ockam Release"* ]]; then
-      echo "Could not find ockam release PR"
-      exit 1
-    fi
-  fi
-
   # Check if there's an homebrew PR
   if [[ -z $SKIP_OCKAM_HOMEBREW_RELEASE || $SKIP_OCKAM_HOMEBREW_RELEASE == false ]]; then
     ockam_prs=$(gh api -H "Accept: application/vnd.github+json" /repos/${OWNER}/homebrew-ockam/pulls)
@@ -405,8 +396,8 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
     fi
   fi
 
-  success_info "All draft release asset have been created. /ockam and /homebrew-ockam PRs can be merged now for release."
-  dialog_info "Press enter to start production release"
+  success_info "Recent draft release was successful"
+  dialog_info "Press enter to start final release"
 fi
 
 # Release to production
