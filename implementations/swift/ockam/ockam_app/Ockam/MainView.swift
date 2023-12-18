@@ -204,15 +204,15 @@ struct MainView: View {
                                     )
                                     bringInFront()
                                 })
-                            ClickableMenuEntry(
-                                text: "Reset", icon: "arrow.counterclockwise",
-                                action: {
-                                    restartCurrentProcess()
-                                })
                             Divider()
                                 .padding([.top,.bottom], VerticalSpacingUnit)
                                 .padding(.horizontal, HorizontalSpacingUnit)
                         }
+                        ClickableMenuEntry(
+                            text: "Reset", icon: "arrow.counterclockwise",
+                            action: {
+                                restartCurrentProcess()
+                            })
                         ClickableMenuEntry(
                             text: "Quit Ockam", icon: "power", shortcut: "⌘Q",
                             action: {
