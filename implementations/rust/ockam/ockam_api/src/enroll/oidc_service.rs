@@ -1,10 +1,11 @@
+use std::io::Write;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use miette::miette;
 use reqwest::{StatusCode, Url};
 use serde::de::DeserializeOwned;
-use tiny_http::{Header, Response, Server};
+use tiny_http::{HTTPVersion, Header, Response, Server};
 use tokio::time::Duration;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{error, info};
@@ -215,9 +216,8 @@ impl OidcService {
             server_url.host().unwrap(),
             server_url.port().unwrap()
         );
-        let server = Arc::new(
-            Server::http(host_and_port).map_err(|_| ApiError::core("failed to set up server"))?,
-        );
+        let server =
+            Server::http(host_and_port).map_err(|_| ApiError::core("failed to set up server"))?;
         info!(
             "server is started at {} and waiting for an authorization code",
             server_url
@@ -238,12 +238,22 @@ impl OidcService {
                             .unwrap(),
                     );
 
-                    request.respond(response).map_err(|e| {
+                    // by forcing HTTP/1.0 we force the connection closure
+                    // avoiding the browser to send multiple requests
+                    // to the same server instance
+                    let mut writer = request.into_writer();
+                    response.raw_print( &mut writer,
+                        HTTPVersion(1, 0),
+                        &[],
+                        true,
+                        None
+                    ).and_then(|_|writer.flush())
+                        .map_err(|e| {
                         ApiError::message(
                             format!("error while trying to send a response to a request on {server_url}: {e}"),
                         )
                     })
-                }
+                },
                 Ok(None) => Err(ApiError::message(
                     format!("timeout while trying to receive a request on {server_url} (waited for {redirect_timeout:?})"),
                 )),
