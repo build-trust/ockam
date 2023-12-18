@@ -11,7 +11,7 @@ on:
         required: false
       release_branch:
         description: Release Branch Where Recent Bump Occurred
-        required: true
+        required: false
       ockam_publish_recent_failure:
         description: Indicate A Recent Failure
         type: choice
@@ -43,6 +43,7 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.release_branch }}
 
       - name: Publish Ockam Crates
         env:
