@@ -48,7 +48,7 @@ done
 
 crates_that_must_be_bumped=("ockam" "ockam_app_lib" "ockam_command")
 for crate in "${crates_that_must_be_bumped[@]}"; do
-  if [[ $updated_crates == *"$crate"* ]]; then
+  if [[ $updated_crates == *"implementations/rust/ockam/$crate"* ]]; then
     continue
   fi
 
