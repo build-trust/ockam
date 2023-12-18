@@ -40,15 +40,15 @@ for crate in implementations/rust/ockam/*; do
 
   # Check if the src file is updated, if it isn't check if the Cargo.toml file is updated.
   if git diff "$last_git_tag" --quiet --name-status -- "$crate"/src; then
-    git diff "$last_git_tag" --quiet --name-status -- "$crate"/Cargo.toml || updated_crates="$updated_crates $crate"
+    git diff "$last_git_tag" --quiet --name-status -- "$crate"/Cargo.toml || updated_crates="$updated_crates $crate "
   else
-    updated_crates="$updated_crates $crate"
+    updated_crates="$updated_crates $crate "
   fi
 done
 
 crates_that_must_be_bumped=("ockam" "ockam_app_lib" "ockam_command")
 for crate in "${crates_that_must_be_bumped[@]}"; do
-  if [[ $updated_crates == *"implementations/rust/ockam/$crate"* ]]; then
+  if [[ $updated_crates == *"implementations/rust/ockam/$crate "* ]]; then
     continue
   fi
 
