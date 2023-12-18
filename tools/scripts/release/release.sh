@@ -105,11 +105,11 @@ function watch_workflow_progress() {
   set -e
   repository="$1"
   workflow_file_name="$2"
-  branch="$3"
+  repo_branch="$3"
 
   echo "Waiting for workflow to be in progress before kickstarting gh run watch"
   while true; do
-    run_status=$(gh run list --workflow="$workflow_file_name" -b "$branch" -u "$GITHUB_USERNAME" -L 1 -R ${OWNER}/${repository} --json databaseId,status)
+    run_status=$(gh run list --workflow="$workflow_file_name" -b "$repo_branch" -u "$GITHUB_USERNAME" -L 1 -R ${OWNER}/${repository} --json databaseId,status)
     status=$(jq -r '.[0].status' <<<$run_status)
     run_id=$(jq -r '.[0].databaseId' <<<$run_status)
 
@@ -124,11 +124,11 @@ function approve_and_watch_workflow_progress() {
   set -e
   repository="$1"
   workflow_file_name="$2"
-  branch="$3"
+  repo_branch="$3"
 
-  run_id=$(gh run list --workflow="$workflow_file_name" -b "$branch" -u "$GITHUB_USERNAME" -L 1 -R ${OWNER}/${repository} --json databaseId | jq -r '.[0].databaseId')
+  run_id=$(gh run list --workflow="$workflow_file_name" -b "$repo_branch" -u "$GITHUB_USERNAME" -L 1 -R ${OWNER}/${repository} --json databaseId | jq -r '.[0].databaseId')
   approve_deployment "$repository" "$run_id" &
-  watch_workflow_progress "$repository" "$workflow_file_name"
+  watch_workflow_progress "$repository" "$workflow_file_name" "$repo_branch"
 }
 
 function ockam_bump() {
@@ -147,7 +147,7 @@ function ockam_bump() {
 
   # Merge PR to a new branch
   pr_link=$(gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base "$branch" -H "${release_name}" -R $OWNER/ockam >>$log)
+    --base "$branch" -H "${release_name}" -R $OWNER/ockam)
 
   # Wait for PR to be created
   success_info "Pull request that bumps ockam crates created ${pr_link}, please review and merge pull request to kickstart draft release..."
@@ -346,7 +346,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
   if [[ -z $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE || $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE == false ]]; then
     echo "Releasing Ockam docker image"
     release_ockam_package "$latest_tag_name" "$file_and_sha" false
-    success_info "Ockam package draft release successful...."
+    success_info "Ockam docker package draft release successful...."
   fi
 
   # Homebrew Release
