@@ -53,7 +53,7 @@ for crate in "${crates_that_must_be_bumped[@]}"; do
   fi
 
   echo "$crate wasn't updated but is intended to be released"
-  updated_crates="$updated_crates $crate"
+  updated_crates="$updated_crates implementations/rust/ockam/$crate"
 done
 
 IFS=" " read -r -a updated_crates <<<"${updated_crates[*]}"
