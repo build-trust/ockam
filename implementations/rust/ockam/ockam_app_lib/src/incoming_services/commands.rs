@@ -203,14 +203,14 @@ impl AppState {
 
         let state = self.state().await;
 
-        let user_email = state.get_default_user().await?.email;
+        let user = state.get_default_user().await?;
         if let Some(my_project) = state
             .get_projects()
             .await?
             .iter()
             .filter(|p|
                 // filter out projects that are not owned by the user
-                p.has_admin_role(&user_email))
+                p.is_admin(&user))
             .find(|p| p.id == ticket_project.id)
         {
             debug!(

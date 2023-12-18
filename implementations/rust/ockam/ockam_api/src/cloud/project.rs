@@ -15,6 +15,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::{tokio, Context};
 
 use crate::cloud::addon::ConfluentConfig;
+use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::operation::{Operation, Operations};
 use crate::cloud::share::ShareScope;
 use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
@@ -179,10 +180,10 @@ impl Project {
         }
     }
 
-    pub fn has_admin_role(&self, email: &str) -> bool {
-        self.user_roles
-            .iter()
-            .any(|ur| ur.role == RoleInShare::Admin && ur.email == email)
+    pub fn is_admin(&self, user: &UserInfo) -> bool {
+        self.user_roles.iter().any(|ur| {
+            ur.role == RoleInShare::Admin && ur.email.to_lowercase() == user.email.to_lowercase()
+        })
     }
 
     pub async fn is_reachable(&self) -> Result<bool> {
@@ -578,6 +579,44 @@ mod tests {
 
         let socket_addr = p.access_route_socket_addr().unwrap();
         assert_eq!(&socket_addr, "node.dnsaddr.com:4000");
+    }
+
+    #[test]
+    fn test_is_admin() {
+        let mut g = Gen::new(100);
+        let mut project = Project::arbitrary(&mut g);
+
+        // it is possible to test if a user an administrator
+        // of the project by comparing the user email and the project role email
+        // the email comparison is case insensitive
+        project.user_roles = vec![create_admin("test@ockam.io")];
+        assert!(project.is_admin(&create_user("test@ockam.io")));
+        assert!(project.is_admin(&create_user("tEst@ockam.io")));
+        assert!(project.is_admin(&create_user("test@Ockam.io")));
+        assert!(project.is_admin(&create_user("TEST@OCKAM.IO")));
+    }
+
+    /// HELPERS
+
+    fn create_admin(email: &str) -> ProjectUserRole {
+        ProjectUserRole {
+            email: email.to_string(),
+            id: 1,
+            role: RoleInShare::Admin,
+            scope: ShareScope::Project,
+        }
+    }
+
+    fn create_user(email: &str) -> UserInfo {
+        UserInfo {
+            sub: "name".to_string(),
+            nickname: "nickname".to_string(),
+            name: "name".to_string(),
+            picture: "picture".to_string(),
+            updated_at: "noon".to_string(),
+            email: email.to_string(),
+            email_verified: false,
+        }
     }
 
     impl Arbitrary for OktaConfig {
