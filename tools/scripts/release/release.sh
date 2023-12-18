@@ -55,6 +55,19 @@ if [[ -z $IS_DRAFT_RELEASE ]]; then
   exit 1
 fi
 
+function failure_info() {
+  echo -e "\033[01;31m$1\033[00m"
+}
+
+function dialog_info() {
+  echo -e "\033[01;33m$1\033[00m"
+  read -r -p ""
+}
+
+function success_info() {
+  echo -e "\033[01;32m$1\033[00m"
+}
+
 function approve_deployment() {
   set -e
   local repository="$1"
@@ -132,9 +145,27 @@ function ockam_bump() {
   # Wait for workflow run
   approve_and_watch_workflow_progress "ockam" "$workflow_file_name" "$branch"
 
-  # Merge PR to a new branch to kickstart workflow
-  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base "$branch" -H "${release_name}" -r mrinalwadhwa -R $OWNER/ockam >>$log
+  # Merge PR to a new branch
+  pr_link=$(gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
+    --base "$branch" -H "${release_name}" -R $OWNER/ockam >>$log)
+
+  # Wait for PR to be created
+  success_info "Pull request that bumps ockam crates created ${pr_link}, please review and merge pull request to kickstart draft release..."
+
+  while true; do
+    state=$(gh pr view "$pr_link" --json state -R $OWNER/ockam | jq -r '.state')
+
+    if [[ "$state" == "MERGED" ]]; then
+      success_info "Pull request ${pr_link} merged, starting draft release..."
+      break
+    elif [[ "$state" == "OPEN" ]]; then
+      sleep 5
+      continue
+    elif [[ "$state" == "CLOSED" ]]; then
+      failure_info "Crate bump pull request was closed, aborting release."
+      exit 1
+    fi
+  done
 }
 
 function ockam_crate_release() {
@@ -143,8 +174,9 @@ function ockam_crate_release() {
   workflow_file_name="release-publish-crates.yml"
   branch="develop"
 
+  # Crate release from the develop branch
   gh workflow run "$workflow_file_name" --ref "$branch" \
-    -F release_branch="$release_name" -F git_tag="$GIT_TAG" -F ockam_publish_exclude_crates="$OCKAM_PUBLISH_EXCLUDE_CRATES" \
+    -F release_branch="$branch" -F git_tag="$GIT_TAG" -F ockam_publish_exclude_crates="$OCKAM_PUBLISH_EXCLUDE_CRATES" \
     -F ockam_publish_recent_failure="$OCKAM_PUBLISH_RECENT_FAILURE" -R $OWNER/ockam >>$log
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
@@ -156,7 +188,7 @@ function release_ockam_binaries() {
   workflow_file_name="release-draft-binaries.yml"
   branch="develop"
 
-  gh workflow run "$workflow_file_name" --ref "$branch" -F git_tag="$GIT_TAG" -F release_branch="$release_name" -R $OWNER/ockam >>$log
+  gh workflow run "$workflow_file_name" --ref "$branch" -F git_tag="$GIT_TAG" -F release_branch="$branch" -R $OWNER/ockam >>$log
   # Wait for workflow run
   sleep 10
   approve_and_watch_workflow_progress "ockam" "$workflow_file_name" "$branch"
@@ -219,7 +251,7 @@ function terraform_repo_bump() {
 
   # Create PR to kickstart workflow
   gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base main -H "${release_name}" -r mrinalwadhwa -R $OWNER/terraform-provider-ockam >>$log
+    --base main -H "${release_name}" -R $OWNER/terraform-provider-ockam >>$log
 }
 
 function terraform_binaries_release() {
@@ -257,15 +289,6 @@ function delete_ockam_draft_package() {
       fi
     done
   done
-}
-
-function dialog_info() {
-  echo -e "\033[01;33m$1\033[00m"
-  read -r -p ""
-}
-
-function success_info() {
-  echo -e "\033[01;32m$1\033[00m"
 }
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------#
@@ -336,14 +359,17 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
   if [[ -z $SKIP_TERRAFORM_BUMP || $SKIP_TERRAFORM_BUMP == false ]]; then
     echo "Bumping Terraform"
     terraform_repo_bump "$latest_tag_name"
+
+    success_info "Ockam Terraform version bump successful"
   fi
 
   if [[ -z $SKIP_TERRAFORM_BINARY_RELEASE || $SKIP_TERRAFORM_BINARY_RELEASE == false ]]; then
     echo "Releasing Ockam Terraform binaries"
     terraform_binaries_release "$latest_tag_name"
+    success_info "Ockam Terraform binary release successful"
   fi
 
-  success_info "Terraform release successful"
+  success_info "Ockam draft release successful"
 fi
 
 # If we are to release to production, we check if all draft release was successful.
