@@ -17,7 +17,12 @@ struct RemotePortalView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
-                Image(systemName: "arrow.up.left.arrow.down.right")
+                let portalIcon = if #available(macOS 14, *) {
+                    "arrow.up.left.arrow.down.right"
+                } else {
+                    "arrow.up.arrow.down"
+                }
+                Image(systemName: portalIcon)
                     .frame(width: 20)
                     .font(.system(size: 12, weight: .bold))
                     .padding(.trailing, StandardIconTextSpacing)
