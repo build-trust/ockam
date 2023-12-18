@@ -170,8 +170,15 @@ struct MainView: View {
                             }
                             appDelegate.dismissPopover()
                         })
+
+                    let bookIcon = if #available(macOS 14, *) {
+                        "book.pages"
+                    } else {
+                        "book"
+                    }
                     ClickableMenuEntry(
-                        text: "Learn how we built this app…", icon: "book.pages",
+                        text: "Learn how we built this app…",
+                        icon: bookIcon,
                         action: {
                             if let url = URL(string: "https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md") {
                                 NSWorkspace.shared.open(url)
