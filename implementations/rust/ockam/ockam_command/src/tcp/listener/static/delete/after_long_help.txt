@@ -1,7 +1,10 @@
 ```sh
-# To delete a TCP listener given its ID on the default node
+# To delete a TCP listener given its internal address on the default node
 $ ockam tcp-listener delete d59c01ab8d9683f8c454df746e627b43
 
-# To delete a TCP listener given its ID on a specific node
+# To delete a TCP listener given its socket address on the default node
+$ ockam tcp-listener delete 127.0.0.1:5000
+
+# To delete a TCP listener given its internal address on a specific node
 $ ockam tcp-listener delete d59c01ab8d9683f8c454df746e627b43 --at n1
 ```

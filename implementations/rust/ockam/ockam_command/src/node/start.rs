@@ -23,9 +23,6 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct StartCommand {
     /// Name of the node to be started
     node_name: Option<String>,
-
-    #[arg(long, default_value = "false")]
-    aws_kms: bool,
 }
 
 impl StartCommand {

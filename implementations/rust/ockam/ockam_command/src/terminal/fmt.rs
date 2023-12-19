@@ -12,14 +12,14 @@ macro_rules! fmt_log {
 macro_rules! fmt_ok {
     ($input:expr) => {
         format!("{} {}",
-        "     ✔︎"
+        "     ✔"
             .color($crate::terminal::OckamColor::FmtOKBackground.color())
             .bold(),
         format!($input))
     };
     ($input:expr, $($args:expr),+) => {
         format!("{} {}",
-        "     ✔︎"
+        "     ✔"
             .color($crate::terminal::OckamColor::FmtOKBackground.color())
             .bold(),
         format!($input, $($args),+))

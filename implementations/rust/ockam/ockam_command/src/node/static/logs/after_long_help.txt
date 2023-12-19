@@ -2,9 +2,6 @@
 # Return the path to the stdout log file of the default node
 $ ockam node logs
 
-# Return the path to the stderr log file of the given node
-$ ockam node logs n --err
-
 # Pipe the logs to a file into another tool to process it
 $ cat < $(ockam node logs n)
 ```

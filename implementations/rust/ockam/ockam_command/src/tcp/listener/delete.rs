@@ -20,7 +20,7 @@ pub struct DeleteCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
 
-    /// Tcp Listener ID
+    /// TCP Listener internal address
     pub address: String,
 
     /// Confirm the deletion without prompting

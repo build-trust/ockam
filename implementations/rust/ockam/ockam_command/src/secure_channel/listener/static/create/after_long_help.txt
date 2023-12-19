@@ -1,9 +1,14 @@
 ```sh
+$ ockam node create n1
+$ ockam node create n2
+
 # Create a secure channel listener with a custom name on the default node
 $ ockam secure-channel-listener create test --at n2
-/service/test
+  ✔ Secure Channel Listener at /service/test created successfully
+  At node /node/n2
 
 # Create a secure channel from n1 to our test secure channel listener on n2
-$ ockam secure-channel create --from /node/n1 --to /node/n2/service/test
-/service/09738b73c54b81d48531f659aaa22533
+$ ockam secure-channel create --from /node/n1 --to /node/n2/service/api
+  ✔ Secure Channel at /service/5c2a940cf008783cfd8d7012e772d674 created successfully
+  From /node/n1 to /node/n2/service/api
 ```

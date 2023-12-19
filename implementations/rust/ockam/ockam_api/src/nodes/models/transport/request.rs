@@ -35,7 +35,7 @@ impl CreateTcpListener {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteTransport {
-    /// The transport ID to delete
+    /// The transport processor address or socket address to delete
     #[n(1)] pub address: String,
 }
 

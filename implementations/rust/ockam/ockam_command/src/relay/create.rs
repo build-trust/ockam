@@ -40,7 +40,7 @@ pub struct CreateCommand {
     relay_name: String,
 
     /// Node for which to create the relay
-    #[arg(long, id = "NODE", value_parser = extract_address_value)]
+    #[arg(long, id = "NODE_NAME", value_parser = extract_address_value)]
     to: Option<String>,
 
     /// Route to the node at which to create the relay

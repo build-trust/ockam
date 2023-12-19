@@ -10,7 +10,7 @@ use ockam_transport_tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSender
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Decode, Encode, serde::Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct TransportStatus {

@@ -88,14 +88,7 @@ impl Output for TransportStatus {
         )?;
         writeln!(
             output,
-            "Worker {}",
-            self.worker_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-        writeln!(
-            output,
-            "Processor {}",
+            "Internal Address {}",
             self.processor_address
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
@@ -103,7 +96,7 @@ impl Output for TransportStatus {
 
         write!(
             output,
-            "{}",
+            "Socket Address {}",
             self.socket_addr
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
