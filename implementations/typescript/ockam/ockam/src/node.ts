@@ -53,7 +53,7 @@ export class Node {
 
   startWorker(
     address: string | Uint8Array,
-    worker: Worker | ((context: Context, message: Message) => void)
+    worker: Worker | ((context: Context, message: Message) => void),
   ) {
     if (typeof worker === "function") {
       worker = { handleMessage: worker };

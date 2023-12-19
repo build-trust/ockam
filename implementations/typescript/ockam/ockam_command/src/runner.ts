@@ -11,7 +11,7 @@ export interface RunnerOutput {
 export class Runner {
   static async run(
     args: string[],
-    home: string = path.join(__dirname, "..", "install")
+    home: string = path.join(__dirname, "..", "install"),
   ) {
     const binaryPath = path.join(home, "bin", "ockam");
     const command = fs.existsSync(binaryPath) ? binaryPath : "ockam";
