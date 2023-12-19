@@ -26,20 +26,18 @@ teardown() {
 
   # Check that the connection is listed
   run_success "$OCKAM" tcp-connection list --at n1
-  assert_output --partial "$id"
-
-  id=$($OCKAM tcp-connection list --at n1 | grep -o "[0-9a-f]\{32\}" | head -1)
+  assert_output --partial "$addr"
 
   # Show the connection details
-  run_success "$OCKAM" tcp-connection show --at n1 "$id"
-  assert_output --partial "$id"
+  run_success "$OCKAM" tcp-connection show --at n1 "$addr"
+  assert_output --partial "$addr"
 
   # Delete the connection
-  run_success "$OCKAM" tcp-connection delete --at n1 "$id" --yes
+  run_success "$OCKAM" tcp-connection delete --at n1 "$addr" --yes
 
   # Check that it's no longer listed
   run_success "$OCKAM" tcp-connection list --at n1
-  refute_output --partial "$id"
+  refute_output --partial "$addr"
 }
 
 @test "tcp listener - CRUD" {

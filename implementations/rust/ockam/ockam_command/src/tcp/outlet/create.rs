@@ -29,7 +29,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[arg(long, display_order = 900, id = "NODE", value_parser = extract_address_value)]
+    #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
     at: Option<String>,
 
     /// Address of the tcp outlet.

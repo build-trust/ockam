@@ -26,7 +26,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
     /// Node at which to lookup workers
-    #[arg(value_name = "NODE", long, display_order = 800, value_parser = extract_address_value)]
+    #[arg(value_name = "NODE_NAME", long, display_order = 800, value_parser = extract_address_value)]
     at: Option<String>,
 }
 

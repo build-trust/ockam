@@ -21,7 +21,7 @@ pub struct ShowCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,
 
-    /// TCP connection Worker Address or Tcp Address
+    /// TCP connection internal address or socket address
     pub address: String,
 }
 

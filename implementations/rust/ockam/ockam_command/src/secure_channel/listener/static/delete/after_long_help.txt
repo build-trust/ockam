@@ -1,3 +1,3 @@
 ```sh
-$ ockam secure-channel-listener delete scaddr --at n1
+$ ockam secure-channel-listener delete 8eb3bfc8a6419f24c05ddd627d144bec --at n1
 ```

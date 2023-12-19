@@ -73,7 +73,8 @@ async fn run_impl(
                             .to_string()
                             .color(OckamColor::PrimaryResource.color())
                     ) + &fmt_log!(
-                        "At node /node/{}",
+                        "At node {}{}",
+                        "/node/".color(OckamColor::PrimaryResource.color()),
                         node.node_name().color(OckamColor::PrimaryResource.color())
                     ),
                 )

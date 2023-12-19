@@ -1,4 +1,7 @@
 ```sh
-# To show a TCP listener given its ID
+# To show a TCP listener given its internal address
 $ ockam tcp-listener show d59c01ab8d9683f8c454df746e627b43
+
+# To show a TCP listener given its socket address
+$ ockam tcp-listener show 127.0.0.1:5000
 ```
