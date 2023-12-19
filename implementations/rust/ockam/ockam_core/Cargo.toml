@@ -86,4 +86,4 @@ tracing-error = { version = "0.2", default-features = false, optional = true }
 cddl-cat = { version = "0.6.1" }
 quickcheck = "1.0.1"
 serde_cbor = { version = "0.11.2" }
-tokio = { version = "1.35.0", features = ["full"] }
+tokio = { version = "1.35.1", features = ["full"] }
