@@ -153,7 +153,7 @@ impl OidcServiceExt for OidcService {
                         user_info.email
                     ))
                 }
-                sleep(Duration::from_secs(5)).await;
+                sleep(Duration::from_secs(10)).await;
             }
         }
     }

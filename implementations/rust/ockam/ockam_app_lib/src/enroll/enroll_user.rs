@@ -1,5 +1,6 @@
 use miette::IntoDiagnostic;
-use tracing::{debug, error, info};
+use std::time::{Duration, Instant};
+use tracing::{debug, error, info, warn};
 
 use ockam_api::cli_state;
 use ockam_api::cloud::project::{Project, Projects};
@@ -34,13 +35,6 @@ impl AppState {
                     return Ok(());
                 }
                 EnrollmentOutcome::PendingValidation => {
-                    self.notify(Notification {
-                        kind: Kind::Information,
-                        title: "Verify your email".to_string(),
-                        message: "We've sent a verification email. \
-                     Before we can continue, please check your inbox and click the included link to verify your email address."
-                            .to_string(),
-                    });
                     self.update_orchestrator_status(OrchestratorStatus::Disconnected);
                     self.publish_state().await;
                     return Ok(());
@@ -100,11 +94,23 @@ impl AppState {
         let token = oidc_service.get_token_with_pkce().await?;
 
         // retrieve the user information
-        let user_info = oidc_service.get_user_info(&token).await?;
+        let mut user_info = oidc_service.get_user_info(&token).await?;
         info!(?user_info, "User info retrieved successfully");
 
         if !user_info.email_verified {
-            return Ok(EnrollmentOutcome::PendingValidation);
+            self.update_orchestrator_status(OrchestratorStatus::WaitingForEmailValidation);
+            self.publish_state().await;
+
+            // let's wait up to 10 minutes for the email to get validated
+            let timeout_timestamp = Instant::now() + Duration::from_secs(60 * 10);
+            while !user_info.email_verified {
+                if Instant::now() > timeout_timestamp {
+                    warn!("Timeout waiting for email validation");
+                    return Ok(EnrollmentOutcome::PendingValidation);
+                }
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                user_info = oidc_service.get_user_info(&token).await?;
+            }
         }
 
         let cli_state = self.state().await;

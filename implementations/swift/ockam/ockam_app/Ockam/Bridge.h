@@ -19,6 +19,7 @@ typedef enum C_OrchestratorStatus {
   Connecting,
   Connected,
   WaitingForToken,
+  WaitingForEmailValidation,
   RetrievingSpace,
   RetrievingProject,
 } C_OrchestratorStatus;
