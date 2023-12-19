@@ -183,8 +183,14 @@ impl CliState {
         if vault.path() == self.database_path() {
             return Err(ockam_core::Error::new(Origin::Api, Kind::Invalid, format!("The vault at path {:?} cannot be moved to {path:?} because this is the default vault", vault.path())).into());
         };
-        std::fs::rename(vault.path(), path)?;
-        Ok(repository.update_vault(vault_name, path).await?)
+
+        // copy the file to the new location
+        std::fs::copy(vault.path(), path)?;
+        // update the path in the database
+        repository.update_vault(vault_name, path).await?;
+        // remove the old file
+        std::fs::remove_file(vault.path())?;
+        Ok(())
     }
 }
 
