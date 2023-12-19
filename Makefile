@@ -25,8 +25,13 @@ swift_%:
 typescript_%:
 	$(MAKE) -C implementations/typescript $(@:typescript_%=%)
 
+# run a typescript command in a nix environment, so that all tools are installed
+nix_typescript_%:
+	nix develop ./tools/nix#typescript --command make typescript_$*
+
 .PHONY: \
 	build build_release test lint clean very_clean \
 	elixir_% rust_% swift_% typescript_% \
 	nix_rust_% \
+	nix_typescript_% \
 	nix_elixir_% \
