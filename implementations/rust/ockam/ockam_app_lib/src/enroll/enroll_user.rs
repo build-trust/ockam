@@ -180,7 +180,7 @@ impl AppState {
                     kind: Kind::Information,
                     title: "Provisioning a project".to_string(),
                     message:
-                        "We're provisioning a dedicated project for you in Ockam Orchestrator.\
+                        "We're provisioning a dedicated project for you in Ockam Orchestrator. \
                         This can take upto 3 minutes."
                             .to_string(),
                 });
