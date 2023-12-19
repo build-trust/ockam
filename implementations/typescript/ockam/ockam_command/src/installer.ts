@@ -87,7 +87,7 @@ export async function isInstalled(home: string = "install"): Promise<boolean> {
 
 export async function install(
   version: string = "latest",
-  home: string = "install"
+  home: string = "install",
 ) {
   try {
     const fileToDownload = releaseFileName(process.platform, process.arch);
