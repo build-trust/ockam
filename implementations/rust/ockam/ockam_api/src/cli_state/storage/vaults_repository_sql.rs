@@ -63,6 +63,16 @@ impl VaultsRepository for VaultsSqlxDatabase {
         row.map(|r| r.named_vault()).transpose()
     }
 
+    async fn get_named_vault_with_path(&self, path: &Path) -> Result<Option<NamedVault>> {
+        let query =
+            query_as("SELECT name, path, is_kms FROM vault WHERE path = $1").bind(path.to_sql());
+        let row: Option<VaultRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        row.map(|r| r.named_vault()).transpose()
+    }
+
     async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
         let query = query_as("SELECT name, path, is_kms FROM vault");
         let rows: Vec<VaultRow> = query.fetch_all(&self.database.pool).await.into_core()?;
@@ -112,6 +122,12 @@ mod test {
 
         // The vault can then be retrieved with its name
         let result = repository.get_named_vault("vault1").await?;
+        assert_eq!(result, Some(named_vault1.clone()));
+
+        // The vault can then be retrieved with its path
+        let result = repository
+            .get_named_vault_with_path(Path::new("path"))
+            .await?;
         assert_eq!(result, Some(named_vault1.clone()));
 
         // The vault can be set at another path

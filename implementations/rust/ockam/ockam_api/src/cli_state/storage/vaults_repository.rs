@@ -21,6 +21,9 @@ pub trait VaultsRepository: Send + Sync + 'static {
     /// Return a vault by name
     async fn get_named_vault(&self, name: &str) -> Result<Option<NamedVault>>;
 
+    /// Return a vault by path
+    async fn get_named_vault_with_path(&self, path: &Path) -> Result<Option<NamedVault>>;
+
     /// Return all vaults
     async fn get_named_vaults(&self) -> Result<Vec<NamedVault>>;
 }

@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::fs::File;
+use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -242,14 +242,21 @@ impl CliState {
         };
 
         // check if the new file can be created
-        if path != self.database_path() {
-            if path.exists() {
-                return Err(CliStateError::AlreadyExists {
-                    resource: "vault path".to_string(),
-                    name: format!("{path:?}"),
-                });
-            } else {
-                File::create(&path)?;
+        let path_taken = self.get_named_vault_with_path(&path).await?.is_some();
+        if path_taken {
+            return Err(CliStateError::AlreadyExists {
+                resource: "vault path".to_string(),
+                name: format!("{path:?}"),
+            });
+        } else {
+            // create a new file if we need to store the vault data outside of the main database
+            if path != self.database_path() {
+                // similar to File::create_new which is unstable for now
+                OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .open(&path)?;
             }
         };
 
@@ -291,6 +298,14 @@ impl CliState {
         } else {
             Ok(self.dir().join(format!("vault-{vault_name}")))
         }
+    }
+
+    async fn get_named_vault_with_path(&self, path: &Path) -> Result<Option<NamedVault>> {
+        Ok(self
+            .vaults_repository()
+            .await?
+            .get_named_vault_with_path(path)
+            .await?)
     }
 }
 
@@ -384,11 +399,34 @@ mod tests {
         let result = cli.get_named_vault("vault1").await?;
         assert_eq!(result, named_vault1.clone());
 
+        // another vault cannot be created with the same name
+        let result = cli
+            .create_named_vault(&Some("vault1".to_string()), &None)
+            .await
+            .ok();
+        assert_eq!(result, None);
+
+        // another vault cannot be created with the same path
+        let result = cli
+            .create_named_vault(&None, &Some(named_vault1.path()))
+            .await
+            .ok();
+        assert_eq!(result, None);
+
         // the first created vault is the default one if it is the only one
         let result = cli.get_or_create_default_named_vault().await?;
         assert_eq!(result, named_vault1.clone());
 
+        // the same vault is returned if queried for the second time
+        let result = cli.get_or_create_default_named_vault().await?;
+        assert_eq!(result, named_vault1.clone());
+
         // create another vault
+
+        // it's not there initially
+        let result = cli.get_named_vault("vault2").await.ok();
+        assert_eq!(result, None);
+
         let named_vault2 = cli.get_or_create_named_vault("vault2").await?;
 
         let result = cli.get_named_vaults().await?;
@@ -407,6 +445,51 @@ mod tests {
         cli.delete_all_named_vaults().await?;
         let result = cli.get_named_vaults().await?;
         assert!(result.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_default_vault() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // create a default vault
+        let vault = cli.get_or_create_default_named_vault().await?;
+        assert_eq!(vault.name(), "default".to_string());
+
+        // the same vault is returned the second time
+        let result = cli.get_or_create_default_named_vault().await?;
+        assert_eq!(result, vault);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_named_vault_or_default() -> Result<()> {
+        let cli = CliState::test().await?;
+
+        // create a default vault
+        let vault1 = cli.get_or_create_default_named_vault().await?;
+        assert_eq!(vault1.name(), "default".to_string());
+
+        // that vault can be retrieved by passing its name
+        let result = cli.get_named_vault_or_default(&Some(vault1.name())).await?;
+        assert_eq!(result, vault1);
+
+        // that vault can be retrieved by omitting its name since there is only one vault
+        let result = cli.get_named_vault_or_default(&None).await?;
+        assert_eq!(result, vault1);
+
+        // if we create a second vault, it can be returned by name
+        let vault2 = cli
+            .create_named_vault(&Some("vault-2".to_string()), &None)
+            .await?;
+        let result = cli.get_named_vault_or_default(&Some(vault2.name())).await?;
+        assert_eq!(result, vault2);
+
+        // however if we don't specify a name, then we get an error because the user needs to be specific
+        let result = cli.get_named_vault_or_default(&None).await.ok();
+        assert_eq!(result, None);
 
         Ok(())
     }
