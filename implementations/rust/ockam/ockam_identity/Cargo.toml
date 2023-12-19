@@ -1,6 +1,6 @@
 [package]
 name = "ockam_identity"
-version = "0.99.0"
+version = "0.100.0"
 authors = ["Ockam Developers"]
 categories = ["cryptography", "authentication"]
 edition = "2021"
@@ -80,8 +80,8 @@ hex = { version = "0.4", default-features = false }
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.98.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.104.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.97.0", default-features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.105.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.98.0", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
