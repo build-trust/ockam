@@ -20,7 +20,7 @@ nix_rust_%:
 	nix develop ./tools/nix#rust --command make rust_$*
 
 swift_%:
-	$(MAKE) -f implementations/swift/Makefile $(@:swift_%=%)n
+	$(MAKE) -C implementations/swift $(@:swift_%=%)
 
 typescript_%:
 	$(MAKE) -C implementations/typescript $(@:typescript_%=%)
@@ -28,4 +28,5 @@ typescript_%:
 .PHONY: \
 	build build_release test lint clean very_clean \
 	elixir_% rust_% swift_% typescript_% \
-	nix_rust_%
+	nix_rust_% \
+	nix_elixir_% \
