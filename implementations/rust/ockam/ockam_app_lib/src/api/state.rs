@@ -15,6 +15,7 @@ pub enum OrchestratorStatus {
     Connected,
 
     WaitingForToken,
+    WaitingForEmailValidation,
     RetrievingSpace,
     RetrievingProject,
 }

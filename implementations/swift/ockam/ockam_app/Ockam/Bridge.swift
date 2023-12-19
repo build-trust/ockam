@@ -183,6 +183,7 @@ enum OrchestratorStatus: Int {
     case Connecting
     case Connected
     case WaitingForToken
+    case WaitingForEmailValidation
     case RetrievingSpace
     case RetrievingProject
 }

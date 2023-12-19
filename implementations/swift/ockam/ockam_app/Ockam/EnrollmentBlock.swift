@@ -72,7 +72,8 @@ Your friends will have access to it on their **localhost**!
                     EnrollmentStatus(status: $appState.orchestrator_status)
                         .padding(.vertical, VerticalSpacingUnit*2)
                     
-                    if appState.orchestrator_status == OrchestratorStatus.WaitingForToken {
+                    if appState.orchestrator_status == OrchestratorStatus.WaitingForToken ||
+                        appState.orchestrator_status == OrchestratorStatus.WaitingForEmailValidation {
                         Button(action: {
                             restartCurrentProcess()
                         }) {

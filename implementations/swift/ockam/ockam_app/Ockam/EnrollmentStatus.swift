@@ -11,6 +11,8 @@ struct EnrollmentStatus: View {
             case .WaitingForToken:
                 Text("Opened account.ockam.io")
                 Text("Please finish enrolling in your browser.").font(.caption)
+            case .WaitingForEmailValidation:
+                Text("We’ve sent you a verification email.\n\nPlease check your inbox and click the included link so we can verify your email address.").padding(.bottom, VerticalSpacingUnit*2)
             case .RetrievingSpace:
                 Text("Fetching your spaces...")
             case .RetrievingProject:
@@ -33,6 +35,7 @@ struct EnrollmentStatus_Previews: PreviewProvider {
             EnrollmentStatus(status: .constant(.Connected))
             EnrollmentStatus(status: .constant(.Connecting))
             EnrollmentStatus(status: .constant(.WaitingForToken))
+            EnrollmentStatus(status: .constant(.WaitingForEmailValidation))
             EnrollmentStatus(status: .constant(.RetrievingSpace))
             EnrollmentStatus(status: .constant(.RetrievingProject))
         }
