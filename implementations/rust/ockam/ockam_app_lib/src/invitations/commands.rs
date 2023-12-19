@@ -50,8 +50,10 @@ impl AppState {
             if changes.new_received_invitation {
                 self.notify(Notification {
                     kind: Kind::Information,
-                    title: "You have pending invitations".to_string(),
-                    message: "".to_string(),
+                    title: "Pending invitations".to_string(),
+                    message:
+                        "You have pending portal inlet invitations, please accept or decline them."
+                            .to_string(),
                 })
             }
         }

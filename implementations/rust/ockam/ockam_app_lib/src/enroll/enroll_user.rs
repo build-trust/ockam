@@ -36,11 +36,9 @@ impl AppState {
                 EnrollmentOutcome::PendingValidation => {
                     self.notify(Notification {
                         kind: Kind::Information,
-                        title: "Email Verification Required".to_string(),
-                        message: "For security reasons, we need to confirm your email address.\
-                     A verification email has been sent to you. \
-                     Please review your inbox and follow the provided steps \
-                     to complete the verification process"
+                        title: "Verify your email".to_string(),
+                        message: "We've sent a verification email. \
+                     Before we can continue, please check your inbox and click the included link to verify your email address."
                             .to_string(),
                     });
                     self.update_orchestrator_status(OrchestratorStatus::Disconnected);
@@ -51,18 +49,18 @@ impl AppState {
                     // notify and keep going
                     self.notify(Notification {
                         kind: Kind::Information,
-                        title: "Enrolled successfully!".to_string(),
-                        message: "You can now use the Ockam app".to_string(),
+                        title: "Enrolled successfully".to_string(),
+                        message: "You're ready to create your first portal.".to_string(),
                     });
                 }
             },
             Err(err) => {
-                error!(?err, "Failed to enroll user");
+                error!(?err, "Failed to enroll");
                 self.update_orchestrator_status(OrchestratorStatus::Disconnected);
                 self.publish_state().await;
                 self.notify(Notification {
                     kind: Kind::Error,
-                    title: "Failed to enroll user".to_string(),
+                    title: "Failed to enroll".to_string(),
                     message: format!("{}", err),
                 });
                 return Err(err);
@@ -180,8 +178,11 @@ impl AppState {
             None => {
                 self.notify(Notification {
                     kind: Kind::Information,
-                    title: "Creating a new project...".to_string(),
-                    message: "This might take a few minutes".to_string(),
+                    title: "Provisioning a project".to_string(),
+                    message:
+                        "We're provisioning a dedicated project for you in Ockam Orchestrator.\
+                        This can take upto 3 minutes."
+                            .to_string(),
                 });
                 let ctx = &self.context();
                 let project = node_manager
