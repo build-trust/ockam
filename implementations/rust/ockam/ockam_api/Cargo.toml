@@ -51,7 +51,7 @@ serde_json = "1.0.108"
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite"] }
 sysinfo = "0.29"
 thiserror = "1.0"
-time = { version = "0.3.30", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
+time = { version = "0.3.31", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
 tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tokio = { version = "1.35.1", features = ["full"] }
