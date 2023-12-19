@@ -1,6 +1,6 @@
 [package]
 name = "ockam_node"
-version = "0.104.0"
+version = "0.105.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",

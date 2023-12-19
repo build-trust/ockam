@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_uds"
-version = "0.31.0"
+version = "0.32.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -29,7 +29,7 @@ alloc = []
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.98.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.32.0" }
-ockam_node = { path = "../ockam_node", version = "^0.104.0" }
+ockam_node = { path = "../ockam_node", version = "^0.105.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.71.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = "0.5.5"
