@@ -1064,6 +1064,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-targets 0.48.5",
 ]
@@ -4705,9 +4706,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_tuify"
-version = "0.1.21"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2770cf28e5764c238234ff01315f6e5a3185e9d4950b342f8f4ac9a778bebd2"
+checksum = "413a6286456110125a22fe2d6370547c410831b1fb9e14487bea62fd92cc297a"
 dependencies = [
  "clap 4.4.11",
  "crossterm",
@@ -4716,6 +4717,8 @@ dependencies = [
  "r3bl_ansi_color",
  "r3bl_rs_utils_core",
  "reedline",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4807,9 +4810,9 @@ dependencies = [
 
 [[package]]
 name = "reedline"
-version = "0.25.0"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7dc1d1d369c194cf79acc204397aca1fecc4248df3e1c1eabb15e5ef2d16991"
+checksum = "07046f804ccb26a6fa8b638f505ccd2a8b7702399a89b9640a0d40ecda49233d"
 dependencies = [
  "chrono",
  "crossterm",
