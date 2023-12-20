@@ -42,7 +42,7 @@ impl Logging {
             // If a log path is provided, log to a rolling file appender.
             Some(node_dir) => {
                 let r = RollingFileAppender::builder()
-                    .rotation(Rotation::MINUTELY)
+                    .rotation(Rotation::DAILY)
                     .max_log_files(log_max_files())
                     .filename_prefix("stdout")
                     .filename_suffix("log")
