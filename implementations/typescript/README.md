@@ -15,6 +15,10 @@ git clone git@github.com:build-trust/ockam.git
 cd implementations/typescript
 ```
 
+# Get Help
+
+Ask a question on [Discord](https://discord.ockam.io).
+
 # Using `pnpm`
 
 ## Setup
@@ -68,10 +72,6 @@ pnpm lint
 ```
 
 At the moment this task only checks if the code is properly formatted.
-
-## Get Help
-
-Ask a question on [Github Discussions](https://github.com/build-trust/ockam/discussions)
 
 # Using `make`
 

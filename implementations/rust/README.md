@@ -15,6 +15,10 @@ git clone git@github.com:build-trust/ockam.git
 cd implementations/rust
 ```
 
+# Get Help
+
+Ask a question on [Discord](https://discord.ockam.io).
+
 # Using `cargo`
 
 ## Setup
@@ -201,10 +205,6 @@ permissive license like an Apache, MIT or BSD variant.
 ```
 cargo license --json | jq ".[] | .license" | sort | uniq
 ```
-
-## Get Help
-
-Ask a question on [Github Discussions](https://github.com/build-trust/ockam/discussions)
 
 # Using `make`
 
