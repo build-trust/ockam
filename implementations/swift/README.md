@@ -15,6 +15,10 @@ git clone git@github.com:build-trust/ockam.git
 cd implementations/swift
 ```
 
+# Get Help
+
+Ask a question on [Discord](https://discord.ockam.io).
+
 # Using `make`
 
 ## Setup
@@ -84,11 +88,7 @@ This table presents all the `make` commands, executed from the root directory
 
 ## Get Help
 
-Ask a question on [Github Discussions](https://github.com/build-trust/ockam/discussions)
-
-
-Note that these commands don't need to use the `rust_` prefix if you first `cd` into `implementations/rust`. Then you
-can directly call: `make build`, `make test`, etc...
+Ask a question on [Discord](https://discord.ockam.io).
 
 # Using XCode
 

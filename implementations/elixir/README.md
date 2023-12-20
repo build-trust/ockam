@@ -15,6 +15,10 @@ git clone git@github.com:build-trust/ockam.git
 cd implementations/elixir
 ```
 
+# Get Help
+
+Ask a question on [Discord](https://discord.ockam.io).
+
 # Using `mix`
 
 The standard build tool for developing Elixir projects is [`mix`](https://hexdocs.pm/mix/1.15/Mix.html).
