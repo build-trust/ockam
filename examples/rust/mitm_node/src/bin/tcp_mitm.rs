@@ -1,7 +1,7 @@
-use mitm_node::tcp_interceptor::utils::prepare_message;
 use mitm_node::tcp_interceptor::{ProcessorInfo, Role, TcpMitmTransport};
 use ockam::{Context, Result};
 use ockam_core::{route, Address, AsyncTryClone, TransportMessage};
+use ockam_transport_core::prepare_message;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tracing::info;
