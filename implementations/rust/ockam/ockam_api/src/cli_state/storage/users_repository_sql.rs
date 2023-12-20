@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use sqlx::sqlite::SqliteRow;
 use sqlx::*;
 
+use crate::cloud::email_address::EmailAddress;
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
@@ -55,41 +55,37 @@ impl UsersRepository for UsersSqlxDatabase {
     }
 
     async fn get_default_user(&self) -> Result<Option<UserInfo>> {
-        let query = query("SELECT email FROM user WHERE is_default=$1").bind(true.to_sql());
-        let row: Option<SqliteRow> = query
+        let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE is_default=$1").bind(true.to_sql());
+        let row: Option<UserRow> = query
             .fetch_optional(&self.database.pool)
             .await
             .into_core()?;
-        let email: Option<String> = row.map(|r| r.get(0));
-        match email {
-            Some(email) => self.get_user(&email).await,
-            None => Ok(None),
-        }
+        Ok(row.map(|u| u.user()).transpose()?)
     }
 
-    async fn set_default_user(&self, email: &str) -> Result<()> {
+    async fn set_default_user(&self, email: &EmailAddress) -> Result<()> {
         let query = query("UPDATE user SET is_default = ? WHERE email = ?")
             .bind(true.to_sql())
             .bind(email.to_sql());
         query.execute(&self.database.pool).await.void()
     }
 
-    async fn get_user(&self, email: &str) -> Result<Option<UserInfo>> {
+    async fn get_user(&self, email: &EmailAddress) -> Result<Option<UserInfo>> {
         let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE email=$1").bind(email.to_sql());
         let row: Option<UserRow> = query
             .fetch_optional(&self.database.pool)
             .await
             .into_core()?;
-        Ok(row.map(|u| u.user()))
+        Ok(row.map(|u| u.user()).transpose()?)
     }
 
     async fn get_users(&self) -> Result<Vec<UserInfo>> {
         let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user");
         let rows: Vec<UserRow> = query.fetch_all(&self.database.pool).await.into_core()?;
-        Ok(rows.iter().map(|u| u.user()).collect())
+        rows.iter().map(|u| u.user()).collect()
     }
 
-    async fn delete_user(&self, email: &str) -> Result<()> {
+    async fn delete_user(&self, email: &EmailAddress) -> Result<()> {
         let query1 = query("DELETE FROM user WHERE email=?").bind(email.to_sql());
         query1.execute(&self.database.pool).await.void()
     }
@@ -112,16 +108,16 @@ struct UserRow {
 }
 
 impl UserRow {
-    fn user(&self) -> UserInfo {
-        UserInfo {
-            email: self.email.clone(),
+    fn user(&self) -> Result<UserInfo> {
+        Ok(UserInfo {
+            email: self.email.clone().try_into()?,
             sub: self.sub.clone(),
             nickname: self.nickname.clone(),
             name: self.name.clone(),
             picture: self.picture.clone(),
             updated_at: self.updated_at.clone(),
             email_verified: self.email_verified,
-        }
+        })
     }
 }
 
@@ -132,6 +128,8 @@ mod test {
     #[tokio::test]
     async fn test_repository() -> Result<()> {
         let repository = create_repository().await?;
+        let my_email_address: EmailAddress = "me@ockam.io".try_into().unwrap();
+        let your_email_address: EmailAddress = "you@ockam.io".try_into().unwrap();
 
         // create and store 2 users
         let user1 = UserInfo {
@@ -140,7 +138,7 @@ mod test {
             name: "me".to_string(),
             picture: "me".to_string(),
             updated_at: "today".to_string(),
-            email: "me@ockam.io".into(),
+            email: my_email_address.clone(),
             email_verified: false,
         };
         let user2 = UserInfo {
@@ -149,7 +147,7 @@ mod test {
             name: "you".to_string(),
             picture: "you".to_string(),
             updated_at: "today".to_string(),
-            email: "you@ockam.io".into(),
+            email: your_email_address.clone(),
             email_verified: false,
         };
 
@@ -160,17 +158,17 @@ mod test {
         let result = repository.get_users().await?;
         assert_eq!(result, vec![user1.clone(), user2.clone()]);
 
-        let result = repository.get_user("me@ockam.io").await?;
+        let result = repository.get_user(&my_email_address).await?;
         assert_eq!(result, Some(user1.clone()));
 
         // a user can be set created as the default user
-        repository.set_default_user("me@ockam.io").await?;
+        repository.set_default_user(&my_email_address).await?;
         let result = repository.get_default_user().await?;
         assert_eq!(result, Some(user1.clone()));
 
         // a user can be deleted
-        repository.delete_user("you@ockam.io").await?;
-        let result = repository.get_user("you@ockam.io").await?;
+        repository.delete_user(&your_email_address).await?;
+        let result = repository.get_user(&your_email_address).await?;
         assert_eq!(result, None);
 
         let result = repository.get_users().await?;

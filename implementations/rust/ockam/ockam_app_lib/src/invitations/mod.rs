@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use tracing::{debug, warn};
 
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::CreateServiceInvitation;
 
 use crate::state::{AppState, NODE_NAME};
@@ -15,7 +16,7 @@ impl AppState {
     pub(crate) async fn build_args_for_create_service_invitation(
         &self,
         outlet_socket_addr: &SocketAddr,
-        recipient_email: &str,
+        recipient_email: &EmailAddress,
         enrollment_ticket: EnrollmentTicket,
     ) -> crate::Result<CreateServiceInvitation> {
         debug!(%outlet_socket_addr, %recipient_email, "preparing payload to send invitation");
@@ -40,7 +41,7 @@ impl AppState {
             &cli_state,
             None,
             project.name(),
-            recipient_email.to_string(),
+            recipient_email.clone(),
             NODE_NAME.to_string(),
             service_route.to_string(),
             enrollment_ticket,

@@ -15,6 +15,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::{tokio, Context};
 
 use crate::cloud::addon::ConfluentConfig;
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::operation::{Operation, Operations};
 use crate::cloud::share::ShareScope;
@@ -43,7 +44,7 @@ pub struct Project {
     pub access_route: String,
 
     #[cbor(n(6))]
-    pub users: Vec<String>,
+    pub users: Vec<EmailAddress>,
 
     #[cbor(n(7))]
     pub space_id: String,
@@ -82,7 +83,7 @@ pub struct Project {
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ProjectUserRole {
-    #[n(1)] pub email: String,
+    #[n(1)] pub email: EmailAddress,
     #[n(2)] pub id: u64,
     #[n(3)] pub role: RoleInShare,
     #[n(4)] pub scope: ShareScope,
@@ -181,9 +182,9 @@ impl Project {
     }
 
     pub fn is_admin(&self, user: &UserInfo) -> bool {
-        self.user_roles.iter().any(|ur| {
-            ur.role == RoleInShare::Admin && ur.email.to_lowercase() == user.email.to_lowercase()
-        })
+        self.user_roles
+            .iter()
+            .any(|ur| ur.role == RoleInShare::Admin && ur.email == user.email)
     }
 
     pub async fn is_reachable(&self) -> Result<bool> {
@@ -600,7 +601,7 @@ mod tests {
 
     fn create_admin(email: &str) -> ProjectUserRole {
         ProjectUserRole {
-            email: email.to_string(),
+            email: email.try_into().unwrap(),
             id: 1,
             role: RoleInShare::Admin,
             scope: ShareScope::Project,
@@ -614,7 +615,7 @@ mod tests {
             name: "name".to_string(),
             picture: "picture".to_string(),
             updated_at: "noon".to_string(),
-            email: email.to_string(),
+            email: email.try_into().unwrap(),
             email_verified: false,
         }
     }
@@ -640,7 +641,7 @@ mod tests {
                 name: String::arbitrary(g),
                 space_name: String::arbitrary(g),
                 access_route: String::arbitrary(g),
-                users: vec![String::arbitrary(g), String::arbitrary(g)],
+                users: vec![EmailAddress::arbitrary(g), EmailAddress::arbitrary(g)],
                 space_id: String::arbitrary(g),
                 identity: bool::arbitrary(g).then_some(Identifier(identifier)),
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g)),

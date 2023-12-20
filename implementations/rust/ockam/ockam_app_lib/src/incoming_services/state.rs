@@ -6,6 +6,7 @@ use tracing::warn;
 
 use ockam::identity::Identifier;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::InvitationWithAccess;
 
 use crate::state::{AppState, ModelState};
@@ -169,7 +170,7 @@ pub struct IncomingService {
     // it's assumed the id is also the accepted invitation id
     id: String,
     // the email of the inviter
-    email: String,
+    email: EmailAddress,
     // user-defined name, by default it's the same as the original name
     name: String,
     // this field contains the current port number
@@ -199,7 +200,7 @@ impl IncomingService {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: String,
-        email: String,
+        email: EmailAddress,
         name: String,
         port: Option<Port>,
         enabled: bool,
@@ -229,7 +230,7 @@ impl IncomingService {
     }
 
     /// This is the email of the inviter
-    pub fn email(&self) -> &str {
+    pub fn email(&self) -> &EmailAddress {
         &self.email
     }
 
@@ -344,7 +345,7 @@ mod tests {
                 id: "invitation_id".to_string(),
                 expires_at: "2020-09-12T15:07:14.00".to_string(),
                 grant_role: RoleInShare::Admin,
-                owner_email: "owner_email".to_string(),
+                owner_email: "owner@email".try_into().unwrap(),
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
                 ignored: false,
@@ -445,7 +446,7 @@ mod tests {
                 id: "second_invitation_id".to_string(),
                 expires_at: "2020-09-12T15:07:14.00".to_string(),
                 grant_role: RoleInShare::Admin,
-                owner_email: "owner_email".to_string(),
+                owner_email: "owner@email".try_into().unwrap(),
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
                 ignored: false,

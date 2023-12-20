@@ -10,7 +10,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
         loaded: true,
         orchestrator_status: OrchestratorStatus::Connected,
         enrollment_name: Some("Davide Baldo".into()),
-        enrollment_email: Some("davide@baldo.me".into()),
+        enrollment_email: Some("davide@baldo.me".try_into().unwrap()),
         enrollment_image: Some("https://avatars.githubusercontent.com/u/408088?v=4".into()),
         enrollment_github_user: Some("davide-baldo".into()),
         local_services: vec![
@@ -21,7 +21,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                 scheme: Some("http".into()),
                 shared_with: vec![rust::Invitee {
                     name: Some("Adrian Benavides".into()),
-                    email: "adrian@ockam.io".into(),
+                    email: "adrian@ockam.io".try_into().unwrap(),
                 }],
                 available: true,
             },
@@ -32,14 +32,14 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                 scheme: Some("http".into()),
                 shared_with: vec![rust::Invitee {
                     name: Some("Adrian Benavides".into()),
-                    email: "adrian@ockam.io".into(),
+                    email: "adrian@ockam.io".try_into().unwrap(),
                 }],
                 available: true,
             },
         ],
         groups: vec![
             rust::ServiceGroup {
-                email: "mrinal@ockam.io".to_string(),
+                email: "mrinal@ockam.io".try_into().unwrap(),
                 name: Some("Mrinal Wadhwa".into()),
                 image_url: Some("https://avatars.githubusercontent.com/u/159583?v=4".into()),
                 invitations: vec![
@@ -64,7 +64,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
             },
             rust::ServiceGroup {
                 name: Some("Adrian Benavides".into()),
-                email: "adrian@ockam.io".into(),
+                email: "adrian@ockam.io".try_into().unwrap(),
                 image_url: Some("https://avatars.githubusercontent.com/u/12375782?v=4".into()),
                 invitations: vec![
                     rust::Invitation {
@@ -96,7 +96,7 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
             },
             rust::ServiceGroup {
                 name: Some("Eric Torreborre".into()),
-                email: "eric.torreborre@ockam.io".into(),
+                email: "eric.torreborre@ockam.io".try_into().unwrap(),
                 image_url: Some("https://avatars.githubusercontent.com/u/10988?v=4".into()),
                 invitations: vec![],
                 incoming_services: vec![
@@ -124,11 +124,11 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
         sent_invitations: vec![
             Invitee {
                 name: Some("Adrian Benavides".into()),
-                email: "adrian@ockam.io".into(),
+                email: "adrian@ockam.io".try_into().unwrap(),
             },
             Invitee {
                 name: None,
-                email: "eric.torreborre@ockam.io".into(),
+                email: "eric.torreborre@ockam.io".try_into().unwrap(),
             },
         ],
     };

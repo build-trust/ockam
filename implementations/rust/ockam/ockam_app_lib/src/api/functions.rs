@@ -16,6 +16,7 @@ use crate::api::{state, to_c_string};
 use crate::cli::check_ockam_executable;
 use crate::state::AppState;
 use ockam_api::cli_state::CliState;
+use ockam_api::cloud::email_address::EmailAddress;
 use std::ffi::c_char;
 use std::pin::Pin;
 use tracing::{error, info};
@@ -158,9 +159,17 @@ extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) ->
     let result = app_state.context().runtime().block_on(async {
         let mut result = Ok(());
         for email in emails {
-            result = app_state
-                .create_service_invitation_by_alias(email, &name)
-                .await;
+            match EmailAddress::parse(&email) {
+                Ok(email_address) => {
+                    result = app_state
+                        .create_service_invitation_by_alias(email_address, &name)
+                        .await;
+                }
+                Err(e) => {
+                    error!("the email address {email} is not a valid email address");
+                    result = Err(e.to_string())
+                }
+            }
             app_state.publish_state().await;
             if result.is_err() {
                 break;

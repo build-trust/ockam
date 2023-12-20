@@ -3,6 +3,7 @@ use ockam_core::Error;
 
 use crate::cli_state::CliState;
 use crate::cli_state::Result;
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 
 impl CliState {
@@ -18,7 +19,7 @@ impl CliState {
         Ok(())
     }
 
-    pub async fn set_default_user(&self, email: &str) -> Result<()> {
+    pub async fn set_default_user(&self, email: &EmailAddress) -> Result<()> {
         self.users_repository()
             .await?
             .set_default_user(email)

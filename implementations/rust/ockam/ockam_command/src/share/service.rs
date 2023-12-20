@@ -7,6 +7,7 @@ use tracing::debug;
 
 use ockam::identity::Identifier;
 use ockam::Context;
+use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::{CreateServiceInvitation, Invitations};
 
 use ockam_api::nodes::InMemoryNode;
@@ -25,7 +26,8 @@ pub struct ServiceCreateCommand {
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
     pub project_id: String,
-    pub recipient_email: String,
+    #[arg(value_parser = EmailAddress::parse)]
+    pub recipient_email: EmailAddress,
 
     pub project_identity: Identifier,
     pub project_route: String,

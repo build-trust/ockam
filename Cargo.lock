@@ -3759,6 +3759,7 @@ dependencies = [
  "petname",
  "quickcheck",
  "rand",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

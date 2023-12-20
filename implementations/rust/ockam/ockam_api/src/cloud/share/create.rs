@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use ockam_core::Result;
 
 use crate::cli_state::{CliState, EnrollmentTicket};
+use crate::cloud::email_address::EmailAddress;
 use crate::error::ApiError;
 use ockam::identity::Identifier;
 
@@ -15,7 +16,7 @@ use super::{RoleInShare, ShareScope};
 pub struct CreateInvitation {
     #[n(1)] pub expires_at: Option<String>,
     #[n(2)] pub grant_role: RoleInShare,
-    #[n(3)] pub recipient_email: String,
+    #[n(3)] pub recipient_email: EmailAddress,
     #[n(4)] pub remaining_uses: Option<usize>,
     #[n(5)] pub scope: ShareScope,
     #[n(6)] pub target_id: String,
@@ -27,7 +28,7 @@ pub struct CreateInvitation {
 pub struct CreateServiceInvitation {
     #[n(1)] pub expires_at: Option<String>,
     #[n(2)] pub project_id: String,
-    #[n(3)] pub recipient_email: String,
+    #[n(3)] pub recipient_email: EmailAddress,
 
     // TODO: Should route be a MultiAddr?
     #[n(4)] pub project_identity: Identifier,
@@ -44,7 +45,7 @@ impl CreateServiceInvitation {
         cli_state: &CliState,
         expires_at: Option<String>,
         project_name: S,
-        recipient_email: S,
+        recipient_email: EmailAddress,
         node_name: S,
         service_route: S,
         enrollment_ticket: EnrollmentTicket,
@@ -62,7 +63,7 @@ impl CreateServiceInvitation {
             enrollment_ticket,
             expires_at,
             project_id: project.id(),
-            recipient_email: recipient_email.as_ref().to_string(),
+            recipient_email: recipient_email.clone(),
             project_identity: project.identifier()?,
             project_route: project.access_route()?.to_string(),
             project_authority_identity: project_authority_identifier,
