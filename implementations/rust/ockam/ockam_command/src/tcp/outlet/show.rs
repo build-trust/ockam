@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use clap::Args;
@@ -9,7 +8,7 @@ use serde::Serialize;
 
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::{OutletList, OutletStatus};
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
@@ -17,7 +16,6 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
 use crate::output::Output;
-use crate::tcp::outlet::list::send_request;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::ShowCommandTui;
 use crate::util::node_rpc;
@@ -80,8 +78,7 @@ pub struct ShowTui {
     ctx: Context,
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
-    outlet_aliases: Vec<String>,
-    aliases_node: HashMap<String, BackgroundNode>,
+    node: BackgroundNode,
 }
 
 impl ShowTui {
@@ -90,61 +87,20 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let mut running_node_names: Vec<String> = Vec::new();
-
-        if cmd.alias.is_some() {
-            let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
-            let node_name = extract_address_value(&node_name)?;
-
-            if opts.state.nodes.get(&node_name)?.is_running() {
-                running_node_names.push(node_name);
-            }
-        } else {
-            // Build the running nodes list when no alias is provided.
-            running_node_names = opts
-                .state
-                .nodes
-                .list_items_names()?
-                .iter()
-                .filter_map(|node_name| opts.state.nodes.get(node_name).ok())
-                .filter(|node| node.is_running())
-                .filter_map(|node| extract_address_value(node.name()).ok())
-                .collect();
+        let node_name = {
+            let name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+            extract_address_value(&name)?
+        };
+        if !opts.state.nodes.get(&node_name)?.is_running() {
+            return Err(miette!("The node '{}' is not running", node_name));
         }
-
-        if running_node_names.is_empty() {
-            return Err(miette!("No running nodes found"));
-        }
-
-        let mut outlet_aliases: Vec<String> = Vec::new();
-        let mut aliases_node: HashMap<String, BackgroundNode> = HashMap::new();
-
-        for node_name in running_node_names {
-            let res = send_request(&ctx, &opts, node_name.clone()).await;
-            match res {
-                Ok(outlets) => {
-                    let mut node_outlets: Vec<String> = outlets
-                        .list
-                        .iter()
-                        .map(|outlet| outlet.alias.clone())
-                        .collect();
-
-                    let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-                    node_outlets.iter().for_each(|alias| {
-                        aliases_node.insert(alias.to_string(), node.clone());
-                    });
-                    outlet_aliases.append(&mut node_outlets);
-                }
-                Err(_) => continue,
-            }
-        }
+        let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
         let tui = Self {
             ctx,
             opts,
             cmd,
-            outlet_aliases,
-            aliases_node,
+            node,
         };
         tui.show().await
     }
@@ -170,39 +126,70 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        Ok(self.outlet_aliases.clone())
+        let outlets: OutletList = self
+            .node
+            .ask(&self.ctx, Request::get("/node/outlet"))
+            .await?;
+        let aliases: Vec<String> = outlets
+            .list
+            .into_iter()
+            .map(|outlet| outlet.alias)
+            .collect();
+        Ok(aliases)
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        match self.aliases_node.get(item_name) {
-            Some(node) => {
-                let node_name = node.node_name().clone();
-                let outlet_status: OutletStatus = node
-                    .ask(&self.ctx, make_api_request(item_name.to_string())?)
-                    .await?;
-                let info = OutletInformation {
-                    node_name: node_name.to_string(),
-                    alias: outlet_status.alias,
-                    addr: route_to_multiaddr(&route![outlet_status.worker_addr.to_string()])
-                        .ok_or_else(|| miette!("Invalid Outlet Address"))?,
-                    socket_addr: outlet_status.socket_addr,
-                };
+        let outlet_status: OutletStatus = self
+            .node
+            .ask(&self.ctx, make_api_request(item_name.to_string())?)
+            .await?;
+        let info = OutletInformation {
+            node_name: self.node.node_name().to_string(),
+            alias: outlet_status.alias,
+            addr: route_to_multiaddr(&route![outlet_status.worker_addr.to_string()])
+                .ok_or_else(|| miette!("Invalid Outlet Address"))?,
+            socket_addr: outlet_status.socket_addr,
+        };
 
-                self.terminal()
-                    .stdout()
-                    .plain(info.output()?)
-                    .json(serde_json::json!(info))
-                    .write_line()?;
-            }
-            _ => return Err(miette!("No running nodes found")),
-        }
+        self.terminal()
+            .stdout()
+            .plain(info.output()?)
+            .json(serde_json::json!(info))
+            .write_line()?;
         Ok(())
     }
 
     async fn show_multiple(&self, aliases: Vec<String>) -> miette::Result<()> {
-        for alias in aliases {
-            self.show_single(&alias).await?;
-        }
+        let outlets: OutletList = self
+            .node
+            .ask(&self.ctx, Request::get("/node/outlet"))
+            .await?;
+        let node_name = self.node.node_name();
+        let plain = self.terminal().build_list(
+            &outlets.list,
+            &format!("TCP Outlets on Node {node_name}"),
+            &format!("No TCP Outlets found on Node {node_name}."),
+        )?;
+
+        let json: Vec<_> = outlets
+            .list
+            .iter()
+            .filter(|outlet| aliases.contains(&outlet.alias))
+            .map(|outlet| {
+                Ok(serde_json::json!({
+                    "alias": outlet.alias,
+                    "from": outlet.worker_address()?,
+                    "to": outlet.socket_addr,
+                }))
+            })
+            .flat_map(|res: miette::Result<_, ockam_core::Error>| res.ok())
+            .collect();
+
+        self.terminal()
+            .stdout()
+            .plain(plain)
+            .json(serde_json::json!(json))
+            .write_line()?;
         Ok(())
     }
 }
