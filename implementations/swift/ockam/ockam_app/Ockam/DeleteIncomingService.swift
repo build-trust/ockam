@@ -8,7 +8,7 @@ struct DeleteIncomingPortalView: View {
         VStack {
             Spacer()
             Text(
-                "This will permanently delete '\(service.sourceName)'. If you need access to it in the furture, your friend would have to invite you again." +
+                "This will permanently delete '\(service.sourceName)'. If you need access to it in the future, your friend would have to invite you again." +
                 "\n\nAre you sure you want to delete: '\(service.sourceName)'?"
             )
             .padding()
