@@ -524,7 +524,7 @@ impl AppState {
                 .sent
                 .iter()
                 .map(|invitation| Invitee {
-                    name: Some(invitation.recipient_email.clone()),
+                    name: Some(invitation.recipient_email.clone().to_string()),
                     email: invitation.recipient_email.clone(),
                 })
                 .collect();
@@ -615,7 +615,7 @@ impl AppState {
                         let mut incoming_services: Vec<Service> = incoming_services_state
                             .services
                             .iter()
-                            .filter(|service| service.email() == email)
+                            .filter(|service| service.email() == &email)
                             .map(|service| Service {
                                 id: service.id().to_string(),
                                 source_name: service.name().to_string(),
@@ -637,7 +637,7 @@ impl AppState {
             let user_info = self.user_info().await?;
             // when enrolling with email, the name is just a duplicate of the
             // email, in case case it's better to just omit the name
-            if user_info.name == user_info.email {
+            if user_info.name == user_info.email.to_string() {
                 enrollment_name = None;
             } else {
                 enrollment_name = Some(user_info.name);

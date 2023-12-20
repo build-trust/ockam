@@ -1,3 +1,4 @@
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use ockam_core::async_trait;
 use ockam_core::Result;
@@ -26,14 +27,14 @@ pub trait UsersRepository: Send + Sync + 'static {
     async fn get_default_user(&self) -> Result<Option<UserInfo>>;
 
     /// Set a user as the default one
-    async fn set_default_user(&self, email: &str) -> Result<()>;
+    async fn set_default_user(&self, email: &EmailAddress) -> Result<()>;
 
     /// Return a user given their email
-    async fn get_user(&self, email: &str) -> Result<Option<UserInfo>>;
+    async fn get_user(&self, email: &EmailAddress) -> Result<Option<UserInfo>>;
 
     /// Get the list of all users
     async fn get_users(&self) -> Result<Vec<UserInfo>>;
 
     /// Delete a user given their email
-    async fn delete_user(&self, email: &str) -> Result<()>;
+    async fn delete_user(&self, email: &EmailAddress) -> Result<()>;
 }

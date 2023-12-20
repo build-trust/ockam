@@ -22,12 +22,13 @@ pub enum OrchestratorStatus {
 
 pub mod rust {
     pub use crate::api::state::OrchestratorStatus;
+    use ockam_api::cloud::email_address::EmailAddress;
     use std::cmp::Ordering;
 
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Invitee {
         pub name: Option<String>,
-        pub email: String,
+        pub email: EmailAddress,
     }
 
     impl Ord for Invitee {
@@ -42,7 +43,7 @@ pub mod rust {
         }
     }
 
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Invitation {
         pub id: String,
         pub service_name: String,
@@ -109,9 +110,9 @@ pub mod rust {
         }
     }
 
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct ServiceGroup {
-        pub email: String,
+        pub email: EmailAddress,
         pub name: Option<String>,
         pub image_url: Option<String>,
         pub invitations: Vec<Invitation>,
@@ -130,13 +131,13 @@ pub mod rust {
         }
     }
 
-    #[derive(Default, Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq)]
     pub struct ApplicationState {
         pub enrolled: bool,
         pub loaded: bool,
         pub orchestrator_status: OrchestratorStatus,
         pub enrollment_name: Option<String>,
-        pub enrollment_email: Option<String>,
+        pub enrollment_email: Option<EmailAddress>,
         pub enrollment_image: Option<String>,
         pub enrollment_github_user: Option<String>,
         pub local_services: Vec<LocalService>,
@@ -161,7 +162,7 @@ pub mod rust {
         }
     }
 
-    #[derive(Default, Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq)]
     pub struct RuntimeInformation {
         pub version: String,
         pub commit: String,
@@ -271,7 +272,7 @@ use std::ffi::c_char;
 fn invitee_to_c(invitee: rust::Invitee) -> *const c::Invitee {
     let invitee_c = c::Invitee {
         name: to_optional_c_string(invitee.name),
-        email: to_c_string(invitee.email),
+        email: to_c_string(invitee.email.to_string()),
     };
     Box::into_raw(Box::new(invitee_c))
 }
@@ -321,7 +322,7 @@ fn service_to_c(service: rust::Service) -> *const c::Service {
 fn group_to_c(group: rust::ServiceGroup) -> *const c::ServiceGroup {
     let group_c = c::ServiceGroup {
         name: to_optional_c_string(group.name),
-        email: to_c_string(group.email),
+        email: to_c_string(group.email.to_string()),
         image_url: to_optional_c_string(group.image_url),
         invitations: append_c_terminator(
             group
@@ -351,7 +352,7 @@ pub(crate) fn convert_application_state_to_c(state: rust::ApplicationState) -> c
         loaded: state.loaded as u8,
         orchestrator_status: state.orchestrator_status,
         enrollment_name: to_optional_c_string(state.enrollment_name),
-        enrollment_email: to_optional_c_string(state.enrollment_email),
+        enrollment_email: to_optional_c_string(state.enrollment_email.map(|e| e.to_string())),
         enrollment_image: to_optional_c_string(state.enrollment_image),
         enrollment_github_user: to_optional_c_string(state.enrollment_github_user),
 

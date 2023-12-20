@@ -9,9 +9,10 @@ use ockam_core::async_trait;
 use ockam_core::env::FromString;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 
 use crate::cloud::addon::ConfluentConfig;
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::{OktaConfig, Project, ProjectUserRole};
 use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::minicbor_url::Url;
@@ -161,8 +162,9 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                         .bind(project.id.to_sql());
                 let rows: Vec<UserProjectRow> =
                     query2.fetch_all(&mut *transaction).await.into_core()?;
-                let users = rows.into_iter().map(|r| r.user_email).collect();
-                project.users = users;
+                let users: Result<Vec<EmailAddress>> =
+                    rows.into_iter().map(|r| r.user_email()).collect();
+                project.users = users?;
 
                 // get the project users roles
                 let query3 = query_as("SELECT user_id, project_id, user_email, role, scope FROM user_role WHERE project_id=$1")
@@ -297,7 +299,7 @@ impl ProjectRow {
 
     pub(crate) fn complete_project(
         &self,
-        user_emails: Vec<String>,
+        user_emails: Vec<EmailAddress>,
         user_roles: Vec<ProjectUserRole>,
         okta_config: Option<OktaConfig>,
         confluent_config: Option<ConfluentConfig>,
@@ -335,6 +337,12 @@ struct UserProjectRow {
     user_email: String,
 }
 
+impl UserProjectRow {
+    fn user_email(&self) -> Result<EmailAddress> {
+        self.user_email.clone().try_into()
+    }
+}
+
 /// Low-level representation of a row in the user_role table
 #[derive(sqlx::FromRow)]
 struct UserRoleRow {
@@ -346,6 +354,12 @@ struct UserRoleRow {
     scope: String,
 }
 
+impl ToSqlxType for EmailAddress {
+    fn to_sql(&self) -> SqlxType {
+        self.to_string().to_sql()
+    }
+}
+
 impl UserRoleRow {
     fn project_user_role(&self) -> Result<ProjectUserRole> {
         let role = RoleInShare::from_str(&self.role)
@@ -354,7 +368,7 @@ impl UserRoleRow {
             .map_err(|e| Error::new(Origin::Api, Kind::Serialization, e.to_string()))?;
         Ok(ProjectUserRole {
             id: self.user_id as u64,
-            email: self.user_email.clone(),
+            email: self.user_email.clone().try_into()?,
             role,
             scope,
         })
@@ -449,7 +463,7 @@ mod test {
         assert_eq!(result, Some(project2.clone()));
 
         // updating a project which was already the default should keep it the default
-        project2.users = vec!["someone@ockam.io".into()];
+        project2.users = vec!["someone@ockam.io".try_into().unwrap()];
         repository.store_project(&project2).await?;
         let result = repository.get_default_project().await?;
         assert_eq!(result, Some(project2.clone()));
@@ -497,7 +511,10 @@ mod test {
             space_id: "space-id".into(),
             space_name: "space-name".into(),
             access_route: "route".into(),
-            users: user_emails.iter().map(|u| u.to_string()).collect(),
+            users: user_emails
+                .iter()
+                .map(|u| u.to_string().try_into().unwrap())
+                .collect(),
             identity: Some(
                 Identifier::from_str(
                     "I124ed0b2e5a2be82e267ead6b3279f683616b66da1b2c3d4e5f6a6b5c4d3e2f1",
@@ -517,7 +534,7 @@ mod test {
 
     fn create_project_user_role(user_id: u64, role: RoleInShare) -> ProjectUserRole {
         ProjectUserRole {
-            email: "user_email".into(),
+            email: "user@email".try_into().unwrap(),
             id: user_id,
             role,
             scope: ShareScope::Project,

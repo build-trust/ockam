@@ -6,6 +6,7 @@ use tokio::try_join;
 use tracing::debug;
 
 use ockam::Context;
+use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
 
 use ockam_api::nodes::InMemoryNode;
@@ -26,7 +27,8 @@ pub struct CreateCommand {
     #[arg(value_parser = clap::value_parser!(ShareScope))]
     pub scope: ShareScope,
     pub target_id: String,
-    pub recipient_email: String,
+    #[arg(value_parser = EmailAddress::parse)]
+    pub recipient_email: EmailAddress,
     #[arg(default_value_t = RoleInShare::Admin, long, short = 'R', value_parser = clap::value_parser!(RoleInShare))]
     pub grant_role: RoleInShare,
     #[arg(long, short = 'x')]
