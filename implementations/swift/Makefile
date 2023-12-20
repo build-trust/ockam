@@ -1,12 +1,12 @@
 build: ockam_app_lib
 	xcodebuild archive -project ockam/ockam_app/Ockam.xcodeproj/ -scheme "Portals, by Ockam" -configuration Debug -archivePath build/Ockam.xcarchive
 	@echo "Build complete.  See build/Ockam.xcarchive for the built app."
-	@echo "To execute run: build/Ockam.xcarchive/Products/Applications/Ockam.app/Contents/MacOS/Ockam"
+	@echo "To execute run: build/Ockam.xcarchive/Products/Applications/Portals,\ by\ Ockam.app/Contents/MacOS/Portals,\ by\ Ockam"
 build_release: ockam_app_lib_release xcode_build
 xcode_build:
 	xcodebuild archive -project ockam/ockam_app/Ockam.xcodeproj/ -scheme "Portals, by Ockam" -configuration Release -archivePath build/Ockam.xcarchive
 	@echo "Build complete.  See build/Ockam.xcarchive for the built app."
-	@echo "To execute run: implementations/swift/build/Ockam.xcarchive/Products/Applications/Ockam.app/Contents/MacOS/Ockam"
+	@echo "To execute run: build/Ockam.xcarchive/Products/Applications/Portals,\ by\ Ockam.app/Contents/MacOS/Portals,\ by\ Ockam"
 xcode_signed_build:
 	xcodebuild archive -project ockam/ockam_app/Ockam.xcodeproj/ -scheme "Portals, by Ockam" -configuration Release -archivePath build/Ockam.xcarchive -arch $(ARCH)  CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}"  PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}"
 ockam_app_lib_release:
