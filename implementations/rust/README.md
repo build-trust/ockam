@@ -138,13 +138,34 @@ cargo readme --project-root ockam_identity --template ../README.tpl -o README.md
 Get a code coverage report:
 
 ```
+# install the grcov binary
 cargo install grcov
 
-env CARGO_INCREMENTAL=0 RUSTFLAGS="-Clink-dead-code --cfg tokio_unstable" cargo test --profile coverage
+# run the cargo tests with a coverage profile
+# this needs to run with +nightly
+export CARGO_INCREMENTAL=0                                                                                                                                                                                                                                                                                                                                                                            ockam dotfiles flox/default default
+export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests"
+cargo +nighlty test --profile coverage
 
+# generate the report
 ~/.cargo/bin/grcov --llvm . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/
 
+# open the report
 open target/debug/coverage/index.html
+```
+
+It seems that some directories are not included in coverage data when running `cargo test`.
+In order to still get a coverage report for those directories you can use `cargo nextest` instead:
+
+```
+# install the llvm-cov cargo plugin
+cargo install cargo-llvm-cov
+
+# run the tests and produce an HTML report
+cargo llvm-cov nextest -p ockam_api --html
+
+# open the coverage report
+open target/llvm-cov/html/index.html
 ```
 
 ## Crate Dependency Graph
