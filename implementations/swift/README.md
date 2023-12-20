@@ -39,6 +39,13 @@ This produces an executable, which can be executed by typing:
 "build/Ockam.xcarchive/Products/Applications/Portals, by Ockam.app/Contents/MacOS/Portals, by Ockam"
 ```
 
+## Run 
+
+The application can be built _and_ started with:
+```
+make run
+```
+
 ### Clean
 
 The command to clean previously built artifacts is:
@@ -55,6 +62,8 @@ The previous command builds the debug version of the application. To build the r
 ```
 make build_release
 ```
+
+(Use `make run_release` to build and run the release version of the application). 
 
 ## Test
 
@@ -84,6 +93,8 @@ This table presents all the `make` commands, executed from the root directory
  `make swift_build_release`    | build the application in release mode
  `make swift_test`             | not implemented yet
  `make swift_lint`             | not implemented yet
+ `make swift_run`              | build and run the application in debug mode
+ `make swift_run_release`      | build and run the application in release mode
  `make swift_package`          | create a `.dmg` file for the application
 
 ## Get Help
