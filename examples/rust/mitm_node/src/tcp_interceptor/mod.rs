@@ -1,6 +1,5 @@
 mod registry;
 mod transport;
-pub mod utils;
 
 pub use registry::*;
 pub use transport::*;
