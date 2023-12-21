@@ -43,10 +43,10 @@ test_%:
 		cargo --locked test --package $*; \
 	fi
 nextest:
-	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run
+	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run --no-fail-fast
 	cargo --locked test --doc
 nextest_%:
-	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run -E 'package($*)'
+	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run -E 'package($*)' --no-fail-fast
 	cargo --locked test --doc
 
 lint: lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy
