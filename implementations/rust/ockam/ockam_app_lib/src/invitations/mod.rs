@@ -37,7 +37,7 @@ impl AppState {
             project.name(),
             recipient_email.clone(),
             NODE_NAME.to_string(),
-            service.worker_addr.to_string(),
+            service.worker_addr.address().to_string(),
             enrollment_ticket,
             service.alias,
             service.scheme,

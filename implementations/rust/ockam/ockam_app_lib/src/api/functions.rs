@@ -107,8 +107,8 @@ extern "C" fn initialize_application(
 extern "C" fn accept_invitation(id: *const c_char) {
     let id = unsafe { std::ffi::CStr::from_ptr(id).to_str().unwrap().to_string() };
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
-    app_state.context().runtime().spawn(async {
-        let result = app_state.accept_invitation(id).await;
+    app_state.context().runtime().spawn(async move {
+        let result = app_state.accept_invitation(&id).await;
         if let Err(err) = result {
             error!(?err, "Couldn't accept the invitation");
         }
@@ -141,6 +141,7 @@ extern "C" fn shutdown_application() {
 
 /// Share a local service with the provided emails.
 /// Emails are separated by ';'.
+/// Blocking, returns the first and only error or null.
 #[no_mangle]
 extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) -> *const c_char {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
@@ -162,7 +163,7 @@ extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) ->
             match EmailAddress::parse(&email) {
                 Ok(email_address) => {
                     result = app_state
-                        .create_service_invitation_by_alias(email_address, &name)
+                        .create_service_invitation_by_alias(&email_address, &name)
                         .await;
                 }
                 Err(e) => {
@@ -182,6 +183,37 @@ extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) ->
         Ok(_) => std::ptr::null(),
         Err(err) => to_c_string(err.to_string()),
     }
+}
+
+/// Revokes access to a local service for a specific email address.
+/// Non-blocking.
+#[no_mangle]
+extern "C" fn revoke_access_local_service(name: *const c_char, email: *const c_char) {
+    let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
+    let email = unsafe {
+        std::ffi::CStr::from_ptr(email)
+            .to_str()
+            .unwrap()
+            .to_string()
+    };
+
+    let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
+    app_state.context().runtime().spawn(async move {
+        match EmailAddress::parse(&email) {
+            Ok(email) => {
+                let result = app_state
+                    .revoke_access_local_service(name, Some(email))
+                    .await;
+                if let Err(err) = result {
+                    error!(?err, "Couldn't revoke access to the local service");
+                }
+            }
+            Err(err) => {
+                error!(?err, "Couldn't parse the email address");
+            }
+        }
+        app_state.publish_state().await;
+    });
 }
 
 /// Enable an accepted service associated with the invite id.
@@ -225,10 +257,14 @@ extern "C" fn disable_accepted_service(invitation_id: *const c_char) {
 extern "C" fn delete_local_service(name: *const c_char) {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
-    app_state.context().runtime().spawn(async {
-        let result = app_state.delete_local_service(name).await;
+    app_state.context().runtime().spawn(async move {
+        let result = app_state.delete_local_service(name.clone()).await;
         if let Err(err) = result {
             error!(?err, "Couldn't delete the local service");
+        }
+        let result = app_state.revoke_access_local_service(name, None).await;
+        if let Err(err) = result {
+            error!(?err, "Couldn't revoke access to the local service");
         }
     });
 }

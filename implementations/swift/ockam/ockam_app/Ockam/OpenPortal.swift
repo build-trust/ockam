@@ -43,7 +43,7 @@ struct OpenPortal: View {
                     label: "URL Scheme",
                     value: $serviceScheme
                 )
-                Text("URL scheme of the service, like http or ssh")
+                Text("Optional schema of your service, ex: http or ssh")
                     .font(.caption)
                     .foregroundStyle(OckamSecondaryTextColor)
             }
@@ -60,6 +60,7 @@ Pick the TCP or HTTP service you want to share with your friends. After you clic
             .padding(.leading, HorizontalSpacingUnit*10)
             .padding(.trailing, HorizontalSpacingUnit*2)
             .padding(.top, VerticalSpacingUnit)
+            .zIndex(-1)
 
             Spacer()
             HStack {
@@ -109,7 +110,7 @@ Pick the TCP or HTTP service you want to share with your friends. After you clic
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: 320)
+        .frame(width: 600, height: 360)
     }
 
     func closeWindow() {

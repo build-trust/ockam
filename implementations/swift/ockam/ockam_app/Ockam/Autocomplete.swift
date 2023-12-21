@@ -67,7 +67,7 @@ struct Autocomplete: View {
                     }
                     .padding(.bottom, 0)
                     .overlay(alignment: .top, content: {
-                        if showingSuggestions {
+                        if showingSuggestions && isFocused {
                             HStack {
                                 VStack(spacing: 0) {
                                     ForEach(filteredSuggestions, id: \.self) { suggestion in
@@ -97,7 +97,7 @@ struct Autocomplete: View {
                                     }
                                 }
                             }
-                            .background(.background)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(.background))
                             .offset(x: 6, y: 25)
                         }
                     })

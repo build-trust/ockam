@@ -44,6 +44,8 @@ impl AppState {
         let node_manager = self.node_manager().await;
         let context = self.context();
         for local_service in self.model(|m| m.get_local_services().to_vec()).await {
+            debug!(worker_addr = %local_service.worker_addr, "Restoring outlet");
+
             let access_control = match self
                 .create_invitations_access_control(local_service.worker_addr.address().to_string())
                 .await
@@ -59,7 +61,6 @@ impl AppState {
                 }
             };
 
-            debug!(worker_addr = %local_service.worker_addr, "Restoring outlet");
             let _ = node_manager
                 .create_outlet(
                     &context,

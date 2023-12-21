@@ -18,6 +18,6 @@ mod log;
 mod projects;
 pub(crate) mod relay;
 mod scheduler;
-mod state;
+pub mod state;
 
 pub use error::{Error, Result};

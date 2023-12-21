@@ -1,5 +1,6 @@
 use crate::state::AppState;
 use crate::Error;
+use ockam_api::cloud::email_address::EmailAddress;
 use tracing::{debug, info};
 
 impl AppState {
@@ -18,5 +19,41 @@ impl AppState {
             }
             Err(_) => Err(Error::App("Failed to delete TCP outlet".to_string())),
         }
+    }
+
+    pub async fn revoke_access_local_service(
+        &self,
+        revoking_service_name: String,
+        email: Option<EmailAddress>,
+    ) -> crate::Result<()> {
+        let sent_invitations = self.invitations().read().await.sent.clone();
+
+        // revoke every single invitation sent to that specific email address
+        // for the specified service name
+        let found_invitation_ids: Vec<String> = sent_invitations
+            .into_iter()
+            .filter(|invitation| {
+                email
+                    .as_ref()
+                    .map(|email| *email == invitation.recipient_email)
+                    .unwrap_or(true)
+            })
+            .filter_map(|invitation| {
+                invitation.access_details.map(|details| {
+                    (
+                        invitation.id,
+                        details.service_name().unwrap_or("".to_string()),
+                    )
+                })
+            })
+            .filter(|(_, service_name)| service_name == &revoking_service_name)
+            .map(|(id, _)| id)
+            .collect();
+
+        for invitation_id in found_invitation_ids {
+            self.ignore_invitation(invitation_id).await?;
+        }
+
+        Ok(())
     }
 }

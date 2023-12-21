@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		4CB45C522AEB06C700D27F22 /* AcceptingInvitation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB45C512AEB06C700D27F22 /* AcceptingInvitation.swift */; };
+		7801E8E82B3312E70010971B /* Autocomplete.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7801E8E72B3312E70010971B /* Autocomplete.swift */; };
 		7807276C2ACF5AB500C93A44 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */; };
 		7807276F2ACF5B3400C93A44 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */; };
 		7827D5072AD93EE700F7A20F /* ProfilePicture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7827D5062AD93EE700F7A20F /* ProfilePicture.swift */; };
@@ -33,6 +34,7 @@
 		785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */; };
 		785C8DC12B0BAD5E00926DCD /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785C8DC02B0BAD5E00926DCD /* About.swift */; };
 		78695A302B2332F600432B83 /* Hint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78695A2F2B2332F600432B83 /* Hint.swift */; };
+		7891686F2B34C11000E98BC3 /* SentInvitation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7891686E2B34C11000E98BC3 /* SentInvitation.swift */; };
 		7893D40A2B1F54F800454933 /* EnrollmentBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7893D4082B1F54F800454933 /* EnrollmentBlock.swift */; };
 		789FA6462AE142280009FF7F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 789FA6452AE142280009FF7F /* ExportOptions.plist */; };
 		78A77C2D2B2B24A700DEC3AC /* RotatingText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A77C2C2B2B24A700DEC3AC /* RotatingText.swift */; };
@@ -61,6 +63,7 @@
 
 /* Begin PBXFileReference section */
 		4CB45C512AEB06C700D27F22 /* AcceptingInvitation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcceptingInvitation.swift; sourceTree = "<group>"; };
+		7801E8E72B3312E70010971B /* Autocomplete.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Autocomplete.swift; sourceTree = "<group>"; };
 		7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		7827D5062AD93EE700F7A20F /* ProfilePicture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePicture.swift; sourceTree = "<group>"; };
@@ -90,6 +93,7 @@
 		785C8DC02B0BAD5E00926DCD /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		78695A2F2B2332F600432B83 /* Hint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hint.swift; sourceTree = "<group>"; };
+		7891686E2B34C11000E98BC3 /* SentInvitation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentInvitation.swift; sourceTree = "<group>"; };
 		7893D4082B1F54F800454933 /* EnrollmentBlock.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EnrollmentBlock.swift; sourceTree = "<group>"; };
 		789FA6452AE142280009FF7F /* ExportOptions.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = ExportOptions.plist; sourceTree = "<group>"; };
 		78A77C2C2B2B24A700DEC3AC /* RotatingText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotatingText.swift; sourceTree = "<group>"; };
@@ -138,15 +142,16 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
+				7801E8E72B3312E70010971B /* Autocomplete.swift */,
 				78A77C2E2B2B275A00DEC3AC /* AnimatedEllipsis.swift */,
 				7893D4082B1F54F800454933 /* EnrollmentBlock.swift */,
 				7859A47F2B1DD4960085C7F7 /* FluidMenuBarExtra */,
 				78B7EF6F2B0F649D0062B2B3 /* DeleteIncomingService.swift */,
-				78BD34A02AFCFDF100F09058 /* RemotePortalView.swift */,
 				789FA6452AE142280009FF7F /* ExportOptions.plist */,
 				785D8D372AD5369100DF5004 /* Info.plist */,
 				782D5B482AC1D3D700D1B27F /* OckamApp.swift */,
 				782D5B4A2AC1D3D700D1B27F /* MainView.swift */,
+				785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */,
 				782D5B4C2AC1D3D800D1B27F /* Assets.xcassets */,
 				782D5B512AC1D3D800D1B27F /* Ockam.entitlements */,
 				783B62712AC432B700880261 /* Bridge.swift */,
@@ -160,10 +165,11 @@
 				785C8DC02B0BAD5E00926DCD /* About.swift */,
 				785A072F2B14A60E002FF30C /* Constants.swift */,
 				785A07312B14C810002FF30C /* SentInvitations.swift */,
+				7891686E2B34C11000E98BC3 /* SentInvitation.swift */,
 				785A07332B14CF29002FF30C /* LocalPortalView.swift */,
+				78BD34A02AFCFDF100F09058 /* RemotePortalView.swift */,
 				785A07352B14D697002FF30C /* ServiceGroupView.swift */,
 				785A07372B14D734002FF30C /* IncomingInvite.swift */,
-				785A073B2B15EAC8002FF30C /* EnrollmentStatus.swift */,
 				78695A2F2B2332F600432B83 /* Hint.swift */,
 				78A77C2C2B2B24A700DEC3AC /* RotatingText.swift */,
 			);
@@ -237,7 +243,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1510;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 1510;
 				TargetAttributes = {
 					782D5B442AC1D3D700D1B27F = {
 						CreatedOnToolsVersion = 14.3.1;
@@ -286,6 +292,7 @@
 				78BD34A12AFCFDF100F09058 /* RemotePortalView.swift in Sources */,
 				785A07322B14C810002FF30C /* SentInvitations.swift in Sources */,
 				782D5B4B2AC1D3D700D1B27F /* MainView.swift in Sources */,
+				7891686F2B34C11000E98BC3 /* SentInvitation.swift in Sources */,
 				785A07302B14A60E002FF30C /* Constants.swift in Sources */,
 				78A77C2F2B2B275A00DEC3AC /* AnimatedEllipsis.swift in Sources */,
 				785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */,
@@ -300,6 +307,7 @@
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
 				785C8DC12B0BAD5E00926DCD /* About.swift in Sources */,
 				785A07382B14D734002FF30C /* IncomingInvite.swift in Sources */,
+				7801E8E82B3312E70010971B /* Autocomplete.swift in Sources */,
 				7859A4882B1DD4960085C7F7 /* FluidMenuBarExtraStatusItem.swift in Sources */,
 				7859A4872B1DD4960085C7F7 /* FluidMenuBarExtra.swift in Sources */,
 				785A07362B14D697002FF30C /* ServiceGroupView.swift in Sources */,
@@ -347,11 +355,12 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = s;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -368,11 +377,10 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_NO_PIE = YES;
 				"LIBRARY_SEARCH_PATHS[arch=*]" = ../../../../target/debug/;
-				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
-				STRIP_SWIFT_SYMBOLS = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = Ockam/Bridge.h;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -416,6 +424,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = s;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -428,7 +437,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_NO_PIE = YES;
 				"LIBRARY_SEARCH_PATHS[arch=*]" = ../../../../target/release/;
-				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -467,7 +476,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.portals;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -504,7 +513,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MARKETING_VERSION = 0.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.portals;

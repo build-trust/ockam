@@ -64,6 +64,8 @@ impl AppState {
         *self.projects().write().await = projects;
         self.mark_as_loaded(StateKind::Projects);
         self.publish_state().await;
+
+        info!("Projects refreshed");
         Ok(())
     }
 }

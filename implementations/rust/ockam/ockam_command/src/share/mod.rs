@@ -23,6 +23,7 @@ pub struct ShareCommand {
     subcommand: ShareSubcommand,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Subcommand)]
 pub enum ShareSubcommand {
     /// Accept a received sharing invitation

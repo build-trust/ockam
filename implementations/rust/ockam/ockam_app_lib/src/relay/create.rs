@@ -35,6 +35,9 @@ impl AppState {
 
             debug!("Not enrolled, skipping relay creation");
             match get_relay(&node_manager, &cli_state).await {
+                Ok(None) => {
+                    debug!("No relay exists, skipping deletion");
+                }
                 Ok(_) => match delete_relay(context, &node_manager, &cli_state).await {
                     Ok(_) => {
                         info!("Relay deleted");

@@ -125,7 +125,7 @@ impl AppState {
     }
 
     /// Creates a new AppState for testing purposes
-    #[cfg(test)]
+    #[allow(unused)]
     pub async fn test(context: &Context, cli_state: CliState) -> AppState {
         let context = ockam_core::AsyncTryClone::async_try_clone(context)
             .await
@@ -151,6 +151,8 @@ impl AppState {
             })
             .unwrap_or(ModelState::default());
 
+        let ockam_home = cli_state.dir().to_string_lossy().to_string();
+
         info!("AppState initialized");
         AppState {
             context,
@@ -161,7 +163,7 @@ impl AppState {
             node_manager: Arc::new(RwLock::new(node_manager)),
             model_state: Arc::new(RwLock::new(model_state)),
             model_state_repository: Arc::new(RwLock::new(model_state_repository)),
-            background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new()))),
+            background_node_client: Arc::new(RwLock::new(Arc::new(Cli::new(ockam_home)))),
             projects: Arc::new(Default::default()),
             invitations: Arc::new(RwLock::new(InvitationState::default())),
             incoming_services: Arc::new(RwLock::new(IncomingServicesState::default())),
@@ -176,7 +178,7 @@ impl AppState {
     }
 
     /// Load a previously persisted ModelState and start refreshing schedule
-    pub async fn load_model_state(&'static self) {
+    pub async fn load_model_state(&self) {
         self.restore_tcp_outlets().await;
         self.publish_state().await;
 
@@ -514,6 +516,12 @@ impl AppState {
         let mut sent_invitations: Vec<Invitee>;
         let invitation_state = { self.invitations().read().await.clone() };
         let incoming_services_state = { self.incoming_services().read().await.clone() };
+        let local_identity_identifier = self
+            .state()
+            .await
+            .get_or_create_default_named_identity()
+            .await?
+            .identifier();
 
         // we want to sort everything to avoid having to deal with ordering in the UI
         if enrolled {
@@ -523,11 +531,39 @@ impl AppState {
                 .await
                 .into_iter()
                 .map(|local_service| LocalService {
-                    name: local_service.alias,
+                    name: local_service.alias.clone(),
                     address: local_service.socket_addr.ip().to_string(),
                     port: local_service.socket_addr.port(),
                     scheme: local_service.scheme,
-                    shared_with: vec![],
+                    shared_with: {
+                        let mut invitees: Vec<Invitee> = invitation_state
+                            .sent
+                            .iter()
+                            .filter(|invitation| !invitation.is_expired().unwrap_or(true))
+                            .filter(|invitation| {
+                                // only selects the invitations that have the same name and
+                                // are originating from this app instance (same identity)
+                                invitation
+                                    .access_details
+                                    .as_ref()
+                                    .map(|access_details| {
+                                        access_details.service_name().as_deref().unwrap_or("")
+                                            == local_service.alias
+                                            && access_details.shared_node_identity
+                                                == local_identity_identifier
+                                    })
+                                    .unwrap_or(false)
+                            })
+                            .map(|invitation| Invitee {
+                                name: None,
+                                email: invitation.recipient_email.clone(),
+                            })
+                            .collect();
+
+                        invitees.sort();
+                        invitees.dedup();
+                        invitees
+                    },
                     available: true,
                 })
                 .collect();
@@ -642,7 +678,7 @@ impl AppState {
                         let mut incoming_services: Vec<Service> = incoming_services_state
                             .services
                             .iter()
-                            .filter(|service| service.email() == service_group.email)
+                            .filter(|service| service.email() == &service_group.email)
                             .map(|service| Service {
                                 id: service.id().to_string(),
                                 source_name: service.name().to_string(),
@@ -680,7 +716,6 @@ impl AppState {
             enrollment_github_user = None;
             local_services = vec![];
             groups = vec![];
-            sent_invitations = vec![];
         }
 
         Ok(ApplicationState {
@@ -693,7 +728,6 @@ impl AppState {
             enrollment_github_user,
             local_services,
             groups,
-            sent_invitations,
         })
     }
 }

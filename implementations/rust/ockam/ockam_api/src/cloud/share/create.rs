@@ -43,6 +43,7 @@ pub struct CreateServiceInvitation {
 }
 
 impl CreateServiceInvitation {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new<S: AsRef<str>>(
         cli_state: &CliState,
         expires_at: Option<String>,

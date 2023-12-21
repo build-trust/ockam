@@ -4,7 +4,7 @@ import SwiftUI
 
 struct EnrollmentBlock: View {
     @Environment(\.colorScheme) var colorScheme
-    
+
     @State var invitation: InvitationContainer = InvitationContainer.shared
     @Binding var appState: ApplicationState
     @State var onEnroll: (() -> Void)? = nil
@@ -102,7 +102,7 @@ First, open a new Portal Outlet to a service accessible from your computer.
 Then, invite your friends to it.
 """
                         )
-                    } else  if appState.sent_invitations.isEmpty {
+                    } else {
                         Text(
 """
 Expand a Portal's menu and then click the 'Invite a friend…' button to give your friends access to a service.
@@ -141,7 +141,6 @@ struct EnrollmentBlock_Previews: PreviewProvider {
         )
         .frame(width: 300, height: 440)
         .onAppear {
-            state.sent_invitations = []
             state.orchestrator_status = .Connected
         }
     }

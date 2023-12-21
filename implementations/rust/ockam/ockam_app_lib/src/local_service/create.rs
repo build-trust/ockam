@@ -38,7 +38,7 @@ impl AppState {
                 Some(alias.clone()),
                 true,
                 Some(
-                    self.create_invitations_access_control(worker_addr.clone())
+                    self.create_invitations_access_control(worker_addr.address().to_string())
                         .await?,
                 ),
             )

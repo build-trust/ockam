@@ -1,4 +1,3 @@
-use crate::api::state::rust::Invitee;
 use crate::api::state::{c, convert_application_state_to_c, rust, OrchestratorStatus};
 
 /// This function serves to create a mock application state for the UI.
@@ -119,16 +118,6 @@ extern "C" fn mock_application_state() -> c::ApplicationState {
                         enabled: false,
                     },
                 ],
-            },
-        ],
-        sent_invitations: vec![
-            Invitee {
-                name: Some("Adrian Benavides".into()),
-                email: "adrian@ockam.io".try_into().unwrap(),
-            },
-            Invitee {
-                name: None,
-                email: "eric.torreborre@ockam.io".try_into().unwrap(),
             },
         ],
     };
