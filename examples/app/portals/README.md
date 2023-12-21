@@ -28,7 +28,7 @@ If the outlet is within a private network, the outlet and inlet nodes only make 
 
 ### Portals.app
 
-First let's install the app. If you use [Homebrew](https://brew.sh/), then you can install with this simple command:
+First, let's install the app. If you use [Homebrew](https://brew.sh/), then you can install with this simple command:
 
 ```
 brew update && brew install --cask build-trust/ockam/portals
@@ -36,6 +36,6 @@ brew update && brew install --cask build-trust/ockam/portals
 
 If you prefer to install the app manually, download and install it using the appropriate dmg file for your Mac. If you have an Apple Silicon based Mac, install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.aarch64-apple-darwin.dmg). If you have an Intel based Mac, install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.x86_64-apple-darwin.dmg).
 
-Next let's see the Portals.app in action in this quick ~1 minute video:
+Next, let's see the Portals.app in action in this quick 2 minute video (please unmute for an explanation of what is happening):
 
 https://github.com/build-trust/ockam/assets/159583/e07ebb8e-b6f6-436b-8f5c-d7e7c4c19e5e
