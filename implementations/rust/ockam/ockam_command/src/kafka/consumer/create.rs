@@ -5,11 +5,10 @@ use clap::{command, Args};
 use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
 
-use crate::kafka::util::{rpc, ArgOpts};
+use crate::kafka::util::{make_brokers_port_range, rpc, ArgOpts};
 use crate::{
     kafka::{
-        kafka_consumer_default_addr, kafka_default_consumer_port_range,
-        kafka_default_consumer_server, kafka_default_project_route,
+        kafka_consumer_default_addr, kafka_default_consumer_server, kafka_default_project_route,
     },
     node::NodeOpts,
     util::{node_rpc, parsers::socket_addr_parser},
@@ -31,8 +30,8 @@ pub struct CreateCommand {
     bootstrap_server: SocketAddr,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port
-    #[arg(long, default_value_t = kafka_default_consumer_port_range())]
-    brokers_port_range: PortRange,
+    #[arg(long)]
+    brokers_port_range: Option<PortRange>,
     /// The route to the project in ockam orchestrator, expected something like /project/<name>
     #[arg(long, default_value_t = kafka_default_project_route())]
     project_route: MultiAddr,
@@ -46,7 +45,9 @@ impl CreateCommand {
             node_opts: self.node_opts,
             addr: self.addr,
             bootstrap_server: self.bootstrap_server,
-            brokers_port_range: self.brokers_port_range,
+            brokers_port_range: self
+                .brokers_port_range
+                .unwrap_or_else(|| make_brokers_port_range(&self.bootstrap_server)),
             project_route: self.project_route,
         };
         node_rpc(rpc, (opts, arg_opts));
