@@ -1,15 +1,14 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use ockam_api::nodes::service::relay::Relays;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::trace;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
-use ockam_core::api::Request;
 
 use crate::terminal::OckamColor;
 use crate::util::node_rpc;
@@ -47,7 +46,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {
-        let relay_infos: Vec<RelayInfo> = node.ask(&ctx, Request::get("/node/forwarder")).await?;
+        let relay_infos = node.list_relay(&ctx).await?;
         *is_finished.lock().await = true;
         Ok(relay_infos)
     };
