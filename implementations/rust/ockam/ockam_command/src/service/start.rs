@@ -134,7 +134,7 @@ where
 {
     node.tell(ctx, req)
         .await
-        .map_err(|_| miette!("Failed to start {} service", serv_name).into())
+        .map_err(|e| miette!("Failed to start {} service: {e:?}", serv_name).into())
 }
 
 /// Public so `ockam_command::node::create` can use it.
