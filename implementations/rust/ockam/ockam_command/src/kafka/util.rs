@@ -27,6 +27,13 @@ pub struct ArgOpts {
     pub project_route: MultiAddr,
 }
 
+/// Return a range of 100 ports after the bootstrap server port
+pub(crate) fn make_brokers_port_range(bootstrap_server: &SocketAddr) -> PortRange {
+    let boostrap_server_port = bootstrap_server.port();
+    // we can unwrap here because we know that range start <= range end
+    PortRange::new(boostrap_server_port + 1, boostrap_server_port + 100).unwrap()
+}
+
 pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {
     initialize_default_node(&ctx, &opts).await?;
     let ArgOpts {

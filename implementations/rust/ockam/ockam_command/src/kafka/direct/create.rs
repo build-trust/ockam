@@ -1,10 +1,10 @@
 use std::net::SocketAddr;
 
 use crate::kafka::direct::rpc::{start, ArgOpts};
+use crate::kafka::util::make_brokers_port_range;
 use crate::{
     kafka::{
-        kafka_default_consumer_port_range, kafka_default_consumer_server,
-        kafka_default_outlet_server, kafka_direct_default_addr,
+        kafka_default_consumer_server, kafka_default_outlet_server, kafka_direct_default_addr,
     },
     node::NodeOpts,
     util::{node_rpc, parsers::socket_addr_parser},
@@ -31,8 +31,8 @@ pub struct CreateCommand {
     bootstrap_server: SocketAddr,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port
-    #[arg(long, default_value_t = kafka_default_consumer_port_range())]
-    brokers_port_range: PortRange,
+    #[arg(long)]
+    brokers_port_range: Option<PortRange>,
     /// The route to another kafka consumer node
     #[arg(long)]
     consumer_route: Option<MultiAddr>,
@@ -46,7 +46,9 @@ impl CreateCommand {
             node_opts: self.node_opts,
             addr: self.addr,
             bind_address: self.bind_address,
-            brokers_port_range: self.brokers_port_range,
+            brokers_port_range: self
+                .brokers_port_range
+                .unwrap_or_else(|| make_brokers_port_range(&self.bootstrap_server)),
             consumer_route: self.consumer_route,
             bootstrap_server: self.bootstrap_server,
         };
