@@ -39,3 +39,93 @@ If you prefer to install the app manually, download and install it using the app
 Next, let's see the Portals.app in action in this quick 2 minute video (please unmute for an explanation of what is happening):
 
 https://github.com/build-trust/ockam/assets/159583/e07ebb8e-b6f6-436b-8f5c-d7e7c4c19e5e
+
+## How we built a Swift macOS app that uses our Rust library
+
+The functionality, of the app, was already implemented in Ockam rust crates. So our focus was building a great native macOS experience.
+
+Our first attempt at building the app was using Tauri. This made sense as we wanted to use the Ockam rust library and most people on our team are comfortable building things in Rust. This first version was easy to build and had all the basic functions we wanted. However, the experience of using the app wasn't great. Tauri only gave us minimal control over how the menu was rendered and what happened when a user interacts with the menu. This version of the app felt like it belonged in a 10 year old version of macOS when compared to super easy to use menubar items built into macOS Sonoma.
+
+We realized that to have the rich experience we want we must build the app using SwiftUI.
+
+Unfortunately, we couldn't find a an off-the-shelf solution to integrate Swift and Rust that would give us the best of both worlds - the safety of using rust and rich macOS-native experience of SwiftUI. Digging in a some more, the command ground is - Rust is compatible with the C calling convention and Swift is interoperable with Objective-C which is a superset of C-89 - so we can connect the two worlds using C-89.
+
+Here's what that looks like:
+
+<img width="1012" src="https://github.com/build-trust/ockam/assets/159583/b5e691bd-fd96-41f0-922a-d32d7bf12f34">
+
+We wrote the Rust data structures that needed to be visible to Swift twice. One version is idiomatic in Rust and easy to use. The other version is C compatible using pointers and memory that is manually allocated with `malloc`. We also exposed some C-compatible APIs that use raw-pointers in unsafe rust to converted the idiomatic data structures to their C-compatible versions. Finally we automatically generated a C header with the help of the `cbindgen` library.
+
+On the Swift side, we could've called the C APIs directly but C data structures are not first class citizens in Swift which makes them harder to use idiomatically within SwiftUI code. We instead chose to duplicate the data structures in Swift and convert between C and Swift. This may seem like a maintenance burden, but practically the state shared between the two worlds doesn't change that often while the ability to quickly build components in SwiftUI using constructs like `if let ..`, `ForEach`, `enum` etc. is super helpful.
+
+Here's an example of the same structure in its 4 forms:
+
+```
+// Rust idiomatic structure
+#[derive(Default, Clone, Debug, Eq, PartialEq)]
+pub struct LocalService {
+    pub name: String,
+    pub address: String,
+    pub port: u16,
+    pub shared_with: Vec<Invitee>,
+    pub available: bool,
+}
+
+// Rust C-compatible structure
+#[repr(C)]
+pub struct LocalService {
+    pub(super) name: *const c_char,
+    pub(super) address: *const c_char,
+    pub(super) port: u16,
+    pub(super) shared_with: *const *const Invitee,
+    pub(super) available: u8,
+}
+
+// Generated C header structure
+typedef struct C_LocalService {
+  const char *name;
+  const char *address;
+  uint16_t port;
+  const struct C_Invitee *const *shared_with;
+  uint8_t available;
+} C_LocalService;
+
+// Swift idiomatic structure
+class LocalService {
+    let name: String
+    @Published var address: String?
+    @Published var port: UInt16
+    @Published var sharedWith: [Invitee]
+    @Published var available: Bool
+}
+```
+
+The Swift app is statically linked to our Rust lib at compile time. Data flow is simple. UI interactions are sent from Swift to Rust as actions by calling C APIs. Change events are emitted only by Rust, Swift is notified using callbacks that lead to updates to the user interface.
+
+Most code in the SwiftUI views looks just like any other SwiftUI application.
+
+```swift
+VStack(alignment: .leading, spacing: 0) {
+    Text(service.sourceName).lineLimit(1)
+
+    HStack(spacing: 0) {
+        Image(systemName: "circle.fill")
+            .font(.system(size: 7))
+            .foregroundColor( service.enabled ? (service.available ? .green : .red) : .orange)
+
+        if !service.enabled {
+            Text(verbatim: "Not connected")
+        } else {
+            if service.available {
+                Text(verbatim: service.address.unsafelyUnwrapped + ":" + String(service.port))
+            } else {
+                Text(verbatim: "Connecting")
+            }
+        }
+    }
+...
+```
+
+If you're curious to learn more, checkout the code for the [ockam_app_lib crate](https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_app_lib) and the Portals [app in Swift](https://github.com/build-trust/ockam/tree/develop/implementations/swift/ockam/ockam_app). The [Makefile](https://github.com/build-trust/ockam/blob/develop/implementations/swift/Makefile) in the swift folder is also a good place to explore how everything built and linked.
+
+If you're interested in contributing to the app's Swift or Rust code, we add new [good first issues](https://github.com/build-trust/ockam/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) every week and love helping new contributors. Join us on the [contributors discord](https://discord.ockam.io/).
