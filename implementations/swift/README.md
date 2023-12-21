@@ -39,7 +39,7 @@ This produces an executable, which can be executed by typing:
 "build/Ockam.xcarchive/Products/Applications/Portals, by Ockam.app/Contents/MacOS/Portals, by Ockam"
 ```
 
-## Run 
+## Run
 
 The application can be built _and_ started with:
 ```
@@ -63,7 +63,7 @@ The previous command builds the debug version of the application. To build the r
 make build_release
 ```
 
-(Use `make run_release` to build and run the release version of the application). 
+(Use `make run_release` to build and run the release version of the application).
 
 ## Test
 

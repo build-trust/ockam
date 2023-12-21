@@ -102,14 +102,14 @@ runs:
           brew install create-dmg
 
           if [[ ${{ inputs.target }} == *x86_64* ]]; then
-            make swift_xcode_signed_build \
+            make swift_xcode_build_signed \
               DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
               PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
               CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
               OTHER_CODE_SIGN_FLAGS="--keychain \"${keychain_path}\"" \
               ARCH=x86_64
           else
-            make swift_xcode_signed_build \
+            make swift_xcode_build_signed \
               DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
               PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
               CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
