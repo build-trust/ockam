@@ -112,7 +112,9 @@ async fn run_impl(
 
         let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
         let token = auth0.get_token_interactively(&opts).await?;
-        authority_node.enroll_with_oidc_token(&ctx, token).await?;
+        authority_node
+            .enroll_with_oidc_token_okta(&ctx, token)
+            .await?;
     };
 
     // Issue credential

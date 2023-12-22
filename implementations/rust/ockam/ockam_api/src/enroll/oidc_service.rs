@@ -170,7 +170,10 @@ impl OidcService {
             ps.extend_from_slice(query_parameters);
             ps
         };
-
+        info!(
+            "getting a code from {url} with client-id {} and parameters {query_parameters:?}",
+            self.provider().client_id()
+        );
         let req = || {
             client
                 .post(url.clone())

@@ -97,7 +97,7 @@ impl Enrollment for SecureClient {
         token: OidcToken,
     ) -> miette::Result<()> {
         let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
-        trace!(target: TARGET, "executing auth0 flow");
+        trace!(target: TARGET, "executing okta flow");
         self.tell(ctx, DefaultAddress::OKTA_IDENTITY_PROVIDER, req)
             .await
             .into_diagnostic()?
