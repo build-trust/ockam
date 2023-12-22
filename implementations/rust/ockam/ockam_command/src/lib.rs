@@ -246,9 +246,9 @@ impl CommandGlobalOpts {
         let terminal = Terminal::from(&global_args);
         let state = match CliState::with_default_dir() {
             Ok(state) => state,
-            Err(_) => {
+            Err(e) => {
                 terminal
-                    .write_line(fmt_err!("Failed to initialize local state"))
+                    .write_line(fmt_err!("Failed to initialize local state: {e:?}"))
                     .unwrap();
                 terminal
                     .write_line(fmt_log!(
