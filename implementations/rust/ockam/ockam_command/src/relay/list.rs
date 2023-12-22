@@ -8,7 +8,7 @@ use tracing::trace;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::terminal::OckamColor;
@@ -43,7 +43,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.to).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.to).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {

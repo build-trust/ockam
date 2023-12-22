@@ -3,7 +3,7 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::output::Output;
@@ -42,7 +42,7 @@ impl ShowCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
 
     let address = &cmd.address;
     let response: ShowSecureChannelResponse =

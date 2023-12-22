@@ -5,7 +5,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 
 use ockam_api::nodes::models::transport::TransportStatus;
-use ockam_api::nodes::{models, BackgroundNode};
+use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 
 use crate::util::node_rpc;
@@ -38,7 +38,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
 
     // Check if there an TCP listener with the provided address exists
     let address = cmd.address;

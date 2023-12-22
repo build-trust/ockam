@@ -22,7 +22,7 @@ use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
 use crate::nodes::service::in_memory_node::InMemoryNode;
-use crate::nodes::BackgroundNode;
+use crate::nodes::BackgroundNodeClient;
 use crate::session::sessions::{Replacer, Session};
 use crate::session::sessions::{MAX_CONNECT_TIME, MAX_RECOVERY_TIME};
 
@@ -389,7 +389,7 @@ pub trait Relays {
 }
 
 #[async_trait]
-impl Relays for BackgroundNode {
+impl Relays for BackgroundNodeClient {
     async fn create_relay(
         &self,
         ctx: &Context,
@@ -444,7 +444,7 @@ impl SecureChannelsCreation for InMemoryNode {
 }
 
 #[async_trait]
-impl SecureChannelsCreation for BackgroundNode {
+impl SecureChannelsCreation for BackgroundNodeClient {
     async fn create_secure_channel(
         &self,
         ctx: &Context,

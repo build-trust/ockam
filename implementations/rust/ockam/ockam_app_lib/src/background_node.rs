@@ -5,7 +5,7 @@ use ockam_core::async_trait;
 use std::process::Command;
 use tracing::{debug, info};
 
-pub trait BackgroundNodeClient: Send + Sync + 'static {
+pub trait BackgroundNodeClientTrait: Send + Sync + 'static {
     fn nodes(&self) -> Box<dyn Nodes>;
     fn projects(&self) -> Box<dyn Projects>;
 }
@@ -45,7 +45,7 @@ fn log_command(cmd: &mut Command) -> std::io::Result<()> {
     Ok(())
 }
 
-impl BackgroundNodeClient for Cli {
+impl BackgroundNodeClientTrait for Cli {
     fn nodes(&self) -> Box<dyn Nodes> {
         Box::new(self.clone())
     }

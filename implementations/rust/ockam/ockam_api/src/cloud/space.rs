@@ -6,7 +6,7 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
-use crate::cloud::Controller;
+use crate::cloud::ControllerClient;
 use crate::nodes::InMemoryNode;
 
 const TARGET: &str = "ockam_api::cloud::space";
@@ -147,7 +147,7 @@ impl Spaces for InMemoryNode {
     }
 }
 
-impl Controller {
+impl ControllerClient {
     pub async fn create_space(
         &self,
         ctx: &Context,

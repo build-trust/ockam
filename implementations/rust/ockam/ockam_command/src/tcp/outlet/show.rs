@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use ockam::{route, Context};
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -65,7 +65,7 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let outlet_status: OutletStatus = node
         .ask(&ctx, Request::get(format!("/node/outlet/{}", cmd.alias)))
         .await?;

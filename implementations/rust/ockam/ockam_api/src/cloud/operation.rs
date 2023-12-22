@@ -1,4 +1,4 @@
-use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::cloud::{ControllerClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 use ockam_core::api::Request;
@@ -68,7 +68,7 @@ const TARGET: &str = "ockam_api::cloud::operation";
 const API_SERVICE: &str = "projects";
 
 #[async_trait]
-impl Operations for Controller {
+impl Operations for ControllerClient {
     async fn get_operation(
         &self,
         ctx: &Context,

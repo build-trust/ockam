@@ -9,7 +9,7 @@ use ockam_api::nodes::models::base::NodeStatus;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_node::Context;
 
 use crate::node::list;
@@ -111,7 +111,7 @@ impl ShowCommandTui for ShowTui {
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let mut node =
-            BackgroundNode::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
+            BackgroundNodeClient::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
                 .await?;
         print_query_status(&self.opts, &self.ctx, &mut node, false).await?;
         Ok(())
@@ -127,7 +127,7 @@ impl ShowCommandTui for ShowTui {
 pub async fn print_query_status(
     opts: &CommandGlobalOpts,
     ctx: &Context,
-    node: &mut BackgroundNode,
+    node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> miette::Result<()> {
     let cli_state = opts.state.clone();
@@ -218,7 +218,7 @@ pub async fn print_query_status(
 /// allow a node time to start up and become ready.
 pub async fn is_node_up(
     ctx: &Context,
-    node_client: &mut BackgroundNode,
+    node_client: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
     let attempts = match wait_until_ready {

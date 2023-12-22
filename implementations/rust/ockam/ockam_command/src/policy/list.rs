@@ -8,7 +8,7 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::nodes::models::policy::{Expression, PolicyList};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::output::Output;
@@ -36,7 +36,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.at).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let resource = cmd.resource;

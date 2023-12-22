@@ -12,7 +12,7 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::service::relay::Relays;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{is_local_node, CliState};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -123,7 +123,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     display_parse_logs(&opts);
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.to).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.to).await?;
     let get_relay_info = async {
         let relay_info = {
             if at.starts_with(Project::CODE) && cmd.authorized.is_some() {

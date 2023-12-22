@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::nodes::{BackgroundNode, Credentials};
+use ockam_api::nodes::{BackgroundNodeClient, Credentials};
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
@@ -35,7 +35,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: PresentCommand,
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     node.present_credential(ctx, &cmd.to, cmd.oneway).await?;
     Ok(())
 }

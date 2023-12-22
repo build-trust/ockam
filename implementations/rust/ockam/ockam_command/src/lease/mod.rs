@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 pub use create::CreateCommand;
 pub use list::ListCommand;
 use ockam_api::cloud::project::Projects;
-use ockam_api::cloud::ProjectNode;
+use ockam_api::cloud::ProjectNodeClient;
 use ockam_api::nodes::Credentials;
 use ockam_api::nodes::InMemoryNode;
 pub use show::ShowCommand;
@@ -56,7 +56,7 @@ async fn authenticate(
     opts: &CommandGlobalOpts,
     cloud_opts: &CloudOpts,
     trust_opts: &TrustContextOpts,
-) -> miette::Result<ProjectNode> {
+) -> miette::Result<ProjectNodeClient> {
     let trust_context = opts
         .state
         .retrieve_trust_context(

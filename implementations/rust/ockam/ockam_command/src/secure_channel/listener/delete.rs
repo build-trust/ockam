@@ -3,7 +3,7 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::DeleteSecureChannelListenerResponse;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::node::NodeOpts;
@@ -42,7 +42,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = api::delete_secure_channel_listener(&cmd.address);
     let response: DeleteSecureChannelListenerResponse = node.ask(ctx, req).await?;
     let addr = response.addr;

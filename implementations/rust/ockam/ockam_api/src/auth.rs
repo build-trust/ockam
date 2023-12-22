@@ -3,7 +3,7 @@ use miette::IntoDiagnostic;
 use minicbor::Decoder;
 use tracing::trace;
 
-use crate::nodes::BackgroundNode;
+use crate::nodes::BackgroundNodeClient;
 use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesRepository};
 use ockam_core::api::{Method, RequestHeader};
 use ockam_core::api::{Request, Response};
@@ -100,23 +100,26 @@ pub trait AuthorizationApi {
 }
 
 #[async_trait]
-impl AuthorizationApi for BackgroundNode {
+impl AuthorizationApi for BackgroundNodeClient {
     async fn get_attributes(
         &self,
         ctx: &Context,
         identifier: &Identifier,
     ) -> miette::Result<Option<AttributesEntry>> {
-        self.make_client()
-            .await?
-            .get_attributes(ctx, identifier)
-            .await
+        let (tcp_connection, client) = self.make_client().await?;
+        let res = client.get_attributes(ctx, identifier).await;
+        _ = tcp_connection.stop(ctx).await;
+        res
     }
 
     async fn list_identifiers(
         &self,
         ctx: &Context,
     ) -> miette::Result<Vec<(Identifier, AttributesEntry)>> {
-        self.make_client().await?.list_identifiers(ctx).await
+        let (tcp_connection, client) = self.make_client().await?;
+        let res = client.list_identifiers(ctx).await;
+        _ = tcp_connection.stop(ctx).await;
+        res
     }
 }
 

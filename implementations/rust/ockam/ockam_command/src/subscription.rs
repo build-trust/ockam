@@ -6,7 +6,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::{Subscription, Subscriptions};
-use ockam_api::cloud::Controller;
+use ockam_api::cloud::ControllerClient;
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -79,7 +79,7 @@ async fn run_impl(
 }
 
 pub(crate) async fn get_subscription_by_id_or_space_id(
-    controller: &Controller,
+    controller: &ControllerClient,
     ctx: &Context,
     subscription_id: Option<String>,
     space_id: Option<String>,

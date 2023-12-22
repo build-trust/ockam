@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::nodes::{BackgroundNode, Credentials};
+use ockam_api::nodes::{BackgroundNodeClient, Credentials};
 
 use crate::node::NodeOpts;
 use crate::util::node_rpc;
@@ -31,7 +31,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, GetCommand)) -> miet
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: GetCommand) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     node.get_credential(ctx, cmd.overwrite, cmd.identity)
         .await?;
     Ok(())

@@ -9,10 +9,10 @@ use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::cloud::AuthorityNode;
+use crate::cloud::AuthorityNodeClient;
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
-use crate::nodes::{BackgroundNode, NodeManager};
+use crate::nodes::{BackgroundNodeClient, NodeManager};
 
 use super::NodeManagerWorker;
 
@@ -43,7 +43,7 @@ pub trait Credentials {
 }
 
 #[async_trait]
-impl Credentials for AuthorityNode {
+impl Credentials for AuthorityNodeClient {
     async fn get_credential(
         &self,
         ctx: &Context,
@@ -78,7 +78,7 @@ impl Credentials for AuthorityNode {
 }
 
 #[async_trait]
-impl Credentials for BackgroundNode {
+impl Credentials for BackgroundNodeClient {
     async fn get_credential(
         &self,
         ctx: &Context,

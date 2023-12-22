@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_abac::{Action, Policy, Resource};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::policy::policy_path;
@@ -32,7 +32,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let node = BackgroundNode::create_to_node(ctx, &opts.state, &cmd.at).await?;
+    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &cmd.at).await?;
     let req = Request::get(policy_path(&cmd.resource, &cmd.action));
     let policy: Policy = node.ask(ctx, req).await?;
     println!("{}", policy.expression());

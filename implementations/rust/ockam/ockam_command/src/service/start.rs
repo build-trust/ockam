@@ -5,7 +5,7 @@ use minicbor::Encode;
 
 use ockam::Context;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::node::NodeOpts;
@@ -79,7 +79,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StartCommand)) -> mi
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {
         StartSubCommand::Hop { addr, .. } => {
@@ -125,7 +125,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> 
 /// Helper function.
 pub(crate) async fn start_service_impl<T>(
     ctx: &Context,
-    node: &BackgroundNode,
+    node: &BackgroundNodeClient,
     serv_name: &str,
     req: Request<T>,
 ) -> Result<()>
@@ -140,7 +140,7 @@ where
 /// Public so `ockam_command::node::create` can use it.
 pub async fn start_hop_service(
     ctx: &Context,
-    node: &BackgroundNode,
+    node: &BackgroundNodeClient,
     serv_addr: &str,
 ) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
@@ -151,7 +151,7 @@ pub async fn start_hop_service(
 #[allow(clippy::too_many_arguments)]
 pub async fn start_authenticator_service(
     ctx: &Context,
-    node: &BackgroundNode,
+    node: &BackgroundNodeClient,
     serv_addr: &str,
     project: &str,
 ) -> Result<()> {

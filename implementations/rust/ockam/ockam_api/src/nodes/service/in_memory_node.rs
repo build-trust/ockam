@@ -13,7 +13,7 @@ use ockam_transport_tcp::TcpListenerOptions;
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
 use crate::cli_state::NamedTrustContext;
-use crate::cloud::Controller;
+use crate::cloud::ControllerClient;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -144,7 +144,7 @@ impl InMemoryNode {
     }
 
     /// Return a Controller client to send requests to the Controller
-    pub async fn create_controller(&self) -> miette::Result<Controller> {
+    pub async fn create_controller(&self) -> miette::Result<ControllerClient> {
         self.create_controller_client(self.timeout)
             .await
             .into_diagnostic()

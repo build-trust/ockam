@@ -5,7 +5,7 @@ use ockam_core::{async_trait, Result};
 use ockam_node::Context;
 
 use crate::nodes::models::policy::{Expression, PolicyList};
-use crate::nodes::{BackgroundNode, NodeManagerWorker};
+use crate::nodes::{BackgroundNodeClient, NodeManagerWorker};
 
 use super::NodeManager;
 
@@ -117,7 +117,7 @@ pub trait Policies {
 }
 
 #[async_trait]
-impl Policies for BackgroundNode {
+impl Policies for BackgroundNodeClient {
     async fn add_policy_to_project(
         &self,
         ctx: &Context,

@@ -5,7 +5,7 @@ use tokio::try_join;
 use tracing::{debug, info};
 
 use ockam::Context;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::show::is_node_up;
 use crate::node::util::spawn_node;
@@ -39,7 +39,7 @@ pub(crate) async fn background_mode(
 
     let send_req = async {
         spawn_background_node(&opts, cmd.clone()).await?;
-        let mut node = BackgroundNode::create_to_node(&ctx, &opts.state, &node_name).await?;
+        let mut node = BackgroundNodeClient::create_to_node(&ctx, &opts.state, &node_name).await?;
         let is_node_up = is_node_up(&ctx, &mut node, true).await?;
         *is_finished.lock().await = true;
         Ok(is_node_up)

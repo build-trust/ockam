@@ -7,7 +7,7 @@ use miette::{miette, Context as _};
 use rand::random;
 
 use ockam_api::cli_state::NamedTrustContext;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 
@@ -58,7 +58,7 @@ pub async fn initialize_default_node(
         let cmd = CreateCommand::default();
         let node_name = cmd.node_name.clone();
         spawn_background_node(opts, cmd).await?;
-        let mut node = BackgroundNode::create_to_node(ctx, &opts.state, &node_name).await?;
+        let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name).await?;
         is_node_up(ctx, &mut node, true).await?;
     }
     Ok(())
