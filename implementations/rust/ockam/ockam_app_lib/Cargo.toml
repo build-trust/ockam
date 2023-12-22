@@ -28,7 +28,7 @@ crate-type = ["staticlib"]
 path = "src/lib.rs"
 
 [dependencies]
-duct = "0.13.6"
+duct = "0.13.7"
 futures = { version = "0.3.29", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 miette = { version = "5.10.0", features = ["fancy-no-backtrace"] }
