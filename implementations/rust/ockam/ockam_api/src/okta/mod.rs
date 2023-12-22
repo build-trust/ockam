@@ -126,28 +126,35 @@ impl Server {
             .header("Authorization", format!("Bearer {token}"))
             .send()
             .await;
-        if let Ok(res) = res {
-            match res.status() {
-                StatusCode::OK => {
-                    //TODO: Must have a configured list of fields to extract from the response,
-                    //      and add these to the credentia
-                    let doc: HashMap<String, serde_json::Value> = res
-                        .json()
-                        .await
-                        .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
-                    debug!("userinfo received: {doc:?}");
-                    let mut custom_attrs = HashMap::new();
-                    for a in self.attributes.iter() {
-                        if let Some(v) = doc.get(a).and_then(|v| v.as_str()) {
-                            custom_attrs.insert(a.to_owned(), v.to_string());
+        match res {
+            Ok(res) => {
+                match res.status() {
+                    StatusCode::OK => {
+                        //TODO: Must have a configured list of fields to extract from the response,
+                        //      and add these to the credential
+                        let doc: HashMap<String, serde_json::Value> = res
+                            .json()
+                            .await
+                            .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
+                        debug!("userinfo received: {doc:?}");
+                        let mut custom_attrs = HashMap::new();
+                        for a in self.attributes.iter() {
+                            if let Some(v) = doc.get(a).and_then(|v| v.as_str()) {
+                                custom_attrs.insert(a.to_owned(), v.to_string());
+                            }
                         }
+                        Ok(Some(custom_attrs))
                     }
-                    Ok(Some(custom_attrs))
+                    _ => {
+                        warn!("failed token authorization {res:?}");
+                        Ok(None)
+                    }
                 }
-                _ => Ok(None),
             }
-        } else {
-            Ok(None)
+            Err(e) => {
+                error!("cannot check an authorization token: {e:?}");
+                Ok(None)
+            }
         }
     }
 }
