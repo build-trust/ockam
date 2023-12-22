@@ -6,11 +6,11 @@
 
 ## Portals for Mac
 
-Portals is a Mac app built in Swift. It uses the Ockam Rust library to privately share a service on your Mac to anyone, anywhere. The service is shared securely over an end-to-end encrypted Ockam Portal. Your friends will have access to it on their **localhost**!
+Portals is a Mac app built in Swift. It uses the Ockam Rust library to privately share a service on your Mac with anyone, anywhere. The service is shared securely over an end-to-end encrypted Ockam Portal. Your friends will have access to it on their **localhost**!
 
 <img width="1012" src="https://github.com/build-trust/ockam/assets/159583/5efbcbfa-5083-4682-941c-71d9a6c24f84">
 
-Let's see Portals in action in this quick 2 minute video (please unmute for an explanation of what is happening):
+Let's see the Portals app in action in this quick 2 minute video (please unmute for an explanation of what is happening):
 
 https://github.com/build-trust/ockam/assets/159583/6e883e57-65c3-46d2-a05a-41fab4299c71
 
@@ -22,7 +22,7 @@ If you use [Homebrew](https://brew.sh/):
 brew update && brew install --cask build-trust/ockam/portals
 ```
 
-Or, install it using the appropriate dmg file for your Mac:
+Or, use the appropriate dmg file for your Mac:
 - Apple Silicon based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.aarch64-apple-darwin.dmg).
 - Intel based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.x86_64-apple-darwin.dmg).
 
