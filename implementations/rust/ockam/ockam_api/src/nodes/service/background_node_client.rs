@@ -8,18 +8,18 @@ use ockam_core::api::{Reply, Request};
 use ockam_core::{AsyncTryClone, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnectionOptions, TcpTransport};
+use ockam_transport_tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 
 use crate::cli_state::CliState;
 use crate::nodes::NODEMANAGER_ADDR;
 
-/// This struct represents a node that has been started
+/// This struct represents a Client to a node that has been started
 /// on the same machine with a given node name
 ///
 /// The methods on this struct allow a user to send requests containing a value of type `T`
 /// and expect responses with a value of type `R`
 #[derive(Clone)]
-pub struct BackgroundNode {
+pub struct BackgroundNodeClient {
     cli_state: CliState,
     node_name: String,
     to: Route,
@@ -27,7 +27,7 @@ pub struct BackgroundNode {
     tcp_transport: Arc<TcpTransport>,
 }
 
-impl BackgroundNode {
+impl BackgroundNodeClient {
     /// Create a new client to send requests to a running background node
     /// This function instantiates a TcpTransport. Since a TcpTransport can only be created once
     /// this function must only be called once
@@ -38,7 +38,7 @@ impl BackgroundNode {
         ctx: &Context,
         cli_state: &CliState,
         node_name: &Option<String>,
-    ) -> miette::Result<BackgroundNode> {
+    ) -> miette::Result<BackgroundNodeClient> {
         let node_name = match node_name.clone() {
             Some(name) => name,
             None => cli_state.get_default_node().await?.name(),
@@ -50,9 +50,17 @@ impl BackgroundNode {
         ctx: &Context,
         cli_state: &CliState,
         node_name: &str,
-    ) -> miette::Result<BackgroundNode> {
+    ) -> miette::Result<BackgroundNodeClient> {
         let tcp_transport = TcpTransport::create(ctx).await.into_diagnostic()?;
-        BackgroundNode::new(&tcp_transport, cli_state, node_name).await
+        BackgroundNodeClient::new(&tcp_transport, cli_state, node_name).await
+    }
+
+    pub async fn create_to_node_with_tcp(
+        tcp: &TcpTransport,
+        cli_state: &CliState,
+        node_name: &str,
+    ) -> miette::Result<BackgroundNodeClient> {
+        BackgroundNodeClient::new(tcp, cli_state, node_name).await
     }
 
     /// Create a new client to send requests to a running background node
@@ -60,8 +68,8 @@ impl BackgroundNode {
         tcp_transport: &TcpTransport,
         cli_state: &CliState,
         node_name: &str,
-    ) -> miette::Result<BackgroundNode> {
-        Ok(BackgroundNode {
+    ) -> miette::Result<BackgroundNodeClient> {
+        Ok(BackgroundNodeClient {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
@@ -117,13 +125,17 @@ impl BackgroundNode {
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
     {
-        let client = self.make_client_with_timeout(Some(timeout)).await?;
-        client
+        let (tcp_connection, client) = self.make_client_with_timeout(Some(timeout)).await?;
+
+        let res = client
             .ask(ctx, req)
             .await
             .into_diagnostic()?
             .success()
-            .into_diagnostic()
+            .into_diagnostic();
+
+        _ = tcp_connection.stop(ctx).await;
+        res
     }
 
     /// Send a request and expect either a decodable response or an API error.
@@ -137,8 +149,11 @@ impl BackgroundNode {
         T: Encode<()>,
         R: for<'b> Decode<'b, ()>,
     {
-        let client = self.make_client().await?;
-        client.ask(ctx, req).await.into_diagnostic()
+        let (tcp_connection, client) = self.make_client().await?;
+        let res = client.ask(ctx, req).await.into_diagnostic();
+
+        _ = tcp_connection.stop(ctx).await;
+        res
     }
 
     /// Send a request but don't decode the response
@@ -146,13 +161,16 @@ impl BackgroundNode {
     where
         T: Encode<()>,
     {
-        let client = self.make_client().await?;
-        client
+        let (tcp_connection, client) = self.make_client().await?;
+        let res = client
             .tell(ctx, req)
             .await
             .into_diagnostic()?
             .success()
-            .into_diagnostic()
+            .into_diagnostic();
+
+        _ = tcp_connection.stop(ctx).await;
+        res
     }
 
     /// Send a request but and return the API reply without decoding the body response
@@ -164,12 +182,15 @@ impl BackgroundNode {
     where
         T: Encode<()>,
     {
-        let client = self.make_client().await?;
-        client.tell(ctx, req).await.into_diagnostic()
+        let (tcp_connection, client) = self.make_client().await?;
+        let res = client.tell(ctx, req).await.into_diagnostic();
+
+        _ = tcp_connection.stop(ctx).await;
+        res
     }
 
     /// Make a route to the node and connect using TCP
-    async fn create_route(&self) -> miette::Result<Route> {
+    async fn create_route(&self) -> miette::Result<(TcpConnection, Route)> {
         let mut route = self.to.clone();
         let node_info = self.cli_state.get_node(&self.node_name).await?;
         let tcp_listener_address = node_info
@@ -182,30 +203,30 @@ impl BackgroundNode {
             })
             .to_string();
 
-        let addr = self
+        let tcp_connection = self
             .tcp_transport
             .connect(tcp_listener_address, TcpConnectionOptions::new())
             .await
-            .into_diagnostic()?
-            .sender_address()
-            .clone();
-        route.modify().prepend(addr);
+            .into_diagnostic()?;
+        route
+            .modify()
+            .prepend(tcp_connection.sender_address().clone());
         debug!("Sending requests to {route}");
-        Ok(route)
+        Ok((tcp_connection, route))
     }
 
     /// Make a response / request client connected to the node
-    pub async fn make_client(&self) -> miette::Result<Client> {
+    pub(crate) async fn make_client(&self) -> miette::Result<(TcpConnection, Client)> {
         self.make_client_with_timeout(self.timeout).await
     }
 
     /// Make a response / request client connected to the node
     /// and specify a timeout for receiving responses
-    pub async fn make_client_with_timeout(
+    pub(crate) async fn make_client_with_timeout(
         &self,
         timeout: Option<Duration>,
-    ) -> miette::Result<Client> {
-        let route = self.create_route().await?;
-        Ok(Client::new(&route, timeout))
+    ) -> miette::Result<(TcpConnection, Client)> {
+        let (tcp_connection, route) = self.create_route().await?;
+        Ok((tcp_connection, Client::new(&route, timeout)))
     }
 }

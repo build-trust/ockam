@@ -8,7 +8,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Address};
 
@@ -81,7 +81,7 @@ impl ListCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
 
     let is_finished: Mutex<bool> = Mutex::new(false);
     let get_secure_channel_identifiers = async {

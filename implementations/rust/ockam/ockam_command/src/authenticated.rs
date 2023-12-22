@@ -9,7 +9,7 @@ use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
 use ockam_api::auth::AuthorizationApi;
 use ockam_api::is_local_node;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_multiaddr::MultiAddr;
 use std::fmt::Write;
 
@@ -74,9 +74,9 @@ async fn make_background_node_client(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     addr: &MultiAddr,
-) -> Result<BackgroundNode> {
+) -> Result<BackgroundNodeClient> {
     is_local_node(addr).context("The address must point to a local node")?;
-    Ok(BackgroundNode::create_to_node(ctx, &opts.state, &addr.to_string()).await?)
+    Ok(BackgroundNodeClient::create_to_node(ctx, &opts.state, &addr.to_string()).await?)
 }
 
 struct IdentifierWithAttributes {

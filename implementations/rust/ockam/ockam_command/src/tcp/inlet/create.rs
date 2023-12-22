@@ -15,7 +15,7 @@ use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
@@ -144,7 +144,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     ))?;
     display_parse_logs(&opts);
 
-    let mut node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+    let mut node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
     cmd.timeout.map(|t| node.set_timeout(t));
 
     let is_finished: Mutex<bool> = Mutex::new(false);

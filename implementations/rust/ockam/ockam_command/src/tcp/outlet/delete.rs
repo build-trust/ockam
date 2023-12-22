@@ -5,7 +5,7 @@ use miette::miette;
 
 use ockam::Context;
 use ockam_api::nodes::models::portal::OutletList;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::node::NodeOpts;
@@ -41,7 +41,7 @@ pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
-    node: BackgroundNode,
+    node: BackgroundNodeClient,
 }
 
 impl DeleteTui {
@@ -50,7 +50,7 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
             ctx,
             opts,

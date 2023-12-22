@@ -1,7 +1,7 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use crate::cloud::Controller;
+use crate::cloud::ControllerClient;
 use ockam_core::api::{Error, Reply, Request, Status};
 use ockam_core::{self, async_trait, Result};
 use ockam_node::Context;
@@ -112,7 +112,7 @@ pub trait Subscriptions {
 }
 
 #[async_trait]
-impl Subscriptions for Controller {
+impl Subscriptions for ControllerClient {
     async fn activate_subscription(
         &self,
         ctx: &Context,

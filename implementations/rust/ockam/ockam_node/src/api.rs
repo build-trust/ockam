@@ -20,6 +20,8 @@ pub struct Client {
 impl Client {
     /// Create a new client to send messages to a given destination
     /// A default timeout can be specified
+    /// WARNING: The caller is responsible for cleaning all the resources
+    ///          involved in the Route when it's no longer used (like TCP connections or Secure Channels)
     pub fn new(route: &Route, timeout: Option<Duration>) -> Self {
         Self {
             route: route.clone(),

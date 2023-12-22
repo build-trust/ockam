@@ -6,7 +6,7 @@ use serde_json::json;
 
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_node::Context;
 
 use crate::output::OutputFormat;
@@ -95,7 +95,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.from).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.from).await?;
     let request = api::create_tcp_connection(&cmd);
     let transport_status: TransportStatus = node.ask(&ctx, request).await?;
     let from = opts

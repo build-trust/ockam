@@ -19,7 +19,7 @@ use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::operation::{Operation, Operations};
 use crate::cloud::share::ShareScope;
-use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::cloud::{ControllerClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 use crate::nodes::InMemoryNode;
@@ -391,7 +391,7 @@ pub trait Projects {
     ) -> miette::Result<Project>;
 }
 
-impl Controller {
+impl ControllerClient {
     pub async fn create_project(
         &self,
         ctx: &Context,

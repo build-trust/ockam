@@ -6,7 +6,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
@@ -54,7 +54,7 @@ async fn run_impl(
 pub struct ShowTui {
     ctx: Context,
     opts: CommandGlobalOpts,
-    node: BackgroundNode,
+    node: BackgroundNodeClient,
     cmd: ShowCommand,
 }
 
@@ -64,7 +64,7 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
         let tui = Self {
             ctx,
             opts,

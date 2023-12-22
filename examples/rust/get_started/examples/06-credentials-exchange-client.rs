@@ -47,7 +47,7 @@ async fn main(ctx: Context) -> Result<()> {
     // The authority node already knows the public identifier of the client
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
-    let authority_node = NodeManager::authority_node(
+    let authority_node = NodeManager::authority_node_client(
         &tcp,
         node.secure_channels().clone(),
         &issuer,

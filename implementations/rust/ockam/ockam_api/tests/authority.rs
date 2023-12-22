@@ -5,7 +5,7 @@ use ockam_api::authenticator::enrollment_tokens::Members;
 use ockam_api::authority_node;
 use ockam_api::authority_node::{Authority, Configuration};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_api::cloud::AuthorityNode;
+use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::NodeManager;
@@ -59,7 +59,7 @@ async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<
         .await
         .unwrap();
 
-    let authority_node = NodeManager::authority_node(
+    let authority_node = NodeManager::authority_node_client(
         &TcpTransport::create(ctx).await?,
         secure_channels.clone(),
         &admin.identifier,
@@ -359,7 +359,7 @@ async fn default_configuration() -> Result<Configuration> {
 
 struct Admin {
     identifier: Identifier,
-    client: AuthorityNode,
+    client: AuthorityNodeClient,
 }
 
 // Start an Authority with given number of freshly generated Admins, also instantiate a Client for
@@ -403,7 +403,7 @@ async fn setup(
 
     let mut admins = vec![];
     for admin_id in admin_ids {
-        let authority_node = NodeManager::authority_node(
+        let authority_node = NodeManager::authority_node_client(
             &TcpTransport::create(ctx).await?,
             secure_channels.clone(),
             &configuration.identifier,

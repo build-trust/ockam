@@ -4,7 +4,7 @@ use crate::cloud::share::{
     InvitationList, InvitationListKind, InvitationWithAccess, ListInvitations, RoleInShare,
     SentInvitation, ShareScope,
 };
-use crate::cloud::Controller;
+use crate::cloud::ControllerClient;
 use miette::IntoDiagnostic;
 use ockam::identity::Identifier;
 use ockam_core::api::Request;
@@ -65,7 +65,7 @@ pub trait Invitations {
 }
 
 #[async_trait]
-impl Invitations for Controller {
+impl Invitations for ControllerClient {
     async fn create_invitation(
         &self,
         ctx: &Context,

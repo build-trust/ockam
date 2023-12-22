@@ -24,7 +24,7 @@ use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::policy::Policies;
 use crate::nodes::service::{actions, random_alias, resources};
-use crate::nodes::{BackgroundNode, InMemoryNode};
+use crate::nodes::{BackgroundNodeClient, InMemoryNode};
 use crate::session::sessions::{
     ConnectionStatus, Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
 };
@@ -725,7 +725,7 @@ pub trait Inlets {
 }
 
 #[async_trait]
-impl Inlets for BackgroundNode {
+impl Inlets for BackgroundNodeClient {
     async fn create_inlet(
         &self,
         ctx: &Context,

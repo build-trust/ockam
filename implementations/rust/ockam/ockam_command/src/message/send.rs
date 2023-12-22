@@ -7,7 +7,7 @@ use tracing::info;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::service::message::{MessageSender, SendMessage};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::nodes::InMemoryNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -80,7 +80,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
         // Setup environment depending on whether we are sending the message from a background node
         // or an in-memory node
         let response: Vec<u8> = if let Some(node) = &cmd.from {
-            BackgroundNode::create_to_node(ctx, &opts.state, node.as_str())
+            BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
                 .await?
                 .set_timeout(cmd.timeout)
                 .ask(ctx, req(&to, msg_bytes))

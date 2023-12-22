@@ -6,7 +6,7 @@ use serde_json::json;
 
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
@@ -151,7 +151,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         cmd.yes,
         "Are you sure you want to delete this secure channel?",
     )? {
-        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
         let address = &cmd.address;
         let response: DeleteSecureChannelResponse =
             node.ask(&ctx, api::delete_secure_channel(address)).await?;

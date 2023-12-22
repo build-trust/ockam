@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
@@ -133,7 +133,7 @@ pub async fn send_request(
     payload: CreateOutlet,
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletStatus> {
-    let node = BackgroundNode::create(ctx, &opts.state, &to_node.into()).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &to_node.into()).await?;
     let req = Request::post("/node/outlet").body(payload);
     Ok(node.ask(ctx, req).await?)
 }

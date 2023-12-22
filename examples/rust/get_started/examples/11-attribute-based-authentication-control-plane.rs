@@ -60,7 +60,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     //    to retrieve the node credential
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
-    let authority_node = NodeManager::authority_node(
+    let authority_node = NodeManager::authority_node_client(
         &tcp,
         node.secure_channels().clone(),
         &control_plane,

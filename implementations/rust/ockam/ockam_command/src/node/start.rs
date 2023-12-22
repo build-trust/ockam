@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_node::Context;
 
 use crate::node::show::print_query_status;
@@ -114,7 +114,7 @@ async fn start_single_node(
         return Ok(());
     }
 
-    let mut node: BackgroundNode = run_node(node_name, ctx, &opts).await?;
+    let mut node: BackgroundNodeClient = run_node(node_name, ctx, &opts).await?;
     print_query_status(&opts, ctx, &mut node, true).await?;
     Ok(())
 }
@@ -148,7 +148,7 @@ async fn run_node(
     node_name: &str,
     ctx: &Context,
     opts: &CommandGlobalOpts,
-) -> miette::Result<BackgroundNode> {
+) -> miette::Result<BackgroundNodeClient> {
     let node_info = opts.state.get_node(node_name).await?;
     opts.state.stop_node(node_name, false).await?;
     let node_address = node_info
@@ -173,7 +173,7 @@ async fn run_node(
     )
     .await?;
 
-    let node = BackgroundNode::create_to_node(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
     Ok(node)
 }
 

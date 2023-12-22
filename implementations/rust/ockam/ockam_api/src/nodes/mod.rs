@@ -3,7 +3,7 @@ pub mod models;
 pub mod registry;
 pub mod service;
 
-pub use service::background_node::*;
+pub use service::background_node_client::*;
 pub use service::credentials::*;
 pub use service::in_memory_node::*;
 /// The main node-manager service running on remote nodes

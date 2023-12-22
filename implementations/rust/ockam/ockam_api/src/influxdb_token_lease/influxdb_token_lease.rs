@@ -1,5 +1,5 @@
 use crate::cloud::lease_manager::models::influxdb::Token;
-use crate::cloud::ProjectNode;
+use crate::cloud::ProjectNodeClient;
 use miette::IntoDiagnostic;
 use ockam_core::api::Request;
 use ockam_core::async_trait;
@@ -17,7 +17,7 @@ pub trait InfluxDbTokenLease {
 }
 
 #[async_trait]
-impl InfluxDbTokenLease for ProjectNode {
+impl InfluxDbTokenLease for ProjectNodeClient {
     async fn create_token(&self, ctx: &Context) -> miette::Result<Token> {
         self.secure_client
             .ask(ctx, "influxdb_token_lease", Request::post("/"))

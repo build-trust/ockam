@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::nodes::{models, BackgroundNode};
+use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
@@ -39,7 +39,7 @@ async fn run_impl(
         cmd.yes,
         "Are you sure you want to delete this TCP connection?",
     )? {
-        let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let address = cmd.address;
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(address.clone()));

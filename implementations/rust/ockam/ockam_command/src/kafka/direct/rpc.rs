@@ -5,7 +5,7 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
 use ockam_api::nodes::models::services::{StartKafkaDirectRequest, StartServiceRequest};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -54,7 +54,7 @@ pub async fn start(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> 
 
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &node_opts.at_node).await?;
 
         let payload = StartKafkaDirectRequest::new(
             bind_address.to_owned(),

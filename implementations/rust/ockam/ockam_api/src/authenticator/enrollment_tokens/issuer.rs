@@ -17,7 +17,7 @@ use crate::authenticator::direct::types::{AddMember, CreateToken};
 use crate::authenticator::enrollment_tokens::authenticator::MAX_TOKEN_DURATION;
 use crate::authenticator::enrollment_tokens::types::Token;
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
-use crate::cloud::AuthorityNode;
+use crate::cloud::AuthorityNodeClient;
 use crate::nodes::service::default_address::DefaultAddress;
 
 pub struct EnrollmentTokenIssuer(pub(super) EnrollmentTokenAuthenticator);
@@ -121,7 +121,7 @@ pub trait Members {
 }
 
 #[async_trait]
-impl Members for AuthorityNode {
+impl Members for AuthorityNodeClient {
     async fn add_member(
         &self,
         ctx: &Context,
@@ -183,7 +183,7 @@ pub trait TokenIssuer {
 }
 
 #[async_trait]
-impl TokenIssuer for AuthorityNode {
+impl TokenIssuer for AuthorityNodeClient {
     async fn create_token(
         &self,
         ctx: &Context,
@@ -212,7 +212,7 @@ pub trait TokenAcceptor {
 }
 
 #[async_trait]
-impl TokenAcceptor for AuthorityNode {
+impl TokenAcceptor for AuthorityNodeClient {
     async fn present_token(&self, ctx: &Context, token: OneTimeCode) -> miette::Result<()> {
         let req = Request::post("/").body(token);
         self.secure_client

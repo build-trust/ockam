@@ -11,7 +11,7 @@ use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_multiaddr::MultiAddr;
 
-use crate::background_node::BackgroundNodeClient;
+use crate::background_node::BackgroundNodeClientTrait;
 use crate::incoming_services::state::{IncomingService, Port};
 use crate::state::AppState;
 
@@ -74,7 +74,7 @@ impl AppState {
 
     async fn refresh_inlet(
         &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
+        background_node_client: Arc<dyn BackgroundNodeClientTrait>,
         service: &IncomingService,
     ) -> crate::Result<Option<Port>> {
         let inlet_node_name = &service.local_node_name();
@@ -118,7 +118,7 @@ impl AppState {
     /// Returns the inlet [`Port`] if successful
     async fn create_inlet(
         &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
+        background_node_client: Arc<dyn BackgroundNodeClientTrait>,
         service: &IncomingService,
     ) -> crate::Result<Port> {
         debug!(
