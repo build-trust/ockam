@@ -6,7 +6,7 @@
 
 ## Portals for Mac
 
-Portals is a Mac app built in Swift. It uses the Ockam Rust library to privately share a service on your Mac with anyone, anywhere. The service is shared securely over an end-to-end encrypted Ockam Portal. Your friends will have access to it on their **localhost**!
+Portals is a Mac app built in Swift. It uses the Ockam Rust library to privately share a service on your Mac with anyone, anywhere. The service is shared securely over an end-to-end encrypted Ockam Portal. Your friends can access it on their **localhost**!
 
 <img width="1012" src="https://github.com/build-trust/ockam/assets/159583/5efbcbfa-5083-4682-941c-71d9a6c24f84">
 
@@ -14,9 +14,9 @@ Let's see the Portals app in action in this quick 2 minute video (please unmute 
 
 https://github.com/build-trust/ockam/assets/159583/6e883e57-65c3-46d2-a05a-41fab4299c71
 
-### Install
+### Install Portals.app
 
-If you use [Homebrew](https://brew.sh/):
+If you use [Homebrew](https://brew.sh/) then:
 
 ```
 brew update && brew install --cask build-trust/ockam/portals
@@ -28,7 +28,7 @@ Or, use the appropriate dmg file for your Mac:
 
 ## Introduction to Ockam Portals
 
-An Ockam Portal carries a non-Ockam protocol over Ockam. There are various types of Ockam Portals: TCP Portals, UDP Portals, Kafka Portals, etc. The Portals app for Mac supports TCP Portals.
+An Ockam Portal carries a non-Ockam protocol over Ockam. There are various types of Portals: TCP Portals, UDP Portals, Kafka Portals, etc. The Portals app for Mac supports TCP Portals.
 
 Ockam Portals are built on top of [Ockam Routing](https://docs.ockam.io/reference/protocols/routing), and end-to-end encrypted Ockam [Secure Channels](https://docs.ockam.io/reference/protocols/secure-channels). Channels can be established over multi-hop, multi-protocol transport routes that may include bridges, relays, or rendezvous. This layering enables end-to-end encrypted Portals. It also allows Portals to traverse NATs, firewalls, and clouds without any change to networks or infrastructure.
 
