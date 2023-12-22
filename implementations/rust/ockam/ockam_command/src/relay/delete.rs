@@ -5,8 +5,8 @@ use miette::miette;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::BackgroundNode;
 use ockam_api::nodes::service::relay::Relays;
+use ockam_api::nodes::BackgroundNode;
 
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::DeleteCommandTui;
@@ -98,7 +98,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let relays = self.node.list_relay(&self.ctx).await?;
+        let relays = self.node.list_relays(&self.ctx).await?;
         let names = relays
             .into_iter()
             .map(|i| i.remote_address().to_string())

@@ -387,16 +387,9 @@ pub trait Relays {
         authorized: Option<Identifier>,
     ) -> miette::Result<RelayInfo>;
 
-    async fn list_relay(
-        &self,
-        ctx: &Context,
-    ) -> miette::Result<Vec<RelayInfo>>;
+    async fn list_relays(&self, ctx: &Context) -> miette::Result<Vec<RelayInfo>>;
 
-    async fn delete_relay(
-        &self,
-        ctx: &Context,
-        item_name: &str,
-    ) -> miette::Result<()>;
+    async fn delete_relay(&self, ctx: &Context, item_name: &str) -> miette::Result<()>;
 }
 
 #[async_trait]
@@ -414,12 +407,13 @@ impl Relays for BackgroundNode {
             .await
     }
 
-    async fn list_relay(&self, ctx: &Context) -> miette::Result<Vec<RelayInfo>> {
+    async fn list_relays(&self, ctx: &Context) -> miette::Result<Vec<RelayInfo>> {
         self.ask(ctx, Request::get("/node/forwarder")).await
     }
 
     async fn delete_relay(&self, ctx: &Context, item_name: &str) -> miette::Result<()> {
-        self.tell(ctx, Request::delete(format!("/node/forwarder/{item_name}"))).await
+        self.tell(ctx, Request::delete(format!("/node/forwarder/{item_name}")))
+            .await
     }
 }
 

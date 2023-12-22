@@ -46,7 +46,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {
-        let relay_infos = node.list_relay(&ctx).await?;
+        let relay_infos = node.list_relays(&ctx).await?;
         *is_finished.lock().await = true;
         Ok(relay_infos)
     };
