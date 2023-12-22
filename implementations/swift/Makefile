@@ -19,7 +19,8 @@ build_ockam_release:
 # build the Portals application in Debug mode
 build: build_ockam
 	# the xcode project expects the ockam executable to be found in the release directory
-	cp $(ROOT_DIR)/target/debug/ockam $(ROOT_DIR)/target/debug/release
+	mkdir -p $(ROOT_DIR)/target/release
+	cp $(ROOT_DIR)/target/debug/ockam $(ROOT_DIR)/target/release
 	make xcode_build_Debug
 
 # build the Portals application in Release mode
