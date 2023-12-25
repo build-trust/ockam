@@ -1505,7 +1505,6 @@ checksum = "f476fe445d41c9e991fd07515a6f463074b782242ccf4a5b7b1d1012e70824df"
 dependencies = [
  "bitflags 2.4.1",
  "crossterm_winapi",
- "futures-core",
  "libc",
  "mio",
  "parking_lot",
@@ -1817,12 +1816,6 @@ dependencies = [
  "thiserror",
  "zeroize",
 ]
-
-[[package]]
-name = "diff"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "difflib"
@@ -4495,16 +4488,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pretty_assertions"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af7cee1a6c8a5b9208b3cb1061f10c0cb689087b3d8ce85fb9d2dd7a29b6ba66"
-dependencies = [
- "diff",
- "yansi",
-]
-
-[[package]]
 name = "primeorder"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4667,28 +4650,20 @@ dependencies = [
 
 [[package]]
 name = "r3bl_rs_utils_core"
-version = "0.9.9"
+version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "572cb6e605b36a70b5c80fc89c3c022e521f0bc349df9b3ea10caed8085fe123"
+checksum = "e4bc0135e6dccc8c7ec372f82f74d82c74365d95975ef4d49ebbb62bc18aaec0"
 dependencies = [
- "async-trait",
  "chrono",
- "crossterm",
- "futures-util",
  "get-size",
- "is-terminal",
  "log",
  "nom",
- "paste",
- "pretty_assertions",
  "r3bl_ansi_color",
  "r3bl_simple_logger",
- "rand",
  "serde",
  "serde_json",
  "syntect",
  "time",
- "tokio",
  "unicode-segmentation",
  "unicode-width",
 ]
@@ -7228,12 +7203,6 @@ checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
 ]
-
-[[package]]
-name = "yansi"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "zerocopy"
