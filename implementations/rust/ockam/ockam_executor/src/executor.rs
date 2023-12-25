@@ -12,21 +12,31 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::task::Wake;
 
 /// Returns current executor.
-/// WARNING: TODO this is not thread-safe
-pub fn current() -> &'static Executor<'static> {
-    static INIT: AtomicBool = AtomicBool::new(false);
-    static mut EXECUTOR: UnsafeCell<MaybeUninit<Executor>> = UnsafeCell::new(MaybeUninit::uninit());
+static INIT: AtomicBool = AtomicBool::new(false);
+static mut EXECUTOR: UnsafeCell<MaybeUninit<Executor>> = UnsafeCell::new(MaybeUninit::uninit());
 
-    if INIT.load(Ordering::Relaxed) {
-        unsafe { &*(EXECUTOR.get() as *const Executor) }
-    } else {
+pub fn current() -> &'static Executor<'static> {
+    if !INIT.load(Ordering::Acquire) {
+        initialize_executor();
+    }
+    unsafe { &*EXECUTOR.get().cast::<Executor>() }
+}
+
+fn initialize_executor() {
+    // Ensure this is only done once
+    let already_initialized = INIT.compare_exchange_weak(
+        false,
+        true,
+        Ordering::Acquire,
+        Ordering::Relaxed,
+    ).is_ok();
+
+    if !already_initialized {
         unsafe {
-            let executorp = EXECUTOR.get() as *mut Executor;
-            executorp.write(Executor::new());
-            atomic::compiler_fence(Ordering::Release);
-            INIT.store(true, Ordering::Relaxed);
-            &*executorp
+            // Safe because we're in a single-threaded context due to the atomic check
+            EXECUTOR.get().write(Executor::new());
         }
+        atomic::compiler_fence(Ordering::Release);
     }
 }
 
