@@ -74,7 +74,7 @@ storage = ["ockam_vault/storage", "sqlx", "tokio-retry"]
 async-trait = "0.1.75"
 cfg-if = "1.0.0"
 chrono = { version = "0.4.31", default-features = false }
-delegate = "0.11.0"
+delegate = "0.12.0"
 group = { version = "0.13.0", default-features = false }
 hex = { version = "0.4", default-features = false }
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
