@@ -3,7 +3,7 @@ use std::process;
 
 use nix::errno::Errno;
 use serde::Serialize;
-use sysinfo::{Pid, ProcessExt, ProcessStatus, System, SystemExt};
+use sysinfo::{Pid, ProcessStatus, System};
 
 use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
