@@ -13,6 +13,6 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - name: Check spelling
-        uses: crate-ci/typos@5bd389de715c63ba86568420809e324fcea78660
+        uses: crate-ci/typos@45a880d9f898547e8bfe6525b6059d4b3dea4d71
         with:
           config: tools/typos/typos.toml
