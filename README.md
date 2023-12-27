@@ -171,6 +171,10 @@ Cryptographic and Messaging Protocols that make up the core of Ockam and provide
 
 The code in this repository is licensed under the terms of the [Apache License 2.0](LICENSE).
 
+## Sponsorship Matching Program
+
+Ockam sponsors open source builders who are making it possible for software to be more private and secure-by-design. This includes builders of tools and libraries that Ockam depends on. Under our matching program, if you sponsor the Ockam Open Source project, we will match your contribution and pass it along to other open source developers. For example: If you sponsor Ockam for $10 a month, we will match your $10, and will send $20 back out into the community. Learn more about our [sponsorship matching program](https://github.com/sponsors/build-trust) [👉](https://github.com/sponsors/build-trust)
+
 ## Learn more about Ockam
 
 - [ockam.io](https://www.ockam.io/)
