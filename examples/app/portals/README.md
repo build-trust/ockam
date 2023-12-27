@@ -28,6 +28,19 @@ Or, install it using the appropriate dmg file for your Mac:
 - Apple Silicon based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.aarch64-apple-darwin.dmg).
 - Intel based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.x86_64-apple-darwin.dmg).
 
+### Ideas for things you can use it for
+
+- Share an in-dev Nextjs or Svelte app with a teammate.
+- Create a static file server with Caddy Server and share with a friend.
+- Share a dev Kubernetes cluster using Kind or Minikube with team mates.
+- SSH to a home computer when you're on the move.
+- Safely browse the Internet from anywhere in the world using a SOCKS proxy to your home computer.
+- Transfer files between your computers over rsync or sftp.
+- Share a Postgres database with a teammate.
+- Share a Jupyter analytics notebook with a teammate.
+
+The possibilities are endless! If you have other ideas or need help setting up any of the above, [join us on discord](https://discord.ockam.io).
+
 ## Introduction to Ockam Portals
 
 An Ockam Portal carries a non-Ockam protocol over Ockam. There are various types of Ockam Portals: TCP Portals, UDP Portals, Kafka Portals, etc. The Portals app for Mac supports TCP Portals.
