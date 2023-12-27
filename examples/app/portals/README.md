@@ -25,8 +25,8 @@ brew update && brew install build-trust/ockam/portals
 ```
 
 Or, install it using the appropriate dmg file for your Mac:
-- Apple Silicon based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.114.0/ockam.app.aarch64-apple-darwin.dmg).
-- Intel based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.114.0/ockam.app.x86_64-apple-darwin.dmg).
+- Apple Silicon based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.aarch64-apple-darwin.dmg).
+- Intel based Mac: Install from [this dmg file](https://github.com/build-trust/ockam/releases/download/ockam_v0.113.0/ockam.app.x86_64-apple-darwin.dmg).
 
 ## Introduction to Ockam Portals
 
