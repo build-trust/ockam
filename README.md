@@ -159,8 +159,12 @@ Orchestrate nodes, vaults, identities, credentials, secure channels, relays, por
 [👉](https://docs.ockam.io/reference/command)
 
 * [__Ockam Programming Libraries__](https://docs.ockam.io/reference/libraries)
-Rust, Elixir and soon Typescript libraries to build secure by design applications for any environment
+Rust and Elixir libraries to build secure by design applications for any environment
 – from highly scalable cloud infrastructure to tiny battery operated microcontroller based devices.
+[👉](https://docs.ockam.io/reference/libraries)
+
+* [__Ockam Protocols__](https://docs.ockam.io/reference/protocols)
+Cryptographic and Messaging Protocols that make up the core of Ockam and provide the foundation for end-to-end application layer trust in data.
 [👉](https://docs.ockam.io/reference/libraries)
 
 ## License
