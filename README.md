@@ -160,7 +160,7 @@ Orchestrate nodes, vaults, identities, credentials, secure channels, relays, por
 
 * [__Ockam Programming Libraries__](https://docs.ockam.io/reference/libraries)
 Rust and Elixir libraries to build secure by design applications for any environment
-– from highly scalable cloud infrastructure to tiny battery operated microcontroller based devices.
+– from highly scalable cloud infrastructure to tiny battery operated microcontroller devices.
 [👉](https://docs.ockam.io/reference/libraries)
 
 * [__Ockam Protocols__](https://docs.ockam.io/reference/protocols)
