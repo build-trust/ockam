@@ -70,7 +70,7 @@ storage = ["std", "time", "serde_json", "sqlx", "tokio-retry"]
 [dependencies]
 cfg-if = "1.0.0"
 fs2 = { version = "0.4.3", optional = true }
-futures = { version = "0.3.29", default-features = false }
+futures = { version = "0.3.30", default-features = false }
 heapless = { version = "0.8", features = ["mpmc_large"], optional = true }
 minicbor = { version = "0.20.0", features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.99.0", default_features = false }
