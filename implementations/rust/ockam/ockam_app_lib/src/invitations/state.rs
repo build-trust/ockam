@@ -105,6 +105,8 @@ mod tests {
                 remaining_uses: 0,
                 scope: ShareScope::Project,
                 target_id: "target_id".to_string(),
+                recipient_id: 0,
+                access_details: None,
             }]),
             received: Some(vec![
                 ReceivedInvitation {

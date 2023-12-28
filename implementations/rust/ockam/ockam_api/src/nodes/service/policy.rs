@@ -114,6 +114,14 @@ pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
 pub trait Policies {
     async fn add_policy_to_project(&self, ctx: &Context, resource_name: &str)
         -> miette::Result<()>;
+
+    async fn add_policy(
+        &self,
+        ctx: &Context,
+        resource_name: &Resource,
+        action: &Action,
+        policy: &Policy,
+    ) -> miette::Result<()>;
 }
 
 #[async_trait]
@@ -147,6 +155,19 @@ impl Policies for BackgroundNodeClient {
         };
         let action = Action::new("handle_message");
         let request = Request::post(policy_path(&resource, &action)).body(policy);
+        self.tell(ctx, request).await?;
+
+        Ok(())
+    }
+
+    async fn add_policy(
+        &self,
+        ctx: &Context,
+        resource: &Resource,
+        action: &Action,
+        policy: &Policy,
+    ) -> miette::Result<()> {
+        let request = Request::post(policy_path(resource, action)).body(policy);
         self.tell(ctx, request).await?;
 
         Ok(())

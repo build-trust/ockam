@@ -6,6 +6,7 @@ pub mod service;
 pub use service::background_node_client::*;
 pub use service::credentials::*;
 pub use service::in_memory_node::*;
+pub use service::policy::*;
 /// The main node-manager service running on remote nodes
 pub use service::{IdentityOverride, NodeManager, NodeManagerWorker};
 

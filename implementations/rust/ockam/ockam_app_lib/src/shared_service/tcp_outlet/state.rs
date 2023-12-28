@@ -34,6 +34,21 @@ impl AppState {
         let node_manager = self.node_manager().await;
         let context = self.context();
         for tcp_outlet in self.model(|m| m.get_tcp_outlets().to_vec()).await {
+            let access_control = match self
+                .create_invitations_access_control(tcp_outlet.worker_addr.address().to_string())
+                .await
+            {
+                Ok(a) => a,
+                Err(e) => {
+                    error!(
+                        ?e,
+                        worker_addr = %tcp_outlet.worker_addr,
+                        "Failed to create access control"
+                    );
+                    continue;
+                }
+            };
+
             debug!(worker_addr = %tcp_outlet.worker_addr, "Restoring outlet");
             let _ = node_manager
                 .create_outlet(
@@ -42,6 +57,7 @@ impl AppState {
                     tcp_outlet.worker_addr.clone(),
                     Some(tcp_outlet.alias.clone()),
                     true,
+                    Some(access_control),
                 )
                 .await
                 .map_err(|e| {
