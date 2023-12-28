@@ -53,7 +53,7 @@ pub(crate) mod in_memory_node;
 pub mod kafka_services;
 pub mod message;
 mod node_services;
-mod policy;
+pub(crate) mod policy;
 pub mod portals;
 mod projects;
 pub mod relay;

@@ -27,8 +27,9 @@ impl AppState {
                 &self.context(),
                 socket_addr,
                 worker_addr.clone().into(),
-                Some(worker_addr),
+                Some(worker_addr.clone()),
                 true,
+                Some(self.create_invitations_access_control(worker_addr).await?),
             )
             .await
         {

@@ -195,6 +195,7 @@ impl InMemoryNode {
             KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
             Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
             false,
+            None,
         )
         .await?;
 
@@ -387,6 +388,7 @@ impl NodeManager {
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
                 false,
+                None,
             )
             .await
         {

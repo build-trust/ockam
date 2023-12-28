@@ -121,6 +121,8 @@ pub struct SentInvitation {
     #[n(6)] pub remaining_uses: usize,
     #[n(7)] pub scope: ShareScope,
     #[n(8)] pub target_id: String,
+    #[n(9)] pub recipient_id: usize,
+    #[n(10)] pub access_details: Option<ServiceAccessDetails>,
 }
 
 impl SentInvitation {
@@ -143,7 +145,7 @@ fn is_expired(date: &str) -> ockam_core::Result<bool> {
     Ok(date < now)
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ServiceAccessDetails {
