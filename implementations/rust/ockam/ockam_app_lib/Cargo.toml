@@ -47,7 +47,7 @@ tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-tempfile = { version = "3.8.0" }
+tempfile = { version = "3.9.0" }
 
 [build-dependencies]
 cbindgen = "0.26"
