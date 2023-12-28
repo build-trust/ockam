@@ -1112,9 +1112,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.11"
+version = "4.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfaff671f6b22ca62406885ece523383b9b64022e341e53e009a62ebc47a45f2"
+checksum = "dcfab8ba68f3668e89f6ff60f5b205cea56aa7b769451a59f34b8682f51c056d"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1122,9 +1122,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.4.11"
+version = "4.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a216b506622bb1d316cd51328dce24e07bdff4a6128a47c7e7fad11878d5adbb"
+checksum = "fb7fb5e4e979aec3be7791562fcba452f94ad85e954da024396433e0e25a79e9"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1139,7 +1139,7 @@ version = "4.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a51919c5608a32e34ea1d6be321ad070065e17613e168c5b6977024290f2630b"
 dependencies = [
- "clap 4.4.11",
+ "clap 4.4.12",
 ]
 
 [[package]]
@@ -1175,7 +1175,7 @@ version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10b5db60b3310cdb376fbeb8826e875a38080d0c61bdec0a91a3da8338948736"
 dependencies = [
- "clap 4.4.11",
+ "clap 4.4.12",
  "roff",
 ]
 
@@ -3806,7 +3806,7 @@ dependencies = [
  "arboard",
  "assert_cmd",
  "async-trait",
- "clap 4.4.11",
+ "clap 4.4.12",
  "clap_complete",
  "clap_mangen",
  "colorful",
@@ -4686,7 +4686,7 @@ version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff461ff47829667dc02eecb2d9d5dd35c19d9a171aa1fff4782c7688fad284da"
 dependencies = [
- "clap 4.4.11",
+ "clap 4.4.12",
  "crossterm",
  "is-terminal",
  "log",
