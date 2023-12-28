@@ -54,7 +54,7 @@ wast = { version = "69.0.1", default-features = false, optional = true }
 [dev-dependencies]
 quickcheck = "1.0.3"
 rand = "0.8.5"
-tempfile = "3.8.0"
+tempfile = "3.9.0"
 
 [[bin]]
 name = "repl"
