@@ -266,6 +266,27 @@ function terraform_binaries_release() {
   approve_and_watch_workflow_progress "terraform-provider-ockam" "$workflow_file_name" "$branch"
 }
 
+function update_docs_repo() {
+  set -e
+  workflow_file_name="release-docs-update.yml"
+  release_tag="$1"
+  branch_name="main"
+
+  gh workflow run "$workflow_file_name" --ref branch_name -F branch_name="$release_name" -F ockam_ref="$release_tag" \
+    -R $owner/ockam-documentation
+  # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
+  sleep 10
+
+  # Wait for workflow run
+  watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch_name"
+
+  # Check if the branch was created, new branch is only created when there are new doc updates
+  if gh api "repos/build-trust/ockam-documentation/branches/${release_name}" --jq .name; then
+    gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
+      --base main -H "${release_name}" -r nazmulidris -R $owner/ockam-documentation
+  fi
+}
+
 function delete_ockam_draft_package() {
   set -e
   versions=$(gh api -H "Accept: application/vnd.github+json" /orgs/build-trust/packages/container/ockam/versions)
@@ -367,6 +388,12 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
     echo "Releasing Ockam Terraform binaries"
     terraform_binaries_release "$latest_tag_name"
     success_info "Ockam Terraform binary release successful"
+  fi
+
+  if [[ -z $SKIP_DOCS_UPDATE || $SKIP_DOCS_UPDATE == false ]]; then
+    echo "Updating ockam documentation repository"
+    update_docs_repo "$latest_tag_name"
+    success_info "Ockam documentation repository pull request created..."
   fi
 
   success_info "Ockam draft release successful"

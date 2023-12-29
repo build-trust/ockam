@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 set -e
 if [ -z "$OCKAM_HOME" ]; then
   echo "Please set OCKAM_HOME to the repo root"
@@ -17,8 +19,8 @@ popd &>/dev/null || exit
 
 # Look for md files from this directory
 for FILE_NAME in $(find "$DOCS_HOME" -type f -name "*.md"); do
-    echo "==> $FILE_NAME"
-    TMP=$(mktemp)
-    EXAMPLES_DIR="$OCKAM_HOME/examples/rust/get_started" example_blocks "$FILE_NAME" >"$TMP"
-    cat "$TMP" >"$FILE_NAME"
+  echo "==> $FILE_NAME"
+  TMP=$(mktemp)
+  EXAMPLES_DIR="$OCKAM_HOME/examples/rust/get_started" example_blocks "$FILE_NAME" >"$TMP"
+  cat "$TMP" >"$FILE_NAME"
 done
