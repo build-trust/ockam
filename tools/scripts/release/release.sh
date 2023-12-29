@@ -287,6 +287,25 @@ function update_docs_repo() {
   fi
 }
 
+function update_command_manual() {
+  set -e
+  workflow_file_name="release-command-manual.yml"
+  branch="main"
+  release_tag="$1"
+
+  prefix="ockam_"
+  release=${release_tag#"$prefix"}
+
+  gh workflow run "$workflow_file_name" --ref "$branch" -R $OWNER/ockam-documentation -F release_branch="$release_name" -F release_tag="$release" >>$log
+  # Wait for workflow run
+  sleep 10
+
+  watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch"
+
+  gh pr create --title "Ockam command manual update to $release" --body "Ockam commnad manual update $release" \
+    --base command -H "${release_name}" -R $OWNER/ockam-documentation >>$log
+}
+
 function delete_ockam_draft_package() {
   set -e
   versions=$(gh api -H "Accept: application/vnd.github+json" /orgs/build-trust/packages/container/ockam/versions)
@@ -396,6 +415,12 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
     success_info "Ockam documentation repository pull request created..."
   fi
 
+  if [[ -z $SKIP_COMMAND_MANUAL_RELEASE || $SKIP_COMMAND_MANUAL_RELEASE == false ]]; then
+    echo "Updating ockam command manual"
+    update_command_manual "$latest_tag_name"
+    success_info "Ockam command manual updated successfully"
+  fi
+
   success_info "Ockam draft release successful"
 fi
 
@@ -423,7 +448,20 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
     fi
   fi
 
+  # Check if ockam command manual PR was created
+  if [[ -z $SKIP_COMMAND_MANUAL_RELEASE || $SKIP_COMMAND_MANUAL_RELEASE == false ]]; then
+    ockam_prs=$(gh pr list --base command -R build-trust/ockam-documentation --json title)
+    prefix="ockam_"
+    release=${latest_tag_name#"$prefix"}
+    if [[ $ockam_prs != *"$release"* ]]; then
+      echo "Could not find command manual PR"
+      exit 1
+    fi
+  fi
+
   success_info "Recent draft release was successful"
+  dialog_info "Press enter if draft release text has been updated"
+
   dialog_info "Press enter to start final release"
 fi
 
