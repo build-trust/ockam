@@ -33,6 +33,7 @@ Or, install it using the appropriate dmg file for your Mac:
 - Share an in-dev Nextjs or Svelte app with a teammate.
 - Create a static file server with Caddy Server and share with a friend.
 - Share a dev Kubernetes cluster using Kind or Minikube with team mates.
+- Share Visual Studio Code between your computers and access it on the go using CoderHQ's code-server.
 - SSH to a home computer when you're on the move.
 - Safely browse the Internet from anywhere in the world using a SOCKS proxy to your home computer.
 - Transfer files between your computers over rsync or sftp.
