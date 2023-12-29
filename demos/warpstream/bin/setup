@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+ockam reset
+ockam enroll
+
+echo "Starting Warpstream playground..."
+warpstream playground &
+sleep 5
+read -p "Have you opened the developer console in a browser? (Y/n) " ok
+
+warpstream kcmd --type create-topic --topic ockam-demo
+echo ""
+echo ""
+echo "Visit the Warpstream developer console > Agent Pools > (Click your agent pool) > ... "
+echo "Magic URLs > Find the URL for the kafka protocol + playground "
+read -p "What is the URL: " bootstrap_uri
+echo ""
+
+ockam project addon configure confluent \
+    --bootstrap-server $bootstrap_uri
+
+echo ""
+echo "You can now run ./bin/up to start the producer and consumer."
