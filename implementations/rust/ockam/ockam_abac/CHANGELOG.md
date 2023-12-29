@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated dependencies
 
+### Fixed
+
+- Fix action variable in `PolicyAccessControl` `Debug` impl
+
 ## 0.46.0 - 2023-12-19
 
 ### Changed
