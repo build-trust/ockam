@@ -28,12 +28,12 @@ pub struct Configuration {
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
     pub tcp_listener_address: InternetAddress,
 
-    /// service name for the secure channel listener, for example "secure"
+    /// service name for the secure channel listener, for example "api"
     /// The default is DefaultAddress::SECURE_CHANNEL_LISTENER
     pub secure_channel_listener_name: Option<String>,
 
-    /// Service name for the direct authenticator, for example "api"
-    /// The default is DefaultAddress::SECURE_CHANNEL_LISTENER
+    /// Service name for the direct authenticator, for example "direct_authenticator"
+    /// The default is DefaultAddress::DIRECT_AUTHENTICATOR
     pub authenticator_name: Option<String>,
 
     /// list of trusted identities (identities with the ockam-role: enroller)
