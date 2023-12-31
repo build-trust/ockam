@@ -18,21 +18,19 @@ use crate::NamedTrustContext;
 
 #[derive(Clone)]
 pub struct TrustContextsSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl TrustContextsSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for trust contexts");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("trust contexts").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("trust contexts").await?))
     }
 }
 
@@ -77,7 +75,7 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
     async fn get_default_trust_context(&self) -> Result<Option<NamedTrustContext>> {
         let query = query_as("SELECT name, trust_context_id, is_default, credential, authority_change_history, authority_route FROM trust_context WHERE is_default=$1").bind(true.to_sql());
         let row: Option<NamedTrustContextRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_trust_context()).transpose()
@@ -102,7 +100,7 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
     async fn get_trust_context(&self, name: &str) -> Result<Option<NamedTrustContext>> {
         let query = query_as("SELECT name, trust_context_id, is_default, credential, authority_change_history, authority_route FROM trust_context WHERE name=$1").bind(name.to_sql());
         let row: Option<NamedTrustContextRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|u| u.named_trust_context()).transpose()
@@ -111,13 +109,13 @@ impl TrustContextsRepository for TrustContextsSqlxDatabase {
     async fn get_trust_contexts(&self) -> Result<Vec<NamedTrustContext>> {
         let query = query_as("SELECT name, trust_context_id, is_default, credential, authority_change_history, authority_route FROM trust_context");
         let rows: Vec<NamedTrustContextRow> =
-            query.fetch_all(&self.database.pool).await.into_core()?;
+            query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|u| u.named_trust_context()).collect()
     }
 
     async fn delete_trust_context(&self, name: &str) -> Result<()> {
         let query1 = query("DELETE FROM trust_context WHERE name=?").bind(name.to_sql());
-        query1.execute(&self.database.pool).await.void()
+        query1.execute(&*self.database.pool).await.void()
     }
 }
 
@@ -229,7 +227,7 @@ mod test {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn TrustContextsRepository>> {
-        Ok(TrustContextsSqlxDatabase::create().await?)
+        Ok(Arc::new(TrustContextsSqlxDatabase::create().await?))
     }
 
     async fn create_trust_context(

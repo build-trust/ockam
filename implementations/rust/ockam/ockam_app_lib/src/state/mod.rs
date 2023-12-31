@@ -98,7 +98,7 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state = CliState::with_default_dir()?;
+        let cli_state = CliState::with_default_dir(NODE_NAME.to_string())?;
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
 
@@ -141,7 +141,7 @@ impl AppState {
     ) -> AppState {
         // create the application state and its dependencies
         let node_manager = create_node_manager(context.clone(), &cli_state).await;
-        let model_state_repository = create_model_state_repository(&cli_state).await;
+        let model_state_repository = create_model_state_repository(&cli_state);
         let model_state = model_state_repository
             .load()
             .await
@@ -287,7 +287,7 @@ impl AppState {
             *writer = ModelState::default();
         }
         let cli_state = &self.state().await;
-        let new_state_repository = create_model_state_repository(cli_state).await;
+        let new_state_repository = create_model_state_repository(cli_state);
         {
             let mut writer = self.model_state_repository.write().await;
             *writer = new_state_repository;
@@ -726,14 +726,6 @@ pub(crate) async fn make_node_manager(
 }
 
 /// Create the repository containing the model state
-async fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
-    let database_path = state.database_path();
-
-    match ModelStateSqlxDatabase::create_at(database_path).await {
-        Ok(model_state_repository) => model_state_repository,
-        Err(e) => {
-            error!(%e, "Cannot create a model state repository manager");
-            panic!("Cannot create a model state repository manager: {e:?}");
-        }
-    }
+fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
+    Arc::new(ModelStateSqlxDatabase::new(state.database()))
 }

@@ -605,9 +605,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_initialization() -> Result<()> {
-        let vault = Arc::new(SoftwareVaultForSecureChannels::new(
+        let vault = Arc::new(SoftwareVaultForSecureChannels::new(Arc::new(
             SecretsSqlxDatabase::create().await?,
-        ));
+        )));
 
         let static_key = vault.generate_static_x25519_secret_key().await?;
         let mut handshake = Handshake::new_with_protocol(

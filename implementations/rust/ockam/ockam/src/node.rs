@@ -41,7 +41,11 @@ pub struct Node {
 /// use ockam_vault::storage::SecretsSqlxDatabase;
 ///
 /// async fn make_node(ctx: Context) -> Result<Node> {
-///   let node = Node::builder().await?.with_secrets_repository(SecretsSqlxDatabase::create().await?).build(&ctx).await?;
+///   let node = Node::builder()
+///       .await?
+///       .with_secrets_repository(Arc::new(SecretsSqlxDatabase::create().await?))
+///       .build(&ctx)
+///       .await?;
 ///   Ok(node)
 /// }
 ///

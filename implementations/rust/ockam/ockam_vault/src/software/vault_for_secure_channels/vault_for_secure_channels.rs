@@ -43,7 +43,9 @@ impl SoftwareVaultForSecureChannels {
     /// Create Software implementation Vault with an in-memory implementation to store secrets
     #[cfg(feature = "storage")]
     pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(SecretsSqlxDatabase::create().await?)))
+        Ok(Arc::new(Self::new(Arc::new(
+            SecretsSqlxDatabase::create().await?,
+        ))))
     }
 }
 

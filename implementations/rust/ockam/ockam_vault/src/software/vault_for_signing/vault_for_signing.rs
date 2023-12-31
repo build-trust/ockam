@@ -34,7 +34,9 @@ impl SoftwareVaultForSigning {
     /// Create an in-memory Software implementation Vault
     #[cfg(feature = "storage")]
     pub async fn create() -> Result<Arc<SoftwareVaultForSigning>> {
-        Ok(Arc::new(Self::new(SecretsSqlxDatabase::create().await?)))
+        Ok(Arc::new(Self::new(Arc::new(
+            SecretsSqlxDatabase::create().await?,
+        ))))
     }
 
     /// Import a key from a binary

@@ -1,3 +1,4 @@
+mod migrations;
 mod sqlx_database;
 mod sqlx_types;
 

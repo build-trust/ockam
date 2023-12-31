@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use sqlx::sqlite::SqliteRow;
 use sqlx::*;
@@ -14,19 +13,20 @@ use crate::cli_state::NodesRepository;
 use crate::config::lookup::InternetAddress;
 use crate::NodeInfo;
 
+#[derive(Clone)]
 pub struct NodesSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl NodesSqlxDatabase {
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for nodes");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(SqlxDatabase::in_memory("nodes").await?)))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("nodes").await?))
     }
 }
 
@@ -46,19 +46,19 @@ impl NodesRepository for NodesSqlxDatabase {
                     .map(|a| a.to_string().to_sql()),
             )
             .bind(node_info.pid().map(|p| p.to_sql()));
-        Ok(query.execute(&self.database.pool).await.void()?)
+        Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
     async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
         let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node");
-        let rows: Vec<NodeRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let rows: Vec<NodeRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.node_info()).collect()
     }
 
     async fn get_node(&self, node_name: &str) -> Result<Option<NodeInfo>> {
         let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE name = ?").bind(node_name.to_sql());
         let row: Option<NodeRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.node_info()).transpose()
@@ -66,14 +66,14 @@ impl NodesRepository for NodesSqlxDatabase {
 
     async fn get_nodes_by_identifier(&self, identifier: &Identifier) -> Result<Vec<NodeInfo>> {
         let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE identifier = ?").bind(identifier.to_sql());
-        let rows: Vec<NodeRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let rows: Vec<NodeRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.node_info()).collect()
     }
 
     async fn get_default_node(&self) -> Result<Option<NodeInfo>> {
         let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE is_default = ?").bind(true.to_sql());
         let row: Option<NodeRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.node_info()).transpose()
@@ -82,7 +82,7 @@ impl NodesRepository for NodesSqlxDatabase {
     async fn is_default_node(&self, node_name: &str) -> Result<bool> {
         let query = query("SELECT is_default FROM node WHERE name = ?").bind(node_name.to_sql());
         let row: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(row.map(|r| r.get(0)).unwrap_or(false))
@@ -106,7 +106,7 @@ impl NodesRepository for NodesSqlxDatabase {
 
     async fn delete_node(&self, node_name: &str) -> Result<()> {
         let query = query("DELETE FROM node WHERE name=?").bind(node_name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_tcp_listener_address(
@@ -117,14 +117,14 @@ impl NodesRepository for NodesSqlxDatabase {
         let query = query("UPDATE node SET tcp_listener_address = ? WHERE name = ?")
             .bind(address.to_string().to_sql())
             .bind(node_name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         let query = query("UPDATE node SET is_authority = ? WHERE name = ?")
             .bind(true.to_sql())
             .bind(node_name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_tcp_listener_address(&self, node_name: &str) -> Result<Option<InternetAddress>> {
@@ -138,26 +138,26 @@ impl NodesRepository for NodesSqlxDatabase {
         let query = query("UPDATE node SET pid = ? WHERE name = ?")
             .bind(pid.to_sql())
             .bind(node_name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()> {
         let query = query("UPDATE node SET pid = NULL WHERE name = ?").bind(node_name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO node_project VALUES (?1, ?2)")
             .bind(node_name.to_sql())
             .bind(project_name.to_sql());
-        Ok(query.execute(&self.database.pool).await.void()?)
+        Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
     async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>> {
         let query = query("SELECT project_name FROM node_project WHERE node_name = ?")
             .bind(node_name.to_sql());
         let row: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         let project_name: Option<String> = row.map(|r| r.get(0));
@@ -206,6 +206,7 @@ impl NodeRow {
 #[cfg(test)]
 mod test {
     use ockam::identity::identities;
+    use std::sync::Arc;
 
     use super::*;
 
@@ -304,7 +305,7 @@ mod test {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn NodesRepository>> {
-        Ok(NodesSqlxDatabase::create().await?)
+        Ok(Arc::new(NodesSqlxDatabase::create().await?))
     }
 
     async fn create_identity() -> Result<Identifier> {

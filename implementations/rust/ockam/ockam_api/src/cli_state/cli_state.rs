@@ -4,7 +4,6 @@ use rand::random;
 
 use cli_state::error::Result;
 use ockam::SqlxDatabase;
-use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Executor;
 
@@ -27,29 +26,37 @@ use crate::cli_state::CliStateError;
 #[derive(Debug, Clone)]
 pub struct CliState {
     dir: PathBuf,
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl CliState {
     /// Create a new CliState in a given directory
-    pub fn new(dir: &Path) -> Result<Self> {
-        Executor::execute_future(Self::create(dir.into()))?
+    pub fn new(dir: &Path, node_name: String) -> Result<Self> {
+        Executor::execute_future(Self::create(dir.into(), node_name))?
     }
 
     pub fn dir(&self) -> PathBuf {
         self.dir.clone()
     }
 
+    pub fn database(&self) -> SqlxDatabase {
+        self.database.clone()
+    }
+
     pub fn database_path(&self) -> PathBuf {
         Self::make_database_path(&self.dir)
+    }
+
+    pub fn set_node_name(&mut self, node_name: String) {
+        self.database.node_name = node_name
     }
 }
 
 /// These functions allow to create and reset the local state
 impl CliState {
     /// Return a new CliState using a default directory to store its data
-    pub fn with_default_dir() -> Result<Self> {
-        Self::new(Self::default_dir()?.as_path())
+    pub fn with_default_dir(node_name: String) -> Result<Self> {
+        Self::new(Self::default_dir()?.as_path(), node_name)
     }
 
     /// Stop nodes and remove all the directories storing state
@@ -68,12 +75,12 @@ impl CliState {
     /// Reset all directories and return a new CliState
     pub async fn recreate(&self) -> Result<CliState> {
         self.reset().await?;
-        Self::create(self.dir.clone()).await
+        Self::create(self.dir.clone(), self.database.node_name.clone()).await
     }
 
     /// Backup and reset is used to save aside
     /// some corrupted local state for later inspection and then reset the state
-    pub fn backup_and_reset() -> Result<CliState> {
+    pub fn backup_and_reset() -> Result<()> {
         let dir = Self::default_dir()?;
 
         // Reset backup directory
@@ -93,12 +100,13 @@ impl CliState {
 
         // Reset state
         Self::delete_at(&dir)?;
-        let state = Self::new(&dir)?;
+        // node_name should not matter during backup
+        let state = Self::new(&dir, "RESET".to_string())?;
 
         let dir = &state.dir;
         let backup_dir = CliState::backup_default_dir().unwrap();
         eprintln!("The {dir:?} directory has been reset and has been backed up to {backup_dir:?}");
-        Ok(state)
+        Ok(())
     }
 
     /// Returns the default backup directory for the CLI state.
@@ -120,16 +128,12 @@ impl CliState {
 /// Low-level functions for creating / deleting CliState files
 impl CliState {
     /// Create a new CliState where the data is stored at a given path
-    pub(super) async fn create(dir: PathBuf) -> Result<Self> {
+    pub(super) async fn create(dir: PathBuf, node_name: String) -> Result<Self> {
         std::fs::create_dir_all(&dir)?;
-        let database = Arc::new(SqlxDatabase::create(Self::make_database_path(&dir)).await?);
+        let database = SqlxDatabase::create(Self::make_database_path(&dir), node_name).await?;
         debug!("Opened the database with options {:?}", database);
         let state = Self { dir, database };
         Ok(state)
-    }
-
-    pub(super) fn database(&self) -> Arc<SqlxDatabase> {
-        self.database.clone()
     }
 
     pub(super) fn make_database_path(root_path: &Path) -> PathBuf {
@@ -186,7 +190,7 @@ mod tests {
     async fn test_reset() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let cli = CliState::create(cli_state_directory.clone()).await?;
+        let cli = CliState::create(cli_state_directory.clone(), "test_node".to_string()).await?;
 
         // create 2 vaults
         // the second vault is using a separate file

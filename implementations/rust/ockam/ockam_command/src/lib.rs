@@ -244,7 +244,8 @@ pub struct CommandGlobalOpts {
 impl CommandGlobalOpts {
     pub fn new(global_args: GlobalArgs) -> Self {
         let terminal = Terminal::from(&global_args);
-        let state = match CliState::with_default_dir() {
+        // This node_name is a placeholder and should be set to a proper value when creating a node
+        let state = match CliState::with_default_dir("ockam_command".to_string()) {
             Ok(state) => state,
             Err(_) => {
                 terminal

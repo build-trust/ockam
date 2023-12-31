@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::*;
 
 use crate::cloud::email_address::EmailAddress;
@@ -13,19 +11,19 @@ use super::UsersRepository;
 
 #[derive(Clone)]
 pub struct UsersSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl UsersSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for users");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(SqlxDatabase::in_memory("users").await?)))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("users").await?))
     }
 }
 
@@ -57,7 +55,7 @@ impl UsersRepository for UsersSqlxDatabase {
     async fn get_default_user(&self) -> Result<Option<UserInfo>> {
         let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE is_default=$1").bind(true.to_sql());
         let row: Option<UserRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(row.map(|u| u.user()).transpose()?)
@@ -67,13 +65,13 @@ impl UsersRepository for UsersSqlxDatabase {
         let query = query("UPDATE user SET is_default = ? WHERE email = ?")
             .bind(true.to_sql())
             .bind(email.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_user(&self, email: &EmailAddress) -> Result<Option<UserInfo>> {
         let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE email=$1").bind(email.to_sql());
         let row: Option<UserRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(row.map(|u| u.user()).transpose()?)
@@ -81,13 +79,13 @@ impl UsersRepository for UsersSqlxDatabase {
 
     async fn get_users(&self) -> Result<Vec<UserInfo>> {
         let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user");
-        let rows: Vec<UserRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let rows: Vec<UserRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|u| u.user()).collect()
     }
 
     async fn delete_user(&self, email: &EmailAddress) -> Result<()> {
         let query1 = query("DELETE FROM user WHERE email=?").bind(email.to_sql());
-        query1.execute(&self.database.pool).await.void()
+        query1.execute(&*self.database.pool).await.void()
     }
 }
 
@@ -124,6 +122,8 @@ impl UserRow {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
@@ -178,6 +178,6 @@ mod test {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn UsersRepository>> {
-        Ok(UsersSqlxDatabase::create().await?)
+        Ok(Arc::new(UsersSqlxDatabase::create().await?))
     }
 }

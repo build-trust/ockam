@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use sqlx::sqlite::SqliteRow;
 use sqlx::FromRow;
@@ -14,22 +13,21 @@ use ockam_core::Result;
 use crate::cli_state::enrollments::IdentityEnrollment;
 use crate::cli_state::EnrollmentsRepository;
 
+#[derive(Clone)]
 pub struct EnrollmentsSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl EnrollmentsSqlxDatabase {
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for enrollments");
         Self { database }
     }
 
     /// Create a new in-memory database
     #[allow(unused)]
-    pub async fn create() -> Result<Arc<EnrollmentsSqlxDatabase>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("enrollments").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("enrollments").await?))
     }
 }
 
@@ -39,7 +37,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
         let query = query("INSERT OR REPLACE INTO identity_enrollment VALUES (?, ?)")
             .bind(identifier.to_sql())
             .bind(OffsetDateTime::now_utc().to_sql());
-        Ok(query.execute(&self.database.pool).await.void()?)
+        Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
     async fn get_enrolled_identities(&self) -> Result<Vec<IdentityEnrollment>> {
@@ -56,7 +54,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
             "#,
         )
         .bind(None as Option<i64>);
-        let result: Vec<EnrollmentRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let result: Vec<EnrollmentRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         result
             .into_iter()
             .map(|r| r.identity_enrollment())
@@ -76,7 +74,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
               identity.identifier = named_identity.identifier
             "#,
         );
-        let result: Vec<EnrollmentRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let result: Vec<EnrollmentRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         result
             .into_iter()
             .map(|r| r.identity_enrollment())
@@ -99,7 +97,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
         )
         .bind(true.to_sql());
         let result: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(result.map(|_| true).unwrap_or(false))
@@ -123,7 +121,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
         )
         .bind(name.to_sql());
         let result: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(result.map(|_| true).unwrap_or(false))
@@ -161,6 +159,7 @@ mod tests {
     use ockam::identity::{
         identities, ChangeHistoryRepository, ChangeHistorySqlxDatabase, Identity,
     };
+    use std::sync::Arc;
 
     use super::*;
 
@@ -193,18 +192,14 @@ mod tests {
     }
 
     /// HELPERS
-    async fn create_identity(db: Arc<SqlxDatabase>, name: &str) -> Result<Identity> {
+    async fn create_identity(db: SqlxDatabase, name: &str) -> Result<Identity> {
         let identities = identities().await?;
         let identifier = identities.identities_creation().create_identity().await?;
         let identity = identities.get_identity(&identifier).await?;
         store_identity(db, name, identity).await
     }
 
-    async fn store_identity(
-        db: Arc<SqlxDatabase>,
-        name: &str,
-        identity: Identity,
-    ) -> Result<Identity> {
+    async fn store_identity(db: SqlxDatabase, name: &str, identity: Identity) -> Result<Identity> {
         let change_history_repository = create_change_history_repository(db.clone()).await?;
         let identities_repository = create_identities_repository(db).await?;
         change_history_repository
@@ -222,22 +217,22 @@ mod tests {
         Ok(identity)
     }
 
-    fn create_repository(db: Arc<SqlxDatabase>) -> Arc<dyn EnrollmentsRepository> {
+    fn create_repository(db: SqlxDatabase) -> Arc<dyn EnrollmentsRepository> {
         Arc::new(EnrollmentsSqlxDatabase::new(db))
     }
 
-    async fn create_database() -> Result<Arc<SqlxDatabase>> {
+    async fn create_database() -> Result<SqlxDatabase> {
         SqlxDatabase::in_memory("enrollments-test").await
     }
 
     async fn create_change_history_repository(
-        db: Arc<SqlxDatabase>,
+        db: SqlxDatabase,
     ) -> Result<Arc<dyn ChangeHistoryRepository>> {
         Ok(Arc::new(ChangeHistorySqlxDatabase::new(db)))
     }
 
     async fn create_identities_repository(
-        db: Arc<SqlxDatabase>,
+        db: SqlxDatabase,
     ) -> Result<Arc<dyn IdentitiesRepository>> {
         Ok(Arc::new(IdentitiesSqlxDatabase::new(db)))
     }

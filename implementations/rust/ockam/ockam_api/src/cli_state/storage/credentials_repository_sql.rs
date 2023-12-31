@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::*;
 
 use ockam::identity::models::{ChangeHistory, CredentialAndPurposeKey};
@@ -12,21 +10,19 @@ use crate::cli_state::{CredentialsRepository, NamedCredential};
 
 #[derive(Clone)]
 pub struct CredentialsSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl CredentialsSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for credentials");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("credentials").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("credentials").await?))
     }
 }
 
@@ -43,14 +39,14 @@ impl CredentialsRepository for CredentialsSqlxDatabase {
             .bind(issuer.identifier().to_sql())
             .bind(issuer.change_history().to_sql())
             .bind(CredentialAndPurposeKeySql(credential.clone()).to_sql());
-        query.execute(&self.database.pool).await.void()?;
+        query.execute(&*self.database.pool).await.void()?;
         Ok(NamedCredential::new(name, issuer, credential))
     }
 
     async fn get_credential(&self, name: &str) -> Result<Option<NamedCredential>> {
         let query = query_as("SELECT name, issuer_identifier, issuer_change_history, credential FROM credential WHERE name=$1").bind(name.to_sql());
         let row: Option<CredentialRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_credential()).transpose()
@@ -60,7 +56,7 @@ impl CredentialsRepository for CredentialsSqlxDatabase {
         let query = query_as(
             "SELECT name, issuer_identifier, issuer_change_history, credential FROM credential",
         );
-        let row: Vec<CredentialRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let row: Vec<CredentialRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_credential()).collect()
     }
 }
@@ -112,6 +108,7 @@ mod tests {
     use ockam::identity::models::CredentialSchemaIdentifier;
     use ockam::identity::utils::AttributesBuilder;
     use ockam::identity::{identities, Identities};
+    use std::sync::Arc;
     use std::time::Duration;
 
     use super::*;
@@ -148,7 +145,7 @@ mod tests {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn CredentialsRepository>> {
-        Ok(CredentialsSqlxDatabase::create().await?)
+        Ok(Arc::new(CredentialsSqlxDatabase::create().await?))
     }
 
     async fn create_credential(
