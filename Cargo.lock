@@ -939,7 +939,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "uuid",
- "windows 0.52.0",
+ "windows",
 ]
 
 [[package]]
@@ -6041,9 +6041,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.30.2"
+version = "0.30.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c856f6ee1d0241d2ebaee960aaad07080afb4daf6bdfa3b250ace3cf1b81355d"
+checksum = "ba2dbd2894d23b2d78dae768d85e323b557ac3ac71a5d917a31536d8f77ebada"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
@@ -6051,7 +6051,7 @@ dependencies = [
  "ntapi",
  "once_cell",
  "rayon",
- "windows 0.51.1",
+ "windows",
 ]
 
 [[package]]
@@ -6902,16 +6902,6 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[package]]
-name = "windows"
-version = "0.51.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca229916c5ee38c2f2bc1e9d8f04df975b4bd93f9955dc69fabb5d91270045c9"
-dependencies = [
- "windows-core 0.51.1",
- "windows-targets 0.48.5",
-]
 
 [[package]]
 name = "windows"
