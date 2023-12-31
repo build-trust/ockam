@@ -1,17 +1,16 @@
 import SwiftUI
 
 struct LocalPortalView: View {
+    @EnvironmentObject private var appDelegate: AppDelegate
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
     
     @State private var isHovered = false
     @State private var isOpen = false
-    @ObservedObject var localService: LocalService
-    
-    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    @Binding var localService: LocalService
     
     func closeWindow() {
-        self.presentationMode.wrappedValue.dismiss()
+        appDelegate.dismissPopover()
     }
     
     var body: some View {
@@ -86,9 +85,11 @@ struct LocalPortalView: View {
                                     self.closeWindow()
                                 }
                             },
-                            textPadding: HorizontalSpacingUnit*2
+                            textPadding: 27
                         )
+                        .padding(.horizontal, WindowBorderSize)
                     }
+
                     ClickableMenuEntry(
                         text: "Invite a friend…",
                         action: {
@@ -100,6 +101,12 @@ struct LocalPortalView: View {
                         },
                         textPadding: 27
                     )
+                    .padding(.horizontal, WindowBorderSize)
+
+                    if !localService.sharedWith.isEmpty {
+                        SentInvitations(localService: $localService)
+                    }
+
                     ClickableMenuEntry(
                         text: "Close the portal",
                         action: {
@@ -107,8 +114,8 @@ struct LocalPortalView: View {
                         },
                         textPadding: 27
                     )
+                    .padding(.horizontal, WindowBorderSize)
                 }
-                .padding(.horizontal, WindowBorderSize)
                 .padding(.vertical, WindowBorderSize)
                 .background(HierarchicalShapeStyle.quinary)
                 Divider()
@@ -123,8 +130,8 @@ struct LocalServiceView_Previews: PreviewProvider {
     
     static var previews: some View {
         VStack(spacing: 0) {
-            LocalPortalView(localService: state.localServices[0])
-            LocalPortalView(localService: state.localServices[1])
+            LocalPortalView(localService: $state.localServices[0])
+            LocalPortalView(localService: $state.localServices[1])
         }
         .frame(width: 320, height: 200)
     }

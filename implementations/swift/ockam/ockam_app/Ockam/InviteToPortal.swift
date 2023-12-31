@@ -6,6 +6,7 @@ struct InviteToPortal: View {
     @Binding var state_loaded: Bool
     @State var isProcessing = false
     @State public var localService: LocalService
+    @State var previously_invited_emails = Set<String>()
     @State var emails = Set<String>()
     @State var errorMessage = ""
     
@@ -31,7 +32,6 @@ struct InviteToPortal: View {
                 Button(action: {
                     self.emails.insert(self.emailInput)
                     self.emailInput = ""
-                    
                 }) {
                     Text("Add").padding([.leading, .trailing], 5)
                 }
@@ -48,7 +48,17 @@ struct InviteToPortal: View {
             
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(Array(emails), id: \.self) { email in
+                    ForEach(Array(self.previously_invited_emails), id: \.self) { email in
+                        HStack {
+                            Text(email)
+                            Spacer()
+                            Text("Previously Invited")
+                                .padding([.leading, .trailing], 5)
+                                .foregroundColor(.gray)
+                        }
+                        Spacer()
+                    }
+                    ForEach(Array(self.emails), id: \.self) { email in
                         HStack {
                             Text(email)
                             Spacer()
@@ -89,6 +99,11 @@ struct InviteToPortal: View {
                 .padding(.leading, 4)
                 .padding(.top, 4)
         }
+        .onAppear(perform: {
+            localService.sharedWith.forEach({ invitee in
+                self.previously_invited_emails.insert(invitee.email)
+            })
+        })
     }
     
     private func validateEmail(email: String) -> Bool {

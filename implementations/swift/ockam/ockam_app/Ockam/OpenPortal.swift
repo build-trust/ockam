@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct OpenPortal: View {
+    let UrlSchemes = [
+        "http", "https", "ssh", "git", "rsync", "ftp", "sftp",
+        "redis", "jdbc", "mongodb", "postgresql", "mysql", "mysqlx"
+    ]
+
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
     @EnvironmentObject private var appDelegate: AppDelegate
     @FocusState private var isFocused: Bool
@@ -9,6 +14,7 @@ struct OpenPortal: View {
     @State private var isProcessing = false
     @State private var errorMessage = ""
     @State private var serviceName = ""
+    @State var serviceScheme = ""
     @State private var serviceAddress = ""
 
     var body: some View {
@@ -31,6 +37,15 @@ struct OpenPortal: View {
                     .font(.caption)
                     .foregroundStyle(OckamSecondaryTextColor)
                     .padding(.leading, 4)
+
+                Autocomplete(
+                    suggestions: UrlSchemes,
+                    label: "URL Scheme",
+                    value: $serviceScheme
+                )
+                Text("Optional schema of your service, ex: http or ssh")
+                    .font(.caption)
+                    .foregroundStyle(OckamSecondaryTextColor)
             }
             .padding(.top, VerticalSpacingUnit*3)
             .padding(.bottom, VerticalSpacingUnit*2)
@@ -45,6 +60,7 @@ Pick the TCP or HTTP service you want to share with your friends. After you clic
             .padding(.leading, HorizontalSpacingUnit*10)
             .padding(.trailing, HorizontalSpacingUnit*2)
             .padding(.top, VerticalSpacingUnit)
+            .zIndex(-1)
 
             Spacer()
             HStack {
@@ -68,6 +84,7 @@ Pick the TCP or HTTP service you want to share with your friends. After you clic
                         isProcessing = true
                         let error = create_local_service(
                             self.serviceName,
+                            self.serviceScheme == "" ? nil : self.serviceScheme,
                             self.serviceAddress
                         )
                         isProcessing = false
@@ -75,6 +92,7 @@ Pick the TCP or HTTP service you want to share with your friends. After you clic
                         if error == nil {
                             self.errorMessage = ""
                             self.serviceName = ""
+                            self.serviceScheme = ""
                             self.serviceAddress = ""
                             self.closeWindow()
                             appDelegate.showPopover()
@@ -92,7 +110,7 @@ Pick the TCP or HTTP service you want to share with your friends. After you clic
             }
             .background(OckamDarkerBackground)
         }
-        .frame(width: 600, height: 320)
+        .frame(width: 600, height: 360)
     }
 
     func closeWindow() {

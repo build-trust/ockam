@@ -32,8 +32,7 @@ class StateContainer {
         enrollmentImage: nil,
         enrollmentGithubUser: nil,
         localServices: [],
-        groups: [],
-        sent_invitations: []
+        groups: []
     )
 
     func update(state: ApplicationState) {

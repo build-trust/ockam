@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RemotePortalView: View {
-    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    @EnvironmentObject private var appDelegate: AppDelegate
     @Environment(\.openWindow) var openWindow
 
     @State private var isHovered = false
@@ -11,7 +11,7 @@ struct RemotePortalView: View {
     @State var padding = 0.0
 
     func closeWindow() {
-        self.presentationMode.wrappedValue.dismiss()
+        appDelegate.dismissPopover()
     }
 
     var body: some View {
@@ -94,8 +94,24 @@ struct RemotePortalView: View {
             if isOpen {
                 Divider()
                 VStack(spacing: 0) {
-
                     if service.enabled {
+                        if service.available {
+                            if let scheme = service.scheme {
+                                let url =
+                                scheme + "://" + service.address.unsafelyUnwrapped + ":"
+                                + String(service.port.unsafelyUnwrapped)
+                                ClickableMenuEntry(
+                                    text: "Open address…",
+                                    action: {
+                                        if let url = URL(string: url) {
+                                            NSWorkspace.shared.open(url)
+                                        }
+                                    },
+                                    textPadding: padding + 35,
+                                    compact: false
+                                )
+                            }
+                        }
                         ClickableMenuEntry(
                             text: "Temporarily disconnect",
                             action: {
@@ -131,21 +147,6 @@ struct RemotePortalView: View {
                             let address =
                             service.address.unsafelyUnwrapped + ":"
                             + String(service.port.unsafelyUnwrapped)
-                            if let scheme = service.scheme {
-                                let url =
-                                scheme + "://" + service.address.unsafelyUnwrapped + ":"
-                                + String(service.port.unsafelyUnwrapped)
-                                ClickableMenuEntry(
-                                    text: "Open address…",
-                                    action: {
-                                        if let url = URL(string: url) {
-                                            NSWorkspace.shared.open(url)
-                                        }
-                                    },
-                                    textPadding: padding + 35,
-                                    compact: false
-                                )
-                            }
                             ClickableMenuEntry(
                                 text: "Copy localhost address", clicked: "Copied!",
                                 action: {

@@ -7,12 +7,12 @@ use sqlx::*;
 use tracing::debug;
 
 use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
-use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::{async_trait, Address};
 
 use crate::incoming_services::PersistentIncomingService;
+use crate::local_service::PersistentLocalService;
 use crate::state::model::ModelState;
 use crate::state::model_state_repository::ModelStateRepository;
 use crate::Result;
@@ -52,18 +52,18 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         // remove previous tcp_outlet_status state
-        query("DELETE FROM tcp_outlet_status")
+        query("DELETE FROM local_service")
             .execute(&mut *transaction)
             .await
             .void()?;
 
         // re-insert the new state
-        for tcp_outlet_status in &model_state.tcp_outlets {
-            let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
-                .bind(tcp_outlet_status.alias.to_sql())
-                .bind(tcp_outlet_status.socket_addr.to_sql())
-                .bind(tcp_outlet_status.worker_addr.to_sql())
-                .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
+        for local_service in &model_state.local_services {
+            let query = query("INSERT OR REPLACE INTO local_service VALUES (?, ?, ?, ?)")
+                .bind(local_service.alias.to_sql())
+                .bind(local_service.socket_addr.to_sql())
+                .bind(local_service.worker_addr.to_sql())
+                .bind(local_service.scheme.as_ref().map(|p| p.to_sql()));
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -75,10 +75,12 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
         // re-insert the new state
         for incoming_service in &model_state.incoming_services {
-            let query = query("INSERT OR REPLACE INTO incoming_service VALUES (?, ?, ?)")
+            let query = query("INSERT OR REPLACE INTO incoming_service VALUES (?, ?, ?, ?, ?)")
                 .bind(incoming_service.invitation_id.to_sql())
                 .bind(incoming_service.enabled.to_sql())
-                .bind(incoming_service.name.as_ref().map(|n| n.to_sql()));
+                .bind(incoming_service.name.as_ref().map(|n| n.to_sql()))
+                .bind(incoming_service.port.as_ref().map(|n| n.to_sql()))
+                .bind(incoming_service.scheme.as_ref().map(|n| n.to_sql()));
             query.execute(&mut *transaction).await.void()?;
         }
         transaction.commit().await.void()?;
@@ -87,47 +89,47 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
     }
 
     async fn load(&self) -> Result<ModelState> {
-        let query1 =
-            query_as("SELECT alias, socket_addr, worker_addr, payload FROM tcp_outlet_status");
-        let result: Vec<TcpOutletStatusRow> =
+        let query1 = query_as("SELECT alias, socket_addr, worker_addr, scheme FROM local_service");
+        let result: Vec<PersistentLocalServiceRow> =
             query1.fetch_all(&self.database.pool).await.into_core()?;
-        let tcp_outlets = result
+        let local_services = result
             .into_iter()
-            .map(|r| r.tcp_outlet_status())
+            .map(|r| r.into_persistent_local_service())
             .collect::<Result<Vec<_>>>()?;
 
-        let query2 = query_as("SELECT invitation_id, enabled, name FROM incoming_service");
+        let query2 =
+            query_as("SELECT invitation_id, enabled, name, port, scheme FROM incoming_service");
         let result: Vec<PersistentIncomingServiceRow> =
             query2.fetch_all(&self.database.pool).await.into_core()?;
         let incoming_services = result
             .into_iter()
-            .map(|r| r.persistent_incoming_service())
+            .map(|r| r.into_persistent_incoming_service())
             .collect::<Result<Vec<_>>>()?;
-        Ok(ModelState::new(tcp_outlets, incoming_services))
+        Ok(ModelState::new(local_services, incoming_services))
     }
 }
 
 // Database serialization / deserialization
 
-/// Low-level representation of a row in the tcp_outlet_status table
+/// Low-level representation of a row in the local_service table
 #[derive(sqlx::FromRow)]
-struct TcpOutletStatusRow {
+struct PersistentLocalServiceRow {
     alias: String,
     socket_addr: String,
     worker_addr: String,
-    payload: Option<String>,
+    scheme: Option<String>,
 }
 
-impl TcpOutletStatusRow {
-    fn tcp_outlet_status(&self) -> Result<OutletStatus> {
+impl PersistentLocalServiceRow {
+    fn into_persistent_local_service(self) -> Result<PersistentLocalService> {
         let socket_addr = SocketAddr::from_str(&self.socket_addr)
             .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
         let worker_addr = Address::from_string(&self.worker_addr);
-        Ok(OutletStatus {
-            alias: self.alias.clone(),
+        Ok(PersistentLocalService {
+            alias: self.alias,
             socket_addr,
             worker_addr,
-            payload: self.payload.clone(),
+            scheme: self.scheme,
         })
     }
 }
@@ -138,24 +140,26 @@ struct PersistentIncomingServiceRow {
     invitation_id: String,
     enabled: bool,
     name: Option<String>,
+    port: Option<u16>,
+    scheme: Option<String>,
 }
 
 impl PersistentIncomingServiceRow {
-    fn persistent_incoming_service(&self) -> Result<PersistentIncomingService> {
+    fn into_persistent_incoming_service(self) -> Result<PersistentIncomingService> {
         Ok(PersistentIncomingService {
-            invitation_id: self.invitation_id.clone(),
+            invitation_id: self.invitation_id,
             enabled: self.enabled,
-            name: self.name.clone(),
+            name: self.name,
+            port: self.port,
+            scheme: self.scheme,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ockam_api::nodes::models::portal::OutletStatus;
-    use ockam_core::Address;
-
     use super::*;
+    use ockam_core::Address;
 
     #[tokio::test]
     async fn store_and_load() -> Result<()> {
@@ -165,61 +169,65 @@ mod tests {
         let mut state = ModelState::default();
         repository.store(&state).await?;
         let loaded = repository.load().await?;
-        assert!(state.tcp_outlets.is_empty());
+        assert!(state.local_services.is_empty());
         assert_eq!(state, loaded);
 
-        // Add a tcp outlet
-        state.add_tcp_outlet(OutletStatus::new(
-            "127.0.0.1:1001".parse()?,
-            Address::from_string("s1"),
-            "s1",
-            None,
-        ));
+        // Add a local service
+        state.add_local_service(PersistentLocalService {
+            socket_addr: "127.0.0.1:1001".parse()?,
+            worker_addr: Address::from_string("s1"),
+            alias: "s1".to_string(),
+            scheme: Some("http".to_string()),
+        });
         // Add an incoming service
         state.add_incoming_service(PersistentIncomingService {
             invitation_id: "1235".to_string(),
             enabled: true,
             name: Some("aws".to_string()),
+            port: Some(1022),
+            scheme: Some("ssh".to_string()),
         });
         repository.store(&state).await?;
         let loaded = repository.load().await?;
-        assert_eq!(state.tcp_outlets.len(), 1);
+        assert_eq!(state.local_services.len(), 1);
         assert_eq!(state.incoming_services.len(), 1);
         assert_eq!(state, loaded);
 
         // Add a few more
         for i in 2..=5 {
-            state.add_tcp_outlet(OutletStatus::new(
-                format!("127.0.0.1:100{i}").parse().unwrap(),
-                Address::from_string(format!("s{i}")),
-                &format!("s{i}"),
-                None,
-            ));
+            state.add_local_service(PersistentLocalService {
+                socket_addr: format!("127.0.0.1:100{i}").parse()?,
+                worker_addr: Address::from_string(format!("s{i}")),
+                alias: format!("s{i}"),
+                scheme: None,
+            });
             repository.store(&state).await.unwrap();
         }
         let loaded = repository.load().await?;
-        assert_eq!(state.tcp_outlets.len(), 5);
+        assert_eq!(state.local_services.len(), 5);
         assert_eq!(state, loaded);
 
         // Reload from DB scratch to emulate an app restart
         let repository = create_repository(db);
         let loaded = repository.load().await?;
-        assert_eq!(state.tcp_outlets.len(), 5);
+        assert_eq!(state.local_services.len(), 5);
         assert_eq!(state.incoming_services.len(), 1);
         assert_eq!(state, loaded);
 
         // Remove some values from the current state
-        let _ = state.tcp_outlets.split_off(2);
+        let _ = state.local_services.split_off(2);
         state.add_incoming_service(PersistentIncomingService {
             invitation_id: "4567".to_string(),
             enabled: true,
             name: Some("aws".to_string()),
+            port: None,
+            scheme: None,
         });
 
         repository.store(&state).await?;
         let loaded = repository.load().await?;
 
-        assert_eq!(state.tcp_outlets.len(), 2);
+        assert_eq!(state.local_services.len(), 2);
         assert_eq!(state.incoming_services.len(), 2);
         assert_eq!(state, loaded);
 

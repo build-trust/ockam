@@ -4,7 +4,7 @@ struct MainView: View {
     @EnvironmentObject private var appDelegate: AppDelegate
 
     @Binding var state: ApplicationState
-    @State private var selectedGroup: String = ""
+    @State private var hasSentInvitations: Bool = true
     @State private var optionPressed: Bool = false
     @State private var enrollClickedFromHere: Bool = false
     @State private var showWindowOnEnrollment: Bool = true
@@ -38,7 +38,7 @@ struct MainView: View {
                 .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
             }
 
-            if state.localServices.isEmpty || (state.loaded && state.sent_invitations.isEmpty) {
+            if state.localServices.isEmpty || (state.loaded && !hasSentInvitations) {
                 if state.enrolled {
                     Divider()
                         .padding(.top, VerticalSpacingUnit)
@@ -46,8 +46,6 @@ struct MainView: View {
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                 }
 
-                // hide it completely once the first portal has been
-                // created
                 EnrollmentBlock(
                     appState: $state,
                     onEnroll: {
@@ -102,7 +100,7 @@ struct MainView: View {
                     // TODO: add scrollPosition() support after ventura has been dropped
                     ScrollView {
                         VStack(spacing: 0) {
-                            ForEach(state.localServices) { localService in
+                            ForEach($state.localServices) { localService in
                                 LocalPortalView(
                                     localService: localService
                                 )
@@ -142,13 +140,6 @@ struct MainView: View {
                         .padding(.bottom, VerticalSpacingUnit)
                         .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
                 }
-            }
-
-            if !state.sent_invitations.isEmpty {
-                SentInvitations(state: self.state)
-                Divider()
-                    .padding(.vertical, VerticalSpacingUnit)
-                    .padding(.horizontal, WindowBorderSize + HorizontalSpacingUnit)
             }
 
             Group {
@@ -240,12 +231,19 @@ struct MainView: View {
         .onReceive(timer) { time in
             optionPressed = NSEvent.modifierFlags.contains(.option)
         }
+        .onAppear {
+            if state.loaded {
+                hasSentInvitations = state.hasSentInvitations()
+            }
+        }
+        .onReceive(state.$loaded) { loaded in
+            if loaded {
+                hasSentInvitations = state.hasSentInvitations()
+            }
+        }
         .onReceive(state.$groups) { _ in
-            // the selected group could have been deleted, if so, reset the selection
-            if selectedGroup != "" {
-                if !state.groups.contains(where: { $0.id == selectedGroup }) {
-                    selectedGroup = ""
-                }
+            if state.loaded {
+                hasSentInvitations = state.hasSentInvitations()
             }
         }
     }

@@ -14,18 +14,17 @@ use crate::state::{AppState, StateKind, PROJECT_NAME};
 
 impl AppState {
     /// Fetch received, accept and sent invitations from the orchestrator
-    pub async fn refresh_invitations(&self) -> Result<(), String> {
+    pub async fn refresh_invitations(&self) -> miette::Result<()> {
         info!("Refreshing invitations");
         let invitations = {
             if !self.is_enrolled().await.unwrap_or(false) {
                 debug!("not enrolled, skipping invitations refresh");
                 return Ok(());
             }
-            let controller = self.controller().await.map_err(|e| e.to_string())?;
+            let controller = self.controller().await?;
             let invitations = controller
                 .list_invitations(&self.context(), InvitationListKind::All)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
             debug!("Invitations fetched");
             trace!(?invitations);
             invitations
@@ -44,7 +43,7 @@ impl AppState {
 
         self.mark_as_loaded(StateKind::Invitations);
         if changes.changed {
-            self.load_services_from_invitations(accepted_invitations.unwrap())
+            self.load_services_from_invitations(accepted_invitations.unwrap_or_default())
                 .await;
             self.publish_state().await;
             self.schedule_inlets_refresh_now();
@@ -59,17 +58,18 @@ impl AppState {
             }
         }
 
+        info!("Invitations refreshed");
         Ok(())
     }
 
-    pub async fn accept_invitation(&self, id: String) -> Result<(), String> {
+    pub async fn accept_invitation(&self, id: &str) -> Result<(), String> {
         self.accept_invitation_impl(id)
             .await
             .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    async fn accept_invitation_impl(&self, id: String) -> crate::Result<()> {
+    async fn accept_invitation_impl(&self, id: &str) -> crate::Result<()> {
         debug!(?id, "Accepting invitation");
         if !self.is_enrolled().await? {
             debug!(?id, "Not enrolled, invitation can't be accepted");
@@ -96,7 +96,7 @@ impl AppState {
                     writer
                         .received
                         .status
-                        .push((id.clone(), ReceivedInvitationStatus::Accepting));
+                        .push((id.to_string(), ReceivedInvitationStatus::Accepting));
                     debug!(?id, "Invitation is being processed");
                 }
                 Some((i, s)) => {
@@ -121,7 +121,7 @@ impl AppState {
 
         let controller = self.controller().await?;
         let res = controller
-            .accept_invitation(&self.context(), id.clone())
+            .accept_invitation(&self.context(), id.to_string())
             .await?;
 
         debug!(?res);
@@ -188,7 +188,7 @@ impl AppState {
 
     pub async fn create_service_invitation_by_alias(
         &self,
-        recipient_email: EmailAddress,
+        recipient_email: &EmailAddress,
         alias: &str,
     ) -> Result<(), String> {
         let node_manager = self.node_manager().await;
@@ -210,7 +210,7 @@ impl AppState {
 
     pub async fn create_service_invitation_by_socket_addr(
         &self,
-        recipient_email: EmailAddress,
+        recipient_email: &EmailAddress,
         outlet_socket_addr: String,
     ) -> Result<(), String> {
         info!(
@@ -231,7 +231,7 @@ impl AppState {
         }?;
 
         let enrollment_ticket = self
-            .create_enrollment_ticket(&project_id, &recipient_email)
+            .create_enrollment_ticket(&project_id, recipient_email)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -242,7 +242,7 @@ impl AppState {
         let invite_args = self
             .build_args_for_create_service_invitation(
                 &socket_addr,
-                &recipient_email,
+                recipient_email,
                 enrollment_ticket,
             )
             .await
@@ -271,6 +271,8 @@ impl AppState {
             shared_node_identity,
             shared_node_route,
             enrollment_ticket,
+            scheme,
+            name,
         } = invite_args;
         let res = controller
             .create_service_invitation(
@@ -285,6 +287,8 @@ impl AppState {
                 shared_node_identity,
                 shared_node_route,
                 enrollment_ticket,
+                scheme,
+                name.ok_or_else(|| "Service name is required".to_string())?,
             )
             .await
             .map_err(|e| e.to_string())?;

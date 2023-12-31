@@ -198,7 +198,6 @@ class ApplicationState: ObservableObject, CustomDebugStringConvertible {
     @Published var enrollmentGithubUser: String?
     @Published var localServices: [LocalService]
     @Published var groups: [ServiceGroup]
-    @Published var sent_invitations: [Invitee]
 
     init(
         enrolled: Bool,
@@ -209,8 +208,7 @@ class ApplicationState: ObservableObject, CustomDebugStringConvertible {
         enrollmentImage: String?,
         enrollmentGithubUser: String?,
         localServices: [LocalService],
-        groups: [ServiceGroup],
-        sent_invitations: [Invitee]
+        groups: [ServiceGroup]
     ) {
         self.enrolled = enrolled
         self.loaded = loaded
@@ -221,7 +219,6 @@ class ApplicationState: ObservableObject, CustomDebugStringConvertible {
         self.enrollmentGithubUser = enrollmentGithubUser
         self.localServices = localServices
         self.groups = groups
-        self.sent_invitations = sent_invitations
     }
 
     func getLocalService(_ localServiceId: String) -> LocalService? {
@@ -253,6 +250,15 @@ class ApplicationState: ObservableObject, CustomDebugStringConvertible {
             }
         }
         return nil
+    }
+
+    func hasSentInvitations() -> Bool {
+        for service in self.localServices {
+            if !service.sharedWith.isEmpty {
+                return true
+            }
+        }
+        return false
     }
 }
 
@@ -341,13 +347,6 @@ func convertApplicationState(cState: C_ApplicationState) -> ApplicationState {
         i += 1
     }
 
-    var sent_invitations: [Invitee] = []
-    i = 0
-    while let cInvitee = cState.sent_invitations[i] {
-        sent_invitations.append(convertInvitee(cInvitee: cInvitee))
-        i += 1
-    }
-
     return ApplicationState(
         enrolled: cState.enrolled != 0,
         loaded: cState.loaded != 0,
@@ -358,8 +357,7 @@ func convertApplicationState(cState: C_ApplicationState) -> ApplicationState {
         enrollmentImage: enrollmentImage,
         enrollmentGithubUser: enrollmentGithubUser,
         localServices: localServices,
-        groups: groups,
-        sent_invitations: sent_invitations
+        groups: groups
     )
 }
 
@@ -500,7 +498,7 @@ extension ApplicationState {
     var debugDescription: String {
         let localServicesStrings = localServices.map { $0.debugDescription }.joined(separator: ", ")
         let groupsStrings = groups.map { $0.debugDescription }.joined(separator: ", ")
-        return "{ \"enrolled\": \(enrolled), \"loaded\": \(loaded), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ], \"sent_invitations\": [ \(sent_invitations) ] }"
+        return "{ \"enrolled\": \(enrolled), \"loaded\": \(loaded), \"orchestrator_status\": \(orchestrator_status.rawValue), \"enrollmentName\": \"\(enrollmentName ?? "nil")\", \"enrollmentEmail\": \"\(enrollmentEmail ?? "nil")\", \"enrollmentImage\": \"\(enrollmentImage ?? "nil")\", \"enrollmentGithubUser\": \"\(enrollmentGithubUser ?? "nil")\", \"localServices\": [ \(localServicesStrings) ], \"groups\": [ \(groupsStrings) ] }"
     }
 }
 

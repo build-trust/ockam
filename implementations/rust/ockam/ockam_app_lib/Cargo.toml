@@ -24,7 +24,7 @@ repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/
 description = "Ockam's desktop application library"
 [lib]
 name = "ockam_app_lib"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "rlib"]
 path = "src/lib.rs"
 
 [dependencies]
@@ -47,6 +47,7 @@ tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
+bytes = "1.5.0"
 tempfile = { version = "3.9.0" }
 
 [build-dependencies]

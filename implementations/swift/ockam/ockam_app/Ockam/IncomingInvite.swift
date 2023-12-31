@@ -62,29 +62,27 @@ struct IncomingInvite: View {
             .padding(.horizontal, WindowBorderSize)
             .padding(.vertical, WindowBorderSize)
 
-            if isOpen {
+            if isOpen && pending {
                 Divider()
                 VStack(spacing: 0) {
-                    if pending {
-                        ClickableMenuEntry(
-                            text: "Accept the invitation",
-                            action: {
-                                accept_invitation(invite.id)
-                                isOpen = false
-                            },
-                            textPadding: padding + 35,
-                            compact: false
-                        )
-                        ClickableMenuEntry(
-                            text: "Decline the invitation",
-                            action: {
-                                ignore_invitation(invite.id)
-                                isOpen = false
-                            },
-                            textPadding: padding + 35,
-                            compact: false
-                        )
-                    }
+                    ClickableMenuEntry(
+                        text: "Accept the invitation",
+                        action: {
+                            accept_invitation(invite.id)
+                            isOpen = false
+                        },
+                        textPadding: padding + 35,
+                        compact: false
+                    )
+                    ClickableMenuEntry(
+                        text: "Decline the invitation",
+                        action: {
+                            ignore_invitation(invite.id)
+                            isOpen = false
+                        },
+                        textPadding: padding + 35,
+                        compact: false
+                    )
                 }
                 .padding(.horizontal, WindowBorderSize)
                 .padding(.vertical, WindowBorderSize)

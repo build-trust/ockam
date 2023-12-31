@@ -38,9 +38,12 @@ pub struct CreateServiceInvitation {
     #[n(8)] pub shared_node_identity: Identifier,
     #[n(9)] pub shared_node_route: String,
     #[n(10)] pub enrollment_ticket: String,
+    #[n(11)] pub scheme: Option<String>,
+    #[n(12)] pub name: Option<String>,
 }
 
 impl CreateServiceInvitation {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new<S: AsRef<str>>(
         cli_state: &CliState,
         expires_at: Option<String>,
@@ -49,6 +52,8 @@ impl CreateServiceInvitation {
         node_name: S,
         service_route: S,
         enrollment_ticket: EnrollmentTicket,
+        service_name: S,
+        scheme: Option<S>,
     ) -> Result<Self> {
         let node_identifier = cli_state.get_node(node_name.as_ref()).await?.identifier();
         let project = cli_state.get_project_by_name(project_name.as_ref()).await?;
@@ -70,6 +75,8 @@ impl CreateServiceInvitation {
             project_authority_route: project_authority_route.to_string(),
             shared_node_identity: node_identifier,
             shared_node_route: service_route.as_ref().to_string(),
+            name: Some(service_name.as_ref().to_string()),
+            scheme: scheme.map(|s| s.as_ref().to_string()),
         })
     }
 }

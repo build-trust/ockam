@@ -34,9 +34,6 @@ typedef struct C_Invitee {
 
 typedef struct C_LocalService {
   const char *name;
-  /**
-   * Optional
-   */
   const char *address;
   /**
    * Optional
@@ -65,7 +62,13 @@ typedef struct C_Invitation {
 typedef struct C_Service {
   const char *id;
   const char *source_name;
+  /**
+   * Optional
+   */
   const char *address;
+  /**
+   * Optional
+   */
   uint16_t port;
   /**
    * Optional
@@ -111,7 +114,6 @@ typedef struct C_ApplicationState {
   const char *enrollment_github_user;
   const struct C_LocalService *const *local_services;
   const struct C_ServiceGroup *const *groups;
-  const struct C_Invitee *const *sent_invitations;
 } C_ApplicationState;
 
 typedef struct C_Notification {
@@ -164,6 +166,11 @@ void shutdown_application(void);
 const char *share_local_service(const char *name, const char *emails);
 
 /**
+ * Revokes access to a local service for a specific email address.
+ */
+void revoke_access_local_service(const char *name, const char *email);
+
+/**
  * Enable an accepted service associated with the invite id.
  */
 void enable_accepted_service(const char *invitation_id);
@@ -181,7 +188,7 @@ void delete_local_service(const char *name);
 /**
  * Creates a local service with the provided name and address.
  */
-const char *create_local_service(const char *name, const char *address);
+const char *create_local_service(const char *name, const char *scheme, const char *address);
 
 /**
  * Synchronously resets the application state to a fresh installation.

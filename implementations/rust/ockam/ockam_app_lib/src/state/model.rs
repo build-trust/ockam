@@ -1,14 +1,10 @@
 use crate::incoming_services::PersistentIncomingService;
-use ockam_api::nodes::models::portal::OutletStatus;
-use serde::{Deserialize, Serialize};
+use crate::local_service::PersistentLocalService;
 
 /// The ModelState stores all the data which is not maintained by the NodeManager.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ModelState {
-    #[serde(default = "Vec::new")]
-    pub(crate) tcp_outlets: Vec<OutletStatus>,
-
-    #[serde(default = "Vec::new")]
+    pub(crate) local_services: Vec<PersistentLocalService>,
     pub(crate) incoming_services: Vec<PersistentIncomingService>,
 }
 
@@ -20,11 +16,11 @@ impl Default for ModelState {
 
 impl ModelState {
     pub fn new(
-        tcp_outlets: Vec<OutletStatus>,
+        local_services: Vec<PersistentLocalService>,
         incoming_services: Vec<PersistentIncomingService>,
     ) -> Self {
         Self {
-            tcp_outlets,
+            local_services,
             incoming_services,
         }
     }
