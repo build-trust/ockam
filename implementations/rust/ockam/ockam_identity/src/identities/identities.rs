@@ -132,15 +132,17 @@ impl Identities {
     pub async fn builder() -> Result<IdentitiesBuilder> {
         Ok(IdentitiesBuilder {
             vault: Vault::create().await?,
-            change_history_repository: ChangeHistorySqlxDatabase::create().await?,
-            identity_attributes_repository: IdentityAttributesSqlxDatabase::create().await?,
-            purpose_keys_repository: PurposeKeysSqlxDatabase::create().await?,
+            change_history_repository: Arc::new(ChangeHistorySqlxDatabase::create().await?),
+            identity_attributes_repository: Arc::new(
+                IdentityAttributesSqlxDatabase::create().await?,
+            ),
+            purpose_keys_repository: Arc::new(PurposeKeysSqlxDatabase::create().await?),
         })
     }
 
     /// Return a builder for identities with a specific database
     #[cfg(feature = "storage")]
-    pub fn create(database: Arc<SqlxDatabase>) -> IdentitiesBuilder {
+    pub fn create(database: SqlxDatabase) -> IdentitiesBuilder {
         IdentitiesBuilder {
             vault: Vault::create_with_database(database.clone()),
             change_history_repository: Arc::new(ChangeHistorySqlxDatabase::new(database.clone())),

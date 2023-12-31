@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::sqlite::SqliteRow;
 use sqlx::*;
 
@@ -13,21 +11,19 @@ use super::SpacesRepository;
 
 #[derive(Clone)]
 pub struct SpacesSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl SpacesSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for spaces");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("spaces").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("spaces").await?))
     }
 }
 
@@ -66,7 +62,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn get_space(&self, space_id: &str) -> Result<Option<Space>> {
         let query = query("SELECT space_name FROM space WHERE space_id=$1").bind(space_id.to_sql());
         let row: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         match row {
@@ -124,7 +120,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn get_default_space(&self) -> Result<Option<Space>> {
         let query = query("SELECT space_name FROM space WHERE is_default=$1").bind(true.to_sql());
         let row: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         let name: Option<String> = row.map(|r| r.get(0));
@@ -197,6 +193,7 @@ struct UserSpaceRow {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
@@ -255,6 +252,6 @@ mod test {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn SpacesRepository>> {
-        Ok(SpacesSqlxDatabase::create().await?)
+        Ok(Arc::new(SpacesSqlxDatabase::create().await?))
     }
 }

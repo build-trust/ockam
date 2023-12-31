@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
 
 use sqlx::*;
 
@@ -9,21 +8,20 @@ use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_core::async_trait;
 use ockam_core::Result;
 
+#[derive(Clone)]
 pub struct VaultsSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl VaultsSqlxDatabase {
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for vaults");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("vaults").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("vaults").await?))
     }
 }
 
@@ -35,7 +33,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
             .bind(path.to_sql())
             .bind(true.to_sql())
             .bind(is_kms.to_sql());
-        query.execute(&self.database.pool).await.void()?;
+        query.execute(&*self.database.pool).await.void()?;
 
         Ok(NamedVault::new(name, path.into(), is_kms))
     }
@@ -44,20 +42,20 @@ impl VaultsRepository for VaultsSqlxDatabase {
         let query = query("UPDATE vault SET path=$1 WHERE name=$2")
             .bind(path.to_sql())
             .bind(name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     /// Delete a vault by name
     async fn delete_named_vault(&self, name: &str) -> Result<()> {
         let query = query("DELETE FROM vault WHERE name=?").bind(name.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_named_vault(&self, name: &str) -> Result<Option<NamedVault>> {
         let query =
             query_as("SELECT name, path, is_kms FROM vault WHERE name = $1").bind(name.to_sql());
         let row: Option<VaultRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_vault()).transpose()
@@ -67,7 +65,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
         let query =
             query_as("SELECT name, path, is_kms FROM vault WHERE path = $1").bind(path.to_sql());
         let row: Option<VaultRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_vault()).transpose()
@@ -75,7 +73,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
 
     async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
         let query = query_as("SELECT name, path, is_kms FROM vault");
-        let rows: Vec<VaultRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let rows: Vec<VaultRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.named_vault()).collect()
     }
 }
@@ -102,6 +100,7 @@ impl VaultRow {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
@@ -162,6 +161,6 @@ mod test {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn VaultsRepository>> {
-        Ok(VaultsSqlxDatabase::create().await?)
+        Ok(Arc::new(VaultsSqlxDatabase::create().await?))
     }
 }

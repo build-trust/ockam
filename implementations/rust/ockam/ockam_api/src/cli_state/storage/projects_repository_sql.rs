@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use sqlx::sqlite::SqliteRow;
 use sqlx::*;
@@ -29,21 +28,19 @@ use super::ProjectsRepository;
 ///
 #[derive(Clone)]
 pub struct ProjectsSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl ProjectsSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for projects");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("projects").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("projects").await?))
     }
 }
 
@@ -137,7 +134,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         let query =
             query("SELECT project_name FROM project WHERE project_id=$1").bind(project_id.to_sql());
         let row: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         match row {
@@ -204,7 +201,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
 
     async fn get_projects(&self) -> Result<Vec<Project>> {
         let query = query("SELECT project_name FROM project");
-        let rows: Vec<SqliteRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let rows: Vec<SqliteRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         let project_names: Vec<String> = rows.iter().map(|r| r.get(0)).collect();
         let mut projects = vec![];
         for project_name in project_names {
@@ -220,7 +217,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         let query =
             query("SELECT project_name FROM project WHERE is_default=$1").bind(true.to_sql());
         let row: Option<SqliteRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         match row {
@@ -420,6 +417,8 @@ mod test {
     use super::*;
     use crate::{SpacesRepository, SpacesSqlxDatabase};
 
+    use std::sync::Arc;
+
     #[tokio::test]
     async fn test_repository() -> Result<()> {
         let repository = create_repository().await?;
@@ -496,7 +495,7 @@ mod test {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn ProjectsRepository>> {
-        Ok(ProjectsSqlxDatabase::create().await?)
+        Ok(Arc::new(ProjectsSqlxDatabase::create().await?))
     }
 
     fn create_project(

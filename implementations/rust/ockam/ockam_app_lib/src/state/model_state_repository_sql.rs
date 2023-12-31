@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -19,21 +18,14 @@ use crate::Result;
 
 #[derive(Clone)]
 pub struct ModelStateSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl ModelStateSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for model state");
         Self { database }
-    }
-
-    /// Create a database on the specified path
-    pub async fn create_at<P: AsRef<Path>>(path: P) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(Arc::new(
-            SqlxDatabase::create(path).await?,
-        ))))
     }
 
     /// Create a new in-memory database
@@ -90,7 +82,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         let query1 =
             query_as("SELECT alias, socket_addr, worker_addr, payload FROM tcp_outlet_status");
         let result: Vec<TcpOutletStatusRow> =
-            query1.fetch_all(&self.database.pool).await.into_core()?;
+            query1.fetch_all(&*self.database.pool).await.into_core()?;
         let tcp_outlets = result
             .into_iter()
             .map(|r| r.tcp_outlet_status())
@@ -98,7 +90,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
         let query2 = query_as("SELECT invitation_id, enabled, name FROM incoming_service");
         let result: Vec<PersistentIncomingServiceRow> =
-            query2.fetch_all(&self.database.pool).await.into_core()?;
+            query2.fetch_all(&*self.database.pool).await.into_core()?;
         let incoming_services = result
             .into_iter()
             .map(|r| r.persistent_incoming_service())
@@ -227,11 +219,11 @@ mod tests {
     }
 
     /// HELPERS
-    fn create_repository(db: Arc<SqlxDatabase>) -> Arc<dyn ModelStateRepository> {
+    fn create_repository(db: SqlxDatabase) -> Arc<dyn ModelStateRepository> {
         Arc::new(ModelStateSqlxDatabase::new(db))
     }
 
-    async fn create_database() -> Result<Arc<SqlxDatabase>> {
+    async fn create_database() -> Result<SqlxDatabase> {
         Ok(SqlxDatabase::in_memory("enrollments-test").await?)
     }
 }

@@ -364,8 +364,10 @@ impl NamedVault {
         }
     }
 
-    async fn database(&self) -> Result<Arc<SqlxDatabase>> {
-        Ok(Arc::new(SqlxDatabase::create(self.path.as_path()).await?))
+    async fn database(&self) -> Result<SqlxDatabase> {
+        // FIXME: We should really have one instance of the SqlxDatabase per process, also the node_name is incorrect,
+        //  but we don't use it yet for the vault storage
+        Ok(SqlxDatabase::create(self.path.as_path(), "vault_node_name".to_string()).await?)
     }
 }
 
@@ -504,7 +506,7 @@ mod tests {
     async fn test_move_vault() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let cli = CliState::create(cli_state_directory.clone()).await?;
+        let cli = CliState::create(cli_state_directory.clone(), "test_node".to_string()).await?;
 
         // create a vault
         let _ = cli.get_or_create_named_vault("vault1").await?;

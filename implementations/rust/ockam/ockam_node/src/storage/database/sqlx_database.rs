@@ -16,9 +16,12 @@ use ockam_core::{Error, Result};
 
 /// We use sqlx as our primary interface for interacting with the database
 /// The database driver is currently Sqlite
+#[derive(Clone)]
 pub struct SqlxDatabase {
     /// Pool of connections to the database
-    pub pool: SqlitePool,
+    pub pool: Arc<SqlitePool>,
+    /// Node name to isolate data between nodes where needed
+    pub node_name: String,
 }
 
 impl Debug for SqlxDatabase {
@@ -37,7 +40,7 @@ impl Deref for SqlxDatabase {
 
 impl SqlxDatabase {
     /// Constructor for a database persisted on disk
-    pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
+    pub async fn create(path: impl AsRef<Path>, node_name: String) -> Result<Self> {
         path.as_ref()
             .parent()
             .map(std::fs::create_dir_all)
@@ -52,7 +55,7 @@ impl SqlxDatabase {
             .take(10); // limit to 10 retries
 
         let db = Retry::spawn(retry_strategy, || async {
-            Self::create_at(path.as_ref()).await
+            Self::create_at(path.as_ref(), node_name.clone()).await
         })
         .await?;
         db.migrate().await?;
@@ -63,21 +66,28 @@ impl SqlxDatabase {
     /// The implementation blocks during the creation of the database
     /// so that we don't have to propagate async in all the code base when using an
     /// in-memory database, especially when writing examples
-    pub async fn in_memory(usage: &str) -> Result<Arc<Self>> {
+    pub async fn in_memory(usage: &str) -> Result<Self> {
         debug!("create an in memory database for {usage}");
         let pool = Self::create_in_memory_connection_pool().await?;
-        let db = SqlxDatabase { pool };
+        // FIXME: We should be careful if we run multiple nodes in one process
+        let db = SqlxDatabase {
+            pool: Arc::new(pool),
+            node_name: "in_memory".to_string(),
+        };
         db.migrate().await?;
-        Ok(Arc::new(db))
+        Ok(db)
     }
 
-    async fn create_at(path: &Path) -> Result<Self> {
+    async fn create_at(path: &Path, node_name: String) -> Result<Self> {
         // Creates database file if it doesn't exist
         let pool = Self::create_connection_pool(path).await?;
-        Ok(SqlxDatabase { pool })
+        Ok(SqlxDatabase {
+            pool: Arc::new(pool),
+            node_name,
+        })
     }
 
-    async fn create_connection_pool(path: &Path) -> Result<SqlitePool> {
+    pub(super) async fn create_connection_pool(path: &Path) -> Result<SqlitePool> {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
@@ -88,7 +98,7 @@ impl SqlxDatabase {
         Ok(pool)
     }
 
-    async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
+    pub(super) async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
         // SQLite in-memory DB get wiped if there is no connection to it.
         // The below setting tries to ensure there is always an open connection
         let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
@@ -101,8 +111,13 @@ impl SqlxDatabase {
     }
 
     async fn migrate(&self) -> Result<()> {
+        Self::migrate_tables(&self.pool).await?;
+        self.migrate_attributes_node_name().await
+    }
+
+    pub(crate) async fn migrate_tables(pool: &SqlitePool) -> Result<()> {
         sqlx::migrate!("./src/storage/database/migrations")
-            .run(&self.pool)
+            .run(pool)
             .await
             .map_err(Self::map_migrate_err)
     }
@@ -166,7 +181,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_identity_table() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDatabase::create(db_file.path()).await?;
+        let db = SqlxDatabase::create(db_file.path(), "test".to_string()).await?;
 
         let inserted = insert_identity(&db).await.unwrap();
 
@@ -178,7 +193,7 @@ mod tests {
     #[tokio::test]
     async fn test_query() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDatabase::create(db_file.path()).await?;
+        let db = SqlxDatabase::create(db_file.path(), "test".to_string()).await?;
 
         insert_identity(&db).await.unwrap();
 
@@ -186,7 +201,7 @@ mod tests {
         let result: Option<IdentifierRow> =
             sqlx::query_as("SELECT identifier FROM identity WHERE identifier=?1")
                 .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
-                .fetch_optional(&db.pool)
+                .fetch_optional(&*db.pool)
                 .await
                 .unwrap();
         assert_eq!(
@@ -200,7 +215,7 @@ mod tests {
         let result: Option<IdentifierRow> =
             sqlx::query_as("SELECT identifier FROM identity WHERE identifier=?1")
                 .bind("x")
-                .fetch_optional(&db.pool)
+                .fetch_optional(&*db.pool)
                 .await
                 .unwrap();
         assert_eq!(result, None);
@@ -212,7 +227,7 @@ mod tests {
         sqlx::query("INSERT INTO identity VALUES (?1, ?2)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
             .bind("123".to_sql())
-            .execute(&db.pool)
+            .execute(&*db.pool)
             .await
             .into_core()
     }
