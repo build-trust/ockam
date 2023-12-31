@@ -47,4 +47,5 @@ updates:
       - "Implementation: Elixir"
     groups:
       elixir-deps:
-        - "*"
+        patterns:
+          - "*"
