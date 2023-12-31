@@ -141,7 +141,7 @@ pub async fn start<P>(context: &Context, mailboxes: Mailboxes, processor: P) -> 
 where
     P: Processor<Context = Context>,
 {
-    info!(
+    debug!(
         "Initializing ockam processor '{}' with access control in:{:?} out:{:?}",
         mailboxes.main_address(),
         mailboxes.main_mailbox().incoming_access_control(),
