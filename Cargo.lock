@@ -4682,9 +4682,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_tuify"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff461ff47829667dc02eecb2d9d5dd35c19d9a171aa1fff4782c7688fad284da"
+checksum = "5962eb34d4b4d6852125a79f55be812bc129aabea41d29de3a6b6b6bd2095943"
 dependencies = [
  "clap 4.4.12",
  "crossterm",
