@@ -20,7 +20,7 @@ body:
   - type: textarea
     attributes:
       label: Desired behavior
-      description: "Please describe what you thing should be the behaviour instead:"
+      description: "Please describe what you think should be the behaviour instead:"
     validations:
       required: true
   - type: input
