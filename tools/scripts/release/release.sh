@@ -278,7 +278,7 @@ function update_docs_repo() {
   sleep 10
 
   # Wait for workflow run
-  watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch_name"
+  approve_and_watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch_name"
 
   # Check if the branch was created, new branch is only created when there are new doc updates
   if gh api "repos/build-trust/ockam-documentation/branches/${release_name}" --jq .name; then
@@ -300,7 +300,7 @@ function update_command_manual() {
   # Wait for workflow run
   sleep 10
 
-  watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch"
+  approve_and_watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch"
 
   gh pr create --title "Ockam command manual update to $release" --body "Ockam commnad manual update $release" \
     --base command -H "${release_name}" -R $OWNER/ockam-documentation >>$log
