@@ -8,9 +8,11 @@ use tokio::try_join;
 
 use ockam::identity::Identity;
 use ockam::Context;
+use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::random_name;
 
 use crate::credential::verify::verify_credential;
+use crate::node::util::initialize_default_node;
 use crate::{fmt_log, fmt_ok, terminal::OckamColor, util::node_rpc, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
@@ -31,6 +33,10 @@ pub struct StoreCommand {
     /// Name of the Vault that was used to issue the credential
     #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
+
+    /// Store the identity attributes of the credential for the specified node
+    #[arg(id = "for", value_name = "NODE_NAME", long, value_parser = extract_address_value)]
+    pub node: Option<String>,
 }
 
 impl StoreCommand {
@@ -40,9 +46,15 @@ impl StoreCommand {
 }
 
 async fn run_impl(
-    _ctx: Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, StoreCommand),
 ) -> miette::Result<()> {
+    // Set node name in state to store identity attributes to it
+    initialize_default_node(&ctx, &opts).await?;
+    let node_name = opts.state.get_node_or_default(&cmd.node).await?.name();
+    let mut state = opts.state.clone();
+    state.set_node_name(node_name);
+
     opts.terminal.write_line(&fmt_log!(
         "Storing credential {}...\n",
         cmd.credential_name.clone()
@@ -61,7 +73,7 @@ async fn run_impl(
         )
         .await?;
         // store
-        opts.state
+        state
             .store_credential(
                 &cmd.credential_name,
                 &issuer,

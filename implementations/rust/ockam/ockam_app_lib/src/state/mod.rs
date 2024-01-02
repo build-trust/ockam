@@ -98,7 +98,8 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state = CliState::with_default_dir(NODE_NAME.to_string())?;
+        let mut cli_state = CliState::with_default_dir()?;
+        cli_state.set_node_name(NODE_NAME.to_string());
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
 
