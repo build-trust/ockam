@@ -21,7 +21,7 @@ pub struct SqlxDatabase {
     /// Pool of connections to the database
     pub pool: Arc<SqlitePool>,
     /// Node name to isolate data between nodes where needed
-    pub node_name: String,
+    pub node_name: Option<String>,
 }
 
 impl Debug for SqlxDatabase {
@@ -40,7 +40,16 @@ impl Deref for SqlxDatabase {
 
 impl SqlxDatabase {
     /// Constructor for a database persisted on disk
-    pub async fn create(path: impl AsRef<Path>, node_name: String) -> Result<Self> {
+    pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
+        Self::create_impl(path, None).await
+    }
+
+    /// Constructor for a database persisted on disk, passing a node name to isolate data between nodes where needed
+    pub async fn create_with_node_name(path: impl AsRef<Path>, node_name: &str) -> Result<Self> {
+        Self::create_impl(path, Some(node_name.to_string())).await
+    }
+
+    async fn create_impl(path: impl AsRef<Path>, node_name: Option<String>) -> Result<Self> {
         path.as_ref()
             .parent()
             .map(std::fs::create_dir_all)
@@ -72,13 +81,13 @@ impl SqlxDatabase {
         // FIXME: We should be careful if we run multiple nodes in one process
         let db = SqlxDatabase {
             pool: Arc::new(pool),
-            node_name: "in_memory".to_string(),
+            node_name: Some("in_memory".to_string()),
         };
         db.migrate().await?;
         Ok(db)
     }
 
-    async fn create_at(path: &Path, node_name: String) -> Result<Self> {
+    async fn create_at(path: &Path, node_name: Option<String>) -> Result<Self> {
         // Creates database file if it doesn't exist
         let pool = Self::create_connection_pool(path).await?;
         Ok(SqlxDatabase {
@@ -120,6 +129,17 @@ impl SqlxDatabase {
             .run(pool)
             .await
             .map_err(Self::map_migrate_err)
+    }
+
+    /// Return the node name
+    pub fn node_name(&self) -> Result<String> {
+        self.node_name.clone().ok_or_else(|| {
+            Error::new(
+                Origin::Application,
+                Kind::Internal,
+                "The node name is not set",
+            )
+        })
     }
 
     /// Map a sqlx error into an ockam error
@@ -181,7 +201,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_identity_table() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDatabase::create(db_file.path(), "test".to_string()).await?;
+        let db = SqlxDatabase::create(db_file.path()).await?;
 
         let inserted = insert_identity(&db).await.unwrap();
 
@@ -193,7 +213,7 @@ mod tests {
     #[tokio::test]
     async fn test_query() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDatabase::create(db_file.path(), "test".to_string()).await?;
+        let db = SqlxDatabase::create(db_file.path()).await?;
 
         insert_identity(&db).await.unwrap();
 

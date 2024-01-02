@@ -30,6 +30,13 @@ impl IdentityAttributesSqlxDatabase {
             SqlxDatabase::in_memory("identity attributes").await?,
         ))
     }
+
+    /// Create a new in-memory database, passing a node name to isolate data between nodes where needed
+    pub async fn create_with_node_name(node_name: &str) -> Result<Self> {
+        let mut db = SqlxDatabase::in_memory("identity attributes").await?;
+        db.node_name = Some(node_name.to_string());
+        Ok(Self::new(db))
+    }
 }
 
 #[async_trait]
@@ -39,7 +46,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1 AND node_name=$2"
             )
             .bind(identity.to_sql())
-            .bind(self.database.node_name.to_sql());
+            .bind(self.database.node_name()?.to_sql());
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -51,7 +58,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         let query = query_as(
             "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name=$1",
             )
-            .bind(self.database.node_name.to_sql());
+            .bind(self.database.node_name()?.to_sql());
         let result: Vec<IdentityAttributesRow> =
             query.fetch_all(&*self.database.pool).await.into_core()?;
         result
@@ -69,14 +76,14 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             .bind(entry.added().to_sql())
             .bind(entry.expires().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()))
-            .bind(self.database.node_name.to_sql());
+            .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         let query = query("DELETE FROM identity_attributes WHERE identifier = ? AND node_name = ?")
             .bind(identity.to_sql())
-            .bind(self.database.node_name.to_sql());
+            .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 }
@@ -127,6 +134,7 @@ impl IdentityAttributesRow {
 #[cfg(test)]
 mod tests {
     use ockam_core::compat::collections::BTreeMap;
+    use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
 
     use super::*;
@@ -188,6 +196,8 @@ mod tests {
     }
 
     async fn create_repository() -> Result<Arc<dyn IdentityAttributesRepository>> {
-        Ok(Arc::new(IdentityAttributesSqlxDatabase::create().await?))
+        Ok(Arc::new(
+            IdentityAttributesSqlxDatabase::create_with_node_name(&random_string()).await?,
+        ))
     }
 }

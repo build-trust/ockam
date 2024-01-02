@@ -31,8 +31,8 @@ pub struct CliState {
 
 impl CliState {
     /// Create a new CliState in a given directory
-    pub fn new(dir: &Path, node_name: String) -> Result<Self> {
-        Executor::execute_future(Self::create(dir.into(), node_name))?
+    pub fn new(dir: &Path) -> Result<Self> {
+        Executor::execute_future(Self::create(dir.into()))?
     }
 
     pub fn dir(&self) -> PathBuf {
@@ -48,15 +48,15 @@ impl CliState {
     }
 
     pub fn set_node_name(&mut self, node_name: String) {
-        self.database.node_name = node_name
+        self.database.node_name = Some(node_name)
     }
 }
 
 /// These functions allow to create and reset the local state
 impl CliState {
     /// Return a new CliState using a default directory to store its data
-    pub fn with_default_dir(node_name: String) -> Result<Self> {
-        Self::new(Self::default_dir()?.as_path(), node_name)
+    pub fn with_default_dir() -> Result<Self> {
+        Self::new(Self::default_dir()?.as_path())
     }
 
     /// Stop nodes and remove all the directories storing state
@@ -75,7 +75,7 @@ impl CliState {
     /// Reset all directories and return a new CliState
     pub async fn recreate(&self) -> Result<CliState> {
         self.reset().await?;
-        Self::create(self.dir.clone(), self.database.node_name.clone()).await
+        Self::create(self.dir.clone()).await
     }
 
     /// Backup and reset is used to save aside
@@ -100,8 +100,7 @@ impl CliState {
 
         // Reset state
         Self::delete_at(&dir)?;
-        // node_name should not matter during backup
-        let state = Self::new(&dir, "RESET".to_string())?;
+        let state = Self::new(&dir)?;
 
         let dir = &state.dir;
         let backup_dir = CliState::backup_default_dir().unwrap();
@@ -128,9 +127,9 @@ impl CliState {
 /// Low-level functions for creating / deleting CliState files
 impl CliState {
     /// Create a new CliState where the data is stored at a given path
-    pub(super) async fn create(dir: PathBuf, node_name: String) -> Result<Self> {
+    pub(super) async fn create(dir: PathBuf) -> Result<Self> {
         std::fs::create_dir_all(&dir)?;
-        let database = SqlxDatabase::create(Self::make_database_path(&dir), node_name).await?;
+        let database = SqlxDatabase::create(Self::make_database_path(&dir)).await?;
         debug!("Opened the database with options {:?}", database);
         let state = Self { dir, database };
         Ok(state)
@@ -190,7 +189,7 @@ mod tests {
     async fn test_reset() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let cli = CliState::create(cli_state_directory.clone(), "test_node".to_string()).await?;
+        let cli = CliState::create(cli_state_directory.clone()).await?;
 
         // create 2 vaults
         // the second vault is using a separate file

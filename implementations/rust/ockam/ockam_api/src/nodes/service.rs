@@ -361,7 +361,8 @@ impl NodeManager {
         );
 
         debug!("create the identity repository");
-        let cli_state = general_options.cli_state;
+        let mut cli_state = general_options.cli_state;
+        cli_state.set_node_name(general_options.node_name.clone());
 
         let secure_channels = cli_state
             .secure_channels(

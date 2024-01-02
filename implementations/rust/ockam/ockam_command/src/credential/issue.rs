@@ -50,10 +50,6 @@ impl IssueCommand {
         }
         Ok(attributes)
     }
-
-    pub fn identity_identifier(&self) -> &Identifier {
-        &self.identity_identifier
-    }
 }
 
 async fn run_impl(
@@ -85,7 +81,7 @@ async fn run_impl(
         .credentials_creation()
         .issue_credential(
             &authority,
-            cmd.identity_identifier(),
+            &cmd.identity_identifier,
             attributes_builder.build(),
             MAX_CREDENTIAL_VALIDITY,
         )

@@ -104,7 +104,7 @@ mod test {
         insert_node2.execute(&pool).await.void()?;
 
         // now create a database and apply the migrations
-        let db = SqlxDatabase::create(db_file.path(), "test".to_string()).await?;
+        let db = SqlxDatabase::create(db_file.path()).await?;
         let rows1: Vec<IdentityAttributesRow> =
             query_as("SELECT * FROM identity_attributes WHERE node_name = ?")
                 .bind("node1".to_string().to_sql())

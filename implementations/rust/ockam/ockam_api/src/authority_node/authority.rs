@@ -62,7 +62,7 @@ impl Authority {
         // create the database
         let database_path = &configuration.database_path;
         Self::create_ockam_directory_if_necessary(database_path)?;
-        let database = SqlxDatabase::create(database_path, "authority".to_string()).await?;
+        let database = SqlxDatabase::create_with_node_name(database_path, "authority").await?;
 
         // create the repositories
         let vault = Vault::create_with_database(database.clone());
