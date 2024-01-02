@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 
 use ockam_core::api::{Reply, Request};
@@ -193,6 +193,9 @@ impl BackgroundNodeClient {
     async fn create_route(&self) -> miette::Result<(TcpConnection, Route)> {
         let mut route = self.to.clone();
         let node_info = self.cli_state.get_node(&self.node_name).await?;
+        if !node_info.is_running() {
+            return Err(miette!("Node {} is not running", &self.node_name));
+        }
         let tcp_listener_address = node_info
             .tcp_listener_address()
             .unwrap_or_else(|| {
@@ -205,9 +208,15 @@ impl BackgroundNodeClient {
 
         let tcp_connection = self
             .tcp_transport
-            .connect(tcp_listener_address, TcpConnectionOptions::new())
+            .connect(&tcp_listener_address, TcpConnectionOptions::new())
             .await
-            .into_diagnostic()?;
+            .map_err(|_| {
+                miette!(
+                    "Failed to connect to node {} at {}",
+                    &self.node_name,
+                    &tcp_listener_address
+                )
+            })?;
         route
             .modify()
             .prepend(tcp_connection.sender_address().clone());
