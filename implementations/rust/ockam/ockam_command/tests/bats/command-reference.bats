@@ -150,10 +150,10 @@ teardown() {
   "$OCKAM" secure-channel create --from "$a" --to "/node/$b/service/api" |
     "$OCKAM" message send hello --from "$a" --to -/service/uppercase
 
-  run_success bash -c "$OCKAM secure-channel create --from $a --to /node/$b/service/api |
-    $OCKAM message send hello --from $a --to -/service/uppercase"
-  assert_output "HELLO"
+  output=$("$OCKAM" secure-channel create --from "$a" --to "/node/$b/service/api" |
+    "$OCKAM" message send hello --from "$a" --to -/service/uppercase)
 
+  assert [ "$output" == "HELLO" ]
 }
 
 @test "through relays" {
@@ -169,9 +169,9 @@ teardown() {
 
   worker_id=$("$OCKAM" tcp-connection create --from "$a" --to "127.0.0.1:$port" | grep -o "[0-9a-f]\{32\}" | head -1)
 
-  run_success bash -c "$OCKAM secure-channel create --from $a --to /worker/${worker_id}/service/forward_to_$b/service/api |
-    $OCKAM message send hello --from $a --to -/service/uppercase"
-  assert_output "HELLO"
+  output=$("$OCKAM" secure-channel create --from "$a" --to "/worker/${worker_id}/service/forward_to_$b/service/api" |
+    "$OCKAM" message send hello --from "$a" --to -/service/uppercase)
+  assert [ "$output" == "HELLO" ]
 }
 
 @test "elastic encrypted relays" {
@@ -184,9 +184,9 @@ teardown() {
   run_success "$OCKAM" node create "$b"
   run_success "$OCKAM" relay create "$b" --at /project/default --to "/node/$a"
 
-  run_success bash -c "$OCKAM secure-channel create --from $a --to /project/default/service/forward_to_$b/service/api |
-    $OCKAM message send hello --from $a --to -/service/uppercase"
-  assert_output "HELLO"
+  output=$("$OCKAM" secure-channel create --from "$a" --to "/project/default/service/forward_to_$b/service/api" |
+    "$OCKAM" message send hello --from "$a" --to -/service/uppercase)
+  assert [ "$output" == "HELLO" ]
 }
 
 # ===== TESTS https://docs.ockam.io/reference/command/credentials
@@ -239,11 +239,12 @@ teardown() {
   run_success "$OCKAM" secure-channel-listener create l --at "$n2" \
     --identity "$i2" --authorized $(cat /${BATS_TEST_TMPDIR}/i1.identifier)
 
-  run_success bash -c "$OCKAM secure-channel create \
-    --from $n1 --to /node/$n2/service/l \
-    --identity $i1 --authorized $(cat /${BATS_TEST_TMPDIR}/i2.identifier) |
-    $OCKAM message send hello --from $n1 --to -/service/uppercase"
-  assert_output "HELLO"
+  output=$("$OCKAM" secure-channel create \
+    --from "$n1" --to /node/n2/service/l \
+    --identity "$i1" --authorized $(cat /${BATS_TEST_TMPDIR}/i2.identifier) |
+    "$OCKAM" message send hello --from "$n1" --to -/service/uppercase)
+
+  assert [ "$output" == "HELLO" ]
 }
 
 @test "anchoring trust in a credential issuer" {
@@ -255,32 +256,31 @@ teardown() {
   authority_exported=/${BATS_TEST_TMPDIR}/authority
 
   run_success "$OCKAM" identity create "$authority"
+
   "$OCKAM" identity show "$authority" >/${BATS_TEST_TMPDIR}/authority.identifier
   "$OCKAM" identity show "$authority" --full --encoding hex >$authority_exported
 
   run_success "$OCKAM" identity create "$i1"
-  "$OCKAM" identity show "$i1" >/${BATS_TEST_TMPDIR}/i1
-  "$OCKAM" credential issue --as "$authority" \
-    --for $(cat /${BATS_TEST_TMPDIR}/i1) --attribute city="New York" \
-    --encoding hex >/${BATS_TEST_TMPDIR}/i1.credential
-  run_success "$OCKAM" credential store c1 --issuer $(cat $authority_exported) \
-    --credential-path /${BATS_TEST_TMPDIR}/i1.credential
-  run_success "$OCKAM" trust-context create tc --credential c1 --authority-identity $(cat $authority_exported)
 
+  "$OCKAM" identity show "$i1" >/${BATS_TEST_TMPDIR}/i1
+  "$OCKAM" credential issue --as "$authority" --for $(cat /${BATS_TEST_TMPDIR}/i1) --attribute city="New York" --encoding hex >/${BATS_TEST_TMPDIR}/i1.credential
+
+  run_success "$OCKAM" credential store c1 --issuer $(cat $authority_exported) --credential-path /${BATS_TEST_TMPDIR}/i1.credential
   run_success "$OCKAM" identity create "$i2"
+
   "$OCKAM" identity show "$i2" >/${BATS_TEST_TMPDIR}/i2
   "$OCKAM" credential issue --as "$authority" \
     --for $(cat /${BATS_TEST_TMPDIR}/i2) --attribute city="San Francisco" \
     --encoding hex >/${BATS_TEST_TMPDIR}/i2.credential
-  run_success "$OCKAM" credential store c2 --issuer $(cat $authority_exported) \
-    --credential-path /${BATS_TEST_TMPDIR}/i2.credential
 
-  run_success "$OCKAM" node create "$n1" --identity "$i1" --authority-identity $(cat $authority_exported) --trust-context tc
+  run_success "$OCKAM" credential store c2 --issuer $(cat $authority_exported) --credential-path /${BATS_TEST_TMPDIR}/i2.credential
+  run_success "$OCKAM" node create "$n1" --identity "$i1" --authority-identity $(cat $authority_exported)
   run_success "$OCKAM" node create "$n2" --identity "$i2" --authority-identity $(cat $authority_exported) --credential c2
 
-  run_success bash -c "$OCKAM secure-channel create --from $n1 --to /node/$n2/service/api --credential c1 --identity $i1 |
-    $OCKAM message send hello --from $n1 --to -/service/uppercase"
-  assert_output "HELLO"
+  output=$("$OCKAM" secure-channel create --from "$n1" --to /node/n2/service/api --credential c1 --identity "$i1" |
+    "$OCKAM" message send hello --from "$n1" --to -/service/uppercase)
+
+  assert [ "$output" == "HELLO" ]
 }
 
 @test "managed authorities" {
@@ -294,7 +294,8 @@ teardown() {
 
   run_success "$OCKAM" relay create "$b" --at /project/default --to "/node/$a/service/forward_to_$b"
 
-  run_success bash -c "$OCKAM secure-channel create --from $a --to /project/default/service/forward_to_$b/service/api |
-    $OCKAM message send hello --from $a --to -/service/uppercase"
-  assert_output "HELLO"
+  output=$("$OCKAM" secure-channel create --from "$a" --to "/project/default/service/forward_to_$b/service/api" |
+    "$OCKAM" message send hello --from "$a" --to -/service/uppercase)
+
+  assert [ "$output" == "HELLO" ]
 }
