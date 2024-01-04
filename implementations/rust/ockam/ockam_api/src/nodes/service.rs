@@ -622,7 +622,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Services ==*==
-            //<<<<<<< HEAD
             (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => encode_response(
                 req,
                 self.start_authenticated_service(ctx, dec.decode()?).await,
