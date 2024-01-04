@@ -16,13 +16,6 @@ function skip_if_orchestrator_tests_not_enabled() {
 
 function copy_local_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
-    export PROJECT_NAME="default"
-    export PROJECT_PATH="$OCKAM_HOME_BASE/project.json"
-
-    # export the project data to a file
-    OCKAM_HOME=$OCKAM_HOME_BASE "$OCKAM" project show -q --output json >$PROJECT_PATH
-
-    # import it to the current OCKAM_HOME directory
     cp -r $OCKAM_HOME_BASE/. $OCKAM_HOME
   fi
 }
