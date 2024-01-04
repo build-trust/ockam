@@ -151,8 +151,11 @@ pub async fn run_ockam(args: Vec<String>) -> miette::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
-    let ockam_exe = get_env_with_default("OCKAM", current_exe().unwrap_or_else(|_| "ockam".into()))
-        .into_diagnostic()?;
+    let ockam_exe = current_exe().unwrap_or_else(|_| {
+        get_env_with_default("OCKAM", "ockam".to_string())
+            .unwrap()
+            .into()
+    });
     Command::new(ockam_exe)
         .args(args)
         .stdout(Stdio::null())
