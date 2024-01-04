@@ -7,8 +7,9 @@ use ockam_api::cloud::addon::{Addons, ConfluentConfig};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::node_rpc;
+use crate::util::{node_rpc, parsers::socket_addr_parser};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::Result;
 
 const LONG_ABOUT: &str = include_str!("./static/configure_confluent/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_confluent/after_long_help.txt");
@@ -35,7 +36,7 @@ pub struct AddonConfigureConfluentSubcommand {
         long,
         id = "bootstrap_server",
         value_name = "BOOTSTRAP_SERVER",
-        value_parser(NonEmptyStringValueParser::new())
+        value_parser(bootstrap_add_parser)
     )]
     bootstrap_server: String,
 }
@@ -69,4 +70,12 @@ async fn run_impl(
         .write_line(&fmt_ok!("Confluent addon configured successfully"))?;
 
     Ok(())
+}
+
+fn bootstrap_add_parser(input: &str) -> Result<String> {
+    let parsed_addr = socket_addr_parser(input);
+    match parsed_addr {
+        Ok(_) => Ok(input.to_string()),
+        Err(err) => Err(err),
+    }
 }
