@@ -235,12 +235,12 @@ pub async fn is_node_up(
     for timeout_duration in retries {
         // The node is down if its default tcp listener has not been started yet
         let node = node_client.cli_state().get_node(&node_name).await.ok();
-        if let Some(node) = node {
-            if node.tcp_listener_address().is_none() {
-                trace!(%node_name, "node has not been initialized");
-                tokio::time::sleep(timeout_duration).await;
-                continue;
-            }
+        let node_tcp_listener_address = node.as_ref().and_then(|n| n.tcp_listener_address());
+
+        if node.is_none() || node_tcp_listener_address.is_none() {
+            trace!(%node_name, "node has not been initialized");
+            tokio::time::sleep(timeout_duration).await;
+            continue;
         }
 
         // Test if node is up
