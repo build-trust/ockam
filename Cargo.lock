@@ -4650,9 +4650,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_rs_utils_core"
-version = "0.9.10"
+version = "0.9.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4bc0135e6dccc8c7ec372f82f74d82c74365d95975ef4d49ebbb62bc18aaec0"
+checksum = "bf5818db1ba9db4cb3afb1056bef6d04930d95053aa43f4d8a243946df4fac69"
 dependencies = [
  "chrono",
  "get-size",
