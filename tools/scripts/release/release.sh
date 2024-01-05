@@ -173,6 +173,7 @@ function ockam_crate_release() {
 
   workflow_file_name="release-publish-crates.yml"
   branch="develop"
+  GIT_TAG="$1"
 
   # Crate release from the develop branch
   gh workflow run "$workflow_file_name" --ref "$branch" \
@@ -272,8 +273,8 @@ function update_docs_repo() {
   release_tag="$1"
   branch_name="main"
 
-  gh workflow run "$workflow_file_name" --ref branch_name -F branch_name="$release_name" -F ockam_ref="$release_tag" \
-    -R $owner/ockam-documentation
+  gh workflow run "$workflow_file_name" --ref $branch_name -F branch_name="$release_name" -F ockam_ref="$release_tag" \
+    -R $OWNER/ockam-documentation
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
 
@@ -283,7 +284,7 @@ function update_docs_repo() {
   # Check if the branch was created, new branch is only created when there are new doc updates
   if gh api "repos/build-trust/ockam-documentation/branches/${release_name}" --jq .name; then
     gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-      --base main -H "${release_name}" -r nazmulidris -R $owner/ockam-documentation
+      --base main -H "${release_name}" -r nazmulidris -R $OWNER/ockam-documentation
   fi
 }
 
@@ -490,7 +491,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
 
   if [[ -z $SKIP_CRATES_IO_PUBLISH || $SKIP_CRATES_IO_PUBLISH == false ]]; then
     echo "Starting Crates IO publish"
-    ockam_crate_release
+    ockam_crate_release "$latest_tag_name"
     success_info "Crates.io publish successful."
   fi
 
