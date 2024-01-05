@@ -27,16 +27,16 @@ final class FluidMenuBarExtraStatusItem: NSObject, NSWindowDelegate {
 
         super.init()
 
-        localEventMonitor = LocalEventMonitor(mask: [.leftMouseDown]) { [weak self] event in
-            if let button = self?.statusItem.button, event.window == button.window, !event.modifierFlags.contains(.command) {
-                self?.didPressStatusBarButton(button)
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(didPressStatusBarButton(_:))
 
-                // Stop propagating the event so that the button remains highlighted.
-                return nil
+        localEventMonitor = LocalEventMonitor(mask: [.keyDown], handler: { [weak self] event in
+            let escapeKeyCode = 53
+            if event.keyCode == escapeKeyCode {
+                self?.dismissWindow()
             }
-
             return event
-        }
+        })
 
         globalEventMonitor = GlobalEventMonitor(mask: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             if let window = self?.window, window.isKeyWindow {
@@ -54,6 +54,7 @@ final class FluidMenuBarExtraStatusItem: NSObject, NSWindowDelegate {
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 
+    @objc
     private func didPressStatusBarButton(_ sender: NSStatusBarButton) {
         if window.isVisible {
             dismissWindow()
@@ -61,6 +62,11 @@ final class FluidMenuBarExtraStatusItem: NSObject, NSWindowDelegate {
         }
 
         setWindowPosition()
+
+        // This needs to be called on main queue to keep button highlighting.
+        DispatchQueue.main.async {
+            sender.highlight(true)
+        }
 
         // Tells the system to persist the menu bar in full screen mode.
         DistributedNotificationCenter.default().post(name: .beginMenuTracking, object: nil)
