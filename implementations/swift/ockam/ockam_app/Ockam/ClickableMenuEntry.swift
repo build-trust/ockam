@@ -70,6 +70,8 @@ struct ClickableMenuEntry: View {
         .onHover { hover in
             isHovered = hover
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
