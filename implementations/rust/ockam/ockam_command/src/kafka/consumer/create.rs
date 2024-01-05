@@ -15,7 +15,7 @@ use crate::{
     CommandGlobalOpts,
 };
 
-/// Create a new Kafka Consumer
+/// Create a new Kafka Consumer. Kafka clients v3.4.x are supported. You can find the version you have with 'kafka-console-consumer.sh --version'.
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[command(flatten)]
