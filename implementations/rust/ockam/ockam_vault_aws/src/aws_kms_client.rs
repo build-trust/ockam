@@ -77,7 +77,7 @@ impl AwsKmsClient {
 
     fn cast_handle_to_kid(handle: &SigningSecretKeyHandle) -> Result<String> {
         let handle = match handle {
-            SigningSecretKeyHandle::EdDSACurve25519(_) => return Err(Error::InvalidHandle.into()),
+            SigningSecretKeyHandle::EdDSACurve25519(_) => return Err(Error::InvalidHandle)?,
             SigningSecretKeyHandle::ECDSASHA256CurveP256(handle) => handle.value().clone(),
         };
 
@@ -113,7 +113,7 @@ impl AwsKmsClient {
             ));
             return Ok(handle);
         }
-        Err(Error::MissingKeyId.into())
+        Err(Error::MissingKeyId)?
     }
 
     /// Have AWS KMS schedule key deletion.
@@ -138,8 +138,7 @@ impl AwsKmsClient {
                 Err(Error::Delete {
                     keyid: key.to_string(),
                     error: err.to_string(),
-                }
-                .into())
+                })?
             }
             Ok(_) => {
                 log::debug!(%key, "key is scheduled for deletion in {DAYS} days");
@@ -167,11 +166,11 @@ impl AwsKmsClient {
             })?;
         if output.key_spec() != Some(&KeySpec::EccNistP256) {
             log::error!(%key, "key spec not supported to get a public key");
-            return Err(Error::UnsupportedKeyType.into());
+            return Err(Error::UnsupportedKeyType)?;
         }
         if output.key_usage() != Some(&KeyUsageType::SignVerify) {
             log::error!(%key, "usage type not supported to get a public key");
-            return Err(Error::UnsupportedKeyType.into());
+            return Err(Error::UnsupportedKeyType)?;
         }
         if let Some(k) = output.public_key() {
             log::debug!(%key, "received public key");
@@ -187,7 +186,7 @@ impl AwsKmsClient {
             return Ok(VerifyingPublicKey::ECDSASHA256CurveP256(public_key));
         }
         log::error!(%key, "key type not supported to get a public key");
-        Err(Error::UnsupportedKeyType.into())
+        Err(Error::UnsupportedKeyType)?
     }
 
     /// Have AWS KMS sign a message.
@@ -220,7 +219,7 @@ impl AwsKmsClient {
             return Ok(Signature::ECDSASHA256CurveP256(sig));
         }
         log::error!(%key, "no signature received from aws");
-        Err(Error::MissingSignature.into())
+        Err(Error::MissingSignature)?
     }
 }
 
@@ -265,7 +264,7 @@ impl KmsClient for AwsKmsClient {
                 })?;
 
                 if output.truncated() {
-                    return Err(Error::TruncatedKeysList.into());
+                    return Err(Error::TruncatedKeysList)?;
                 }
 
                 let mut result = vec![];

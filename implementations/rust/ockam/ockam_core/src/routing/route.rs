@@ -131,9 +131,7 @@ impl Route {
     /// ```
     ///
     pub fn step(&mut self) -> Result<Address> {
-        self.inner
-            .pop_front()
-            .ok_or_else(|| RouteError::IncompleteRoute.into())
+        Ok(self.inner.pop_front().ok_or(RouteError::IncompleteRoute)?)
     }
 
     /// Return the next `Address` from this route without removing it.
@@ -156,9 +154,7 @@ impl Route {
     /// ```
     ///
     pub fn next(&self) -> Result<&Address> {
-        self.inner
-            .front()
-            .ok_or_else(|| RouteError::IncompleteRoute.into())
+        Ok(self.inner.front().ok_or(RouteError::IncompleteRoute)?)
     }
 
     /// Return the final recipient address.
@@ -182,10 +178,11 @@ impl Route {
     pub fn recipient(&self) -> Result<Address> {
         // `TODO` For consistency we should return a
         // Result<&Address> instead of an Address.clone().
-        self.inner
+        Ok(self
+            .inner
             .back()
             .cloned()
-            .ok_or_else(|| RouteError::IncompleteRoute.into())
+            .ok_or(RouteError::IncompleteRoute)?)
     }
 
     /// Iterate over all addresses of this route.
@@ -227,7 +224,7 @@ impl Route {
     /// ```
     pub fn contains_route(&self, needle: &Route) -> Result<bool> {
         if needle.is_empty() {
-            return Err(RouteError::IncompleteRoute.into());
+            return Err(RouteError::IncompleteRoute)?;
         }
 
         let hl = self.len();

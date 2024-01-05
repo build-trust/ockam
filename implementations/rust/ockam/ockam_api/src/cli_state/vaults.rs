@@ -61,8 +61,7 @@ impl CliState {
                     "the vault {vault_name} cannot be deleted. It is used by the following identities: {}",
                     identities_names.join(", ")
                 ),
-            )
-            .into());
+            ))?;
         };
 
         // now delete the vault and its file if there is a separate one
@@ -121,14 +120,13 @@ impl CliState {
             .await?
             .get_named_vault(vault_name)
             .await?;
-        result.ok_or_else(|| {
+        Ok(result.ok_or_else(|| {
             ockam_core::Error::new(
                 Origin::Api,
                 Kind::NotFound,
                 format!("no vault found with name {vault_name}"),
             )
-            .into()
-        })
+        })?)
     }
 
     /// Return a vault if it already exists, otherwise
@@ -158,8 +156,7 @@ impl CliState {
                     "there are {} vaults, please specify which vault should be used",
                     vaults.len()
                 ),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -181,7 +178,7 @@ impl CliState {
         let repository = self.vaults_repository().await?;
         let vault = self.get_named_vault(vault_name).await?;
         if vault.path() == self.database_path() {
-            return Err(ockam_core::Error::new(Origin::Api, Kind::Invalid, format!("The vault at path {:?} cannot be moved to {path:?} because this is the default vault", vault.path())).into());
+            return Err(ockam_core::Error::new(Origin::Api, Kind::Invalid, format!("The vault at path {:?} cannot be moved to {path:?} because this is the default vault", vault.path())))?;
         };
 
         // copy the file to the new location

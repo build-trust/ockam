@@ -67,8 +67,7 @@ impl CliState {
                 Origin::Api,
                 Kind::Misuse,
                 format!("Vault {vault_name} is not a KMS vault"),
-            )
-            .into());
+            ))?;
         };
 
         let handle = SigningSecretKeyHandle::ECDSASHA256CurveP256(HandleToSecret::new(
@@ -119,8 +118,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("no identity found with name {}", name),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -155,7 +153,7 @@ impl CliState {
                 .map(|i| i.identifier()),
         };
 
-        result.ok_or_else(|| Self::missing_identifier(name).into())
+        Ok(result.ok_or_else(|| Self::missing_identifier(name))?)
     }
 
     /// Return a full identity from its name
@@ -191,7 +189,7 @@ impl CliState {
                 )
                 .await?)
             }
-            None => Err(Self::missing_identifier(name).into()),
+            None => Err(Self::missing_identifier(name))?,
         }
     }
 
@@ -210,8 +208,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("no identity found for identifier {identifier}"),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -261,8 +258,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("no named identity found for identifier {identifier}"),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -320,8 +316,7 @@ impl CliState {
                     "The identity named {name} cannot be deleted because it is used by the node(s): {}",
                     node_names.join(", ")
                 ),
-            )
-                .into())
+            ))?
         }
     }
 }
@@ -365,8 +360,7 @@ impl CliState {
                 Origin::Core,
                 Kind::NotFound,
                 format!("identity not found for identifier {}", identifier),
-            )
-            .into()),
+            ))?,
         }
     }
 

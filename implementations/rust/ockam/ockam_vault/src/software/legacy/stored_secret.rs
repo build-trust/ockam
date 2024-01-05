@@ -44,7 +44,7 @@ impl StoredSecret {
     fn check(secret: &Secret, attributes: &SecretAttributes) -> Result<()> {
         // the secret must be equal to length mentioned in the attributes
         if secret.length() != attributes.length() as usize {
-            Err(VaultError::InvalidSecretLength.into())
+            Err(VaultError::InvalidSecretLength)?
         } else {
             Ok(())
         }
@@ -99,7 +99,7 @@ impl TryFrom<StoredSecret> for SigningSecret {
             SecretAttributes::X25519
             | SecretAttributes::Buffer(_)
             | SecretAttributes::Aes128
-            | SecretAttributes::Aes256 => Err(VaultError::InvalidKeyType.into()),
+            | SecretAttributes::Aes256 => Err(VaultError::InvalidKeyType)?,
         }
     }
 }
@@ -132,7 +132,7 @@ impl TryFrom<StoredSecret> for X25519SecretKey {
             | SecretAttributes::NistP256
             | SecretAttributes::Buffer(_)
             | SecretAttributes::Aes128
-            | SecretAttributes::Aes256 => Err(VaultError::InvalidKeyType.into()),
+            | SecretAttributes::Aes256 => Err(VaultError::InvalidKeyType)?,
         }
     }
 }

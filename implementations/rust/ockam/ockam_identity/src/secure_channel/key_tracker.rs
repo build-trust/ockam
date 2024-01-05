@@ -53,7 +53,7 @@ impl KeyTracker {
         if self.max_rekeys_reached {
             warn!("The maximum number of available rekeying operation has been reached. The last interval was starting at {} and the interval size is {}",
                 current_interval_start, self.renewal_interval);
-            return Err(IdentityError::InvalidNonce.into());
+            return Err(IdentityError::InvalidNonce)?;
         };
 
         if nonce >= current_interval_start {
@@ -70,7 +70,7 @@ impl KeyTracker {
             // otherwise the nonce is too far ahead
             else {
                 warn!("This nonce is too far in the future: {}", nonce);
-                Err(IdentityError::InvalidNonce.into())
+                Err(IdentityError::InvalidNonce)?
             }
         // else return the previous key (if there is one) if the nonce is not too old
         } else if current_interval_start - nonce <= self.renewal_interval {
@@ -78,11 +78,11 @@ impl KeyTracker {
                 Ok(Some(previous))
             } else {
                 warn!("There should be a previous key for this nonce: {}", nonce);
-                Err(IdentityError::InvalidNonce.into())
+                Err(IdentityError::InvalidNonce)?
             }
         } else {
             warn!("This nonce is too old: {}", nonce);
-            Err(IdentityError::InvalidNonce.into())
+            Err(IdentityError::InvalidNonce)?
         }
     }
 

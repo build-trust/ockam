@@ -108,7 +108,7 @@ impl UdpRouter {
         // This transport only supports IPv4
         if !local_addr.is_ipv4() {
             error!(local_addr = %local_addr, "This transport only supprts IPv4");
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         // Bind new socket
@@ -170,7 +170,7 @@ impl Worker for UdpRouter {
                 }
             };
         } else {
-            return Err(TransportError::Protocol.into());
+            return Err(TransportError::Protocol)?;
         }
 
         Ok(())

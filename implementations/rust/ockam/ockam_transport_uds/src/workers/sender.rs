@@ -184,7 +184,7 @@ impl Worker for UdsSendWorker {
                 debug!("Failed to determine peer path.");
                 self.stop_and_unregister(ctx).await?;
 
-                return Err(TransportError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress)?;
             }
         };
 
@@ -201,7 +201,7 @@ impl Worker for UdsSendWorker {
                     debug!(addr = %path_display, err = %e, "Failed to connect");
                     self.stop_and_unregister(ctx).await?;
 
-                    return Err(TransportError::from(e).into());
+                    return Err(TransportError::from(e))?;
                 }
             };
 
@@ -249,7 +249,7 @@ impl Worker for UdsSendWorker {
     ) -> Result<()> {
         let tx = match &mut self.tx {
             Some(tx) => tx,
-            None => return Err(TransportError::PeerNotFound.into()),
+            None => return Err(TransportError::PeerNotFound)?,
         };
 
         let recipient = msg.msg_addr();

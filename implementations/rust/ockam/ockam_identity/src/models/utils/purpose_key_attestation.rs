@@ -23,11 +23,11 @@ impl PurposeKeyAttestationData {
     /// Extract [`PurposeKeyAttestationData`] from [`VersionedData`]
     pub fn get_data(versioned_data: &VersionedData) -> Result<Self> {
         if versioned_data.version != 1 {
-            return Err(IdentityError::UnknownPurposeKeyAttestationVersion.into());
+            return Err(IdentityError::UnknownPurposeKeyAttestationVersion)?;
         }
 
         if versioned_data.data_type != PURPOSE_KEY_ATTESTATION_DATA_TYPE {
-            return Err(IdentityError::InvalidPurposeKeyAttestationDataType.into());
+            return Err(IdentityError::InvalidPurposeKeyAttestationDataType)?;
         }
 
         Ok(minicbor::decode(&versioned_data.data)?)

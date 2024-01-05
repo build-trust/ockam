@@ -173,13 +173,13 @@ async fn get_project(cli_state: &CliState, input: &MultiAddr) -> Result<Option<P
         if proto.code() == proto::Project::CODE {
             let project_name = proto.cast::<proto::Project>().expect("project protocol");
             match cli_state.get_project_by_name(&project_name).await.ok() {
-                None => Err(miette!("unknown project {}", project_name.to_string()).into()),
+                None => Err(miette!("unknown project {}", project_name.to_string()))?,
                 Some(project) => {
                     if project.authority_identifier().await.is_err() {
-                        Err(
-                            miette!("missing authority in project {}", project_name.to_string())
-                                .into(),
-                        )
+                        Err(miette!(
+                            "missing authority in project {}",
+                            project_name.to_string()
+                        ))?
                     } else {
                         Ok(Some(project))
                     }

@@ -65,7 +65,7 @@ impl CliState {
             let message =
                 "There should be a default space set for the current user. Please re-enroll";
             error!("{}", message);
-            return Err(CliStateError::from(message).into());
+            return Err(CliStateError::from(message))?;
         }
 
         let default_project_exists = self.get_default_project().await.is_ok();
@@ -73,7 +73,7 @@ impl CliState {
             let message =
                 "There should be a default project set for the current user. Please re-enroll";
             error!("{}", message);
-            return Err(CliStateError::from(message).into());
+            return Err(CliStateError::from(message))?;
         }
 
         Ok(true)

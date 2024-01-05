@@ -74,7 +74,7 @@ impl BleClientDriver for BleAdapter {
         let adapters = self.manager.adapters().await.map_err(BleError::from)?;
         if adapters.is_empty() {
             error!("No Bluetooth adapters found");
-            return Err(BleError::HardwareError.into());
+            return Err(BleError::HardwareError)?;
         }
         debug!("BleAdapter::scan scanning adapters: {:?}", adapters.len());
 
@@ -93,7 +93,7 @@ impl BleClientDriver for BleAdapter {
                     "Could not find peripheral, aborting scan after {} retries",
                     retry_count
                 );
-                return Err(BleError::NotFound.into());
+                return Err(BleError::NotFound)?;
             }
         };
 
@@ -102,7 +102,7 @@ impl BleClientDriver for BleAdapter {
 
     async fn connect(&mut self) -> Result<()> {
         if self.peripheral.is_none() {
-            return Err(BleError::NotFound.into());
+            return Err(BleError::NotFound)?;
         }
 
         let peripheral = self.peripheral.as_mut().unwrap();
@@ -160,7 +160,7 @@ impl BleClientDriver for BleAdapter {
 
         if self.rx.is_none() || self.tx.is_none() {
             error!("No compatible devices found");
-            return Err(BleError::NotSupported.into());
+            return Err(BleError::NotSupported)?;
         }
 
         // subscribe to notifications
@@ -182,7 +182,7 @@ impl BleStreamDriver for BleAdapter {
         ockam_node::tokio::task::yield_now().await;
 
         if self.peripheral.is_none() {
-            return Err(BleError::NotConnected.into());
+            return Err(BleError::NotConnected)?;
         }
 
         let mut rx_stream = self.notification_stream.as_mut().unwrap();
@@ -200,7 +200,7 @@ impl BleStreamDriver for BleAdapter {
                 }
                 _ => {
                     warn!("[btleplug]\t=> Rx unknown characteristic: -> {:?}", item);
-                    //return Err(BleError::NotSupported.into());
+                    //return Err(BleError::NotSupported)?;
                     return Ok(BleEvent::None);
                 }
             }
@@ -214,10 +214,10 @@ impl BleStreamDriver for BleAdapter {
 
         if self.peripheral.is_none() {
             error!("No peripheral found");
-            return Err(BleError::NotConnected.into());
+            return Err(BleError::NotConnected)?;
         } else if self.rx.is_none() || self.tx.is_none() {
             error!("No compatible devices found");
-            return Err(BleError::NotSupported.into());
+            return Err(BleError::NotSupported)?;
         }
 
         let peripheral = self.peripheral.as_ref().unwrap();
@@ -299,5 +299,5 @@ async fn scan_for_peripheral_name(
         }
     }
 
-    Err(BleError::NotFound.into())
+    Err(BleError::NotFound)?
 }

@@ -48,7 +48,7 @@ impl Worker for UdpSendWorker {
         if peer_addr.transport_type() != UDP {
             error!(addr = %peer_addr,
                 "Destination address is not UDP");
-            return Err(TransportError::UnknownRoute.into());
+            return Err(TransportError::UnknownRoute)?;
         }
 
         let peer_addr = peer_addr.address();
@@ -62,7 +62,7 @@ impl Worker for UdpSendWorker {
             Some(a) => *a,
             None => {
                 warn!("No IPv4 address resolved for peer {:?}", peer_addr);
-                return Err(TransportError::UnknownRoute.into());
+                return Err(TransportError::UnknownRoute)?;
             }
         };
 
@@ -70,7 +70,7 @@ impl Worker for UdpSendWorker {
         // into an error state
         if addr.port() == 0 {
             warn!(peer_addr = %peer_addr, "Will not send to address");
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         // Send
@@ -81,7 +81,7 @@ impl Worker for UdpSendWorker {
             }
             Err(e) => {
                 error!("Failed send to {}: {:?}", addr, e);
-                Err(e.into())
+                Err(e)?
             }
         }
     }

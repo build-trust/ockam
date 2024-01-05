@@ -26,24 +26,28 @@ pub enum Error {
 }
 
 impl From<JoinError> for Error {
+    #[track_caller]
     fn from(e: JoinError) -> Self {
         Error::Internal(e.into())
     }
 }
 
 impl From<miette::Report> for Error {
+    #[track_caller]
     fn from(e: miette::Report) -> Self {
         Error::App(e.to_string())
     }
 }
 
 impl From<&str> for Error {
+    #[track_caller]
     fn from(e: &str) -> Self {
         Error::App(e.to_string())
     }
 }
 
 impl From<String> for Error {
+    #[track_caller]
     fn from(e: String) -> Self {
         Error::App(e)
     }
@@ -52,6 +56,7 @@ impl From<String> for Error {
 macro_rules! gen_to_parse_err_impl {
     ($t:ty) => {
         impl From<$t> for Error {
+            #[track_caller]
             fn from(e: $t) -> Self {
                 Error::Parse(e.into())
             }
@@ -66,6 +71,7 @@ gen_to_parse_err_impl!(std::string::FromUtf8Error);
 macro_rules! gen_to_internal_err_impl {
     ($t:ty) => {
         impl From<$t> for Error {
+            #[track_caller]
             fn from(e: $t) -> Self {
                 Error::Internal(e.into())
             }

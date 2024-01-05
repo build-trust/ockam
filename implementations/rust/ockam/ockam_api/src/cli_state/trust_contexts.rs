@@ -30,8 +30,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("there is no trust context with name {name}"),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -47,8 +46,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 "there is no default trust context",
-            )
-            .into()),
+            ))?,
         }
     }
 

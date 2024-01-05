@@ -143,7 +143,7 @@ impl Worker for WebSocketRouter {
                 }
             };
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         Ok(())
@@ -169,14 +169,14 @@ impl WebSocketRouter {
             // No existing connection
             let peer_str = match String::from_utf8(onward.deref().clone()) {
                 Ok(s) => s,
-                Err(_e) => return Err(TransportError::UnknownRoute.into()),
+                Err(_e) => return Err(TransportError::UnknownRoute)?,
             };
 
             // TODO: Check if this is the hostname and we have existing/pending connection to this IP
             if self.allow_auto_connection {
                 next = self.connect(peer_str).await?;
             } else {
-                return Err(TransportError::UnknownRoute.into());
+                return Err(TransportError::UnknownRoute)?;
             }
         }
 
@@ -201,13 +201,13 @@ impl WebSocketRouter {
         // Otherwise, the router is not being used properly and returns an error.
         else {
             error!("Tried to register a new client without passing any `Address`");
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         // Do not connect twice.
         for accept in &accepts {
             if self.map.contains_key(accept) {
-                return Err(TransportError::AlreadyConnected.into());
+                return Err(TransportError::AlreadyConnected)?;
             }
         }
 

@@ -409,10 +409,10 @@ impl AppState {
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
-        self.state().await.is_enrolled().await.map_err(|e| {
+        Ok(self.state().await.is_enrolled().await.map_err(|e| {
             warn!(%e, "Failed to check if user is enrolled");
-            e.into()
-        })
+            e
+        })?)
     }
 
     /// Return the list of currently running outlets

@@ -127,7 +127,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let get_relay_info = async {
         let relay_info = {
             if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
-                return Err(miette!("--authorized can not be used with project addresses").into());
+                return Err(miette!(
+                    "--authorized can not be used with project addresses"
+                ))?;
             };
             info!("creating a relay at {} to {}", at, node.node_name());
             node.create_relay(&ctx, &at, Some(alias), cmd.authorized)

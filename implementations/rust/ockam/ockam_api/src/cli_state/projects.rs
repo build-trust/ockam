@@ -62,9 +62,11 @@ impl CliState {
             .await?
         {
             Some(project) => Ok(project),
-            None => {
-                Err(Error::new(Origin::Api, Kind::NotFound, "there is no default project").into())
-            }
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "there is no default project",
+            ))?,
         }
     }
 
@@ -80,8 +82,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("there is no project named {name}"),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -97,8 +98,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("there is no space project with id {project_id}"),
-            )
-            .into()),
+            ))?,
         }
     }
 

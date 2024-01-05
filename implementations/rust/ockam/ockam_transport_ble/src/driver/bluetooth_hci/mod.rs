@@ -130,13 +130,13 @@ where
                     Event::Vendor(BlueNRGEvent::HalInitialized(reason)) => (),
                     _ => {
                         error!("\t=> reset error: unknown event {:?}", event);
-                        return Err(BleError::HardwareError.into());
+                        return Err(BleError::HardwareError)?;
                     }
                 }
             }
             Err(e) => {
                 error!("Device reset error: {:?}", e);
-                return Err(BleError::HardwareError.into());
+                return Err(BleError::HardwareError)?;
             }
         }
 
@@ -190,7 +190,7 @@ where
             &self.ble_addr,
         ) {
             debug!("BleAdapter::start_advertising error: {:?}", e);
-            return Err(BleError::AdvertisingFailure.into());
+            return Err(BleError::AdvertisingFailure)?;
         }
         Ok(())
     }
@@ -260,7 +260,7 @@ where
                         let fragment_len = event.data().len();
                         if fragment_len > out_fragment.len() {
                             error!("response fragment too long");
-                            return Err(BleError::ReadError.into());
+                            return Err(BleError::ReadError)?;
                         }
 
                         let out_fragment = &mut out_fragment[..fragment_len];
@@ -285,7 +285,7 @@ where
 
             Err(e) => {
                 error!("controller read error: {:?}", e);
-                return Err(BleError::ReadError.into());
+                return Err(BleError::ReadError)?;
             }
         }
     }
@@ -319,7 +319,7 @@ where
             Ok(()) => (),
             Err(e) => {
                 error!("\t=> error writing data: {:?}", buffer);
-                return Err(BleError::WriteError.into());
+                return Err(BleError::WriteError)?;
             }
         }
 

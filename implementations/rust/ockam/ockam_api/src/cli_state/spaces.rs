@@ -34,9 +34,11 @@ impl CliState {
     pub async fn get_default_space(&self) -> Result<Space> {
         match self.spaces_repository().await?.get_default_space().await? {
             Some(space) => Ok(space),
-            None => {
-                Err(Error::new(Origin::Api, Kind::NotFound, "there is no default space").into())
-            }
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "there is no default space",
+            ))?,
         }
     }
 
@@ -52,8 +54,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("there is no space with name {name}"),
-            )
-            .into()),
+            ))?,
         }
     }
 

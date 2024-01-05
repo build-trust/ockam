@@ -34,7 +34,7 @@ impl UdsListenProcessor {
             Some(p) => p,
             None => {
                 error!("Error binding to socket address {:?}", addr);
-                return Err(TransportError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress)?;
             }
         };
         debug!("Binding UnixListener to {}", path.display());

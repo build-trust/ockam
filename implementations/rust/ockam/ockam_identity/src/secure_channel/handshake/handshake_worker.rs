@@ -99,7 +99,7 @@ impl Worker for HandshakeWorker {
             } else if msg_addr == self.addresses.decryptor_api {
                 decryptor_handler.handle_decrypt_api(context, message).await
             } else {
-                Err(IdentityError::UnknownChannelMsgDestination.into())
+                Err(IdentityError::UnknownChannelMsgDestination)?
             };
             return result;
         };

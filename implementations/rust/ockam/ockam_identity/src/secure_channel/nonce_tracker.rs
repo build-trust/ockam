@@ -28,7 +28,7 @@ impl NonceTracker {
             // normal case, we increase the nonce and move the window
             let relative_shift: u64 = nonce - self.current_nonce;
             if relative_shift > KEY_RENEWAL_INTERVAL {
-                return Err(IdentityError::InvalidNonce.into());
+                return Err(IdentityError::InvalidNonce)?;
             }
             NonceTracker {
                 nonce_bitmap: self.nonce_bitmap.overflowing_shl(relative_shift as u32).0 | 1,
@@ -38,14 +38,14 @@ impl NonceTracker {
             // first message or an out of order message
             let relative: u64 = self.current_nonce - nonce;
             if relative > KEY_RENEWAL_INTERVAL {
-                return Err(IdentityError::InvalidNonce.into());
+                return Err(IdentityError::InvalidNonce)?;
             }
 
             #[allow(trivial_numeric_casts)]
             let bit = (1 as BitmapType).overflowing_shl(relative as u32).0;
             if self.nonce_bitmap & bit != 0 {
                 // we already processed this nonce
-                return Err(IdentityError::InvalidNonce.into());
+                return Err(IdentityError::InvalidNonce)?;
             }
             NonceTracker {
                 nonce_bitmap: self.nonce_bitmap | bit,

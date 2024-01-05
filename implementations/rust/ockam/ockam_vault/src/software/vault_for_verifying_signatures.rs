@@ -62,8 +62,8 @@ impl SoftwareVaultForVerifyingSignatures {
     fn import_ed25519_key(
         public_key: &EdDSACurve25519PublicKey,
     ) -> Result<ed25519_dalek::VerifyingKey> {
-        ed25519_dalek::VerifyingKey::from_bytes(&public_key.0)
-            .map_err(|_| VaultError::InvalidPublicKey.into())
+        Ok(ed25519_dalek::VerifyingKey::from_bytes(&public_key.0)
+            .map_err(|_| VaultError::InvalidPublicKey)?)
     }
 
     /// Compute SHA256
@@ -107,7 +107,7 @@ impl SoftwareVaultForVerifyingSignatures {
                 use p256::ecdsa::signature::Verifier;
                 Ok(verifying_public_key.verify(data, &signature).is_ok())
             }
-            _ => Err(VaultError::SignatureAndPublicKeyTypesDontMatch.into()),
+            _ => Err(VaultError::SignatureAndPublicKeyTypesDontMatch)?,
         }
     }
 }

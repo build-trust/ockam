@@ -53,7 +53,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
                 match identity.compare(&known_identity) {
                     IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
-                        return Err(IdentityError::ConsistencyError.into());
+                        return Err(IdentityError::ConsistencyError)?;
                     }
                     IdentityHistoryComparison::Newer => true,
                     IdentityHistoryComparison::Equal => false,

@@ -18,14 +18,14 @@ impl IdentitySecureChannelLocalInfo {
     /// Try to decode `IdentitySecureChannelLocalInfo` from general `LocalInfo`
     pub fn from_local_info(value: &LocalInfo) -> Result<Self> {
         if value.type_identifier() != IDENTITY_SECURE_CHANNEL_IDENTIFIER {
-            return Err(IdentityError::InvalidLocalInfoType.into());
+            return Err(IdentityError::InvalidLocalInfoType)?;
         }
 
         if let Ok(info) = IdentitySecureChannelLocalInfo::decode(value.data()) {
             return Ok(info);
         }
 
-        Err(IdentityError::InvalidLocalInfoType.into())
+        Err(IdentityError::InvalidLocalInfoType)?
     }
 
     /// Encode `IdentitySecureChannelLocalInfo` to general `LocalInfo`
@@ -49,7 +49,7 @@ impl IdentitySecureChannelLocalInfo {
         {
             Self::from_local_info(local_info)
         } else {
-            Err(IdentityError::InvalidLocalInfoType.into())
+            Err(IdentityError::InvalidLocalInfoType)?
         }
     }
 }

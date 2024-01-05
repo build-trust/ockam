@@ -145,6 +145,7 @@ impl VaultForSigning for SoftwareVaultForSigning {
 }
 
 impl SoftwareVaultForSigning {
+    #[track_caller]
     fn from_bytes<T: core::fmt::Display>(e: T) -> Error {
         #[cfg(feature = "no_std")]
         use ockam_core::compat::string::ToString;
@@ -182,7 +183,7 @@ impl SoftwareVaultForSigning {
                 let verifying_key = verifying_key.to_sec1_bytes().to_vec();
 
                 if verifying_key.len() != ECDSA_SHA256_CURVEP256_PUBLIC_KEY_LENGTH {
-                    return Err(VaultError::InvalidPublicLength.into());
+                    return Err(VaultError::InvalidPublicLength)?;
                 }
 
                 let verifying_key =

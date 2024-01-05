@@ -186,7 +186,7 @@ impl TcpPortalWorker {
 
             Ok(())
         } else {
-            Err(TransportError::PortalInvalidState.into())
+            Err(TransportError::PortalInvalidState)?
         }
     }
 
@@ -334,7 +334,7 @@ impl Worker for TcpPortalWorker {
                 self.state = self.handle_send_pong(ctx, pong_route.clone()).await?;
             }
             State::ReceivePong | State::Initialized { .. } => {
-                return Err(TransportError::PortalInvalidState.into())
+                return Err(TransportError::PortalInvalidState)?
             }
         }
 
@@ -364,7 +364,7 @@ impl Worker for TcpPortalWorker {
         let return_route = msg.return_route();
 
         if onward_route.next().is_ok() {
-            return Err(TransportError::UnknownRoute.into());
+            return Err(TransportError::UnknownRoute)?;
         }
 
         let state = self.clone_state();
@@ -372,14 +372,14 @@ impl Worker for TcpPortalWorker {
         match state {
             State::ReceivePong => {
                 if recipient == self.addresses.internal {
-                    return Err(TransportError::PortalInvalidState.into());
+                    return Err(TransportError::PortalInvalidState)?;
                 }
 
                 let msg = PortalMessage::decode(msg.payload())?;
 
                 if let PortalMessage::Pong = msg {
                 } else {
-                    return Err(TransportError::Protocol.into());
+                    return Err(TransportError::Protocol)?;
                 }
 
                 self.start_receiver(ctx, return_route.clone()).await?;
@@ -438,7 +438,7 @@ impl Worker for TcpPortalWorker {
                                     }
                                 }
                             } else {
-                                return Err(TransportError::PortalInvalidState.into());
+                                return Err(TransportError::PortalInvalidState)?;
                             }
                         }
                         PortalMessage::Disconnect => {
@@ -446,13 +446,13 @@ impl Worker for TcpPortalWorker {
                                 .await?;
                         }
                         PortalMessage::Ping | PortalMessage::Pong => {
-                            return Err(TransportError::Protocol.into());
+                            return Err(TransportError::Protocol)?;
                         }
                     }
                 }
             }
             State::SendPing { .. } | State::SendPong { .. } => {
-                return Err(TransportError::PortalInvalidState.into())
+                return Err(TransportError::PortalInvalidState)?
             }
         };
 

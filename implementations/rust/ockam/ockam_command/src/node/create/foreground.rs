@@ -207,7 +207,7 @@ where
     let mut dec = Decoder::new(&buf);
     let hdr = dec.decode::<ResponseHeader>()?;
     if hdr.status() != Some(Status::Ok) {
-        return Err(miette!("Request failed with status: {:?}", hdr.status()).into());
+        return Err(miette!("Request failed with status: {:?}", hdr.status()))?;
     }
     Ok(())
 }

@@ -87,7 +87,7 @@ where
         Ok(Packet::Event(event)) => debug!("\t=> controller reset: {:?}", event),
         Err(e) => {
             error!("controller reset error: {:?}", e);
-            return Err(e.into());
+            return Err(e)?;
         }
     }
 
@@ -158,7 +158,7 @@ where
         },
         Err(e) => {
             error!("controller.reset error: {:?}", e);
-            return Err(e.into());
+            return Err(e)?;
         }
     }
 
@@ -260,7 +260,7 @@ where
         },
         Err(e) => {
             error!("controller.add_service error: {:?}", e);
-            return Err(e.into());
+            return Err(e)?;
         }
     }
 
@@ -346,7 +346,7 @@ where
         },
         Err(e) => {
             error!("controller.add_characteristic error: {:?}", e);
-            return Err(e.into());
+            return Err(e)?;
         }
     }
 
@@ -458,7 +458,7 @@ where
             }
         },
         Err(e) => {
-            return Err(e.into());
+            return Err(e)?;
         }
     }
     Ok(())
@@ -506,7 +506,7 @@ where
         }
         Err(e) => {
             error!("read_local_version_information error: {:?}", e);
-            return Err(e.into());
+            return Err(e)?;
         }
     }
 }

@@ -101,7 +101,7 @@ where
             debug!("started receiver");
         } else {
             error!("TransportError::GenericIo");
-            return Err(TransportError::GenericIo.into());
+            return Err(TransportError::GenericIo)?;
         }
 
         Ok(())

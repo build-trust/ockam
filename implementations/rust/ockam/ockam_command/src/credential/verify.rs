@@ -106,13 +106,13 @@ pub async fn verify_credential(
             Ok(i) => i,
             Err(e) => {
                 *is_finished.lock().await = true;
-                return Err(e.into());
+                return Err(e)?;
             }
         };
 
         let result = validate_encoded_credential(identities, issuer, &credential_as_str).await;
         *is_finished.lock().await = true;
-        result.map_err(|e| e.wrap_err("Credential is invalid").into())
+        Ok(result.map_err(|e| e.wrap_err("Credential is invalid"))?)
     };
 
     let output_messages = vec!["Verifying credential...".to_string()];

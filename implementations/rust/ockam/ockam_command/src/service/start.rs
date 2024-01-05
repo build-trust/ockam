@@ -132,9 +132,10 @@ pub(crate) async fn start_service_impl<T>(
 where
     T: Encode<()>,
 {
-    node.tell(ctx, req)
+    Ok(node
+        .tell(ctx, req)
         .await
-        .map_err(|e| miette!("Failed to start {} service: {e:?}", serv_name).into())
+        .map_err(|e| miette!("Failed to start {} service: {e:?}", serv_name))?)
 }
 
 /// Public so `ockam_command::node::create` can use it.

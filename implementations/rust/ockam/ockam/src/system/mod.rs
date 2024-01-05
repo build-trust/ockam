@@ -111,7 +111,7 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
             .and_then(|entry| self.map.get_mut(entry).map(|h| (entry, h)))
         {
             Some((addr, handle)) => handle.handle_message(addr.clone(), ctx, msg).await,
-            None => Err(OckamError::SystemAddressNotBound.into()),
+            None => Err(OckamError::SystemAddressNotBound)?,
         }
     }
 
@@ -120,7 +120,7 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
         let addr = msg.msg_addr();
         match self.map.get_mut(&addr) {
             Some(handle) => handle.handle_message(addr, ctx, msg).await,
-            None => Err(OckamError::SystemAddressNotBound.into()),
+            None => Err(OckamError::SystemAddressNotBound)?,
         }
     }
 }
