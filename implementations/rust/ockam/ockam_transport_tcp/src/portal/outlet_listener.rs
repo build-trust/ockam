@@ -77,7 +77,7 @@ impl Worker for TcpOutletListenWorker {
 
         if let PortalMessage::Ping = msg.body() {
         } else {
-            return Err(TransportError::Protocol.into());
+            return Err(TransportError::Protocol)?;
         }
 
         let addresses = Addresses::generate(PortalType::Outlet);

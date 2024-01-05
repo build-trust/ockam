@@ -218,7 +218,7 @@ impl Decryptor {
 
     pub async fn decrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         if payload.len() < 8 {
-            return Err(IdentityError::InvalidNonce.into());
+            return Err(IdentityError::InvalidNonce)?;
         }
 
         let (nonce, nonce_buffer) = Self::convert_nonce_from_small(&payload[..8])?;

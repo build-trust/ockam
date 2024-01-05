@@ -66,13 +66,13 @@ impl CredentialsVerification {
                 "unknown authority on a credential: {}. Accepted authorities: {:?}",
                 purpose_key_data.subject, authorities
             );
-            return Err(IdentityError::UnknownAuthority.into());
+            return Err(IdentityError::UnknownAuthority)?;
         }
 
         debug!("verify purpose key type");
         let public_key = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStatic(_) => {
-                return Err(IdentityError::InvalidKeyType.into());
+                return Err(IdentityError::InvalidKeyType)?;
             }
 
             PurposePublicKey::CredentialSigning(public_key) => public_key,
@@ -96,7 +96,7 @@ impl CredentialsVerification {
             .verify_signature(&public_key, &versioned_data_hash.0, &signature)
             .await?
         {
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         let versioned_data: VersionedData =
@@ -110,29 +110,29 @@ impl CredentialsVerification {
         );
         if credential_data.subject.is_none() {
             // Currently unsupported
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         if credential_data.subject.is_none() && credential_data.subject_latest_change_hash.is_none()
         {
             // At least one should be always present, otherwise it's unclear who this credential belongs to
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         if expected_subject.is_some() && credential_data.subject.as_ref() != expected_subject {
             // We expected credential that belongs to someone else
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         debug!("verify dates");
         if credential_data.created_at < purpose_key_data.created_at {
             // Credential validity time range should be inside the purpose key validity time range
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         if credential_data.expires_at > purpose_key_data.expires_at {
             // Credential validity time range should be inside the purpose key validity time range
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         let now = now()?;
@@ -141,12 +141,12 @@ impl CredentialsVerification {
             && credential_data.created_at - now > MAX_ALLOWED_TIME_DRIFT
         {
             // Credential can't be created in the future
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         if credential_data.expires_at < now {
             // Credential expired
-            return Err(IdentityError::CredentialVerificationFailed.into());
+            return Err(IdentityError::CredentialVerificationFailed)?;
         }
 
         if let Some(_subject_latest_change_hash) = &credential_data.subject_latest_change_hash {

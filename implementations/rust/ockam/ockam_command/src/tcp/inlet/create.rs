@@ -118,7 +118,7 @@ impl CreateCommand {
             // The user provided the name of the relay
             Err(_) => {
                 if to.contains('/') {
-                    return Err(Error::arg_validation("to", to, None).into());
+                    return Err(Error::arg_validation("to", to, None))?;
                 }
                 let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
                 MultiAddr::from_str(&format!(
@@ -152,7 +152,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let create_inlet = async {
         port_is_free_guard(&cmd.from)?;
         if cmd.to().matches(0, &[Project::CODE.into()]) && cmd.authorized.is_some() {
-            return Err(miette!("--authorized can not be used with project addresses").into());
+            return Err(miette!(
+                "--authorized can not be used with project addresses"
+            ))?;
         }
 
         let inlet = loop {

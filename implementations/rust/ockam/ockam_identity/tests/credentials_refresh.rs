@@ -299,7 +299,7 @@ impl CredentialsRetriever for LocalCredentialsRetriever {
         self.call_counter.fetch_add(1, Ordering::Relaxed);
         if self.fail_iteration == self.call_counter.load(Ordering::Relaxed) {
             self.failed_call_counter.fetch_add(1, Ordering::Relaxed);
-            return Err(IdentityError::InvalidKeyData.into());
+            return Err(IdentityError::InvalidKeyData)?;
         }
 
         let attributes = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))

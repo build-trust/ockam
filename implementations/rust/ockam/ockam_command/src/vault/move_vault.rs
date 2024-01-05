@@ -49,7 +49,7 @@ async fn run_impl(_ctx: &Context, opts: CommandGlobalOpts, cmd: MoveCommand) -> 
             opts.terminal.write_line(&fmt_err!(
                 "Could not move the vault {vault_name} to {vault_path:?}: {e:?}"
             ))?;
-            return Err(e.into());
+            return Err(e)?;
         }
     };
     Ok(())

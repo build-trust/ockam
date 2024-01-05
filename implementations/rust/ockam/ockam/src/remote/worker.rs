@@ -63,7 +63,7 @@ impl Worker for RemoteRelay {
                         String::from_utf8(payload).map_err(|_| OckamError::InvalidHubResponse)?;
                     // using ends_with() instead of == to allow for prefixes
                     if !payload.ends_with(&self.registration_payload) {
-                        return Err(OckamError::InvalidHubResponse.into());
+                        return Err(OckamError::InvalidHubResponse)?;
                     }
 
                     if !self.completion_msg_sent {
@@ -71,7 +71,7 @@ impl Worker for RemoteRelay {
                         let address = match return_route.recipient()?.to_string().strip_prefix("0#")
                         {
                             Some(addr) => addr.to_string(),
-                            None => return Err(OckamError::InvalidHubResponse.into()),
+                            None => return Err(OckamError::InvalidHubResponse)?,
                         };
 
                         ctx.send_from_address(
@@ -99,7 +99,7 @@ impl Worker for RemoteRelay {
                     // Explicitly check that we don't forward to ourselves as this would somewhat
                     // overcome our outgoing access control, even though it shouldn't be possible
                     // to exploit it in any way
-                    return Err(OckamError::UnknownForwarderNextHopAddress.into());
+                    return Err(OckamError::UnknownForwarderNextHopAddress)?;
                 }
                 Ok(_) => {
                     // Forwarding the message
@@ -119,7 +119,7 @@ impl Worker for RemoteRelay {
                 }
             }
         } else {
-            Err(OckamError::UnknownForwarderDestinationAddress.into())
+            Err(OckamError::UnknownForwarderDestinationAddress)?
         }
     }
 }

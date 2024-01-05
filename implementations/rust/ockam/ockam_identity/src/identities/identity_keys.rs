@@ -51,7 +51,7 @@ impl IdentitiesKeys {
     ) -> Result<Identity> {
         let last_change = match identity.changes().last() {
             Some(last_change) => last_change,
-            None => return Err(IdentityError::EmptyIdentity.into()),
+            None => return Err(IdentityError::EmptyIdentity)?,
         };
 
         let last_secret_key = self.get_secret_key(&identity).await?;
@@ -89,7 +89,7 @@ impl IdentitiesKeys {
                 .get_secret_key_handle(last_change.primary_public_key())
                 .await
         } else {
-            Err(IdentityError::EmptyIdentity.into())
+            Err(IdentityError::EmptyIdentity)?
         }
     }
 }

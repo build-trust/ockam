@@ -168,7 +168,7 @@ async fn parse_trust_context(
                 return Err(miette!(
                     "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
                     trust_context_name
-                ).into());
+                ))?;
             }
         }
     }

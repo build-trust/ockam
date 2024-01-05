@@ -104,11 +104,9 @@ impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
         msg: Routed<OckamMessage>,
     ) -> Result<()> {
         trace!("ReceiverOrdering: handling incoming message");
-        let Index(index) = msg
-            .scope
-            .get(0)
-            .ok_or_else(|| OckamError::InvalidParameter.into())
-            .and_then(|idx| Index::decode(idx))?;
+
+        let index = msg.scope.get(0).ok_or(OckamError::InvalidParameter)?;
+        let Index(index) = Index::decode(index)?;
 
         // Peel off this layer of message
         let inner = msg.body().peel()?;

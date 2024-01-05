@@ -34,7 +34,7 @@ fn std_socket_addr_from_tokio(sock_addr: &TokioSocketAddr) -> Result<SocketAddr>
         Some(p) => p,
         None => {
             error!("Error retrieving path from tokio Socket Addr");
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
     };
 
@@ -42,7 +42,7 @@ fn std_socket_addr_from_tokio(sock_addr: &TokioSocketAddr) -> Result<SocketAddr>
         Ok(s) => s,
         Err(e) => {
             error!("Error parsing std SocketAddr from Tokio SocketAddr: {}", e);
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
     };
 
@@ -53,14 +53,14 @@ fn address_from_socket_addr(sock_addr: &SocketAddr) -> Result<Address> {
     let path = match sock_addr.as_pathname() {
         Some(p) => p,
         None => {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
     };
 
     let path_str = match path.to_str() {
         Some(s) => s,
         None => {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
     };
 

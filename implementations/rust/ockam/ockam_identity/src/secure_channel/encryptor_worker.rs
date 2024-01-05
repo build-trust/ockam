@@ -205,7 +205,7 @@ impl EncryptorWorker {
                     );
                     // Will schedule a refresh in self.min_credential_refresh_interval
                     self.schedule_credentials_refresh(ctx, true).await?;
-                    return Err(IdentityError::NoCredentialsSet.into());
+                    return Err(IdentityError::NoCredentialsSet)?;
                 }
                 Err(err) => {
                     info!(
@@ -219,7 +219,7 @@ impl EncryptorWorker {
                 }
             }
         } else {
-            return Err(IdentityError::NoCredentialsRetriever.into());
+            return Err(IdentityError::NoCredentialsRetriever)?;
         };
 
         let versioned_data: VersionedData = minicbor::decode(&credential.credential.data)?;
@@ -343,7 +343,7 @@ impl Worker for EncryptorWorker {
         } else if msg_addr == self.addresses.encryptor_internal {
             self.handle_refresh_credentials(ctx).await?;
         } else {
-            return Err(IdentityError::UnknownChannelMsgDestination.into());
+            return Err(IdentityError::UnknownChannelMsgDestination)?;
         }
 
         Ok(())

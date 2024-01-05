@@ -95,12 +95,12 @@ impl UdsRouter {
 
         let path = match pair.peer().as_pathname() {
             Some(p) => p,
-            None => return Err(TransportError::InvalidAddress.into()),
+            None => return Err(TransportError::InvalidAddress)?,
         };
 
         let str_path = match path.to_str() {
             Some(s) => s,
-            None => return Err(TransportError::InvalidAddress.into()),
+            None => return Err(TransportError::InvalidAddress)?,
         };
 
         let uds_address = Address::new(UDS, str_path);
@@ -123,7 +123,7 @@ impl UdsRouter {
             self_address.clone()
         } else {
             error!("Failed to disconnect, peer not found: {}", udp_address);
-            return Err(TransportError::PeerNotFound.into());
+            return Err(TransportError::PeerNotFound)?;
         };
 
         self.handle_unregister(self_address.clone()).await?;
@@ -157,7 +157,7 @@ impl UdsRouter {
                 "UDS Registration request failed, the following addresses were already connected: {}",
                 duplicate_addrs.join("\n")
             );
-            return Err(TransportError::AlreadyConnected.into());
+            return Err(TransportError::AlreadyConnected)?;
         }
 
         for accept in accepts {
@@ -221,7 +221,7 @@ impl UdsRouter {
             Some(p) => p,
             None => {
                 error!("Failed to resolve route.");
-                return Err(TransportError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress)?;
             }
         };
 
@@ -232,7 +232,7 @@ impl UdsRouter {
                     "Failed to resolve route, invalid path provided: {}",
                     path.display()
                 );
-                return Err(TransportError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress)?;
             }
         };
 
@@ -249,7 +249,7 @@ impl UdsRouter {
                 "Failed to resolve route, no existing connection to peer: {}",
                 peer
             );
-            Err(TransportError::UnknownRoute.into())
+            Err(TransportError::UnknownRoute)?
         }
     }
 }
@@ -303,7 +303,7 @@ impl Worker for UdsRouter {
                 "UDS router received a message for an invalid address: {}",
                 msg_addr
             );
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         Ok(())

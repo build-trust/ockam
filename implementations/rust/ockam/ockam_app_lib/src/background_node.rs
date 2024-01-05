@@ -89,7 +89,7 @@ impl Projects for Cli {
         let node_name = node_name.to_string();
         let hex_encoded_ticket = hex_encoded_ticket.to_string();
         let bin = self.bin.clone();
-        spawn_blocking(move || {
+        Ok(spawn_blocking(move || {
             let _ = duct::cmd!(
                 &bin,
                 "--no-input",
@@ -107,7 +107,6 @@ impl Projects for Cli {
                 debug!(node = %node_name, "Node enrolled using enrollment ticket");
             });
         })
-        .await
-        .map_err(|err| err.into())
+        .await?)
     }
 }

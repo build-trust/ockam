@@ -12,14 +12,14 @@ pub fn now() -> Result<TimestampInSeconds> {
     if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
         Ok(TimestampInSeconds(now.as_secs()))
     } else {
-        Err(IdentityError::UnknownTimestamp.into())
+        Err(IdentityError::UnknownTimestamp)?
     }
 }
 
 /// Create a new timestamp using the system time
 #[cfg(not(feature = "std"))]
 pub fn now() -> Result<TimestampInSeconds> {
-    Err(IdentityError::UnknownTimestamp.into())
+    Err(IdentityError::UnknownTimestamp)?
 }
 
 /// Add a number of seconds to the [`TimestampInSeconds`]

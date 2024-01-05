@@ -67,7 +67,7 @@ impl Identity {
         if let Some(latest_change) = self.changes.last() {
             Ok(latest_change.change_hash())
         } else {
-            Err(IdentityError::EmptyIdentity.into())
+            Err(IdentityError::EmptyIdentity)?
         }
     }
 }
@@ -121,12 +121,12 @@ impl Identity {
         let identifier = if let Some(first_change) = verified_changes.first() {
             first_change.change_hash().clone().into()
         } else {
-            return Err(IdentityError::IdentityVerificationFailed.into());
+            return Err(IdentityError::IdentityVerificationFailed)?;
         };
 
         if let Some(expected_identifier) = expected_identifier {
             if &identifier != expected_identifier {
-                return Err(IdentityError::IdentityVerificationFailed.into());
+                return Err(IdentityError::IdentityVerificationFailed)?;
             }
         }
 
@@ -153,7 +153,7 @@ impl Identity {
         if let Some(last_change) = self.changes().last() {
             Ok(last_change.primary_public_key().clone())
         } else {
-            Err(IdentityError::EmptyIdentity.into())
+            Err(IdentityError::EmptyIdentity)?
         }
     }
 
@@ -162,7 +162,7 @@ impl Identity {
         if let Some(last_change) = self.changes().last() {
             Ok(last_change.clone())
         } else {
-            Err(IdentityError::EmptyIdentity.into())
+            Err(IdentityError::EmptyIdentity)?
         }
     }
 

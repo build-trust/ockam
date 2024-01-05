@@ -69,14 +69,14 @@ impl Identity {
             if let Some(previous_change_details) = previous_change_details {
                 if previous_change_details.version > change_details.version {
                     // Version downgrade
-                    return Err(IdentityError::IdentityVerificationFailed.into());
+                    return Err(IdentityError::IdentityVerificationFailed)?;
                 }
 
                 if previous_change_details.change_data.created_at
                     > change_details.change_data.created_at
                 {
                     // The older key can't be created after the newer
-                    return Err(IdentityError::IdentityVerificationFailed.into());
+                    return Err(IdentityError::IdentityVerificationFailed)?;
                 }
 
                 // This is intentionally allowed:
@@ -86,11 +86,11 @@ impl Identity {
                     != change_details.change_data.previous_change.as_ref()
                 {
                     // Corrupted changes sequence
-                    return Err(IdentityError::IdentityVerificationFailed.into());
+                    return Err(IdentityError::IdentityVerificationFailed)?;
                 }
             } else if change_details.change_data.previous_change.is_some() {
                 // Should be empty
-                return Err(IdentityError::IdentityVerificationFailed.into());
+                return Err(IdentityError::IdentityVerificationFailed)?;
             }
 
             to_be_verified_changes.push(VerifiedChange::new(
@@ -112,7 +112,7 @@ impl Identity {
         vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Result<()> {
         if to_be_verified_changes.len() != changes.len() {
-            return Err(IdentityError::IdentityVerificationFailed.into());
+            return Err(IdentityError::IdentityVerificationFailed)?;
         }
 
         for i in 0..to_be_verified_changes.len() {
@@ -158,11 +158,11 @@ impl Identity {
                 )
                 .await?
                 {
-                    return Err(IdentityError::IdentityVerificationFailed.into());
+                    return Err(IdentityError::IdentityVerificationFailed)?;
                 }
             } else {
                 // Previous signature should be present if it's not the first change
-                return Err(IdentityError::IdentityVerificationFailed.into());
+                return Err(IdentityError::IdentityVerificationFailed)?;
             }
         }
 
@@ -178,7 +178,7 @@ impl Identity {
         )
         .await?
         {
-            return Err(IdentityError::IdentityVerificationFailed.into());
+            return Err(IdentityError::IdentityVerificationFailed)?;
         }
 
         Ok(())

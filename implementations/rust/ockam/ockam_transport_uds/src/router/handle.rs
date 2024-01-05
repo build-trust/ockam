@@ -87,7 +87,7 @@ impl UdsRouterHandle {
         if let UdsRouterResponse::Connect(res) = response {
             res
         } else {
-            Err(TransportError::InvalidRouterResponseType.into())
+            Err(TransportError::InvalidRouterResponseType)?
         }
     }
 
@@ -106,7 +106,7 @@ impl UdsRouterHandle {
         if let UdsRouterResponse::Disconnect(res) = response {
             res
         } else {
-            Err(TransportError::InvalidRouterResponseType.into())
+            Err(TransportError::InvalidRouterResponseType)?
         }
     }
 
@@ -133,7 +133,7 @@ impl UdsRouterHandle {
         if let UdsRouterResponse::Register(res) = response {
             res
         } else {
-            Err(TransportError::InvalidRouterResponseType.into())
+            Err(TransportError::InvalidRouterResponseType)?
         }
     }
 
@@ -149,7 +149,7 @@ impl UdsRouterHandle {
         if let UdsRouterResponse::Unregister(res) = response {
             res
         } else {
-            Err(TransportError::InvalidRouterResponseType.into())
+            Err(TransportError::InvalidRouterResponseType)?
         }
     }
 
@@ -164,7 +164,7 @@ impl UdsRouterHandle {
             peer_addr = p;
             pathnames = vec![];
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         Ok((peer_addr, pathnames))

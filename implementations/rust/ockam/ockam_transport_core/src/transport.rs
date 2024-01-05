@@ -28,7 +28,7 @@ pub fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
     let mut msg_buf = msg.encode().map_err(|_| TransportError::SendBadMessage)?;
 
     if msg_buf.len() > MAXIMUM_MESSAGE_LENGTH {
-        return Err(TransportError::Capacity.into());
+        return Err(TransportError::Capacity)?;
     }
 
     // Create a buffer that includes the message length in big endian

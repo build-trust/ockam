@@ -128,7 +128,7 @@ impl TcpSendWorker {
             }
             Err(e) => {
                 debug!(addr = %socket_address, err = %e, "Failed to connect");
-                return Err(TransportError::from(e).into());
+                return Err(TransportError::from(e))?;
             }
         };
 
