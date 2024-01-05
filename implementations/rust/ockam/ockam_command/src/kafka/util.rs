@@ -104,10 +104,17 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
                     .to_string()
                     .color(OckamColor::PrimaryResource.color())
             ) + &fmt_log!(
-                "Brokers port range set to {}",
+                "Brokers port range set to {}\n\n",
                 &brokers_port_range
                     .to_string()
                     .color(OckamColor::PrimaryResource.color())
+            ) + &fmt_log!(
+                "{}\n",
+                "Kafka clients v3.4.x are supported.".color(OckamColor::FmtWARNBackground.color())
+            ) + &fmt_log!(
+                "{}\n",
+                "You can find the version you have with 'kafka-console-consumer.sh --version'."
+                    .color(OckamColor::FmtWARNBackground.color())
             ),
         )
         .write_line()?;
