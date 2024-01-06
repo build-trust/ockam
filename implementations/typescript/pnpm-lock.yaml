@@ -29,12 +29,6 @@ importers:
 
   ockam/ockam: {}
 
-  ockam/ockam_command:
-    devDependencies:
-      '@types/node':
-        specifier: ^20.10.6
-        version: 20.10.6
-
 packages:
 
   /@ampproject/remapping@2.2.1:
