@@ -4,7 +4,6 @@ use crate::{AbacAccessControl, PoliciesRepository};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::format;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{IncomingAccessControl, Result};
@@ -27,12 +26,11 @@ pub struct PolicyAccessControl {
 /// Debug implementation writing out the resource, action and initial environment
 impl Debug for PolicyAccessControl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let resource = &self.resource;
-        let action = &self.action;
-        let environment = &self.environment;
-        f.write_str(format!("resource {resource:?}").as_str())?;
-        f.write_str(format!("action {action:?}").as_str())?;
-        f.write_str(format!("environment {environment:?}").as_str())
+        f.debug_struct("PolicyAccessControl")
+            .field("resource", &self.resource)
+            .field("action", &self.action)
+            .field("environment", &self.environment)
+            .finish()
     }
 }
 
