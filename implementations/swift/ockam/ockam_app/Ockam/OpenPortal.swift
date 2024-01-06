@@ -32,6 +32,7 @@ struct OpenPortal: View {
                     .foregroundStyle(OckamSecondaryTextColor)
                     .padding(.leading, 4)
             }
+            .autocorrectionDisabled()
             .padding(.top, VerticalSpacingUnit*3)
             .padding(.bottom, VerticalSpacingUnit*2)
             .padding(.horizontal, VerticalSpacingUnit*4)

@@ -20,6 +20,7 @@ struct InviteToPortal: View {
                     "ex: alice@example.com",
                     text: $emailInput
                 )
+                .autocorrectionDisabled()
                 .padding(.leading, 1)
                 .onSubmit {
                     if validateEmail(email: self.emailInput) {
