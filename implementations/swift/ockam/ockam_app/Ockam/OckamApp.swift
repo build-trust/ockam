@@ -289,6 +289,12 @@ struct OckamApp: App {
         }
         .windowResizability(.contentSize)
 
+        // Declare a preferences window
+        Window("Preferences", id: "preferences") {
+            PreferencesView()
+        }
+        .windowResizability(.automatic)
+
         // Declare a state-independent window, not open by default
         Window("Open a Portal Outlet to a TCP service", id: "open-portal") {
             OpenPortal(localServices: $state.localServices)
