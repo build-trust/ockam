@@ -1,4 +1,0 @@
-#!/usr/bin/env node
-
-const installer = require("../lib/installer");
-installer.install(process.argv[2], process.argv[3]);
