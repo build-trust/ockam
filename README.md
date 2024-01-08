@@ -3,6 +3,8 @@
 ---
 
 <a href="https://discord.gg/RAbjRr3kds"><img alt="Discord" src="https://img.shields.io/discord/1074960884490833952?label=Discord&logo=discord&style=flat&logoColor=white"></a>
+[![RepoRater](https://repo-rater.eddiehub.io/api/badge?owner=build-trust&name=ockam)](https://repo-rater.eddiehub.io/rate?owner=build-trust&name=ockam)
+
 
 # Trust for Data-in-Motion
 
