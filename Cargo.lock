@@ -4651,9 +4651,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_rs_utils_core"
-version = "0.9.11"
+version = "0.9.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf5818db1ba9db4cb3afb1056bef6d04930d95053aa43f4d8a243946df4fac69"
+checksum = "6c1620ed8b7f572744c3193a4f5f4191e1c06134c46c8579e7f9689e2d07b555"
 dependencies = [
  "chrono",
  "get-size",
@@ -4661,6 +4661,7 @@ dependencies = [
  "nom",
  "r3bl_ansi_color",
  "r3bl_simple_logger",
+ "rand",
  "serde",
  "serde_json",
  "syntect",
