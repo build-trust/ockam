@@ -27,7 +27,7 @@ pub const TRUST_CONTEXT_ID_UTF8: &str = "trust_context_id";
 pub const PROJECT_MEMBER_SCHEMA: CredentialSchemaIdentifier = CredentialSchemaIdentifier(1);
 
 /// Maximum duration for a valid credential in seconds (30 days)
-pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);
+pub const DEFAULT_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);
 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialsIssuer {
@@ -35,6 +35,7 @@ pub struct CredentialsIssuer {
     credentials: Arc<Credentials>,
     issuer: Identifier,
     subject_attributes: Attributes,
+    credential_ttl: Duration,
 }
 
 impl CredentialsIssuer {
@@ -44,6 +45,7 @@ impl CredentialsIssuer {
         credentials: Arc<Credentials>,
         issuer: &Identifier,
         trust_context: String,
+        credential_ttl: Option<Duration>,
     ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
             .with_attribute(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec())
@@ -54,6 +56,7 @@ impl CredentialsIssuer {
             credentials,
             issuer: issuer.clone(),
             subject_attributes,
+            credential_ttl: credential_ttl.unwrap_or(DEFAULT_CREDENTIAL_VALIDITY),
         }
     }
 
@@ -84,7 +87,7 @@ impl CredentialsIssuer {
                 &self.issuer,
                 subject,
                 subject_attributes,
-                MAX_CREDENTIAL_VALIDITY,
+                self.credential_ttl,
             )
             .await?;
 
