@@ -3916,6 +3916,7 @@ dependencies = [
  "ockam_core",
  "ockam_macros",
  "ockam_node",
+ "ockam_transport_core",
  "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_aws",
