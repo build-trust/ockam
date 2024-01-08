@@ -68,6 +68,7 @@ use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
+use tracing::warn;
 use trust_context::TrustContextCommand;
 use upgrade::check_if_an_upgrade_is_available;
 use util::{exitcode, exitcode::ExitCode};
@@ -430,7 +431,6 @@ pub fn run() {
 
     match OckamCommand::try_parse_from(input) {
         Ok(command) => {
-            check_if_an_upgrade_is_available(&command.global_args);
             command.run();
         }
         Err(help) => pager::render_help(help),
@@ -476,6 +476,14 @@ impl OckamCommand {
         // without having to execute their logic.
         if options.global_args.test_argument_parser {
             return;
+        }
+
+        if let Err(err) = check_if_an_upgrade_is_available(&options) {
+            warn!("Failed to check for upgrade, error={err}");
+            options
+                .terminal
+                .write_line(&fmt_warn!("Failed to check for upgrade"))
+                .unwrap();
         }
 
         // Display Header if needed
