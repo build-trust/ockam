@@ -103,7 +103,8 @@ fn output(mut cont: Container) -> TokenStream {
                Some(_) => (),
             };
 
-            let (mut #ctx_ident, mut executor) = NodeBuilder::new().build();
+            // we don't exit on a panic because we want to catch the panic and report it from within the test.
+            let (mut #ctx_ident, mut executor) = NodeBuilder::new().no_exit_on_panic().build();
             executor
                 .execute(async move {
                     // Wraps the test function call in a `catch_unwind` to catch possible panics.
