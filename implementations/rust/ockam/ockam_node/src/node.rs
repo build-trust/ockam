@@ -68,8 +68,12 @@ impl NodeBuilder {
         #[cfg(feature = "std")]
         if self.exit_on_panic {
             std::panic::set_hook(Box::new(|panic_info| {
-                println!("A fatal error occurred: {panic_info}.");
-                println!("Please report this issue, with a copy of your logs, to https://github.com/build-trust/ockam/issues.");
+                let message1 = format!("A fatal error occurred: {panic_info}.");
+                let message2 = "Please report this issue, with a copy of your logs, to https://github.com/build-trust/ockam/issues.";
+                error!(message1);
+                error!(message2);
+                println!("{}", message1);
+                println!("{}", message2);
                 std::process::exit(1);
             }));
         }
