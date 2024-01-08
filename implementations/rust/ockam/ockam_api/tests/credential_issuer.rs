@@ -74,6 +74,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         identities.credentials(),
         &auth_identifier,
         "project42".into(),
+        None,
     );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 

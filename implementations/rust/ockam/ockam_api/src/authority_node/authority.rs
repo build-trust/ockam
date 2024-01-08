@@ -10,6 +10,7 @@ use ockam::identity::{
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env, Policy};
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result, Worker};
@@ -206,6 +207,8 @@ impl Authority {
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
+        let ttl = get_env("CREDENTIAL_TTL_SECS")?;
+
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
             self.secure_channels
@@ -214,6 +217,7 @@ impl Authority {
             self.secure_channels.identities().credentials(),
             &self.identifier,
             configuration.project_identifier(),
+            ttl,
         );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();

@@ -4,6 +4,7 @@ use crate::compat::string::String;
 use crate::compat::vec::Vec;
 use crate::errcode::{Kind, Origin};
 use crate::{Error, Result};
+use core::time::Duration;
 #[cfg(feature = "std")]
 use std::env;
 #[cfg(feature = "std")]
@@ -90,7 +91,12 @@ impl FromString for u8 {
             .map_err(|_| error("u8 parsing error".to_string()))
     }
 }
-
+impl FromString for Duration {
+    fn from_string(s: &str) -> Result<Self> {
+        let secs = u64::from_string(s)?;
+        Ok(Duration::from_secs(secs))
+    }
+}
 impl FromString for u16 {
     fn from_string(s: &str) -> Result<Self> {
         s.parse::<u16>()
