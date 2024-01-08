@@ -26,22 +26,27 @@ pub enum NodeError {
 
 impl NodeError {
     /// Turn a NodeError into a Kind::NotFound ockam_core::Error
+    #[track_caller]
     pub fn not_found(self) -> Error {
         Error::new(Origin::Node, Kind::NotFound, self)
     }
     /// Turn a NodeError into a Kind::AlreadyExists ockam_core::Error
+    #[track_caller]
     pub fn already_exists(self) -> Error {
         Error::new(Origin::Node, Kind::AlreadyExists, self)
     }
     /// Turn a NodeError into a Kind::Conflict ockam_core::Error
+    #[track_caller]
     pub fn conflict(self) -> Error {
         Error::new(Origin::Node, Kind::Conflict, self)
     }
     /// Turn a NodeError into a Kind::Internal ockam_core::Error
+    #[track_caller]
     pub fn internal(self) -> Error {
         Error::new(Origin::Node, Kind::Internal, self)
     }
     /// Create an ockam_core::Error based on a tokio::SendError
+    #[track_caller]
     pub(crate) fn from_send_err<T: fmt::Debug>(err: SendError<T>) -> Error {
         Error::new(
             Origin::Node,
@@ -52,6 +57,7 @@ impl NodeError {
     }
 
     /// Create an ockam_core::Error from a tokio::Elapsed
+    #[track_caller]
     pub(crate) fn with_elapsed(self, err: Elapsed) -> Error {
         Error::new(Origin::Node, Kind::Timeout, err).context("Type", self)
     }
