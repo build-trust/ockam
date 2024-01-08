@@ -292,5 +292,12 @@ policy_list = {
 
 expression = [action expr]                              ;; Expression
 action = (nil text)                                     ;; action
-expr = [1..7 expr_data]                                 ;; expr
-expr_data = [(text / int / float / bool / [+ expr] )]   ;; Expr data types
+expr = [Str / Int / Float / Bool / Ident / Seq / List]  ;; expr
+
+Str = (1  [ text ])
+Int =  (2 [ int ])
+Float = (3 [ float])
+Bool = (4 [bool])
+Ident = (5 [text])
+Seq =  (6 [[+ expr]])
+List = (7 [[+ expr]])
