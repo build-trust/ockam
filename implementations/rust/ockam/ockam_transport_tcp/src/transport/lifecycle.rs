@@ -139,22 +139,24 @@ impl Transport for TcpTransport {
 mod tests {
     use super::*;
     use ockam_transport_core::TransportError;
-    use std::net::TcpListener;
     use std::time::Duration;
-    use tokio::time::sleep;
+    use tokio::net::TcpListener;
 
     #[ockam_macros::test]
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_address = "127.0.0.1:0";
         let initial_workers = ctx.list_workers().await?;
-        let listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
+        let listener = TcpListener::bind(tcp_address)
+            .await
+            .map_err(TransportError::from)?;
         let local_address = listener.local_addr().unwrap().to_string();
 
         tokio::spawn(async move {
-            // Accept one connection, sleep for 100ms and quit
-            _ = listener.accept();
-            sleep(Duration::from_millis(100)).await;
+            // Accept two connections, sleep for 100ms and quit
+            _ = listener.accept().await;
+            _ = listener.accept().await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
         });
 
         let resolved = tcp
