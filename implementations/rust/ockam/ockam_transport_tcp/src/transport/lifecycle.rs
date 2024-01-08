@@ -152,7 +152,8 @@ mod tests {
         let local_address = listener.local_addr().unwrap().to_string();
 
         tokio::spawn(async move {
-            // Accept one connection, sleep for 100ms and quit
+            // Accept two connections, sleep for 100ms and quit
+            _ = listener.accept();
             _ = listener.accept();
             sleep(Duration::from_millis(100)).await;
         });
