@@ -155,9 +155,6 @@ where
 
     debugger::log_inherit_context("WORKER", context, &ctx);
 
-    // Then initialise the worker message relay
-    WorkerRelay::init(context.runtime(), worker, ctx, ctrl_rx);
-
     // Send start request to router
     let (msg, mut rx) =
         NodeMessage::start_worker(addresses, sender, false, context.mailbox_count());
@@ -171,6 +168,9 @@ where
     rx.recv()
         .await
         .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
+
+    // Then initialise the worker message relay
+    WorkerRelay::init(context.runtime(), worker, ctx, ctrl_rx);
 
     Ok(())
 }
