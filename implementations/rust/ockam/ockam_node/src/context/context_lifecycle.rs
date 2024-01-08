@@ -217,5 +217,9 @@ mod tests {
         async fn resolve_address(&self, address: Address) -> Result<Address> {
             Ok(address)
         }
+
+        async fn disconnect(&self, _address: Address) -> Result<()> {
+            Ok(())
+        }
     }
 }

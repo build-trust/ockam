@@ -20,13 +20,13 @@ impl TcpTransport {
     /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
         let tcp = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: Arc::new(ctx.async_try_clone().await?),
             registry: TcpRegistry::default(),
         };
         // make the TCP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as TCP
         // worker addresses
-        ctx.register_transport(Arc::new(tcp.async_try_clone().await?));
+        ctx.register_transport(Arc::new(tcp.clone()));
         Ok(tcp)
     }
 }
@@ -128,6 +128,10 @@ impl Transport for TcpTransport {
                 ),
             ))
         }
+    }
+
+    async fn disconnect(&self, address: Address) -> Result<()> {
+        self.disconnect(address).await
     }
 }
 
