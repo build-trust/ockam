@@ -155,9 +155,6 @@ where
 
     debugger::log_inherit_context("PROCESSOR", context, &ctx);
 
-    // Then initialise the processor message relay
-    ProcessorRelay::<P>::init(context.runtime(), processor, ctx, ctrl_rx);
-
     // Send start request to router
     let (msg, mut rx) = NodeMessage::start_processor(main_address.clone(), sender);
     context
@@ -170,6 +167,9 @@ where
     rx.recv()
         .await
         .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
+
+    // Then initialise the processor message relay
+    ProcessorRelay::<P>::init(context.runtime(), processor, ctx, ctrl_rx);
 
     Ok(())
 }
