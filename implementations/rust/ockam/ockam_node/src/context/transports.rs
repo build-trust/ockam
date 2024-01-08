@@ -1,6 +1,7 @@
+use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result, Route, TransportType};
+use ockam_core::{Address, Error, Result, Route, TransportType};
 use ockam_transport_core::Transport;
 
 use crate::Context;
@@ -24,6 +25,19 @@ impl Context {
     pub async fn resolve_transport_route(&self, route: Route) -> Result<Route> {
         let transports = self.transports.read().unwrap().clone();
 
+        let (resolved_route, _resolved_address) =
+            Self::resolve_transport_route_static(route, transports).await?;
+        Ok(resolved_route)
+    }
+
+    /// For each address handled by a given transport in a route, for example, (TCP, "127.0.0.1:4000")
+    /// Create a worker supporting the routing of messages for this transport and replace the address
+    /// in the route with the worker address.
+    /// Also, returns the connection worker address, if that connection was instantiated in this function.
+    pub async fn resolve_transport_route_static(
+        route: Route,
+        transports: HashMap<TransportType, Arc<dyn Transport>>,
+    ) -> Result<(Route, Option<Address>)> {
         // check the number of transport hops, there can be only one
         // we do this first pass over the list of addresses to avoid creating connections
         // and then having to close them if we find several hops
@@ -37,16 +51,18 @@ impl Context {
         }
         // return the route if there are no transport hops
         else if number_of_transport_hops == 0 {
-            return Ok(route);
+            return Ok((route, None));
         };
 
         // otherwise resolve the hop address
-        let mut resolved = Route::new();
+        let mut resolved_route = Route::new();
+        let mut resolved_address = None;
         for address in route.iter() {
             if !address.is_local() {
                 if let Some(transport) = transports.get(&address.transport_type()) {
-                    let resolved_address = transport.resolve_address(address.clone()).await?;
-                    resolved = resolved.append(resolved_address);
+                    let transport_address = transport.resolve_address(address.clone()).await?;
+                    resolved_address = Some(transport_address.clone());
+                    resolved_route = resolved_route.append(transport_address);
                 } else {
                     return Err(Error::new(
                         Origin::Transport,
@@ -55,11 +71,11 @@ impl Context {
                     ));
                 }
             } else {
-                resolved = resolved.append(address.clone());
+                resolved_route = resolved_route.append(address.clone());
             };
         }
-        let result: Route = resolved.into();
-        Ok(result)
+        let result: Route = resolved_route.into();
+        Ok((result, resolved_address))
     }
 }
 
@@ -126,6 +142,10 @@ mod tests {
         /// This implementation simply marks each address as a local address
         async fn resolve_address(&self, address: Address) -> Result<Address> {
             Ok(Address::new(LOCAL, address.address()))
+        }
+
+        async fn disconnect(&self, _address: Address) -> Result<()> {
+            Ok(())
         }
     }
 }

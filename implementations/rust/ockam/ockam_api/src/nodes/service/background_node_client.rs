@@ -5,7 +5,7 @@ use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 
 use ockam_core::api::{Reply, Request};
-use ockam_core::{AsyncTryClone, Route};
+use ockam_core::Route;
 use ockam_node::api::Client;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
@@ -52,7 +52,7 @@ impl BackgroundNodeClient {
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
         let tcp_transport = TcpTransport::create(ctx).await.into_diagnostic()?;
-        BackgroundNodeClient::new(&tcp_transport, cli_state, node_name).await
+        BackgroundNodeClient::new(&tcp_transport, cli_state, node_name)
     }
 
     pub async fn create_to_node_with_tcp(
@@ -60,11 +60,11 @@ impl BackgroundNodeClient {
         cli_state: &CliState,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
-        BackgroundNodeClient::new(tcp, cli_state, node_name).await
+        BackgroundNodeClient::new(tcp, cli_state, node_name)
     }
 
     /// Create a new client to send requests to a running background node
-    pub async fn new(
+    pub fn new(
         tcp_transport: &TcpTransport,
         cli_state: &CliState,
         node_name: &str,
@@ -74,7 +74,7 @@ impl BackgroundNodeClient {
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
             timeout: Some(Duration::from_secs(30)),
-            tcp_transport: Arc::new(tcp_transport.async_try_clone().await.into_diagnostic()?),
+            tcp_transport: Arc::new(tcp_transport.clone()),
         })
     }
 

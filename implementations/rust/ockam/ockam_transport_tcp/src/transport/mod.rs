@@ -9,7 +9,8 @@ pub use common::*;
 pub use crate::portal::options::*;
 
 use crate::TcpRegistry;
-use ockam_core::{async_trait, AsyncTryClone, Result};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{async_trait, Result};
 use ockam_node::{Context, HasContext};
 
 /// High level management interface for TCP transports
@@ -50,10 +51,9 @@ use ockam_node::{Context, HasContext};
 /// tcp.listen("127.0.0.1:9000", TcpListenerOptions::new()).await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
+#[derive(Clone)]
 pub struct TcpTransport {
-    ctx: Context,
+    ctx: Arc<Context>,
     registry: TcpRegistry,
 }
 
