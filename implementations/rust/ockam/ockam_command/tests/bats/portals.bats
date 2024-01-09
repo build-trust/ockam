@@ -222,9 +222,9 @@ teardown() {
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   run_success "$OCKAM" node delete blue --yes
-  run_failure curl --fail --head --max-time 2 "127.0.0.1:$port"
+  run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  run_success curl --head --retry-connrefused --retry 20 --retry-max-time 20 --max-time 1 "127.0.0.1:$port"
+  run_success curl --head --retry-connrefused --retry 2 --max-time 10 "127.0.0.1:$port"
 }
