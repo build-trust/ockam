@@ -521,6 +521,85 @@ defmodule Ockam.SecureChannel.Tests do
       )
   end
 
+  test "credential can be refreshed", %{
+    alice: alice,
+    bob: bob
+  } do
+    {:ok, authority} = Identity.create()
+
+    alice_attributes = %{"role" => "server"}
+    alice_id = Identity.get_identifier(alice)
+    bob_id = Identity.get_identifier(bob)
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(alice, keypair)
+
+    {:ok, alice_credential} =
+      Identity.issue_credential(authority, alice_id, alice_attributes, 100)
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+        authorities: [authority],
+        credentials: [alice_credential]
+      )
+
+    bob_attributes = %{"role" => "member"}
+    {:ok, keypair} = Crypto.generate_dh_keypair()
+    {:ok, attestation} = Identity.attest_purpose_key(bob, keypair)
+    {:ok, bob_credential} = Identity.issue_credential(authority, bob_id, bob_attributes, 100)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        [
+          identity: bob,
+          encryption_options: [static_keypair: keypair, static_key_attestation: attestation],
+          route: [listener],
+          authorities: [authority],
+          credentials: [bob_credential]
+        ],
+        3000
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+
+    Router.route("PING!", [channel, me], [me])
+
+    # This to make sure receiver end has fully completed the handshake, and so processes our
+    # credentials.
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: [_channel, ^me],
+      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    }
+
+    # Check that attributes had been stored
+    assert bob_attributes == AttributeStorage.get_attributes(bob_id)
+    # The client itself also store server' credential presented
+    assert alice_attributes == AttributeStorage.get_attributes(alice_id)
+
+    bob_new_attributes = %{"role" => "member", "new_atttr" => "some"}
+
+    {:ok, new_bob_credential} =
+      Identity.issue_credential(authority, bob_id, bob_new_attributes, 100)
+
+    :ok = SecureChannel.update_credentials(channel, [new_bob_credential])
+
+    Router.route("PING!", [channel, me], [me])
+
+    # This to make sure receiver end has received and processed the refresh credential msg
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: [_channel, ^me],
+      local_metadata: %{identity_id: ^bob_id, channel: :secure_channel}
+    }
+
+    # Check that new attributes had been stored
+    assert bob_new_attributes == AttributeStorage.get_attributes(bob_id)
+  end
+
   defp create_secure_channel_listener() do
     {:ok, identity} = Identity.create()
     create_secure_channel_listener(identity)
