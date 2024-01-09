@@ -1,6 +1,6 @@
 [package]
 name = "ockam_node"
-version = "0.107.0"
+version = "0.108.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -73,10 +73,10 @@ fs2 = { version = "0.4.3", optional = true }
 futures = { version = "0.3.30", default-features = false }
 heapless = { version = "0.8", features = ["mpmc_large"], optional = true }
 minicbor = { version = "0.20.0", features = ["derive"] }
-ockam_core = { path = "../ockam_core", version = "^0.100.0", default_features = false }
-ockam_executor = { path = "../ockam_executor", version = "^0.69.0", default-features = false, optional = true }
-ockam_macros = { path = "../ockam_macros", version = "^0.32.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.73.0", default-features = false, optional = true }
+ockam_core = { path = "../ockam_core", version = "^0.101.0", default_features = false }
+ockam_executor = { path = "../ockam_executor", version = "^0.70.0", default-features = false, optional = true }
+ockam_macros = { path = "../ockam_macros", version = "^0.33.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.74.0", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
 serde_json = { version = "1", optional = true }
