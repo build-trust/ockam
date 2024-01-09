@@ -38,7 +38,7 @@ fs2 = { version = "0.4.3" }
 futures = { version = "0.3.30" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
-kafka-protocol = "0.7.0"
+kafka-protocol = "0.8.1"
 miette = "5.10.0"
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 nix = { version = "0.27", features = ["signal"] }
