@@ -230,26 +230,31 @@ impl RouterReply {
     }
 
     /// Return [NodeError::Address] not found
+    #[track_caller]
     pub fn no_such_address(a: Address) -> NodeReplyResult {
         Err(NodeError::Address(a).not_found())
     }
 
     /// Return [NodeError::Address] already exists for the given address
+    #[track_caller]
     pub fn worker_exists(a: Address) -> NodeReplyResult {
         Err(NodeError::Address(a).already_exists())
     }
 
     /// Return [NodeError::RouterState] already exists
+    #[track_caller]
     pub fn router_exists() -> NodeReplyResult {
         Err(NodeError::RouterState(RouterReason::Duplicate).already_exists())
     }
 
     /// Return [NodeError::NodeState] conflict
+    #[track_caller]
     pub fn node_rejected(reason: NodeReason) -> NodeReplyResult {
         Err(NodeError::NodeState(reason).conflict())
     }
 
     /// Return [NodeError::WorkerState] conflict
+    #[track_caller]
     pub fn worker_rejected(reason: WorkerReason) -> NodeReplyResult {
         Err(NodeError::WorkerState(reason).conflict())
     }
