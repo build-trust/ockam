@@ -40,6 +40,12 @@ pub struct NodeCommand {
     pub subcommand: NodeSubcommand,
 }
 
+impl NodeCommand {
+    pub fn name(&self) -> String {
+        self.subcommand.name()
+    }
+}
+
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
     #[command(display_order = 800)]
@@ -57,6 +63,21 @@ pub enum NodeSubcommand {
     Stop(StopCommand),
     #[command(display_order = 800)]
     Default(DefaultCommand),
+}
+
+impl NodeSubcommand {
+    pub fn name(&self) -> String {
+        match self {
+            NodeSubcommand::Create(_) => "create",
+            NodeSubcommand::Delete(_) => "delete",
+            NodeSubcommand::List(_) => "list",
+            NodeSubcommand::Logs(_) => "logs",
+            NodeSubcommand::Show(_) => "show",
+            NodeSubcommand::Start(_) => "start",
+            NodeSubcommand::Stop(_) => "stop",
+            NodeSubcommand::Default(_) => "default",
+        }.to_string()
+    }
 }
 
 impl NodeCommand {

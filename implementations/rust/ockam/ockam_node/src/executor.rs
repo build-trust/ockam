@@ -18,6 +18,7 @@ use crate::metrics::Metrics;
 // collector, thus don't need it in scope.
 #[cfg(feature = "metrics")]
 use core::sync::atomic::{AtomicBool, Ordering};
+use tracing::Instrument;
 
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
@@ -88,15 +89,15 @@ impl Executor {
         #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
         #[cfg(feature = "metrics")]
-        self.rt.spawn(self.metrics.clone().run(alive.clone()));
+        self.rt.spawn(self.metrics.clone().run(alive.clone()).in_current_span());
 
         // Spawn user code second
         let sender = self.sender();
         let future = Executor::wrapper(sender, future);
-        let join_body = self.rt.spawn(future);
+        let join_body = self.rt.spawn(future.in_current_span());
 
         // Then block on the execution of the router
-        self.rt.block_on(self.router.run())?;
+        self.rt.block_on(self.router.run().in_current_span())?;
 
         // Shut down metrics collector
         #[cfg(feature = "metrics")]

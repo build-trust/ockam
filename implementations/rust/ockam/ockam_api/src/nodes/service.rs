@@ -277,6 +277,7 @@ impl NodeManager {
     }
 }
 
+#[derive(Debug)]
 pub struct NodeManagerGeneralOptions {
     cli_state: CliState,
     node_name: String,
@@ -320,6 +321,7 @@ pub struct ApiTransport {
     pub flow_control_id: FlowControlId,
 }
 
+#[derive(Debug)]
 pub struct NodeManagerTransportOptions {
     api_transport_flow_control_id: FlowControlId,
     tcp_transport: TcpTransport,
@@ -334,6 +336,7 @@ impl NodeManagerTransportOptions {
     }
 }
 
+#[derive(Debug)]
 pub struct NodeManagerTrustOptions {
     trust_context: Option<NamedTrustContext>,
 }
@@ -346,6 +349,7 @@ impl NodeManagerTrustOptions {
 
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
+    #[instrument(skip_all, fields(node_name = general_options.node_name))]
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,

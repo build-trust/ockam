@@ -4208,6 +4208,7 @@ dependencies = [
  "tinyvec",
  "tokio",
  "tokio-retry",
+ "tonic",
  "tracing",
  "tracing-appender",
  "tracing-error",

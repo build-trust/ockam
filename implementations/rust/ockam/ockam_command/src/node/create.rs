@@ -3,6 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use tracing::instrument;
 
 use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
@@ -15,6 +16,7 @@ use crate::util::api::TrustContextOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
+use crate::node::background::{OpenTelemetryContext, opentelemetry_context_parser};
 
 pub mod background;
 pub mod foreground;
@@ -83,6 +85,10 @@ pub struct CreateCommand {
 
     #[command(flatten)]
     pub trust_context_opts: TrustContextOpts,
+
+    /// Serialized opentelemetry context
+    #[arg(long, hide = true, value_parser = opentelemetry_context_parser)]
+    pub opentelemetry_context: Option<OpenTelemetryContext>,
 }
 
 impl Default for CreateCommand {
@@ -102,14 +108,17 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             credential: None,
             trust_context_opts: node_manager_defaults.trust_context_opts,
+            opentelemetry_context: None,
         }
     }
 }
 
 impl CreateCommand {
+    #[instrument(skip_all)]
     pub fn run(self, opts: CommandGlobalOpts) {
         if self.foreground {
-            local_cmd(embedded_node_that_is_not_stopped(opts.rt.clone(),
+            local_cmd(embedded_node_that_is_not_stopped(
+                opts.rt.clone(),
                 foreground_mode,
                 (opts, self),
             ));

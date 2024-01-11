@@ -62,7 +62,7 @@ impl NodeBuilder {
     pub fn with_runtime(self, rt: Arc<Runtime>) -> Self {
         Self {
             logging: self.logging,
-            exit_on_panic: false,
+            exit_on_panic: self.exit_on_panic,
             rt: Some(rt),
         }
     }

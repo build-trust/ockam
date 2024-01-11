@@ -1,7 +1,7 @@
 use crate::{TcpListenerInfo, TcpReceiverInfo, TcpSenderInfo};
 use ockam_core::Address;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(super) struct InternalRegistry {
     pub(super) portal_workers: Vec<Address>,
     pub(super) portal_receiver_processors: Vec<Address>,

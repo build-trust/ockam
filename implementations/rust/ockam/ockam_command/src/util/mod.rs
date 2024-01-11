@@ -7,7 +7,7 @@ use std::{
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use tokio::runtime::Runtime;
-use tracing::error;
+use tracing::{error, instrument, Instrument};
 
 use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
@@ -68,6 +68,7 @@ where
     }
 }
 
+#[instrument(skip_all)]
 pub fn embedded_node<A, F, Fut, T>(rt: Arc<Runtime>, f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
@@ -94,11 +95,12 @@ where
                 e,
             )
         })
-    });
+    }.in_current_span());
     let res = res.map_err(|e| miette::miette!(e));
     res?.into_diagnostic()
 }
 
+#[instrument(skip_all)]
 pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(
     rt: Arc<Runtime>,
     f: F,
@@ -134,7 +136,7 @@ where
                 e,
             )
         })
-    });
+    }.in_current_span());
 
     let res = res.map_err(|e| miette::miette!(e));
     res?.into_diagnostic()

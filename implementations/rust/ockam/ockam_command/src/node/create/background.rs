@@ -1,8 +1,13 @@
 use colorful::Colorful;
 use miette::miette;
+use opentelemetry::global;
+use opentelemetry::propagation::{Extractor, Injector};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use ockam::Context;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -15,6 +20,7 @@ use crate::CommandGlobalOpts;
 use crate::{color, fmt_log, fmt_ok};
 
 // Create a new node running in the background (i.e. another, new OS process)
+#[instrument(skip_all)]
 pub(crate) async fn background_mode(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
@@ -37,8 +43,14 @@ pub(crate) async fn background_mode(
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
+    let opentelemetry_context = OpenTelemetryContext::inject(&Span::current().context());
+    let cmd_with_trace_context = CreateCommand {
+        opentelemetry_context: cmd.opentelemetry_context.or(Some(opentelemetry_context)),
+        ..cmd
+    };
+
     let send_req = async {
-        spawn_background_node(&opts, cmd.clone()).await?;
+        spawn_background_node(&opts, cmd_with_trace_context.clone()).await?;
         let mut node = BackgroundNodeClient::create_to_node(&ctx, &opts.state, &node_name).await?;
         let is_node_up = is_node_up(&ctx, &mut node, true).await?;
         *is_finished.lock().await = true;
@@ -105,8 +117,56 @@ pub(crate) async fn spawn_background_node(
         trust_context.as_ref(),
         cmd.trust_context_opts.project_name.clone(),
         cmd.logging_to_file(),
+        cmd.opentelemetry_context,
     )
     .await?;
 
     Ok(())
+}
+
+/// Serializable datastructure to hold the opentelemetry propagation context.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenTelemetryContext(HashMap<String, String>);
+
+impl OpenTelemetryContext {
+    pub fn extract(&self) -> opentelemetry::Context {
+        global::get_text_map_propagator(|propagator| propagator.extract(self))
+    }
+
+    fn empty() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn inject(context: &opentelemetry::Context) -> Self {
+        global::get_text_map_propagator(|propagator| {
+            let mut propagation_context = OpenTelemetryContext::empty();
+            propagator.inject_context(context, &mut propagation_context);
+            propagation_context
+        })
+    }
+}
+
+impl Injector for OpenTelemetryContext {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_owned(), value);
+    }
+}
+
+impl Extractor for OpenTelemetryContext {
+    fn get(&self, key: &str) -> Option<&str> {
+        let key = key.to_owned();
+        self.0.get(&key).map(|v| v.as_ref())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_ref()).collect()
+    }
+}
+
+/// Helper fn for parsing the OpenTelemetry context
+pub(crate) fn opentelemetry_context_parser(
+    input: &str,
+) -> crate::error::Result<OpenTelemetryContext> {
+    Ok(serde_json::from_str(input)
+        .map_err(|_| miette!("Invalid OpenTelemetry context: {input}"))?)
 }

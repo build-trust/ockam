@@ -67,11 +67,13 @@ impl Drop for InMemoryNode {
 
 impl InMemoryNode {
     /// Start an in memory node
+    #[instrument]
     pub async fn start(ctx: &Context, cli_state: &CliState) -> miette::Result<Self> {
         Self::start_with_trust_context(ctx, cli_state, None, None).await
     }
 
     /// Start an in memory node with some project and trust context data
+    #[instrument]
     pub async fn start_with_trust_context(
         ctx: &Context,
         cli_state: &CliState,
@@ -93,6 +95,7 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node with a specific identity
+    #[instrument]
     pub async fn start_node_with_identity(
         ctx: &Context,
         cli_state: &CliState,
@@ -102,6 +105,7 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node
+    #[instrument]
     pub async fn start_node(
         ctx: &Context,
         cli_state: &CliState,
@@ -180,6 +184,7 @@ impl InMemoryNode {
     }
 
     /// Create a new in memory node with various options
+    #[instrument(skip_all)]
     pub async fn new(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,

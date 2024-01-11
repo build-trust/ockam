@@ -169,7 +169,8 @@ async fn run_node(
         None,          // Authority Identity
         None,          // Credential
         None,          // Trust Context
-        true,          // Restarted nodes will log to files
+        true,          // Restarted nodes will log to files,
+        None,          // No opentelemetry context
     )
     .await?;
 

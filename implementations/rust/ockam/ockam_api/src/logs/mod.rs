@@ -1,19 +1,25 @@
 use crate::logs::env::{log_format, log_max_files};
+use futures::future::BoxFuture;
 use ockam_core::env::FromString;
 use ockam_node::Executor;
+use opentelemetry::logs::{LogResult, Severity};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::export::logs::LogExporter;
-use opentelemetry_sdk::export::trace::SpanExporter;
+use opentelemetry_sdk::export::logs::{LogData, LogExporter};
+use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::runtime::RuntimeChannel;
 use opentelemetry_sdk::trace::BatchConfig;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::{self as sdk};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
+use std::fmt::Debug;
 use std::io::stdout;
 use std::path::PathBuf;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use tonic::async_trait;
+use tonic::metadata::*;
 pub use tracing::level_filters::LevelFilter;
 pub use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
@@ -25,6 +31,7 @@ pub mod env;
 pub struct Logging;
 
 impl Logging {
+    #[instrument]
     pub fn setup(
         level: LevelFilter,
         color: bool,
@@ -35,6 +42,7 @@ impl Logging {
             opentelemetry_otlp::new_exporter()
                 .tonic()
                 .with_endpoint(get_tracing_endpoint())
+                .with_metadata(get_otlp_headers())
                 .build_span_exporter()
                 .expect("failed to create the span exporter")
         })
@@ -44,14 +52,19 @@ impl Logging {
             opentelemetry_otlp::new_exporter()
                 .tonic()
                 .with_endpoint(get_tracing_endpoint())
+                .with_metadata(get_otlp_headers())
                 .build_log_exporter()
                 .expect("failed to create the log exporter")
         })
         .expect("can't create a log exporter");
 
         let result = Self::setup_with_exporters(
-            span_exporter,
-            log_exporter,
+            DecoratedSpanExporter {
+                exporter: span_exporter,
+            },
+            DecoratedLogExporter {
+                exporter: log_exporter,
+            },
             Some(BatchConfig::default()),
             level,
             color,
@@ -75,8 +88,7 @@ impl Logging {
         crates: &[&str],
     ) -> Option<LoggingGuard> {
         let tracing_layer = {
-            // we don't really need to execute a future here but this
-            // call will initialize the tokio runtime which is necessary for setting-up the exporter
+            // the setup of the tracer requires an async context
             Executor::execute_future(async move {
                 let trace_config =
                     sdk::trace::Config::default().with_resource(Resource::new(vec![
@@ -117,6 +129,9 @@ impl Logging {
             })
             .expect("Failed to build the logging layer")
         };
+
+        // This propagator is used to encode the trace context data to strings
+        global::set_text_map_propagator(TraceContextPropagator::default());
 
         let filter = {
             let builder = EnvFilter::builder();
@@ -202,7 +217,38 @@ fn create_tracer<S: SpanExporter + 'static, R: RuntimeChannel>(
 
 /// TODO: make sure that this is parsed as a proper URL
 fn get_tracing_endpoint() -> String {
-    std::env::var("OCKAM_TRACING_GRPC_ENDPOINT").unwrap_or("http://localhost:4317".to_string())
+    match std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+        Ok(endpoint) => {
+            info!("OTEL_EXPORTER_OTLP_ENDPOINT defined as {endpoint}");
+            endpoint
+        }
+        Err(_) => {
+            info!("using the default value for OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317");
+            "http://localhost:4317".to_string()
+        }
+    }
+}
+
+fn get_otlp_headers() -> MetadataMap {
+    match std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
+        Ok(headers) => {
+            match headers.split_once("=") {
+                // TODO: find a way to use a String as a key instead of a &'static str
+                Some((key, value)) => {
+                    match (MetadataKey::from_bytes(key.as_bytes()), MetadataValue::try_from(value.to_string())) {
+                        (Ok(key), Ok(value)) => {
+                            let mut map = MetadataMap::with_capacity(1);
+                            map.insert(key, value);
+                            map
+                        }
+                        _ => MetadataMap::default(),
+                    }
+                }
+                _ => MetadataMap::default(),
+            }
+        }
+        _ => MetadataMap::default(),
+    }
 }
 
 #[derive(Debug)]
@@ -328,5 +374,50 @@ mod tests {
             stdout_file_checked,
             "the stdout log file must have been found and checked"
         )
+    }
+}
+
+#[derive(Debug)]
+struct DecoratedLogExporter<L: LogExporter> {
+    exporter: L,
+}
+
+#[async_trait]
+impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
+    async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
+        debug!("exporting {} logs", batch.len());
+        self.exporter.export(batch).await
+    }
+
+    fn shutdown(&mut self) {
+        debug!("shutting down the log exporter");
+        self.exporter.shutdown()
+    }
+
+    fn event_enabled(&self, level: Severity, target: &str, name: &str) -> bool {
+        self.exporter.event_enabled(level, target, name)
+    }
+}
+
+#[derive(Debug)]
+struct DecoratedSpanExporter<S: SpanExporter> {
+    exporter: S,
+}
+
+#[async_trait]
+impl<S: SpanExporter> SpanExporter for DecoratedSpanExporter<S> {
+    fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
+        debug!("exporting {} spans {batch:?}", batch.len());
+        self.exporter.export(batch)
+    }
+
+    fn shutdown(&mut self) {
+        debug!("shutting down the span exporter");
+        self.exporter.shutdown()
+    }
+
+    fn force_flush(&mut self) -> BoxFuture<'static, ExportResult> {
+        debug!("flushing the span exporter");
+        self.exporter.force_flush()
     }
 }

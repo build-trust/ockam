@@ -4,7 +4,7 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decoder, Encode};
 use tokio::time::{sleep, Duration};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
@@ -27,6 +27,7 @@ use crate::service::config::Config;
 use crate::util::api;
 use crate::{shutdown, CommandGlobalOpts, Result};
 
+#[instrument(skip_all, fields(node_name = cmd.node_name))]
 pub(super) async fn foreground_mode(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
