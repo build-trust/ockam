@@ -87,7 +87,6 @@ impl InternalMap {
     }
 
     pub(super) fn remove_alias(&mut self, alias_address: &Address) -> Option<Address> {
-        self.flow_controls.cleanup_address(alias_address);
         self.alias_map.remove(alias_address)
     }
 

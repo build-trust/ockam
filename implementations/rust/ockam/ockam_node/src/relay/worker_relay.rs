@@ -104,7 +104,7 @@ where
                     match result {
                         // Successful message handling -- keep running
                         Ok(true) => {},
-                        // Successful message handling -- stop now
+                        // No messages left -- stop now
                         Ok(false) => {
                             break;
                         },
