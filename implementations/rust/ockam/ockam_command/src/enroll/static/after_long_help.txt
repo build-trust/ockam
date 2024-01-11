@@ -2,6 +2,13 @@
 $ ockam enroll
 ```
 
-Troubleshoot:
+To create your own identity and enroll with it, run:
 
-If you have problems with your enrollment then you can run `ockam reset -y && ockam enroll` to delete your local state and start again.
+```sh
+ockam identity create my_id
+ockam enroll --identity my_id
+```
+
+#### Troubleshoot:
+
+If you have problems with your enrollment, please run `ockam reset --yes && ockam enroll` to delete your local state and start again. You can also reach out to us on Discord to ask for help https://discord.ockam.io.

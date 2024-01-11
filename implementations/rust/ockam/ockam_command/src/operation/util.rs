@@ -5,9 +5,9 @@ use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
-use crate::fmt_para;
-use crate::terminal::OckamColor;
 use crate::CommandGlobalOpts;
+use crate::{fmt_log, fmt_para};
+use crate::{fmt_ok, terminal::OckamColor};
 
 pub async fn check_for_project_completion(
     opts: &CommandGlobalOpts,
@@ -19,8 +19,8 @@ pub async fn check_for_project_completion(
     if let Some(spinner) = spinner_option.as_ref() {
         let message = format!(
             "Configuring project...\n{}\n{}",
-            fmt_para!("This may take 2 to 4 minutes."),
-            fmt_para!(
+            fmt_log!("This usually takes 15 seconds, but may sometimes take up to 4 minutes."),
+            fmt_log!(
                 "{}",
                 "Please do not press Ctrl+C or exit the terminal process until this is complete."
                     .to_string()
@@ -36,6 +36,15 @@ pub async fn check_for_project_completion(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.finish_and_clear();
     }
+
+    opts.terminal.write_line(&fmt_ok!(
+        "Configured Project {}.\n",
+        &project
+            .name
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
+
     Ok(project)
 }
 

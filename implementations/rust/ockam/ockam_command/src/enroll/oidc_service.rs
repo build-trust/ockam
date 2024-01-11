@@ -13,8 +13,12 @@ use tracing::debug;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::enroll::oidc_service::OidcService;
 
-use crate::terminal::OckamColor;
-use crate::{fmt_err, fmt_log, fmt_para, CommandGlobalOpts, Result, Terminal, TerminalStream};
+use crate::{
+    fmt_err, fmt_heading, fmt_log,
+    terminal::{color_email, color_uri},
+    CommandGlobalOpts, Result, Terminal, TerminalStream,
+};
+use crate::{fmt_ok, terminal::OckamColor};
 
 #[async_trait]
 pub trait OidcServiceExt {
@@ -50,7 +54,7 @@ pub trait OidcServiceExt {
 #[async_trait]
 impl OidcServiceExt for OidcService {
     async fn get_token_interactively(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
-        let dc = self.device_code().await?;
+        let device_code = self.device_code().await?;
 
         // On Linux, the clipboard is cleared when the record goes out of scope, so
         // declare it up here, in the scope that bounds the entire interaction
@@ -61,7 +65,7 @@ impl OidcServiceExt for OidcService {
             opts.terminal
                 .clone()
                 .stdout()
-                .plain(dc.user_code.to_string())
+                .plain(device_code.user_code.to_string())
                 .write_line()?;
         }
         // Otherwise, write the instructions at stderr as normal
@@ -70,32 +74,30 @@ impl OidcServiceExt for OidcService {
             let otc_string = clipboard
                 .as_mut()
                 .ok()
-                .and_then(|clip| clip.set_text(dc.user_code.to_string()).ok())
+                .and_then(|clip| clip.set_text(device_code.user_code.to_string()).ok())
                 .map_or(
-                    fmt_para!(
-                        "First copy this one-time code: {}",
-                        format!(" {} ", dc.user_code).bg_white().black()
+                    fmt_heading!(
+                        "Please copy this one-time code: {}",
+                        format!(" {} ", device_code.user_code).bg_white().black()
                     ),
                     |_| {
-                        fmt_para!(
-                            "Your one-time code: {} has been {} 🎉",
-                            format!(" {} ", dc.user_code).bg_white().black(),
-                            "copied to the clipboard".light_green()
+                        fmt_heading!(
+                            "Your one-time code: {} has been {}.",
+                            format!(" {} ", device_code.user_code).bg_white().black(),
+                            "copied to the clipboard".color(OckamColor::Success.color())
                         )
                     },
                 );
 
             opts.terminal
                 .write_line(&fmt_log!(
-                "To enroll we need to associate your Ockam identity with an Orchestrator account:\n"
-            ))?
+                    "Let's associate your Ockam Identity with an Orchestrator account."
+                ))?
                 .write_line(&otc_string)?
-                .write(fmt_para!(
-                    "Then press {} to open {} in your browser.",
+                .write(fmt_log!(
+                    "Please press {} to open {} in your browser.",
                     " ENTER ↵ ".bg_white().black().blink(),
-                    dc.verification_uri
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
+                    color_uri(&device_code.verification_uri)
                 ))?;
 
             let mut input = String::new();
@@ -103,15 +105,15 @@ impl OidcServiceExt for OidcService {
                 Ok(_) => {
                     opts.terminal
                         .write_line(&fmt_log!(""))?
-                        .write_line(&fmt_para!(
-                            "Opening {}, in your browser, to begin authentication...",
-                            dc.verification_uri
-                                .to_string()
-                                .color(OckamColor::PrimaryResource.color())
+                        .write_line(&fmt_log!(
+                            "Opening {}, in your browser, to begin activating this machine...",
+                            color_uri(&device_code.verification_uri)
                         ))?;
                 }
                 Err(_e) => {
-                    return Err(miette!("couldn't read enter from stdin"))?;
+                    return Err(miette!(
+                        "Couldn't read user input or enter keypress from stdin"
+                    ))?;
                 }
             }
         }
@@ -122,8 +124,8 @@ impl OidcServiceExt for OidcService {
         // want to open it on another browser, for example), the uri gets
         // invalidated and the user would have to restart the process (i.e.
         // rerun the command).
-        let uri = dc.verification_uri.to_string();
-        self.get_token_from_browser(opts, dc, uri).await
+        let uri = device_code.verification_uri.to_string();
+        self.get_token_from_browser(opts, device_code, uri).await
     }
 
     async fn get_token(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
@@ -138,19 +140,28 @@ impl OidcServiceExt for OidcService {
         terminal: Option<&Terminal<TerminalStream<Term>>>,
     ) -> Result<UserInfo> {
         let spinner_option = terminal.and_then(|t| t.progress_spinner());
+        if let Some(spinner) = spinner_option.as_ref() {
+            spinner.set_message("Verifying email...");
+            sleep(Duration::from_millis(500)).await;
+        }
         loop {
             let user_info = self.get_user_info(token).await?;
             if user_info.email_verified {
                 if let Some(spinner) = spinner_option.as_ref() {
                     spinner.finish_and_clear();
                 }
-                terminal.map(|t| t.write_line(fmt_para!("Email <{}> verified\n", user_info.email)));
+                terminal.map(|terminal| {
+                    terminal.write_line(fmt_ok!(
+                        "Email <{}> verified.",
+                        color_email(user_info.email.to_string())
+                    ))
+                });
                 return Ok(user_info);
             } else {
                 if let Some(spinner) = spinner_option.as_ref() {
                     spinner.set_message(format!(
                         "Email <{}> pending verification. Please check your inbox...",
-                        user_info.email
+                        color_email(user_info.email.to_string())
                     ))
                 }
                 sleep(Duration::from_secs(10)).await;
@@ -168,8 +179,8 @@ impl OidcServiceExt for OidcService {
     ) -> Result<OidcToken> {
         if open::that(uri.clone()).is_err() {
             opts.terminal.write_line(&fmt_err!(
-                "Couldn't open activation url automatically [url={}]",
-                uri.light_green()
+                "Couldn't open activation URL automatically [URL={}]",
+                color_uri(&uri)
             ))?;
         }
         self.poll_token(dc, opts).await
@@ -186,7 +197,13 @@ impl OidcServiceExt for OidcService {
         let token;
         let spinner_option = opts.terminal.progress_spinner();
         if let Some(spinner) = spinner_option.as_ref() {
-            spinner.set_message("Waiting for you to complete authentication using your browser...");
+            let msg = format!(
+                "{} {} {}",
+                "Waiting for you to complete activating",
+                "this machine".dim(),
+                "using your browser..."
+            );
+            spinner.set_message(msg);
         }
         loop {
             let res = client
@@ -210,7 +227,8 @@ impl OidcServiceExt for OidcService {
                     if let Some(spinner) = spinner_option.as_ref() {
                         spinner.finish_and_clear();
                     }
-                    opts.terminal.write_line(&fmt_para!("Authenticated\n"))?;
+                    opts.terminal
+                        .write_line(&fmt_ok!("Activation successful.\n"))?;
                     return Ok(token);
                 }
                 _ => {

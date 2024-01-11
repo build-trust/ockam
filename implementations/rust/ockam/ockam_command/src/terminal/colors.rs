@@ -1,5 +1,6 @@
-use colorful::RGB;
+use colorful::{core::color_string::CString, Colorful, RGB};
 use colors_transform::{Color, Rgb};
+use r3bl_tui::ColorWheel;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OckamColor {
@@ -47,4 +48,16 @@ macro_rules! color {
     ($text:expr, $color:expr) => {
         $text.to_string().color($color.color())
     };
+}
+
+pub fn color_primary(input: String) -> CString {
+    input.color(OckamColor::PrimaryResource.color())
+}
+
+pub fn color_email(input: String) -> CString {
+    input.color(OckamColor::PrimaryResource.color())
+}
+
+pub fn color_uri(input: &str) -> String {
+    ColorWheel::lolcat_into_string(input)
 }

@@ -45,6 +45,10 @@ use ockam_api::cli_state::CliState;
 use ockam_core::env::get_env_with_default;
 use policy::PolicyCommand;
 use project::ProjectCommand;
+use r3bl_rs_utils_core::UnicodeString;
+use r3bl_tui::{
+    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
+};
 use relay::RelayCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
@@ -389,7 +393,7 @@ impl OckamCommand {
                 log_path,
             );
             tracing::debug!("{}", Version::short());
-            tracing::debug!("Parsed {:?}", &self);
+            tracing::debug!("Parsed {:#?}", &self);
             guard
         } else {
             None
@@ -405,9 +409,22 @@ impl OckamCommand {
         // Display Header if needed
         if self.subcommand.should_display_header() {
             let ockam_header = include_str!("../static/ockam_ascii.txt").trim();
-            let colored_header = ockam_header.gradient_with_color(
-                OckamColor::OckamBlue.color(),
-                OckamColor::HeaderGradient.color(),
+            let gradient_steps = Vec::from(
+                [
+                    OckamColor::OckamBlue.value(),
+                    OckamColor::HeaderGradient.value(),
+                ]
+                .map(String::from),
+            );
+            let colored_header = ColorWheel::new(vec![ColorWheelConfig::Rgb(
+                gradient_steps,
+                ColorWheelSpeed::Medium,
+                50,
+            )])
+            .colorize_into_string(
+                &UnicodeString::from(ockam_header),
+                GradientGenerationPolicy::ReuseExistingGradientAndResetIndex,
+                TextColorizationPolicy::ColorEachCharacter(None),
             );
 
             let _ = options

@@ -1,3 +1,5 @@
-When you run this command for the first time, it creates a space for you in Ockam Orchestrator, the SaaS service. This is where you host your projects, as well as a default project for you within this space.
+When you run this command it provisions a Space for you in Ockam Orchestrator. Orchestrator is a SaaS product that allows remote relays, add-ons integration like Confluent, Okta, etc. This is where we host your Projects. A default Project is created for you within your Space in Orchestrator.
 
-It also generates a unique cryptographically provable identity and saves the corresponding key in a vault. This identity is issued a membership credential that will be used to manage the resources in your project. Optionally, you can pass an existing identity.
+This command generates an Ockam Identity for you. Ockam Identities are unique, cryptographically verifiable digital identities. These identities authenticate by proving possession of secret keys. Ockam Vaults safely store these secret keys.
+
+Membership credentials are issued, for this Identity, that will be used to manage the resources in your Project. Optionally, you can pass an existing Identity.
