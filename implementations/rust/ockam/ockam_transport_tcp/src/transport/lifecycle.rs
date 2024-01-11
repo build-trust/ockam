@@ -154,8 +154,8 @@ mod tests {
 
         tokio::spawn(async move {
             // Accept two connections, sleep for 100ms and quit
-            _ = listener.accept().await;
-            _ = listener.accept().await;
+            let (_stream1, _) = listener.accept().await.unwrap();
+            let (_stream2, _) = listener.accept().await.unwrap();
             tokio::time::sleep(Duration::from_millis(100)).await;
         });
 
@@ -182,12 +182,26 @@ mod tests {
     #[ockam_macros::test]
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
-        let result = tcp
-            .resolve_address(Address::new(TCP, "www.google.com:80"))
+        let tcp_address = "127.0.0.1:0";
+        let listener = TcpListener::bind(tcp_address)
             .await
-            .is_ok();
+            .map_err(TransportError::from)?;
+        let socket_address = listener.local_addr().unwrap();
 
-        assert!(result);
+        tokio::spawn(async move {
+            // Accept two connections, sleep for 100ms and quit
+            let (_stream, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        });
+
+        let result = tcp
+            .resolve_address(Address::new(
+                TCP,
+                format!("localhost:{}", socket_address.port()),
+            ))
+            .await;
+
+        assert!(result.is_ok());
         ctx.stop().await
     }
 }
