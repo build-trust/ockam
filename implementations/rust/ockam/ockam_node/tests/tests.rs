@@ -5,6 +5,7 @@ use ockam_core::compat::{
     string::{String, ToString},
     sync::Arc,
 };
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, DenyAll, Message, LOCAL};
 use ockam_core::{route, Processor, Result, Routed, Worker};
 use ockam_node::compat::futures::FutureExt;
@@ -558,5 +559,54 @@ async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Resu
         .start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)
         .await
         .is_err());
+    ctx.stop().await
+}
+
+struct CountingErrorWorker {
+    pub(crate) counter: Arc<AtomicI8>,
+}
+
+#[async_trait]
+impl Worker for CountingErrorWorker {
+    type Context = Context;
+    type Message = Any;
+
+    async fn handle_message(
+        &mut self,
+        _context: &mut Self::Context,
+        _msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let _ = self.counter.fetch_add(1, Ordering::Relaxed);
+
+        Err(ockam_core::Error::new(Origin::Core, Kind::Misuse, ""))
+    }
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn message_handle__error_during_handling__keep_worker_running(
+    ctx: &mut Context,
+) -> Result<()> {
+    let counter = Arc::new(AtomicI8::new(0));
+    ctx.start_worker(
+        "counter",
+        CountingErrorWorker {
+            counter: counter.clone(),
+        },
+    )
+    .await?;
+
+    ctx.send("counter", "test".to_string()).await?;
+    ctx.sleep(Duration::from_millis(100)).await;
+    assert_eq!(1, counter.load(Ordering::Relaxed));
+
+    ctx.send("counter", "test".to_string()).await?;
+    ctx.sleep(Duration::from_millis(100)).await;
+    assert_eq!(2, counter.load(Ordering::Relaxed));
+
+    ctx.send("counter", "test".to_string()).await?;
+    ctx.sleep(Duration::from_millis(100)).await;
+    assert_eq!(3, counter.load(Ordering::Relaxed));
+
     ctx.stop().await
 }
