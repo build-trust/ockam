@@ -1,15 +1,18 @@
-use crate::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
 use ockam_core::Result;
 use sqlx::sqlite::SqliteRow;
 use sqlx::*;
 
-impl SqlxDatabase {
+/// This struct adds a node name column to the identity attributes table
+pub struct NodeNameIdentityAttributes;
+
+impl NodeNameIdentityAttributes {
     /// Duplicate all attributes entry for every known node
-    pub(crate) async fn migrate_attributes_node_name(&self) -> Result<()> {
+    pub(crate) async fn migrate_attributes_node_name(pool: &SqlitePool) -> Result<()> {
         // don't run the migration twice
         let data_migration_needed: Option<SqliteRow> =
             query(&Self::table_exists("identity_attributes_old"))
-                .fetch_optional(&*self.pool)
+                .fetch_optional(pool)
                 .await
                 .into_core()?;
         let data_migration_needed = data_migration_needed.map(|r| r.get(0)).unwrap_or(false);
@@ -18,7 +21,7 @@ impl SqlxDatabase {
             return Ok(());
         };
 
-        let mut transaction = self.pool.begin().await.into_core()?;
+        let mut transaction = pool.begin().await.into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names
@@ -78,6 +81,8 @@ struct NodeNameRow {
 
 #[cfg(test)]
 mod test {
+    use crate::database::migrations::sqlx_migration::NodesMigration;
+    use crate::database::SqlxDatabase;
     use sqlx::query::Query;
     use sqlx::sqlite::SqliteArguments;
     use std::collections::BTreeMap;
@@ -90,7 +95,7 @@ mod test {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
-        SqlxDatabase::migrate_tables(&pool).await?;
+        NodesMigration.migrate_schema(&pool).await?;
 
         // insert attribute rows in the previous table
         let attributes = create_attributes("identifier1")?;

@@ -6,6 +6,7 @@ use crate::nodes::InMemoryNode;
 
 #[async_trait]
 impl Projects for InMemoryNode {
+    #[instrument(skip_all, fields(project_name, space_name))]
     async fn create_project(
         &self,
         ctx: &Context,
@@ -22,6 +23,7 @@ impl Projects for InMemoryNode {
         Ok(project)
     }
 
+    #[instrument(skip_all, fields(project_id))]
     async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
         let controller = self.create_controller().await?;
 
@@ -33,6 +35,7 @@ impl Projects for InMemoryNode {
         Ok(self.cli_state.get_project(project_id).await?)
     }
 
+    #[instrument(skip_all, fields(project_name))]
     async fn get_project_by_name_or_default(
         &self,
         ctx: &Context,
@@ -46,6 +49,7 @@ impl Projects for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
+    #[instrument(skip_all, fields(project_name))]
     async fn get_project_by_name(
         &self,
         ctx: &Context,
@@ -55,6 +59,7 @@ impl Projects for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
+    #[instrument(skip_all, fields(project_id, space_id))]
     async fn delete_project(
         &self,
         ctx: &Context,
@@ -66,6 +71,7 @@ impl Projects for InMemoryNode {
         Ok(self.cli_state.delete_project(project_id).await?)
     }
 
+    #[instrument(skip_all, fields(project_name, space_name))]
     async fn delete_project_by_name(
         &self,
         ctx: &Context,
@@ -78,6 +84,7 @@ impl Projects for InMemoryNode {
             .await
     }
 
+    #[instrument(skip_all)]
     async fn get_orchestrator_version_info(
         &self,
         ctx: &Context,
@@ -89,12 +96,14 @@ impl Projects for InMemoryNode {
             .await?)
     }
 
+    #[instrument(skip_all)]
     async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let user = self.cli_state.get_default_user().await?;
         // try to refresh the list of projects with the controller
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(projects) => {
                 for project in &projects {
+                    info!("retrieved project {}/{}", project.name, project.id);
                     let mut project = project.clone();
                     // If the project has no admin role, the name is set to the project id
                     // to avoid collisions with other projects with the same name that
@@ -120,6 +129,7 @@ impl Projects for InMemoryNode {
 
     /// Wait until the operation associated with the project creation is complete
     /// At this stage the project node must be up and running
+    #[instrument(skip_all, fields(project_id = project.id))]
     async fn wait_until_project_creation_operation_is_complete(
         &self,
         ctx: &Context,
@@ -136,6 +146,7 @@ impl Projects for InMemoryNode {
 
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
+    #[instrument(skip_all, fields(project_id = project.id))]
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,

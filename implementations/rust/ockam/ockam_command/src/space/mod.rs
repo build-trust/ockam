@@ -47,4 +47,14 @@ impl SpaceCommand {
             SpaceSubcommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            SpaceSubcommand::Create(_) => "create space",
+            SpaceSubcommand::Delete(_) => "delete space",
+            SpaceSubcommand::List(_) => "list spaces",
+            SpaceSubcommand::Show(_) => "show space",
+        }
+        .to_string()
+    }
 }

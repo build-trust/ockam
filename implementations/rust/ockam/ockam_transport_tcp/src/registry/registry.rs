@@ -3,7 +3,7 @@ use crate::{TcpListenerInfo, TcpReceiverInfo, TcpSenderInfo};
 use ockam_core::compat::sync::{Arc, RwLock};
 
 /// Registry of all active workers and processors in TCP Transport to ease their lifecycle management
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct TcpRegistry {
     pub(super) registry: Arc<RwLock<InternalRegistry>>,
 }

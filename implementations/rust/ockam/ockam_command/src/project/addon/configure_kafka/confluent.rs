@@ -20,6 +20,6 @@ pub struct AddonConfigureConfluentSubcommand {
 
 impl AddonConfigureConfluentSubcommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, "Confluent", self.config));
+        node_rpc(opts.rt.clone(), run_impl, (opts, "Confluent", self.config));
     }
 }

@@ -11,7 +11,13 @@ CLI Behavior
 - PAGER: a `string` that defines the pager to use for long help/usage messages. Defaults to `less`.
 - OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
 - OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
-- OCKAM_LOG: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed.
+- OCKAM_LOG (deprecated, use OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
+- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
+- OCKAM_LOGGING: set this variable to any value in order to enable logging.
+- OCKAM_TRACING: set this variable to any value in order to enable tracing.
+- OCKAM_TRACING: set this variable to any value in order to enable tracing.
+- OTEL_EXPORTER_OTLP_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
+- OTEL_EXPORTER_OTLP_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly
 - OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs. It can be `json` or `pretty`.
 - OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB.
 - OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node.

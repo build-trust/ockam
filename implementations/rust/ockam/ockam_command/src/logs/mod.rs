@@ -1,35 +1,24 @@
-use ockam_api::logs::env::log_level;
-use ockam_api::logs::{LevelFilter, Logging, WorkerGuard};
+use ockam_api::logs::{
+    logging_configuration, tracing_configuration, Colored, LoggingConfiguration, LoggingTracing,
+    TracingGuard,
+};
 use std::path::PathBuf;
-use std::str::FromStr;
+use tracing_core::LevelFilter;
 
-pub fn setup_logging(
+/// Set up a logger and a tracer for the current node
+/// If the node is a background node we always enable logging, regardless of environment variables
+pub fn setup_logging_tracing(
+    background_node: bool,
     verbose: u8,
     no_color: bool,
     is_tty: bool,
     log_path: Option<PathBuf>,
-) -> Option<WorkerGuard> {
-    let level = {
-        // Parse the the raw log level value (e.g. "info" or "-vvv").
-        let level_raw = match log_level() {
-            // If OCKAM_LOG is set, give it priority over `verbose` to define the log level.
-            Some(s) if !s.is_empty() => s,
-            // Otherwise, use `verbose` to define the log level.
-            _ => match verbose {
-                0 => "off".to_string(),
-                1 => "info".to_string(),
-                2 => "debug".to_string(),
-                _ => "trace".to_string(),
-            },
-        };
-        // If the parsed log level is not valid, default to info.
-        let level = LevelFilter::from_str(&level_raw).unwrap_or(LevelFilter::INFO);
-        if level == LevelFilter::OFF {
-            return None;
-        }
-        level
+) -> TracingGuard {
+    let colored = if !no_color && is_tty {
+        Colored::On
+    } else {
+        Colored::Off
     };
-    let color = !no_color && is_tty;
     let ockam_crates = [
         "ockam",
         "ockam_node",
@@ -40,5 +29,31 @@ pub fn setup_logging(
         "ockam_api",
         "ockam_command",
     ];
-    Logging::setup(level, color, log_path, &ockam_crates)
+    let default_log_level = verbose_log_level(verbose);
+
+    if background_node {
+        LoggingTracing::setup(
+            LoggingConfiguration::background(log_path, &ockam_crates),
+            tracing_configuration(),
+            "local node",
+        )
+    } else {
+        LoggingTracing::setup(
+            logging_configuration(default_log_level, colored, log_path, &ockam_crates),
+            tracing_configuration(),
+            "cli",
+        )
+    }
+}
+
+/// Return the LevelFilter corresponding to a given verbose flag
+/// -vvv set verbose to 3 (3 times 'v')
+/// and this function translate the number of `v` to a log level
+fn verbose_log_level(verbose: u8) -> LevelFilter {
+    match verbose {
+        0 => LevelFilter::OFF,
+        1 => LevelFilter::INFO,
+        2 => LevelFilter::DEBUG,
+        _ => LevelFilter::TRACE,
+    }
 }

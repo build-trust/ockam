@@ -33,4 +33,12 @@ impl ServiceCommand {
             ServiceSubcommand::List(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            ServiceSubcommand::Start(_) => "start service",
+            ServiceSubcommand::List(_) => "list services",
+        }
+        .to_string()
+    }
 }

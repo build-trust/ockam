@@ -23,4 +23,11 @@ impl KafkaOutletCommand {
             KafkaOutletSubcommand::Create(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            KafkaOutletSubcommand::Create(_) => "create kafka outlet",
+        }
+        .to_string()
+    }
 }

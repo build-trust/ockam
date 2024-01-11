@@ -30,4 +30,12 @@ impl ConfigurationCommand {
             ConfigurationSubcommand::List(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            ConfigurationSubcommand::Get(_) => "get configuration",
+            ConfigurationSubcommand::List(_) => "list configurations",
+        }
+        .to_string()
+    }
 }

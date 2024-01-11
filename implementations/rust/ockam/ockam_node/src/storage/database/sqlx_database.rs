@@ -11,9 +11,15 @@ use tokio_retry::Retry;
 use tracing::debug;
 use tracing::log::LevelFilter;
 
+use crate::database::application_migration::ApplicationMigration;
+use crate::database::migrations::sqlx_migration::{NodesMigration, SqlxMigration};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 
+/// The SqlxDatabase struct is used to create a database:
+///   - at a given path
+///   - with a given schema / or migrations applied to an existing schema
+///
 /// We use sqlx as our primary interface for interacting with the database
 /// The database driver is currently Sqlite
 #[derive(Clone)]
@@ -41,15 +47,27 @@ impl Deref for SqlxDatabase {
 impl SqlxDatabase {
     /// Constructor for a database persisted on disk
     pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_impl(path, None).await
+        Self::create_impl(path, NodesMigration, None).await
+    }
+
+    /// Constructor for a database persisted on disk, with a specific schema / migration
+    pub async fn create_with_migration(
+        path: impl AsRef<Path>,
+        migration: impl SqlxMigration,
+    ) -> Result<Self> {
+        Self::create_impl(path, migration, None).await
     }
 
     /// Constructor for a database persisted on disk, passing a node name to isolate data between nodes where needed
     pub async fn create_with_node_name(path: impl AsRef<Path>, node_name: &str) -> Result<Self> {
-        Self::create_impl(path, Some(node_name.to_string())).await
+        Self::create_impl(path, NodesMigration, Some(node_name.to_string())).await
     }
 
-    async fn create_impl(path: impl AsRef<Path>, node_name: Option<String>) -> Result<Self> {
+    async fn create_impl(
+        path: impl AsRef<Path>,
+        migration: impl SqlxMigration,
+        node_name: Option<String>,
+    ) -> Result<Self> {
         path.as_ref()
             .parent()
             .map(std::fs::create_dir_all)
@@ -67,23 +85,37 @@ impl SqlxDatabase {
             Self::create_at(path.as_ref(), node_name.clone()).await
         })
         .await?;
-        db.migrate().await?;
+
+        migration.migrate(&db.pool).await?;
         Ok(db)
     }
 
-    /// Constructor for an in-memory database
-    /// The implementation blocks during the creation of the database
-    /// so that we don't have to propagate async in all the code base when using an
-    /// in-memory database, especially when writing examples
+    /// Create a nodes database in memory
+    ///   => this database is deleted on an `ockam reset` command! (contrary to the application database below)
     pub async fn in_memory(usage: &str) -> Result<Self> {
+        Self::in_memory_with_migration(usage, NodesMigration).await
+    }
+
+    /// Create an application database in memory
+    /// The application database which contains the application configurations
+    ///   => this database is NOT deleted on an `ockam reset` command!
+    pub async fn application_in_memory(usage: &str) -> Result<Self> {
+        Self::in_memory_with_migration(usage, ApplicationMigration).await
+    }
+
+    /// Create an in-memory database with a specific migration
+    pub async fn in_memory_with_migration(
+        usage: &str,
+        migration: impl SqlxMigration,
+    ) -> Result<Self> {
         debug!("create an in memory database for {usage}");
         let pool = Self::create_in_memory_connection_pool().await?;
+        migration.migrate(&pool).await?;
         // FIXME: We should be careful if we run multiple nodes in one process
         let db = SqlxDatabase {
             pool: Arc::new(pool),
             node_name: Some("in_memory".to_string()),
         };
-        db.migrate().await?;
         Ok(db)
     }
 
@@ -119,19 +151,6 @@ impl SqlxDatabase {
         Ok(pool)
     }
 
-    async fn migrate(&self) -> Result<()> {
-        Self::migrate_tables(&self.pool).await?;
-        self.migrate_attributes_node_name().await?;
-        Ok(())
-    }
-
-    pub(crate) async fn migrate_tables(pool: &SqlitePool) -> Result<()> {
-        sqlx::migrate!("./src/storage/database/migrations")
-            .run(pool)
-            .await
-            .map_err(Self::map_migrate_err)
-    }
-
     /// Return the node name
     pub fn node_name(&self) -> Result<String> {
         self.node_name.clone().ok_or_else(|| {
@@ -147,16 +166,6 @@ impl SqlxDatabase {
     #[track_caller]
     pub fn map_sql_err(err: sqlx::Error) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
-    }
-
-    /// Map a sqlx migration error into an ockam error
-    #[track_caller]
-    pub fn map_migrate_err(err: sqlx::migrate::MigrateError) -> Error {
-        Error::new(
-            Origin::Application,
-            Kind::Io,
-            format!("migration error {err}"),
-        )
     }
 
     /// Map a minicbor decode error into an ockam error

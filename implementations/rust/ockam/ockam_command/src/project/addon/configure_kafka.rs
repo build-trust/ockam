@@ -60,7 +60,11 @@ pub struct AddonConfigureKafkaSubcommand {
 
 impl AddonConfigureKafkaSubcommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, "Apache Kafka", self.config));
+        node_rpc(
+            opts.rt.clone(),
+            run_impl,
+            (opts, "Apache Kafka", self.config),
+        );
     }
 }
 

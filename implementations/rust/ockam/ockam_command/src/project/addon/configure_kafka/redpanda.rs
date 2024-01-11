@@ -20,6 +20,6 @@ pub struct AddonConfigureRedpandaSubcommand {
 
 impl AddonConfigureRedpandaSubcommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, "Redpanda", self.config));
+        node_rpc(opts.rt.clone(), run_impl, (opts, "Redpanda", self.config));
     }
 }

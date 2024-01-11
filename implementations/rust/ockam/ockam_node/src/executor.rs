@@ -1,12 +1,15 @@
 // use crate::message::BaseMessage;
 
 use crate::channel_types::SmallSender;
+#[cfg(feature = "std")]
+use crate::runtime;
 use crate::{
     router::{Router, SenderPair},
-    tokio::runtime::{Handle, Runtime},
+    tokio::runtime::Runtime,
     NodeMessage,
 };
 use core::future::Future;
+use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 
 #[cfg(feature = "metrics")]
@@ -16,6 +19,9 @@ use crate::metrics::Metrics;
 // collector, thus don't need it in scope.
 #[cfg(feature = "metrics")]
 use core::sync::atomic::{AtomicBool, Ordering};
+
+#[cfg(feature = "std")]
+use opentelemetry::trace::FutureExt;
 
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
@@ -31,7 +37,7 @@ use ockam_core::{
 /// `ockam::node` function annotation instead!
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
-    rt: Runtime,
+    rt: Arc<Runtime>,
     /// Main worker and application router
     router: Router,
     /// Metrics collection endpoint
@@ -41,8 +47,7 @@ pub struct Executor {
 
 impl Executor {
     /// Create a new Ockam node [`Executor`] instance
-    pub fn new(flow_controls: &FlowControls) -> Self {
-        let rt = Runtime::new().unwrap();
+    pub fn new(rt: Arc<Runtime>, flow_controls: &FlowControls) -> Self {
         let router = Router::new(flow_controls);
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());
@@ -62,11 +67,6 @@ impl Executor {
     /// Get access to the internal message sender
     pub(crate) fn sender(&self) -> SmallSender<NodeMessage> {
         self.router.sender()
-    }
-
-    /// Get access to the underlying async runtime (by default `tokio`)
-    pub(crate) fn runtime(&self) -> &Handle {
-        self.rt.handle()
     }
 
     /// Initialize the root application worker
@@ -92,15 +92,20 @@ impl Executor {
         #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
         #[cfg(feature = "metrics")]
-        self.rt.spawn(self.metrics.clone().run(alive.clone()));
+        self.rt.spawn(
+            self.metrics
+                .clone()
+                .run(alive.clone())
+                .with_current_context(),
+        );
 
         // Spawn user code second
         let sender = self.sender();
         let future = Executor::wrapper(sender, future);
-        let join_body = self.rt.spawn(future);
+        let join_body = self.rt.spawn(future.with_current_context());
 
         // Then block on the execution of the router
-        self.rt.block_on(self.router.run())?;
+        self.rt.block_on(self.router.run().with_current_context())?;
 
         // Shut down metrics collector
         #[cfg(feature = "metrics")]
@@ -140,15 +145,18 @@ impl Executor {
     }
 
     /// Execute a future and block until a result is returned
+    /// This function can only be called to run futures before the Executor has been initialized.
+    /// Otherwise the Executor rt attribute needs to be accessed to execute or spawn futures
     #[cfg(feature = "std")]
     pub fn execute_future<F>(future: F) -> Result<F::Output>
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let rt = Runtime::new().unwrap();
-        let join_body = rt.spawn(future);
-        rt.block_on(join_body)
+        let lock = runtime::RUNTIME.lock().unwrap();
+        let rt = lock.as_ref().expect("Runtime was consumed");
+        let join_body = rt.spawn(future.with_current_context());
+        rt.block_on(join_body.with_current_context())
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))
     }
 

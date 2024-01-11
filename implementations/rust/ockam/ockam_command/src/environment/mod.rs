@@ -10,4 +10,8 @@ impl EnvironmentCommand {
     pub fn run(self) {
         println!("{}", ENV_INFO);
     }
+
+    pub fn name(&self) -> String {
+        "get environment".to_string()
+    }
 }

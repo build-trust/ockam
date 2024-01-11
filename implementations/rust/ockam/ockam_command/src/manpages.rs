@@ -40,6 +40,10 @@ impl ManpagesCommand {
         let clap_command = <OckamCommand as CommandFactory>::command();
         generate_man_pages(man_dir.as_path(), &clap_command, None, self.no_compression);
     }
+
+    pub fn name(&self) -> String {
+        "generate manpages".to_string()
+    }
 }
 
 fn get_man_page_directory(cmd_man_dir: &Option<String>) -> crate::Result<PathBuf> {

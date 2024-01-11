@@ -31,7 +31,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self))
+        node_rpc(opts.rt.clone(), run_impl, (opts, self))
     }
 }
 

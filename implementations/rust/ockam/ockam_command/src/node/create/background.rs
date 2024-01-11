@@ -1,11 +1,16 @@
 use colorful::Colorful;
 use miette::miette;
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry::KeyValue;
+use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use ockam::Context;
+use ockam_api::journeys::{JourneyEvent, NODE_NAME};
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_node::OpenTelemetryContext;
 
 use crate::node::show::is_node_up;
 use crate::node::util::spawn_node;
@@ -15,6 +20,7 @@ use crate::CommandGlobalOpts;
 use crate::{color, fmt_log, fmt_ok};
 
 // Create a new node running in the background (i.e. another, new OS process)
+#[instrument(skip_all)]
 pub(crate) async fn background_mode(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
@@ -22,6 +28,9 @@ pub(crate) async fn background_mode(
     guard_node_is_not_already_running(&opts, &cmd).await?;
 
     let node_name = cmd.node_name.clone();
+    opentelemetry::Context::current()
+        .span()
+        .set_attribute(KeyValue::new("node_name", node_name.clone()));
     debug!("create node in background mode");
 
     opts.terminal.write_line(&fmt_log!(
@@ -37,8 +46,14 @@ pub(crate) async fn background_mode(
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
+    let opentelemetry_context = OpenTelemetryContext::current();
+    let cmd_with_trace_context = CreateCommand {
+        opentelemetry_context: cmd.opentelemetry_context.or(Some(opentelemetry_context)),
+        ..cmd
+    };
+
     let send_req = async {
-        spawn_background_node(&opts, cmd.clone()).await?;
+        spawn_background_node(&opts, cmd_with_trace_context.clone()).await?;
         let mut node = BackgroundNodeClient::create_to_node(&ctx, &opts.state, &node_name).await?;
         let is_node_up = is_node_up(&ctx, &mut node, true).await?;
         *is_finished.lock().await = true;
@@ -56,6 +71,12 @@ pub(crate) async fn background_mode(
         .progress_output(&output_messages, &is_finished);
 
     let (_response, _) = try_join!(send_req, progress_output)?;
+
+    let mut attributes = HashMap::default();
+    attributes.insert(NODE_NAME, node_name.as_str());
+    opts.state
+        .add_journey_event(JourneyEvent::NodeCreated, attributes)
+        .await?;
 
     opts.clone()
         .terminal
@@ -105,6 +126,7 @@ pub(crate) async fn spawn_background_node(
         trust_context.as_ref(),
         cmd.trust_context_opts.project_name.clone(),
         cmd.logging_to_file(),
+        cmd.opentelemetry_context,
     )
     .await?;
 

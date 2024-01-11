@@ -73,6 +73,12 @@ impl CliState {
         Ok(Arc::new(UsersSqlxDatabase::new(self.database())))
     }
 
+    pub(super) async fn user_journey_repository(&self) -> Result<Arc<dyn JourneysRepository>> {
+        Ok(Arc::new(JourneysSqlxDatabase::new(
+            self.application_database(),
+        )))
+    }
+
     pub(super) async fn credentials_repository(&self) -> Result<Arc<dyn CredentialsRepository>> {
         Ok(Arc::new(CredentialsSqlxDatabase::new(self.database())))
     }

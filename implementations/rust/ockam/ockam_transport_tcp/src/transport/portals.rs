@@ -3,6 +3,7 @@ use crate::transport::common::{parse_socket_addr, resolve_peer};
 use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
+use tracing::instrument;
 
 impl TcpTransport {
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
@@ -97,6 +98,7 @@ impl TcpTransport {
     }
 
     /// Create Tcp Outlet Listener at address, that connects to peer using Tcp
+    #[instrument(skip(self))]
     pub async fn create_tcp_outlet(
         &self,
         address: Address,

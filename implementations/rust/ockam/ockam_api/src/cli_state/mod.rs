@@ -14,6 +14,7 @@ pub mod credentials;
 pub mod enrollments;
 pub mod error;
 pub mod identities;
+pub mod journeys;
 pub mod nodes;
 pub mod policies;
 pub mod projects;

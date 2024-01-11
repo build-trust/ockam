@@ -20,6 +20,6 @@ pub struct AddonConfigureWarpstreamSubcommand {
 
 impl AddonConfigureWarpstreamSubcommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, "WarpStream", self.config));
+        node_rpc(opts.rt.clone(), run_impl, (opts, "WarpStream", self.config));
     }
 }

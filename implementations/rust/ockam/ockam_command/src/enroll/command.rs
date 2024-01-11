@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -17,6 +18,7 @@ use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::ControllerClient;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
@@ -54,7 +56,11 @@ pub struct EnrollCommand {
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    }
+
+    pub fn name(&self) -> String {
+        "enroll".to_string()
     }
 }
 
@@ -145,6 +151,15 @@ async fn run_impl(
         );
         warn!("{e}");
     }
+
+    let mut attributes = HashMap::default();
+    let user_email = user_info.email.to_string();
+    attributes.insert(USER_NAME, user_info.name.as_str());
+    attributes.insert(USER_EMAIL, user_email.as_str());
+    opts.state
+        .add_journey_event(JourneyEvent::Enrolled, attributes)
+        .await
+        .unwrap();
 
     // Print final message.
     opts.terminal.write_line(&fmt_ok!(

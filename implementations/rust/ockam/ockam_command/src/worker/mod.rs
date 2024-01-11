@@ -31,4 +31,11 @@ impl WorkerCommand {
             WorkerSubcommand::List(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            WorkerSubcommand::List(_) => "list workers",
+        }
+        .to_string()
+    }
 }

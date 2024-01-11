@@ -10,6 +10,7 @@ use ockam_api::cli_state::NamedTrustContext;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
+use ockam_node::OpenTelemetryContext;
 
 use crate::node::background::spawn_background_node;
 use crate::node::show::is_node_up;
@@ -79,6 +80,7 @@ pub async fn spawn_node(
     trust_context: Option<&NamedTrustContext>,
     project_name: Option<String>,
     logging_to_file: bool,
+    opentelemetry_context: Option<OpenTelemetryContext>,
 ) -> miette::Result<()> {
     let mut args = vec![
         match opts.global_args.verbose {
@@ -139,6 +141,11 @@ pub async fn spawn_node(
     if let Some(project_name) = project_name {
         args.push("--project".to_string());
         args.push(project_name.to_string());
+    }
+
+    if let Some(opentelemetry_context) = opentelemetry_context {
+        args.push("--opentelemetry-context".to_string());
+        args.push(opentelemetry_context.to_string());
     }
 
     args.push(name.to_owned());

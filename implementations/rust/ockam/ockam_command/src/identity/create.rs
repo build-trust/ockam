@@ -43,7 +43,7 @@ impl CreateCommand {
     }
 
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(Self::run_impl, (options, self))
+        node_rpc(options.rt.clone(), Self::run_impl, (options, self))
     }
 
     async fn run_impl(

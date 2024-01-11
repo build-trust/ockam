@@ -37,7 +37,7 @@ pub struct IssueCommand {
 
 impl IssueCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self));
+        node_rpc(opts.rt.clone(), run_impl, (opts, self));
     }
 
     fn attributes(&self) -> Result<HashMap<String, String>> {

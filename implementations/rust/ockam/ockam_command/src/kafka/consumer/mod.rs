@@ -32,4 +32,13 @@ impl KafkaConsumerCommand {
             KafkaConsumerSubcommand::List(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            KafkaConsumerSubcommand::Create(_) => "create kafka consumer",
+            KafkaConsumerSubcommand::Delete(_) => "delete kafka consumer",
+            KafkaConsumerSubcommand::List(_) => "list kafka consumers",
+        }
+        .to_string()
+    }
 }

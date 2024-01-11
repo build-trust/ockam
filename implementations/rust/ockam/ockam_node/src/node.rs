@@ -1,8 +1,8 @@
+use crate::tokio::runtime::Runtime;
+use crate::{debugger, Context, Executor};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
-
-use crate::{debugger, Context, Executor};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -20,6 +20,7 @@ impl ockam_core::Worker for NullWorker {
 pub struct NodeBuilder {
     logging: bool,
     exit_on_panic: bool,
+    rt: Option<Arc<Runtime>>,
 }
 
 impl Default for NodeBuilder {
@@ -34,6 +35,7 @@ impl NodeBuilder {
         Self {
             logging: true,
             exit_on_panic: true,
+            rt: None,
         }
     }
 
@@ -42,6 +44,7 @@ impl NodeBuilder {
         Self {
             logging: false,
             exit_on_panic: self.exit_on_panic,
+            rt: self.rt,
         }
     }
 
@@ -50,6 +53,16 @@ impl NodeBuilder {
         Self {
             logging: self.logging,
             exit_on_panic: false,
+            rt: self.rt,
+        }
+    }
+
+    /// Use a specific runtime
+    pub fn with_runtime(self, rt: Arc<Runtime>) -> Self {
+        Self {
+            logging: self.logging,
+            exit_on_panic: self.exit_on_panic,
+            rt: Some(rt),
         }
     }
 
@@ -83,13 +96,16 @@ impl NodeBuilder {
         // Shared instance of FlowControls
         let flow_controls = FlowControls::new();
 
-        let mut exe = Executor::new(&flow_controls);
+        let rt = self.rt.unwrap_or(Arc::new(
+            Runtime::new().expect("cannot initialize the tokio runtime"),
+        ));
+        let mut exe = Executor::new(rt.clone(), &flow_controls);
         let addr: Address = "app".into();
 
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
         let (ctx, sender, _) = Context::new(
-            exe.runtime().clone(),
+            rt.handle().clone(),
             exe.sender(),
             Mailboxes::new(
                 Mailbox::new(addr, Arc::new(AllowAll), Arc::new(AllowAll)),

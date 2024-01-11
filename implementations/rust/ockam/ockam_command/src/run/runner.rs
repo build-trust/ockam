@@ -36,7 +36,7 @@ impl ConfigRunner {
 
         let nodes = config.nodes.into_commands()?;
         for node in nodes {
-            node.async_run(ctx, opts.clone()).await?;
+            node.async_run(ctx, opts.clone(), None).await?;
         }
 
         let relays = config.relays.into_commands()?;

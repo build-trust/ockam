@@ -51,4 +51,16 @@ impl ShareCommand {
             Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            ShareSubcommand::Accept(_) => "accept invitation",
+            ShareSubcommand::Create(_) => "create invitation",
+            ShareSubcommand::List(_) => "list invitations",
+            ShareSubcommand::Revoke => "revoke invitation",
+            ShareSubcommand::Service(_) => "create shared service",
+            ShareSubcommand::Show(_) => "show invitation",
+        }
+        .to_string()
+    }
 }

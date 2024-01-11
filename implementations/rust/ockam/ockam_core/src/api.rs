@@ -25,7 +25,7 @@ pub struct RequestHeader {
     /// The request identifier.
     #[n(1)] id: Id,
     /// The resource path.
-    #[n(2)] path: String,
+    #[n(2)] pub path: String,
     /// The request method.
     ///
     /// It is wrapped in an `Option` to be forwards compatible, i.e. adding
@@ -34,6 +34,8 @@ pub struct RequestHeader {
     #[n(3)] method: Option<Method>,
     /// Indicator if a request body is expected after this header.
     #[n(4)] has_body: bool,
+    /// Optional tracing context
+    #[n(5)] pub tracing_context: Option<String>,
 }
 
 impl RequestHeader {
@@ -43,7 +45,14 @@ impl RequestHeader {
             method: Some(method),
             path: path.into(),
             has_body,
+            tracing_context: None,
         }
+    }
+
+    pub fn method_string(&self) -> String {
+        self.method
+            .map(|m| m.to_string())
+            .unwrap_or("no method".to_string())
     }
 }
 
@@ -454,6 +463,11 @@ impl<T> Request<T> {
 
     pub fn path<P: Into<String>>(mut self, path: P) -> Self {
         self.header.path = path.into();
+        self
+    }
+
+    pub fn tracing_context<S: Into<String>>(mut self, tracing_context: S) -> Self {
+        self.header.tracing_context = Some(tracing_context.into());
         self
     }
 

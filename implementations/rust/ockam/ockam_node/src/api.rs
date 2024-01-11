@@ -2,13 +2,14 @@
 
 use minicbor::{Decode, Encode};
 
+#[cfg(feature = "std")]
+use crate::OpenTelemetryContext;
+use crate::{Context, MessageSendReceiveOptions};
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{LocalInfo, Result, Route};
-
-use crate::{Context, MessageSendReceiveOptions};
 
 /// This struct provides some support for making requests to another node
 /// and receiving replies
@@ -125,6 +126,9 @@ impl Client {
         T: Encode<()>,
     {
         let mut buf = Vec::new();
+        #[cfg(feature = "std")]
+        let req = req.tracing_context(OpenTelemetryContext::current().to_string());
+
         req.encode(&mut buf)?;
         trace! {
             target:  "ockam_api",

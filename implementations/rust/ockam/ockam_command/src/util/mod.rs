@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
@@ -5,6 +6,8 @@ use std::{
 
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use opentelemetry::trace::FutureExt;
+use tokio::runtime::Runtime;
 use tracing::error;
 
 use ockam::{Address, Context, NodeBuilder};
@@ -41,21 +44,25 @@ pub fn local_cmd(res: miette::Result<()>) {
     }
 }
 
-pub fn node_rpc<A, F, Fut>(f: F, a: A)
+pub fn node_rpc<A, F, Fut>(rt: Arc<Runtime>, f: F, a: A)
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     let res = embedded_node(
-        |ctx, a| async {
-            let res = f(ctx, a).await;
-            if let Err(e) = res {
-                error!(%e, "Failed to run command");
-                eprintln!("{:?}", e);
-                std::process::exit(exitcode::SOFTWARE);
+        rt.clone(),
+        |ctx, a| {
+            async {
+                let res = f(ctx, a).await;
+                if let Err(e) = res {
+                    error!(%e, "Failed to run command");
+                    eprintln!("{:?}", e);
+                    std::process::exit(exitcode::SOFTWARE);
+                }
+                Ok(())
             }
-            Ok(())
+            .with_current_context()
         },
         a,
     );
@@ -65,14 +72,14 @@ where
     }
 }
 
-pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
+pub fn embedded_node<A, F, Fut, T>(rt: Arc<Runtime>, f: F, a: A) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
+    let (ctx, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt).build();
     let res = executor.execute(async move {
         let child_ctx = ctx
             .new_detached(
@@ -96,14 +103,18 @@ where
     res?.into_diagnostic()
 }
 
-pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> miette::Result<T>
+pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(
+    rt: Arc<Runtime>,
+    f: F,
+    a: A,
+) -> miette::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
+    let (ctx, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt).build();
     let res = executor.execute(async move {
         let child_ctx = ctx
             .new_detached(
@@ -288,7 +299,11 @@ mod tests {
 
     #[test]
     fn test_execute_error() {
-        let result = embedded_node_that_is_not_stopped(function_returning_an_error, 1);
+        let result = embedded_node_that_is_not_stopped(
+            Arc::new(Runtime::new().unwrap()),
+            function_returning_an_error,
+            1,
+        );
         assert!(result.is_err());
 
         async fn function_returning_an_error(_ctx: Context, _parameter: u8) -> miette::Result<()> {
@@ -299,6 +314,7 @@ mod tests {
     #[test]
     fn test_execute_error_() {
         let result = embedded_node_that_is_not_stopped(
+            Arc::new(Runtime::new().unwrap()),
             function_returning_an_error_and_stopping_the_context,
             1,
         );

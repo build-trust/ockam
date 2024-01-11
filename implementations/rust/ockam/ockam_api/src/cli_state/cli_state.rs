@@ -5,18 +5,30 @@ use rand::random;
 use cli_state::error::Result;
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
+use ockam_node::database::application_migration::ApplicationMigration;
 use ockam_node::Executor;
 
 use crate::cli_state;
 use crate::cli_state::CliStateError;
+use crate::logs::{tracing_enabled, TracingEnabled};
 
 /// The CliState struct manages all the data persisted locally.
 ///
-/// The data is mostly saved to one database file (there can be additional files if distinct vaults are created)
-/// accessed with the SqlxDatabase struct.
+/// The data is saved to several files:
 ///
-/// However all the SQL queries for creating / updating / deleting entities are implemented by repositories,
-/// for each data type: Project, Space, Vault, Identity, etc...
+/// - The "nodes" database file. That file contains most of the configuration for the nodes running locally: project, node,
+///   inlets, outlets, etc... That file is deleted when the `ockam reset` command is executed
+///
+/// - The "application" database file. That file stores the tracing data which needs to persist across all commands
+///   including reset
+///
+/// - One file per additional vault created with the `ockam vault create` command
+///
+/// The database files are accessed with the SqlxDatabase struct, and use different migration files to define their
+/// schema.
+///
+/// On top of each SqlxDatabase, there are different repositories. A Repository encapsulates SQL queries for
+/// creating / updating / deleting entities. Some examples of entities that are persisted: Project, Space, Vault, Identity, etc...
 ///
 /// The repositories themselves are not accessible from the `CliState` directly since it is often
 /// necessary to use more than one repository to implement a given behaviour. For example deleting
@@ -27,6 +39,8 @@ use crate::cli_state::CliStateError;
 pub struct CliState {
     dir: PathBuf,
     database: SqlxDatabase,
+    application_database: SqlxDatabase,
+    tracing_enabled: TracingEnabled,
 }
 
 impl CliState {
@@ -45,6 +59,14 @@ impl CliState {
 
     pub fn database_path(&self) -> PathBuf {
         Self::make_database_path(&self.dir)
+    }
+
+    pub fn application_database(&self) -> SqlxDatabase {
+        self.application_database.clone()
+    }
+
+    pub fn application_database_path(&self) -> PathBuf {
+        Self::make_application_database_path(&self.dir)
     }
 
     pub fn set_node_name(&mut self, node_name: String) {
@@ -130,13 +152,42 @@ impl CliState {
     pub(super) async fn create(dir: PathBuf) -> Result<Self> {
         std::fs::create_dir_all(&dir)?;
         let database = SqlxDatabase::create(Self::make_database_path(&dir)).await?;
-        debug!("Opened the database with options {:?}", database);
-        let state = Self { dir, database };
+        let application_database = SqlxDatabase::create_with_migration(
+            Self::make_application_database_path(&dir),
+            ApplicationMigration,
+        )
+        .await?;
+        debug!("Opened the main database with options {:?}", database);
+        debug!(
+            "Opened the application database with options {:?}",
+            application_database
+        );
+        let state = Self {
+            dir,
+            database,
+            application_database,
+            tracing_enabled: tracing_enabled(),
+        };
         Ok(state)
+    }
+
+    pub fn is_tracing_enabled(&self) -> bool {
+        self.tracing_enabled == TracingEnabled::On
+    }
+
+    pub fn set_tracing_enabled(self) -> CliState {
+        CliState {
+            tracing_enabled: TracingEnabled::On,
+            ..self
+        }
     }
 
     pub(super) fn make_database_path(root_path: &Path) -> PathBuf {
         root_path.join("database.sqlite3")
+    }
+
+    pub(super) fn make_application_database_path(root_path: &Path) -> PathBuf {
+        root_path.join("application_database.sqlite3")
     }
 
     pub(super) fn make_node_dir_path(root_path: &Path, node_name: &str) -> PathBuf {
@@ -151,10 +202,8 @@ impl CliState {
     fn delete_at(root_path: &Path) -> Result<()> {
         // Delete nodes logs
         let _ = std::fs::remove_dir_all(Self::make_nodes_dir_path(root_path));
-        // Delete the database
+        // Delete the nodes database, keep the application database
         let _ = std::fs::remove_file(Self::make_database_path(root_path));
-        // If the state directory is now empty, delete it
-        let _ = std::fs::remove_dir(root_path);
         Ok(())
     }
 
@@ -215,16 +264,24 @@ mod tests {
         let file_names = list_file_names(&cli_state_directory);
         assert_eq!(
             file_names.iter().sorted().as_slice(),
-            ["vault-vault2".to_string(), "database.sqlite3".to_string()]
-                .iter()
-                .sorted()
-                .as_slice()
+            [
+                "vault-vault2".to_string(),
+                "application_database.sqlite3".to_string(),
+                "database.sqlite3".to_string()
+            ]
+            .iter()
+            .sorted()
+            .as_slice()
         );
 
         // reset the local state
         cli.reset().await?;
-        let result = fs::read_dir(cli_state_directory);
-        assert!(result.is_err(), "the cli state directory is deleted");
+        let result = fs::read_dir(&cli_state_directory);
+        assert!(result.is_ok(), "the cli state directory is not deleted");
+
+        // only the application database must remain
+        let file_names = list_file_names(&cli_state_directory);
+        assert_eq!(file_names, vec!["application_database.sqlite3".to_string()]);
 
         Ok(())
     }

@@ -36,4 +36,15 @@ impl TcpConnectionCommand {
             TcpConnectionSubCommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            TcpConnectionSubCommand::Create(_) => "create tcp connection",
+            TcpConnectionSubCommand::Delete(_) => "delete tcp connection",
+
+            TcpConnectionSubCommand::List(_) => "list tcp connections",
+            TcpConnectionSubCommand::Show(_) => "show tcp connection",
+        }
+        .to_string()
+    }
 }

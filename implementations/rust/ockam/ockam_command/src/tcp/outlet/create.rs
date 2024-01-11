@@ -1,14 +1,19 @@
+use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::address::extract_address_value;
+use ockam_api::journeys::{
+    JourneyEvent, NODE_NAME, TCP_OUTLET_ALIAS, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
+};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
@@ -47,7 +52,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self))
+        node_rpc(opts.rt.clone(), run_impl, (opts, self))
     }
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -77,7 +82,8 @@ impl CreateCommand {
             let res = send_request(ctx, &opts, payload, node_name.clone()).await;
             *is_finished.lock().await = true;
             res
-        };
+        }
+        .with_current_context();
 
         let output_messages = vec![
             format!(
@@ -100,6 +106,18 @@ impl CreateCommand {
         let (outlet_status, _) = try_join!(send_req, progress_output)?;
         let machine = outlet_status.worker_address().into_diagnostic()?;
         let json = serde_json::to_string_pretty(&outlet_status).into_diagnostic()?;
+
+        let mut attributes = HashMap::default();
+        let to = self.to.to_string();
+        attributes.insert(TCP_OUTLET_AT, node_name.as_str());
+        attributes.insert(TCP_OUTLET_FROM, self.from.as_str());
+        attributes.insert(TCP_OUTLET_TO, to.as_str());
+        attributes.insert(TCP_OUTLET_ALIAS, outlet_status.alias.as_str());
+        attributes.insert(NODE_NAME, node_name.as_str());
+        opts.state
+            .add_journey_event(JourneyEvent::TcpOutletCreated, attributes)
+            .await
+            .unwrap();
 
         opts.terminal
             .stdout()

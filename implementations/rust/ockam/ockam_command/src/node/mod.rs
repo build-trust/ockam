@@ -7,6 +7,7 @@ use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
+use ockam_api::logs::TracingGuard;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -40,6 +41,12 @@ pub struct NodeCommand {
     pub subcommand: NodeSubcommand,
 }
 
+impl NodeCommand {
+    pub fn name(&self) -> String {
+        self.subcommand.name()
+    }
+}
+
 #[derive(Clone, Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)]
 pub enum NodeSubcommand {
@@ -60,10 +67,32 @@ pub enum NodeSubcommand {
     Default(DefaultCommand),
 }
 
+impl NodeSubcommand {
+    pub fn name(&self) -> String {
+        match self {
+            NodeSubcommand::Create(cmd) => {
+                if cmd.child_process {
+                    "create background node"
+                } else {
+                    "create node"
+                }
+            }
+            NodeSubcommand::Delete(_) => "delete node",
+            NodeSubcommand::List(_) => "list nodes",
+            NodeSubcommand::Logs(_) => "logs node",
+            NodeSubcommand::Show(_) => "show node",
+            NodeSubcommand::Start(_) => "start node",
+            NodeSubcommand::Stop(_) => "stop node",
+            NodeSubcommand::Default(_) => "default node",
+        }
+        .to_string()
+    }
+}
+
 impl NodeCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, options: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
         match self.subcommand {
-            NodeSubcommand::Create(c) => c.run(options),
+            NodeSubcommand::Create(c) => c.run(options, tracing_guard),
             NodeSubcommand::Delete(c) => c.run(options),
             NodeSubcommand::List(c) => c.run(options),
             NodeSubcommand::Show(c) => c.run(options),

@@ -43,4 +43,14 @@ impl TcpInletCommand {
             TcpInletSubCommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            TcpInletSubCommand::Create(_) => "create tcp inlet",
+            TcpInletSubCommand::Delete(_) => "delete tcp inlet",
+            TcpInletSubCommand::List(_) => "list tcp inlets",
+            TcpInletSubCommand::Show(_) => "show tcp inlet",
+        }
+        .to_string()
+    }
 }

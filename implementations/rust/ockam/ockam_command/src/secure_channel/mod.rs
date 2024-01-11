@@ -50,4 +50,14 @@ impl SecureChannelCommand {
             SecureChannelSubcommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            SecureChannelSubcommand::Create(_) => "create secure channel",
+            SecureChannelSubcommand::Delete(_) => "delete secure channel",
+            SecureChannelSubcommand::List(_) => "list secure channels",
+            SecureChannelSubcommand::Show(_) => "show secure channel",
+        }
+        .to_string()
+    }
 }

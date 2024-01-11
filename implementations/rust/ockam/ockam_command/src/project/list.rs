@@ -1,5 +1,6 @@
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
+use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -29,7 +30,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+        node_rpc(options.rt.clone(), rpc, (options, self));
     }
 }
 
@@ -43,12 +44,12 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
     }
     let node = InMemoryNode::start(ctx, &opts.state).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
-
     let get_projects = async {
         let projects = node.get_admin_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
-    };
+    }
+    .with_current_context();
 
     let output_messages = vec![format!("Listing projects...\n",)];
     let progress_output = opts
