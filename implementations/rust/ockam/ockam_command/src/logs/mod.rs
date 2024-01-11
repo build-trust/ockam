@@ -1,5 +1,5 @@
 use ockam_api::logs::env::log_level;
-use ockam_api::logs::{LevelFilter, Logging, WorkerGuard};
+use ockam_api::logs::{LevelFilter, Logging, LoggingGuard};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -8,7 +8,7 @@ pub fn setup_logging(
     no_color: bool,
     is_tty: bool,
     log_path: Option<PathBuf>,
-) -> Option<WorkerGuard> {
+) -> Option<LoggingGuard> {
     let level = {
         // Parse the the raw log level value (e.g. "info" or "-vvv").
         let level_raw = match log_level() {

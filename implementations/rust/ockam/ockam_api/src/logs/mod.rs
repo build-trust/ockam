@@ -1,5 +1,18 @@
 use crate::logs::env::{log_format, log_max_files};
+use ockam_core::async_trait;
 use ockam_core::env::FromString;
+use ockam_node::Executor;
+use opentelemetry::logs::{LogResult, Severity};
+use opentelemetry::trace::TracerProvider;
+use opentelemetry::{global, KeyValue};
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::export::logs::{LogData, LogExporter};
+use opentelemetry_sdk::export::trace::SpanExporter;
+use opentelemetry_sdk::logs::LoggerProvider;
+use opentelemetry_sdk::runtime::RuntimeChannel;
+use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::{self as sdk};
+use opentelemetry_semantic_conventions::SCHEMA_URL;
 use std::io::stdout;
 use std::path::PathBuf;
 pub use tracing::level_filters::LevelFilter;
@@ -18,7 +31,103 @@ impl Logging {
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
-    ) -> Option<WorkerGuard> {
+    ) -> Option<LoggingGuard> {
+        #[cfg(feature = "opentelemetry")]
+        let span_exporter = Executor::execute_future(async move {
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(get_tracing_endpoint())
+                .build_span_exporter()
+                .expect("failed to create the span exporter")
+        })
+        .expect("can't create a span exporter");
+        let log_exporter = Executor::execute_future(async move {
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(get_tracing_endpoint())
+                .build_log_exporter()
+                .expect("failed to create the log exporter")
+        })
+        .expect("can't create a log exporter");
+
+        Self::setup_with_exporters(
+            #[cfg(feature = "opentelemetry")]
+            span_exporter,
+            #[cfg(feature = "opentelemetry")]
+            log_exporter,
+            level,
+            color,
+            node_dir,
+            crates,
+        )
+    }
+
+    pub fn setup_with_exporters<
+        T: SpanExporter + Send + 'static,
+        L: LogExporter + Send + 'static,
+    >(
+        #[cfg(feature = "opentelemetry")] span_exporter: T,
+        #[cfg(feature = "opentelemetry")] log_exporter: L,
+        level: LevelFilter,
+        color: bool,
+        node_dir: Option<PathBuf>,
+        crates: &[&str],
+    ) -> Option<LoggingGuard> {
+        #[cfg(feature = "opentelemetry")]
+        let tracing_layer = {
+            // we don't really need to execute a future here but this
+            // call will initialize the tokio runtime which is necessary for setting-up the exporter
+            Executor::execute_future(async move {
+                let trace_config =
+                    sdk::trace::Config::default().with_resource(Resource::new(vec![
+                        KeyValue::new(
+                            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                            "ockam",
+                        ),
+                    ]));
+
+                let batch_config =
+                    sdk::trace::BatchConfig::default().with_max_export_batch_size(256);
+
+                let tracer = create_tracer(
+                    span_exporter,
+                    Some(trace_config),
+                    sdk::runtime::Tokio,
+                    Some(batch_config),
+                );
+                tracing_opentelemetry::layer().with_tracer(tracer)
+            })
+            .expect("Failed to build the tracing layer")
+        };
+
+        #[cfg(not(feature = "opentelemetry"))]
+        let tracing_layer = NopLayer;
+
+        #[cfg(feature = "opentelemetry")]
+        let (logging_layer, provider) = {
+            Executor::execute_future(async move {
+                let config =
+                    sdk::logs::Config::default().with_resource(Resource::new(vec![KeyValue::new(
+                        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                        "ockam",
+                    )]));
+
+                let provider = LoggerProvider::builder()
+                    .with_config(config)
+                    .with_batch_exporter(log_exporter, opentelemetry_sdk::runtime::Tokio)
+                    .build();
+                let layer = opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge::new(
+                    &provider,
+                );
+
+                (layer, provider)
+            })
+            .expect("Failed to build the logging layer")
+        };
+
+        #[cfg(not(feature = "opentelemetry"))]
+        let logging_layer = NopLayer;
+
         let filter = {
             let builder = EnvFilter::builder();
             builder.with_default_directive(level.into()).parse_lossy(
@@ -29,9 +138,13 @@ impl Logging {
                     .join(","),
             )
         };
+
         let subscriber = tracing_subscriber::registry()
             .with(filter)
-            .with(tracing_error::ErrorLayer::default());
+            .with(tracing_error::ErrorLayer::default())
+            .with(logging_layer)
+            .with(tracing_layer);
+
         let (appender, guard) = match node_dir {
             // If a node dir path is not provided, log to stdout.
             None => {
@@ -59,7 +172,57 @@ impl Logging {
             LogFormat::Default => subscriber.with(appender).try_init(),
         };
         res.expect("Failed to initialize tracing subscriber");
-        Some(guard)
+
+        info!("tracing initialized");
+        Some(LoggingGuard {
+            _worker_guard: guard,
+            logger_provider: provider,
+        })
+    }
+}
+
+fn create_tracer<S: SpanExporter + 'static, R: RuntimeChannel>(
+    exporter: S,
+    trace_config: Option<sdk::trace::Config>,
+    runtime: R,
+    batch_config: Option<sdk::trace::BatchConfig>,
+) -> sdk::trace::Tracer {
+    let mut provider_builder = sdk::trace::TracerProvider::builder();
+    let batch_processor = sdk::trace::BatchSpanProcessor::builder(exporter, runtime)
+        .with_batch_config(batch_config.unwrap_or_default())
+        .build();
+    provider_builder = provider_builder.with_span_processor(batch_processor);
+
+    if let Some(config) = trace_config {
+        provider_builder = provider_builder.with_config(config);
+    }
+    let provider = provider_builder.build();
+    let tracer = provider.versioned_tracer(
+        "ockam",
+        Some(env!("CARGO_PKG_VERSION")),
+        Some(SCHEMA_URL),
+        None,
+    );
+    let _ = global::set_tracer_provider(provider);
+    tracer
+}
+
+/// TODO: make sure that this is parsed as a proper URL
+fn get_tracing_endpoint() -> String {
+    std::env::var("OCKAM_TRACING_GRPC_ENDPOINT").unwrap_or("http://localhost:4317".to_string())
+}
+
+#[derive(Debug)]
+pub struct LoggingGuard {
+    _worker_guard: WorkerGuard,
+    logger_provider: LoggerProvider,
+}
+
+impl LoggingGuard {
+    pub fn shutdown(&self) {
+        self.logger_provider.force_flush();
+        global::shutdown_tracer_provider();
+        global::shutdown_logger_provider();
     }
 }
 
@@ -87,5 +250,98 @@ impl std::fmt::Display for LogFormat {
             LogFormat::Pretty => write!(f, "pretty"),
             LogFormat::Json => write!(f, "json"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logs::{LevelFilter, Logging};
+    use crate::random_name;
+    use opentelemetry::global;
+    use opentelemetry::trace::Tracer;
+    use opentelemetry_sdk::{self as sdk};
+    use sdk::testing::logs::*;
+    use sdk::testing::trace::*;
+    use std::fs;
+    use std::time::Duration;
+    use tempfile::NamedTempFile;
+
+    #[instrument]
+    #[test]
+    fn test_log_and_traces() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let log_directory = &temp_file.path().parent().unwrap().join(random_name());
+
+        let spans_exporter = InMemorySpanExporter::default();
+        let logs_exporter = InMemoryLogsExporter::default();
+        let ockam_crates = &["ockam_api"];
+        let guard = Logging::setup_with_exporters(
+            spans_exporter.clone(),
+            logs_exporter.clone(),
+            LevelFilter::TRACE,
+            false,
+            Some(log_directory.into()),
+            ockam_crates,
+        )
+        .unwrap();
+
+        let tracer = global::tracer("ockam");
+        tracer.in_span("Logging::test", |_| {
+            info!("inside span");
+            error!("something went wrong!");
+        });
+
+        drop(guard);
+        std::thread::sleep(Duration::from_millis(200));
+
+        // check that the spans are exported
+        assert_eq!(spans_exporter.get_finished_spans().unwrap().len(), 1);
+
+        // check that log records are exported
+        assert_eq!(logs_exporter.get_emitted_logs().unwrap().len(), 3);
+
+        // read the content of the log file to make sure that log messages are there
+        let mut stdout_file_checked = false;
+        for file in fs::read_dir(log_directory).unwrap() {
+            let file_path = file.unwrap().path();
+            if file_path.to_string_lossy().contains("stdout") {
+                let contents = fs::read_to_string(file_path).unwrap();
+                assert!(
+                    contents.contains("INFO ockam_api::logs::tests: inside span"),
+                    "{:?}",
+                    contents
+                );
+                assert!(
+                    contents.contains("ERROR ockam_api::logs::tests: something went wrong!"),
+                    "{:?}",
+                    contents
+                );
+                stdout_file_checked = true
+            }
+        }
+
+        assert!(
+            stdout_file_checked,
+            "the stdout log file must have been found and checked"
+        )
+    }
+}
+
+#[derive(Debug)]
+struct LogsCollector {
+    batch: Vec<LogData>,
+}
+
+#[async_trait]
+impl LogExporter for LogsCollector {
+    async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
+        self.batch.extend(batch);
+        Ok(())
+    }
+
+    fn shutdown(&mut self) {}
+
+    fn event_enabled(&self, _level: Severity, _target: &str, _name: &str) -> bool {
+        true
     }
 }

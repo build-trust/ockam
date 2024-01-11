@@ -3,6 +3,7 @@
 use crate::channel_types::SmallSender;
 use crate::{
     router::{Router, SenderPair},
+    runtime,
     tokio::runtime::{Handle, Runtime},
     NodeMessage,
 };
@@ -42,7 +43,7 @@ pub struct Executor {
 impl Executor {
     /// Create a new Ockam node [`Executor`] instance
     pub fn new(flow_controls: &FlowControls) -> Self {
-        let rt = Runtime::new().unwrap();
+        let rt = runtime::take();
         let router = Router::new(flow_controls);
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());
@@ -140,13 +141,16 @@ impl Executor {
     }
 
     /// Execute a future and block until a result is returned
+    /// This function can only be called to run futures before the Executor has been initialized.
+    /// Otherwise the Executor rt attribute needs to be accessed to execute or spawn futures
     #[cfg(feature = "std")]
     pub fn execute_future<F>(future: F) -> Result<F::Output>
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let rt = Runtime::new().unwrap();
+        let lock = runtime::RUNTIME.lock().unwrap();
+        let rt = lock.as_ref().expect("Runtime was consumed");
         let join_body = rt.spawn(future);
         rt.block_on(join_body)
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))
@@ -173,5 +177,14 @@ impl Executor {
         let future = self.router.run();
         crate::tokio::runtime::execute(&self.rt, async move { future.await.unwrap() });
         Ok(())
+    }
+}
+
+impl Drop for Executor {
+    fn drop(&mut self) {
+        // when the executor is dropped we need to make sure that all traces
+        // are flushed before the runtime gets dropped as well
+        opentelemetry::global::shutdown_tracer_provider();
+        opentelemetry::global::shutdown_logger_provider();
     }
 }

@@ -22,11 +22,13 @@ std = [
   "ockam_node/std",
   "ockam_vault/std",
   "ockam_vault_aws/std",
+  "opentelemetry",
   "tinyvec/std",
   "tracing/std",
   "storage",
 ]
 storage = ["ockam/storage"]
+opentelemetry = ["ockam_node/opentelemetry", "dep:opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "opentelemetry-semantic-conventions", "opentelemetry-appender-tracing"]
 
 [dependencies]
 anyhow = "1"
@@ -35,7 +37,7 @@ base64-url = "2.0.2"
 bytes = { version = "1.5.0", default-features = false, features = ["serde"] }
 either = { version = "1.9.0", default-features = false }
 fs2 = { version = "0.4.3" }
-futures = { version = "0.3.30" }
+futures = { version = "0.3.30", features = [] }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
 kafka-protocol = "0.8.1"
@@ -43,6 +45,11 @@ miette = "5.10.0"
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 nix = { version = "0.27", features = ["signal"] }
 open = "5.0.0"
+opentelemetry = { version = "0.21.0", optional = true, features = ["logs", "metrics", "trace"] }
+opentelemetry-appender-tracing = { version = "0.2.0", optional = true }
+opentelemetry-otlp = { version = "0.14.0", optional = true, features = ["logs", "metrics", "trace", "grpc-tonic", "tls-roots"], default-features = false }
+opentelemetry_sdk = { version = "0.21.2", optional = true, features = ["logs", "metrics", "trace", "rt-tokio"], default-features = false }
+opentelemetry-semantic-conventions = { version = "0.13.0", optional = true }
 petname = { version = "2.0.0-beta.4", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
 regex = "1.10.2"
@@ -58,6 +65,7 @@ tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tokio = { version = "1.35.1", features = ["full"] }
 tokio-retry = "0.3.0"
 tracing = { version = "0.1", default-features = false }
+tracing-opentelemetry = "0.22.0"
 tracing-appender = "0.2.2"
 tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
@@ -113,6 +121,7 @@ mockall = "0.12"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
+opentelemetry_sdk = { version = "0.21.2", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 quickcheck = "1.0.1"
 tempfile = "3.9.0"
 tokio = { version = "1.35.1", features = ["full"] }

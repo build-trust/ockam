@@ -65,6 +65,9 @@ mod router;
 pub mod storage;
 mod worker_builder;
 
+/// Singleton for the runtime executor
+pub mod runtime;
+
 pub use context::*;
 pub use delayed::*;
 pub use error::*;
