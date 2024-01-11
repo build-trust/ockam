@@ -1,12 +1,10 @@
 use crate::logs::env::{log_format, log_max_files};
-use ockam_core::async_trait;
 use ockam_core::env::FromString;
 use ockam_node::Executor;
-use opentelemetry::logs::{LogResult, Severity};
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::export::logs::{LogData, LogExporter};
+use opentelemetry_sdk::export::logs::LogExporter;
 use opentelemetry_sdk::export::trace::SpanExporter;
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::runtime::RuntimeChannel;
@@ -33,7 +31,6 @@ impl Logging {
         node_dir: Option<PathBuf>,
         crates: &[&str],
     ) -> Option<LoggingGuard> {
-        #[cfg(feature = "opentelemetry")]
         let span_exporter = Executor::execute_future(async move {
             opentelemetry_otlp::new_exporter()
                 .tonic()
@@ -43,7 +40,6 @@ impl Logging {
         })
         .expect("can't create a span exporter");
 
-        #[cfg(feature = "opentelemetry")]
         let log_exporter = Executor::execute_future(async move {
             opentelemetry_otlp::new_exporter()
                 .tonic()
@@ -53,36 +49,31 @@ impl Logging {
         })
         .expect("can't create a log exporter");
 
-        #[cfg(feature = "opentelemetry")]
-        let batch_config = sdk::trace::BatchConfig::default();
-
-        Self::setup_with_exporters(
-            #[cfg(feature = "opentelemetry")]
+        let result = Self::setup_with_exporters(
             span_exporter,
-            #[cfg(feature = "opentelemetry")]
             log_exporter,
-            #[cfg(feature = "opentelemetry")]
-            Some(batch_config),
+            Some(BatchConfig::default()),
             level,
             color,
             node_dir,
             crates,
-        )
+        );
+        info!("tracing initialized");
+        result
     }
 
     pub fn setup_with_exporters<
         T: SpanExporter + Send + 'static,
         L: LogExporter + Send + 'static,
     >(
-        #[cfg(feature = "opentelemetry")] span_exporter: T,
-        #[cfg(feature = "opentelemetry")] log_exporter: L,
-        #[cfg(feature = "opentelemetry")] batch_config: Option<BatchConfig>,
+        span_exporter: T,
+        log_exporter: L,
+        batch_config: Option<BatchConfig>,
         level: LevelFilter,
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
     ) -> Option<LoggingGuard> {
-        #[cfg(feature = "opentelemetry")]
         let tracing_layer = {
             // we don't really need to execute a future here but this
             // call will initialize the tokio runtime which is necessary for setting-up the exporter
@@ -106,10 +97,6 @@ impl Logging {
             .expect("Failed to build the tracing layer")
         };
 
-        #[cfg(not(feature = "opentelemetry"))]
-        let tracing_layer = NopLayer;
-
-        #[cfg(feature = "opentelemetry")]
         let (logging_layer, provider) = {
             Executor::execute_future(async move {
                 let config =
@@ -130,9 +117,6 @@ impl Logging {
             })
             .expect("Failed to build the logging layer")
         };
-
-        #[cfg(not(feature = "opentelemetry"))]
-        let logging_layer = NopLayer;
 
         let filter = {
             let builder = EnvFilter::builder();
@@ -179,7 +163,6 @@ impl Logging {
         };
         res.expect("Failed to initialize tracing subscriber");
 
-        info!("tracing initialized");
         Some(LoggingGuard {
             _worker_guard: guard,
             logger_provider: provider,
@@ -312,7 +295,7 @@ mod tests {
 
         // check that log records are exported
         let logs = logs_exporter.get_emitted_logs().unwrap();
-        assert_eq!(logs.len(), 3);
+        assert_eq!(logs.len(), 2);
         for log in logs {
             assert_eq!(
                 log.clone().record.trace_context.map(|tc| tc.trace_id),
@@ -345,24 +328,5 @@ mod tests {
             stdout_file_checked,
             "the stdout log file must have been found and checked"
         )
-    }
-}
-
-#[derive(Debug)]
-struct LogsCollector {
-    batch: Vec<LogData>,
-}
-
-#[async_trait]
-impl LogExporter for LogsCollector {
-    async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
-        self.batch.extend(batch);
-        Ok(())
-    }
-
-    fn shutdown(&mut self) {}
-
-    fn event_enabled(&self, _level: Severity, _target: &str, _name: &str) -> bool {
-        true
     }
 }

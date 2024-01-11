@@ -422,10 +422,7 @@ impl OckamCommand {
                 .write_line(&format!("{}\n", colored_header));
         }
 
-        #[cfg(feature = "opentelemetry")]
         let tracer = global::tracer("ockam");
-
-        #[cfg(feature = "opentelemetry")]
         tracer.in_span(format!("{:?}", self.subcommand), |_| {
             match self.subcommand {
                 OckamSubcommand::Enroll(c) => c.run(options),
