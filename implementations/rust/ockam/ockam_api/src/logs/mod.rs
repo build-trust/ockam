@@ -10,6 +10,7 @@ use opentelemetry_sdk::export::logs::{LogData, LogExporter};
 use opentelemetry_sdk::export::trace::SpanExporter;
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::runtime::RuntimeChannel;
+use opentelemetry_sdk::trace::BatchConfig;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::{self as sdk};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
@@ -41,6 +42,8 @@ impl Logging {
                 .expect("failed to create the span exporter")
         })
         .expect("can't create a span exporter");
+
+        #[cfg(feature = "opentelemetry")]
         let log_exporter = Executor::execute_future(async move {
             opentelemetry_otlp::new_exporter()
                 .tonic()
@@ -50,11 +53,16 @@ impl Logging {
         })
         .expect("can't create a log exporter");
 
+        #[cfg(feature = "opentelemetry")]
+        let batch_config = sdk::trace::BatchConfig::default();
+
         Self::setup_with_exporters(
             #[cfg(feature = "opentelemetry")]
             span_exporter,
             #[cfg(feature = "opentelemetry")]
             log_exporter,
+            #[cfg(feature = "opentelemetry")]
+            Some(batch_config),
             level,
             color,
             node_dir,
@@ -68,6 +76,7 @@ impl Logging {
     >(
         #[cfg(feature = "opentelemetry")] span_exporter: T,
         #[cfg(feature = "opentelemetry")] log_exporter: L,
+        #[cfg(feature = "opentelemetry")] batch_config: Option<BatchConfig>,
         level: LevelFilter,
         color: bool,
         node_dir: Option<PathBuf>,
@@ -86,14 +95,11 @@ impl Logging {
                         ),
                     ]));
 
-                let batch_config =
-                    sdk::trace::BatchConfig::default().with_max_export_batch_size(256);
-
                 let tracer = create_tracer(
                     span_exporter,
                     Some(trace_config),
                     sdk::runtime::Tokio,
-                    Some(batch_config),
+                    batch_config,
                 );
                 tracing_opentelemetry::layer().with_tracer(tracer)
             })
@@ -185,14 +191,18 @@ fn create_tracer<S: SpanExporter + 'static, R: RuntimeChannel>(
     exporter: S,
     trace_config: Option<sdk::trace::Config>,
     runtime: R,
-    batch_config: Option<sdk::trace::BatchConfig>,
+    batch_config: Option<BatchConfig>,
 ) -> sdk::trace::Tracer {
     let mut provider_builder = sdk::trace::TracerProvider::builder();
-    let batch_processor = sdk::trace::BatchSpanProcessor::builder(exporter, runtime)
-        .with_batch_config(batch_config.unwrap_or_default())
-        .build();
-    provider_builder = provider_builder.with_span_processor(batch_processor);
-
+    match batch_config {
+        Some(batch_config) => {
+            let span_processor = sdk::trace::BatchSpanProcessor::builder(exporter, runtime)
+                .with_batch_config(batch_config)
+                .build();
+            provider_builder = provider_builder.with_span_processor(span_processor);
+        }
+        None => provider_builder = provider_builder.with_simple_exporter(exporter),
+    };
     if let Some(config) = trace_config {
         provider_builder = provider_builder.with_config(config);
     }
@@ -219,8 +229,12 @@ pub struct LoggingGuard {
 }
 
 impl LoggingGuard {
-    pub fn shutdown(&self) {
+    pub fn force_flush(&self) {
         self.logger_provider.force_flush();
+    }
+
+    pub fn shutdown(&self) {
+        self.force_flush();
         global::shutdown_tracer_provider();
         global::shutdown_logger_provider();
     }
@@ -263,10 +277,8 @@ mod tests {
     use sdk::testing::logs::*;
     use sdk::testing::trace::*;
     use std::fs;
-    use std::time::Duration;
     use tempfile::NamedTempFile;
 
-    #[instrument]
     #[test]
     fn test_log_and_traces() {
         let temp_file = NamedTempFile::new().unwrap();
@@ -278,6 +290,7 @@ mod tests {
         let guard = Logging::setup_with_exporters(
             spans_exporter.clone(),
             logs_exporter.clone(),
+            None,
             LevelFilter::TRACE,
             false,
             Some(log_directory.into()),
@@ -291,14 +304,22 @@ mod tests {
             error!("something went wrong!");
         });
 
-        drop(guard);
-        std::thread::sleep(Duration::from_millis(200));
-
         // check that the spans are exported
-        assert_eq!(spans_exporter.get_finished_spans().unwrap().len(), 1);
+        guard.force_flush();
+        let spans = spans_exporter.get_finished_spans().unwrap();
+        assert_eq!(spans.len(), 1);
+        let parent_span = spans.first().unwrap();
 
         // check that log records are exported
-        assert_eq!(logs_exporter.get_emitted_logs().unwrap().len(), 3);
+        let logs = logs_exporter.get_emitted_logs().unwrap();
+        assert_eq!(logs.len(), 3);
+        for log in logs {
+            assert_eq!(
+                log.clone().record.trace_context.map(|tc| tc.trace_id),
+                Some(parent_span.span_context.trace_id()),
+                "{log:?}\n{parent_span:?}"
+            )
+        }
 
         // read the content of the log file to make sure that log messages are there
         let mut stdout_file_checked = false;
