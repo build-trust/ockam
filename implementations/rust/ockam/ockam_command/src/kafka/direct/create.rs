@@ -52,6 +52,6 @@ impl CreateCommand {
             consumer_route: self.consumer_route,
             bootstrap_server: self.bootstrap_server,
         };
-        node_rpc(start, (opts, arg_opts));
+        node_rpc(opts.rt.clone(), start, (opts, arg_opts));
     }
 }

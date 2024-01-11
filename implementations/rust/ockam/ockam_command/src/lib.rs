@@ -19,12 +19,16 @@
 
 use std::process::exit;
 use std::{path::PathBuf, sync::Mutex};
+use std::sync::Arc;
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use colorful::Colorful;
 use console::Term;
 use miette::GraphicalReportHandler;
 use once_cell::sync::Lazy;
+use opentelemetry::global;
+use opentelemetry::trace::Tracer;
+use tokio::runtime::Runtime;
 
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
@@ -239,6 +243,7 @@ pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub state: CliState,
     pub terminal: Terminal<TerminalStream<Term>>,
+    pub rt: Arc<Runtime>,
 }
 
 impl CommandGlobalOpts {
@@ -263,6 +268,7 @@ impl CommandGlobalOpts {
             global_args,
             state,
             terminal,
+            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
         }
     }
 
@@ -287,6 +293,7 @@ impl CommandGlobalOpts {
             global_args,
             state,
             terminal,
+            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
         }
     }
 }
@@ -415,56 +422,65 @@ impl OckamCommand {
                 .write_line(&format!("{}\n", colored_header));
         }
 
-        match self.subcommand {
-            OckamSubcommand::Enroll(c) => c.run(options),
-            OckamSubcommand::Space(c) => c.run(options),
-            OckamSubcommand::Project(c) => c.run(options),
-            OckamSubcommand::Admin(c) => c.run(options),
-            #[cfg(feature = "orchestrator")]
-            OckamSubcommand::Share(c) => c.run(options),
-            OckamSubcommand::Subscription(c) => c.run(options),
+        #[cfg(feature = "opentelemetry")]
+        let tracer = global::tracer("ockam");
 
-            OckamSubcommand::Node(c) => c.run(options),
-            OckamSubcommand::Worker(c) => c.run(options),
-            OckamSubcommand::Service(c) => c.run(options),
-            OckamSubcommand::Message(c) => c.run(options),
-            OckamSubcommand::Relay(c) => c.run(options),
+        #[cfg(feature = "opentelemetry")]
+        tracer.in_span(format!("{:?}", self.subcommand), |_| {
+            match self.subcommand {
+                OckamSubcommand::Enroll(c) => c.run(options),
+                OckamSubcommand::Space(c) => c.run(options),
+                OckamSubcommand::Project(c) => c.run(options),
+                OckamSubcommand::Admin(c) => c.run(options),
+                #[cfg(feature = "orchestrator")]
+                OckamSubcommand::Share(c) => c.run(options),
+                OckamSubcommand::Subscription(c) => c.run(options),
 
-            OckamSubcommand::KafkaOutlet(c) => c.run(options),
-            OckamSubcommand::TcpListener(c) => c.run(options),
-            OckamSubcommand::TcpConnection(c) => c.run(options),
-            OckamSubcommand::TcpOutlet(c) => c.run(options),
-            OckamSubcommand::TcpInlet(c) => c.run(options),
+                OckamSubcommand::Node(c) => c.run(options),
+                OckamSubcommand::Worker(c) => c.run(options),
+                OckamSubcommand::Service(c) => c.run(options),
+                OckamSubcommand::Message(c) => c.run(options),
+                OckamSubcommand::Relay(c) => c.run(options),
 
-            OckamSubcommand::KafkaConsumer(c) => c.run(options),
-            OckamSubcommand::KafkaProducer(c) => c.run(options),
-            OckamSubcommand::KafkaDirect(c) => c.run(options),
+                OckamSubcommand::KafkaOutlet(c) => c.run(options),
+                OckamSubcommand::TcpListener(c) => c.run(options),
+                OckamSubcommand::TcpConnection(c) => c.run(options),
+                OckamSubcommand::TcpOutlet(c) => c.run(options),
+                OckamSubcommand::TcpInlet(c) => c.run(options),
 
-            OckamSubcommand::SecureChannelListener(c) => c.run(options),
-            OckamSubcommand::SecureChannel(c) => c.run(options),
+                OckamSubcommand::KafkaConsumer(c) => c.run(options),
+                OckamSubcommand::KafkaProducer(c) => c.run(options),
+                OckamSubcommand::KafkaDirect(c) => c.run(options),
 
-            OckamSubcommand::Vault(c) => c.run(options),
-            OckamSubcommand::Identity(c) => c.run(options),
-            OckamSubcommand::Credential(c) => c.run(options),
-            OckamSubcommand::Authority(c) => c.run(options),
-            OckamSubcommand::Policy(c) => c.run(options),
-            OckamSubcommand::Lease(c) => c.run(options),
+                OckamSubcommand::SecureChannelListener(c) => c.run(options),
+                OckamSubcommand::SecureChannel(c) => c.run(options),
 
-            OckamSubcommand::Run(c) => c.run(options),
-            OckamSubcommand::Status(c) => c.run(options),
-            OckamSubcommand::Reset(c) => c.run(options),
-            OckamSubcommand::Authenticated(c) => c.run(options),
-            OckamSubcommand::Configuration(c) => c.run(options),
+                OckamSubcommand::Vault(c) => c.run(options),
+                OckamSubcommand::Identity(c) => c.run(options),
+                OckamSubcommand::Credential(c) => c.run(options),
+                OckamSubcommand::Authority(c) => c.run(options),
+                OckamSubcommand::Policy(c) => c.run(options),
+                OckamSubcommand::Lease(c) => c.run(options),
 
-            OckamSubcommand::Completion(c) => c.run(),
-            OckamSubcommand::Markdown(c) => c.run(),
-            OckamSubcommand::Manpages(c) => c.run(),
-            OckamSubcommand::TrustContext(c) => c.run(options),
-            OckamSubcommand::Environment(c) => c.run(),
+                OckamSubcommand::Run(c) => c.run(options),
+                OckamSubcommand::Status(c) => c.run(options),
+                OckamSubcommand::Reset(c) => c.run(options),
+                OckamSubcommand::Authenticated(c) => c.run(options),
+                OckamSubcommand::Configuration(c) => c.run(options),
 
-            OckamSubcommand::FlowControl(c) => c.run(options),
-            OckamSubcommand::Sidecar(c) => c.run(options),
-        }
+                OckamSubcommand::Completion(c) => c.run(),
+                OckamSubcommand::Markdown(c) => c.run(),
+                OckamSubcommand::Manpages(c) => c.run(),
+                OckamSubcommand::TrustContext(c) => c.run(options),
+                OckamSubcommand::Environment(c) => c.run(),
+
+                OckamSubcommand::FlowControl(c) => c.run(options),
+                OckamSubcommand::Sidecar(c) => c.run(options),
+            }
+        });
+
+        global::shutdown_tracer_provider();
+        global::shutdown_logger_provider();
     }
 
     fn log_path(&self, opts: &CommandGlobalOpts) -> Option<PathBuf> {

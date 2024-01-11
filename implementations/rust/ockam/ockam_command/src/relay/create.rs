@@ -58,7 +58,7 @@ fn default_at_addr() -> String {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
 
     fn at(&self) -> MultiAddr {

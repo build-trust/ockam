@@ -29,7 +29,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+        node_rpc(options.rt.clone(), rpc, (options, self));
     }
 }
 

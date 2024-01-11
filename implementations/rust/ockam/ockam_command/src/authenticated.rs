@@ -42,7 +42,7 @@ pub enum AuthenticatedSubcommand {
 
 impl AuthenticatedCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self.subcommand))
+        node_rpc(opts.rt.clone(), run_impl, (opts, self.subcommand))
     }
 }
 

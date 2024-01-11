@@ -24,7 +24,7 @@ pub struct ResetCommand {
 
 impl ResetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
 }
 

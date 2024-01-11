@@ -70,7 +70,7 @@ fn authenticator_default_addr() -> String {
 
 impl StartCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
 }
 

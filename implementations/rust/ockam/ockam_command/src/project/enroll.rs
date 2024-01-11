@@ -67,7 +67,7 @@ pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentT
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self));
+        node_rpc(opts.rt.clone(), run_impl, (opts, self));
     }
 }
 

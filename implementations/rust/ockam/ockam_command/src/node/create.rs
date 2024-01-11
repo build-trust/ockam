@@ -109,12 +109,12 @@ impl Default for CreateCommand {
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         if self.foreground {
-            local_cmd(embedded_node_that_is_not_stopped(
+            local_cmd(embedded_node_that_is_not_stopped(opts.rt.clone(),
                 foreground_mode,
                 (opts, self),
             ));
         } else {
-            node_rpc(background_mode, (opts, self))
+            node_rpc(opts.rt.clone(), background_mode, (opts, self))
         }
     }
 

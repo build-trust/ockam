@@ -4,10 +4,11 @@ use crate::channel_types::SmallSender;
 use crate::{
     router::{Router, SenderPair},
     runtime,
-    tokio::runtime::{Handle, Runtime},
+    tokio::runtime::Runtime,
     NodeMessage,
 };
 use core::future::Future;
+use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 
 #[cfg(feature = "metrics")]
@@ -32,7 +33,7 @@ use ockam_core::{
 /// `ockam::node` function annotation instead!
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
-    rt: Runtime,
+    rt: Arc<Runtime>,
     /// Main worker and application router
     router: Router,
     /// Metrics collection endpoint
@@ -42,8 +43,7 @@ pub struct Executor {
 
 impl Executor {
     /// Create a new Ockam node [`Executor`] instance
-    pub fn new(flow_controls: &FlowControls) -> Self {
-        let rt = runtime::take();
+    pub fn new(rt: Arc<Runtime>, flow_controls: &FlowControls) -> Self {
         let router = Router::new(flow_controls);
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());
@@ -63,11 +63,6 @@ impl Executor {
     /// Get access to the internal message sender
     pub(crate) fn sender(&self) -> SmallSender<NodeMessage> {
         self.router.sender()
-    }
-
-    /// Get access to the underlying async runtime (by default `tokio`)
-    pub(crate) fn runtime(&self) -> &Handle {
-        self.rt.handle()
     }
 
     /// Initialize the root application worker
@@ -177,14 +172,5 @@ impl Executor {
         let future = self.router.run();
         crate::tokio::runtime::execute(&self.rt, async move { future.await.unwrap() });
         Ok(())
-    }
-}
-
-impl Drop for Executor {
-    fn drop(&mut self) {
-        // when the executor is dropped we need to make sure that all traces
-        // are flushed before the runtime gets dropped as well
-        opentelemetry::global::shutdown_tracer_provider();
-        opentelemetry::global::shutdown_logger_provider();
     }
 }

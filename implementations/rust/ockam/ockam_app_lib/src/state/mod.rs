@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use miette::{IntoDiagnostic, WrapErr};
+use tokio::runtime::Runtime;
 use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
 
@@ -100,11 +101,12 @@ impl AppState {
     ) -> Result<AppState> {
         let mut cli_state = CliState::with_default_dir()?;
         cli_state.set_node_name(NODE_NAME.to_string());
-        let (context, mut executor) = NodeBuilder::new().no_logging().build();
+        let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
+        let (context, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt.clone()).build();
         let context = Arc::new(context);
 
         // start the router, it is needed for the node manager creation
-        context.runtime().spawn(async move {
+        rt.spawn(async move {
             let result = executor.start_router().await;
             if let Err(e) = result {
                 error!(%e, "Failed to start the router")

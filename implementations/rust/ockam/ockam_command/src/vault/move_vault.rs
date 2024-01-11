@@ -26,7 +26,7 @@ pub struct MoveCommand {
 
 impl MoveCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
 }
 

@@ -53,7 +53,7 @@ pub struct EnrollCommand {
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+        node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
 }
 
