@@ -117,7 +117,7 @@ impl CliState {
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,
-                format!("no identity found with name {}", name),
+                format!("No identity found with name {}. To get a list of identities on your machine, run 'ockam identity list'", name),
             ))?,
         }
     }

@@ -63,6 +63,28 @@ macro_rules! fmt_list {
 }
 
 #[macro_export]
+macro_rules! fmt_heading {
+    ($input:expr) => {
+        format!("{}{}\n{} {}",
+        "       ",
+        "─".repeat(85).dim().dark_gray(),
+        "      "
+            .color($crate::terminal::OckamColor::FmtINFOBackground.color())
+            .bold(),
+        format!($input))
+    };
+    ($input:expr, $($args:expr),+) => {
+        format!("{}{}\n{} {}",
+        "       ",
+        "─".repeat(85).dim().dark_gray(),
+        "      "
+            .color($crate::terminal::OckamColor::FmtINFOBackground.color())
+            .bold(),
+        format!($input, $($args),+))
+    };
+}
+
+#[macro_export]
 macro_rules! fmt_info {
     ($input:expr) => {
         format!("{} {}",
