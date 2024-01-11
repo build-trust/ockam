@@ -25,7 +25,7 @@ pub struct VersionCommand {
 
 impl VersionCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, options);
+        node_rpc(options.rt.clone(), rpc, options);
     }
 }
 

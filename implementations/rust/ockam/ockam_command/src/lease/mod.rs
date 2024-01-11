@@ -49,6 +49,16 @@ impl LeaseCommand {
             LeaseSubcommand::Revoke(c) => c.run(options, self.cloud_opts, self.trust_context_opts),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            LeaseSubcommand::Create(_) => "create lease",
+            LeaseSubcommand::List(_) => "list leases",
+            LeaseSubcommand::Show(_) => "show lease",
+            LeaseSubcommand::Revoke(_) => "revoke lease",
+        }
+        .to_string()
+    }
 }
 
 async fn authenticate(

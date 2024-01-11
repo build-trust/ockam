@@ -43,4 +43,14 @@ impl TcpOutletCommand {
             TcpOutletSubCommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            TcpOutletSubCommand::Create(_) => "create tcp outlet",
+            TcpOutletSubCommand::Delete(_) => "delete tcp outlet",
+            TcpOutletSubCommand::List(_) => "list tcp outlets",
+            TcpOutletSubCommand::Show(_) => "show tcp outlet",
+        }
+        .to_string()
+    }
 }

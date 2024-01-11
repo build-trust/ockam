@@ -50,6 +50,6 @@ impl CreateCommand {
                 .unwrap_or_else(|| make_brokers_port_range(&self.bootstrap_server)),
             project_route: self.project_route,
         };
-        node_rpc(rpc, (opts, arg_opts));
+        node_rpc(opts.rt.clone(), rpc, (opts, arg_opts));
     }
 }

@@ -42,7 +42,7 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(Self::run_impl, (opts, self))
+        node_rpc(opts.rt.clone(), Self::run_impl, (opts, self))
     }
 
     async fn run_impl(

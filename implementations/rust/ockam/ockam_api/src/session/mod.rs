@@ -78,7 +78,6 @@ impl Medic {
     async fn go(mut self, ctx: Context, mut rx: mpsc::Receiver<Message>) {
         let ctx = Arc::new(ctx);
         loop {
-            log::trace!("check sessions");
             {
                 let mut sessions = self.sessions.lock().unwrap();
                 for session in sessions.iter_mut() {

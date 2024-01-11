@@ -47,4 +47,15 @@ impl VaultCommand {
             VaultSubcommand::Delete(cmd) => cmd.run(opts),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            VaultSubcommand::Create(_) => "create vault",
+            VaultSubcommand::Move(_) => "move vault",
+            VaultSubcommand::Show(_) => "show vault",
+            VaultSubcommand::Delete(_) => "delete vault",
+            VaultSubcommand::List(_) => "list vaults",
+        }
+        .to_string()
+    }
 }

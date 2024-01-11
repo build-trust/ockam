@@ -51,7 +51,7 @@ use ockam_node::{Context, HasContext};
 /// tcp.listen("127.0.0.1:9000", TcpListenerOptions::new()).await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TcpTransport {
     ctx: Arc<Context>,
     registry: TcpRegistry,

@@ -28,6 +28,7 @@ teardown() {
   QUIET=0 "$OCKAM" node create -vv
   run_success ls "$OCKAM_HOME"
   assert_output --partial "database.sqlite3"
+  assert_output --partial "application_database.sqlite3"
   assert_output --partial "nodes"
 
   # reset the OCKAM_HOME directory
@@ -35,12 +36,14 @@ teardown() {
 
   # list all remaining files and directories
   run_success ls "$OCKAM_HOME"
-  assert_output 'bin
+  assert_output 'application_database.sqlite3
+bin
 env'
 
   # reset the OCKAM_HOME directory twice, this should not fail
   run_success "$OCKAM" reset --yes
   run_success ls "$OCKAM_HOME"
-  assert_output 'bin
+  assert_output 'application_database.sqlite3
+bin
 env'
 }

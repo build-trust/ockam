@@ -3,9 +3,13 @@ use std::{path::PathBuf, str::FromStr};
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry::KeyValue;
+use tracing::instrument;
 
 use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
+use ockam_api::logs::TracingGuard;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 
@@ -17,6 +21,7 @@ use crate::util::api::TrustContextOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
+use ockam_node::{opentelemetry_context_parser, OpenTelemetryContext};
 
 pub mod background;
 pub mod foreground;
@@ -85,6 +90,10 @@ pub struct CreateCommand {
 
     #[command(flatten)]
     pub trust_context_opts: TrustContextOpts,
+
+    /// Serialized opentelemetry context
+    #[arg(long, hide = true, value_parser = opentelemetry_context_parser)]
+    pub opentelemetry_context: Option<OpenTelemetryContext>,
 }
 
 impl Default for CreateCommand {
@@ -104,26 +113,39 @@ impl Default for CreateCommand {
             reload_from_trusted_identities_file: None,
             credential: None,
             trust_context_opts: node_manager_defaults.trust_context_opts,
+            opentelemetry_context: None,
         }
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    #[instrument(skip_all)]
+    pub fn run(self, opts: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
         if self.foreground {
+            if self.child_process {
+                opentelemetry::Context::current()
+                    .span()
+                    .set_attribute(KeyValue::new("background", "true"));
+            }
             local_cmd(embedded_node_that_is_not_stopped(
+                opts.rt.clone(),
                 foreground_mode,
-                (opts, self),
+                (opts, self, tracing_guard),
             ));
         } else {
-            node_rpc(background_mode, (opts, self))
+            node_rpc(opts.rt.clone(), background_mode, (opts, self))
         }
     }
 
-    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn async_run(
+        self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+        tracing_guard: Option<TracingGuard>,
+    ) -> miette::Result<()> {
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.foreground {
-            foreground_mode(ctx, (opts, self)).await
+            foreground_mode(ctx, (opts, self, tracing_guard)).await
         } else {
             background_mode(ctx, (opts, self)).await
         }

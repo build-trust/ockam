@@ -47,4 +47,15 @@ impl IdentityCommand {
             IdentitySubcommand::Default(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            IdentitySubcommand::Create(_) => "create identity",
+            IdentitySubcommand::Show(_) => "show identity",
+            IdentitySubcommand::List(_) => "list identities",
+            IdentitySubcommand::Default(_) => "default identity",
+            IdentitySubcommand::Delete(_) => "delete identity",
+        }
+        .to_string()
+    }
 }

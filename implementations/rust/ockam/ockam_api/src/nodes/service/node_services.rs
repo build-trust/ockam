@@ -124,6 +124,7 @@ impl NodeManagerWorker {
         }
     }
 
+    #[instrument(skip_all)]
     pub(super) async fn get_node_status(
         &self,
         context: &Context,

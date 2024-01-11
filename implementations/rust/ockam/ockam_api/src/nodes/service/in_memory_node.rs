@@ -14,6 +14,8 @@ use crate::cli_state::random_name;
 use crate::cli_state::CliState;
 use crate::cli_state::NamedTrustContext;
 use crate::cloud::ControllerClient;
+use crate::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
+use crate::logs::CurrentSpan;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -102,6 +104,7 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node
+    #[instrument(name = "start in-memory node", skip_all)]
     pub async fn start_node(
         ctx: &Context,
         cli_state: &CliState,
@@ -130,7 +133,7 @@ impl InMemoryNode {
             .await
             .into_diagnostic()?;
 
-        let node_manager = Self::new(
+        let node_manager = InMemoryNode::new(
             ctx,
             NodeManagerGeneralOptions::new(cli_state.clone(), node.name(), None, false, false),
             NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),
@@ -145,6 +148,12 @@ impl InMemoryNode {
 
     /// Return a Controller client to send requests to the Controller
     pub async fn create_controller(&self) -> miette::Result<ControllerClient> {
+        if let Ok(user) = self.cli_state.get_default_user().await {
+            CurrentSpan::set_attribute(USER_NAME, &user.name);
+            CurrentSpan::set_attribute(USER_EMAIL, &user.email.to_string());
+        }
+        CurrentSpan::set_attribute(NODE_NAME, &self.node_manager.node_name);
+
         self.create_controller_client(self.timeout)
             .await
             .into_diagnostic()
@@ -180,6 +189,7 @@ impl InMemoryNode {
     }
 
     /// Create a new in memory node with various options
+    #[instrument(name = "new in-memory node", skip_all, fields(node_name = general_options.node_name))]
     pub async fn new(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,

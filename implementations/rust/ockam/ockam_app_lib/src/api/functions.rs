@@ -72,7 +72,7 @@ extern "C" fn initialize_application(
             return false;
         }
     };
-    app_state.setup_logging();
+    app_state.setup_logging_tracing();
 
     #[cfg(target_os = "macos")]
     crate::cli::add_homebrew_to_path();

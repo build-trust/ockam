@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use miette::{IntoDiagnostic, WrapErr};
+use tokio::runtime::Runtime;
 use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
 
@@ -13,7 +14,7 @@ use ockam_api::cli_state::CliState;
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
-use ockam_api::logs::WorkerGuard;
+use ockam_api::logs::TracingGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -78,7 +79,7 @@ pub struct AppState {
     refresh_inlets_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_relay_scheduler: Arc<OnceLock<Scheduler>>,
     last_published_snapshot: Arc<Mutex<Option<ApplicationState>>>,
-    pub(crate) tracing_guard: Arc<OnceLock<WorkerGuard>>,
+    pub(crate) tracing_guard: Arc<OnceLock<TracingGuard>>,
 }
 
 async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
@@ -100,11 +101,15 @@ impl AppState {
     ) -> Result<AppState> {
         let mut cli_state = CliState::with_default_dir()?;
         cli_state.set_node_name(NODE_NAME.to_string());
-        let (context, mut executor) = NodeBuilder::new().no_logging().build();
+        let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
+        let (context, mut executor) = NodeBuilder::new()
+            .no_logging()
+            .with_runtime(rt.clone())
+            .build();
         let context = Arc::new(context);
 
         // start the router, it is needed for the node manager creation
-        context.runtime().spawn(async move {
+        rt.spawn(async move {
             let result = executor.start_router().await;
             if let Err(e) = result {
                 error!(%e, "Failed to start the router")

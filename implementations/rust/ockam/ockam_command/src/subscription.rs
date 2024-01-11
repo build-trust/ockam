@@ -49,7 +49,14 @@ pub enum SubscriptionSubcommand {
 
 impl SubscriptionCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self));
+        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            SubscriptionSubcommand::Show { .. } => "show subscription",
+        }
+        .to_string()
     }
 }
 

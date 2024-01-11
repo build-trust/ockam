@@ -4,6 +4,7 @@ use ockam_node::Context;
 use ockam_transport_core::Transport;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tracing::instrument;
 
 use crate::{TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, TCP};
 
@@ -18,6 +19,7 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// # Ok(()) }
     /// ```
+    #[instrument(name = "create tcp transport", skip_all)]
     pub async fn create(ctx: &Context) -> Result<Self> {
         let tcp = Self {
             ctx: Arc::new(ctx.async_try_clone().await?),

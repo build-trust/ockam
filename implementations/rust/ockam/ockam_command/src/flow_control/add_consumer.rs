@@ -24,7 +24,7 @@ pub struct AddConsumerCommand {
 
 impl AddConsumerCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self))
+        node_rpc(options.rt.clone(), rpc, (options, self))
     }
 }
 

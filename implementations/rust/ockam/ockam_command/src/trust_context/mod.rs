@@ -47,4 +47,15 @@ impl TrustContextCommand {
             TrustContextSubcommand::Default(cmd) => cmd.run(opts),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            TrustContextSubcommand::Create(_) => "create trust context",
+            TrustContextSubcommand::Show(_) => "show trust context",
+            TrustContextSubcommand::Delete(_) => "delete trust context",
+            TrustContextSubcommand::List(_) => "list trust contexts",
+            TrustContextSubcommand::Default(_) => "default trust context",
+        }
+        .to_string()
+    }
 }

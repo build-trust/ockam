@@ -24,6 +24,13 @@ impl AuthorityCommand {
             AuthoritySubcommand::Create(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            AuthoritySubcommand::Create(_) => "create authority",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Clone, Debug, Subcommand)]

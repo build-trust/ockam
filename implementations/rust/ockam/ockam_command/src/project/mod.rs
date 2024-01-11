@@ -69,4 +69,20 @@ impl ProjectCommand {
             ProjectSubcommand::Enroll(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            ProjectSubcommand::Create(_) => "create project",
+            ProjectSubcommand::Delete(_) => "delete project",
+            ProjectSubcommand::List(_) => "list projects",
+            ProjectSubcommand::Show(_) => "show project",
+            ProjectSubcommand::Import(_) => "import project",
+            ProjectSubcommand::Version(_) => "show project version",
+            ProjectSubcommand::Information(_) => "show project information",
+            ProjectSubcommand::Ticket(_) => "create project ticket",
+            ProjectSubcommand::Addon(_) => "configure project addon",
+            ProjectSubcommand::Enroll(_) => "enroll project",
+        }
+        .to_string()
+    }
 }

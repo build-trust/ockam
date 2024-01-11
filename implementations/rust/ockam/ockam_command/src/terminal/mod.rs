@@ -27,8 +27,8 @@ pub mod term;
 pub mod tui;
 
 /// A terminal abstraction to handle commands' output and messages styling.
-#[derive(Clone)]
-pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
+#[derive(Clone, Debug)]
+pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
     quiet: bool,
@@ -39,7 +39,7 @@ pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     max_height_row_count: usize,
 }
 
-impl<T: TerminalWriter, W> Terminal<T, W> {
+impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
     pub fn is_quiet(&self) -> bool {
         self.quiet
     }
@@ -142,7 +142,7 @@ impl TerminalBackground {
 
 /// A small wrapper around the `Write` trait, enriched with CLI
 /// attributes to facilitate output handling.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TerminalStream<T: Write + Debug + Clone> {
     writer: T,
     no_color: bool,
@@ -167,18 +167,18 @@ pub mod mode {
     use super::Output;
 
     /// Write mode used when writing to the stderr stream.
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct ToStdErr;
 
     /// Write mode used when writing to the stdout stream.
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct ToStdOut {
         pub output: Output,
     }
 }
 
 /// The command's output message to be displayed to the user in various formats
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Output {
     plain: Option<String>,
     machine: Option<String>,
@@ -207,7 +207,7 @@ pub trait TerminalWriter: Clone {
 }
 
 // Core functions
-impl<W: TerminalWriter> Terminal<W> {
+impl<W: TerminalWriter + Debug> Terminal<W> {
     pub fn new(quiet: bool, no_color: bool, no_input: bool, output_format: OutputFormat) -> Self {
         let no_color = Self::should_disable_color(no_color);
         let no_input = Self::should_disable_user_input(no_input);
@@ -327,7 +327,7 @@ impl<W: TerminalWriter> Terminal<W> {
 }
 
 // Logging mode
-impl<W: TerminalWriter> Terminal<W, ToStdErr> {
+impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
     pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
@@ -415,7 +415,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
 }
 
 // Finished mode
-impl<W: TerminalWriter> Terminal<W, ToStdOut> {
+impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
     pub fn is_tty(&self) -> bool {
         self.stdout.is_tty()
     }
@@ -478,7 +478,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdOut> {
 }
 
 // Extensions
-impl<W: TerminalWriter> Terminal<W> {
+impl<W: TerminalWriter + Debug> Terminal<W> {
     pub fn progress_spinner(&self) -> Option<ProgressBar> {
         if self.quiet || !self.stderr.is_tty() {
             return None;

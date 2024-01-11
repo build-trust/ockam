@@ -20,6 +20,10 @@ pub struct AddonConfigureAivenSubcommand {
 
 impl AddonConfigureAivenSubcommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, "Aiven (Kafka)", self.config));
+        node_rpc(
+            opts.rt.clone(),
+            run_impl,
+            (opts, "Aiven (Kafka)", self.config),
+        );
     }
 }

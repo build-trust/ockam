@@ -13,7 +13,7 @@ pub struct GetCommand {
 
 impl GetCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self));
+        node_rpc(options.rt.clone(), run_impl, (options, self));
     }
 }
 

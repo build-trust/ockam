@@ -20,6 +20,10 @@ pub struct AddonConfigureInstaclustrSubcommand {
 
 impl AddonConfigureInstaclustrSubcommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, "Instaclustr (Kafka)", self.config));
+        node_rpc(
+            opts.rt.clone(),
+            run_impl,
+            (opts, "Instaclustr (Kafka)", self.config),
+        );
     }
 }

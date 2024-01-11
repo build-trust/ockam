@@ -32,4 +32,13 @@ impl KafkaProducerCommand {
             KafkaProducerSubcommand::List(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            KafkaProducerSubcommand::Create(_) => "create kafka producer",
+            KafkaProducerSubcommand::Delete(_) => "delete kafka producer",
+            KafkaProducerSubcommand::List(_) => "list kafka producers",
+        }
+        .to_string()
+    }
 }

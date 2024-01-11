@@ -27,7 +27,7 @@ pub struct StartCommand {
 
 impl StartCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self))
+        node_rpc(opts.rt.clone(), run_impl, (opts, self))
     }
 }
 
@@ -169,7 +169,8 @@ async fn run_node(
         None,          // Authority Identity
         None,          // Credential
         None,          // Trust Context
-        true,          // Restarted nodes will log to files
+        true,          // Restarted nodes will log to files,
+        None,          // No opentelemetry context
     )
     .await?;
 

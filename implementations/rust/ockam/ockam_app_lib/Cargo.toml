@@ -45,6 +45,7 @@ thiserror = "1.0"
 tokio = { version = "1.35.1", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
+tracing-core = { version = "0.1.32", default-features = false }
 
 [dev-dependencies]
 tempfile = { version = "3.9.0" }

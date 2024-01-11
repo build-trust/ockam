@@ -1,5 +1,6 @@
 use clap::Args;
 use miette::IntoDiagnostic;
+use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -30,7 +31,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+        node_rpc(options.rt.clone(), rpc, (options, self));
     }
 }
 
@@ -46,7 +47,8 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
         let spaces = node.get_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
-    };
+    }
+    .with_current_context();
 
     let output_messages = vec![format!("Listing Spaces...\n",)];
 

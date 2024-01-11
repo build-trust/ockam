@@ -18,6 +18,7 @@
 //!     ```
 
 use std::process::exit;
+use std::sync::Arc;
 use std::{path::PathBuf, sync::Mutex};
 
 use clap::{ArgAction, Args, Parser, Subcommand};
@@ -25,6 +26,10 @@ use colorful::Colorful;
 use console::Term;
 use miette::GraphicalReportHandler;
 use once_cell::sync::Lazy;
+use opentelemetry::trace::{TraceContextExt, Tracer};
+use opentelemetry::{global, Context};
+use tokio::runtime::Runtime;
+use tracing::instrument;
 
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
@@ -42,7 +47,9 @@ use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
+use ockam_api::logs::{TracingGuard, OCKAM_TRACER_NAME};
 use ockam_core::env::get_env_with_default;
+use ockam_node::OpenTelemetryContext;
 use policy::PolicyCommand;
 use project::ProjectCommand;
 use r3bl_rs_utils_core::UnicodeString;
@@ -73,7 +80,7 @@ use crate::authority::AuthorityCommand;
 use crate::flow_control::FlowControlCommand;
 use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
-use crate::logs::setup_logging;
+use crate::logs::setup_logging_tracing;
 use crate::node::NodeSubcommand;
 use crate::output::OutputFormat;
 use crate::run::RunCommand;
@@ -238,11 +245,12 @@ impl GlobalArgs {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub state: CliState,
     pub terminal: Terminal<TerminalStream<Term>>,
+    pub rt: Arc<Runtime>,
 }
 
 impl CommandGlobalOpts {
@@ -267,6 +275,7 @@ impl CommandGlobalOpts {
             global_args,
             state,
             terminal,
+            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
         }
     }
 
@@ -291,6 +300,7 @@ impl CommandGlobalOpts {
             global_args,
             state,
             terminal,
+            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
         }
     }
 }
@@ -353,6 +363,64 @@ impl OckamSubcommand {
         // Currently only enroll command displays the header
         matches!(self, OckamSubcommand::Enroll(_))
     }
+
+    /// Return the opentelementry context if the command can be executed as the continuation
+    /// of an existing trace
+    pub fn get_opentelemetry_context(&self) -> Option<OpenTelemetryContext> {
+        match self {
+            OckamSubcommand::Node(cmd) => match cmd.as_ref() {
+                NodeCommand {
+                    subcommand: NodeSubcommand::Create(cmd),
+                } => cmd.opentelemetry_context.clone(),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            OckamSubcommand::Node(c) => c.name(),
+            OckamSubcommand::Enroll(c) => c.name(),
+            OckamSubcommand::Space(c) => c.name(),
+            OckamSubcommand::Project(c) => c.name(),
+            OckamSubcommand::Sidecar(c) => c.name(),
+            OckamSubcommand::Admin(c) => c.name(),
+            OckamSubcommand::Share(c) => c.name(),
+            OckamSubcommand::Subscription(c) => c.name(),
+            OckamSubcommand::Worker(c) => c.name(),
+            OckamSubcommand::Service(c) => c.name(),
+            OckamSubcommand::Message(c) => c.name(),
+            OckamSubcommand::Relay(c) => c.name(),
+            OckamSubcommand::TcpListener(c) => c.name(),
+            OckamSubcommand::TcpConnection(c) => c.name(),
+            OckamSubcommand::TcpOutlet(c) => c.name(),
+            OckamSubcommand::TcpInlet(c) => c.name(),
+            OckamSubcommand::KafkaOutlet(c) => c.name(),
+            OckamSubcommand::KafkaConsumer(c) => c.name(),
+            OckamSubcommand::KafkaDirect(c) => c.name(),
+            OckamSubcommand::KafkaProducer(c) => c.name(),
+            OckamSubcommand::SecureChannelListener(c) => c.name(),
+            OckamSubcommand::SecureChannel(c) => c.name(),
+            OckamSubcommand::Vault(c) => c.name(),
+            OckamSubcommand::Identity(c) => c.name(),
+            OckamSubcommand::Credential(c) => c.name(),
+            OckamSubcommand::Authority(c) => c.name(),
+            OckamSubcommand::Policy(c) => c.name(),
+            OckamSubcommand::Lease(c) => c.name(),
+            OckamSubcommand::Run(c) => c.name(),
+            OckamSubcommand::Status(c) => c.name(),
+            OckamSubcommand::Reset(c) => c.name(),
+            OckamSubcommand::Authenticated(c) => c.name(),
+            OckamSubcommand::Configuration(c) => c.name(),
+            OckamSubcommand::Completion(c) => c.name(),
+            OckamSubcommand::Markdown(c) => c.name(),
+            OckamSubcommand::Manpages(c) => c.name(),
+            OckamSubcommand::TrustContext(c) => c.name(),
+            OckamSubcommand::Environment(c) => c.name(),
+            OckamSubcommand::FlowControl(c) => c.name(),
+        }
+    }
 }
 
 pub fn run() {
@@ -384,17 +452,21 @@ impl OckamCommand {
         }));
         let options = CommandGlobalOpts::new(self.global_args.clone());
 
-        let _tracing_guard = if !options.global_args.quiet {
+        let tracing_guard = if !options.global_args.quiet {
             let log_path = self.log_path(&options);
-            let guard = setup_logging(
+            let guard = setup_logging_tracing(
+                self.subcommand.get_opentelemetry_context().is_some(),
                 options.global_args.verbose,
                 options.global_args.no_color,
                 options.terminal.is_tty(),
                 log_path,
             );
+            if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
+                tracing::debug!("{opentelemetry_context}");
+            };
             tracing::debug!("{}", Version::short());
             tracing::debug!("Parsed {:#?}", &self);
-            guard
+            Some(guard)
         } else {
             None
         };
@@ -432,6 +504,25 @@ impl OckamCommand {
                 .write_line(&format!("{}\n", colored_header));
         }
 
+        let tracer = global::tracer(OCKAM_TRACER_NAME);
+        if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
+            let span =
+                tracer.start_with_context(self.subcommand.name(), &opentelemetry_context.extract());
+            let cx = Context::current_with_span(span);
+            let _guard = cx.clone().attach();
+            self.run_command(options, tracing_guard);
+        } else {
+            tracer.in_span(self.subcommand.name(), |_| {
+                self.run_command(options, tracing_guard);
+            });
+        }
+
+        global::shutdown_tracer_provider();
+        global::shutdown_logger_provider();
+    }
+
+    #[instrument(skip_all, fields(command = self.subcommand.name()))]
+    fn run_command(self, options: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
         match self.subcommand {
             OckamSubcommand::Enroll(c) => c.run(options),
             OckamSubcommand::Space(c) => c.run(options),
@@ -441,7 +532,7 @@ impl OckamCommand {
             OckamSubcommand::Share(c) => c.run(options),
             OckamSubcommand::Subscription(c) => c.run(options),
 
-            OckamSubcommand::Node(c) => c.run(options),
+            OckamSubcommand::Node(c) => c.run(options, tracing_guard),
             OckamSubcommand::Worker(c) => c.run(options),
             OckamSubcommand::Service(c) => c.run(options),
             OckamSubcommand::Message(c) => c.run(options),

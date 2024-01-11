@@ -40,6 +40,10 @@ impl MarkdownCommand {
 
         std::fs::write(mark_dir.join("SUMMARY.md"), summary).expect("Error creating SUMMARY.md.");
     }
+
+    pub fn name(&self) -> String {
+        "generate markdown".to_string()
+    }
 }
 
 fn get_markdown_page_directory(cmd_mark_dir: &Option<String>) -> io::Result<PathBuf> {

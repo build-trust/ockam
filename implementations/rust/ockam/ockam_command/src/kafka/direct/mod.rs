@@ -33,4 +33,14 @@ impl KafkaDirectCommand {
             KafkaDirectSubcommand::List(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            KafkaDirectSubcommand::Create(_) => "create kafka direct",
+            KafkaDirectSubcommand::Delete(_) => "delete kafka direct",
+
+            KafkaDirectSubcommand::List(_) => "list kafka direct",
+        }
+        .to_string()
+    }
 }

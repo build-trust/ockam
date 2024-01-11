@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
@@ -155,6 +156,12 @@ impl ToSqlxType for i8 {
 impl ToSqlxType for OffsetDateTime {
     fn to_sql(&self) -> SqlxType {
         SqlxType::Integer(self.unix_timestamp())
+    }
+}
+
+impl ToSqlxType for DateTime<Utc> {
+    fn to_sql(&self) -> SqlxType {
+        self.to_rfc3339().to_sql()
     }
 }
 

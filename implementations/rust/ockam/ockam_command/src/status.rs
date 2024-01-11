@@ -30,7 +30,11 @@ pub struct StatusCommand {
 
 impl StatusCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+        node_rpc(options.rt.clone(), rpc, (options, self));
+    }
+
+    pub fn name(&self) -> String {
+        "get status".to_string()
     }
 }
 
