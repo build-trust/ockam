@@ -235,6 +235,7 @@ impl InMemoryNode {
             "/secure/api".parse().unwrap(),
             None,
             None,
+            false,
         )
         .await?;
 
@@ -329,6 +330,7 @@ impl InMemoryNode {
             outlet_node_multiaddr,
             None,
             None,
+            false,
         )
         .await?;
 

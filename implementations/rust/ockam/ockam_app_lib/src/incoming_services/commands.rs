@@ -190,6 +190,7 @@ impl AppState {
                 &Some(inlet_alias),
                 &None,
                 Duration::from_secs(5),
+                true,
             )
             .await
             .map_err(|err| {

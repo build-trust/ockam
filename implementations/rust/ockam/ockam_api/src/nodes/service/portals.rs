@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::time::timeout;
@@ -25,8 +26,10 @@ use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{actions, random_alias, resources};
 use crate::nodes::{BackgroundNodeClient, InMemoryNode, Policies};
 use crate::session::sessions::{
-    ConnectionStatus, Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
+    ConnectionStatus, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind, Session,
+    SessionReplacer, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
 };
+use crate::session::MedicHandle;
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -50,6 +53,7 @@ impl NodeManagerWorker {
             prefix_route,
             suffix_route,
             wait_for_outlet_duration,
+            validate,
         } = create_inlet;
         match self
             .node_manager
@@ -62,6 +66,7 @@ impl NodeManagerWorker {
                 outlet_addr,
                 wait_for_outlet_duration,
                 authorized,
+                validate,
             )
             .await
         {
@@ -298,15 +303,23 @@ impl NodeManager {
 /// INLETS
 impl NodeManager {
     pub async fn create_inlet(
-        &self,
-        connection: Connection,
+        self: &Arc<Self>,
+        ctx: &Context,
         listen_addr: String,
         requested_alias: Option<String>,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
-    ) -> Result<(InletStatus, Arc<dyn IncomingAccessControl>)> {
+        wait_for_outlet_duration: Option<Duration>,
+        authorized: Option<Identifier>,
+        validate: bool,
+    ) -> Result<InletStatus> {
         info!("Handling request to create inlet portal");
+
+        let resource = requested_alias
+            .as_ref()
+            .map(|a| Resource::new(a))
+            .unwrap_or(resources::INLET);
 
         let alias = requested_alias.clone().unwrap_or_else(random_alias);
         debug! {
@@ -317,6 +330,16 @@ impl NodeManager {
             %alias,
             "Creating inlet portal"
         }
+
+        // the port could be zero, to simplify the following code we
+        // resolve the address to a full socket address
+        let listen_addr = if listen_addr.ends_with(":0") {
+            let socket_addr = SocketAddr::from_str(&listen_addr)
+                .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?;
+            format!("{}", socket_addr)
+        } else {
+            listen_addr
+        };
 
         {
             let registry = &self.registry.inlets;
@@ -348,118 +371,76 @@ impl NodeManager {
             }
         }
 
-        let outlet_route = connection.route(self.tcp_transport()).await?;
-        let outlet_route = route![prefix_route.clone(), outlet_route, suffix_route.clone()];
-
-        let projects = self.cli_state.get_projects_grouped_by_name().await?;
-
-        let project_id = match self.trust_context_id() {
-            Some(trust_context_id) => {
-                let pid = outlet_addr
-                    .first()
-                    .and_then(|p| {
-                        if let Some(p) = p.cast::<Project>() {
-                            projects.get(&*p).map(|project| project.id())
-                        } else {
-                            None
-                        }
-                    })
-                    .or(Some(trust_context_id));
-                if pid.is_none() {
-                    let message = "Credential check requires a project or trust context";
-                    return Err(ockam_core::Error::new(Origin::Node, Kind::Invalid, message));
-                }
-                pid
-            }
-            None => None,
+        let replacer = InletSpawner {
+            node_manager: self.clone(),
+            context: Arc::new(ctx.async_try_clone().await?),
+            listen_addr: listen_addr.clone(),
+            addr: Default::default(),
+            prefix_route,
+            suffix_route,
+            authorized,
+            resource,
+            wait_for_outlet_duration: wait_for_outlet_duration.unwrap_or(MAX_CONNECT_TIME),
+            connection: None,
+            inlet_address: None,
         };
 
-        let resource = requested_alias
-            .map(|a| Resource::new(a.as_str()))
-            .unwrap_or(resources::INLET);
-        let access_control = self
-            .access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                project_id.as_deref(),
-                None,
-            )
-            .await?;
+        let mut session = Session::new(replacer);
+        let outcome = if validate {
+            MedicHandle::connect(&mut session)
+                .await
+                .map(|outcome| match outcome.kind {
+                    ReplacerOutputKind::Inlet(status) => Some(status),
+                    _ => {
+                        panic!("Unexpected outcome: {:?}", outcome)
+                    }
+                })?
+        } else {
+            None
+        };
 
-        let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
-        let res = self
-            .tcp_transport
-            .create_inlet(listen_addr.clone(), outlet_route.clone(), options)
+        self.registry
+            .inlets
+            .insert(
+                alias.clone(),
+                InletInfo::new(&listen_addr, outlet_addr.clone(), session),
+            )
             .await;
 
-        Ok(match res {
-            Ok((socket_address, worker_addr)) => {
-                //when using 0 port, the chosen port will be populated
-                //in the returned socket address
-                let listen_addr = socket_address.to_string();
-
-                // TODO: Use better way to store inlets?
-                self.registry
-                    .inlets
-                    .insert(
-                        alias.clone(),
-                        InletInfo::new(&listen_addr, Some(&worker_addr), &outlet_route),
-                    )
-                    .await;
-                (
-                    InletStatus::new(
-                        listen_addr,
-                        worker_addr.to_string(),
-                        alias,
-                        None,
-                        outlet_route.to_string(),
-                        ConnectionStatus::Up,
-                    ),
-                    access_control,
-                )
-            }
-            Err(e) => {
-                warn!(to = %outlet_addr, err = %e, "Failed to create TCP inlet");
-                let message = format!("Failed to create TCP inlet: {}", e);
-                return Err(ockam_core::Error::new(
-                    Origin::Node,
-                    Kind::Internal,
-                    message,
-                ));
-            }
-        })
+        Ok(InletStatus::new(
+            listen_addr.clone(),
+            outcome
+                .as_ref()
+                .map(|s| s.worker.address().to_string())
+                .unwrap_or_default(),
+            alias.clone(),
+            None,
+            outcome
+                .as_ref()
+                .map(|s| s.route.to_string())
+                .unwrap_or_default(),
+            outcome
+                .as_ref()
+                .map(|s| s.connection_status)
+                .unwrap_or(ConnectionStatus::Down),
+            outlet_addr.to_string(),
+        ))
     }
 
     pub async fn delete_inlet(&self, alias: &str) -> Result<InletStatus> {
         info!(%alias, "Handling request to delete inlet portal");
         if let Some(inlet_to_delete) = self.registry.inlets.remove(alias).await {
             debug!(%alias, "Successfully removed inlet from node registry");
-            match self
-                .tcp_transport
-                .stop_inlet(inlet_to_delete.worker_addr.clone())
-                .await
-            {
-                Ok(_) => {
-                    debug!(%alias, "Successfully stopped inlet");
-                    Ok(InletStatus::new(
-                        inlet_to_delete.bind_addr,
-                        inlet_to_delete.worker_addr.to_string(),
-                        alias,
-                        None,
-                        inlet_to_delete.outlet_route.to_string(),
-                        ConnectionStatus::Down,
-                    ))
-                }
-                Err(e) => {
-                    error!(%alias, "Failed to remove inlet from node registry");
-                    let message = format!("Failed to remove inlet with alias {alias}. {}", e);
-                    Err(ockam_core::Error::new(
-                        Origin::Node,
-                        Kind::Internal,
-                        message,
-                    ))
-                }
-            }
+            inlet_to_delete.session.close().await?;
+            Ok(InletStatus::new(
+                inlet_to_delete.bind_addr,
+                "".to_string(),
+                alias,
+                None,
+                "".to_string(),
+                ConnectionStatus::Down,
+                inlet_to_delete.outlet_addr.to_string(),
+            ))
         } else {
             error!(%alias, "Inlet not found in the node registry");
             let message = format!("Inlet with alias {alias} not found");
@@ -473,21 +454,25 @@ impl NodeManager {
 
     pub async fn show_inlet(&self, alias: &str) -> Option<InletStatus> {
         info!(%alias, "Handling request to show inlet portal");
-        if let Some(inlet_to_show) = self.registry.inlets.get(alias).await {
-            let status = self
-                .medic_handle
-                .status_of(&format!("inlet-{alias}"))
-                .unwrap_or(ConnectionStatus::Down);
-
-            debug!(%alias, "Inlet not found in node registry");
-            Some(InletStatus::new(
-                inlet_to_show.bind_addr.to_string(),
-                inlet_to_show.worker_addr.address(),
-                alias,
-                None,
-                inlet_to_show.outlet_route.to_string(),
-                status,
-            ))
+        if let Some(inlet_info) = self.registry.inlets.get(alias).await {
+            if let Some(status) = inlet_info.session.status() {
+                if let ReplacerOutputKind::Inlet(status) = &status.kind {
+                    Some(InletStatus::new(
+                        inlet_info.bind_addr.to_string(),
+                        status.worker.address().to_string(),
+                        alias,
+                        None,
+                        status.route.to_string(),
+                        status.connection_status,
+                        inlet_info.outlet_addr.to_string(),
+                    ))
+                } else {
+                    panic!("Unexpected outcome: {:?}", status.kind)
+                }
+            } else {
+                error!(%alias, "Inlet not found in the session registry");
+                None
+            }
         } else {
             error!(%alias, "Inlet not found in the node registry");
             None
@@ -502,19 +487,32 @@ impl NodeManager {
                 .await
                 .iter()
                 .map(|(alias, info)| {
-                    let status = self
-                        .medic_handle
-                        .status_of(&format!("inlet-{alias}"))
-                        .unwrap_or(ConnectionStatus::Down);
-
-                    InletStatus::new(
-                        &info.bind_addr,
-                        info.worker_addr.to_string(),
-                        alias,
-                        None,
-                        info.outlet_route.to_string(),
-                        status,
-                    )
+                    if let Some(status) = info.session.status().as_ref() {
+                        match &status.kind {
+                            ReplacerOutputKind::Inlet(status) => InletStatus::new(
+                                &info.bind_addr,
+                                status.worker.address().to_string(),
+                                alias,
+                                None,
+                                status.route.to_string(),
+                                status.connection_status,
+                                info.outlet_addr.to_string(),
+                            ),
+                            _ => {
+                                panic!("Unexpected outcome: {:?}", status.kind)
+                            }
+                        }
+                    } else {
+                        InletStatus::new(
+                            &info.bind_addr,
+                            "".to_string(),
+                            alias,
+                            None,
+                            "".to_string(),
+                            ConnectionStatus::Down,
+                            info.outlet_addr.to_string(),
+                        )
+                    }
                 })
                 .collect(),
         )
@@ -533,177 +531,171 @@ impl InMemoryNode {
         outlet_addr: MultiAddr,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
+        validate: bool,
     ) -> Result<InletStatus> {
-        // The addressing scheme is very flexible. Typically the node connects to
-        // the cloud via secure channel and the with another secure channel via
-        // relay to the actual outlet on the target node. However it is also
-        // possible that there is just a single secure channel used to go directly
-        // to another node.
-        let duration = wait_for_outlet_duration.unwrap_or(Duration::from_secs(5));
-        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
-        let connection = self
-            .make_connection(
-                connection_ctx.clone(),
-                &outlet_addr,
-                self.identifier(),
-                authorized.clone(),
-                None,
-                Some(duration),
-            )
-            .await?;
-
-        let (inlet, access_control) = self
-            .node_manager
+        self.node_manager
             .create_inlet(
-                connection.clone(),
+                ctx,
                 listen_addr.clone(),
                 requested_alias,
                 prefix_route.clone(),
                 suffix_route.clone(),
                 outlet_addr.clone(),
-            )
-            .await?;
-        if !connection.route(self.tcp_transport()).await?.is_empty() {
-            debug! {
-                %inlet.alias,
-                %inlet.bind_addr,
-                %inlet.worker_addr,
-                ping_addr = %connection.transport_route(),
-                "Creating session for TCP inlet"
-            };
-            let mut session = Session::new(
-                connection.transport_route(),
-                format!("inlet-{}", inlet.alias),
-            );
-
-            let repl = Self::portal_replacer(
-                self.node_manager.clone(),
-                connection_ctx,
-                connection,
-                Address::from_string(inlet.worker_addr.clone()),
-                listen_addr,
-                outlet_addr,
-                prefix_route,
-                suffix_route,
+                wait_for_outlet_duration,
                 authorized,
-                access_control,
-            );
-            session.set_replacer(repl);
-            self.add_session(session);
-        };
-        Ok(inlet)
+                validate,
+            )
+            .await
     }
+}
 
-    /// Create a session replacer.
-    ///
-    /// This returns a function that accepts the previous ping address (e.g.
-    /// the secure channel worker address) and constructs the whole route
-    /// again.
-    #[allow(clippy::too_many_arguments)]
-    fn portal_replacer(
-        node_manager: Arc<NodeManager>,
-        ctx: Arc<Context>,
-        connection: Connection,
-        inlet_address: Address,
-        bind: String,
-        addr: MultiAddr,
-        prefix_route: Route,
-        suffix_route: Route,
-        authorized: Option<Identifier>,
-        access: Arc<dyn IncomingAccessControl>,
-    ) -> Replacer {
-        let connection_arc = Arc::new(Mutex::new(connection.clone()));
-        let inlet_address_arc = Arc::new(Mutex::new(inlet_address));
-        let node_manager = node_manager.clone();
+struct InletSpawner {
+    node_manager: Arc<NodeManager>,
+    context: Arc<Context>,
+    listen_addr: String,
+    addr: MultiAddr,
+    prefix_route: Route,
+    suffix_route: Route,
+    authorized: Option<Identifier>,
+    resource: Resource,
+    wait_for_outlet_duration: Duration,
 
-        Box::new(move |previous_addr| {
-            let addr = addr.clone();
-            let authorized = authorized.clone();
-            let bind = bind.clone();
-            let access = access.clone();
-            let ctx = ctx.clone();
-            let connection_arc = connection_arc.clone();
-            let inlet_address_arc = inlet_address_arc.clone();
-            let inlet_address = inlet_address_arc.lock().unwrap().clone();
-            let prefix_route = prefix_route.clone();
-            let suffix_route = suffix_route.clone();
-            let previous_connection = connection_arc.lock().unwrap().clone();
-            let node_manager = node_manager.clone();
-            Box::pin(async move {
-                debug!(%previous_addr, %addr, "creating new tcp inlet");
-                // The future that recreates the inlet:
-                let f = async {
-                    //stop/delete previous secure channels
-                    for encryptor in &previous_connection.secure_channel_encryptors {
-                        let result = node_manager.delete_secure_channel(&ctx, encryptor).await;
-                        if let Err(error) = result {
-                            //we can't do much more
-                            debug!("cannot delete secure channel `{encryptor}`: {error}");
-                        }
+    // current status
+    connection: Option<Connection>,
+    inlet_address: Option<Address>,
+}
+
+#[async_trait]
+impl SessionReplacer for InletSpawner {
+    async fn create(&mut self) -> std::result::Result<ReplacerOutcome, ockam_core::Error> {
+        // The addressing scheme is very flexible. Typically the node connects to
+        // the cloud via secure channel and the with another secure channel via
+        // relay to the actual outlet on the target node. However it is also
+        // possible that there is just a single secure channel used to go directly
+        // to another node.
+
+        self.close().await?;
+        debug!(%self.addr, "creating new tcp inlet");
+
+        // create the access_control
+        let access_control = {
+            let projects = self
+                .node_manager
+                .cli_state
+                .get_projects_grouped_by_name()
+                .await?;
+            let project_id = match self.node_manager.trust_context_id() {
+                Some(trust_context_id) => {
+                    let pid = self
+                        .addr
+                        .first()
+                        .and_then(|p| {
+                            if let Some(p) = p.cast::<Project>() {
+                                projects.get(&*p).map(|project| project.id())
+                            } else {
+                                None
+                            }
+                        })
+                        .or(Some(trust_context_id));
+                    if pid.is_none() {
+                        let message = "Credential check requires a project or trust context";
+                        return Err(ockam_core::Error::new(Origin::Node, Kind::Invalid, message));
                     }
-                    if let Some(tcp_connection) = previous_connection.tcp_connection.as_ref() {
-                        if let Err(error) = node_manager
-                            .tcp_transport
-                            .disconnect(tcp_connection.sender_address().clone())
-                            .await
-                        {
-                            debug!("cannot stop tcp worker `{tcp_connection}`: {error}");
-                        }
-                    }
-
-                    // The previous inlet worker needs to be stopped:
-                    if let Err(error) = node_manager
-                        .tcp_transport
-                        .stop_inlet(inlet_address.clone())
-                        .await
-                    {
-                        debug!("cannot stop inlet `{inlet_address}`: {error}");
-                    }
-
-                    // Now a connection attempt is made
-                    let new_connection = node_manager
-                        .make_connection(
-                            ctx.clone(),
-                            &addr,
-                            node_manager.identifier(),
-                            authorized,
-                            None,
-                            Some(MAX_CONNECT_TIME),
-                        )
-                        .await?;
-                    *connection_arc.lock().unwrap() = new_connection.clone();
-                    let connection_route =
-                        new_connection.route(node_manager.tcp_transport()).await?;
-
-                    //we expect a fully normalized MultiAddr
-                    let normalized_route = route![prefix_route, connection_route, suffix_route];
-                    let options = TcpInletOptions::new().with_incoming_access_control(access);
-
-                    // Finally attempt to create a new inlet using the new route:
-                    let new_inlet_address = node_manager
-                        .tcp_transport
-                        .create_inlet(bind, normalized_route, options)
-                        .await?
-                        .1;
-                    *inlet_address_arc.lock().unwrap() = new_inlet_address;
-
-                    Ok(new_connection.transport_route())
-                };
-
-                // The above future is given some limited time to succeed.
-                match timeout(MAX_RECOVERY_TIME, f).await {
-                    Err(_) => {
-                        warn!(%addr, "timeout creating new tcp inlet");
-                        Err(ApiError::core("timeout"))
-                    }
-                    Ok(Err(e)) => {
-                        warn!(%addr, err = %e, "error creating new tcp inlet");
-                        Err(e)
-                    }
-                    Ok(Ok(route)) => Ok(route),
+                    pid
                 }
+                None => None,
+            };
+
+            self.node_manager
+                .access_control(
+                    &self.resource,
+                    &actions::HANDLE_MESSAGE,
+                    project_id.as_deref(),
+                    None,
+                )
+                .await?
+        };
+
+        // The future that recreates the inlet:
+        let future = async {
+            let connection = self
+                .node_manager
+                .make_connection(
+                    self.context.clone(),
+                    &self.addr,
+                    self.node_manager.identifier(),
+                    self.authorized.clone(),
+                    None,
+                    Some(self.wait_for_outlet_duration),
+                )
+                .await?;
+
+            let connection_route = connection.route()?;
+
+            //we expect a fully normalized MultiAddr
+            let normalized_route = route![
+                self.prefix_route.clone(),
+                connection_route,
+                self.suffix_route.clone()
+            ];
+            let options = TcpInletOptions::new().with_incoming_access_control(access_control);
+
+            // Finally attempt to create a new inlet using the new route:
+            let inlet_address = self
+                .node_manager
+                .tcp_transport
+                .create_inlet(self.listen_addr.clone(), normalized_route, options)
+                .await?
+                .1;
+            self.inlet_address = Some(inlet_address.clone());
+
+            Ok(ReplacerOutcome {
+                ping_route: route![connection.transport_route(), DefaultAddress::ECHO_SERVICE],
+                kind: ReplacerOutputKind::Inlet(CurrentInletStatus {
+                    worker: inlet_address,
+                    route: connection.route()?,
+                    connection_status: ConnectionStatus::Up,
+                }),
             })
-        })
+        };
+
+        // The above future is given some limited time to succeed.
+        match timeout(MAX_RECOVERY_TIME, future).await {
+            Err(_) => {
+                warn!(%self.addr, "timeout creating new tcp inlet");
+                Err(ApiError::core("timeout"))
+            }
+            Ok(Err(e)) => {
+                warn!(%self.addr, err = %e, "error creating new tcp inlet");
+                Err(e)
+            }
+            Ok(Ok(route)) => Ok(route),
+        }
+    }
+    async fn close(&mut self) -> std::result::Result<(), ockam_core::Error> {
+        if let Some(connection) = self.connection.take() {
+            connection.close(&self.context, &self.node_manager).await?;
+        }
+
+        if let Some(inlet_address) = self.inlet_address.take() {
+            // The previous inlet worker needs to be stopped:
+            self.node_manager
+                .tcp_transport
+                .stop_inlet(inlet_address.clone())
+                .await
+                .map_err(|err| {
+                    ockam_core::Error::new(
+                        Origin::Node,
+                        Kind::Internal,
+                        format!(
+                            "Failed to remove inlet with address {alias}. {err}",
+                            alias = inlet_address.address()
+                        ),
+                    )
+                })?;
+        }
+
+        Ok(())
     }
 }
 
@@ -717,6 +709,7 @@ pub trait Inlets {
         alias: &Option<String>,
         authorized_identifier: &Option<Identifier>,
         wait_for_outlet_timeout: Duration,
+        validate: bool,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn show_inlet(
@@ -738,6 +731,7 @@ impl Inlets for BackgroundNodeClient {
         alias: &Option<String>,
         authorized_identifier: &Option<Identifier>,
         wait_for_outlet_timeout: Duration,
+        validate: bool,
     ) -> miette::Result<Reply<InletStatus>> {
         self.add_policy_to_project(ctx, "tcp-inlet").await?;
         let request = {
@@ -748,6 +742,7 @@ impl Inlets for BackgroundNodeClient {
                     outlet_addr.clone(),
                     route![],
                     route![],
+                    validate,
                 )
             } else {
                 CreateInlet::to_node(
@@ -756,6 +751,7 @@ impl Inlets for BackgroundNodeClient {
                     route![],
                     route![],
                     authorized_identifier.clone(),
+                    validate,
                 )
             };
             if let Some(a) = alias {

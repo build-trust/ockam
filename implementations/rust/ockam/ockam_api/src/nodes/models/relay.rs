@@ -63,18 +63,22 @@ impl CreateRelay {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RelayInfo {
-    #[n(1)] forwarding_route: String,
-    #[n(2)] remote_address: String,
-    #[n(3)] worker_address: String,
+    #[n(1)] forwarding_route: Option<String>,
+    #[n(2)] remote_address: Option<String>,
+    #[n(3)] worker_address: Option<String>,
     #[n(4)] flow_control_id: Option<FlowControlId>,
+    #[n(5)] destination_address: MultiAddr,
+    #[n(6)] alias: Option<String>,
+    #[n(7)] at_rust_node: bool,
+    #[n(8)] key: String,
 }
 
 impl RelayInfo {
-    pub fn forwarding_route(&self) -> &str {
+    pub fn forwarding_route(&self) -> &Option<String> {
         &self.forwarding_route
     }
 
-    pub fn remote_address(&self) -> &str {
+    pub fn remote_address(&self) -> &Option<String> {
         &self.remote_address
     }
 
@@ -82,24 +86,77 @@ impl RelayInfo {
         &self.flow_control_id
     }
 
-    pub fn remote_address_ma(&self) -> Result<MultiAddr, ockam_core::Error> {
-        route_to_multiaddr(&route![self.remote_address.to_string()])
-            .ok_or_else(|| ApiError::core("Invalid Remote Address"))
+    pub fn remote_address_ma(&self) -> Result<Option<MultiAddr>, ockam_core::Error> {
+        if let Some(addr) = &self.remote_address {
+            route_to_multiaddr(&route![addr.to_string()])
+                .ok_or_else(|| ApiError::core("Invalid Remote Address"))
+                .map(|ma| Some(ma))
+        } else {
+            Ok(None)
+        }
     }
 
-    pub fn worker_address_ma(&self) -> Result<MultiAddr, ockam_core::Error> {
-        route_to_multiaddr(&route![self.worker_address.to_string()])
-            .ok_or_else(|| ApiError::core("Invalid Worker Address"))
+    pub fn key(&self) -> &String {
+        &self.key
+    }
+
+    pub fn worker_address_ma(&self) -> Result<Option<MultiAddr>, ockam_core::Error> {
+        if let Some(addr) = &self.worker_address {
+            route_to_multiaddr(&route![addr.to_string()])
+                .ok_or_else(|| ApiError::core("Invalid Worker Address"))
+                .map(|ma| Some(ma))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn with_destination_address(mut self, destination_address: MultiAddr) -> Self {
+        self.destination_address = destination_address;
+        self
+    }
+
+    pub fn with_alias(mut self, alias: Option<String>) -> Self {
+        self.alias = alias;
+        self
+    }
+
+    pub fn with_at_rust_node(mut self, at_rust_node: bool) -> Self {
+        self.at_rust_node = at_rust_node;
+        self
+    }
+
+    pub fn with_key(mut self, key: String) -> Self {
+        self.key = key;
+        self
+    }
+}
+
+impl Default for RelayInfo {
+    fn default() -> Self {
+        Self {
+            forwarding_route: None,
+            remote_address: None,
+            worker_address: None,
+            flow_control_id: None,
+            destination_address: Default::default(),
+            alias: None,
+            at_rust_node: false,
+            key: "".to_string(),
+        }
     }
 }
 
 impl From<RemoteRelayInfo> for RelayInfo {
     fn from(inner: RemoteRelayInfo) -> Self {
         Self {
-            forwarding_route: inner.forwarding_route().to_string(),
-            remote_address: inner.remote_address().into(),
-            worker_address: inner.worker_address().to_string(),
+            forwarding_route: Some(inner.forwarding_route().to_string()),
+            remote_address: Some(inner.remote_address().into()),
+            worker_address: Some(inner.worker_address().to_string()),
             flow_control_id: inner.flow_control_id().clone(),
+            destination_address: Default::default(),
+            alias: None,
+            at_rust_node: false,
+            key: "".to_string(),
         }
     }
 }

@@ -99,10 +99,7 @@ impl ShowCommandTui for ShowTui {
             .node
             .ask(&self.ctx, Request::get("/node/forwarder"))
             .await?;
-        let names = relays
-            .into_iter()
-            .map(|i| i.remote_address().to_string())
-            .collect();
+        let names = relays.into_iter().map(|i| i.key().to_string()).collect();
         Ok(names)
     }
 
@@ -131,7 +128,7 @@ impl ShowCommandTui for ShowTui {
             .await?;
         let relays = relays
             .into_iter()
-            .filter(|it| items_names.contains(&it.remote_address().to_string()))
+            .filter(|it| items_names.contains(it.key()))
             .map(RelayShowOutput::from)
             .collect::<Vec<RelayShowOutput>>();
         let node_name = self.node.node_name();
@@ -152,15 +149,15 @@ impl ShowCommandTui for ShowTui {
 
 #[derive(Serialize)]
 struct RelayShowOutput {
-    pub relay_route: String,
-    pub remote_address: MultiAddr,
-    pub worker_address: MultiAddr,
+    pub relay_route: Option<String>,
+    pub remote_address: Option<MultiAddr>,
+    pub worker_address: Option<MultiAddr>,
 }
 
 impl From<RelayInfo> for RelayShowOutput {
     fn from(r: RelayInfo) -> Self {
         Self {
-            relay_route: r.forwarding_route().to_string(),
+            relay_route: r.forwarding_route().clone(),
             remote_address: r.remote_address_ma().into_diagnostic().unwrap(),
             worker_address: r.worker_address_ma().into_diagnostic().unwrap(),
         }
@@ -176,9 +173,17 @@ impl Output for RelayShowOutput {
             Remote Address: {remote_addr}
             Worker Address: {worker_addr}
         "#,
-            route = self.relay_route,
-            remote_addr = self.remote_address,
-            worker_addr = self.worker_address,
+            route = self.relay_route.as_deref().unwrap_or("N/A"),
+            remote_addr = self
+                .remote_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
+            worker_addr = self
+                .worker_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
         ))
     }
 
@@ -188,9 +193,17 @@ impl Output for RelayShowOutput {
             Relay Route: {route}
             Remote Address: {remote_addr}
             Worker Address: {worker_addr}"#,
-            route = self.relay_route,
-            remote_addr = self.remote_address,
-            worker_addr = self.worker_address,
+            route = self.relay_route.as_deref().unwrap_or("N/A"),
+            remote_addr = self
+                .remote_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
+            worker_addr = self
+                .worker_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
         ))
     }
 }

@@ -1,15 +1,17 @@
 use core::fmt;
-use core::future::Future;
-use core::pin::Pin;
 use std::fmt::Formatter;
+use std::sync::Arc;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
+use ockam::remote::RemoteRelayInfo;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 use crate::error::ApiError;
 use ockam_core::compat::rand;
-use ockam_core::{Error, Route};
+use ockam_core::{async_trait, Address, Error, Route};
+use rand::random;
 
 //most sessions replacer are dependent on the node manager, if many session
 //fails concurrently, which is the common scenario we need extra time
@@ -17,15 +19,69 @@ use ockam_core::{Error, Route};
 pub const MAX_RECOVERY_TIME: Duration = Duration::from_secs(30);
 pub const MAX_CONNECT_TIME: Duration = Duration::from_secs(15);
 
-pub type Replacement = Pin<Box<dyn Future<Output = Result<Route, Error>> + Send>>;
-pub type Replacer = Box<dyn FnMut(Route) -> Replacement + Send>;
+#[async_trait]
+pub trait SessionReplacer: Send + 'static {
+    async fn create(&mut self) -> Result<ReplacerOutcome, Error>;
+    async fn close(&mut self) -> Result<(), Error>;
+}
 
+#[derive(Debug, Clone)]
+pub struct CurrentInletStatus {
+    pub route: Route,
+    pub worker: Address,
+    pub connection_status: ConnectionStatus,
+}
+
+#[derive(Debug, Clone)]
+pub enum ReplacerOutputKind {
+    Inlet(CurrentInletStatus),
+    Relay(RemoteRelayInfo),
+}
+
+#[derive(Debug, Clone)]
+pub struct ReplacerOutcome {
+    pub ping_route: Route,
+    pub kind: ReplacerOutputKind,
+}
+
+pub(super) struct InnerSessionReplacer {
+    inner: Mutex<Box<dyn SessionReplacer>>,
+}
+
+impl InnerSessionReplacer {
+    pub fn new(inner: impl SessionReplacer) -> Self {
+        Self {
+            inner: Mutex::new(Box::new(inner)),
+        }
+    }
+}
+
+impl InnerSessionReplacer {
+    async fn create(&self) -> Result<ReplacerOutcome, Error> {
+        self.inner.lock().await.create().await
+    }
+
+    pub async fn close(&self) -> Result<(), Error> {
+        self.inner.lock().await.close().await
+    }
+
+    pub async fn recreate(&self) -> Result<ReplacerOutcome, Error> {
+        self.close().await?;
+        self.create().await
+    }
+}
+
+#[derive(Clone)]
 pub struct Session {
     key: String,
-    ping_route: Route,
-    status: ConnectionStatus,
-    replace: Replacer,
+    inner: Arc<std::sync::Mutex<InnerSession>>,
+}
+
+pub struct InnerSession {
+    connection: ConnectionStatus,
+    replacer: Arc<InnerSessionReplacer>,
     pings: Vec<Ping>,
+    last_outcome: Option<ReplacerOutcome>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
@@ -38,8 +94,26 @@ pub enum ConnectionStatus {
     Up,
 }
 
+pub struct SessionStatus {
+    pub worker: Option<Address>,
+    pub connection: ConnectionStatus,
+    pub route: Option<Route>,
+    pub ping_route: Option<Route>,
+}
+
+impl Default for SessionStatus {
+    fn default() -> Self {
+        Self {
+            worker: None,
+            connection: ConnectionStatus::Down,
+            route: None,
+            ping_route: None,
+        }
+    }
+}
+
 impl fmt::Display for ConnectionStatus {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             ConnectionStatus::Down => write!(f, "down"),
             ConnectionStatus::Degraded => write!(f, "degraded"),
@@ -64,12 +138,13 @@ impl TryFrom<String> for ConnectionStatus {
 }
 
 impl fmt::Debug for Session {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let inner = self.inner.lock().unwrap();
         f.debug_struct("Session")
             .field("key", &self.key)
-            .field("ping_route", &self.ping_route)
-            .field("status", &self.status)
-            .field("pings", &self.pings)
+            .field("last_outcome", &inner.last_outcome)
+            .field("status", &inner.connection)
+            .field("pings", &inner.pings)
             .finish()
     }
 }
@@ -79,16 +154,17 @@ impl Session {
     ///
     /// # Arguments
     ///
-    /// * `ping_route` - The route to send pings to
     /// * `key` - The key to identify the session, usually adding the kind of the session
     ///           with the key used within the service registry is the way to gos
-    pub fn new(ping_route: Route, key: String) -> Self {
+    pub fn new(replace: impl SessionReplacer) -> Self {
         Self {
-            key,
-            ping_route,
-            status: ConnectionStatus::Up,
-            replace: Box::new(move |r| Box::pin(async move { Ok(r) })),
-            pings: Vec::new(),
+            key: hex::encode(random::<[u8; 8]>()),
+            inner: Arc::new(std::sync::Mutex::new(InnerSession {
+                connection: ConnectionStatus::Down,
+                replacer: Arc::new(InnerSessionReplacer::new(replace)),
+                pings: Vec::new(),
+                last_outcome: None,
+            })),
         }
     }
 
@@ -96,40 +172,68 @@ impl Session {
         self.key.as_str()
     }
 
-    pub fn ping_route(&self) -> &Route {
-        &self.ping_route
+    pub fn ping_route(&self) -> Option<Route> {
+        let inner = self.inner.lock().unwrap();
+        inner.last_outcome.as_ref().map(|o| o.ping_route.clone())
     }
 
-    pub fn set_ping_address(&mut self, ping_route: Route) {
-        self.ping_route = ping_route;
+    pub fn connection_status(&self) -> ConnectionStatus {
+        let inner = self.inner.lock().unwrap();
+        inner.connection.clone()
     }
 
-    pub fn status(&self) -> ConnectionStatus {
-        self.status
+    pub fn status(&self) -> Option<ReplacerOutcome> {
+        let inner = self.inner.lock().unwrap();
+        inner.last_outcome.clone()
     }
 
-    pub fn set_status(&mut self, s: ConnectionStatus) {
-        self.status = s
+    pub fn degraded(&self) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.connection = ConnectionStatus::Degraded;
+        inner.last_outcome = None;
     }
 
-    pub fn replacement(&mut self, ping_route: Route) -> Replacement {
-        (self.replace)(ping_route)
+    pub fn up(&self, replacer_outcome: ReplacerOutcome) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.connection = ConnectionStatus::Up;
+        inner.last_outcome = Some(replacer_outcome);
+    }
+    pub fn down(&self) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.connection = ConnectionStatus::Down;
+        inner.last_outcome = None;
     }
 
-    pub fn set_replacer(&mut self, f: Replacer) {
-        self.replace = f
+    pub async fn close(self) -> Result<(), Error> {
+        let replacer = {
+            let inner = self.inner.lock().unwrap();
+            inner.replacer.clone()
+        };
+        replacer.close().await?;
+        let mut inner = self.inner.lock().unwrap();
+        inner.connection = ConnectionStatus::Down;
+        inner.last_outcome = None;
+        Ok(())
     }
 
-    pub fn pings(&self) -> &[Ping] {
-        &self.pings
+    pub(super) fn replacer(&self) -> Arc<InnerSessionReplacer> {
+        let inner = self.inner.lock().unwrap();
+        inner.replacer.clone()
     }
 
-    pub fn add_ping(&mut self, p: Ping) {
-        self.pings.push(p);
+    pub fn pings(&self) -> Vec<Ping> {
+        let inner = self.inner.lock().unwrap();
+        inner.pings.clone()
     }
 
-    pub fn clear_pings(&mut self) {
-        self.pings.clear()
+    pub fn add_ping(&self, p: Ping) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.pings.push(p);
+    }
+
+    pub fn clear_pings(&self) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.pings.clear()
     }
 }
 

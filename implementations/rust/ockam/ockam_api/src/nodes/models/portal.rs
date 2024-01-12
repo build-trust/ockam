@@ -39,6 +39,8 @@ pub struct CreateInlet {
     #[n(6)] pub(crate) suffix_route: Route,
     /// The maximum duration to wait for an outlet to be available
     #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
+    /// Whether to synchronosly validate the connection with the outlet
+    #[n(8)] pub(crate) validate: bool,
 }
 
 impl CreateInlet {
@@ -47,6 +49,7 @@ impl CreateInlet {
         to: MultiAddr,
         prefix_route: Route,
         suffix_route: Route,
+        validate: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -56,6 +59,7 @@ impl CreateInlet {
             prefix_route,
             suffix_route,
             wait_for_outlet_duration: None,
+            validate,
         }
     }
 
@@ -65,6 +69,7 @@ impl CreateInlet {
         prefix_route: Route,
         suffix_route: Route,
         auth: Option<Identifier>,
+        validate: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -74,6 +79,7 @@ impl CreateInlet {
             prefix_route,
             suffix_route,
             wait_for_outlet_duration: None,
+            validate,
         }
     }
 
@@ -158,6 +164,7 @@ pub struct InletStatus {
     #[n(4)] pub payload: Option<String>,
     #[n(5)] pub outlet_route: String,
     #[n(6)] pub status: ConnectionStatus,
+    #[n(7)] pub outlet_addr: String,
 }
 
 impl InletStatus {
@@ -169,6 +176,7 @@ impl InletStatus {
             payload: Some(reason.into()),
             outlet_route: "".into(),
             status: ConnectionStatus::Down,
+            outlet_addr: "".to_string(),
         }
     }
 
@@ -179,6 +187,7 @@ impl InletStatus {
         payload: impl Into<Option<String>>,
         outlet_route: impl Into<String>,
         status: ConnectionStatus,
+        outlet_addr: impl Into<String>,
     ) -> Self {
         Self {
             bind_addr: bind_addr.into(),
@@ -187,6 +196,7 @@ impl InletStatus {
             payload: payload.into(),
             outlet_route: outlet_route.into(),
             status,
+            outlet_addr: outlet_addr.into(),
         }
     }
 }

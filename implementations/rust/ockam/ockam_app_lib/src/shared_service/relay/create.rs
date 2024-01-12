@@ -35,7 +35,7 @@ impl AppState {
 
             debug!("Not enrolled, skipping relay creation");
             match get_relay(&node_manager, &cli_state).await {
-                Ok(_) => match delete_relay(context, &node_manager, &cli_state).await {
+                Ok(_) => match delete_relay(&node_manager, &cli_state).await {
                     Ok(_) => {
                         info!("Relay deleted");
                     }
@@ -106,13 +106,9 @@ impl AppState {
     }
 }
 
-async fn delete_relay(
-    context: Arc<Context>,
-    node_manager: &InMemoryNode,
-    cli_state: &CliState,
-) -> ockam::Result<Option<RelayInfo>> {
+async fn delete_relay(node_manager: &InMemoryNode, cli_state: &CliState) -> ockam_core::Result<()> {
     let relay_name = relay_name(cli_state).await?;
-    node_manager.delete_relay(&context, &relay_name).await
+    node_manager.delete_relay(&relay_name).await
 }
 
 async fn get_relay(

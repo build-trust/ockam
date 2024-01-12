@@ -98,7 +98,7 @@ pub struct NodeManager {
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
-    pub(crate) registry: Registry,
+    pub(crate) registry: Arc<Registry>,
     pub(crate) medic_handle: MedicHandle,
 }
 
@@ -371,8 +371,9 @@ impl NodeManager {
             )
             .await?;
 
+        let registry = Arc::new(Registry::default());
         debug!("start the medic");
-        let medic_handle = MedicHandle::start_medic(ctx).await?;
+        let medic_handle = MedicHandle::start_medic(ctx, registry.clone()).await?;
 
         debug!("create the trust context");
         let tcp_transport = transport_options.tcp_transport;
@@ -398,7 +399,7 @@ impl NodeManager {
             tcp_transport,
             secure_channels,
             trust_context,
-            registry: Default::default(),
+            registry,
             medic_handle,
         };
 
@@ -687,7 +688,7 @@ impl NodeManagerWorker {
             }
             (Get, ["node", "forwarder"]) => encode_response(req, self.get_relays(req).await)?,
             (Delete, ["node", "forwarder", remote_address]) => {
-                encode_response(req, self.delete_relay(ctx, req, remote_address).await)?
+                encode_response(req, self.delete_relay(req, remote_address).await)?
             }
             (Post, ["node", "forwarder"]) => {
                 encode_response(req, self.create_relay(ctx, req, dec.decode()?).await)?

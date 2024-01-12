@@ -9,10 +9,10 @@ use ockam_core::{async_trait, route, Address, Route, LOCAL};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnection, TcpTransport};
+use ockam_transport_tcp::TcpConnection;
 
 use crate::error::ApiError;
-use crate::multiaddr_to_route;
+use crate::local_multiaddr_to_route;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
 pub(crate) use plain_tcp::PlainTcpInstantiator;
@@ -61,16 +61,51 @@ impl Connection {
         self.transport_route.clone()
     }
 
-    pub async fn route(&self, tcp_transport: &TcpTransport) -> Result<Route> {
-        multiaddr_to_route(&self.normalized_addr, tcp_transport)
-            .await
-            .map(|r| r.route)
-            .ok_or_else(|| {
-                ApiError::core(format!(
-                    "Couldn't convert MultiAddr to route: normalized_addr={}",
-                    self.normalized_addr
-                ))
-            })
+    pub fn route(&self) -> Result<Route> {
+        local_multiaddr_to_route(&self.normalized_addr).map_err(|_| {
+            ApiError::core(format!(
+                "Couldn't convert MultiAddr to route: normalized_addr={}",
+                self.normalized_addr
+            ))
+        })
+    }
+
+    pub async fn close(&self, context: &Context, node_manager: &NodeManager) -> Result<()> {
+        for encryptor in &self.secure_channel_encryptors {
+            if let Err(error) = node_manager.delete_secure_channel(context, encryptor).await {
+                match error.code().kind {
+                    Kind::NotFound => {
+                        debug!("cannot find and delete secure channel `{encryptor}`: {error}");
+                    }
+                    _ => Err(ockam_core::Error::new(
+                        Origin::Node,
+                        Kind::Internal,
+                        format!(
+                            "Failed to delete secure channnel with address {address}. {error}",
+                            address = encryptor,
+                        ),
+                    ))?,
+                }
+            }
+        }
+
+        if let Some(tcp_connection) = self.tcp_connection.as_ref() {
+            let address = tcp_connection.sender_address().clone();
+            if let Err(error) = node_manager.tcp_transport.disconnect(address.clone()).await {
+                match error.code().kind {
+                    Kind::NotFound => {
+                        debug!("cannot find and disconnect tcp worker `{tcp_connection}`");
+                    }
+                    _ => Err(ockam_core::Error::new(
+                        Origin::Node,
+                        Kind::Internal,
+                        format!("Failed to remove inlet with alias {address}. {}", error),
+                    ))?,
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -194,7 +194,7 @@ impl NodeManager {
         let sc = self
             .create_secure_channel_internal(
                 ctx,
-                connection.route(self.tcp_transport()).await?,
+                connection.route()?,
                 &identifier,
                 authorized_identifiers,
                 timeout,

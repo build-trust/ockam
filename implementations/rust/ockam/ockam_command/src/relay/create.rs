@@ -159,18 +159,30 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         let from = format!(
             "{}{}",
             &at,
-            &relay.worker_address_ma().into_diagnostic()?.to_string()
+            &relay
+                .worker_address_ma()
+                .into_diagnostic()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
         )
         .color(OckamColor::PrimaryResource.color());
         let to = format!(
             "/node/{}{}",
             &node.node_name(),
-            &relay.remote_address_ma().into_diagnostic()?.to_string()
+            &relay
+                .remote_address_ma()
+                .into_diagnostic()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
         )
         .color(OckamColor::PrimaryResource.color());
         fmt_ok!("Now relaying messages from {from} → {to}")
     };
-    let machine = relay.remote_address_ma().into_diagnostic()?;
+    let machine = relay
+        .remote_address_ma()
+        .into_diagnostic()?
+        .map(|x| x.to_string())
+        .unwrap_or("N/A".into());
     let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
     opts.terminal
         .stdout()
@@ -192,10 +204,14 @@ Relay {}:
     Worker Address: {}
     Flow Control Id: {}"
 "#,
-            self.remote_address(),
-            self.forwarding_route(),
-            self.remote_address_ma()?,
-            self.worker_address_ma()?,
+            self.key(),
+            self.forwarding_route().as_deref().unwrap_or("N/A"),
+            self.remote_address_ma()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
+            self.worker_address_ma()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
             self.flow_control_id()
                 .as_ref()
                 .map(|x| x.to_string())
@@ -209,9 +225,12 @@ Relay {}:
         let output = format!(
             r#"Relay {}
 Route {}"#,
-            self.remote_address()
+            self.key()
+                .as_str()
                 .color(OckamColor::PrimaryResource.color()),
             self.forwarding_route()
+                .as_deref()
+                .unwrap_or("N/A")
                 .color(OckamColor::PrimaryResource.color()),
         );
 

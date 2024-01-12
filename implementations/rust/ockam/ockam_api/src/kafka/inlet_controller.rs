@@ -124,6 +124,7 @@ impl KafkaInletController {
                         prefix,
                         suffix,
                         None,
+                        false,
                     ))
                     .to_vec()?,
             )

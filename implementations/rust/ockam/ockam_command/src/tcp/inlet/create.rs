@@ -66,6 +66,10 @@ pub struct CreateCommand {
     /// Override default timeout
     #[arg(long, value_parser = duration_parser)]
     timeout: Option<Duration>,
+
+    /// Avoid synchronosly validation of the outlet node connection
+    #[arg(long, id = "NO_VALIDATION", default_value = "false")]
+    no_validation: bool,
 }
 
 pub(crate) fn default_from_addr() -> SocketAddr {
@@ -166,6 +170,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
                     &cmd.alias,
                     &cmd.authorized,
                     cmd.connection_wait,
+                    !cmd.no_validation,
                 )
                 .await?;
 

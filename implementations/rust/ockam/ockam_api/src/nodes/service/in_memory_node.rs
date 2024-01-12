@@ -19,7 +19,6 @@ use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
-use crate::session::sessions::Session;
 
 /// An `InMemoryNode` represents a full running node
 /// In addition to a `NodeManager`, which is used to handle all the entities related to a node
@@ -148,14 +147,6 @@ impl InMemoryNode {
         self.create_controller_client(self.timeout)
             .await
             .into_diagnostic()
-    }
-
-    pub fn add_session(&self, session: Session) {
-        self.medic_handle.add_session(session);
-    }
-
-    pub fn remove_session(&self, key: &str) {
-        self.medic_handle.remove_session(key);
     }
 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {

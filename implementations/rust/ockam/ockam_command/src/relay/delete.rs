@@ -103,10 +103,7 @@ impl DeleteCommandTui for DeleteTui {
             .node
             .ask(&self.ctx, Request::get("/node/forwarder"))
             .await?;
-        let names = relays
-            .into_iter()
-            .map(|i| i.remote_address().to_string())
-            .collect();
+        let names = relays.into_iter().map(|i| i.key().to_string()).collect();
         Ok(names)
     }
 
