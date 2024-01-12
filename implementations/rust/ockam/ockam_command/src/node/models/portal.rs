@@ -21,7 +21,10 @@ impl From<InletStatus> for ShowInletStatus {
     fn from(value: InletStatus) -> Self {
         Self {
             listen_address: value.bind_addr,
-            route_to_outlet: Route::parse(value.outlet_route).and_then(|r| route_to_multiaddr(&r)),
+            route_to_outlet: value
+                .outlet_route
+                .and_then(Route::parse)
+                .and_then(|r| route_to_multiaddr(&r)),
         }
     }
 }

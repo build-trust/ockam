@@ -5,7 +5,7 @@ use ockam_core::Result;
 use ockam_multiaddr::proto::{Node, Project, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::error::{ApiError, ParseError};
+use crate::error::ApiError;
 
 /// Get address value from a string.
 ///
@@ -52,10 +52,9 @@ pub fn extract_address_value(input: &str) -> Result<String, ApiError> {
 }
 
 pub fn get_free_address() -> Result<SocketAddr, ApiError> {
-    let listener = TcpListener::bind("127.0.0.1:0")?;
-    let port = listener.local_addr()?.port();
-    let res = format!("127.0.0.1:{port}")
-        .parse()
-        .map_err(ParseError::from)?;
-    Ok(res)
+    get_free_address_for("127.0.0.1")
+}
+
+pub fn get_free_address_for(ip: &str) -> Result<SocketAddr, ApiError> {
+    Ok(TcpListener::bind(format!("{ip}:0"))?.local_addr()?)
 }

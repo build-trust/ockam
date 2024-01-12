@@ -1,9 +1,11 @@
+use crate::nodes::models::relay::RelayInfo;
 use crate::nodes::service::Alias;
+use crate::session::sessions::{ReplacerOutputKind, Session};
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
-use ockam::remote::RemoteRelayInfo;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
 use std::borrow::Borrow;
 use std::fmt::Display;
@@ -142,24 +144,16 @@ impl KafkaServiceInfo {
 #[derive(Clone)]
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
-    pub(crate) worker_addr: Address,
-    pub(crate) outlet_route: Route,
+    pub(crate) outlet_addr: MultiAddr,
+    pub(crate) session: Session,
 }
 
 impl InletInfo {
-    pub(crate) fn new(
-        bind_addr: &str,
-        worker_addr: Option<&Address>,
-        outlet_route: &Route,
-    ) -> Self {
-        let worker_addr = match worker_addr {
-            Some(addr) => addr.clone(),
-            None => Address::from_string(""),
-        };
+    pub(crate) fn new(bind_addr: &str, outlet_addr: MultiAddr, session: Session) -> Self {
         Self {
             bind_addr: bind_addr.to_owned(),
-            worker_addr,
-            outlet_route: outlet_route.to_owned(),
+            outlet_addr,
+            session,
         }
     }
 }
@@ -183,6 +177,42 @@ impl OutletInfo {
     }
 }
 
+#[derive(Clone)]
+pub struct RegistryRelayInfo {
+    pub(crate) destination_address: MultiAddr,
+    pub(crate) alias: String,
+    pub(crate) at_rust_node: bool,
+    pub(crate) session: Session,
+}
+
+impl From<RegistryRelayInfo> for RelayInfo {
+    fn from(registry_relay_info: RegistryRelayInfo) -> Self {
+        let relay_info = RelayInfo::new(
+            registry_relay_info.destination_address.clone(),
+            registry_relay_info.alias.clone(),
+            registry_relay_info.at_rust_node,
+            registry_relay_info.session.connection_status(),
+        );
+
+        let current_relay_status =
+            registry_relay_info
+                .session
+                .status()
+                .map(|info| match info.kind {
+                    ReplacerOutputKind::Inlet(_) => {
+                        panic!("InletInfo should not be in the registry")
+                    }
+                    ReplacerOutputKind::Relay(info) => info,
+                });
+
+        if let Some(current_relay_status) = current_relay_status {
+            relay_info.with(current_relay_status)
+        } else {
+            relay_info
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Registry {
     pub(crate) secure_channels: SecureChannelRegistry,
@@ -191,7 +221,7 @@ pub(crate) struct Registry {
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
-    pub(crate) relays: RegistryOf<String, RemoteRelayInfo>,
+    pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
     pub(crate) inlets: RegistryOf<Alias, InletInfo>,
     pub(crate) outlets: RegistryOf<Alias, OutletInfo>,
 }

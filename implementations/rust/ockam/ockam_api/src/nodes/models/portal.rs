@@ -1,6 +1,6 @@
 //! Inlets and outlet request/response types
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
@@ -42,6 +42,8 @@ pub struct CreateInlet {
     #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
     /// The expression for the access control policy
     #[n(8)] pub(crate) policy_expression: Option<Expr>,
+    /// Whether to synchronosly validate the connection with the outlet
+    #[n(9)] pub(crate) validate: bool,
 }
 
 impl CreateInlet {
@@ -51,6 +53,7 @@ impl CreateInlet {
         alias: impl Into<String>,
         prefix_route: Route,
         suffix_route: Route,
+        validate: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -61,6 +64,7 @@ impl CreateInlet {
             suffix_route,
             wait_for_outlet_duration: None,
             policy_expression: None,
+            validate,
         }
     }
 
@@ -71,6 +75,7 @@ impl CreateInlet {
         prefix_route: Route,
         suffix_route: Route,
         auth: Option<Identifier>,
+        validate: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -81,6 +86,7 @@ impl CreateInlet {
             suffix_route,
             wait_for_outlet_duration: None,
             policy_expression: None,
+            validate,
         }
     }
 
@@ -166,33 +172,24 @@ impl CreateOutlet {
 #[cbor(map)]
 pub struct InletStatus {
     #[n(1)] pub bind_addr: String,
-    #[n(2)] pub worker_addr: String,
+    #[n(2)] pub worker_addr: Option<String>,
     #[n(3)] pub alias: String,
     /// An optional status payload
     #[n(4)] pub payload: Option<String>,
-    #[n(5)] pub outlet_route: String,
+    #[n(5)] pub outlet_route: Option<String>,
     #[n(6)] pub status: ConnectionStatus,
+    #[n(7)] pub outlet_addr: String,
 }
 
 impl InletStatus {
-    pub fn bad_request(reason: &'static str) -> Self {
-        Self {
-            bind_addr: "".into(),
-            worker_addr: "".into(),
-            alias: "".into(),
-            payload: Some(reason.into()),
-            outlet_route: "".into(),
-            status: ConnectionStatus::Down,
-        }
-    }
-
     pub fn new(
         bind_addr: impl Into<String>,
-        worker_addr: impl Into<String>,
+        worker_addr: impl Into<Option<String>>,
         alias: impl Into<String>,
         payload: impl Into<Option<String>>,
-        outlet_route: impl Into<String>,
+        outlet_route: impl Into<Option<String>>,
         status: ConnectionStatus,
+        outlet_addr: impl Into<String>,
     ) -> Self {
         Self {
             bind_addr: bind_addr.into(),
@@ -201,6 +198,7 @@ impl InletStatus {
             payload: payload.into(),
             outlet_route: outlet_route.into(),
             status,
+            outlet_addr: outlet_addr.into(),
         }
     }
 }
@@ -218,15 +216,6 @@ pub struct OutletStatus {
 }
 
 impl OutletStatus {
-    pub fn bad_request(reason: &'static str) -> Self {
-        Self {
-            socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 80),
-            worker_addr: "".into(),
-            alias: "".into(),
-            payload: Some(reason.into()),
-        }
-    }
-
     pub fn new(
         socket_addr: SocketAddr,
         worker_addr: Address,

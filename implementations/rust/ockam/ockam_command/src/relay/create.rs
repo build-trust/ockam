@@ -19,9 +19,8 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{async_cmd, process_nodes_multiaddr};
-use crate::{docs, fmt_log, Error, Result};
-use crate::{fmt_ok, CommandGlobalOpts};
+use crate::util::{async_cmd, colorize_connection_status, process_nodes_multiaddr};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, Error, Result};
 use crate::{node::util::initialize_default_node, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -35,7 +34,7 @@ const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the relay
+    /// Name of the relay. If not provided, 'default' will be used.
     #[arg(hide_default_value = true, default_value = "default")]
     pub relay_name: String,
 
@@ -50,6 +49,10 @@ pub struct CreateCommand {
     /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED")]
     pub authorized: Option<Identifier>,
+
+    /// Relay address to use. By default, inherits the relay name.
+    #[arg(long)]
+    relay_address: Option<String>,
 }
 
 pub fn default_at_addr() -> String {
@@ -85,8 +88,14 @@ impl CreateCommand {
                     ))?;
                 };
                 info!("creating a relay at {} to {}", at, node.node_name());
-                node.create_relay(ctx, &at, Some(alias), cmd.authorized)
-                    .await?
+                node.create_relay(
+                    ctx,
+                    &at,
+                    alias.clone(),
+                    cmd.authorized,
+                    Some(cmd.relay_address.unwrap_or(alias)),
+                )
+                .await?
             };
             *is_finished.lock().await = true;
             Ok(relay_info)
@@ -110,13 +119,27 @@ impl CreateCommand {
 
         let plain = {
             // `remote_address` in the project is relaying to worker at address `worker_address` on that node.
-            let remote_address = relay.remote_address_ma().into_diagnostic()?;
-            let worker_address = relay.worker_address_ma().into_diagnostic()?;
+            let remote_address = relay
+                .remote_address_ma()
+                .into_diagnostic()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into());
+            let worker_address = relay
+                .worker_address_ma()
+                .into_diagnostic()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into());
             let from = color_primary(format!("{}{}", &at, remote_address));
             let to = color_primary(format!("/node/{}{}", &node.node_name(), worker_address));
             fmt_ok!("Now relaying messages from {from} → {to}")
         };
-        let machine = relay.remote_address_ma().into_diagnostic()?;
+
+        let machine = relay
+            .remote_address_ma()
+            .into_diagnostic()?
+            .map(|x| x.to_string())
+            .unwrap_or("N/A".into());
+
         let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
         opts.terminal
             .stdout()
@@ -182,34 +205,24 @@ impl CreateCommand {
 
 impl Output for RelayInfo {
     fn output(&self) -> Result<String> {
-        let output = format!(
-            r#"
-Relay {}:
-    Route: {}
-    Remote Address: {}
-    Worker Address: {}
-    Flow Control Id: {}"
-"#,
-            self.remote_address(),
-            self.forwarding_route(),
-            self.remote_address_ma()?,
-            self.worker_address_ma()?,
-            self.flow_control_id()
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or("<none>".into())
-        );
-
-        Ok(output)
+        Ok(r#"
+Relay:
+    "#
+        .to_owned()
+            + self.list_output()?.as_str())
     }
 
     fn list_output(&self) -> Result<String> {
         let output = format!(
-            r#"Relay {}
-Route {}"#,
-            self.remote_address()
-                .color(OckamColor::PrimaryResource.color()),
-            self.forwarding_route()
+            r#"Alias: {alias}
+Status: {connection_status}
+Remote Address: {remote_address}"#,
+            alias = self.alias().color(OckamColor::PrimaryResource.color()),
+            connection_status = colorize_connection_status(self.connection_status()),
+            remote_address = self
+                .remote_address_ma()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
                 .color(OckamColor::PrimaryResource.color()),
         );
 

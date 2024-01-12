@@ -234,7 +234,6 @@ mod test {
             "hello world!".as_bytes()
         );
 
-        context.stop().await?;
         consumer_mock_kafka.destroy_and_wait().await;
         producer_mock_kafka.destroy_and_wait().await;
         Ok(())

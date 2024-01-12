@@ -76,6 +76,10 @@ pub struct CreateCommand {
     /// Override default timeout
     #[arg(long, value_parser = duration_parser)]
     pub timeout: Option<Duration>,
+
+    /// Avoid synchronosly validation of the outlet node connection
+    #[arg(long, id = "NO_VALIDATION", default_value = "false")]
+    no_validation: bool,
 }
 
 pub(crate) fn default_from_addr() -> SocketAddr {
@@ -131,6 +135,7 @@ impl CreateCommand {
                         &cmd.authorized,
                         &cmd.policy_expression,
                         cmd.connection_wait,
+                        !cmd.no_validation,
                     )
                     .await?;
 
@@ -304,7 +309,7 @@ mod tests {
         CreateCommand::parse_arg_to(&state, "/alice/service", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_to(&state, "alice/forwarder", default_project_name)
+        CreateCommand::parse_arg_to(&state, "alice/relay", default_project_name)
             .await
             .expect_err("Invalid protocol");
 

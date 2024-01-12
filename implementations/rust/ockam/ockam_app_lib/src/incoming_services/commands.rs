@@ -220,6 +220,7 @@ impl AppState {
                 &None,
                 &Some(expr),
                 Duration::from_secs(5),
+                true,
             )
             .await
             .map_err(|err| {

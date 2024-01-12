@@ -10,7 +10,6 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_core::AsyncTryClone;
 
-use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::async_cmd;
@@ -22,8 +21,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct DeleteCommand {
-    /// Name assigned to the Relay, prefixed with 'forward_to_'. Example: 'forward_to_myrelay'
-    #[arg(value_parser = relay_name_parser)]
+    /// Name assigned to the Relay
+    #[arg(value_name = "RELAY_NAME")]
     relay_name: Option<String>,
 
     /// Node on which to delete the Relay. If not provided, the default node will be used
@@ -110,28 +109,24 @@ impl DeleteCommandTui for DeleteTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         let relays: Vec<RelayInfo> = self
             .node
-            .ask(&self.ctx, Request::get("/node/forwarder"))
+            .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        let names = relays
-            .into_iter()
-            .map(|i| i.remote_address().to_string())
-            .collect();
-        Ok(names)
+        Ok(relays.into_iter().map(|i| i.alias().to_string()).collect())
     }
 
-    async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
+    async fn delete_single(&self, relay_name: &str) -> miette::Result<()> {
         let node_name = self.node.node_name();
         self.node
             .tell(
                 &self.ctx,
-                Request::delete(format!("/node/forwarder/{item_name}")),
+                Request::delete(format!("/node/relay/{relay_name}")),
             )
             .await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
                 "Relay with name {} on Node {} has been deleted",
-                color!(item_name, OckamColor::PrimaryResource),
+                color!(relay_name, OckamColor::PrimaryResource),
                 color!(node_name, OckamColor::PrimaryResource)
             ))
             .write_line()?;

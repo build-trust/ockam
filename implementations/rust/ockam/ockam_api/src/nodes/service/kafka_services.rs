@@ -239,6 +239,7 @@ impl InMemoryNode {
             None,
             None,
             None,
+            false,
         )
         .await?;
 
@@ -338,9 +339,10 @@ impl InMemoryNode {
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS
             ],
             outlet_node_multiaddr,
-            None,
-            None,
             inlet_policy_expression,
+            None,
+            None,
+            false,
         )
         .await?;
 
