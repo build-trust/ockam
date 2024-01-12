@@ -98,7 +98,7 @@ pub struct NodeManager {
     pub(crate) secure_channels: Arc<SecureChannels>,
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     authority: Option<Identifier>,
-    pub(crate) registry: Registry,
+    pub(crate) registry: Arc<Registry>,
     pub(crate) medic_handle: MedicHandle,
 }
 
@@ -362,8 +362,9 @@ impl NodeManager {
             .secure_channels(&general_options.node_name)
             .await?;
 
+        let registry = Arc::new(Registry::default());
         debug!("start the medic");
-        let medic_handle = MedicHandle::start_medic(ctx).await?;
+        let medic_handle = MedicHandle::start_medic(ctx, registry.clone()).await?;
 
         debug!("retrieve the node identifier");
         let node_identifier = cli_state
@@ -402,7 +403,7 @@ impl NodeManager {
             secure_channels,
             credential_retriever_creator,
             authority: trust_options.authority,
-            registry: Default::default(),
+            registry,
             medic_handle,
         };
 
@@ -678,15 +679,14 @@ impl NodeManagerWorker {
             }
 
             // ==*== Relay commands ==*==
-            // TODO: change the path to 'relay' instead of 'forwarder'
-            (Get, ["node", "forwarder", remote_address]) => {
-                encode_response(req, self.show_relay(req, remote_address).await)?
+            (Get, ["node", "relay", alias]) => {
+                encode_response(req, self.show_relay(req, alias).await)?
             }
-            (Get, ["node", "forwarder"]) => encode_response(req, self.get_relays(req).await)?,
-            (Delete, ["node", "forwarder", remote_address]) => {
-                encode_response(req, self.delete_relay(ctx, req, remote_address).await)?
+            (Get, ["node", "relay"]) => encode_response(req, self.get_relays(req).await)?,
+            (Delete, ["node", "relay", alias]) => {
+                encode_response(req, self.delete_relay(req, alias).await)?
             }
-            (Post, ["node", "forwarder"]) => {
+            (Post, ["node", "relay"]) => {
                 encode_response(req, self.create_relay(ctx, req, dec.decode()?).await)?
             }
 

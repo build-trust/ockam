@@ -1,3 +1,5 @@
+use colorful::core::color_string::CString;
+use colorful::Colorful;
 use std::sync::Arc;
 use std::{
     net::{SocketAddr, TcpListener},
@@ -14,12 +16,13 @@ use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::CliStateError;
+use ockam_api::ConnectionStatus;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::error::Error;
-use crate::{CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, OckamColor, Result};
 
 pub mod api;
 pub mod duration;
@@ -227,6 +230,15 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
         ))?;
     }
     Ok(())
+}
+
+pub fn colorize_connection_status(status: ConnectionStatus) -> CString {
+    let text = status.to_string();
+    match status {
+        ConnectionStatus::Up => text.color(OckamColor::PrimaryResource.color()),
+        ConnectionStatus::Down => text.color(OckamColor::Failure.color()),
+        ConnectionStatus::Degraded => text.color(OckamColor::Failure.color()),
+    }
 }
 
 #[cfg(test)]

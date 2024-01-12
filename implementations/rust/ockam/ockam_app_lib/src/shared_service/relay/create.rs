@@ -35,7 +35,7 @@ impl AppState {
 
             debug!("Not enrolled, skipping relay creation");
             match get_relay(&node_manager, &cli_state).await {
-                Ok(_) => match delete_relay(context, &node_manager, &cli_state).await {
+                Ok(_) => match delete_relay(&node_manager, &cli_state).await {
                     Ok(_) => {
                         info!("Relay deleted");
                     }
@@ -82,17 +82,19 @@ impl AppState {
                     debug!(project = %project.name(), "Creating relay at project");
                     let project_route = format!("/project/{}", project.name());
                     let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
+                    let relay_name_and_alias = bare_relay_name(cli_state).await?;
                     let relay = node_manager
                         .create_relay(
                             context,
                             &project_address,
-                            Some(bare_relay_name(cli_state).await?),
+                            relay_name_and_alias.clone(),
                             false,
                             None,
+                            Some(relay_name_and_alias),
                         )
                         .await
                         .into_diagnostic()?;
-                    info!(forwarding_route = %relay.forwarding_route(), "Relay created at project");
+                    info!(forwarding_route = %relay.forwarding_route().clone().unwrap_or_default(), "Relay created at project");
                     self.update_orchestrator_status(OrchestratorStatus::Connected);
                     self.publish_state().await;
                     Ok(())
@@ -106,13 +108,9 @@ impl AppState {
     }
 }
 
-async fn delete_relay(
-    context: Arc<Context>,
-    node_manager: &InMemoryNode,
-    cli_state: &CliState,
-) -> ockam::Result<Option<RelayInfo>> {
+async fn delete_relay(node_manager: &InMemoryNode, cli_state: &CliState) -> ockam_core::Result<()> {
     let relay_name = relay_name(cli_state).await?;
-    node_manager.delete_relay(&context, &relay_name).await
+    node_manager.delete_relay(&relay_name).await
 }
 
 async fn get_relay(
@@ -124,7 +122,7 @@ async fn get_relay(
         .get_relays()
         .await
         .into_iter()
-        .find(|r| r.remote_address() == relay_name))
+        .find(|r| r.alias() == relay_name))
 }
 
 async fn relay_name(cli_state: &CliState) -> ockam::Result<String> {

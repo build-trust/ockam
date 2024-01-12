@@ -1,4 +1,5 @@
 use clap::Args;
+use colorful::Colorful;
 use console::Term;
 use indoc::formatdoc;
 use miette::{miette, IntoDiagnostic};
@@ -10,15 +11,16 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use ockam_api::ConnectionStatus;
 use ockam_core::AsyncTryClone;
 use serde::Serialize;
 
 use crate::output::Output;
-use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::util::colorize_connection_status;
+use crate::{docs, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -30,8 +32,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
-    /// Name assigned to the Relay, prefixed with 'forward_to_'. Example: 'forward_to_myrelay'
-    #[arg(value_parser = relay_name_parser)]
+    /// Name assigned to the Relay
     relay_name: Option<String>,
 
     /// Node which the relay belongs to
@@ -105,22 +106,15 @@ impl ShowCommandTui for ShowTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         let relays: Vec<RelayInfo> = self
             .node
-            .ask(&self.ctx, Request::get("/node/forwarder"))
+            .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        let names = relays
-            .into_iter()
-            .map(|i| i.remote_address().to_string())
-            .collect();
-        Ok(names)
+        Ok(relays.into_iter().map(|i| i.alias().to_string()).collect())
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let relay: RelayInfo = self
             .node
-            .ask(
-                &self.ctx,
-                Request::get(format!("/node/forwarder/{item_name}")),
-            )
+            .ask(&self.ctx, Request::get(format!("/node/relay/{item_name}")))
             .await?;
         let relay = RelayShowOutput::from(relay);
         self.terminal()
@@ -135,15 +129,21 @@ impl ShowCommandTui for ShowTui {
 
 #[derive(Serialize)]
 struct RelayShowOutput {
-    pub relay_route: String,
-    pub remote_address: MultiAddr,
-    pub worker_address: MultiAddr,
+    pub alias: String,
+    pub destination: MultiAddr,
+    pub connection_status: ConnectionStatus,
+    pub relay_route: Option<String>,
+    pub remote_address: Option<MultiAddr>,
+    pub worker_address: Option<MultiAddr>,
 }
 
 impl From<RelayInfo> for RelayShowOutput {
     fn from(r: RelayInfo) -> Self {
         Self {
-            relay_route: r.forwarding_route().to_string(),
+            alias: r.alias().to_string(),
+            destination: r.destination_address().clone(),
+            connection_status: r.connection_status(),
+            relay_route: r.forwarding_route().clone(),
             remote_address: r.remote_address_ma().into_diagnostic().unwrap(),
             worker_address: r.worker_address_ma().into_diagnostic().unwrap(),
         }
@@ -155,25 +155,47 @@ impl Output for RelayShowOutput {
         Ok(formatdoc!(
             r#"
         Relay:
+            Alias: {alias}
+            Destination: {destination_address}
+            Status: {connection_status}
             Relay Route: {route}
             Remote Address: {remote_addr}
             Worker Address: {worker_addr}
         "#,
-            route = self.relay_route,
-            remote_addr = self.remote_address,
-            worker_addr = self.worker_address,
+            alias = self.alias,
+            connection_status = colorize_connection_status(self.connection_status),
+            destination_address = self.destination.to_string(),
+            route = self.relay_route.as_deref().unwrap_or("N/A"),
+            remote_addr = self
+                .remote_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
+            worker_addr = self
+                .worker_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into()),
         ))
     }
 
     fn list_output(&self) -> crate::error::Result<String> {
         Ok(formatdoc!(
             r#"
-            Relay Route: {route}
-            Remote Address: {remote_addr}
-            Worker Address: {worker_addr}"#,
-            route = self.relay_route,
-            remote_addr = self.remote_address,
-            worker_addr = self.worker_address,
+            Alias: {alias}
+            Status: {connection_status}
+            Remote Address: {remote_address}"#,
+            alias = self
+                .alias
+                .as_str()
+                .color(OckamColor::PrimaryResource.color()),
+            connection_status = colorize_connection_status(self.connection_status),
+            remote_address = self
+                .remote_address
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
+                .color(OckamColor::PrimaryResource.color()),
         ))
     }
 }

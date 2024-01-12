@@ -258,29 +258,37 @@ impl Output for Vec<u8> {
 
 impl Output for InletStatus {
     fn output(&self) -> Result<String> {
-        let outlet = if let Some(r) = Route::parse(&self.outlet_route) {
-            if let Some(ma) = route_to_multiaddr(&r) {
-                ma.to_string()
-            } else {
-                self.outlet_route.to_string()
-            }
-        } else {
-            self.outlet_route.to_string()
-        };
+        let outlet = self
+            .outlet_route
+            .as_ref()
+            .and_then(Route::parse)
+            .and_then(|r| route_to_multiaddr(&r))
+            .map(|addr| addr.to_string())
+            .unwrap_or("N/A".to_string());
 
         let output = format!(
             r#"
-Inlet {}
-    TCP Address: {}
-    Outlet Address: {}
+Inlet
+    Alias: {alias}
+    Status: {status}
+    TCP Address: {bind_addr}
+    Outlet Address: {outlet_route}
+    Outlet Destination: {outlet_addr}
             "#,
-            self.alias
+            alias = self
+                .alias
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            self.bind_addr
+            status = self
+                .status
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            outlet.color(OckamColor::PrimaryResource.color())
+            bind_addr = self
+                .bind_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            outlet_route = outlet.color(OckamColor::PrimaryResource.color()),
+            outlet_addr = self.outlet_addr,
         );
 
         Ok(output)
@@ -297,7 +305,9 @@ From {} to {}"#,
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
             self.outlet_route
-                .to_string()
+                .as_ref()
+                .map(|r| r.to_string())
+                .unwrap_or("N/A".to_string())
                 .color(OckamColor::PrimaryResource.color()),
         );
 

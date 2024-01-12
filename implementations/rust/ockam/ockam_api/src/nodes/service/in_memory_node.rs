@@ -21,7 +21,6 @@ use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
-use crate::session::sessions::Session;
 
 /// An `InMemoryNode` represents a full running node
 /// In addition to a `NodeManager`, which is used to handle all the entities related to a node
@@ -176,14 +175,6 @@ impl InMemoryNode {
             .into_diagnostic()
     }
 
-    pub fn add_session(&self, session: Session) {
-        self.medic_handle.add_session(session);
-    }
-
-    pub fn remove_session(&self, key: &str) {
-        self.medic_handle.remove_session(key);
-    }
-
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
@@ -216,7 +207,6 @@ impl InMemoryNode {
         let persistent = general_options.persistent;
         let node_manager =
             NodeManager::create(ctx, general_options, transport_options, trust_options).await?;
-        debug!("start the Medic");
         Ok(Self {
             node_manager: Arc::new(node_manager),
             persistent,
