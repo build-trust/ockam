@@ -4,7 +4,6 @@
 
 setup() {
   load load/base.bash
-  load load/orchestrator.bash
   load_bats_ext
   setup_home_dir
 }
@@ -16,9 +15,6 @@ teardown() {
 # ===== TESTS
 
 @test "trust_context - CRUD" {
-  skip_if_orchestrator_tests_not_enabled
-  copy_local_orchestrator_data
-
   # Create with random name
   run_success "$OCKAM" trust-context create
 
