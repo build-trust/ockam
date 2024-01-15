@@ -58,6 +58,12 @@ defmodule Ockam.TypedCBOR do
       iex> from_cbor_term({:list, :integer}, to_cbor_term({:list, :integer}, [0, 1]))
       [0,1]
 
+      iex> to_cbor_term({:variant_enum, [a: 0, b: 1]}, :a)
+      [0, []]
+
+      iex> from_cbor_term({:variant_enum, [a: 0, b: 1]}, to_cbor_term({:variant_enum, [a: 0, b: 1]}, :b))
+      :b
+
       iex> to_cbor_term({:list, {:enum, [a: 0, b: 1]}}, [:b, :c])
       ** (Ockam.TypedCBOR.Exception) invalid enum val: :c, allowed: [:a, :b]
 
@@ -166,7 +172,7 @@ defmodule Ockam.TypedCBOR do
     end
   end
 
-  def from_cbor_term({:enum, vals}, [n, list]) when is_integer(n) do
+  def from_cbor_term({:variant_enum, vals}, [n, list]) when is_integer(n) do
     case {List.keyfind(vals, n, 1), list} do
       {nil, _} ->
         raise Exception, message: "invalid enum encoding: #{n}, allowed: #{inspect(vals)}"
@@ -312,7 +318,7 @@ defmodule Ockam.TypedCBOR do
     end
   end
 
-  def to_cbor_term({:enum, vals}, val) when is_struct(val) do
+  def to_cbor_term({:variant_enum, vals}, val) when is_struct(val) do
     schema = val.__struct__
 
     case vals[schema] do
@@ -322,6 +328,17 @@ defmodule Ockam.TypedCBOR do
 
       n when is_integer(n) ->
         [n, [to_cbor_term(schema, val)]]
+    end
+  end
+
+  def to_cbor_term({:variant_enum, vals}, val) when is_atom(val) do
+    case vals[val] do
+      nil ->
+        raise Exception,
+          message: "invalid enum val: #{inspect(val)}, allowed: #{inspect(Keyword.keys(vals))}"
+
+      n when is_integer(n) ->
+        [n, []]
     end
   end
 

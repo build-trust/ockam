@@ -13,4 +13,15 @@ defmodule Ockam.SecureChannel.Messages.Tests do
       {:ok, %Messages.RefreshCredentials{}} = Messages.decode(b)
     end
   end
+
+  describe "Ockam.SecureChannel.Messages.Close" do
+    test ":close can be parsed" do
+      # sample value encoded from rust
+      hex_msg = "820280"
+
+      {:ok, b} = Base.decode16(hex_msg, case: :lower)
+      {:ok, :close} = Messages.decode(b)
+      {:ok, ^b} = Messages.encode(:close)
+    end
+  end
 end
