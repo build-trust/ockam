@@ -234,7 +234,7 @@ impl Context {
             Ok(next) => next,
             Err(err) => {
                 // TODO: communicate bad routes to calling function
-                tracing::error!("Invalid route for message sent from {}", sending_address);
+                error!("Invalid route for message sent from {}", sending_address);
                 return Err(err);
             }
         };
@@ -322,13 +322,13 @@ impl Context {
         let (reply_tx, mut reply_rx) = small_channel();
         let next = match local_msg.transport().onward_route.next() {
             Ok(next) => next,
-            Err(_) => {
+            Err(err) => {
                 // TODO: communicate bad routes to calling function
-                tracing::error!(
+                error!(
                     "Invalid onward route for message forwarded from {}",
                     local_msg.transport().return_route
                 );
-                panic!("invalid destination route");
+                return Err(err);
             }
         };
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
