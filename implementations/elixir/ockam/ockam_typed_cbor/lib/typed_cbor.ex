@@ -318,6 +318,10 @@ defmodule Ockam.TypedCBOR do
     end
   end
 
+  # Variants of enums where at least 1 of the variants have fields are encoded as [#number, [arguments]] by
+  # rust' minicbor library.  The :variant_enum type here is to use that encoding.  A `[value: 0]`  :enum
+  # definition would be encoded just as `0` ,  while the same definition using :variant_enum will be encoded
+  # as `[0, []]`.
   def to_cbor_term({:variant_enum, vals}, val) when is_struct(val) do
     schema = val.__struct__
 
