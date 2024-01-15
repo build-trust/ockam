@@ -9,9 +9,10 @@ use rand::random;
 use ockam_api::cli_state::NamedTrustContext;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
+use ockam_node::api::OpenTelemetryContext;
 use ockam_node::Context;
 
-use crate::node::background::{spawn_background_node, OpenTelemetryContext};
+use crate::node::background::spawn_background_node;
 use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;
@@ -144,7 +145,7 @@ pub async fn spawn_node(
 
     if let Some(opentelemetry_context) = opentelemetry_context {
         args.push("--opentelemetry-context".to_string());
-        args.push(serde_json::to_string(&opentelemetry_context).into_diagnostic()?);
+        args.push(opentelemetry_context.to_string());
     }
 
     args.push(name.to_owned());

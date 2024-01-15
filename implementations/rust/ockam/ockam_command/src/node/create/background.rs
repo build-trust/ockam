@@ -1,9 +1,5 @@
 use colorful::Colorful;
 use miette::miette;
-use opentelemetry::global;
-use opentelemetry::propagation::{Extractor, Injector};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{debug, info, instrument, Span};
@@ -11,6 +7,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use ockam::Context;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_node::api::OpenTelemetryContext;
 
 use crate::node::show::is_node_up;
 use crate::node::util::spawn_node;
@@ -122,51 +119,4 @@ pub(crate) async fn spawn_background_node(
     .await?;
 
     Ok(())
-}
-
-/// Serializable datastructure to hold the opentelemetry propagation context.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OpenTelemetryContext(HashMap<String, String>);
-
-impl OpenTelemetryContext {
-    pub fn extract(&self) -> opentelemetry::Context {
-        global::get_text_map_propagator(|propagator| propagator.extract(self))
-    }
-
-    fn empty() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn inject(context: &opentelemetry::Context) -> Self {
-        global::get_text_map_propagator(|propagator| {
-            let mut propagation_context = OpenTelemetryContext::empty();
-            propagator.inject_context(context, &mut propagation_context);
-            propagation_context
-        })
-    }
-}
-
-impl Injector for OpenTelemetryContext {
-    fn set(&mut self, key: &str, value: String) {
-        self.0.insert(key.to_owned(), value);
-    }
-}
-
-impl Extractor for OpenTelemetryContext {
-    fn get(&self, key: &str) -> Option<&str> {
-        let key = key.to_owned();
-        self.0.get(&key).map(|v| v.as_ref())
-    }
-
-    fn keys(&self) -> Vec<&str> {
-        self.0.keys().map(|k| k.as_ref()).collect()
-    }
-}
-
-/// Helper fn for parsing the OpenTelemetry context
-pub(crate) fn opentelemetry_context_parser(
-    input: &str,
-) -> crate::error::Result<OpenTelemetryContext> {
-    Ok(serde_json::from_str(input)
-        .map_err(|_| miette!("Invalid OpenTelemetry context: {input}"))?)
 }

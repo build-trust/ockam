@@ -4446,6 +4446,7 @@ dependencies = [
  "tokio-retry",
  "tracing",
  "tracing-error",
+ "tracing-opentelemetry",
  "tracing-subscriber",
 ]
 

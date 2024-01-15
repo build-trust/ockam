@@ -1,11 +1,19 @@
 #![allow(missing_docs)]
 
+use core::fmt::{Display, Formatter};
 use minicbor::{Decode, Encode};
+use opentelemetry::global;
+use opentelemetry::propagation::{Extractor, Injector};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tracing::Span;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{LocalInfo, Result, Route};
 
 use crate::{Context, MessageSendReceiveOptions};
@@ -125,6 +133,9 @@ impl Client {
         T: Encode<()>,
     {
         let mut buf = Vec::new();
+        let opentelemetry_context = OpenTelemetryContext::inject(&Span::current().context());
+        let req = req.tracing_context(opentelemetry_context.to_string());
+
         req.encode(&mut buf)?;
         trace! {
             target:  "ockam_api",
@@ -149,4 +160,69 @@ impl Client {
 
         Ok((body, local_info))
     }
+}
+
+/// Serializable data type to hold the opentelemetry propagation context.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenTelemetryContext(HashMap<String, String>);
+
+impl OpenTelemetryContext {
+    pub fn extract(&self) -> opentelemetry::Context {
+        global::get_text_map_propagator(|propagator| propagator.extract(self))
+    }
+
+    fn empty() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn inject(context: &opentelemetry::Context) -> Self {
+        global::get_text_map_propagator(|propagator| {
+            let mut propagation_context = OpenTelemetryContext::empty();
+            propagator.inject_context(context, &mut propagation_context);
+            propagation_context
+        })
+    }
+}
+
+impl Display for OpenTelemetryContext {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&serde_json::to_string(&self).map_err(|_| core::fmt::Error)?)
+    }
+}
+
+impl Injector for OpenTelemetryContext {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_owned(), value);
+    }
+}
+
+impl Extractor for OpenTelemetryContext {
+    fn get(&self, key: &str) -> Option<&str> {
+        let key = key.to_owned();
+        self.0.get(&key).map(|v| v.as_ref())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_ref()).collect()
+    }
+}
+
+/// Parse the OpenTelemetry context from a String
+impl TryFrom<&str> for OpenTelemetryContext {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: &str) -> Result<Self> {
+        opentelemetry_context_parser(value)
+    }
+}
+
+/// Parse the OpenTelemetry context from a String
+pub fn opentelemetry_context_parser(input: &str) -> Result<OpenTelemetryContext> {
+    serde_json::from_str(input).map_err(|e| {
+        ockam_core::Error::new(
+            Origin::Api,
+            Kind::Serialization,
+            format!("Invalid OpenTelemetry context: {input}. Got error: {e:?}"),
+        )
+    })
 }
