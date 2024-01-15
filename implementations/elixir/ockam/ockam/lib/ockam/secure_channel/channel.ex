@@ -36,7 +36,6 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.IdentityProof
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol, as: XX
   alias Ockam.SecureChannel.Messages
-  alias Ockam.SecureChannel.ServiceMessage
   alias Ockam.Session.Spawner
   alias Ockam.Worker
 
@@ -317,9 +316,7 @@ defmodule Ockam.SecureChannel.Channel do
         _from,
         %{state: %Channel{channel_state: %Established{} = e} = s} = ws
       ) do
-    payload = ServiceMessage.encode!(%ServiceMessage{command: :disconnect})
-    msg = %Message{onward_route: [], return_route: [], payload: payload}
-    send_over_encrypted_channel(msg, e.encrypt_st, s.peer_route, s.inner_address)
+    send_payload_over_encrypted_channel(:close, e.encrypt_st, s.peer_route, s.inner_address)
     {:stop, :normal, :ok, ws}
   end
 
@@ -586,19 +583,6 @@ defmodule Ockam.SecureChannel.Channel do
       error ->
         Logger.warning("Failed to decrypt message, discarded: #{inspect(error)}")
         {:ok, state}
-    end
-  end
-
-  defp handle_decrypted_message(
-         %{onward_route: [], payload: payload} = msg,
-         %Channel{channel_state: %Established{}} = state
-       ) do
-    case ServiceMessage.decode_strict(payload) do
-      {:ok, %ServiceMessage{command: :disconnect}} ->
-        {:stop, :normal, state}
-
-      _error ->
-        {:error, {:unknown_service_msg, msg}}
     end
   end
 

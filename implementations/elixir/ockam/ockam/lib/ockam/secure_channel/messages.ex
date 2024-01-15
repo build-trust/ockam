@@ -70,7 +70,7 @@ defmodule Ockam.SecureChannel.Messages do
     end
   end
 
-  @enum_schema {:enum,
+  @enum_schema {:variant_enum,
                 [
                   {Ockam.SecureChannel.Messages.Payload, 0},
                   {Ockam.SecureChannel.Messages.RefreshCredentials, 1},
