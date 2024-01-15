@@ -4715,9 +4715,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_tuify"
-version = "0.1.24"
+version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5962eb34d4b4d6852125a79f55be812bc129aabea41d29de3a6b6b6bd2095943"
+checksum = "64406b013259923e207e2585ce39dc9e93cd6669c4eded5b9b8e0419cfef0e3e"
 dependencies = [
  "clap 4.4.16",
  "crossterm",
@@ -4819,14 +4819,14 @@ dependencies = [
 
 [[package]]
 name = "reedline"
-version = "0.27.1"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07046f804ccb26a6fa8b638f505ccd2a8b7702399a89b9640a0d40ecda49233d"
+checksum = "68f4e89a0f80909b3ca4bca9759ed37e4bfddb6f5d2ffb1b4ceb2b1638a3e1eb"
 dependencies = [
  "chrono",
  "crossterm",
  "fd-lock 3.0.13",
- "itertools 0.10.5",
+ "itertools 0.12.0",
  "nu-ansi-term 0.49.0",
  "serde",
  "strip-ansi-escapes",
