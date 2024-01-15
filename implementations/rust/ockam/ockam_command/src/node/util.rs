@@ -11,7 +11,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 
-use crate::node::background::{OpenTelemetryContext, spawn_background_node};
+use crate::node::background::{spawn_background_node, OpenTelemetryContext};
 use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::util::api::TrustContextOpts;

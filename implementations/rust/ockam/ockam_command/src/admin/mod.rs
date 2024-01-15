@@ -29,4 +29,11 @@ impl AdminCommand {
             AdminSubCommand::Subscription(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            AdminSubCommand::Subscription(_) => "admin subscription",
+        }
+        .to_string()
+    }
 }

@@ -53,6 +53,19 @@ impl CredentialCommand {
             CredentialSubcommand::Verify(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            CredentialSubcommand::Get(_) => "get credential",
+            CredentialSubcommand::Issue(_) => "issue credential",
+            CredentialSubcommand::List(_) => "list credentials",
+            CredentialSubcommand::Present(_) => "present credential",
+            CredentialSubcommand::Show(_) => "show credential",
+            CredentialSubcommand::Store(_) => "store credential",
+            CredentialSubcommand::Verify(_) => "verify credential",
+        }
+        .to_string()
+    }
 }
 
 pub struct CredentialOutput {

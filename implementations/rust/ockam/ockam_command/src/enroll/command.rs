@@ -55,6 +55,10 @@ impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
+
+    pub fn name(&self) -> String {
+        "enroll".to_string()
+    }
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {

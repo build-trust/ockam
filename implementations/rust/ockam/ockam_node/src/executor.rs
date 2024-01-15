@@ -89,7 +89,8 @@ impl Executor {
         #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
         #[cfg(feature = "metrics")]
-        self.rt.spawn(self.metrics.clone().run(alive.clone()).in_current_span());
+        self.rt
+            .spawn(self.metrics.clone().run(alive.clone()).in_current_span());
 
         // Spawn user code second
         let sender = self.sender();

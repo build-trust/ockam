@@ -9,6 +9,7 @@ use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::export::logs::{LogData, LogExporter};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use opentelemetry_sdk::logs::LoggerProvider;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::runtime::RuntimeChannel;
 use opentelemetry_sdk::trace::BatchConfig;
 use opentelemetry_sdk::Resource;
@@ -17,7 +18,6 @@ use opentelemetry_semantic_conventions::SCHEMA_URL;
 use std::fmt::Debug;
 use std::io::stdout;
 use std::path::PathBuf;
-use opentelemetry_sdk::propagation::TraceContextPropagator;
 use tonic::async_trait;
 use tonic::metadata::*;
 pub use tracing::level_filters::LevelFilter;
@@ -235,7 +235,10 @@ fn get_otlp_headers() -> MetadataMap {
             match headers.split_once("=") {
                 // TODO: find a way to use a String as a key instead of a &'static str
                 Some((key, value)) => {
-                    match (MetadataKey::from_bytes(key.as_bytes()), MetadataValue::try_from(value.to_string())) {
+                    match (
+                        MetadataKey::from_bytes(key.as_bytes()),
+                        MetadataValue::try_from(value.to_string()),
+                    ) {
                         (Ok(key), Ok(value)) => {
                             let mut map = MetadataMap::with_capacity(1);
                             map.insert(key, value);
@@ -407,7 +410,7 @@ struct DecoratedSpanExporter<S: SpanExporter> {
 #[async_trait]
 impl<S: SpanExporter> SpanExporter for DecoratedSpanExporter<S> {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
-        debug!("exporting {} spans {batch:?}", batch.len());
+        debug!("exporting {} spans", batch.len());
         self.exporter.export(batch)
     }
 

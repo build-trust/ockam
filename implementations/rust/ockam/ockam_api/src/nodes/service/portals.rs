@@ -166,7 +166,7 @@ impl NodeManagerWorker {
 
 /// OUTLETS
 impl NodeManager {
-    #[instrument]
+    #[instrument(skip(self))]
     pub async fn create_outlet(
         &self,
         ctx: &Context,

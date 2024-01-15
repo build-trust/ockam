@@ -102,7 +102,10 @@ impl AppState {
         let mut cli_state = CliState::with_default_dir()?;
         cli_state.set_node_name(NODE_NAME.to_string());
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
-        let (context, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt.clone()).build();
+        let (context, mut executor) = NodeBuilder::new()
+            .no_logging()
+            .with_runtime(rt.clone())
+            .build();
         let context = Arc::new(context);
 
         // start the router, it is needed for the node manager creation

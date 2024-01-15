@@ -30,4 +30,8 @@ impl CompletionCommand {
             &mut io::stdout(),
         )
     }
+
+    pub fn name(&self) -> String {
+        "completion".to_string()
+    }
 }

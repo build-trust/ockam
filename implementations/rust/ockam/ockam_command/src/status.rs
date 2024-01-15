@@ -32,6 +32,10 @@ impl StatusCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(options.rt.clone(), rpc, (options, self));
     }
+
+    pub fn name(&self) -> String {
+        "get status".to_string()
+    }
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> miette::Result<()> {

@@ -24,4 +24,11 @@ impl MessageCommand {
             MessageSubcommand::Send(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            MessageSubcommand::Send(_) => "send message",
+        }
+        .to_string()
+    }
 }

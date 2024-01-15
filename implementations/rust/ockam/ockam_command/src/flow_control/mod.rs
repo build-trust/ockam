@@ -24,4 +24,11 @@ impl FlowControlCommand {
             FlowControlSubcommand::AddConsumer(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            FlowControlSubcommand::AddConsumer(_) => "add flowcontrol consumer",
+        }
+        .to_string()
+    }
 }

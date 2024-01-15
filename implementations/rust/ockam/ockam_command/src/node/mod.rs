@@ -68,15 +68,16 @@ pub enum NodeSubcommand {
 impl NodeSubcommand {
     pub fn name(&self) -> String {
         match self {
-            NodeSubcommand::Create(_) => "create",
-            NodeSubcommand::Delete(_) => "delete",
-            NodeSubcommand::List(_) => "list",
-            NodeSubcommand::Logs(_) => "logs",
-            NodeSubcommand::Show(_) => "show",
-            NodeSubcommand::Start(_) => "start",
-            NodeSubcommand::Stop(_) => "stop",
-            NodeSubcommand::Default(_) => "default",
-        }.to_string()
+            NodeSubcommand::Create(_) => "create node",
+            NodeSubcommand::Delete(_) => "delete node",
+            NodeSubcommand::List(_) => "list nodes",
+            NodeSubcommand::Logs(_) => "logs node",
+            NodeSubcommand::Show(_) => "show node",
+            NodeSubcommand::Start(_) => "start node",
+            NodeSubcommand::Stop(_) => "stop node",
+            NodeSubcommand::Default(_) => "default node",
+        }
+        .to_string()
     }
 }
 

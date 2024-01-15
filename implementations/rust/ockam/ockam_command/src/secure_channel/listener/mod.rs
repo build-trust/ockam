@@ -40,4 +40,14 @@ impl SecureChannelListenerCommand {
             SecureChannelListenerSubcommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            SecureChannelListenerSubcommand::Create(_) => "create secure channel listener",
+            SecureChannelListenerSubcommand::Delete(_) => "delete secure channel listener",
+            SecureChannelListenerSubcommand::List(_) => "list secure channel listeners",
+            SecureChannelListenerSubcommand::Show(_) => "show secure channel listener",
+        }
+        .to_string()
+    }
 }

@@ -77,25 +77,28 @@ where
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt).build();
-    let res = executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let r = f(child_ctx, a).await;
-        stop_node(ctx).await;
-        r.map_err(|e| {
-            ockam_core::Error::new(
-                ockam_core::errcode::Origin::Executor,
-                ockam_core::errcode::Kind::Unknown,
-                e,
-            )
-        })
-    }.in_current_span());
+    let res = executor.execute(
+        async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let r = f(child_ctx, a).await;
+            stop_node(ctx).await;
+            r.map_err(|e| {
+                ockam_core::Error::new(
+                    ockam_core::errcode::Origin::Executor,
+                    ockam_core::errcode::Kind::Unknown,
+                    e,
+                )
+            })
+        }
+        .in_current_span(),
+    );
     let res = res.map_err(|e| miette::miette!(e));
     res?.into_diagnostic()
 }
@@ -113,30 +116,33 @@ where
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt).build();
-    let res = executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node.not_stopped"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let result = f(child_ctx, a).await;
-        let result = if result.is_err() {
-            ctx.stop().await?;
-            result
-        } else {
-            result
-        };
-        result.map_err(|e| {
-            ockam_core::Error::new(
-                ockam_core::errcode::Origin::Executor,
-                ockam_core::errcode::Kind::Unknown,
-                e,
-            )
-        })
-    }.in_current_span());
+    let res = executor.execute(
+        async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node.not_stopped"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let result = f(child_ctx, a).await;
+            let result = if result.is_err() {
+                ctx.stop().await?;
+                result
+            } else {
+                result
+            };
+            result.map_err(|e| {
+                ockam_core::Error::new(
+                    ockam_core::errcode::Origin::Executor,
+                    ockam_core::errcode::Kind::Unknown,
+                    e,
+                )
+            })
+        }
+        .in_current_span(),
+    );
 
     let res = res.map_err(|e| miette::miette!(e));
     res?.into_diagnostic()

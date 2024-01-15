@@ -8,6 +8,7 @@ use tracing::instrument;
 use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
 
+use crate::node::background::{opentelemetry_context_parser, OpenTelemetryContext};
 use crate::node::create::background::background_mode;
 use crate::node::create::foreground::foreground_mode;
 use crate::node::util::NodeManagerDefaults;
@@ -16,7 +17,6 @@ use crate::util::api::TrustContextOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{local_cmd, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
-use crate::node::background::{OpenTelemetryContext, opentelemetry_context_parser};
 
 pub mod background;
 pub mod foreground;

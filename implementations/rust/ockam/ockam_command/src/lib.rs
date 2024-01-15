@@ -26,8 +26,8 @@ use colorful::Colorful;
 use console::Term;
 use miette::GraphicalReportHandler;
 use once_cell::sync::Lazy;
-use opentelemetry::{Context, global};
 use opentelemetry::trace::{TraceContextExt, Tracer};
+use opentelemetry::{global, Context};
 use tokio::runtime::Runtime;
 use tracing::instrument;
 
@@ -374,10 +374,46 @@ impl OckamSubcommand {
     }
 
     pub fn name(&self) -> String {
-        // TODO
         match self {
             OckamSubcommand::Node(c) => c.name(),
-            other => format!("{other:?}"),
+            OckamSubcommand::Enroll(c) => c.name(),
+            OckamSubcommand::Space(c) => c.name(),
+            OckamSubcommand::Project(c) => c.name(),
+            OckamSubcommand::Sidecar(c) => c.name(),
+            OckamSubcommand::Admin(c) => c.name(),
+            OckamSubcommand::Share(c) => c.name(),
+            OckamSubcommand::Subscription(c) => c.name(),
+            OckamSubcommand::Worker(c) => c.name(),
+            OckamSubcommand::Service(c) => c.name(),
+            OckamSubcommand::Message(c) => c.name(),
+            OckamSubcommand::Relay(c) => c.name(),
+            OckamSubcommand::TcpListener(c) => c.name(),
+            OckamSubcommand::TcpConnection(c) => c.name(),
+            OckamSubcommand::TcpOutlet(c) => c.name(),
+            OckamSubcommand::TcpInlet(c) => c.name(),
+            OckamSubcommand::KafkaOutlet(c) => c.name(),
+            OckamSubcommand::KafkaConsumer(c) => c.name(),
+            OckamSubcommand::KafkaDirect(c) => c.name(),
+            OckamSubcommand::KafkaProducer(c) => c.name(),
+            OckamSubcommand::SecureChannelListener(c) => c.name(),
+            OckamSubcommand::SecureChannel(c) => c.name(),
+            OckamSubcommand::Vault(c) => c.name(),
+            OckamSubcommand::Identity(c) => c.name(),
+            OckamSubcommand::Credential(c) => c.name(),
+            OckamSubcommand::Authority(c) => c.name(),
+            OckamSubcommand::Policy(c) => c.name(),
+            OckamSubcommand::Lease(c) => c.name(),
+            OckamSubcommand::Run(c) => c.name(),
+            OckamSubcommand::Status(c) => c.name(),
+            OckamSubcommand::Reset(c) => c.name(),
+            OckamSubcommand::Authenticated(c) => c.name(),
+            OckamSubcommand::Configuration(c) => c.name(),
+            OckamSubcommand::Completion(c) => c.name(),
+            OckamSubcommand::Markdown(c) => c.name(),
+            OckamSubcommand::Manpages(c) => c.name(),
+            OckamSubcommand::TrustContext(c) => c.name(),
+            OckamSubcommand::Environment(c) => c.name(),
+            OckamSubcommand::FlowControl(c) => c.name(),
         }
     }
 }

@@ -32,6 +32,10 @@ impl RunCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
+
+    pub fn name(&self) -> String {
+        "run command".to_string()
+    }
 }
 
 async fn rpc(_ctx: Context, (opts, cmd): (CommandGlobalOpts, RunCommand)) -> miette::Result<()> {

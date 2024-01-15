@@ -46,4 +46,14 @@ impl RelayCommand {
             RelaySubCommand::Delete(c) => c.run(opts),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            RelaySubCommand::Create(_) => "create relay",
+            RelaySubCommand::List(_) => "list relays",
+            RelaySubCommand::Show(_) => "show relay",
+            RelaySubCommand::Delete(_) => "delete relay",
+        }
+        .to_string()
+    }
 }

@@ -26,6 +26,10 @@ impl ResetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(opts.rt.clone(), rpc, (opts, self));
     }
+
+    pub fn name(&self) -> String {
+        "reset".to_string()
+    }
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ResetCommand)) -> miette::Result<()> {

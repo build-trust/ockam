@@ -42,6 +42,16 @@ impl PolicyCommand {
             PolicySubcommand::List(c) => c.run(opts),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            PolicySubcommand::Create(_) => "create policy",
+            PolicySubcommand::Show(_) => "show policy",
+            PolicySubcommand::Delete(_) => "delete policy",
+            PolicySubcommand::List(_) => "list policies",
+        }
+        .to_string()
+    }
 }
 
 pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {

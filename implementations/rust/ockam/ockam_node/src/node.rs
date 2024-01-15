@@ -1,7 +1,7 @@
-use tokio::runtime::Runtime;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
+use tokio::runtime::Runtime;
 
 use crate::{debugger, Context, Executor};
 
@@ -45,7 +45,7 @@ impl NodeBuilder {
         Self {
             logging: false,
             exit_on_panic: self.exit_on_panic,
-            rt: self.rt
+            rt: self.rt,
         }
     }
 
@@ -54,7 +54,7 @@ impl NodeBuilder {
         Self {
             logging: self.logging,
             exit_on_panic: false,
-            rt: self.rt
+            rt: self.rt,
         }
     }
 
@@ -97,7 +97,9 @@ impl NodeBuilder {
         // Shared instance of FlowControls
         let flow_controls = FlowControls::new();
 
-        let rt = self.rt.unwrap_or(Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")));
+        let rt = self.rt.unwrap_or(Arc::new(
+            Runtime::new().expect("cannot initialize the tokio runtime"),
+        ));
         let mut exe = Executor::new(rt.clone(), &flow_controls);
         let addr: Address = "app".into();
 

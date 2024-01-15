@@ -44,6 +44,10 @@ impl AuthenticatedCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(opts.rt.clone(), run_impl, (opts, self.subcommand))
     }
+
+    pub fn name(&self) -> String {
+        "authenticated".to_string()
+    }
 }
 
 async fn run_impl(

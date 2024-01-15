@@ -20,7 +20,11 @@ pub struct RevokeCommand {
 
 impl RevokeCommand {
     pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, cloud_opts, self, trust_opts));
+        node_rpc(
+            opts.rt.clone(),
+            run_impl,
+            (opts, cloud_opts, self, trust_opts),
+        );
     }
 }
 

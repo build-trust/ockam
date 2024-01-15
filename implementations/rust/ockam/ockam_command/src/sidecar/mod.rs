@@ -35,4 +35,12 @@ impl SidecarCommand {
             SidecarSubcommand::SecureRelayInlet(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            SidecarSubcommand::SecureRelayInlet(_) => "sidecar relay inlet",
+            SidecarSubcommand::SecureRelayOutlet(_) => "sidecar relay outlet",
+        }
+        .to_string()
+    }
 }

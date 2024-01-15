@@ -189,7 +189,8 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(embedded_node_that_is_not_stopped(options.rt.clone(),
+            local_cmd(embedded_node_that_is_not_stopped(
+                options.rt.clone(),
                 start_authority_node,
                 (options, self),
             ))

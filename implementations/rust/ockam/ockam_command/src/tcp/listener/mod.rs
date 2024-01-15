@@ -42,4 +42,14 @@ impl TcpListenerCommand {
             TcpListenerSubCommand::Show(c) => c.run(options),
         }
     }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            TcpListenerSubCommand::Create(_) => "create tcp listener",
+            TcpListenerSubCommand::Delete(_) => "delete tcp listener",
+            TcpListenerSubCommand::List(_) => "list tcp listeners",
+            TcpListenerSubCommand::Show(_) => "show tcp listener",
+        }
+        .to_string()
+    }
 }
