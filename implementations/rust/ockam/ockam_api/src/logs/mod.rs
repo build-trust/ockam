@@ -11,6 +11,7 @@ use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::runtime::RuntimeChannel;
+use opentelemetry_sdk::testing::trace::NoopSpanExporter;
 use opentelemetry_sdk::trace::BatchConfig;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::{self as sdk};
@@ -34,6 +35,7 @@ impl Logging {
     #[instrument]
     pub fn setup(
         level: LevelFilter,
+        tracing_enabled: bool,
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
@@ -58,19 +60,31 @@ impl Logging {
         })
         .expect("can't create a log exporter");
 
-        let result = Self::setup_with_exporters(
-            DecoratedSpanExporter {
-                exporter: span_exporter,
-            },
-            DecoratedLogExporter {
-                exporter: log_exporter,
-            },
-            Some(BatchConfig::default()),
-            level,
-            color,
-            node_dir,
-            crates,
-        );
+        let result = if tracing_enabled {
+            Self::setup_with_exporters(
+                DecoratedSpanExporter {
+                    exporter: span_exporter,
+                },
+                DecoratedLogExporter {
+                    exporter: log_exporter,
+                },
+                Some(BatchConfig::default()),
+                level,
+                color,
+                node_dir,
+                crates,
+            )
+        } else {
+            Self::setup_with_exporters(
+                NoopSpanExporter::default(),
+                NoopLogExporter::default(),
+                Some(BatchConfig::default()),
+                level,
+                color,
+                node_dir,
+                crates,
+            )
+        };
         info!("tracing initialized");
         result
     }
@@ -124,7 +138,6 @@ impl Logging {
                 let layer = opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge::new(
                     &provider,
                 );
-
                 (layer, provider)
             })
             .expect("Failed to build the logging layer")
@@ -324,6 +337,7 @@ mod tests {
             logs_exporter.clone(),
             None,
             LevelFilter::TRACE,
+            true,
             false,
             Some(log_directory.into()),
             ockam_crates,
@@ -388,7 +402,7 @@ struct DecoratedLogExporter<L: LogExporter> {
 #[async_trait]
 impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
     async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
-        debug!("exporting {} logs", batch.len());
+        // debug!("exporting {} logs", batch.len());
         self.exporter.export(batch).await
     }
 
@@ -402,6 +416,22 @@ impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
     }
 }
 
+#[derive(Debug, Default)]
+struct NoopLogExporter;
+
+#[async_trait]
+impl LogExporter for NoopLogExporter {
+    async fn export(&mut self, _batch: Vec<LogData>) -> LogResult<()> {
+        Ok(())
+    }
+
+    fn shutdown(&mut self) {}
+
+    fn event_enabled(&self, _level: Severity, _target: &str, _name: &str) -> bool {
+        false
+    }
+}
+
 #[derive(Debug)]
 struct DecoratedSpanExporter<S: SpanExporter> {
     exporter: S,
@@ -410,7 +440,7 @@ struct DecoratedSpanExporter<S: SpanExporter> {
 #[async_trait]
 impl<S: SpanExporter> SpanExporter for DecoratedSpanExporter<S> {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
-        debug!("exporting {} spans", batch.len());
+        // debug!("exporting {} spans", batch.len());
         self.exporter.export(batch)
     }
 

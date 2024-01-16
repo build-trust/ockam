@@ -5,6 +5,10 @@ pub fn log_level() -> Option<String> {
     get_env("OCKAM_LOG").unwrap_or_default()
 }
 
+pub fn tracing() -> Option<String> {
+    get_env("OCKAM_TRACING").unwrap_or_default()
+}
+
 pub fn log_max_size_bytes() -> u64 {
     let default = 100;
     get_env_with_default("OCKAM_LOG_MAX_SIZE_MB", default).unwrap_or(default) * 1024 * 1024

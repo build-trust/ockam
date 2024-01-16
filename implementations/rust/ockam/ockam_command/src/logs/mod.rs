@@ -1,4 +1,4 @@
-use ockam_api::logs::env::log_level;
+use ockam_api::logs::env::{log_level, tracing};
 use ockam_api::logs::{LevelFilter, Logging, LoggingGuard};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -23,13 +23,10 @@ pub fn setup_logging(
             },
         };
         // If the parsed log level is not valid, default to info.
-        let level = LevelFilter::from_str(&level_raw).unwrap_or(LevelFilter::INFO);
-        if level == LevelFilter::OFF {
-            return None;
-        }
-        level
+        LevelFilter::from_str(&level_raw).unwrap_or(LevelFilter::INFO)
     };
     let color = !no_color && is_tty;
+    let tracing_enabled = tracing().is_some();
     let ockam_crates = [
         "ockam",
         "ockam_node",
@@ -40,5 +37,5 @@ pub fn setup_logging(
         "ockam_api",
         "ockam_command",
     ];
-    Logging::setup(level, color, log_path, &ockam_crates)
+    Logging::setup(level, tracing_enabled, color, log_path, &ockam_crates)
 }
