@@ -2691,7 +2691,6 @@ dependencies = [
  "ockam_transport_udp",
  "ockam_transport_uds",
  "ockam_vault",
- "r3bl_ansi_color",
  "rand",
  "serde",
  "serde_bare",
