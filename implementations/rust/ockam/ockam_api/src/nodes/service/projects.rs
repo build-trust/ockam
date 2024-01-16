@@ -103,6 +103,7 @@ impl Projects for InMemoryNode {
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(projects) => {
                 for project in &projects {
+                    info!("retrieved project {}/{}", project.name, project.id);
                     let mut project = project.clone();
                     // If the project has no admin role, the name is set to the project id
                     // to avoid collisions with other projects with the same name that

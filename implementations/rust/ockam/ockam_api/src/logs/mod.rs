@@ -1,4 +1,4 @@
-use crate::logs::env::{log_format, log_max_files};
+use crate::logs::env::{log_format, log_max_files, LoggingEnabled, TracingEnabled};
 use futures::future::BoxFuture;
 use ockam_core::env::FromString;
 use ockam_node::Executor;
@@ -32,14 +32,14 @@ pub mod env;
 pub struct Logging;
 
 impl Logging {
-    #[instrument]
     pub fn setup(
         level: LevelFilter,
-        tracing_enabled: bool,
+        logging_enabled: LoggingEnabled,
+        tracing_enabled: TracingEnabled,
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
-    ) -> Option<LoggingGuard> {
+    ) -> LoggingGuard {
         let span_exporter = Executor::execute_future(async move {
             opentelemetry_otlp::new_exporter()
                 .tonic()
@@ -60,7 +60,7 @@ impl Logging {
         })
         .expect("can't create a log exporter");
 
-        let result = if tracing_enabled {
+        let result = if tracing_enabled == TracingEnabled::On {
             Self::setup_with_exporters(
                 DecoratedSpanExporter {
                     exporter: span_exporter,
@@ -70,6 +70,7 @@ impl Logging {
                 },
                 Some(BatchConfig::default()),
                 level,
+                logging_enabled,
                 color,
                 node_dir,
                 crates,
@@ -80,12 +81,16 @@ impl Logging {
                 NoopLogExporter::default(),
                 Some(BatchConfig::default()),
                 level,
+                logging_enabled,
                 color,
                 node_dir,
                 crates,
             )
         };
-        info!("tracing initialized");
+        info!(
+            "tracing initialized. Logging: {}, Tracing: {}",
+            logging_enabled, tracing_enabled
+        );
         result
     }
 
@@ -97,10 +102,11 @@ impl Logging {
         log_exporter: L,
         batch_config: Option<BatchConfig>,
         level: LevelFilter,
+        logging_enabled: LoggingEnabled,
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
-    ) -> Option<LoggingGuard> {
+    ) -> LoggingGuard {
         let tracing_layer = {
             // the setup of the tracer requires an async context
             Executor::execute_future(async move {
@@ -163,38 +169,45 @@ impl Logging {
             .with(logging_layer)
             .with(tracing_layer);
 
-        let (appender, guard) = match node_dir {
-            // If a node dir path is not provided, log to stdout.
-            None => {
-                let (n, guard) = tracing_appender::non_blocking(stdout());
-                let appender = layer().with_ansi(color).with_writer(n);
-                (Box::new(appender), guard)
-            }
-            // If a log path is provided, log to a rolling file appender.
-            Some(node_dir) => {
-                let r = RollingFileAppender::builder()
-                    .rotation(Rotation::DAILY)
-                    .max_log_files(log_max_files())
-                    .filename_prefix("stdout")
-                    .filename_suffix("log")
-                    .build(node_dir)
-                    .expect("Failed to create rolling file appender");
-                let (n, guard) = tracing_appender::non_blocking(r);
-                let appender = layer().with_ansi(false).with_writer(n);
-                (Box::new(appender), guard)
-            }
-        };
-        let res = match log_format() {
-            LogFormat::Pretty => subscriber.with(appender.pretty()).try_init(),
-            LogFormat::Json => subscriber.with(appender.json()).try_init(),
-            LogFormat::Default => subscriber.with(appender).try_init(),
-        };
-        res.expect("Failed to initialize tracing subscriber");
+        if logging_enabled == LoggingEnabled::On {
+            let (appender, guard) = match node_dir {
+                // If a node dir path is not provided, log to stdout.
+                None => {
+                    let (n, guard) = tracing_appender::non_blocking(stdout());
+                    let appender = layer().with_ansi(color).with_writer(n);
+                    (Box::new(appender), guard)
+                }
+                // If a log path is provided, log to a rolling file appender.
+                Some(node_dir) => {
+                    let r = RollingFileAppender::builder()
+                        .rotation(Rotation::DAILY)
+                        .max_log_files(log_max_files())
+                        .filename_prefix("stdout")
+                        .filename_suffix("log")
+                        .build(node_dir)
+                        .expect("Failed to create rolling file appender");
+                    let (n, guard) = tracing_appender::non_blocking(r);
+                    let appender = layer().with_ansi(false).with_writer(n);
+                    (Box::new(appender), guard)
+                }
+            };
+            let res = match log_format() {
+                LogFormat::Pretty => subscriber.with(appender.pretty()).try_init(),
+                LogFormat::Json => subscriber.with(appender.json()).try_init(),
+                LogFormat::Default => subscriber.with(appender).try_init(),
+            };
+            res.expect("Failed to initialize tracing subscriber");
 
-        Some(LoggingGuard {
-            _worker_guard: guard,
-            logger_provider: provider,
-        })
+            LoggingGuard {
+                _worker_guard: Some(guard),
+                logger_provider: provider,
+            }
+        } else {
+            LoggingGuard {
+                _worker_guard: None,
+                logger_provider: provider,
+            }
+        }
     }
 }
 
@@ -269,7 +282,7 @@ fn get_otlp_headers() -> MetadataMap {
 
 #[derive(Debug)]
 pub struct LoggingGuard {
-    _worker_guard: WorkerGuard,
+    _worker_guard: Option<WorkerGuard>,
     logger_provider: LoggerProvider,
 }
 
@@ -314,6 +327,8 @@ impl std::fmt::Display for LogFormat {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::logs::env::LoggingEnabled;
     use crate::logs::{LevelFilter, Logging};
     use crate::random_name;
     use opentelemetry::global;
@@ -337,7 +352,7 @@ mod tests {
             logs_exporter.clone(),
             None,
             LevelFilter::TRACE,
-            true,
+            LoggingEnabled::Off,
             false,
             Some(log_directory.into()),
             ockam_crates,

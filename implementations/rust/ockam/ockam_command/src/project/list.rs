@@ -2,6 +2,7 @@ use clap::Args;
 use miette::{miette, IntoDiagnostic};
 use tokio::sync::Mutex;
 use tokio::try_join;
+use tracing::Instrument;
 
 use ockam::Context;
 use ockam_api::cloud::project::Projects;
@@ -43,12 +44,12 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
     }
     let node = InMemoryNode::start(ctx, &opts.state).await?;
     let is_finished: Mutex<bool> = Mutex::new(false);
-
     let get_projects = async {
         let projects = node.get_admin_projects(ctx).await?;
         *is_finished.lock().await = true;
         Ok(projects)
-    };
+    }
+    .in_current_span();
 
     let output_messages = vec![format!("Listing projects...\n",)];
     let progress_output = opts

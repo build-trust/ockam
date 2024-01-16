@@ -457,7 +457,7 @@ impl OckamCommand {
             );
             tracing::debug!("{}", Version::short());
             tracing::debug!("Parsed {:?}", &self);
-            guard
+            Some(guard)
         } else {
             None
         };

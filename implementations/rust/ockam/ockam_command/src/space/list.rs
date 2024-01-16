@@ -2,6 +2,7 @@ use clap::Args;
 use miette::IntoDiagnostic;
 use tokio::sync::Mutex;
 use tokio::try_join;
+use tracing::Instrument;
 
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
@@ -46,7 +47,8 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
         let spaces = node.get_spaces(ctx).await?;
         *is_finished.lock().await = true;
         Ok(spaces)
-    };
+    }
+    .in_current_span();
 
     let output_messages = vec![format!("Listing Spaces...\n",)];
 

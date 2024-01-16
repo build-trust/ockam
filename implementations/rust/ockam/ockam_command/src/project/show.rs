@@ -16,6 +16,7 @@ use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use tokio::sync::Mutex;
+use tracing::Instrument;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -127,7 +128,7 @@ impl ShowCommandTui for ShowTui {
             }
             *is_finished.lock().await = true;
             Ok(projects_list)
-        };
+        }.in_current_span();
 
         let output_messages = vec![format!("Listing projects...\n",)];
         let progress_output = terminal.progress_output(&output_messages, &is_finished);

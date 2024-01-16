@@ -51,14 +51,17 @@ where
 {
     let res = embedded_node(
         rt.clone(),
-        |ctx, a| async {
-            let res = f(ctx, a).await;
-            if let Err(e) = res {
-                error!(%e, "Failed to run command");
-                eprintln!("{:?}", e);
-                std::process::exit(exitcode::SOFTWARE);
+        |ctx, a| {
+            async {
+                let res = f(ctx, a).await;
+                if let Err(e) = res {
+                    error!(%e, "Failed to run command");
+                    eprintln!("{:?}", e);
+                    std::process::exit(exitcode::SOFTWARE);
+                }
+                Ok(())
             }
-            Ok(())
+            .in_current_span()
         },
         a,
     );

@@ -443,6 +443,7 @@ impl ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all)]
     pub async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let req = Request::get("/v0");
         self.secure_client
