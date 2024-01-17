@@ -26,7 +26,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 )]
 pub struct RelayCommand {
     #[command(subcommand)]
-    subcommand: RelaySubCommand,
+    pub subcommand: RelaySubCommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

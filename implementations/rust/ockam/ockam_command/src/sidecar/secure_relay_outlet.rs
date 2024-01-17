@@ -58,58 +58,95 @@ impl SecureRelayOutlet {
 }
 
 async fn rpc(
-    _ctx: Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SecureRelayOutlet),
 ) -> miette::Result<()> {
-    cmd.create_config_and_start(opts).await
+    cmd.create_config_and_start(ctx, opts).await
 }
 
 impl SecureRelayOutlet {
-    pub async fn create_config_and_start(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let stdout = opts.terminal.clone().stdout();
-
-        let enrollment_ticket: String = if let Some(t) = self.enroll.enroll_ticket.as_ref() {
-            format! {
-                "enrollment-ticket: {t}",
-            }
-        } else {
-            "okta: true".to_string()
-        };
-
-        let recipe: String = formatdoc! {
-            r#"
-            nodes:
-              secure_relay_outlet:
-                {enrollment_ticket}
-                tcp-outlets:
-                  {service_name}:
-                    from: '/service/outlet_{service_name}'
-                    to: {to}
-                    access_control: '(= subject.component "{service_name}")'
-                relays:
-                  {service_name}:
-                    at: /project/default
-            "#,
-            to = self.to.to_string(),
-            service_name = self.service_name,
-        };
+    pub async fn create_config_and_start(
+        self,
+        ctx: Context,
+        opts: CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        let recipe: String = self.create_config_recipe();
 
         if self.dry_run {
-            stdout.plain(recipe.as_str()).write_line()?;
+            opts.terminal.write_line(recipe.as_str())?;
             return Ok(());
         }
 
-        stdout
-            .plain(fmt_info!(
-                r#"Creating new outlet relay node using this configuration:
+        opts.terminal.write_line(fmt_info!(
+            r#"Creating new outlet relay node using this configuration:
 ```
 {}```
        You can copy and customize the above recipe and launch it with `ockam run`.
 "#,
-                recipe.as_str().dark_gray()
-            ))
-            .write_line()?;
+            recipe.as_str().dark_gray()
+        ))?;
 
-        ConfigRunner::go(opts, &recipe, true).await
+        ConfigRunner::run_config(&ctx, opts, &recipe).await
+    }
+
+    fn create_config_recipe(&self) -> String {
+        let projects = if let Some(t) = self.enroll.enroll_ticket.as_ref() {
+            formatdoc! {r#"
+                projects:
+                  enroll:
+                    - ticket: {t}
+            "#}
+        } else {
+            "".to_string()
+        };
+
+        let recipe: String = formatdoc! {r#"
+            {projects}
+            policies:
+              - resource: 'tcp-outlet'
+                expression: '(= subject.component "{service_name}")'
+            tcp-outlets:
+              {service_name}:
+                from: '/service/outlet_{service_name}'
+                to: {to}
+            relays:
+              - {service_name}
+            "#,
+            to = self.to,
+            service_name = self.service_name,
+        };
+
+        recipe
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::{ArgsToCommands, Config};
+    use ockam::identity::OneTimeCode;
+    use ockam_api::EnrollmentTicket;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_that_recipe_is_valid() {
+        let enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
+        let enrollment_ticket_hex = enrollment_ticket.hex_encoded().unwrap();
+
+        let cmd = SecureRelayOutlet {
+            service_name: "service_name".to_string(),
+            to: SocketAddr::from_str("127.0.0.1:8080").unwrap(),
+            dry_run: false,
+            enroll: Enroll {
+                enroll_ticket: Some(enrollment_ticket_hex),
+                okta: false,
+            },
+        };
+        let config_recipe = cmd.create_config_recipe();
+        let config = Config::parse(config_recipe.as_str()).unwrap();
+        config.projects.into_commands().unwrap();
+        config.policies.into_commands().unwrap();
+        config.tcp_outlets.into_commands().unwrap();
+        config.relays.into_commands().unwrap();
     }
 }

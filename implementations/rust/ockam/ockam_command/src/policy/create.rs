@@ -13,37 +13,33 @@ use crate::CommandGlobalOpts;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "NODE_NAME")]
-    at: Option<String>,
+    pub at: Option<String>,
 
     #[arg(short, long)]
-    resource: Resource,
+    pub resource: Resource,
 
     #[arg(short, long, default_value = "handle_message")]
-    action: Action,
+    pub action: Action,
 
     #[arg(short, long)]
-    expression: Expr,
+    pub expression: Expr,
 }
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
     }
+
+    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let bdy = Policy::new(self.expression);
+        let req = Request::post(policy_path(&self.resource, &self.action)).body(bdy);
+        node.tell(ctx, req).await?;
+        Ok(())
+    }
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: CreateCommand,
-) -> miette::Result<()> {
-    initialize_default_node(ctx, &opts).await?;
-    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
-    let bdy = Policy::new(cmd.expression);
-    let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);
-    node.tell(ctx, req).await?;
-    Ok(())
+    cmd.async_run(&ctx, opts).await
 }

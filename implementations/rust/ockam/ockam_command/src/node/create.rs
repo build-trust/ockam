@@ -6,6 +6,8 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
+use ockam_core::AsyncTryClone;
+use ockam_node::Context;
 
 use crate::node::create::background::background_mode;
 use crate::node::create::foreground::foreground_mode;
@@ -115,6 +117,15 @@ impl CreateCommand {
             ));
         } else {
             node_rpc(background_mode, (opts, self))
+        }
+    }
+
+    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let ctx = ctx.async_try_clone().await.into_diagnostic()?;
+        if self.foreground {
+            foreground_mode(ctx, (opts, self)).await
+        } else {
+            background_mode(ctx, (opts, self)).await
         }
     }
 
