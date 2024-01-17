@@ -14,6 +14,7 @@ use crate::cli_state::random_name;
 use crate::cli_state::CliState;
 use crate::cli_state::NamedTrustContext;
 use crate::cloud::ControllerClient;
+use crate::logs::CurrentSpan;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -146,6 +147,12 @@ impl InMemoryNode {
 
     /// Return a Controller client to send requests to the Controller
     pub async fn create_controller(&self) -> miette::Result<ControllerClient> {
+        if let Ok(user) = self.cli_state.get_default_user().await {
+            CurrentSpan::set_attribute("user_name", &user.name);
+            CurrentSpan::set_attribute("user_email", &user.email.to_string());
+        }
+        CurrentSpan::set_attribute("node_name", &self.node_manager.node_name);
+
         self.create_controller_client(self.timeout)
             .await
             .into_diagnostic()

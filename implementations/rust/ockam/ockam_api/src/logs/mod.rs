@@ -3,8 +3,8 @@ use futures::future::BoxFuture;
 use ockam_core::env::FromString;
 use ockam_node::Executor;
 use opentelemetry::logs::{LogResult, Severity};
-use opentelemetry::trace::TracerProvider;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::trace::{TraceContextExt, TracerProvider};
+use opentelemetry::{Context, global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::export::logs::{LogData, LogExporter};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
@@ -471,5 +471,15 @@ impl<S: SpanExporter> SpanExporter for DecoratedSpanExporter<S> {
     fn force_flush(&mut self) -> BoxFuture<'static, ExportResult> {
         debug!("flushing the span exporter");
         self.exporter.force_flush()
+    }
+}
+
+pub struct CurrentSpan;
+
+impl CurrentSpan {
+    pub fn set_attribute(name: &str, value: &str) {
+        Context::current()
+            .span()
+            .set_attribute(KeyValue::new(name.to_string(), value.to_string()));
     }
 }
