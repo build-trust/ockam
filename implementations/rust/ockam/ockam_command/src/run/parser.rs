@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt::Debug;
 
 use duct::Expression;
@@ -41,7 +41,7 @@ impl ConfigRunner {
 
     fn parse(&mut self, config: &str, blocking: bool) -> miette::Result<()> {
         let config: Config = serde_yaml::from_str(config).into_diagnostic()?;
-        let mut visited = HashSet::new();
+        let mut visited = BTreeSet::new();
         let mut nodes = VecDeque::new();
         for (name, node) in config.nodes {
             nodes.push_back((name, node));
@@ -154,23 +154,21 @@ impl ConfigRunner {
 /// ```yml
 /// nodes:
 ///   telegraf:
-///     enrollment-token: $OCKAM_TELEGRAF_TOKEN
+///     enrollment-ticket: $OCKAM_TELEGRAF_TICKET
 ///     tcp-inlets:
 ///       telegraf:
 ///         from: '127.0.0.1:8087'
-///         to: /project/default/service/forward_to_influxdb/secure/api/service/outlet
-///         access_control: '(= subject.component "influxdb")'
+///         to: influxdb
+///         access-control: '(= subject.component "influxdb")'
 ///
 ///   influxdb:
-///     enrollment-token: $OCKAM_INFLUXDB_TOKEN
+///     enrollment-ticket: $OCKAM_INFLUXDB_TICKET
 ///     tcp-outlets:
 ///       influxdb:
-///         from: /service/outlet
 ///         to: '127.0.0.1:8086'
-///         access_control: '(= subject.component "telegraf")'
+///         access-control: '(= subject.component "telegraf")'
 ///     relays:
-///       influxdb:
-///         at: /project/default
+///       - influxdb
 /// ```
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -185,10 +183,10 @@ pub struct NodeConfig {
     #[serde(rename(deserialize = "enrollment-ticket"))]
     pub enrollment_ticket: Option<String>,
     #[serde(rename(deserialize = "tcp-inlets"))]
-    pub tcp_inlets: Option<HashMap<String, InletConfig>>,
+    pub tcp_inlets: Option<BTreeMap<String, InletConfig>>,
     #[serde(rename(deserialize = "tcp-outlets"))]
-    pub tcp_outlets: Option<HashMap<String, OutletConfig>>,
-    pub relays: Option<HashMap<String, RelayConfig>>,
+    pub tcp_outlets: Option<BTreeMap<String, OutletConfig>>,
+    pub relays: Option<RelayContainer>,
 }
 
 impl NodeConfig {
@@ -329,18 +327,24 @@ impl NodeConfig {
         }
 
         if let Some(relays) = &self.relays {
-            for (name, relay) in relays {
-                // TODO: store relays in CliState; Then check if the relay already exists. If it doesn't, create it.
-                let args = &[
-                    "relay",
-                    "create",
-                    name,
-                    "--to",
-                    &node_name_formatted,
-                    "--at",
-                    &relay.at,
-                ];
-                insert_command("relay", name, None, args, false)?;
+            // TODO: store relays in CliState; Then check if the relay already exists. If it doesn't, create it.
+            let names_and_configs = match relays {
+                RelayContainer::Name(name) => vec![(name.clone(), None)],
+                RelayContainer::Names(names) => {
+                    names.iter().map(|name| (name.clone(), None)).collect()
+                }
+                RelayContainer::NamesAndConfigs(names_and_configs) => names_and_configs
+                    .iter()
+                    .map(|(name, config)| (name.clone(), Some(config.clone())))
+                    .collect(),
+            };
+            for (name, config) in &names_and_configs {
+                let mut args = vec!["relay", "create", name, "--to", &node_name_formatted];
+                if let Some(config) = config {
+                    args.push("--at");
+                    args.push(&config.at);
+                }
+                insert_command("relay", name, None, &args, false)?;
             }
         }
 
@@ -353,6 +357,7 @@ impl NodeConfig {
 pub struct InletConfig {
     pub from: String,
     pub to: String,
+    #[serde(rename(deserialize = "access-control"))]
     pub access_control: Option<String>,
 }
 
@@ -361,7 +366,16 @@ pub struct InletConfig {
 pub struct OutletConfig {
     pub from: String,
     pub to: String,
+    #[serde(rename(deserialize = "access-control"))]
     pub access_control: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum RelayContainer {
+    Name(String),
+    Names(Vec<String>),
+    NamesAndConfigs(BTreeMap<String, RelayConfig>),
 }
 
 /// Defines the structure of a relay in the config file.
@@ -385,6 +399,89 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_single_relay_config() {
+        let test = |c: &str| {
+            let mut sut = ConfigRunner::new();
+            sut.parse(c, false).unwrap();
+            assert_eq!(sut.commands_sorted.len(), 2);
+            assert_eq!(sut.commands_sorted[0].id, "node/n");
+            assert_eq!(sut.commands_sorted[1].id, "relay/r1");
+        };
+
+        // Name only
+        let config = r#"
+            nodes:
+              n:
+                relays:
+                  - r1
+        "#;
+        test(config);
+
+        let config = r#"
+            nodes:
+              n:
+                relays: r1
+        "#;
+        test(config);
+
+        // Config only
+        let config = r#"
+            nodes:
+              n:
+                relays:
+                  r1:
+                    at: /project/default
+        "#;
+        test(config);
+    }
+
+    #[test]
+    fn test_multiple_relay_config() {
+        let test = |c: &str| {
+            let mut sut = ConfigRunner::new();
+            sut.parse(c, false).unwrap();
+            assert_eq!(sut.commands_sorted.len(), 3);
+            assert_eq!(sut.commands_sorted[0].id, "node/n");
+            assert_eq!(sut.commands_sorted[1].id, "relay/r1");
+            assert_eq!(sut.commands_sorted[2].id, "relay/r2");
+        };
+
+        // Name only
+        let config = r#"
+            nodes:
+              n:
+                relays:
+                  - r1
+                  - r2
+        "#;
+        test(config);
+
+        // Config only
+        let config = r#"
+            nodes:
+              n:
+                relays:
+                  r1:
+                    at: /project/default
+                  r2:
+                    at: /project/default
+        "#;
+        test(config);
+
+        // Mixing name and config will fail
+        let config = r#"
+            nodes:
+              n:
+                relays:
+                  - r1
+                  r2:
+                    at: /project/default
+        "#;
+        let mut sut = ConfigRunner::new();
+        assert!(sut.parse(config, false).is_err());
+    }
+
+    #[test]
     fn test_parse_config_with_depends_on() {
         let config = r#"
             nodes:
@@ -393,7 +490,7 @@ mod tests {
                   influxdb:
                     from: /service/outlet
                     to: '127.0.0.1:8086'
-                    access_control: '(= subject.component "telegraf")'
+                    access-control: '(= subject.component "telegraf")'
                 relays:
                   influxdb:
                     at: /project/default
@@ -404,7 +501,7 @@ mod tests {
                   telegraf:
                     from: '127.0.0.1:8087'
                     to: /project/default/service/forward_to_influxdb/secure/api/service/outlet
-                    access_control: '(= subject.component "influxdb")'
+                    access-control: '(= subject.component "influxdb")'
         "#;
 
         let mut sut = ConfigRunner::new();
