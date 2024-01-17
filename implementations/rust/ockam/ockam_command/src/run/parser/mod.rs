@@ -34,11 +34,6 @@ fn binary_path() -> &'static str {
     &BINARY_PATH
 }
 
-/// Defines the high-level structure of the configuration file.
-///
-/// The fields of this struct represents a section of the configuration file. Each section
-/// is a list of resources, which, in turn, can be defined in different ways, depending
-/// on the nature of the underlying commands.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     #[serde(flatten)]
