@@ -23,7 +23,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 )]
 pub struct TcpOutletCommand {
     #[command(subcommand)]
-    subcommand: TcpOutletSubCommand,
+    pub subcommand: TcpOutletSubCommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

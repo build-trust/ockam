@@ -7,7 +7,7 @@ use ockam_api::nodes::models::policy::PolicyList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
-use crate::policy::create::CreateCommand;
+pub use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::show::ShowCommand;
@@ -21,7 +21,7 @@ mod show;
 #[derive(Clone, Debug, Args)]
 pub struct PolicyCommand {
     #[command(subcommand)]
-    subcommand: PolicySubcommand,
+    pub subcommand: PolicySubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

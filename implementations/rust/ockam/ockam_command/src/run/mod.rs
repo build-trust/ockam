@@ -1,4 +1,5 @@
-mod parser;
+pub mod parser;
+mod runner;
 
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
@@ -6,7 +7,7 @@ use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
-pub use parser::ConfigRunner;
+pub use runner::ConfigRunner;
 use std::path::PathBuf;
 
 /// Create nodes given a declarative configuration file
@@ -34,11 +35,11 @@ impl RunCommand {
     }
 }
 
-async fn rpc(_ctx: Context, (opts, cmd): (CommandGlobalOpts, RunCommand)) -> miette::Result<()> {
-    run_impl(opts, cmd).await
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, RunCommand)) -> miette::Result<()> {
+    run_impl(ctx, opts, cmd).await
 }
 
-async fn run_impl(opts: CommandGlobalOpts, cmd: RunCommand) -> miette::Result<()> {
+async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: RunCommand) -> miette::Result<()> {
     let config = match cmd.inline {
         Some(config) => config,
         None => {
@@ -70,5 +71,5 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: RunCommand) -> miette::Result<()
             std::fs::read_to_string(path).into_diagnostic()?
         }
     };
-    ConfigRunner::go(opts, &config, cmd.blocking).await
+    ConfigRunner::run_config(&ctx, opts, &config).await
 }

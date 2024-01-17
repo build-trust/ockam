@@ -16,6 +16,7 @@ use ockam_api::NamedTrustContext;
 
 use crate::enroll::OidcServiceExt;
 use crate::output::CredentialAndPurposeKeyDisplay;
+
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -67,64 +68,65 @@ pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentT
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(run_impl, (opts, self));
+        node_rpc(rpc, (opts, self));
+    }
+
+    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let identity = opts
+            .state
+            .get_named_identity_or_default(&self.cloud_opts.identity)
+            .await?;
+        let project = parse_project(&opts, &self).await?;
+        let trust_context = parse_trust_context(&opts, &self, &project).await?;
+
+        // Create secure channel to the project's authority node
+        let node = InMemoryNode::start_with_trust_context(
+            ctx,
+            &opts.state,
+            self.trust_opts.project_name,
+            Some(trust_context),
+        )
+        .await?;
+        let authority_node: AuthorityNodeClient = node
+            .create_authority_client(
+                &project.authority_identifier().await.into_diagnostic()?,
+                &project.authority_access_route().into_diagnostic()?,
+                Some(identity.name()),
+            )
+            .await?;
+
+        // Enroll
+        if let Some(tkn) = self.enroll_ticket.as_ref() {
+            authority_node
+                .present_token(ctx, &tkn.one_time_code)
+                .await?;
+        } else if self.okta {
+            // Get auth0 token
+            let okta_config: OktaAuth0 = project
+                .okta_config
+                .ok_or(miette!("Okta addon not configured"))?
+                .into();
+
+            let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
+            let token = auth0.get_token_interactively(&opts).await?;
+            authority_node.enroll_with_oidc_token(ctx, token).await?;
+        };
+
+        // Issue credential
+        let credential = authority_node.issue_credential(ctx).await?;
+
+        opts.terminal
+            .clone()
+            .stdout()
+            .plain(CredentialAndPurposeKeyDisplay(credential))
+            .write_line()?;
+
+        Ok(())
     }
 }
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, EnrollCommand),
-) -> miette::Result<()> {
-    let identity = opts
-        .state
-        .get_named_identity_or_default(&cmd.cloud_opts.identity)
-        .await?;
-    let project = parse_project(&opts, &cmd).await?;
-    let trust_context = parse_trust_context(&opts, &cmd, &project).await?;
-
-    // Create secure channel to the project's authority node
-    let node = InMemoryNode::start_with_trust_context(
-        &ctx,
-        &opts.state,
-        cmd.trust_opts.project_name,
-        Some(trust_context),
-    )
-    .await?;
-    let authority_node: AuthorityNodeClient = node
-        .create_authority_client(
-            &project.authority_identifier().await.into_diagnostic()?,
-            &project.authority_access_route().into_diagnostic()?,
-            Some(identity.name()),
-        )
-        .await?;
-
-    // Enroll
-    if let Some(tkn) = cmd.enroll_ticket.as_ref() {
-        authority_node
-            .present_token(&ctx, &tkn.one_time_code)
-            .await?;
-    } else if cmd.okta {
-        // Get auth0 token
-        let okta_config: OktaAuth0 = project
-            .okta_config
-            .ok_or(miette!("Okta addon not configured"))?
-            .into();
-
-        let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
-        let token = auth0.get_token_interactively(&opts).await?;
-        authority_node.enroll_with_oidc_token(&ctx, token).await?;
-    };
-
-    // Issue credential
-    let credential = authority_node.issue_credential(&ctx).await?;
-
-    opts.terminal
-        .clone()
-        .stdout()
-        .plain(CredentialAndPurposeKeyDisplay(credential))
-        .write_line()?;
-
-    Ok(())
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
+    cmd.async_run(&ctx, opts).await
 }
 
 async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {

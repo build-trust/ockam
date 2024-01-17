@@ -59,54 +59,89 @@ impl SecureRelayInlet {
 }
 
 async fn rpc(
-    _ctx: Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, SecureRelayInlet),
 ) -> miette::Result<()> {
-    cmd.create_config_and_start(opts).await
+    cmd.create_config_and_start(ctx, opts).await
 }
 
 impl SecureRelayInlet {
-    pub async fn create_config_and_start(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let stdout = opts.terminal.clone().stdout();
-
-        let enrollment_ticket: String = if let Some(t) = self.enroll.enroll_ticket.as_ref() {
-            format! {
-                "enrollment-ticket: {t}",
-            }
-        } else {
-            "okta: true".to_string()
-        };
-
-        let recipe: String = formatdoc! {
-            r#"
-            nodes:
-              secure_relay_inlet:
-                {enrollment_ticket}
-                tcp-inlets:
-                  {service_name}:
-                    from: {from}
-                    to: /project/default/service/forward_to_{service_name}/secure/api/service/outlet_{service_name}
-            "#,
-            from = self.from.to_string(),
-            service_name = self.service_name,
-        };
+    pub async fn create_config_and_start(
+        self,
+        ctx: Context,
+        opts: CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        let recipe = self.create_config_recipe();
 
         if self.dry_run {
-            stdout.plain(recipe.as_str()).write_line()?;
+            opts.terminal.write_line(recipe.as_str())?;
             return Ok(());
         }
 
-        stdout
-            .plain(fmt_info!(
-                r#"Creating new inlet relay node using this configuration:
+        opts.terminal.write_line(fmt_info!(
+            r#"Creating new inlet relay node using this configuration:
 ```
 {}```
        You can copy and customize the above recipe and launch it with `ockam run`.
 "#,
-                recipe.as_str().dark_gray()
-            ))
-            .write_line()?;
+            recipe.as_str().dark_gray()
+        ))?;
 
-        ConfigRunner::go(opts, &recipe, true).await
+        ConfigRunner::run_config(&ctx, opts, &recipe).await
+    }
+
+    fn create_config_recipe(&self) -> String {
+        let projects = if let Some(t) = self.enroll.enroll_ticket.as_ref() {
+            formatdoc! {r#"
+                projects:
+                  enroll:
+                    - ticket: {t}
+            "#}
+        } else {
+            "".to_string()
+        };
+
+        let recipe: String = formatdoc! {
+            r#"
+            {projects}
+            tcp-inlets:
+              {service_name}:
+                from: {from}
+                to: {service_name}
+            "#,
+            from = self.from,
+            service_name = self.service_name,
+        };
+
+        recipe
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::{ArgsToCommands, Config};
+    use ockam::identity::OneTimeCode;
+    use ockam_api::EnrollmentTicket;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_that_recipe_is_valid() {
+        let enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
+        let enrollment_ticket_hex = enrollment_ticket.hex_encoded().unwrap();
+
+        let cmd = SecureRelayInlet {
+            service_name: "service_name".to_string(),
+            from: SocketAddr::from_str("127.0.0.1:8080").unwrap(),
+            dry_run: false,
+            enroll: Enroll {
+                enroll_ticket: Some(enrollment_ticket_hex),
+                okta: false,
+            },
+        };
+        let config_recipe = cmd.create_config_recipe();
+        let config = Config::parse(config_recipe.as_str()).unwrap();
+        config.projects.into_commands().unwrap();
+        config.tcp_inlets.into_commands().unwrap();
     }
 }

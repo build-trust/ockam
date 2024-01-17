@@ -1,0 +1,13 @@
+# https://docs.ockam.io/guides/examples/basic-web-app
+version: '1'
+
+tcp-outlets:
+  db-outlet:
+    to: $PG_PORT
+
+relays:
+  - default
+
+tcp-inlets:
+  web-inlet:
+    from: $OCKAM_PORT

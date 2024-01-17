@@ -41,9 +41,10 @@ pub struct NodeCommand {
 }
 
 #[derive(Clone, Debug, Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum NodeSubcommand {
     #[command(display_order = 800)]
-    Create(Box<CreateCommand>),
+    Create(CreateCommand),
     #[command(display_order = 800)]
     Delete(DeleteCommand),
     #[command(display_order = 800)]

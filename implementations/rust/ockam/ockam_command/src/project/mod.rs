@@ -37,7 +37,7 @@ long_about = docs::about(LONG_ABOUT),
 )]
 pub struct ProjectCommand {
     #[command(subcommand)]
-    subcommand: ProjectSubcommand,
+    pub subcommand: ProjectSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

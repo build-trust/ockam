@@ -37,28 +37,97 @@ const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 pub struct CreateCommand {
     /// Name of the relay
     #[arg(hide_default_value = true, default_value = "default")]
-    relay_name: String,
+    pub relay_name: String,
 
     /// Node for which to create the relay
     #[arg(long, id = "NODE_NAME", value_parser = extract_address_value)]
-    to: Option<String>,
+    pub to: Option<String>,
 
     /// Route to the node at which to create the relay
     #[arg(long, id = "ROUTE", default_value_t = default_at_addr())]
-    at: String,
+    pub at: String,
 
     /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED")]
-    authorized: Option<Identifier>,
+    pub authorized: Option<Identifier>,
 }
 
-fn default_at_addr() -> String {
+pub fn default_at_addr() -> String {
     "/project/$DEFAULT_PROJECT_NAME".to_string()
 }
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(rpc, (opts, self));
+    }
+
+    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
+        let cmd = self.parse_args(&opts).await?;
+        let at = cmd.at();
+        let alias = cmd.relay_name();
+
+        opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
+        display_parse_logs(&opts);
+        let is_finished: Mutex<bool> = Mutex::new(false);
+
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
+        let get_relay_info = async {
+            let relay_info = {
+                if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
+                    return Err(miette!(
+                        "--authorized can not be used with project addresses"
+                    ))?;
+                };
+                info!("creating a relay at {} to {}", at, node.node_name());
+                node.create_relay(ctx, &at, Some(alias), cmd.authorized)
+                    .await?
+            };
+            *is_finished.lock().await = true;
+            Ok(relay_info)
+        };
+
+        let output_messages = vec![
+            format!(
+                "Creating relay relay service at {}...",
+                &at.to_string().color(OckamColor::PrimaryResource.color())
+            ),
+            format!(
+                "Setting up receiving relay mailbox on node {}...",
+                &node.node_name().color(OckamColor::PrimaryResource.color())
+            ),
+        ];
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
+
+        let (relay, _) = try_join!(get_relay_info, progress_output)?;
+
+        let plain = {
+            let from = format!(
+                "{}{}",
+                &at,
+                &relay.worker_address_ma().into_diagnostic()?.to_string()
+            )
+            .color(OckamColor::PrimaryResource.color());
+            let to = format!(
+                "/node/{}{}",
+                &node.node_name(),
+                &relay.remote_address_ma().into_diagnostic()?.to_string()
+            )
+            .color(OckamColor::PrimaryResource.color());
+            fmt_ok!("Now relaying messages from {from} → {to}")
+        };
+        let machine = relay.remote_address_ma().into_diagnostic()?;
+        let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .machine(machine)
+            .json(json)
+            .write_line()?;
+
+        Ok(())
     }
 
     fn at(&self) -> MultiAddr {
@@ -114,72 +183,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    initialize_default_node(&ctx, &opts).await?;
-    let cmd = cmd.parse_args(&opts).await?;
-    let at = cmd.at();
-    let alias = cmd.relay_name();
-
-    opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
-    display_parse_logs(&opts);
-    let is_finished: Mutex<bool> = Mutex::new(false);
-
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.to).await?;
-    let get_relay_info = async {
-        let relay_info = {
-            if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
-                return Err(miette!(
-                    "--authorized can not be used with project addresses"
-                ))?;
-            };
-            info!("creating a relay at {} to {}", at, node.node_name());
-            node.create_relay(&ctx, &at, Some(alias), cmd.authorized)
-                .await?
-        };
-        *is_finished.lock().await = true;
-        Ok(relay_info)
-    };
-
-    let output_messages = vec![
-        format!(
-            "Creating relay relay service at {}...",
-            &at.to_string().color(OckamColor::PrimaryResource.color())
-        ),
-        format!(
-            "Setting up receiving relay mailbox on node {}...",
-            &node.node_name().color(OckamColor::PrimaryResource.color())
-        ),
-    ];
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
-
-    let (relay, _) = try_join!(get_relay_info, progress_output)?;
-
-    let plain = {
-        let from = format!(
-            "{}{}",
-            &at,
-            &relay.worker_address_ma().into_diagnostic()?.to_string()
-        )
-        .color(OckamColor::PrimaryResource.color());
-        let to = format!(
-            "/node/{}{}",
-            &node.node_name(),
-            &relay.remote_address_ma().into_diagnostic()?.to_string()
-        )
-        .color(OckamColor::PrimaryResource.color());
-        fmt_ok!("Now relaying messages from {from} → {to}")
-    };
-    let machine = relay.remote_address_ma().into_diagnostic()?;
-    let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .machine(machine)
-        .json(json)
-        .write_line()?;
-
-    Ok(())
+    cmd.async_run(&ctx, opts).await
 }
 
 impl Output for RelayInfo {
