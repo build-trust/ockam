@@ -3,10 +3,13 @@ use std::{path::PathBuf, str::FromStr};
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry::{Context, KeyValue};
 use tracing::instrument;
 
 use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
+use ockam_api::logs::TracingGuard;
 
 use crate::node::create::background::background_mode;
 use crate::node::create::foreground::foreground_mode;
@@ -115,12 +118,17 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     #[instrument(skip_all)]
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
         if self.foreground {
+            if self.child_process {
+                Context::current()
+                    .span()
+                    .set_attribute(KeyValue::new("background", "true"));
+            }
             local_cmd(embedded_node_that_is_not_stopped(
                 opts.rt.clone(),
                 foreground_mode,
-                (opts, self),
+                (opts, self, tracing_guard),
             ));
         } else {
             node_rpc(opts.rt.clone(), background_mode, (opts, self))

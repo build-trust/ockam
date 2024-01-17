@@ -7,6 +7,7 @@ use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
+use ockam_api::logs::TracingGuard;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -68,7 +69,13 @@ pub enum NodeSubcommand {
 impl NodeSubcommand {
     pub fn name(&self) -> String {
         match self {
-            NodeSubcommand::Create(_) => "create node",
+            NodeSubcommand::Create(cmd) => {
+                if cmd.child_process {
+                    "create background node"
+                } else {
+                    "create node"
+                }
+            }
             NodeSubcommand::Delete(_) => "delete node",
             NodeSubcommand::List(_) => "list nodes",
             NodeSubcommand::Logs(_) => "logs node",
@@ -82,9 +89,9 @@ impl NodeSubcommand {
 }
 
 impl NodeCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, options: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
         match self.subcommand {
-            NodeSubcommand::Create(c) => c.run(options),
+            NodeSubcommand::Create(c) => c.run(options, tracing_guard),
             NodeSubcommand::Delete(c) => c.run(options),
             NodeSubcommand::List(c) => c.run(options),
             NodeSubcommand::Show(c) => c.run(options),

@@ -1,9 +1,10 @@
 use colorful::Colorful;
 use miette::miette;
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry::KeyValue;
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{debug, info, instrument, Span};
-use tracing_opentelemetry::OpenTelemetrySpanExt;
+use tracing::{debug, info, instrument};
 
 use ockam::Context;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -25,6 +26,9 @@ pub(crate) async fn background_mode(
     guard_node_is_not_already_running(&opts, &cmd).await?;
 
     let node_name = cmd.node_name.clone();
+    opentelemetry::Context::current()
+        .span()
+        .set_attribute(KeyValue::new("node_name", node_name.clone()));
     debug!("create node in background mode");
 
     opts.terminal.write_line(&fmt_log!(
@@ -40,7 +44,7 @@ pub(crate) async fn background_mode(
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let opentelemetry_context = OpenTelemetryContext::inject(&Span::current().context());
+    let opentelemetry_context = OpenTelemetryContext::current();
     let cmd_with_trace_context = CreateCommand {
         opentelemetry_context: cmd.opentelemetry_context.or(Some(opentelemetry_context)),
         ..cmd

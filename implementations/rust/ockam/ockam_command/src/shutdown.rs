@@ -1,6 +1,7 @@
 use crate::{Terminal, TerminalStream};
 use colorful::Colorful;
 use console::Term;
+use opentelemetry::trace::FutureExt;
 use std::io;
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
@@ -44,17 +45,20 @@ pub async fn wait(
             let tx = tx.clone();
             let terminal = terminal.clone();
             std::thread::spawn(move || {
-                let mut buffer = Vec::new();
-                let mut handle = io::stdin().lock();
-                handle
-                    .read_to_end(&mut buffer)
-                    .expect("Error reading from stdin");
-                let _ = tx.blocking_send(());
-                info!("EOF received");
-                if !quiet {
-                    let _ = terminal
-                        .write_line(format!("{} EOF received", "!".light_yellow()).as_str());
+                {
+                    let mut buffer = Vec::new();
+                    let mut handle = io::stdin().lock();
+                    handle
+                        .read_to_end(&mut buffer)
+                        .expect("Error reading from stdin");
+                    let _ = tx.blocking_send(());
+                    info!("EOF received");
+                    if !quiet {
+                        let _ = terminal
+                            .write_line(format!("{} EOF received", "!".light_yellow()).as_str());
+                    }
                 }
+                .with_current_context()
             });
         }
     }

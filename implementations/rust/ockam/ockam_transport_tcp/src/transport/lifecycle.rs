@@ -19,7 +19,7 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// # Ok(()) }
     /// ```
-    #[instrument]
+    #[instrument(name = "create tcp transport", skip_all)]
     pub async fn create(ctx: &Context) -> Result<Self> {
         let tcp = Self {
             ctx: Arc::new(ctx.async_try_clone().await?),

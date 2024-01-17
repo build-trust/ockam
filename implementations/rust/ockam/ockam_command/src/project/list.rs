@@ -1,8 +1,8 @@
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
+use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::Instrument;
 
 use ockam::Context;
 use ockam_api::cloud::project::Projects;
@@ -49,7 +49,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> 
         *is_finished.lock().await = true;
         Ok(projects)
     }
-    .in_current_span();
+    .with_current_context();
 
     let output_messages = vec![format!("Listing projects...\n",)];
     let progress_output = opts

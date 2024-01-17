@@ -6,8 +6,6 @@ use opentelemetry::global;
 use opentelemetry::propagation::{Extractor, Injector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::Span;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
@@ -133,7 +131,7 @@ impl Client {
         T: Encode<()>,
     {
         let mut buf = Vec::new();
-        let opentelemetry_context = OpenTelemetryContext::inject(&Span::current().context());
+        let opentelemetry_context = OpenTelemetryContext::current();
         let req = req.tracing_context(opentelemetry_context.to_string());
 
         req.encode(&mut buf)?;
@@ -182,6 +180,10 @@ impl OpenTelemetryContext {
             propagation_context
         })
     }
+
+    pub fn current() -> OpenTelemetryContext {
+        OpenTelemetryContext::inject(&opentelemetry::Context::current())
+    }
 }
 
 impl Display for OpenTelemetryContext {
@@ -213,6 +215,15 @@ impl TryFrom<&str> for OpenTelemetryContext {
 
     fn try_from(value: &str) -> Result<Self> {
         opentelemetry_context_parser(value)
+    }
+}
+
+/// Parse the OpenTelemetry context from a String
+impl TryFrom<String> for OpenTelemetryContext {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        opentelemetry_context_parser(&value)
     }
 }
 

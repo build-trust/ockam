@@ -21,6 +21,7 @@ use crate::NamedVault;
 ///
 impl CliState {
     /// Create a node, with some optional associated values, and start it
+    #[instrument(skip_all, fields(node_name = node_name))]
     pub async fn start_node_with_optional_values(
         &self,
         node_name: &str,

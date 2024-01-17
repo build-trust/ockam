@@ -39,7 +39,7 @@ impl Logging {
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
-    ) -> LoggingGuard {
+    ) -> TracingGuard {
         let span_exporter = Executor::execute_future(async move {
             opentelemetry_otlp::new_exporter()
                 .tonic()
@@ -106,8 +106,8 @@ impl Logging {
         color: bool,
         node_dir: Option<PathBuf>,
         crates: &[&str],
-    ) -> LoggingGuard {
-        let tracing_layer = {
+    ) -> TracingGuard {
+        let (tracing_layer, tracer_provider) = {
             // the setup of the tracer requires an async context
             Executor::execute_future(async move {
                 let trace_config =
@@ -118,18 +118,18 @@ impl Logging {
                         ),
                     ]));
 
-                let tracer = create_tracer(
+                let (tracer, tracer_provider) = create_tracer(
                     span_exporter,
                     Some(trace_config),
                     sdk::runtime::Tokio,
                     batch_config,
                 );
-                tracing_opentelemetry::layer().with_tracer(tracer)
+                (tracing_opentelemetry::layer().with_tracer(tracer), tracer_provider)
             })
             .expect("Failed to build the tracing layer")
         };
 
-        let (logging_layer, provider) = {
+        let (logging_layer, logger_provider) = {
             Executor::execute_future(async move {
                 let config =
                     sdk::logs::Config::default().with_resource(Resource::new(vec![KeyValue::new(
@@ -198,14 +198,16 @@ impl Logging {
             };
             res.expect("Failed to initialize tracing subscriber");
 
-            LoggingGuard {
+            TracingGuard {
                 _worker_guard: Some(guard),
-                logger_provider: provider,
+                logger_provider,
+                tracer_provider,
             }
         } else {
-            LoggingGuard {
+            TracingGuard {
                 _worker_guard: None,
-                logger_provider: provider,
+                logger_provider,
+                tracer_provider,
             }
         }
     }
@@ -216,7 +218,7 @@ fn create_tracer<S: SpanExporter + 'static, R: RuntimeChannel>(
     trace_config: Option<sdk::trace::Config>,
     runtime: R,
     batch_config: Option<BatchConfig>,
-) -> sdk::trace::Tracer {
+) -> (sdk::trace::Tracer, opentelemetry_sdk::trace::TracerProvider) {
     let mut provider_builder = sdk::trace::TracerProvider::builder();
     match batch_config {
         Some(batch_config) => {
@@ -237,8 +239,8 @@ fn create_tracer<S: SpanExporter + 'static, R: RuntimeChannel>(
         Some(SCHEMA_URL),
         None,
     );
-    let _ = global::set_tracer_provider(provider);
-    tracer
+    let _ = global::set_tracer_provider(provider.clone());
+    (tracer, provider)
 }
 
 /// TODO: make sure that this is parsed as a proper URL
@@ -281,14 +283,16 @@ fn get_otlp_headers() -> MetadataMap {
 }
 
 #[derive(Debug)]
-pub struct LoggingGuard {
+pub struct TracingGuard {
     _worker_guard: Option<WorkerGuard>,
     logger_provider: LoggerProvider,
+    tracer_provider: opentelemetry_sdk::trace::TracerProvider,
 }
 
-impl LoggingGuard {
+impl TracingGuard {
     pub fn force_flush(&self) {
         self.logger_provider.force_flush();
+        self.tracer_provider.force_flush();
     }
 
     pub fn shutdown(&self) {
@@ -359,7 +363,7 @@ mod tests {
         )
         .unwrap();
 
-        let tracer = global::tracer("ockam");
+        let tracer = global::tracer("ockam-test");
         tracer.in_span("Logging::test", |_| {
             info!("inside span");
             error!("something went wrong!");

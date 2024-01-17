@@ -18,7 +18,7 @@ use crate::metrics::Metrics;
 // collector, thus don't need it in scope.
 #[cfg(feature = "metrics")]
 use core::sync::atomic::{AtomicBool, Ordering};
-use tracing::Instrument;
+use opentelemetry::trace::FutureExt;
 
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
@@ -89,16 +89,20 @@ impl Executor {
         #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
         #[cfg(feature = "metrics")]
-        self.rt
-            .spawn(self.metrics.clone().run(alive.clone()).in_current_span());
+        self.rt.spawn(
+            self.metrics
+                .clone()
+                .run(alive.clone())
+                .with_current_context(),
+        );
 
         // Spawn user code second
         let sender = self.sender();
         let future = Executor::wrapper(sender, future);
-        let join_body = self.rt.spawn(future.in_current_span());
+        let join_body = self.rt.spawn(future.with_current_context());
 
         // Then block on the execution of the router
-        self.rt.block_on(self.router.run().in_current_span())?;
+        self.rt.block_on(self.router.run().with_current_context())?;
 
         // Shut down metrics collector
         #[cfg(feature = "metrics")]
@@ -148,8 +152,8 @@ impl Executor {
     {
         let lock = runtime::RUNTIME.lock().unwrap();
         let rt = lock.as_ref().expect("Runtime was consumed");
-        let join_body = rt.spawn(future);
-        rt.block_on(join_body)
+        let join_body = rt.spawn(future.with_current_context());
+        rt.block_on(join_body.with_current_context())
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))
     }
 

@@ -17,6 +17,7 @@ use ockam_api::{
         NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
+use ockam_api::logs::TracingGuard;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::{route, LOCAL};
 
@@ -30,7 +31,7 @@ use crate::{shutdown, CommandGlobalOpts, Result};
 #[instrument(skip_all, fields(node_name = cmd.node_name))]
 pub(super) async fn foreground_mode(
     ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+    (opts, cmd, tracing_guard): (CommandGlobalOpts, CreateCommand, Option<TracingGuard>),
 ) -> miette::Result<()> {
     guard_node_is_not_already_running(&opts, &cmd).await?;
 
@@ -124,6 +125,10 @@ pub(super) async fn foreground_mode(
             ctx.stop().await.into_diagnostic()?;
             return Err(miette!("Failed to start services"));
         }
+    }
+
+    if let Some(tracing_guard) = tracing_guard {
+        tracing_guard.force_flush()
     }
 
     // Create a channel for communicating back to the main thread

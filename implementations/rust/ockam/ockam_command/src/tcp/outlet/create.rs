@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -84,7 +85,8 @@ pub async fn run_impl(
         let res = send_request(&ctx, &opts, payload, node_name.clone()).await;
         *is_finished.lock().await = true;
         res
-    };
+    }
+    .with_current_context();
 
     let output_messages = vec![
         format!(

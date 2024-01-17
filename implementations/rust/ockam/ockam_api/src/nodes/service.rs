@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use miette::IntoDiagnostic;
 use minicbor::{Decoder, Encode};
+use opentelemetry::global;
+use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustContext;
@@ -25,6 +27,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::AllowAll;
 use ockam_core::IncomingAccessControl;
 use ockam_multiaddr::MultiAddr;
+use ockam_node::api::OpenTelemetryContext;
 
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::CliState;
@@ -349,7 +352,7 @@ impl NodeManagerTrustOptions {
 
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
-    #[instrument(skip_all, fields(node_name = general_options.node_name))]
+    #[instrument(name = "create_node_manager", skip_all, fields(node_name = general_options.node_name))]
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
@@ -550,6 +553,28 @@ impl NodeManagerWorker {
             "request"
         }
 
+        if let Some(tracing_context) = req.tracing_context.as_ref() {
+            let opentelemetry_context: OpenTelemetryContext = tracing_context.clone().try_into()?;
+            let tracer = global::tracer("ockam");
+            let span = tracer.start_with_context(
+                format!("handle request {} {}", req.method_string(), req.path),
+                &opentelemetry_context.extract(),
+            );
+            let cx = opentelemetry::Context::current_with_span(span);
+            self.handle_traced_request(ctx, req, dec)
+                .with_context(cx)
+                .await
+        } else {
+            self.handle_traced_request(ctx, req, dec).await
+        }
+    }
+
+    async fn handle_traced_request(
+        &mut self,
+        ctx: &mut Context,
+        req: &RequestHeader,
+        dec: &mut Decoder<'_>,
+    ) -> Result<Vec<u8>> {
         use Method::*;
         let path = req.path();
         let path_segments = req.path_segments::<5>();

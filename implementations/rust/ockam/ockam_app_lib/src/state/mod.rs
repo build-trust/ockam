@@ -14,7 +14,7 @@ use ockam_api::cli_state::CliState;
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
-use ockam_api::logs::LoggingGuard;
+use ockam_api::logs::TracingGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -79,7 +79,7 @@ pub struct AppState {
     refresh_inlets_scheduler: Arc<OnceLock<Scheduler>>,
     refresh_relay_scheduler: Arc<OnceLock<Scheduler>>,
     last_published_snapshot: Arc<Mutex<Option<ApplicationState>>>,
-    pub(crate) tracing_guard: Arc<OnceLock<LoggingGuard>>,
+    pub(crate) tracing_guard: Arc<OnceLock<TracingGuard>>,
 }
 
 async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {

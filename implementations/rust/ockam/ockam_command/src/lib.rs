@@ -47,6 +47,7 @@ use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
+use ockam_api::logs::TracingGuard;
 use ockam_core::env::get_env_with_default;
 use ockam_node::api::OpenTelemetryContext;
 use policy::PolicyCommand;
@@ -447,14 +448,18 @@ impl OckamCommand {
         }));
         let options = CommandGlobalOpts::new(self.global_args.clone());
 
-        let _tracing_guard = if !options.global_args.quiet {
+        let tracing_guard = if !options.global_args.quiet {
             let log_path = self.log_path(&options);
             let guard = setup_logging(
+                self.subcommand.get_opentelemetry_context().is_some(),
                 options.global_args.verbose,
                 options.global_args.no_color,
                 options.terminal.is_tty(),
                 log_path,
             );
+            if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
+                tracing::debug!("{opentelemetry_context}");
+            };
             tracing::debug!("{}", Version::short());
             tracing::debug!("Parsed {:?}", &self);
             Some(guard)
@@ -488,16 +493,19 @@ impl OckamCommand {
                 tracer.start_with_context(self.subcommand.name(), &opentelemetry_context.extract());
             let cx = Context::current_with_span(span);
             let _guard = cx.clone().attach();
-            self.run_command(options);
+            self.run_command(options, tracing_guard);
         } else {
-            tracer.in_span(self.subcommand.name(), |_| self.run_command(options));
+            tracer.in_span(self.subcommand.name(), |_| {
+                self.run_command(options, tracing_guard);
+            });
         }
+
         global::shutdown_tracer_provider();
         global::shutdown_logger_provider();
     }
 
     #[instrument(skip_all, fields(command = self.subcommand.name()))]
-    fn run_command(self, options: CommandGlobalOpts) {
+    fn run_command(self, options: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
         match self.subcommand {
             OckamSubcommand::Enroll(c) => c.run(options),
             OckamSubcommand::Space(c) => c.run(options),
@@ -507,7 +515,7 @@ impl OckamCommand {
             OckamSubcommand::Share(c) => c.run(options),
             OckamSubcommand::Subscription(c) => c.run(options),
 
-            OckamSubcommand::Node(c) => c.run(options),
+            OckamSubcommand::Node(c) => c.run(options, tracing_guard),
             OckamSubcommand::Worker(c) => c.run(options),
             OckamSubcommand::Service(c) => c.run(options),
             OckamSubcommand::Message(c) => c.run(options),

@@ -1,5 +1,6 @@
 use clap::Args;
 use miette::IntoDiagnostic;
+use opentelemetry::trace::FutureExt;
 
 use crate::terminal::tui::ShowCommandTui;
 
@@ -16,7 +17,7 @@ use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts};
 use tokio::sync::Mutex;
-use tracing::Instrument;
+use tracing::instrument;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -103,6 +104,8 @@ impl ShowCommandTui for ShowTui {
         };
         Ok(project)
     }
+
+    #[instrument(skip_all)]
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let project = self.node.get_project_by_name(&self.ctx, item_name).await?;
         let project_output = ProjectConfigCompact(project);
@@ -128,7 +131,8 @@ impl ShowCommandTui for ShowTui {
             }
             *is_finished.lock().await = true;
             Ok(projects_list)
-        }.in_current_span();
+        }
+        .with_current_context();
 
         let output_messages = vec![format!("Listing projects...\n",)];
         let progress_output = terminal.progress_output(&output_messages, &is_finished);
