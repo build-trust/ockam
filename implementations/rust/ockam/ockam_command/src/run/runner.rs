@@ -4,24 +4,11 @@ use crate::CommandGlobalOpts;
 use miette::Result;
 use ockam_node::Context;
 
-/// Parses a given configuration and runs the necessary commands to create the described state.
-///
-/// More specifically, this struct is responsible for:
-/// - Running the commands in a valid order. For example, nodes will be created before TCP inlets.
-/// - Do the necessary checks to to run only the necessary commands. For example, an enrollment ticket won't
-///  be used if the identity is already enrolled.
-///
-/// For more details about the parsing, see the [Config](Config) struct. You can also check examples of
-/// valid configuration files in the demo folder of this module.
 pub struct ConfigRunner;
 
 impl ConfigRunner {
-    pub async fn run_config(
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        config_contents: &str,
-    ) -> Result<()> {
-        let config = Config::parse(config_contents)?;
+    pub async fn go(ctx: &Context, opts: CommandGlobalOpts, contents: &str) -> Result<()> {
+        let config = Config::parse(contents)?;
 
         let projects = config.projects.into_commands()?;
         for project_enrollment in projects.enroll {

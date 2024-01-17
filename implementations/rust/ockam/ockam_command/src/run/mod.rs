@@ -7,6 +7,7 @@ use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
+pub use parser::Config;
 pub use runner::ConfigRunner;
 use std::path::PathBuf;
 
@@ -75,5 +76,5 @@ async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: RunCommand) -> mie
             std::fs::read_to_string(path).into_diagnostic()?
         }
     };
-    ConfigRunner::run_config(&ctx, opts, &config).await
+    runner::ConfigRunner::go(&ctx, opts, &config).await
 }
