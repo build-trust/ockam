@@ -361,12 +361,11 @@ impl Authority {
             "resource.trust_context_id",
             str(configuration.project_identifier.clone()),
         );
-        let abac = Arc::new(AbacAccessControl::new(
+        Arc::new(AbacAccessControl::new(
             self.identity_attributes_repository(),
             Policy::new(rule),
             env,
-        ));
-        abac
+        ))
     }
 }
 
