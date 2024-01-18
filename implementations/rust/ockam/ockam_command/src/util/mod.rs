@@ -231,7 +231,7 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     let port = address.port();
     let ip = address.ip();
     if TcpListener::bind((ip, port)).is_err() {
-        return Err(miette!(
+        Err(miette!(
             "Another process is already listening on port {port}!"
         ))?;
     }
