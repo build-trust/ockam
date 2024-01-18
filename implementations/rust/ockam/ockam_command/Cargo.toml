@@ -105,7 +105,7 @@ tokio = { version = "1.35.1", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 url = "2.4.1"
-which = "5.0.0"
+which = "6.0.0"
 
 [dev-dependencies]
 assert_cmd = "2"
