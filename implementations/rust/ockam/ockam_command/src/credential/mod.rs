@@ -37,24 +37,29 @@ pub enum CredentialSubcommand {
     Verify(VerifyCommand),
 }
 
+impl CredentialSubcommand {
+    pub fn name(&self) -> String {
+        match &self {
+            CredentialSubcommand::List(c) => c.name(),
+            CredentialSubcommand::Issue(c) => c.name(),
+            CredentialSubcommand::Store(c) => c.name(),
+            CredentialSubcommand::Verify(c) => c.name(),
+        }
+    }
+}
+
 impl CredentialCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            CredentialSubcommand::List(c) => c.run(options),
-            CredentialSubcommand::Issue(c) => c.run(options),
-            CredentialSubcommand::Store(c) => c.run(options),
-            CredentialSubcommand::Verify(c) => c.run(options),
+            CredentialSubcommand::List(c) => c.run(opts),
+            CredentialSubcommand::Issue(c) => c.run(opts),
+            CredentialSubcommand::Store(c) => c.run(opts),
+            CredentialSubcommand::Verify(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
-        match &self.subcommand {
-            CredentialSubcommand::Issue(_) => "issue credential",
-            CredentialSubcommand::List(_) => "list credentials",
-            CredentialSubcommand::Store(_) => "store credential",
-            CredentialSubcommand::Verify(_) => "verify credential",
-        }
-        .to_string()
+        self.subcommand.name()
     }
 }
 

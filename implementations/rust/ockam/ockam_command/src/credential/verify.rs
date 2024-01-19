@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use clap::Args;
 use colorful::Colorful;
-use console::Term;
 use miette::{miette, IntoDiagnostic};
 use tokio::{sync::Mutex, try_join};
 
@@ -12,14 +11,11 @@ use ockam::identity::{
     ChangeHistoryRepository, ChangeHistorySqlxDatabase, CredentialsVerification, Identifier,
     PurposeKeyVerification,
 };
-use ockam::Context;
-use ockam_api::CliState;
 use ockam_vault::{SoftwareVaultForVerifyingSignatures, VaultForVerifyingSignatures};
 
+use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
-use crate::{
-    fmt_err, fmt_log, fmt_ok, util::node_rpc, CommandGlobalOpts, Terminal, TerminalStream,
-};
+use crate::{fmt_err, fmt_log, fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
@@ -34,53 +30,55 @@ pub struct VerifyCommand {
 }
 
 impl VerifyCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "verify credential".into()
     }
 
     pub fn issuer(&self) -> &Identifier {
         &self.issuer
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, VerifyCommand),
-) -> miette::Result<()> {
-    let (is_valid, plain_text) = match verify_credential(
-        &opts.state,
-        &opts.terminal,
-        cmd.issuer(),
-        &cmd.credential,
-        &cmd.credential_path,
-    )
-    .await
-    {
-        Ok(_) => (true, fmt_ok!("Credential is valid")),
-        Err(e) => (
-            false,
-            fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
-        ),
-    };
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let (is_valid, plain_text) = match verify_credential(
+            &opts,
+            self.issuer(),
+            &self.credential,
+            &self.credential_path,
+        )
+        .await
+        {
+            Ok(_) => (true, fmt_ok!("Credential is valid")),
+            Err(e) => (
+                false,
+                fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
+            ),
+        };
 
-    opts.terminal
-        .stdout()
-        .plain(plain_text)
-        .json(serde_json::json!({ "is_valid": is_valid }))
-        .machine(is_valid.to_string())
-        .write_line()?;
+        opts.terminal
+            .stdout()
+            .plain(plain_text)
+            .json(serde_json::json!({ "is_valid": is_valid }))
+            .machine(is_valid.to_string())
+            .write_line()?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 pub async fn verify_credential(
-    state: &CliState,
-    terminal: &Terminal<TerminalStream<Term>>,
+    opts: &CommandGlobalOpts,
     issuer: &Identifier,
     credential: &Option<String>,
     credential_path: &Option<PathBuf>,
 ) -> miette::Result<CredentialAndPurposeKey> {
-    terminal.write_line(&fmt_log!("Verifying credential...\n"))?;
+    opts.terminal
+        .write_line(&fmt_log!("Verifying credential...\n"))?;
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 
@@ -99,7 +97,7 @@ pub async fn verify_credential(
             }
         };
 
-        let change_history_repository = ChangeHistorySqlxDatabase::new(state.database());
+        let change_history_repository = ChangeHistorySqlxDatabase::new(opts.state.database());
 
         let result = validate_encoded_credential(
             Arc::new(change_history_repository),
@@ -115,7 +113,9 @@ pub async fn verify_credential(
 
     let output_messages = vec!["Verifying credential...".to_string()];
 
-    let progress_output = terminal.progress_output(&output_messages, &is_finished);
+    let progress_output = opts
+        .terminal
+        .progress_output(&output_messages, &is_finished);
 
     let (credential_and_purpose_key, _) = try_join!(send_req, progress_output)?;
 

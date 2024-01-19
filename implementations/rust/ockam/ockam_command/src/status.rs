@@ -12,7 +12,7 @@ use ockam_api::cloud::project::OrchestratorVersionInfo;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 
-use crate::util::{api, duration::duration_parser, node_rpc};
+use crate::util::{api, async_cmd, duration::duration_parser};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
@@ -29,44 +29,39 @@ pub struct StatusCommand {
 }
 
 impl StatusCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
 
     pub fn name(&self) -> String {
         "get status".to_string()
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let identities_details = get_identities_details(&opts, self.all).await?;
+        let nodes_details = get_nodes_details(ctx, &opts).await?;
 
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: StatusCommand,
-) -> miette::Result<()> {
-    let identities_details = get_identities_details(&opts, cmd.all).await?;
-    let nodes_details = get_nodes_details(ctx, &opts).await?;
+        let node = InMemoryNode::start(ctx, &opts.state)
+            .await?
+            .with_timeout(self.timeout);
+        let controller = node.create_controller().await?;
+        let orchestrator_version = controller
+            .get_orchestrator_version_info(ctx)
+            .await
+            .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
+            .unwrap_or_default();
 
-    let node = InMemoryNode::start(ctx, &opts.state)
-        .await?
-        .with_timeout(cmd.timeout);
-    let controller = node.create_controller().await?;
-    let orchestrator_version = controller
-        .get_orchestrator_version_info(ctx)
-        .await
-        .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
-        .unwrap_or_default();
-
-    let status = StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
-    opts.terminal
-        .stdout()
-        .plain(build_plain_output(&cmd, &status).await?)
-        .json(serde_json::to_string(&status).into_diagnostic()?)
-        .write_line()?;
-    Ok(())
+        let status =
+            StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
+        opts.terminal
+            .stdout()
+            .plain(build_plain_output(self, &status).await?)
+            .json(serde_json::to_string(&status).into_diagnostic()?)
+            .write_line()?;
+        Ok(())
+    }
 }
 
 async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Vec<NodeDetails>> {

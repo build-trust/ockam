@@ -39,22 +39,21 @@ pub enum SpaceSubcommand {
 }
 
 impl SpaceCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SpaceSubcommand::Create(c) => c.run(options),
-            SpaceSubcommand::Delete(c) => c.run(options),
-            SpaceSubcommand::List(c) => c.run(options),
-            SpaceSubcommand::Show(c) => c.run(options),
+            SpaceSubcommand::Create(c) => c.run(opts),
+            SpaceSubcommand::Delete(c) => c.run(opts),
+            SpaceSubcommand::List(c) => c.run(opts),
+            SpaceSubcommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            SpaceSubcommand::Create(_) => "create space",
-            SpaceSubcommand::Delete(_) => "delete space",
-            SpaceSubcommand::List(_) => "list spaces",
-            SpaceSubcommand::Show(_) => "show space",
+            SpaceSubcommand::Create(c) => c.name(),
+            SpaceSubcommand::Delete(c) => c.name(),
+            SpaceSubcommand::List(c) => c.name(),
+            SpaceSubcommand::Show(c) => c.name(),
         }
-        .to_string()
     }
 }

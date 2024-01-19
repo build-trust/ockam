@@ -13,7 +13,7 @@ use ockam_api::cloud::share::{CreateServiceInvitation, Invitations};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,8 +43,67 @@ pub struct ServiceCreateCommand {
 }
 
 impl ServiceCreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create shared service".into()
+    }
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let is_finished: Mutex<bool> = Mutex::new(false);
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
+
+        let get_sent_invitation = async {
+            let invitation = controller
+                .create_service_invitation(
+                    ctx,
+                    self.expires_at.clone(),
+                    self.project_id.clone(),
+                    self.recipient_email.clone(),
+                    self.project_identity.clone(),
+                    self.project_route.clone(),
+                    self.project_authority_identity.clone(),
+                    self.project_authority_route.clone(),
+                    self.shared_node_identity.clone(),
+                    self.shared_node_route.clone(),
+                    self.enrollment_ticket.clone(),
+                )
+                .await?;
+            *is_finished.lock().await = true;
+            Ok(invitation)
+        };
+
+        let output_messages = vec![format!("Creating invitation...\n",)];
+
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
+
+        let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
+
+        debug!(?sent);
+
+        let plain = fmt_ok!(
+            "Invitation {} to {} {} created, expiring at {}. {} will be notified via email.",
+            sent.id,
+            sent.scope,
+            sent.target_id,
+            sent.expires_at,
+            sent.recipient_email
+        );
+        let json = serde_json::to_string_pretty(&sent).into_diagnostic()?;
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+
+        Ok(())
     }
 }
 
@@ -80,68 +139,4 @@ impl From<ServiceCreateCommand> for CreateServiceInvitation {
             enrollment_ticket,
         }
     }
-}
-
-async fn rpc(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ServiceCreateCommand),
-) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: ServiceCreateCommand,
-) -> miette::Result<()> {
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
-
-    let get_sent_invitation = async {
-        let invitation = controller
-            .create_service_invitation(
-                ctx,
-                cmd.expires_at,
-                cmd.project_id,
-                cmd.recipient_email,
-                cmd.project_identity,
-                cmd.project_route,
-                cmd.project_authority_identity,
-                cmd.project_authority_route,
-                cmd.shared_node_identity,
-                cmd.shared_node_route,
-                cmd.enrollment_ticket,
-            )
-            .await?;
-        *is_finished.lock().await = true;
-        Ok(invitation)
-    };
-
-    let output_messages = vec![format!("Creating invitation...\n",)];
-
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
-
-    let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
-
-    debug!(?sent);
-
-    let plain = fmt_ok!(
-        "Invitation {} to {} {} created, expiring at {}. {} will be notified via email.",
-        sent.id,
-        sent.scope,
-        sent.target_id,
-        sent.expires_at,
-        sent.recipient_email
-    );
-    let json = serde_json::to_string_pretty(&sent).into_diagnostic()?;
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-
-    Ok(())
 }

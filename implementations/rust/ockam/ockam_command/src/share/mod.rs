@@ -40,27 +40,26 @@ pub enum ShareSubcommand {
 }
 
 impl ShareCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         use ShareSubcommand::*;
         match self.subcommand {
-            Accept(c) => c.run(options),
-            Create(c) => c.run(options),
-            List(c) => c.run(options),
+            Accept(c) => c.run(opts),
+            Create(c) => c.run(opts),
+            List(c) => c.run(opts),
             Revoke => todo!(),
-            Service(c) => c.run(options),
-            Show(c) => c.run(options),
+            Service(c) => c.run(opts),
+            Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            ShareSubcommand::Accept(_) => "accept invitation",
-            ShareSubcommand::Create(_) => "create invitation",
-            ShareSubcommand::List(_) => "list invitations",
-            ShareSubcommand::Revoke => "revoke invitation",
-            ShareSubcommand::Service(_) => "create shared service",
-            ShareSubcommand::Show(_) => "show invitation",
+            ShareSubcommand::Accept(c) => c.name(),
+            ShareSubcommand::Create(c) => c.name(),
+            ShareSubcommand::List(c) => c.name(),
+            ShareSubcommand::Show(c) => c.name(),
+            ShareSubcommand::Service(c) => c.name(),
+            ShareSubcommand::Revoke => "revoke invitation".to_string(),
         }
-        .to_string()
     }
 }

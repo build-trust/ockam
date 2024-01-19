@@ -1,15 +1,17 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_core::AsyncTryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -35,16 +37,24 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    DeleteTui::run(ctx, opts, cmd).await
+    pub fn name(&self) -> String {
+        "delete space".into()
+    }
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        DeleteTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.clone(),
+        )
+        .await
+    }
 }
 
 pub struct DeleteTui {

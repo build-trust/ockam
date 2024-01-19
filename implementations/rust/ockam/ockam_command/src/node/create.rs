@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{path::PathBuf, str::FromStr};
 
 use clap::Args;
@@ -12,13 +13,11 @@ use ockam_api::logs::TracingGuard;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 
-use crate::node::create::background::background_mode;
-use crate::node::create::foreground::foreground_mode;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
 use crate::util::api::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
-use crate::util::{local_cmd, node_rpc};
+use crate::util::{async_cmd, local_cmd};
 use crate::{docs, CommandGlobalOpts, Result};
 use ockam_node::{opentelemetry_context_parser, OpenTelemetryContext};
 
@@ -106,7 +105,11 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     #[instrument(skip_all)]
-    pub fn run(self, opts: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
+    pub fn run(
+        self,
+        opts: CommandGlobalOpts,
+        tracing_guard: Option<Arc<TracingGuard>>,
+    ) -> miette::Result<()> {
         if self.foreground {
             if self.child_process {
                 opentelemetry::Context::current()
@@ -115,11 +118,19 @@ impl CreateCommand {
             }
             local_cmd(embedded_node_that_is_not_stopped(
                 opts.rt.clone(),
-                foreground_mode,
-                (opts, self, tracing_guard),
-            ));
+                |ctx| async move { self.foreground_mode(&ctx, opts, tracing_guard).await },
+            ))
         } else {
-            node_rpc(opts.rt.clone(), background_mode, (opts, self))
+            async_cmd(&self.name(), opts.clone(), |ctx| async move {
+                self.background_mode(&ctx, opts).await
+            })
+        }
+    }
+    pub fn name(&self) -> String {
+        if self.child_process {
+            "create background node".into()
+        } else {
+            "create node".into()
         }
     }
 
@@ -131,9 +142,10 @@ impl CreateCommand {
     ) -> miette::Result<()> {
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.foreground {
-            foreground_mode(ctx, (opts, self, tracing_guard)).await
+            self.foreground_mode(&ctx, opts, tracing_guard.map(Arc::new))
+                .await
         } else {
-            background_mode(ctx, (opts, self)).await
+            self.background_mode(&ctx, opts).await
         }
     }
 
@@ -152,6 +164,20 @@ impl CreateCommand {
     pub fn logging_to_stdout(&self) -> bool {
         !self.logging_to_file()
     }
+
+    pub async fn guard_node_is_not_already_running(
+        &self,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        if !self.child_process {
+            if let Ok(node) = opts.state.get_node(&self.node_name).await {
+                if node.is_running() {
+                    return Err(miette!("Node {} is already running", &self.node_name));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
@@ -164,19 +190,4 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
             Config::read(path)
         }
     }
-}
-
-pub async fn guard_node_is_not_already_running(
-    opts: &CommandGlobalOpts,
-    node_name: &str,
-    child_process: bool,
-) -> miette::Result<()> {
-    if !child_process {
-        if let Ok(node) = opts.state.get_node(node_name).await {
-            if node.is_running() {
-                return Err(miette!("Node {} is already running", &node_name));
-            }
-        }
-    }
-    Ok(())
 }

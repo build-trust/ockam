@@ -22,13 +22,14 @@ pub struct CompletionCommand {
 }
 
 impl CompletionCommand {
-    pub fn run(self) {
+    pub fn run(self) -> miette::Result<()> {
         generate(
             self.shell,
             &mut OckamCommand::command(),
             "ockam",
             &mut io::stdout(),
-        )
+        );
+        Ok(())
     }
 
     pub fn name(&self) -> String {

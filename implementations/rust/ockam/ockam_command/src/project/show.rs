@@ -14,8 +14,9 @@ use ockam_api::nodes::InMemoryNode;
 use crate::output::{Output, ProjectConfigCompact};
 use crate::terminal::PluralTerm;
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
+use ockam_core::AsyncTryClone;
 use tokio::sync::Mutex;
 use tracing::instrument;
 
@@ -40,17 +41,24 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
-    run_impl(ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "show project".into()
+    }
 
-async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    ShowTui::run(ctx, opts, cmd.name).await
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.name.clone(),
+        )
+        .await
+    }
 }
 
 pub struct ShowTui {
@@ -59,6 +67,7 @@ pub struct ShowTui {
     project_name: Option<String>,
     node: InMemoryNode,
 }
+
 impl ShowTui {
     pub async fn run(
         ctx: Context,

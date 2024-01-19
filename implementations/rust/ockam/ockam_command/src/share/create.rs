@@ -12,7 +12,7 @@ use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -36,64 +36,62 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "create invitation".into()
+    }
 
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: CreateCommand,
-) -> miette::Result<()> {
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let is_finished: Mutex<bool> = Mutex::new(false);
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
-    let get_sent_invitation = async {
-        let invitation = controller
-            .create_invitation(
-                ctx,
-                cmd.expires_at,
-                cmd.grant_role,
-                cmd.recipient_email,
-                None,
-                cmd.scope,
-                cmd.target_id,
-            )
-            .await?;
-        *is_finished.lock().await = true;
-        Ok(invitation)
-    };
+        let get_sent_invitation = async {
+            let invitation = controller
+                .create_invitation(
+                    ctx,
+                    self.expires_at.clone(),
+                    self.grant_role.clone(),
+                    self.recipient_email.clone(),
+                    None,
+                    self.scope.clone(),
+                    self.target_id.clone(),
+                )
+                .await?;
+            *is_finished.lock().await = true;
+            Ok(invitation)
+        };
 
-    let output_messages = vec![format!("Creating invitation...\n",)];
+        let output_messages = vec![format!("Creating invitation...\n",)];
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
+        let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
 
-    debug!(?sent);
+        debug!(?sent);
 
-    let plain = fmt_ok!(
-        "Invite {} to {} {} created, expiring at {}. {} will be notified via email.",
-        sent.id,
-        sent.scope,
-        sent.target_id,
-        sent.expires_at,
-        sent.recipient_email
-    );
-    let json = serde_json::to_string_pretty(&sent).into_diagnostic()?;
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
+        let plain = fmt_ok!(
+            "Invite {} to {} {} created, expiring at {}. {} will be notified via email.",
+            sent.id,
+            sent.scope,
+            sent.target_id,
+            sent.expires_at,
+            sent.recipient_email
+        );
+        let json = serde_json::to_string_pretty(&sent).into_diagnostic()?;
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
 
-    Ok(())
+        Ok(())
+    }
 }

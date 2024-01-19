@@ -5,12 +5,13 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::nodes::InMemoryNode;
+use ockam_core::AsyncTryClone;
 
 use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -34,16 +35,24 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    ShowTui::run(ctx, opts, cmd).await
+    pub fn name(&self) -> String {
+        "show space".into()
+    }
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.clone(),
+        )
+        .await
+    }
 }
 
 pub struct ShowTui {

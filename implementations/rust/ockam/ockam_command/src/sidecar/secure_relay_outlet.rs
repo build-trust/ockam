@@ -5,7 +5,7 @@ use ockam_node::Context;
 use std::net::SocketAddr;
 
 use crate::run::ConfigRunner;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
 use crate::{docs, fmt_info, CommandGlobalOpts};
 
@@ -52,22 +52,23 @@ struct Enroll {
 }
 
 impl SecureRelayOutlet {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, SecureRelayOutlet),
-) -> miette::Result<()> {
-    cmd.create_config_and_start(ctx, opts).await
-}
+    pub fn name(&self) -> String {
+        "show relay outlet".into()
+    }
 
-impl SecureRelayOutlet {
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        self.create_config_and_start(ctx, opts).await
+    }
+
     pub async fn create_config_and_start(
-        self,
-        ctx: Context,
+        &self,
+        ctx: &Context,
         opts: CommandGlobalOpts,
     ) -> miette::Result<()> {
         let recipe: String = self.create_config_recipe();
@@ -86,7 +87,7 @@ impl SecureRelayOutlet {
             recipe.as_str().dark_gray()
         ))?;
 
-        ConfigRunner::run_config(&ctx, opts, &recipe).await
+        ConfigRunner::run_config(ctx, opts, &recipe).await
     }
 
     fn create_config_recipe(&self) -> String {

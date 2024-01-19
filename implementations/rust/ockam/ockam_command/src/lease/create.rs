@@ -12,7 +12,7 @@ use tokio::try_join;
 use crate::lease::create_project_client;
 use crate::terminal::OckamColor;
 use crate::util::api::{CloudOpts, TrustOpts};
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use crate::{fmt_log, fmt_ok};
 
@@ -24,64 +24,78 @@ const HELP_DETAIL: &str = "";
 pub struct CreateCommand {}
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, cloud_opts, trust_opts));
+    pub fn run(
+        self,
+        opts: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        trust_opts: TrustOpts,
+    ) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts, cloud_opts, trust_opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustOpts),
-) -> miette::Result<()> {
-    opts.terminal
-        .write_line(&fmt_log!("Creating influxdb token...\n"))?;
+    pub fn name(&self) -> String {
+        "create token".into()
+    }
 
-    let project_node_client = create_project_client(&ctx, &opts, &cloud_opts, &trust_opts).await?;
-    let is_finished: Mutex<bool> = Mutex::new(false);
+    async fn async_run(
+        &self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        trust_opts: TrustOpts,
+    ) -> miette::Result<()> {
+        opts.terminal
+            .write_line(&fmt_log!("Creating influxdb token...\n"))?;
 
-    let send_req = async {
-        let token = project_node_client.create_token(&ctx).await?;
-        *is_finished.lock().await = true;
-        Ok(token)
-    };
+        let project_node = create_project_client(ctx, &opts, &cloud_opts, &trust_opts).await?;
+        let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let output_messages = vec!["Creating influxdb token...".to_string()];
+        let send_req = async {
+            let token = project_node.create_token(ctx).await?;
+            *is_finished.lock().await = true;
+            Ok(token)
+        };
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let output_messages = vec!["Creating influxdb token...".to_string()];
 
-    let (resp_token, _) = try_join!(send_req, progress_output)?;
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    opts.terminal
-        .stdout()
-        .machine(resp_token.token.to_string())
-        .json(serde_json::to_string_pretty(&resp_token).into_diagnostic()?)
-        .plain(
-            fmt_ok!("Created influxdb token\n")
-                + &fmt_log!(
-                    "{}\n",
-                    &resp_token
-                        .token
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                )
-                + &fmt_log!(
-                    "Id {}\n",
-                    &resp_token
-                        .id
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                )
-                + &fmt_log!(
-                    "Expires at {}\n",
-                    PrimitiveDateTime::parse(&resp_token.expires, &Iso8601::DEFAULT)
-                        .into_diagnostic()?
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                ),
-        )
-        .write_line()?;
+        let (resp_token, _) = try_join!(send_req, progress_output)?;
 
-    Ok(())
+        opts.terminal
+            .stdout()
+            .machine(resp_token.token.to_string())
+            .json(serde_json::to_string_pretty(&resp_token).into_diagnostic()?)
+            .plain(
+                fmt_ok!("Created influxdb token\n")
+                    + &fmt_log!(
+                        "{}\n",
+                        &resp_token
+                            .token
+                            .to_string()
+                            .color(OckamColor::PrimaryResource.color())
+                    )
+                    + &fmt_log!(
+                        "Id {}\n",
+                        &resp_token
+                            .id
+                            .to_string()
+                            .color(OckamColor::PrimaryResource.color())
+                    )
+                    + &fmt_log!(
+                        "Expires at {}\n",
+                        PrimitiveDateTime::parse(&resp_token.expires, &Iso8601::DEFAULT)
+                            .into_diagnostic()?
+                            .to_string()
+                            .color(OckamColor::PrimaryResource.color())
+                    ),
+            )
+            .write_line()?;
+
+        Ok(())
+    }
 }

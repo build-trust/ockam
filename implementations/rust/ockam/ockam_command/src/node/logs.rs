@@ -1,10 +1,8 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_node::Context;
-
 use crate::fmt_ok;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/logs/long_about.txt");
@@ -24,22 +22,28 @@ pub struct LogCommand {
 }
 
 impl LogCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
+    pub fn name(&self) -> String {
+        "get node logs".into()
+    }
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, LogCommand),
-) -> miette::Result<()> {
-    let node_name = opts.state.get_node_or_default(&cmd.node_name).await?.name();
-    let log_path = opts.state.stdout_logs(&node_name)?.display().to_string();
-    opts.terminal
-        .stdout()
-        .plain(fmt_ok!("The path for the log file is: {log_path}"))
-        .machine(&log_path)
-        .json(serde_json::json!({ "path": log_path }))
-        .write_line()?;
-    Ok(())
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node_name = opts
+            .state
+            .get_node_or_default(&self.node_name)
+            .await?
+            .name();
+        let log_path = opts.state.stdout_logs(&node_name)?.display().to_string();
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("The path for the log file is: {log_path}"))
+            .machine(&log_path)
+            .json(serde_json::json!({ "path": log_path }))
+            .write_line()?;
+        Ok(())
+    }
 }

@@ -9,7 +9,7 @@ use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -29,45 +29,48 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
-    if !opts.state.is_enrolled().await? {
-        return Err(miette!("You must enroll before you can list your projects"));
+    pub fn name(&self) -> String {
+        "list projects".into()
     }
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let get_projects = async {
-        let projects = node.get_admin_projects(ctx).await?;
-        *is_finished.lock().await = true;
-        Ok(projects)
-    }
-    .with_current_context();
 
-    let output_messages = vec![format!("Listing projects...\n",)];
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if !opts.state.is_enrolled().await? {
+            return Err(miette!("You must enroll before you can list your projects"));
+        }
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let is_finished: Mutex<bool> = Mutex::new(false);
+        let get_projects = async {
+            let projects = node.get_admin_projects(ctx).await?;
+            *is_finished.lock().await = true;
+            Ok(projects)
+        }
+        .with_current_context();
 
-    let (projects, _) = try_join!(get_projects, progress_output)?;
-
-    let plain =
-        &opts
+        let output_messages = vec![format!("Listing projects...\n",)];
+        let progress_output = opts
             .terminal
-            .build_list(&projects, "Projects", "No projects found on this system.")?;
-    let json = serde_json::to_string_pretty(&projects).into_diagnostic()?;
+            .progress_output(&output_messages, &is_finished);
 
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-    Ok(())
+        let (projects, _) = try_join!(get_projects, progress_output)?;
+
+        let plain = &opts.terminal.build_list(
+            &projects,
+            "Projects",
+            "No projects found on this system.",
+        )?;
+        let json = serde_json::to_string_pretty(&projects).into_diagnostic()?;
+
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }

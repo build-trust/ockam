@@ -83,10 +83,11 @@ impl Executor {
     /// Any errors encountered by the router or provided application
     /// code will be returned from this function.
     #[cfg(feature = "std")]
-    pub fn execute<F, T>(&mut self, future: F) -> Result<F::Output>
+    pub fn execute<F, T, E>(&mut self, future: F) -> Result<F::Output>
     where
-        F: Future<Output = Result<T>> + Send + 'static,
+        F: Future<Output = core::result::Result<T, E>> + Send + 'static,
         T: Send + 'static,
+        E: Send + 'static,
     {
         // Spawn the metrics collector first
         #[cfg(feature = "metrics")]
@@ -122,16 +123,19 @@ impl Executor {
 
     /// Wrapper around the user provided future that will shut down the node on error
     #[cfg(feature = "std")]
-    async fn wrapper<F, T>(sender: SmallSender<NodeMessage>, future: F) -> Result<T>
+    async fn wrapper<F, T, E>(
+        sender: SmallSender<NodeMessage>,
+        future: F,
+    ) -> core::result::Result<T, E>
     where
-        F: Future<Output = Result<T>> + Send + 'static,
+        F: Future<Output = core::result::Result<T, E>> + Send + 'static,
     {
         match future.await {
             Ok(val) => Ok(val),
             Err(e) => {
                 // We earlier sent the AbortNode message to the router here.
                 // It failed because the router state was not set to `Stopping`
-                // But sending Gracefull shutdown message works because, it internally does that.
+                // But sending Graceful shutdown message works because, it internally does that.
                 //
                 // I think way AbortNode is implemented right now, it is more of an
                 // internal/private message not meant to be directly used, without changing the

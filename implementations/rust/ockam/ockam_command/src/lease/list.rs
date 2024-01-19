@@ -15,7 +15,7 @@ use crate::lease::create_project_client;
 use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::api::{CloudOpts, TrustOpts};
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
@@ -26,42 +26,58 @@ const HELP_DETAIL: &str = "";
 pub struct ListCommand;
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, cloud_opts, trust_opts));
+    pub fn run(
+        self,
+        opts: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        trust_opts: TrustOpts,
+    ) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts, cloud_opts, trust_opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cloud_opts, trust_opts): (CommandGlobalOpts, CloudOpts, TrustOpts),
-) -> miette::Result<()> {
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let project_node_client = create_project_client(&ctx, &opts, &cloud_opts, &trust_opts).await?;
+    pub fn name(&self) -> String {
+        "list tokens".into()
+    }
 
-    let send_req = async {
-        let tokens: Vec<Token> = project_node_client.list_tokens(&ctx).await?;
-        *is_finished.lock().await = true;
-        Ok(tokens)
-    };
+    async fn async_run(
+        &self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+        cloud_opts: CloudOpts,
+        trust_opts: TrustOpts,
+    ) -> miette::Result<()> {
+        let is_finished: Mutex<bool> = Mutex::new(false);
+        let project_node = create_project_client(ctx, &opts, &cloud_opts, &trust_opts).await?;
 
-    let output_messages = vec![format!("Listing Tokens...\n")];
+        let send_req = async {
+            let tokens: Vec<Token> = project_node.list_tokens(ctx).await?;
+            *is_finished.lock().await = true;
+            Ok(tokens)
+        };
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let output_messages = vec![format!("Listing Tokens...\n")];
 
-    let (tokens, _) = try_join!(send_req, progress_output)?;
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    let plain =
+        let (tokens, _) = try_join!(send_req, progress_output)?;
+
+        let plain = opts.terminal.build_list(
+            &tokens,
+            "Tokens",
+            "No active tokens found within service.",
+        )?;
+        let json = serde_json::to_string_pretty(&tokens).into_diagnostic()?;
         opts.terminal
-            .build_list(&tokens, "Tokens", "No active tokens found within service.")?;
-    let json = serde_json::to_string_pretty(&tokens).into_diagnostic()?;
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-    Ok(())
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }
 
 impl Output for Token {

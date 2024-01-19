@@ -30,15 +30,6 @@ pub(crate) fn list_tcp_listeners() -> Request<()> {
     Request::get("/node/tcp/listener")
 }
 
-/// Construct a request to create node tcp connection
-pub(crate) fn create_tcp_connection(
-    cmd: &crate::tcp::connection::CreateCommand,
-) -> Request<models::transport::CreateTcpConnection> {
-    let payload = models::transport::CreateTcpConnection::new(cmd.address.clone());
-
-    Request::post("/node/tcp/connection").body(payload)
-}
-
 /// Construct a request to print a list of services for the given node
 pub(crate) fn list_services() -> Request<()> {
     Request::get("/node/services")

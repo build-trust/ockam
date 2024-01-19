@@ -13,12 +13,13 @@ use tracing::error;
 use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
+use ockam_api::CliStateError;
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::error::Error;
-use crate::Result;
+use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
 pub mod duration;
@@ -36,50 +37,50 @@ pub async fn stop_node(ctx: Context) {
     }
 }
 
-pub fn local_cmd(res: miette::Result<()>) {
-    if let Err(e) = res {
+pub fn local_cmd(res: miette::Result<()>) -> miette::Result<()> {
+    if let Err(e) = &res {
         error!(%e, "Failed to run command");
         eprintln!("{:?}", e);
-        std::process::exit(exitcode::SOFTWARE);
     }
+    res
 }
 
-pub fn node_rpc<A, F, Fut>(rt: Arc<Runtime>, f: F, a: A)
+pub fn async_cmd<F, Fut>(command_name: &str, opts: CommandGlobalOpts, f: F) -> miette::Result<()>
 where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+    F: FnOnce(Context) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
-    let res = embedded_node(
-        rt.clone(),
-        |ctx, a| {
-            async {
-                let res = f(ctx, a).await;
-                if let Err(e) = res {
-                    error!(%e, "Failed to run command");
-                    eprintln!("{:?}", e);
-                    std::process::exit(exitcode::SOFTWARE);
-                }
-                Ok(())
-            }
-            .with_current_context()
-        },
-        a,
-    );
-    if let Err(e) = res {
-        eprintln!("Ockam runtime failed: {e}");
-        std::process::exit(exitcode::SOFTWARE);
-    }
+    let command_name = command_name.to_string();
+
+    let res = embedded_node(opts.clone(), |ctx| {
+        async move {
+            let res = f(ctx).await;
+            if let Err(e) = &res {
+                opts.state
+                    .add_journey_error(&command_name, e.to_string())
+                    .await
+                    .unwrap_or_else(|e1| {
+                        error!("Failed to trace an execution error: {e1:?}");
+                    });
+            };
+            res
+        }
+        .with_current_context()
+    });
+    local_cmd(res)
 }
 
-pub fn embedded_node<A, F, Fut, T>(rt: Arc<Runtime>, f: F, a: A) -> miette::Result<T>
+pub fn embedded_node<F, Fut, T, E>(opts: CommandGlobalOpts, f: F) -> core::result::Result<T, E>
 where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
+    F: FnOnce(Context) -> Fut + Send + Sync + 'static,
+    Fut: core::future::Future<Output = core::result::Result<T, E>> + Send + 'static,
     T: Send + 'static,
+    E: Send + Sync + From<CliStateError> + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::new().no_logging().with_runtime(rt).build();
+    let (ctx, mut executor) = NodeBuilder::new()
+        .no_logging()
+        .with_runtime(opts.rt)
+        .build();
     let res = executor.execute(async move {
         let child_ctx = ctx
             .new_detached(
@@ -89,28 +90,20 @@ where
             )
             .await
             .expect("Embedded node child ctx can't be created");
-        let r = f(child_ctx, a).await;
+        let r = f(child_ctx).await;
         stop_node(ctx).await;
-        r.map_err(|e| {
-            ockam_core::Error::new(
-                ockam_core::errcode::Origin::Executor,
-                ockam_core::errcode::Kind::Unknown,
-                e,
-            )
-        })
+        r
     });
-    let res = res.map_err(|e| miette::miette!(e));
-    res?.into_diagnostic()
+    match res {
+        Ok(Err(e)) => Err(e),
+        Ok(Ok(t)) => Ok(t),
+        Err(e) => Err(CliStateError::Ockam(e).into()),
+    }
 }
 
-pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(
-    rt: Arc<Runtime>,
-    f: F,
-    a: A,
-) -> miette::Result<T>
+pub fn embedded_node_that_is_not_stopped<F, Fut, T>(rt: Arc<Runtime>, f: F) -> miette::Result<T>
 where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+    F: FnOnce(Context) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
@@ -124,7 +117,7 @@ where
             )
             .await
             .expect("Embedded node child ctx can't be created");
-        let result = f(child_ctx, a).await;
+        let result = f(child_ctx).await;
         let result = if result.is_err() {
             ctx.stop().await?;
             result
@@ -301,8 +294,7 @@ mod tests {
     fn test_execute_error() {
         let result = embedded_node_that_is_not_stopped(
             Arc::new(Runtime::new().unwrap()),
-            function_returning_an_error,
-            1,
+            |ctx| async move { function_returning_an_error(ctx, 1).await },
         );
         assert!(result.is_err());
 
@@ -315,8 +307,7 @@ mod tests {
     fn test_execute_error_() {
         let result = embedded_node_that_is_not_stopped(
             Arc::new(Runtime::new().unwrap()),
-            function_returning_an_error_and_stopping_the_context,
-            1,
+            |ctx| async move { function_returning_an_error_and_stopping_the_context(ctx, 1).await },
         );
         assert!(result.is_err());
 

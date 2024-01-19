@@ -15,11 +15,10 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
-use crate::node::guard_node_is_not_already_running;
 use crate::node::util::run_ockam;
 use crate::util::parsers::internet_address_parser;
+use crate::util::{async_cmd, local_cmd};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
-use crate::util::{local_cmd, node_rpc};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -104,99 +103,104 @@ impl CreateCommand {
     }
 }
 
-/// Start an authority node by calling the `ockam` executable with the current command-line
-/// arguments
-async fn spawn_background_node(
-    opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
-) -> miette::Result<()> {
-    if !cmd.skip_is_running_check {
-        guard_node_is_not_already_running(opts, &cmd.node_name, cmd.child_process).await?;
-    }
-    // Create the authority identity if it has not been created before
-    // If no name is specified on the command line, use "authority"
-    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
-    if opts.state.get_named_identity(&identity_name).await.is_err() {
-        opts.state.create_identity_with_name(&identity_name).await?;
-    };
-
-    opts.state
-        .create_node_with_optional_values(&cmd.node_name, &cmd.identity, &None)
-        .await?;
-
-    // Construct the arguments list and re-execute the ockam
-    // CLI in foreground mode to start the newly created node
-    let mut args = vec![
-        match opts.global_args.verbose {
-            0 => "-vv".to_string(),
-            v => format!("-{}", "v".repeat(v as usize)),
-        },
-        "authority".to_string(),
-        "create".to_string(),
-        "--foreground".to_string(),
-        "--child-process".to_string(),
-        "--tcp-listener-address".to_string(),
-        cmd.tcp_listener_address.to_string(),
-        "--project-identifier".to_string(),
-        cmd.project_identifier.clone(),
-        "--trusted-identities".to_string(),
-        cmd.trusted_identities.to_string(),
-    ];
-
-    if cmd.skip_is_running_check {
-        args.push("--skip-is-running-check".to_string());
+impl CreateCommand {
+    pub fn name(&self) -> String {
+        "create authority".to_string()
     }
 
-    if cmd.logging_to_file() || !opts.terminal.is_tty() {
-        args.push("--no-color".to_string());
-    }
+    pub(crate) async fn spawn_background_node(
+        &self,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        if !self.skip_is_running_check {
+            self.guard_node_is_not_already_running(opts).await?;
+        }
+        // Create the authority identity if it has not been created before
+        // If no name is specified on the command line, use "authority"
+        let identity_name = self.identity.clone().unwrap_or("authority".to_string());
+        if opts.state.get_named_identity(&identity_name).await.is_err() {
+            opts.state.create_identity_with_name(&identity_name).await?;
+        };
 
-    if cmd.no_direct_authentication {
-        args.push("--no-direct-authentication".to_string());
-    }
+        opts.state
+            .create_node_with_optional_values(&self.node_name, &self.identity, &None)
+            .await?;
 
-    if cmd.no_token_enrollment {
-        args.push("--no-token-enrollment".to_string());
-    }
+        // Construct the arguments list and re-execute the ockam
+        // CLI in foreground mode to start the newly created node
+        let mut args = vec![
+            match opts.global_args.verbose {
+                0 => "-vv".to_string(),
+                v => format!("-{}", "v".repeat(v as usize)),
+            },
+            "authority".to_string(),
+            "create".to_string(),
+            "--foreground".to_string(),
+            "--child-process".to_string(),
+            "--tcp-listener-address".to_string(),
+            self.tcp_listener_address.to_string(),
+            "--project-identifier".to_string(),
+            self.project_identifier.clone(),
+            "--trusted-identities".to_string(),
+            self.trusted_identities.to_string(),
+        ];
 
-    if let Some(tenant_base_url) = &cmd.tenant_base_url {
-        args.push("--tenant-base-url".to_string());
-        args.push(tenant_base_url.clone());
-    }
+        if self.skip_is_running_check {
+            args.push("--skip-is-running-check".to_string());
+        }
 
-    if let Some(certificate) = &cmd.certificate {
-        args.push("--certificate".to_string());
-        args.push(certificate.clone());
-    }
+        if self.logging_to_file() || !opts.terminal.is_tty() {
+            args.push("--no-color".to_string());
+        }
 
-    if let Some(attributes) = &cmd.attributes {
-        attributes.iter().for_each(|attr| {
-            args.push("--attributes".to_string());
-            args.push(attr.clone());
-        });
-    }
+        if self.no_direct_authentication {
+            args.push("--no-direct-authentication".to_string());
+        }
 
-    if let Some(identity) = &cmd.identity {
-        args.push("--identity".to_string());
-        args.push(identity.clone());
-    }
-    args.push(cmd.node_name.to_string());
+        if self.no_token_enrollment {
+            args.push("--no-token-enrollment".to_string());
+        }
 
-    run_ockam(args).await
+        if let Some(tenant_base_url) = &self.tenant_base_url {
+            args.push("--tenant-base-url".to_string());
+            args.push(tenant_base_url.clone());
+        }
+
+        if let Some(certificate) = &self.certificate {
+            args.push("--certificate".to_string());
+            args.push(certificate.clone());
+        }
+
+        if let Some(attributes) = &self.attributes {
+            attributes.iter().for_each(|attr| {
+                args.push("--attributes".to_string());
+                args.push(attr.clone());
+            });
+        }
+
+        if let Some(identity) = &self.identity {
+            args.push("--identity".to_string());
+            args.push(identity.clone());
+        }
+        args.push(self.node_name.to_string());
+
+        run_ockam(args).await
+    }
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             local_cmd(embedded_node_that_is_not_stopped(
-                options.rt.clone(),
-                start_authority_node,
-                (options, self),
+                opts.rt.clone(),
+                |ctx| async move { self.start_authority_node(&ctx, opts).await },
             ))
         } else {
             // Create a new node running in the background (i.e. another, new OS process)
-            node_rpc(options.rt.clone(), create_background_node, (options, self))
+            async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+                self.create_background_node(opts).await
+            })
         }
     }
 
@@ -223,79 +227,93 @@ impl CreateCommand {
             !self.foreground
         }
     }
-}
 
-/// Given a Context start a node in a new OS process
-async fn create_background_node(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    // Spawn node in another, new process
-    spawn_background_node(&opts, &cmd).await
-}
-
-/// Start an authority node:
-///   - retrieve the node identity if the authority identity has been created before
-///   - persist the node state
-///   - start the node services
-async fn start_authority_node(
-    ctx: Context,
-    args: (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    let (opts, cmd) = args;
-    if !cmd.skip_is_running_check {
-        guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    /// Given a Context start a node in a new OS process
+    async fn create_background_node(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        // Spawn node in another, new process
+        self.spawn_background_node(&opts).await
     }
 
-    let mut state = opts.state.clone();
-    state.set_node_name(cmd.node_name.to_string());
+    /// Start an authority node:
+    ///   - retrieve the node identity if the authority identity has been created before
+    ///   - persist the node state
+    ///   - start the node services
+    async fn start_authority_node(
+        &self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        if !self.skip_is_running_check {
+            self.guard_node_is_not_already_running(&opts).await?;
+        }
 
-    // Create the authority identity if it has not been created before
-    // If no name is specified on the command line, use "authority"
-    let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
-    if state.get_named_identity(&identity_name).await.is_err() {
-        state.create_identity_with_name(&identity_name).await?;
-    };
+        let mut state = opts.state.clone();
+        state.set_node_name(self.node_name.to_string());
 
-    let node = state
-        .start_node_with_optional_values(&cmd.node_name, &Some(identity_name), &None, None)
-        .await?;
-    state
-        .set_tcp_listener_address(&node.name(), &cmd.tcp_listener_address)
-        .await?;
-    state.set_as_authority_node(&node.name()).await?;
+        // Create the authority identity if it has not been created before
+        // If no name is specified on the command line, use "authority"
+        let identity_name = self.identity.clone().unwrap_or("authority".to_string());
+        if opts.state.get_named_identity(&identity_name).await.is_err() {
+            opts.state.create_identity_with_name(&identity_name).await?;
+        };
 
-    let okta_configuration = match (&cmd.tenant_base_url, &cmd.certificate, &cmd.attributes) {
-        (Some(tenant_base_url), Some(certificate), Some(attributes)) => Some(OktaConfiguration {
-            address: DefaultAddress::OKTA_IDENTITY_PROVIDER.to_string(),
-            tenant_base_url: tenant_base_url.clone(),
-            certificate: certificate.clone(),
-            attributes: attributes.clone(),
-        }),
-        _ => None,
-    };
+        let node = state
+            .start_node_with_optional_values(&self.node_name, &Some(identity_name), &None, None)
+            .await?;
+        state
+            .set_tcp_listener_address(&node.name(), &self.tcp_listener_address)
+            .await?;
+        state.set_as_authority_node(&node.name()).await?;
 
-    let now = now().into_diagnostic()?;
-    let trusted_identities = cmd.trusted_identities(now, &node.clone().identifier());
+        let okta_configuration = match (&self.tenant_base_url, &self.certificate, &self.attributes)
+        {
+            (Some(tenant_base_url), Some(certificate), Some(attributes)) => {
+                Some(OktaConfiguration {
+                    address: DefaultAddress::OKTA_IDENTITY_PROVIDER.to_string(),
+                    tenant_base_url: tenant_base_url.clone(),
+                    certificate: certificate.clone(),
+                    attributes: attributes.clone(),
+                })
+            }
+            _ => None,
+        };
 
-    let configuration = authority_node::Configuration {
-        identifier: node.identifier(),
-        database_path: opts.state.database_path(),
-        project_identifier: cmd.project_identifier,
-        tcp_listener_address: cmd.tcp_listener_address,
-        secure_channel_listener_name: None,
-        authenticator_name: None,
-        trusted_identities,
-        no_direct_authentication: cmd.no_direct_authentication,
-        no_token_enrollment: cmd.no_token_enrollment,
-        okta: okta_configuration,
-    };
+        let now = now().into_diagnostic()?;
+        let trusted_identities = self.trusted_identities(now, &node.clone().identifier());
 
-    authority_node::start_node(&ctx, &configuration)
-        .await
-        .into_diagnostic()?;
+        let configuration = authority_node::Configuration {
+            identifier: node.identifier(),
+            database_path: opts.state.database_path(),
+            project_identifier: self.project_identifier.clone(),
+            tcp_listener_address: self.tcp_listener_address.clone(),
+            secure_channel_listener_name: None,
+            authenticator_name: None,
+            trusted_identities,
+            no_direct_authentication: self.no_direct_authentication,
+            no_token_enrollment: self.no_token_enrollment,
+            okta: okta_configuration,
+        };
 
-    Ok(())
+        authority_node::start_node(ctx, &configuration)
+            .await
+            .into_diagnostic()?;
+
+        Ok(())
+    }
+
+    pub async fn guard_node_is_not_already_running(
+        &self,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        if !self.child_process {
+            if let Ok(node) = opts.state.get_node(&self.node_name).await {
+                if node.is_running() {
+                    return Err(miette!("Node {} is already running", &self.node_name));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Return a list of trusted identities passed as a JSON string on the command line

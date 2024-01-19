@@ -24,18 +24,17 @@ pub enum ConfigurationSubcommand {
 }
 
 impl ConfigurationCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ConfigurationSubcommand::Get(c) => c.run(options),
-            ConfigurationSubcommand::List(c) => c.run(options),
+            ConfigurationSubcommand::Get(c) => c.run(opts),
+            ConfigurationSubcommand::List(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            ConfigurationSubcommand::Get(_) => "get configuration",
-            ConfigurationSubcommand::List(_) => "list configurations",
+            ConfigurationSubcommand::Get(c) => c.name(),
+            ConfigurationSubcommand::List(c) => c.name(),
         }
-        .to_string()
     }
 }

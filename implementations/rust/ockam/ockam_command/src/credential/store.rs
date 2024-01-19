@@ -12,8 +12,9 @@ use ockam::Context;
 use crate::credential::verify::verify_credential;
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
+use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
-use crate::{fmt_log, fmt_ok, util::node_rpc, CommandGlobalOpts};
+use crate::{fmt_log, fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {
@@ -32,103 +33,105 @@ pub struct StoreCommand {
 }
 
 impl StoreCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, StoreCommand),
-) -> miette::Result<()> {
-    // Set node name in state to store identity attributes to it
-    initialize_default_node(&ctx, &opts).await?;
-    let node_name = opts
-        .state
-        .get_node_or_default(&cmd.node_opts.at_node)
-        .await?
-        .name();
-    let mut state = opts.state.clone();
-    state.set_node_name(node_name);
+    pub fn name(&self) -> String {
+        "store credential".into()
+    }
 
-    let database = state.database();
-    let storage = CredentialSqlxDatabase::new(database);
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        // Set node name in state to store identity attributes to it
+        initialize_default_node(ctx, &opts).await?;
+        let node_name = opts
+            .state
+            .get_node_or_default(&self.node_opts.at_node)
+            .await?
+            .name();
+        let mut state = opts.state.clone();
+        state.set_node_name(node_name);
 
-    opts.terminal
-        .write_line(&fmt_log!("Storing credential...\n"))?;
+        let database = state.database();
+        let storage = CredentialSqlxDatabase::new(database);
 
-    let is_finished: Mutex<bool> = Mutex::new(false);
+        opts.terminal
+            .write_line(&fmt_log!("Storing credential...\n"))?;
 
-    let send_req = async {
-        let credential = match verify_credential(
-            &state,
-            &opts.terminal,
-            &cmd.issuer,
-            &cmd.credential,
-            &cmd.credential_path,
-        )
-        .await
-        {
-            Ok(credential) => credential,
-            Err(_err) => {
-                *is_finished.lock().await = true;
-                return Err(miette!("Credential is not verified"))?;
-            }
-        };
+        let is_finished: Mutex<bool> = Mutex::new(false);
 
-        let credential_data = credential
-            .credential
-            .get_credential_data()
-            .map_err(|_| miette!("Invalid credential"))?;
-        let purpose_key_data = credential
-            .purpose_key_attestation
-            .get_attestation_data()
-            .map_err(|_| miette!("Invalid credential"))?;
-
-        let subject = match credential_data.subject {
-            None => {
-                *is_finished.lock().await = true;
-                return Err(miette!("credential subject is missing"))?;
-            }
-            Some(subject) => subject,
-        };
-
-        // store
-        storage
-            .put(
-                &subject,
-                &purpose_key_data.subject,
-                credential_data.expires_at,
-                credential.clone(),
+        let send_req = async {
+            let credential = match verify_credential(
+                &opts,
+                &self.issuer,
+                &self.credential,
+                &self.credential_path,
             )
             .await
-            .map_err(|_e| miette!("Invalid credential"))?;
-
-        *is_finished.lock().await = true;
-        Ok(credential
-            .encode_as_string()
-            .map_err(|_e| miette!("Invalid credential"))?)
-    };
-
-    let output_messages = vec![format!("Storing credential...")];
-
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
-
-    let (credential, _) = try_join!(send_req, progress_output)?;
-
-    opts.terminal
-        .stdout()
-        .machine(credential.clone())
-        .json(serde_json::json!(
             {
-                "issuer": cmd.issuer,
-                "credential": credential
-            }
-        ))
-        .plain(fmt_ok!("Credential stored\n"))
-        .write_line()?;
+                Ok(credential) => credential,
+                Err(_err) => {
+                    *is_finished.lock().await = true;
+                    return Err(miette!("Credential is not verified"))?;
+                }
+            };
 
-    Ok(())
+            let credential_data = credential
+                .credential
+                .get_credential_data()
+                .map_err(|_| miette!("Invalid credential"))?;
+            let purpose_key_data = credential
+                .purpose_key_attestation
+                .get_attestation_data()
+                .map_err(|_| miette!("Invalid credential"))?;
+
+            let subject = match credential_data.subject {
+                None => {
+                    *is_finished.lock().await = true;
+                    return Err(miette!("credential subject is missing"))?;
+                }
+                Some(subject) => subject,
+            };
+
+            // store
+            storage
+                .put(
+                    &subject,
+                    &purpose_key_data.subject,
+                    credential_data.expires_at,
+                    credential.clone(),
+                )
+                .await
+                .map_err(|_e| miette!("Invalid credential"))?;
+
+            *is_finished.lock().await = true;
+            Ok(credential
+                .encode_as_string()
+                .map_err(|_e| miette!("Invalid credential"))?)
+        };
+
+        let output_messages = vec![format!("Storing credential...")];
+
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
+
+        let (credential, _) = try_join!(send_req, progress_output)?;
+
+        opts.terminal
+            .stdout()
+            .machine(credential.clone())
+            .json(serde_json::json!(
+                {
+                    "issuer": self.issuer,
+                    "credential": credential
+                }
+            ))
+            .plain(fmt_ok!("Credential stored\n"))
+            .write_line()?;
+
+        Ok(())
+    }
 }

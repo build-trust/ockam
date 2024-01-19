@@ -2,9 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_node::Context;
-
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
@@ -22,42 +20,45 @@ pub struct DefaultCommand {
 }
 
 impl DefaultCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DefaultCommand),
-) -> miette::Result<()> {
-    match cmd.name {
-        Some(name) => {
-            if opts.state.is_default_identity_by_name(&name).await? {
-                Err(miette!(
-                    "The identity named '{}' is already the default",
-                    &name
-                ))?
-            } else {
-                opts.state.set_as_default_identity(&name).await?;
+    pub fn name(&self) -> String {
+        "get default identity".into()
+    }
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        match &self.name {
+            Some(name) => {
+                if opts.state.is_default_identity_by_name(name).await? {
+                    Err(miette!(
+                        "The identity named '{}' is already the default",
+                        &name
+                    ))?
+                } else {
+                    opts.state.set_as_default_identity(name).await?;
+                    opts.terminal
+                        .stdout()
+                        .plain(fmt_ok!("The identity named '{}' is now the default", &name))
+                        .machine(name)
+                        .write_line()?;
+                }
+            }
+            None => {
+                let identity = opts.state.get_or_create_default_named_identity().await?;
                 opts.terminal
                     .stdout()
-                    .plain(fmt_ok!("The identity named '{}' is now the default", &name))
-                    .machine(&name)
+                    .plain(fmt_ok!(
+                        "The name of the default identity is '{}'",
+                        identity.name()
+                    ))
                     .write_line()?;
             }
-        }
-        None => {
-            let identity = opts.state.get_or_create_default_named_identity().await?;
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!(
-                    "The name of the default identity is '{}'",
-                    identity.name()
-                ))
-                .write_line()?;
-        }
-    };
+        };
 
-    Ok(())
+        Ok(())
+    }
 }

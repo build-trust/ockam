@@ -2,9 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use std::path::PathBuf;
 
-use ockam::Context;
-
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_err, fmt_info, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/move/long_about.txt");
@@ -25,32 +23,34 @@ pub struct MoveCommand {
 }
 
 impl MoveCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, MoveCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "move vault".into()
+    }
 
-async fn run_impl(_ctx: &Context, opts: CommandGlobalOpts, cmd: MoveCommand) -> miette::Result<()> {
-    let vault_name = cmd.name;
-    let vault_path = cmd.path;
-    match opts
-        .state
-        .move_vault(&vault_name, &vault_path.clone())
-        .await
-    {
-        Ok(()) => opts
-            .terminal
-            .write_line(&fmt_info!("Moved the vault {vault_name} to {vault_path:?}"))?,
-        Err(e) => {
-            opts.terminal.write_line(&fmt_err!(
-                "Could not move the vault {vault_name} to {vault_path:?}: {e:?}"
-            ))?;
-            return Err(e)?;
-        }
-    };
-    Ok(())
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let vault_name = self.name.clone();
+        let vault_path = self.path.clone();
+        match opts
+            .state
+            .move_vault(&vault_name, &vault_path.clone())
+            .await
+        {
+            Ok(()) => opts
+                .terminal
+                .write_line(&fmt_info!("Moved the vault {vault_name} to {vault_path:?}"))?,
+            Err(e) => {
+                opts.terminal.write_line(&fmt_err!(
+                    "Could not move the vault {vault_name} to {vault_path:?}: {e:?}"
+                ))?;
+                return Err(e)?;
+            }
+        };
+        Ok(())
+    }
 }

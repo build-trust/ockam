@@ -12,7 +12,7 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::output::Output;
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -48,8 +48,10 @@ pub enum SubscriptionSubcommand {
 }
 
 impl SubscriptionCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
 
     pub fn name(&self) -> String {
@@ -58,31 +60,33 @@ impl SubscriptionCommand {
         }
         .to_string()
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
-) -> miette::Result<()> {
-    let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
-    match cmd.subcommand {
-        SubscriptionSubcommand::Show {
-            subscription_id,
-            space_id,
-        } => {
-            match get_subscription_by_id_or_space_id(&controller, &ctx, subscription_id, space_id)
+        match &self.subcommand {
+            SubscriptionSubcommand::Show {
+                subscription_id,
+                space_id,
+            } => {
+                match get_subscription_by_id_or_space_id(
+                    &controller,
+                    ctx,
+                    subscription_id.clone(),
+                    space_id.clone(),
+                )
                 .await?
-            {
-                Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
-                None => opts
-                    .terminal
-                    .write_line("Please specify either a space id or a subscription id")?,
+                {
+                    Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
+                    None => opts
+                        .terminal
+                        .write_line("Please specify either a space id or a subscription id")?,
+                }
             }
-        }
-    };
-    Ok(())
+        };
+        Ok(())
+    }
 }
 
 pub(crate) async fn get_subscription_by_id_or_space_id(

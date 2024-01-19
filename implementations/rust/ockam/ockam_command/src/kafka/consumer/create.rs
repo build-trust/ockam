@@ -5,13 +5,14 @@ use clap::{command, Args};
 use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
 
-use crate::kafka::util::{make_brokers_port_range, rpc, ArgOpts};
+use crate::kafka::util::{async_run, make_brokers_port_range, ArgOpts};
+use crate::util::async_cmd;
 use crate::{
     kafka::{
         kafka_consumer_default_addr, kafka_default_consumer_server, kafka_default_project_route,
     },
     node::NodeOpts,
-    util::{node_rpc, parsers::socket_addr_parser},
+    util::parsers::socket_addr_parser,
     CommandGlobalOpts,
 };
 
@@ -38,7 +39,8 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let cmd_name = self.name();
         let arg_opts = ArgOpts {
             endpoint: "/node/services/kafka_consumer".to_string(),
             kafka_entity: "KafkaConsumer".to_string(),
@@ -50,6 +52,12 @@ impl CreateCommand {
                 .unwrap_or_else(|| make_brokers_port_range(&self.bootstrap_server)),
             project_route: self.project_route,
         };
-        node_rpc(opts.rt.clone(), rpc, (opts, arg_opts));
+        async_cmd(&cmd_name, opts.clone(), |ctx| async move {
+            async_run(&ctx, opts, arg_opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create kafka consumer".into()
     }
 }

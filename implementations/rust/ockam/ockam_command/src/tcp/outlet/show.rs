@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use clap::Args;
 use core::fmt::Write;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
 use ockam::{route, Context};
@@ -10,6 +10,7 @@ use ockam_api::nodes::models::portal::{OutletList, OutletStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
+use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
@@ -17,7 +18,7 @@ use crate::output::Output;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::Result;
 use crate::{docs, CommandGlobalOpts, Term, Terminal, TerminalStream};
 
@@ -40,8 +41,23 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "show tcp outlet".into()
+    }
+
+    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.clone(),
+        )
+        .await
     }
 }
 
@@ -63,13 +79,6 @@ impl Output for OutletInformation {
         write!(w, "\n  To TCP: {}", self.socket_addr)?;
         Ok(w)
     }
-}
-
-pub async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    ShowTui::run(ctx, opts, cmd).await
 }
 
 pub struct ShowTui {

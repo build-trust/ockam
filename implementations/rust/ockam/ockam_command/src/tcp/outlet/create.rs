@@ -22,7 +22,7 @@ use crate::node::util::initialize_default_node;
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
 use crate::{display_parse_logs, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -51,8 +51,14 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create tcp outlet".into()
     }
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -140,13 +146,6 @@ impl CreateCommand {
 
 pub fn default_from_addr() -> String {
     "/service/outlet".to_string()
-}
-
-pub async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
 }
 
 pub async fn send_request(

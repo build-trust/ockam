@@ -7,7 +7,7 @@ use ockam_api::cloud::project::Projects;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -37,36 +37,34 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: DeleteCommand,
-) -> miette::Result<()> {
-    if opts
-        .terminal
-        .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this project?")?
-    {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
-        node.delete_project_by_name(ctx, &cmd.space_name, &cmd.project_name)
-            .await?;
-        opts.terminal
-            .stdout()
-            .plain(fmt_ok!(
-                "Project with name '{}' has been deleted.",
-                &cmd.project_name
-            ))
-            .machine(&cmd.project_name)
-            .json(serde_json::json!({ "name": &cmd.project_name }))
-            .write_line()?;
+    pub fn name(&self) -> String {
+        "delete project".into()
     }
-    Ok(())
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if opts.terminal.confirmed_with_flag_or_prompt(
+            self.yes,
+            "Are you sure you want to delete this project?",
+        )? {
+            let node = InMemoryNode::start(ctx, &opts.state).await?;
+            node.delete_project_by_name(ctx, &self.space_name, &self.project_name)
+                .await?;
+            opts.terminal
+                .stdout()
+                .plain(fmt_ok!(
+                    "Project with name '{}' has been deleted.",
+                    &self.project_name
+                ))
+                .machine(&self.project_name)
+                .json(serde_json::json!({ "name": &self.project_name }))
+                .write_line()?;
+        }
+        Ok(())
+    }
 }

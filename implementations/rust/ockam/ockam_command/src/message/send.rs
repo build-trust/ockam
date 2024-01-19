@@ -17,7 +17,7 @@ use crate::project::util::{
 };
 use crate::util::api::{CloudOpts, TrustOpts};
 use crate::util::duration::duration_parser;
-use crate::util::{clean_nodes_multiaddr, node_rpc};
+use crate::util::{async_cmd, clean_nodes_multiaddr};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
@@ -57,38 +57,42 @@ pub struct SendCommand {
 }
 
 impl SendCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> miette::Result<()> {
-    async fn go(ctx: &Context, opts: CommandGlobalOpts, cmd: SendCommand) -> miette::Result<()> {
+    pub fn name(&self) -> String {
+        "send message".into()
+    }
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) = clean_nodes_multiaddr(&cmd.to, &opts.state)
+        let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .await
             .context("Argument '--to' is invalid")?;
 
-        let msg_bytes = if cmd.hex {
-            hex::decode(cmd.message)
+        let msg_bytes = if self.hex {
+            hex::decode(self.message.clone())
                 .into_diagnostic()
                 .context("The message is not a valid hex string")?
         } else {
-            cmd.message.as_bytes().to_vec()
+            self.message.as_bytes().to_vec()
         };
 
         // Setup environment depending on whether we are sending the message from a background node
         // or an in-memory node
-        let response: Vec<u8> = if let Some(node) = &cmd.from {
+        let response: Vec<u8> = if let Some(node) = &self.from {
             BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
                 .await?
-                .set_timeout(cmd.timeout)
+                .set_timeout(self.timeout)
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
             let identity_name = opts
                 .state
-                .get_identity_name_or_default(&cmd.cloud_opts.identity)
+                .get_identity_name_or_default(&self.cloud_opts.identity)
                 .await?;
 
             info!("starting an in memory node to send a message");
@@ -97,9 +101,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 ctx,
                 &opts.state,
                 &identity_name,
-                cmd.trust_opts.project_name,
-                cmd.trust_opts.authority_identity,
-                cmd.trust_opts.authority_route,
+                self.trust_opts.project_name.clone(),
+                self.trust_opts.authority_identity.clone(),
+                self.trust_opts.authority_route.clone(),
             )
             .await?;
             info!("started an in memory node to send a message");
@@ -111,18 +115,18 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 &node_manager,
                 &meta,
                 Some(identity_name),
-                Some(cmd.timeout),
+                Some(self.timeout),
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
             info!("sending to {to}");
             node_manager
-                .send_message(ctx, &to, msg_bytes, Some(cmd.timeout))
+                .send_message(ctx, &to, msg_bytes, Some(self.timeout))
                 .await
                 .into_diagnostic()?
         };
 
-        let result = if cmd.hex {
+        let result = if self.hex {
             hex::encode(response)
         } else {
             String::from_utf8(response)
@@ -133,7 +137,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
         opts.terminal.stdout().plain(result).write_line()?;
         Ok(())
     }
-    go(&ctx, opts, cmd).await
 }
 
 pub(crate) fn req(to: &MultiAddr, message: Vec<u8>) -> Request<SendMessage> {

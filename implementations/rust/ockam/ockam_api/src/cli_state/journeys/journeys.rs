@@ -20,6 +20,10 @@ pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.tr
 pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.span_id");
 pub const APPLICATION_EVENT_TIMESTAMP: &Key = &Key::from_static_str("app.event.timestamp");
 pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project_id");
+pub const APPLICATION_EVENT_ERROR_MESSAGE: &Key = &Key::from_static_str("app.event.error_message");
+
+/// Journey events have a fixed duration
+pub const EVENT_DURATION: Duration = Duration::from_secs(100);
 
 /// The CliState can register events for major actions happening during the application execution:
 ///
@@ -38,7 +42,26 @@ pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.
 ///
 ///
 impl CliState {
+    pub async fn add_journey_error(&self, command_name: &str, message: String) -> Result<()> {
+        self.add_a_journey_event(
+            JourneyEvent::Error {
+                command_name: command_name.to_string(),
+                message,
+            },
+            HashMap::default(),
+        )
+        .await
+    }
+
     pub async fn add_journey_event(
+        &self,
+        event: JourneyEvent,
+        attributes: HashMap<&Key, &str>,
+    ) -> Result<()> {
+        self.add_a_journey_event(event, attributes).await
+    }
+
+    async fn add_a_journey_event(
         &self,
         event: JourneyEvent,
         attributes: HashMap<&Key, &str>,
@@ -56,18 +79,27 @@ impl CliState {
 
         // for both the host and the project journey create a span with a fixed duration
         // and add attributes to the span
+        let start_time = SystemTime::from(Utc::now());
+        let end_time = start_time.add(EVENT_DURATION);
+
         let journeys = self.get_journeys().await?;
         for journey in journeys {
-            let mut span_builder = SpanBuilder::from_name(event.to_string());
-            span_builder.start_time = Some(journey.start_system_time());
-            span_builder.end_time = Some(journey.start_system_time().add(Duration::from_millis(1)));
-            span_builder.links = Some(vec![Link::new(event_span_context.clone(), vec![])]);
+            let span_builder = SpanBuilder::from_name(event.to_string())
+                .with_start_time(start_time)
+                .with_end_time(end_time)
+                .with_links(vec![Link::new(event_span_context.clone(), vec![])]);
             let span = tracer.build_with_context(span_builder, &journey.extract_context());
             let cx = Context::current_with_span(span);
             let _guard = cx.attach();
+
             for (name, value) in attributes.iter() {
                 CurrentSpan::set_attribute(name, value)
             }
+            if let JourneyEvent::Error { message, .. } = &event {
+                CurrentSpan::set_attribute(&Key::from_static_str("error"), "true");
+                CurrentSpan::set_attribute(APPLICATION_EVENT_ERROR_MESSAGE, message);
+            };
+
             CurrentSpan::set_attribute(
                 APPLICATION_EVENT_TRACE_ID,
                 event_trace_id.to_string().as_ref(),

@@ -39,23 +39,22 @@ pub enum LeaseSubcommand {
 }
 
 impl LeaseCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(options, self.cloud_opts, self.trust_opts),
-            LeaseSubcommand::List(c) => c.run(options, self.cloud_opts, self.trust_opts),
-            LeaseSubcommand::Show(c) => c.run(options, self.cloud_opts, self.trust_opts),
-            LeaseSubcommand::Revoke(c) => c.run(options, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::Create(c) => c.run(opts, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::List(c) => c.run(opts, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::Show(c) => c.run(opts, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::Revoke(c) => c.run(opts, self.cloud_opts, self.trust_opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            LeaseSubcommand::Create(_) => "create lease",
-            LeaseSubcommand::List(_) => "list leases",
-            LeaseSubcommand::Show(_) => "show lease",
-            LeaseSubcommand::Revoke(_) => "revoke lease",
+            LeaseSubcommand::Create(c) => c.name(),
+            LeaseSubcommand::List(c) => c.name(),
+            LeaseSubcommand::Show(c) => c.name(),
+            LeaseSubcommand::Revoke(c) => c.name(),
         }
-        .to_string()
     }
 }
 

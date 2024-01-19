@@ -1,9 +1,8 @@
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::vault::util::VaultOutput;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -19,27 +18,33 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 pub struct ListCommand;
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, opts);
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(_ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-    let vaults = opts
-        .state
-        .get_named_vaults()
-        .await?
-        .into_iter()
-        .map(|v| VaultOutput::new(&v))
-        .collect::<Vec<_>>();
-    let plain = opts
-        .terminal
-        .build_list(&vaults, "Vaults", "No Vaults found")?;
-    let json = serde_json::to_string(&vaults).into_diagnostic()?;
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-    Ok(())
+    pub fn name(&self) -> String {
+        "list vaults".into()
+    }
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let vaults = opts
+            .state
+            .get_named_vaults()
+            .await?
+            .into_iter()
+            .map(|v| VaultOutput::new(&v))
+            .collect::<Vec<_>>();
+        let plain = opts
+            .terminal
+            .build_list(&vaults, "Vaults", "No Vaults found")?;
+        let json = serde_json::to_string(&vaults).into_diagnostic()?;
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }
