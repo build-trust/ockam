@@ -94,6 +94,12 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
     let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
     let (_, _) = try_join!(send_req, progress_output)?;
 
+    let script_to_run = if kafka_entity == "KafkaProducer" {
+        "kafka-console-producer.sh --version"
+    } else {
+        "kafka-console-consumer.sh --version"
+    };
+
     opts.terminal
         .stdout()
         .plain(
@@ -112,9 +118,10 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
                 "{}\n",
                 "Kafka clients v3.4.x are supported.".color(OckamColor::FmtWARNBackground.color())
             ) + &fmt_log!(
-                "{}\n",
-                "You can find the version you have with 'kafka-console-consumer.sh --version'."
-                    .color(OckamColor::FmtWARNBackground.color())
+                "{}: '{}'.\n",
+                "You can find the version you have with"
+                    .color(OckamColor::FmtWARNBackground.color()),
+                script_to_run.color(OckamColor::Success.color())
             ),
         )
         .write_line()?;
