@@ -1,5 +1,6 @@
 pub use secure_clients::*;
 
+pub mod account;
 pub mod addon;
 pub mod email_address;
 pub mod enroll;

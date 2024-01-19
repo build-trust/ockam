@@ -26,6 +26,7 @@ use console::Term;
 use miette::GraphicalReportHandler;
 use once_cell::sync::Lazy;
 
+use account::AccountCommand;
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -77,6 +78,7 @@ use crate::sidecar::SidecarCommand;
 use crate::subscription::SubscriptionCommand;
 pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 
+mod account;
 mod admin;
 mod authenticated;
 mod authority;
@@ -333,6 +335,7 @@ pub enum OckamSubcommand {
     Status(StatusCommand),
     Reset(ResetCommand),
     Authenticated(AuthenticatedCommand),
+    Account(AccountCommand),
     Configuration(ConfigurationCommand),
 
     Completion(CompletionCommand),
@@ -454,6 +457,7 @@ impl OckamCommand {
             OckamSubcommand::Status(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
             OckamSubcommand::Authenticated(c) => c.run(options),
+            OckamSubcommand::Account(c) => c.run(options),
             OckamSubcommand::Configuration(c) => c.run(options),
 
             OckamSubcommand::Completion(c) => c.run(),
