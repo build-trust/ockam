@@ -17,7 +17,7 @@ use crate::{enroll::OidcServiceExt, fmt_ok, output::OutputFormat, terminal::colo
 use crate::{fmt_log, output::CredentialAndPurposeKeyDisplay};
 
 use crate::util::api::{CloudOpts, TrustOpts};
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
@@ -61,8 +61,14 @@ pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentT
 }
 
 impl EnrollCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "enroll".into()
     }
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -142,10 +148,6 @@ impl EnrollCommand {
             .write_line()?;
         Ok(())
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
 }
 
 async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {

@@ -11,13 +11,13 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
+use crate::util::async_cmd;
 use crate::{
     fmt_log, fmt_ok,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
     service::start::start_service_impl,
     terminal::OckamColor,
-    util::node_rpc,
     CommandGlobalOpts,
 };
 
@@ -35,57 +35,64 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    initialize_default_node(&ctx, &opts).await?;
-    opts.terminal
-        .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
-    let CreateCommand {
-        node_opts,
-        addr,
-        bootstrap_server,
-    } = cmd;
-    let is_finished = Mutex::new(false);
-    let send_req = async {
-        let payload = StartKafkaOutletRequest::new(bootstrap_server);
-        let payload = StartServiceRequest::new(payload, &addr);
-        let req = Request::post("/node/services/kafka_outlet").body(payload);
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &node_opts.at_node).await?;
+    pub fn name(&self) -> String {
+        "create kafka outlet".into()
+    }
 
-        start_service_impl(&ctx, &node, "KafkaOutlet", req).await?;
-        *is_finished.lock().await = true;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
+        opts.terminal
+            .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
+        let is_finished = Mutex::new(false);
+        let send_req = async {
+            let payload = StartKafkaOutletRequest::new(self.bootstrap_server);
+            let payload = StartServiceRequest::new(payload, &self.addr);
+            let req = Request::post("/node/services/kafka_outlet").body(payload);
+            let node =
+                BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
 
-        Ok::<_, crate::Error>(())
-    };
+            start_service_impl(ctx, &node, "KafkaOutlet", req).await?;
+            *is_finished.lock().await = true;
 
-    let msgs = vec![
-        format!(
-            "Building KafkaOutlet service {}",
-            &addr.to_string().color(OckamColor::PrimaryResource.color())
-        ),
-        format!(
-            "Starting KafkaOutlet service, connecting to {}",
-            &bootstrap_server
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ),
-    ];
-    let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
-    let (_, _) = try_join!(send_req, progress_output)?;
+            Ok::<_, crate::Error>(())
+        };
 
-    opts.terminal
-        .stdout()
-        .plain(fmt_ok!(
-            "KafkaOutlet service started at {}\n",
-            &bootstrap_server
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))
-        .write_line()?;
+        let msgs = vec![
+            format!(
+                "Building KafkaOutlet service {}",
+                &self
+                    .addr
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ),
+            format!(
+                "Starting KafkaOutlet service, connecting to {}",
+                &self
+                    .bootstrap_server
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ),
+        ];
+        let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
+        let (_, _) = try_join!(send_req, progress_output)?;
 
-    Ok(())
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!(
+                "KafkaOutlet service started at {}\n",
+                &self
+                    .bootstrap_server
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            ))
+            .write_line()?;
+
+        Ok(())
+    }
 }

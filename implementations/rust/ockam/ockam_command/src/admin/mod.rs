@@ -24,16 +24,15 @@ pub enum AdminSubCommand {
 }
 
 impl AdminCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            AdminSubCommand::Subscription(c) => c.run(options),
+            AdminSubCommand::Subscription(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            AdminSubCommand::Subscription(_) => "admin subscription",
+            AdminSubCommand::Subscription(c) => c.name(),
         }
-        .to_string()
     }
 }

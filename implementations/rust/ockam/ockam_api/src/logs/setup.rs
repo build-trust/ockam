@@ -342,7 +342,6 @@ struct DecoratedLogExporter<L: LogExporter> {
 #[async_trait]
 impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
     async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
-        // debug!("exporting {} logs", batch.len());
         self.exporter.export(batch).await
     }
 
@@ -406,7 +405,7 @@ impl CurrentSpan {
 
     pub fn set_attribute_time(name: &Key) {
         let current_utc: DateTime<Utc> = Utc::now();
-        let formatted_time: String = current_utc.format("%Y-%m-%dT%H:%M:%S").to_string();
+        let formatted_time: String = current_utc.format("%Y-%m-%dT%H:%M:%S.%3f").to_string();
         CurrentSpan::set_attribute(name, &formatted_time)
     }
 }

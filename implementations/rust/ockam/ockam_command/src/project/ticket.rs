@@ -15,8 +15,9 @@ use ockam_api::cloud::project::Project;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
+use crate::fmt_ok;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
-use crate::{fmt_ok, util::node_rpc};
 use crate::{
     output::OutputFormat,
     util::api::{CloudOpts, TrustOpts},
@@ -80,8 +81,14 @@ pub struct TicketCommand {
 }
 
 impl TicketCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create project ticket".into()
     }
 
     fn attributes(&self) -> Result<BTreeMap<String, String>> {
@@ -97,75 +104,71 @@ impl TicketCommand {
         }
         Ok(attributes)
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, TicketCommand),
-) -> miette::Result<()> {
-    if opts.global_args.output_format == OutputFormat::Json {
-        return Err(miette::miette!(
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if opts.global_args.output_format == OutputFormat::Json {
+            return Err(miette::miette!(
             "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
             Please try running it again without '--output json'."
         ));
-    }
+        }
 
-    let node = InMemoryNode::start_with_project_name(
-        &ctx,
-        &opts.state,
-        cmd.trust_opts.project_name.clone(),
-    )
-    .await?;
-
-    let project: Option<Project>;
-
-    let authority_node_client = if let Some(p) = get_project(&opts.state, &cmd.to).await? {
-        let identity = opts
-            .state
-            .get_identity_name_or_default(&cmd.cloud_opts.identity)
-            .await?;
-        project = Some(p.clone());
-        node.create_authority_client(
-            &p.authority_identifier().await.into_diagnostic()?,
-            &p.authority_access_route().into_diagnostic()?,
-            Some(identity),
+        let node = InMemoryNode::start_with_project_name(
+            ctx,
+            &opts.state,
+            self.trust_opts.project_name.clone(),
         )
-        .await?
-    } else {
-        return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
-    };
+        .await?;
 
-    // If an identity identifier is given add it as a member, otherwise
-    // request an enrollment token that a future member can use to get a
-    // credential.
-    if let Some(id) = &cmd.member {
-        authority_node_client
-            .add_member(&ctx, id.clone(), cmd.attributes()?)
+        let project: Option<Project>;
+
+        let authority_node_client = if let Some(p) = get_project(&opts.state, &self.to).await? {
+            let identity = opts
+                .state
+                .get_identity_name_or_default(&self.cloud_opts.identity)
+                .await?;
+            project = Some(p.clone());
+            node.create_authority_client(
+                &p.authority_identifier().await.into_diagnostic()?,
+                &p.authority_access_route().into_diagnostic()?,
+                Some(identity),
+            )
             .await?
-    } else {
-        let token = authority_node_client
-            .create_token(&ctx, cmd.attributes()?, cmd.expires_in, cmd.usage_count)
-            .await?;
+        } else {
+            return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
+        };
 
-        let ticket = EnrollmentTicket::new(token, project);
-        let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
+        // If an identity identifier is given add it as a member, otherwise
+        // request an enrollment token that a future member can use to get a
+        // credential.
+        if let Some(id) = &self.member {
+            authority_node_client
+                .add_member(ctx, id.clone(), self.attributes()?)
+                .await?
+        } else {
+            let token = authority_node_client
+                .create_token(ctx, self.attributes()?, self.expires_in, self.usage_count)
+                .await?;
 
-        opts.terminal.write_line(&fmt_ok!(
-            "{}: {}",
-            "Created enrollment ticket. You can use it to enroll another machine using",
-            color_primary("ockam project enroll".to_string())
-        ))?;
+            let ticket = EnrollmentTicket::new(token, project);
+            let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
 
-        opts.terminal
-            .clone()
-            .stdout()
-            .machine(ticket_serialized)
-            .write_line()?;
+            opts.terminal.write_line(&fmt_ok!(
+                "{}: {}",
+                "Created enrollment ticket. You can use it to enroll another machine using",
+                color_primary("ockam project enroll".to_string())
+            ))?;
+
+            opts.terminal
+                .clone()
+                .stdout()
+                .machine(ticket_serialized)
+                .write_line()?;
+        }
+
+        Ok(())
     }
-
-    Ok(())
 }
-
 /// Get the project authority from the first address protocol.
 ///
 /// If the first protocol is a `/project`, look up the project's config.

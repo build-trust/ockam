@@ -10,7 +10,7 @@ use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -30,45 +30,47 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, _cmd: ListCommand) -> miette::Result<()> {
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-
-    let get_spaces = async {
-        let spaces = node.get_spaces(ctx).await?;
-        *is_finished.lock().await = true;
-        Ok(spaces)
+    pub fn name(&self) -> String {
+        "list spaces".into()
     }
-    .with_current_context();
 
-    let output_messages = vec![format!("Listing Spaces...\n",)];
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let is_finished: Mutex<bool> = Mutex::new(false);
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let get_spaces = async {
+            let spaces = node.get_spaces(ctx).await?;
+            *is_finished.lock().await = true;
+            Ok(spaces)
+        }
+        .with_current_context();
 
-    let (spaces, _) = try_join!(get_spaces, progress_output)?;
+        let output_messages = vec![format!("Listing Spaces...\n",)];
 
-    let plain = opts.terminal.build_list(
-        &spaces,
-        "Spaces",
-        "No spaces found. Run 'ockam enroll' to get a space and a project",
-    )?;
-    let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-    Ok(())
+        let (spaces, _) = try_join!(get_spaces, progress_output)?;
+
+        let plain = opts.terminal.build_list(
+            &spaces,
+            "Spaces",
+            "No spaces found. Run 'ockam enroll' to get a space and a project",
+        )?;
+        let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
+
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }

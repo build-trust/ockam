@@ -6,13 +6,12 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::Context;
 use ockam_api::cli_state::nodes::NodeInfo;
 use ockam_api::NodeProcessStatus;
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -29,29 +28,32 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, _cmd): (CommandGlobalOpts, ListCommand),
-) -> miette::Result<()> {
-    // Before printing node states we verify them.
-    // We send a QueryStatus request to every node on
-    // record. If the response yields a different pid to the
-    // one in config, we update the pid stored in the config.
-    // This should only happen if the node has failed in the past,
-    // and has been restarted by something that is not this CLI.
-    let node_names: Vec<_> = {
-        let nodes = opts.state.get_nodes().await?;
-        nodes.iter().map(|n| n.name()).collect()
-    };
+    pub fn name(&self) -> String {
+        "list nodes".into()
+    }
 
-    let nodes = get_nodes_info(&opts, node_names).await?;
-    print_nodes_info(&opts, nodes)?;
-    Ok(())
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        // Before printing node states we verify them.
+        // We send a QueryStatus request to every node on
+        // record. If the response yields a different pid to the
+        // one in config, we update the pid stored in the config.
+        // This should only happen if the node has failed in the past,
+        // and has been restarted by something that is not this CLI.
+        let node_names: Vec<_> = {
+            let nodes = opts.state.get_nodes().await?;
+            nodes.iter().map(|n| n.name()).collect()
+        };
+
+        let nodes = get_nodes_info(&opts, node_names).await?;
+        print_nodes_info(&opts, nodes)?;
+        Ok(())
+    }
 }
 
 pub async fn get_nodes_info(

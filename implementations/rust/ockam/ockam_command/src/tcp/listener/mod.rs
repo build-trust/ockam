@@ -34,22 +34,21 @@ pub enum TcpListenerSubCommand {
 }
 
 impl TcpListenerCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpListenerSubCommand::Create(c) => c.run(options),
-            TcpListenerSubCommand::Delete(c) => c.run(options),
-            TcpListenerSubCommand::List(c) => c.run(options),
-            TcpListenerSubCommand::Show(c) => c.run(options),
+            TcpListenerSubCommand::Create(c) => c.run(opts),
+            TcpListenerSubCommand::Delete(c) => c.run(opts),
+            TcpListenerSubCommand::List(c) => c.run(opts),
+            TcpListenerSubCommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            TcpListenerSubCommand::Create(_) => "create tcp listener",
-            TcpListenerSubCommand::Delete(_) => "delete tcp listener",
-            TcpListenerSubCommand::List(_) => "list tcp listeners",
-            TcpListenerSubCommand::Show(_) => "show tcp listener",
+            TcpListenerSubCommand::Create(c) => c.name(),
+            TcpListenerSubCommand::Delete(c) => c.name(),
+            TcpListenerSubCommand::List(c) => c.name(),
+            TcpListenerSubCommand::Show(c) => c.name(),
         }
-        .to_string()
     }
 }

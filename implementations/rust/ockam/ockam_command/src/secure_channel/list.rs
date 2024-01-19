@@ -14,11 +14,8 @@ use ockam_core::{route, Address};
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::{
-    docs,
-    util::{api, node_rpc},
-    CommandGlobalOpts,
-};
+use crate::util::async_cmd;
+use crate::{docs, util::api, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -39,8 +36,14 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "list secure channels".into()
     }
 
     fn build_output(
@@ -78,60 +81,60 @@ impl ListCommand {
 
         Ok(SecureChannelListOutput { from, to, at })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
 
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let get_secure_channel_identifiers = async {
-        let secure_channel_identifiers: Vec<String> =
-            node.ask(&ctx, api::list_secure_channels()).await?;
-        *is_finished.lock().await = true;
-        Ok(secure_channel_identifiers)
-    };
-
-    let output_messages = vec!["Retrieving secure channel identifiers...\n".to_string()];
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
-
-    let (channel_identifiers, _) = try_join!(get_secure_channel_identifiers, progress_output)?;
-
-    let mut responses = Vec::with_capacity(channel_identifiers.len());
-    for channel_addr in &channel_identifiers {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let get_secure_channel_output = async {
-            let request = api::show_secure_channel(&Address::from(channel_addr));
-            let show_response: ShowSecureChannelResponse = node.ask(&ctx, request).await?;
-            let secure_channel_output =
-                cmd.build_output(&node.node_name(), channel_addr, show_response)?;
+        let get_secure_channel_identifiers = async {
+            let secure_channel_identifiers: Vec<String> =
+                node.ask(ctx, api::list_secure_channels()).await?;
             *is_finished.lock().await = true;
-            Ok(secure_channel_output)
+            Ok(secure_channel_identifiers)
         };
-        let output_messages = vec![format!(
-            "Retrieving secure channel {}...\n",
-            channel_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )];
+
+        let output_messages = vec!["Retrieving secure channel identifiers...\n".to_string()];
         let progress_output = opts
             .terminal
             .progress_output(&output_messages, &is_finished);
 
-        let (secure_channel_output, _) = try_join!(get_secure_channel_output, progress_output)?;
+        let (channel_identifiers, _) = try_join!(get_secure_channel_identifiers, progress_output)?;
 
-        responses.push(secure_channel_output);
+        let mut responses = Vec::with_capacity(channel_identifiers.len());
+        for channel_addr in &channel_identifiers {
+            let is_finished: Mutex<bool> = Mutex::new(false);
+            let get_secure_channel_output = async {
+                let request = api::show_secure_channel(&Address::from(channel_addr));
+                let show_response: ShowSecureChannelResponse = node.ask(ctx, request).await?;
+                let secure_channel_output =
+                    self.build_output(&node.node_name(), channel_addr, show_response)?;
+                *is_finished.lock().await = true;
+                Ok(secure_channel_output)
+            };
+            let output_messages = vec![format!(
+                "Retrieving secure channel {}...\n",
+                channel_addr
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color())
+            )];
+            let progress_output = opts
+                .terminal
+                .progress_output(&output_messages, &is_finished);
+
+            let (secure_channel_output, _) = try_join!(get_secure_channel_output, progress_output)?;
+
+            responses.push(secure_channel_output);
+        }
+
+        let list = opts.terminal.build_list(
+            &responses,
+            &format!("Secure Channels on {}", node.node_name()),
+            &format!("No secure channels found on {}", node.node_name()),
+        )?;
+        opts.terminal.stdout().plain(list).write_line()?;
+
+        Ok(())
     }
-
-    let list = opts.terminal.build_list(
-        &responses,
-        &format!("Secure Channels on {}", node.node_name()),
-        &format!("No secure channels found on {}", node.node_name()),
-    )?;
-    opts.terminal.stdout().plain(list).write_line()?;
-
-    Ok(())
 }
 
 pub struct SecureChannelListOutput {

@@ -8,7 +8,7 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::output::{Output, ProjectConfigCompact};
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -22,23 +22,25 @@ pub struct InfoCommand {
 }
 
 impl InfoCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, InfoCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "get project information".into()
+    }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: InfoCommand) -> miette::Result<()> {
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let project = node.get_project_by_name(ctx, &cmd.name).await?;
-    let info = ProjectConfigCompact(project);
-    opts.terminal
-        .stdout()
-        .plain(info.output()?)
-        .json(serde_json::to_string_pretty(&info).into_diagnostic()?)
-        .write_line()?;
-    Ok(())
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let project = node.get_project_by_name(ctx, &self.name).await?;
+        let info = ProjectConfigCompact(project);
+        opts.terminal
+            .stdout()
+            .plain(info.output()?)
+            .json(serde_json::to_string_pretty(&info).into_diagnostic()?)
+            .write_line()?;
+        Ok(())
+    }
 }

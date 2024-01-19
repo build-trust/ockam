@@ -29,18 +29,17 @@ pub enum SidecarSubcommand {
 }
 
 impl SidecarCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SidecarSubcommand::SecureRelayOutlet(c) => c.run(options),
-            SidecarSubcommand::SecureRelayInlet(c) => c.run(options),
+            SidecarSubcommand::SecureRelayOutlet(c) => c.run(opts),
+            SidecarSubcommand::SecureRelayInlet(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            SidecarSubcommand::SecureRelayInlet(_) => "sidecar relay inlet",
-            SidecarSubcommand::SecureRelayOutlet(_) => "sidecar relay outlet",
+            SidecarSubcommand::SecureRelayInlet(c) => c.name(),
+            SidecarSubcommand::SecureRelayOutlet(c) => c.name(),
         }
-        .to_string()
     }
 }

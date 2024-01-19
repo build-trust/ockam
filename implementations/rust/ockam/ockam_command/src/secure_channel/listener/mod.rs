@@ -32,22 +32,21 @@ pub enum SecureChannelListenerSubcommand {
 }
 
 impl SecureChannelListenerCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SecureChannelListenerSubcommand::Create(c) => c.run(options),
-            SecureChannelListenerSubcommand::Delete(c) => c.run(options),
-            SecureChannelListenerSubcommand::List(c) => c.run(options),
-            SecureChannelListenerSubcommand::Show(c) => c.run(options),
+            SecureChannelListenerSubcommand::Create(c) => c.run(opts),
+            SecureChannelListenerSubcommand::Delete(c) => c.run(opts),
+            SecureChannelListenerSubcommand::List(c) => c.run(opts),
+            SecureChannelListenerSubcommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            SecureChannelListenerSubcommand::Create(_) => "create secure channel listener",
-            SecureChannelListenerSubcommand::Delete(_) => "delete secure channel listener",
-            SecureChannelListenerSubcommand::List(_) => "list secure channel listeners",
-            SecureChannelListenerSubcommand::Show(_) => "show secure channel listener",
+            SecureChannelListenerSubcommand::Create(c) => c.name(),
+            SecureChannelListenerSubcommand::Delete(c) => c.name(),
+            SecureChannelListenerSubcommand::List(c) => c.name(),
+            SecureChannelListenerSubcommand::Show(c) => c.name(),
         }
-        .to_string()
     }
 }

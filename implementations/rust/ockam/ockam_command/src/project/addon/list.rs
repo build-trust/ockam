@@ -5,7 +5,7 @@ use ockam::Context;
 use ockam_api::cloud::addon::Addons;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 
 /// List available addons for a project
@@ -22,27 +22,30 @@ pub struct AddonListSubcommand {
 }
 
 impl AddonListSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AddonListSubcommand),
-) -> miette::Result<()> {
-    let project_name = cmd.project_name;
-    let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
+    pub fn name(&self) -> String {
+        "list addons".into()
+    }
 
-    let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let project_name = self.project_name.clone();
+        let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
 
-    let addons = controller.list_addons(&ctx, project_id).await?;
-    let output = opts.terminal.build_list(
-        &addons,
-        &format!("Addons for project {project_name}"),
-        &format!("No addons enabled for project {project_name}"),
-    )?;
-    opts.terminal.stdout().plain(output).write_line()?;
-    Ok(())
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
+
+        let addons = controller.list_addons(ctx, project_id).await?;
+        let output = opts.terminal.build_list(
+            &addons,
+            &format!("Addons for project {project_name}"),
+            &format!("No addons enabled for project {project_name}"),
+        )?;
+        opts.terminal.stdout().plain(output).write_line()?;
+        Ok(())
+    }
 }

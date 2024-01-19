@@ -1,12 +1,11 @@
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_node::Context;
 use serde::Serialize;
 use serde_json::json;
 use std::fmt::Write;
@@ -25,15 +24,17 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), Self::run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
 
-    async fn run_impl(
-        _ctx: Context,
-        options: (CommandGlobalOpts, ListCommand),
-    ) -> miette::Result<()> {
-        let (opts, _cmd) = options;
+    pub fn name(&self) -> String {
+        "list identity".into()
+    }
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let mut identities_list: Vec<IdentityListOutput> = Vec::new();
 
         let identities = opts.state.get_named_identities().await?;

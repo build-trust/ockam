@@ -13,7 +13,7 @@ use ockam_core::api::Request;
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -26,50 +26,52 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "list policies".into()
+    }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
-    let is_finished: Mutex<bool> = Mutex::new(false);
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let resource = cmd.resource;
-    let get_policies = async {
-        let req = Request::get(format!("/policy/{resource}"));
-        let policies: PolicyList = node.ask(ctx, req).await?;
-        Ok(policies)
-    };
+        let resource = &self.resource;
+        let get_policies = async {
+            let req = Request::get(format!("/policy/{resource}"));
+            let policies: PolicyList = node.ask(ctx, req).await?;
+            Ok(policies)
+        };
 
-    let output_messages = vec![format!(
-        "Listing Policies on {} for Resource {}...\n",
-        node.node_name()
-            .to_string()
-            .color(OckamColor::PrimaryResource.color()),
-        resource
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
-    )];
+        let output_messages = vec![format!(
+            "Listing Policies on {} for Resource {}...\n",
+            node.node_name()
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            resource
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )];
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    let (policies, _) = try_join!(get_policies, progress_output)?;
+        let (policies, _) = try_join!(get_policies, progress_output)?;
 
-    let list = opts.terminal.build_list(
-        policies.expressions(),
-        &format!("Policies on Node {} for {}", &node.node_name(), resource),
-        &format!("No Policies on Node {} for {}", &node.node_name(), resource),
-    )?;
-    opts.terminal.stdout().plain(list).write_line()?;
+        let list = opts.terminal.build_list(
+            policies.expressions(),
+            &format!("Policies on Node {} for {}", &node.node_name(), resource),
+            &format!("No Policies on Node {} for {}", &node.node_name(), resource),
+        )?;
+        opts.terminal.stdout().plain(list).write_line()?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 impl Output for Expression {

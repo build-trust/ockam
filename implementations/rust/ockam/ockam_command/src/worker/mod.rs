@@ -26,16 +26,15 @@ pub enum WorkerSubcommand {
 }
 
 impl WorkerCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            WorkerSubcommand::List(c) => c.run(options),
+            WorkerSubcommand::List(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            WorkerSubcommand::List(_) => "list workers",
+            WorkerSubcommand::List(c) => c.name(),
         }
-        .to_string()
     }
 }

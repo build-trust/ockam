@@ -42,22 +42,21 @@ enum SecureChannelSubcommand {
 }
 
 impl SecureChannelCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SecureChannelSubcommand::Create(c) => c.run(options),
-            SecureChannelSubcommand::Delete(c) => c.run(options),
-            SecureChannelSubcommand::List(c) => c.run(options),
-            SecureChannelSubcommand::Show(c) => c.run(options),
+            SecureChannelSubcommand::Create(c) => c.run(opts),
+            SecureChannelSubcommand::Delete(c) => c.run(opts),
+            SecureChannelSubcommand::List(c) => c.run(opts),
+            SecureChannelSubcommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            SecureChannelSubcommand::Create(_) => "create secure channel",
-            SecureChannelSubcommand::Delete(_) => "delete secure channel",
-            SecureChannelSubcommand::List(_) => "list secure channels",
-            SecureChannelSubcommand::Show(_) => "show secure channel",
+            SecureChannelSubcommand::Create(c) => c.name(),
+            SecureChannelSubcommand::Delete(c) => c.name(),
+            SecureChannelSubcommand::List(c) => c.name(),
+            SecureChannelSubcommand::Show(c) => c.name(),
         }
-        .to_string()
     }
 }

@@ -27,7 +27,7 @@ use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
 use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 use crate::{fmt_warn, node::util::initialize_default_node};
 
@@ -55,25 +55,120 @@ pub struct EnrollCommand {
 }
 
 impl EnrollCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
 
     pub fn name(&self) -> String {
         "enroll".to_string()
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
-    if opts.global_args.output_format == OutputFormat::Json {
-        return Err(miette::miette!(
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if opts.global_args.output_format == OutputFormat::Json {
+            return Err(miette::miette!(
             "This command is interactive and requires you to open a web browser to complete enrollment. \
             Please try running it again without '--output json'."
         ));
+        }
+        self.run_impl(ctx, opts.clone()).await?;
+        initialize_default_node(ctx, &opts).await?;
+        Ok(())
     }
-    run_impl(&ctx, opts.clone(), cmd).await?;
-    initialize_default_node(&ctx, &opts).await?;
-    Ok(())
+
+    async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        opts.terminal.write_line(&fmt_log!(
+            "{}{}{}",
+            "Enrolling your Ockam Identity",
+            " on this machine ".dim(),
+            "with Ockam Orchestrator."
+        ))?;
+
+        ctrlc_handler(opts.clone());
+        display_parse_logs(&opts);
+
+        let oidc_service = OidcService::default();
+        let token = if self.authorization_code_flow {
+            oidc_service.get_token_with_pkce().await.into_diagnostic()?
+        } else {
+            oidc_service.get_token_interactively(&opts).await?
+        };
+
+        let user_info = oidc_service
+            .wait_for_email_verification(&token, Some(&opts.terminal))
+            .await?;
+        opts.state.store_user(&user_info).await?;
+
+        let identity_name = opts
+            .state
+            .get_named_identity_or_default(&self.identity)
+            .await?
+            .name();
+        let node = InMemoryNode::start_node_with_identity(ctx, &opts.state, &identity_name).await?;
+        let controller = node.create_controller().await?;
+
+        enroll_with_node(&controller, ctx, token)
+            .await
+            .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
+        let identifier = node.identifier();
+        opts.state
+            .set_identifier_as_enrolled(&identifier)
+            .await
+            .wrap_err("Unable to set your local Identity as enrolled")?;
+        info!("Enrolled your local Identity with the identifier {identifier}");
+
+        if let Err(e) =
+            retrieve_user_space_and_project(&opts, ctx, &node, self.user_account_only).await
+        {
+            warn!(
+            "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
+            create them manually using the `ockam space` and `ockam project` commands."
+        );
+            warn!("{e}");
+        }
+
+        let mut attributes = HashMap::default();
+        let user_email = user_info.email.to_string();
+        attributes.insert(USER_NAME, user_info.name.as_str());
+        attributes.insert(USER_EMAIL, user_email.as_str());
+        opts.state
+            .add_journey_event(JourneyEvent::Enrolled, attributes)
+            .await
+            .unwrap();
+
+        // Print final message.
+        opts.terminal.write_line(&fmt_ok!(
+            "Enrolled the following as one of the Identities of your Orchestrator account ({}):",
+            color_email(user_info.email.to_string())
+        ))?;
+        // Print the identity name if it exists.
+        if let Ok(named_identity) = opts
+            .state
+            .get_named_identity_by_identifier(&identifier)
+            .await
+        {
+            opts.terminal
+                .write_line(&fmt_log!("name: {}", color_primary(named_identity.name())))?;
+        }
+        // Print the identity identifier.
+        opts.terminal.write_line(&fmt_log!(
+            "identifier: {}\n",
+            color_primary(identifier.to_string())
+        ))?;
+        // Final line.
+        opts.terminal.write_line(fmt_log!(
+            "{} {}:",
+            "Take a look at this tutorial to learn how to securely connect your apps using",
+            color_primary("Ockam".to_string())
+        ))?;
+        opts.terminal.write_line(fmt_log!(
+            "{}\n",
+            color_uri("https://docs.ockam.io/guides/examples/basic-web-app")
+        ))?;
+
+        Ok(())
+    }
 }
 
 fn ctrlc_handler(opts: CommandGlobalOpts) {
@@ -96,102 +191,6 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
         }
     })
         .expect("Error setting Ctrl-C handler");
-}
-
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: EnrollCommand,
-) -> miette::Result<()> {
-    opts.terminal.write_line(&fmt_log!(
-        "{}{}{}",
-        "Enrolling your Ockam Identity",
-        " on this machine ".dim(),
-        "with Ockam Orchestrator."
-    ))?;
-
-    ctrlc_handler(opts.clone());
-    display_parse_logs(&opts);
-
-    let oidc_service = OidcService::default();
-    let token = if cmd.authorization_code_flow {
-        oidc_service.get_token_with_pkce().await.into_diagnostic()?
-    } else {
-        oidc_service.get_token_interactively(&opts).await?
-    };
-
-    let user_info = oidc_service
-        .wait_for_email_verification(&token, Some(&opts.terminal))
-        .await?;
-    opts.state.store_user(&user_info).await?;
-
-    let identity_name = opts
-        .state
-        .get_named_identity_or_default(&cmd.identity)
-        .await?
-        .name();
-    let node = InMemoryNode::start_node_with_identity(ctx, &opts.state, &identity_name).await?;
-    let controller = node.create_controller().await?;
-
-    enroll_with_node(&controller, ctx, token)
-        .await
-        .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
-    let identifier = node.identifier();
-    opts.state
-        .set_identifier_as_enrolled(&identifier)
-        .await
-        .wrap_err("Unable to set your local Identity as enrolled")?;
-    info!("Enrolled your local Identity with the identifier {identifier}");
-
-    if let Err(e) = retrieve_user_space_and_project(&opts, ctx, &node, cmd.user_account_only).await
-    {
-        warn!(
-            "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
-            create them manually using the `ockam space` and `ockam project` commands."
-        );
-        warn!("{e}");
-    }
-
-    let mut attributes = HashMap::default();
-    let user_email = user_info.email.to_string();
-    attributes.insert(USER_NAME, user_info.name.as_str());
-    attributes.insert(USER_EMAIL, user_email.as_str());
-    opts.state
-        .add_journey_event(JourneyEvent::Enrolled, attributes)
-        .await
-        .unwrap();
-
-    // Print final message.
-    opts.terminal.write_line(&fmt_ok!(
-        "Enrolled the following as one of the Identities of your Orchestrator account ({}):",
-        color_email(user_info.email.to_string())
-    ))?;
-    // Print the identity name if it exists.
-    if let Ok(named_identity) = opts
-        .state
-        .get_named_identity_by_identifier(&identifier)
-        .await
-    {
-        opts.terminal
-            .write_line(&fmt_log!("name: {}", color_primary(named_identity.name())))?;
-    }
-    // Print the identity identifier.
-    opts.terminal.write_line(&fmt_log!(
-        "identifier: {}\n",
-        color_primary(identifier.to_string())
-    ))?;
-    // Final line.
-    opts.terminal.write_line(fmt_log!(
-        "{} {}:",
-        "Take a look at this tutorial to learn how to securely connect your apps using",
-        color_primary("Ockam".to_string())
-    ))?;
-    opts.terminal.write_line(fmt_log!(
-        "{}\n",
-        color_uri("https://docs.ockam.io/guides/examples/basic-web-app")
-    ))?;
-
-    Ok(())
 }
 
 async fn retrieve_user_space_and_project(

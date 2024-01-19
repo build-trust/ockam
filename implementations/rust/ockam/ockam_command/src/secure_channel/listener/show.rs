@@ -5,7 +5,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::node::NodeOpts;
-use crate::util::{api, node_rpc};
+use crate::util::{api, async_cmd};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -29,26 +29,24 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
+    pub fn name(&self) -> String {
+        "show secure channel listener".into()
+    }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
-    run_impl(&ctx, (opts, cmd)).await
-}
-
-async fn run_impl(
-    ctx: &Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
-    let address = &cmd.address;
-    let req = api::show_secure_channel_listener(address);
-    node.tell(ctx, req).await?;
-    opts.terminal
-        .stdout()
-        .plain(format!("/service/{}", cmd.address.address()))
-        .write_line()?;
-    Ok(())
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let address = &self.address;
+        let req = api::show_secure_channel_listener(address);
+        node.tell(ctx, req).await?;
+        opts.terminal
+            .stdout()
+            .plain(format!("/service/{}", self.address.address()))
+            .write_line()?;
+        Ok(())
+    }
 }

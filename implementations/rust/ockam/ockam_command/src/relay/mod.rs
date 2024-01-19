@@ -38,7 +38,7 @@ pub enum RelaySubCommand {
 }
 
 impl RelayCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             RelaySubCommand::Create(c) => c.run(opts),
             RelaySubCommand::List(c) => c.run(opts),
@@ -49,11 +49,10 @@ impl RelayCommand {
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            RelaySubCommand::Create(_) => "create relay",
-            RelaySubCommand::List(_) => "list relays",
-            RelaySubCommand::Show(_) => "show relay",
-            RelaySubCommand::Delete(_) => "delete relay",
+            RelaySubCommand::Create(c) => c.name(),
+            RelaySubCommand::List(c) => c.name(),
+            RelaySubCommand::Show(c) => c.name(),
+            RelaySubCommand::Delete(c) => c.name(),
         }
-        .to_string()
     }
 }

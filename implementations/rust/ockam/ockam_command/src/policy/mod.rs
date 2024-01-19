@@ -32,8 +32,19 @@ pub enum PolicySubcommand {
     List(ListCommand),
 }
 
+impl PolicySubcommand {
+    pub fn name(&self) -> String {
+        match &self {
+            PolicySubcommand::Create(c) => c.name(),
+            PolicySubcommand::Show(c) => c.name(),
+            PolicySubcommand::Delete(c) => c.name(),
+            PolicySubcommand::List(c) => c.name(),
+        }
+    }
+}
+
 impl PolicyCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             PolicySubcommand::Create(c) => c.run(opts),
             PolicySubcommand::Show(c) => c.run(opts),
@@ -43,13 +54,7 @@ impl PolicyCommand {
     }
 
     pub fn name(&self) -> String {
-        match &self.subcommand {
-            PolicySubcommand::Create(_) => "create policy",
-            PolicySubcommand::Show(_) => "show policy",
-            PolicySubcommand::Delete(_) => "delete policy",
-            PolicySubcommand::List(_) => "list policies",
-        }
-        .to_string()
+        self.subcommand.name()
     }
 }
 

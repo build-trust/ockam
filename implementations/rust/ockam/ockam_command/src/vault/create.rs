@@ -2,9 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use std::path::PathBuf;
 
-use ockam::Context;
-
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -28,11 +26,17 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
 
-    pub async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub fn name(&self) -> String {
+        "create vault".into()
+    }
+
+    pub(crate) async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.state.get_named_vaults().await?.is_empty() {
             opts.terminal.write_line(&fmt_info!(
             "This is the first vault to be created in this environment. It will be set as the default vault"
@@ -54,8 +58,4 @@ impl CreateCommand {
             .write_line()?;
         Ok(())
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
 }

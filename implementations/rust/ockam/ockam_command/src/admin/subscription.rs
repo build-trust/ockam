@@ -12,7 +12,7 @@ use ockam_api::nodes::InMemoryNode;
 use crate::output::Output;
 use crate::subscription::get_subscription_by_id_or_space_id;
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
@@ -133,122 +133,136 @@ enum SubscriptionUpdateSubcommand {
 }
 
 impl SubscriptionCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
-) -> miette::Result<()> {
-    let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+    pub fn name(&self) -> String {
+        "admin subscription".into()
+    }
 
-    match cmd.subcommand {
-        SubscriptionSubcommand::Attach {
-            json,
-            space_id: space,
-        } => {
-            let json = std::fs::read_to_string(&json)
-                .into_diagnostic()
-                .context(format!("failed to read {:?}", &json))?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
-            let response = controller
-                .activate_subscription(&ctx, space, json)
-                .await
-                .into_diagnostic()?;
-            opts.terminal.write_line(&response.output()?)?
-        }
-        SubscriptionSubcommand::List => {
-            let response = controller
-                .get_subscriptions(&ctx)
-                .await
-                .into_diagnostic()?
-                .success()
-                .into_diagnostic()?;
-            let output =
-                opts.terminal
-                    .build_list(&response, "Subscriptions", "No Subscriptions found")?;
-            opts.terminal.write_line(output)?
-        }
-        SubscriptionSubcommand::Unsubscribe {
-            subscription_id,
-            space_id,
-        } => {
-            match get_subscription_by_id_or_space_id(&controller, &ctx, subscription_id, space_id)
+        match &self.subcommand {
+            SubscriptionSubcommand::Attach {
+                json,
+                space_id: space,
+            } => {
+                let json = std::fs::read_to_string(json)
+                    .into_diagnostic()
+                    .context(format!("failed to read {:?}", &json))?;
+
+                let response = controller
+                    .activate_subscription(ctx, space.clone(), json)
+                    .await
+                    .into_diagnostic()?;
+                opts.terminal.write_line(&response.output()?)?
+            }
+            SubscriptionSubcommand::List => {
+                let response = controller
+                    .get_subscriptions(ctx)
+                    .await
+                    .into_diagnostic()?
+                    .success()
+                    .into_diagnostic()?;
+                let output = opts.terminal.build_list(
+                    &response,
+                    "Subscriptions",
+                    "No Subscriptions found",
+                )?;
+                opts.terminal.write_line(output)?
+            }
+            SubscriptionSubcommand::Unsubscribe {
+                subscription_id,
+                space_id,
+            } => {
+                match get_subscription_by_id_or_space_id(
+                    &controller,
+                    ctx,
+                    subscription_id.clone(),
+                    space_id.clone(),
+                )
                 .await?
-            {
-                Some(subscription) => {
-                    let response = controller
-                        .unsubscribe(&ctx, subscription.id)
-                        .await
-                        .into_diagnostic()?;
-                    opts.terminal.write_line(&response.output()?)?
-                }
-                None => opts
-                    .terminal
-                    .write_line("Please specify either a space id or a subscription id")?,
-            }
-        }
-        SubscriptionSubcommand::Update(c) => {
-            let SubscriptionUpdate { subcommand: sc } = c;
-            match sc {
-                SubscriptionUpdateSubcommand::ContactInfo {
-                    json,
-                    space_id,
-                    subscription_id,
-                } => {
-                    let json = std::fs::read_to_string(&json)
-                        .into_diagnostic()
-                        .context(format!("failed to read {:?}", &json))?;
-                    match get_subscription_by_id_or_space_id(
-                        &controller,
-                        &ctx,
-                        subscription_id,
-                        space_id,
-                    )
-                    .await?
-                    {
-                        Some(subscription) => {
-                            let response = controller
-                                .update_subscription_contact_info(&ctx, subscription.id, json)
-                                .await
-                                .into_diagnostic()?;
-                            opts.terminal.write_line(&response.output()?)?
-                        }
-                        None => opts
-                            .terminal
-                            .write_line("Please specify either a space id or a subscription id")?,
+                {
+                    Some(subscription) => {
+                        let response = controller
+                            .unsubscribe(ctx, subscription.id)
+                            .await
+                            .into_diagnostic()?;
+                        opts.terminal.write_line(&response.output()?)?
                     }
-                }
-                SubscriptionUpdateSubcommand::Space {
-                    subscription_id,
-                    space_id,
-                    new_space_id,
-                } => {
-                    match get_subscription_by_id_or_space_id(
-                        &controller,
-                        &ctx,
-                        subscription_id,
-                        space_id,
-                    )
-                    .await?
-                    {
-                        Some(subscription) => {
-                            let response = controller
-                                .update_subscription_space(&ctx, subscription.id, new_space_id)
-                                .await
-                                .into_diagnostic()?;
-                            opts.terminal.write_line(&response.output()?)?
-                        }
-                        None => opts
-                            .terminal
-                            .write_line("Please specify either a space id or a subscription id")?,
-                    }
+                    None => opts
+                        .terminal
+                        .write_line("Please specify either a space id or a subscription id")?,
                 }
             }
-        }
-    };
-    Ok(())
+            SubscriptionSubcommand::Update(c) => {
+                let SubscriptionUpdate { subcommand: sc } = c;
+                match sc {
+                    SubscriptionUpdateSubcommand::ContactInfo {
+                        json,
+                        space_id,
+                        subscription_id,
+                    } => {
+                        let json = std::fs::read_to_string(json)
+                            .into_diagnostic()
+                            .context(format!("failed to read {:?}", &json))?;
+                        match get_subscription_by_id_or_space_id(
+                            &controller,
+                            ctx,
+                            subscription_id.clone(),
+                            space_id.clone(),
+                        )
+                        .await?
+                        {
+                            Some(subscription) => {
+                                let response = controller
+                                    .update_subscription_contact_info(ctx, subscription.id, json)
+                                    .await
+                                    .into_diagnostic()?;
+                                opts.terminal.write_line(&response.output()?)?
+                            }
+                            None => opts.terminal.write_line(
+                                "Please specify either a space id or a subscription id",
+                            )?,
+                        }
+                    }
+                    SubscriptionUpdateSubcommand::Space {
+                        subscription_id,
+                        space_id,
+                        new_space_id,
+                    } => {
+                        match get_subscription_by_id_or_space_id(
+                            &controller,
+                            ctx,
+                            subscription_id.clone(),
+                            space_id.clone(),
+                        )
+                        .await?
+                        {
+                            Some(subscription) => {
+                                let response = controller
+                                    .update_subscription_space(
+                                        ctx,
+                                        subscription.id,
+                                        new_space_id.clone(),
+                                    )
+                                    .await
+                                    .into_diagnostic()?;
+                                opts.terminal.write_line(&response.output()?)?
+                            }
+                            None => opts.terminal.write_line(
+                                "Please specify either a space id or a subscription id",
+                            )?,
+                        }
+                    }
+                }
+            }
+        };
+        Ok(())
+    }
 }

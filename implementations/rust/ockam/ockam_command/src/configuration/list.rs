@@ -1,22 +1,26 @@
 use clap::Args;
 
-use ockam_node::Context;
-
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, options);
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(_ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-    for node in opts.state.get_nodes().await? {
-        opts.terminal.write(format!("Node: {}\n", node.name()))?;
+    pub fn name(&self) -> String {
+        "list configurations".into()
     }
-    Ok(())
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        for node in opts.state.get_nodes().await? {
+            opts.terminal.write(format!("Node: {}\n", node.name()))?;
+        }
+        Ok(())
+    }
 }

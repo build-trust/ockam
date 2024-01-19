@@ -2,11 +2,10 @@ use clap::Args;
 use colorful::Colorful;
 
 use console::Term;
-use ockam::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -31,8 +30,18 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "delete vault".into()
+    }
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        DeleteTui::run(opts, self.clone()).await
     }
 }
 
@@ -46,18 +55,6 @@ impl DeleteTui {
         let tui = Self { opts, cmd };
         tui.delete().await
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(
-    _ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: DeleteCommand,
-) -> miette::Result<()> {
-    DeleteTui::run(opts, cmd).await
 }
 
 #[ockam_core::async_trait]

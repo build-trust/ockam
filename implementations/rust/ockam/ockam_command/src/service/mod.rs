@@ -27,18 +27,17 @@ pub enum ServiceSubcommand {
 }
 
 impl ServiceCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ServiceSubcommand::Start(c) => c.run(options),
-            ServiceSubcommand::List(c) => c.run(options),
+            ServiceSubcommand::Start(c) => c.run(opts),
+            ServiceSubcommand::List(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            ServiceSubcommand::Start(_) => "start service",
-            ServiceSubcommand::List(_) => "list services",
+            ServiceSubcommand::Start(c) => c.name(),
+            ServiceSubcommand::List(c) => c.name(),
         }
-        .to_string()
     }
 }

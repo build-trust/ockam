@@ -20,14 +20,9 @@ use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
 use crate::util::api::CloudOpts;
-use crate::util::clean_nodes_multiaddr;
+use crate::util::{async_cmd, clean_nodes_multiaddr};
 use crate::{
-    docs,
-    error::Error,
-    fmt_log, fmt_ok,
-    terminal::OckamColor,
-    util::{exitcode, node_rpc},
-    CommandGlobalOpts,
+    docs, error::Error, fmt_log, fmt_ok, terminal::OckamColor, util::exitcode, CommandGlobalOpts,
 };
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -59,8 +54,14 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create secure channel".into()
     }
 
     // Read the `to` argument and return a MultiAddr
@@ -92,69 +93,69 @@ impl CreateCommand {
             .into_diagnostic()
             .wrap_err("Could not parse projects from route")
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    initialize_default_node(&ctx, &opts).await?;
-    let node = BackgroundNodeClient::create_to_node(&ctx, &opts.state, &cmd.from).await?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
+        let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.from).await?;
 
-    opts.terminal
-        .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
+        opts.terminal
+            .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
 
-    // Delegate the request to create a secure channel to the from node.
-    let is_finished: Mutex<bool> = Mutex::new(false);
-    let to = cmd.parse_to_route(&opts, &ctx, &node).await?;
-    let authorized_identifiers = cmd.authorized.clone();
+        // Delegate the request to create a secure channel to the from node.
+        let is_finished: Mutex<bool> = Mutex::new(false);
+        let to = self.parse_to_route(&opts, ctx, &node).await?;
+        let authorized_identifiers = self.authorized.clone();
 
-    let create_secure_channel = async {
-        let identity_name = opts
-            .state
-            .get_identity_name_or_default(&cmd.cloud_opts.identity)
-            .await?;
-        let payload =
-            CreateSecureChannelRequest::new(&to, authorized_identifiers, Some(identity_name));
-        let request = Request::post("/node/secure_channel").body(payload);
-        let response: CreateSecureChannelResponse = node.ask(&ctx, request).await?;
-        *is_finished.lock().await = true;
-        Ok(response.addr)
-    };
+        let create_secure_channel = async {
+            let identity_name = opts
+                .state
+                .get_identity_name_or_default(&self.cloud_opts.identity)
+                .await?;
+            let payload =
+                CreateSecureChannelRequest::new(&to, authorized_identifiers, Some(identity_name));
+            let request = Request::post("/node/secure_channel").body(payload);
+            let response: CreateSecureChannelResponse = node.ask(ctx, request).await?;
+            *is_finished.lock().await = true;
+            Ok(response.addr)
+        };
 
-    let output_messages = vec!["Creating Secure Channel...".to_string()];
+        let output_messages = vec!["Creating Secure Channel...".to_string()];
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
+        let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
 
-    let route = &route![secure_channel.to_string()];
-    let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
-        Error::new(
-            exitcode::PROTOCOL,
-            miette!("Failed to convert route {route} to multi-address"),
-        )
-    })?;
+        let route = &route![secure_channel.to_string()];
+        let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
+            Error::new(
+                exitcode::PROTOCOL,
+                miette!("Failed to convert route {route} to multi-address"),
+            )
+        })?;
 
-    let from = format!("/node/{}", node.node_name());
-    opts.terminal
-        .stdout()
-        .plain(
-            fmt_ok!(
-                "Secure Channel at {} created successfully\n",
-                multi_addr
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ) + &fmt_log!(
-                "From {} to {}",
-                from.color(OckamColor::PrimaryResource.color()),
-                cmd.to
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ),
-        )
-        .machine(multi_addr.to_string())
-        .json(json!([{ "address": multi_addr.to_string() }]))
-        .write_line()?;
+        let from = format!("/node/{}", node.node_name());
+        opts.terminal
+            .stdout()
+            .plain(
+                fmt_ok!(
+                    "Secure Channel at {} created successfully\n",
+                    multi_addr
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ) + &fmt_log!(
+                    "From {} to {}",
+                    from.color(OckamColor::PrimaryResource.color()),
+                    self.to
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ),
+            )
+            .machine(multi_addr.to_string())
+            .json(json!([{ "address": multi_addr.to_string() }]))
+            .write_line()?;
 
-    Ok(())
+        Ok(())
+    }
 }

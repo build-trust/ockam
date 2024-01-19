@@ -10,13 +10,14 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use ockam_core::AsyncTryClone;
 use serde::Serialize;
 
 use crate::output::Output;
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -39,16 +40,23 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
+    pub fn name(&self) -> String {
+        "show relay".into()
+    }
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    ShowTui::run(ctx, opts, cmd).await
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.clone(),
+        )
+        .await
+    }
 }
 
 pub struct ShowTui {

@@ -11,7 +11,6 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_node::OpenTelemetryContext;
 
-use crate::node::background::spawn_background_node;
 use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::util::api::TrustOpts;
@@ -57,7 +56,7 @@ pub async fn initialize_default_node(
     if opts.state.get_default_node().await.is_err() {
         let cmd = CreateCommand::default();
         let node_name = cmd.node_name.clone();
-        spawn_background_node(opts, cmd).await?;
+        cmd.spawn_background_node(opts).await?;
         let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name).await?;
         is_node_up(ctx, &mut node, true).await?;
     }

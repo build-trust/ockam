@@ -11,8 +11,9 @@ use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, rout
 use ockam_core::{Address, AddressParseError};
 
 use crate::docs;
+use crate::util::async_cmd;
 use crate::{
-    util::{api, exitcode, node_rpc},
+    util::{api, exitcode},
     CommandGlobalOpts, OutputFormat,
 };
 
@@ -41,8 +42,14 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "delete secure channel".into()
     }
 
     fn print_output(
@@ -127,6 +134,20 @@ impl DeleteCommand {
             }
         }
     }
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if opts.terminal.confirmed_with_flag_or_prompt(
+            self.yes,
+            "Are you sure you want to delete this secure channel?",
+        )? {
+            let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+            let address = &self.address;
+            let response: DeleteSecureChannelResponse =
+                node.ask(ctx, api::delete_secure_channel(address)).await?;
+            self.print_output(&node.node_name(), address, &opts, response);
+        }
+        Ok(())
+    }
 }
 
 fn parse_address(input: &str) -> Result<Address, AddressParseError> {
@@ -144,18 +165,4 @@ fn parse_address(input: &str) -> Result<Address, AddressParseError> {
         }
     }
     Address::from_str(&buf)
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> miette::Result<()> {
-    if opts.terminal.confirmed_with_flag_or_prompt(
-        cmd.yes,
-        "Are you sure you want to delete this secure channel?",
-    )? {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
-        let address = &cmd.address;
-        let response: DeleteSecureChannelResponse =
-            node.ask(&ctx, api::delete_secure_channel(address)).await?;
-        cmd.print_output(&node.node_name(), address, &opts, response);
-    }
-    Ok(())
 }

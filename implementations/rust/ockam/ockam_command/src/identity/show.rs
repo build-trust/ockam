@@ -2,14 +2,13 @@ use std::fmt::Display;
 
 use crate::identity::list::IdentityListOutput;
 use crate::output::{EncodeFormat, IdentifierDisplay, Output, VerifyingPublicKeyDisplay};
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::identity::verified_change::VerifiedChange;
 use ockam::identity::{Identifier, Identity};
 use ockam_api::NamedIdentity;
-use ockam_node::Context;
 use serde::Serialize;
 use serde_json::{json, to_string_pretty};
 
@@ -41,18 +40,19 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), Self::run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
+    }
+    pub fn name(&self) -> String {
+        "show identity".into()
     }
 
-    async fn run_impl(
-        _ctx: Context,
-        options: (CommandGlobalOpts, ShowCommand),
-    ) -> miette::Result<()> {
-        let (opts, cmd) = options;
-
-        if cmd.name.is_some() || !opts.terminal.can_ask_for_user_input() {
-            Self::show_single_identity(&opts, &cmd.name, cmd.full, cmd.encoding).await?;
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if self.name.is_some() || !opts.terminal.can_ask_for_user_input() {
+            ShowCommand::show_single_identity(&opts, &self.name, self.full, self.encoding.clone())
+                .await?;
             return Ok(());
         }
 
@@ -66,11 +66,11 @@ impl ShowCommand {
                     .write_line()?;
             }
             1 => {
-                Self::show_single_identity(
+                ShowCommand::show_single_identity(
                     &opts,
                     &identities_names.first().cloned(),
-                    cmd.full,
-                    cmd.encoding,
+                    self.full,
+                    self.encoding.clone(),
                 )
                 .await?;
             }
@@ -92,14 +92,16 @@ impl ShowCommand {
                     "Would you like to show these items : {:?}?",
                     selected_names
                 )) {
-                    Self::show_identity_list(&opts, selected_names).await?;
+                    ShowCommand::show_identity_list(&opts, selected_names).await?;
                 }
             }
         }
 
         Ok(())
     }
+}
 
+impl ShowCommand {
     async fn show_single_identity(
         opts: &CommandGlobalOpts,
         name: &Option<String>,

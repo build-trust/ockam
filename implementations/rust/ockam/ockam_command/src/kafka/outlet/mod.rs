@@ -18,15 +18,15 @@ pub enum KafkaOutletSubcommand {
 }
 
 impl KafkaOutletCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaOutletSubcommand::Create(c) => c.run(options),
+            KafkaOutletSubcommand::Create(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            KafkaOutletSubcommand::Create(_) => "create kafka outlet",
+            KafkaOutletSubcommand::Create(c) => c.name(),
         }
         .to_string()
     }

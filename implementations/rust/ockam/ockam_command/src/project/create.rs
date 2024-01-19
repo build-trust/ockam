@@ -9,7 +9,7 @@ use crate::operation::util::check_for_project_completion;
 use crate::output::Output;
 use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::util::parsers::validate_project_name;
 use crate::{docs, CommandGlobalOpts};
 
@@ -37,11 +37,21 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
 
-    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub fn name(&self) -> String {
+        "create project".into()
+    }
+
+    pub(crate) async fn async_run(
+        &self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+    ) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let project = node
             .create_project(ctx, &self.space_name, &self.project_name, vec![])
@@ -55,8 +65,4 @@ impl CreateCommand {
             .write_line()?;
         Ok(())
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
 }

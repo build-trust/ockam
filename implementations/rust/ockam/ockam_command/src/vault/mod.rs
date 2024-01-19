@@ -38,7 +38,7 @@ pub enum VaultSubcommand {
 }
 
 impl VaultCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             VaultSubcommand::Create(cmd) => cmd.run(opts),
             VaultSubcommand::Move(cmd) => cmd.run(opts),
@@ -50,12 +50,11 @@ impl VaultCommand {
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            VaultSubcommand::Create(_) => "create vault",
-            VaultSubcommand::Move(_) => "move vault",
-            VaultSubcommand::Show(_) => "show vault",
-            VaultSubcommand::Delete(_) => "delete vault",
-            VaultSubcommand::List(_) => "list vaults",
+            VaultSubcommand::Create(c) => c.name(),
+            VaultSubcommand::Move(c) => c.name(),
+            VaultSubcommand::Show(c) => c.name(),
+            VaultSubcommand::Delete(c) => c.name(),
+            VaultSubcommand::List(c) => c.name(),
         }
-        .to_string()
     }
 }

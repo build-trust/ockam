@@ -1,5 +1,5 @@
 use chrono::Utc;
-use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
+use ockam_api::journeys::{JourneyEvent, EVENT_DURATION, USER_EMAIL, USER_NAME};
 use ockam_api::logs::{LoggingConfiguration, LoggingTracing};
 use ockam_api::{random_name, CliState};
 use ockam_node::Executor;
@@ -9,7 +9,7 @@ use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 use std::ops::Add;
-use std::time::Duration;
+
 use tempfile::NamedTempFile;
 
 /// This test needs to be an integration test
@@ -24,7 +24,7 @@ fn test_create_journey_event() {
         spans_exporter.clone(),
         logs_exporter.clone(),
         None,
-        LoggingConfiguration::off(),
+        LoggingConfiguration::off().set_crates(&["ockam_api"]),
         "test",
     );
     let tracer = global::tracer("ockam-test");
@@ -49,6 +49,9 @@ fn test_create_journey_event() {
                 cli.add_journey_event(JourneyEvent::PortalCreated, map)
                     .await
                     .unwrap();
+                cli.add_journey_error("command", "sorry".to_string())
+                    .await
+                    .unwrap();
             }
             .with_current_context(),
         )
@@ -58,26 +61,30 @@ fn test_create_journey_event() {
     tracing_guard.force_flush();
     let mut spans = spans_exporter.get_finished_spans().unwrap();
     spans.sort_by_key(|s| s.start_time);
-    assert_eq!(spans.len(), 4);
+    assert_eq!(spans.len(), 5);
 
     let span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
     assert_eq!(
         span_names,
         vec![
             "user event",
-            "start host journey",
             "enrolled",
-            "portal created"
+            "portal created",
+            "command error",
+            "start host journey",
         ]
     );
-    // remove the first event
+    // remove the first and last spans, which are starting traces
     spans.remove(0);
+    spans.remove(3);
 
-    // all user events have the same start/end times and have a duration of 1ms
-    let first_span = spans.first().unwrap().clone();
+    // all user events have a fixed duration
     for span in spans {
-        assert_eq!(span.start_time, first_span.start_time);
-        assert_eq!(span.end_time, first_span.end_time);
-        assert_eq!(span.start_time.add(Duration::from_millis(1)), span.end_time);
+        assert_eq!(
+            span.start_time.add(EVENT_DURATION),
+            span.end_time,
+            "incorrect times for {}",
+            span.name
+        );
     }
 }
