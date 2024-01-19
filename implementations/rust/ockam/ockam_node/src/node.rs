@@ -1,6 +1,7 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
+use tokio::runtime::Runtime;
 
 use crate::{debugger, Context, Executor};
 
@@ -19,6 +20,7 @@ impl ockam_core::Worker for NullWorker {
 /// builder API to customise the underlying node that is created.
 pub struct NodeBuilder {
     logging: bool,
+    rt: Option<Arc<Runtime>>,
 }
 
 impl Default for NodeBuilder {
@@ -30,17 +32,31 @@ impl Default for NodeBuilder {
 impl NodeBuilder {
     /// Create a node
     pub fn new() -> Self {
-        Self { logging: true }
+        Self {
+            logging: true,
+            rt: None,
+        }
     }
 
     /// Disable logging on this node
     pub fn no_logging(self) -> Self {
-        Self { logging: false }
+        Self {
+            logging: false,
+            rt: None,
+        }
+    }
+
+    /// Provide a custom runtime, useful when starting multiple nodes
+    pub fn runtime(self, rt: Arc<Runtime>) -> Self {
+        Self {
+            rt: Some(rt),
+            ..self
+        }
     }
 
     /// Consume this builder and yield a new Ockam Node
     #[inline]
-    pub fn build(self) -> (Context, Executor) {
+    pub fn build(mut self) -> (Context, Executor) {
         if self.logging {
             setup_tracing();
         }
@@ -50,7 +66,7 @@ impl NodeBuilder {
         // Shared instance of FlowControls
         let flow_controls = FlowControls::new();
 
-        let mut exe = Executor::new(&flow_controls);
+        let mut exe = Executor::new(&flow_controls, self.rt.take());
         let addr: Address = "app".into();
 
         // The root application worker needs a mailbox and relay to accept

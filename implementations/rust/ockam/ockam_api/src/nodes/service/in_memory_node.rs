@@ -180,7 +180,6 @@ impl InMemoryNode {
         let persistent = general_options.persistent;
         let node_manager =
             NodeManager::create(ctx, general_options, transport_options, trust_options).await?;
-        debug!("start the Medic");
         Ok(Self {
             node_manager: Arc::new(node_manager),
             persistent,

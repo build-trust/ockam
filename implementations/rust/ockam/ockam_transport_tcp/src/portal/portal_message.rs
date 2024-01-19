@@ -11,8 +11,8 @@ pub enum PortalMessage {
     /// Message to indicate that connection from Outlet to the target,
     /// or from the target to the Inlet was dropped
     Disconnect,
-    /// Message with binary payload
-    Payload(Vec<u8>),
+    /// Message with binary payload and packet counter
+    Payload(Vec<u8>, Option<u16>),
 }
 
 /// An internal message type for a Portal
@@ -22,5 +22,5 @@ pub enum PortalInternalMessage {
     Disconnect,
 }
 
-///Maximum allowed size for a payload
+/// Maximum allowed size for a payload
 pub const MAX_PAYLOAD_SIZE: usize = 48 * 1024;

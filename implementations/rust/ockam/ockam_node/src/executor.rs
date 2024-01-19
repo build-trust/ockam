@@ -7,7 +7,7 @@ use crate::{
     NodeMessage,
 };
 use core::future::Future;
-use ockam_core::{Address, Result};
+use ockam_core::{compat::sync::Arc, Address, Result};
 
 #[cfg(feature = "metrics")]
 use crate::metrics::Metrics;
@@ -31,7 +31,7 @@ use ockam_core::{
 /// `ockam::node` function annotation instead!
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
-    rt: Runtime,
+    rt: Arc<Runtime>,
     /// Main worker and application router
     router: Router,
     /// Metrics collection endpoint
@@ -41,8 +41,8 @@ pub struct Executor {
 
 impl Executor {
     /// Create a new Ockam node [`Executor`] instance
-    pub fn new(flow_controls: &FlowControls) -> Self {
-        let rt = Runtime::new().unwrap();
+    pub fn new(flow_controls: &FlowControls, rt: Option<Arc<Runtime>>) -> Self {
+        let rt = rt.unwrap_or_else(|| Arc::new(Runtime::new().unwrap()));
         let router = Router::new(flow_controls);
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());

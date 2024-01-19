@@ -372,17 +372,16 @@ pub fn local_worker(code: &Code) -> Result<bool> {
     }
 }
 
-#[cfg(test)]
+#[allow(dead_code)]
 pub mod test_utils {
     use ockam::identity::utils::AttributesBuilder;
     use ockam::identity::MAX_CREDENTIAL_VALIDITY;
     use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
     use ockam_node::Context;
-    use ockam_transport_tcp::TcpTransport;
+    use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 
     use crate::cli_state::{random_name, CliState};
     use crate::nodes::service::{
@@ -414,12 +413,25 @@ pub mod test_utils {
     /// Be careful: if you drop the returned handle before the end of the test
     /// things *will* break.
     // #[must_use] make sense to enable only on rust 1.67+
-    pub async fn start_manager_for_tests(context: &mut Context) -> Result<NodeManagerHandle> {
+    pub async fn start_manager_for_tests(
+        context: &mut Context,
+        bind_addr: Option<&str>,
+    ) -> Result<NodeManagerHandle> {
         let tcp = TcpTransport::create(context).await?;
+        let tcp_listener = tcp
+            .listen(
+                bind_addr.unwrap_or("127.0.0.1:0"),
+                TcpListenerOptions::new(),
+            )
+            .await?;
+
         let cli_state = CliState::test().await?;
 
         let node_name = random_name();
-        cli_state.create_node(&node_name).await.unwrap();
+        cli_state
+            .start_node_with_optional_values(&node_name, &None, &None, Some(&tcp_listener))
+            .await
+            .unwrap();
 
         // Premise: we need an identity and a credential before the node manager starts.
         let identifier = cli_state.get_node(&node_name).await?.identifier();
@@ -452,24 +464,14 @@ pub mod test_utils {
             .store_credential("credential", &identity, credential)
             .await?;
 
-        let trust_context = cli_state
-            .create_trust_context(
-                Some("trust-context".to_string()),
-                None,
-                Some("credential".to_string()),
-                None,
-                None,
-            )
-            .await?;
-
         let node_manager = InMemoryNode::new(
             context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, None, true, false),
             NodeManagerTransportOptions::new(
-                FlowControls::generate_flow_control_id(), // FIXME
+                tcp_listener.flow_control_id().clone(),
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(Some(trust_context)),
+            NodeManagerTrustOptions::new(None),
         )
         .await?;
 

@@ -21,11 +21,11 @@ pub(crate) mod sessions;
 
 const MAX_FAILURES: usize = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(5);
-const DELAY: Duration = Duration::from_secs(3);
+const PING_INTERVAL: Duration = Duration::from_secs(10);
 
 pub struct Medic {
     retry_delay: Duration,
-    delay: Duration,
+    ping_interval: Duration,
     registry: Arc<Registry>,
     pings: JoinSet<(String, Result<(), Error>)>,
     replacements: JoinSet<(String, Result<ReplacerOutcome, Error>)>,
@@ -42,7 +42,7 @@ impl Medic {
     pub fn new(registry: Arc<Registry>) -> Self {
         Self {
             retry_delay: RETRY_DELAY,
-            delay: DELAY,
+            ping_interval: PING_INTERVAL,
             registry,
             pings: JoinSet::new(),
             replacements: JoinSet::new(),
@@ -125,8 +125,10 @@ impl Medic {
                             let local_message = LocalMessage::new(transport_message, Vec::new());
 
                             let sender = ctx.clone();
-                            self.pings
-                                .spawn(async move { (key, sender.forward(local_message).await) });
+                            self.pings.spawn(async move {
+                                info!("sending ping");
+                                (key, sender.forward(local_message).await)
+                            });
                         };
                     } else {
                         // We reached the maximum number of failures
@@ -150,7 +152,7 @@ impl Medic {
                 }
             }
 
-            let _ = timeout(self.delay, self.get_results(&mut ping_receiver)).await;
+            let _ = timeout(self.ping_interval, self.get_results(&mut ping_receiver)).await;
         }
     }
 
@@ -207,15 +209,16 @@ impl Medic {
                     }
                 },
                 Some(message) = ping_receiver.recv() => {
+                    info!("received pong");
                     if let Some(session) = self.session(&message.key).await {
                         if session.pings().contains(&message.ping) {
-                            log::trace!(key = %message.key, ping = %message.ping, "recv pong");
+                            log::info!(key = %message.key, ping = %message.ping, "recv pong");
                             session.clear_pings()
                         }
                     }
                 },
                 else => {
-                    sleep(self.delay).await;
+                    sleep(self.ping_interval).await;
                     break
                 }
             }

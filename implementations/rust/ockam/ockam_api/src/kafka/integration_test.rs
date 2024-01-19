@@ -114,7 +114,7 @@ mod test {
     async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let handler = crate::util::test_utils::start_manager_for_tests(context).await?;
+        let handler = crate::util::test_utils::start_manager_for_tests(context, None).await?;
 
         let consumer_bootstrap_port = create_kafka_service(
             context,

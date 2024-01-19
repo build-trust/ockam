@@ -18,6 +18,7 @@ pub(crate) struct TcpPortalRecvProcessor {
     read_half: OwnedReadHalf,
     sender_address: Address,
     onward_route: Route,
+    payload_packet_counter: u16,
 }
 
 impl TcpPortalRecvProcessor {
@@ -34,6 +35,7 @@ impl TcpPortalRecvProcessor {
             read_half,
             sender_address,
             onward_route,
+            payload_packet_counter: 0,
         }
     }
 }
@@ -96,8 +98,10 @@ impl Processor for TcpPortalRecvProcessor {
             let msg = TransportMessage::v1(
                 self.onward_route.clone(),
                 self.sender_address.clone(),
-                PortalMessage::Payload(chunk.to_vec()).encode()?,
+                PortalMessage::Payload(chunk.to_vec(), Some(self.payload_packet_counter))
+                    .encode()?,
             );
+            self.payload_packet_counter += 1;
             ctx.forward(LocalMessage::new(msg, vec![])).await?;
         }
 

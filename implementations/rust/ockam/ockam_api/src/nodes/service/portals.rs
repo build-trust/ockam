@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use tokio::time::timeout;
 
+use crate::address::get_free_address_for;
 use ockam::identity::Identifier;
 use ockam::{Address, Result};
 use ockam_abac::Resource;
@@ -336,7 +337,9 @@ impl NodeManager {
         let listen_addr = if listen_addr.ends_with(":0") {
             let socket_addr = SocketAddr::from_str(&listen_addr)
                 .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?;
-            format!("{}", socket_addr)
+            get_free_address_for(&socket_addr.ip().to_string())
+                .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?
+                .to_string()
         } else {
             listen_addr
         };
@@ -375,7 +378,7 @@ impl NodeManager {
             node_manager: self.clone(),
             context: Arc::new(ctx.async_try_clone().await?),
             listen_addr: listen_addr.clone(),
-            addr: Default::default(),
+            addr: outlet_addr.clone(),
             prefix_route,
             suffix_route,
             authorized,
@@ -470,8 +473,15 @@ impl NodeManager {
                     panic!("Unexpected outcome: {:?}", status.kind)
                 }
             } else {
-                error!(%alias, "Inlet not found in the session registry");
-                None
+                Some(InletStatus::new(
+                    inlet_info.bind_addr.to_string(),
+                    "".to_string(),
+                    alias,
+                    None,
+                    "",
+                    ConnectionStatus::Down,
+                    inlet_info.outlet_addr.to_string(),
+                ))
             }
         } else {
             error!(%alias, "Inlet not found in the node registry");
@@ -644,16 +654,16 @@ impl SessionReplacer for InletSpawner {
             let inlet_address = self
                 .node_manager
                 .tcp_transport
-                .create_inlet(self.listen_addr.clone(), normalized_route, options)
+                .create_inlet(self.listen_addr.clone(), normalized_route.clone(), options)
                 .await?
                 .1;
             self.inlet_address = Some(inlet_address.clone());
 
             Ok(ReplacerOutcome {
-                ping_route: route![connection.transport_route(), DefaultAddress::ECHO_SERVICE],
+                ping_route: connection.transport_route(),
                 kind: ReplacerOutputKind::Inlet(CurrentInletStatus {
                     worker: inlet_address,
-                    route: connection.route()?,
+                    route: normalized_route,
                     connection_status: ConnectionStatus::Up,
                 }),
             })
