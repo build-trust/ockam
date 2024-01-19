@@ -116,4 +116,4 @@ once_cell = { version = "1", default-features = false }
 quickcheck = "1.0.1"
 tempfile = "3.9.0"
 tokio = { version = "1.35.1", features = ["full"] }
-uuid = "1.6.1"
+uuid = "1.7.0"
