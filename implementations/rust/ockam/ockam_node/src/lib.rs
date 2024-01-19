@@ -71,7 +71,8 @@ pub use error::*;
 pub use executor::*;
 pub use messages::*;
 pub use processor_builder::ProcessorBuilder;
-pub use storage::*;
+#[cfg(feature = "std")]
+pub use storage::database;
 pub use worker_builder::WorkerBuilder;
 
 pub use node::{NodeBuilder, NullWorker};

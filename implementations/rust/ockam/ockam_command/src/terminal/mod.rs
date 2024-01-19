@@ -12,7 +12,6 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 pub use colors::*;
-pub use fmt::*;
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
