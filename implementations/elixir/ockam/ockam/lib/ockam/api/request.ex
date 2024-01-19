@@ -13,7 +13,8 @@ defmodule Ockam.API.Request do
     from_route: [],
     to_route: [],
     local_metadata: %{},
-    start_time: nil
+    start_time: nil,
+    tracing_context: nil
   ]
 
   @max_id 65_534
@@ -34,6 +35,7 @@ defmodule Ockam.API.Request do
       )
 
       field(:has_body, boolean(), minicbor: [key: 4])
+      field(:tracing_context, String.t() | nil, minicbor: [key: 5])
     end
   end
 
@@ -52,7 +54,8 @@ defmodule Ockam.API.Request do
         id: request.id,
         path: request.path,
         method: request.method,
-        has_body: has_body
+        has_body: has_body,
+        tracing_context: request.tracing_context
       })
 
     payload =
@@ -73,10 +76,24 @@ defmodule Ockam.API.Request do
 
         case {header.has_body, body_present} do
           {true, _} ->
-            {:ok, %Request{id: header.id, method: header.method, path: header.path, body: body}}
+            {:ok,
+             %Request{
+               id: header.id,
+               method: header.method,
+               path: header.path,
+               tracing_context: header.tracing_context,
+               body: body
+             }}
 
           {false, false} ->
-            {:ok, %Request{id: header.id, method: header.method, path: header.path, body: nil}}
+            {:ok,
+             %Request{
+               id: header.id,
+               method: header.method,
+               path: header.path,
+               tracing_context: header.tracing_context,
+               body: nil
+             }}
 
           {false, true} ->
             {:error, {:decode_error, :unexpected_body, data}}
