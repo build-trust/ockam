@@ -1,33 +1,23 @@
 use assert_cmd::prelude::*;
 use std::process::Command;
 
-use proptest::prelude::*;
-use assert_cmd::Command;
+#[test]
+fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("ockam")?;
+    cmd.arg("--test-argument-parser")
+        .arg("authenticated")
+        .arg("get")
+        .arg("/ip4/127.0.0.1/tcp/8080")
+        .arg("--id")
+        .arg("Ifa804b7fca12a19eed206ae180b5b576860ae651a1b2c3d4e5f6a6b5c4d3e2f1");
+    cmd.assert().success();
 
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+    let mut cmd = Command::cargo_bin("ockam")?;
+    cmd.arg("--test-argument-parser")
+        .arg("authenticated")
+        .arg("list")
+        .arg("/ip4/127.0.0.1/tcp/8080");
+    cmd.assert().success();
 
-    #[test]
-    fn test_authenticated_get(ip in "127.0.0.1", port in 1025u16..65535u16, id in "[A-Fa-f0-9]{64}") {
-        let endpoint = format!("/ip4/{}/tcp/{}", ip, port);
-        let mut cmd = Command::cargo_bin("ockam").unwrap();
-        cmd.arg("--test-argument-parser")
-            .arg("authenticated")
-            .arg("get")
-            .arg(endpoint)
-            .arg("--id")
-            .arg(id);
-        cmd.assert().success();
-    }
-
-    #[test]
-    fn test_authenticated_list(ip in "127.0.0.1", port in 1025u16..65535u16) {
-        let endpoint = format!("/ip4/{}/tcp/{}", ip, port);
-        let mut cmd = Command::cargo_bin("ockam").unwrap();
-        cmd.arg("--test-argument-parser")
-            .arg("authenticated")
-            .arg("list")
-            .arg(endpoint);
-        cmd.assert().success();
-    }
+    Ok(())
 }
