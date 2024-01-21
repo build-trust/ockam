@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::node::NodeOpts;
@@ -42,7 +42,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let address = &cmd.address;
     let req = api::show_secure_channel_listener(address);
     node.tell(ctx, req).await?;

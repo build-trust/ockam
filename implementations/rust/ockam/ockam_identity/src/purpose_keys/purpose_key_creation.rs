@@ -247,7 +247,7 @@ impl PurposeKeyCreation {
                 (key, public_key)
             }
             PurposePublicKey::CredentialSigning(_public_key) => {
-                return Err(IdentityError::InvalidKeyType.into());
+                return Err(IdentityError::InvalidKeyType)?;
             }
         };
 
@@ -275,7 +275,7 @@ impl PurposeKeyCreation {
 
         let (key_id, public_key) = match purpose_key_data.public_key.clone() {
             PurposePublicKey::SecureChannelStatic(_public_key) => {
-                return Err(IdentityError::InvalidKeyType.into());
+                return Err(IdentityError::InvalidKeyType)?;
             }
             PurposePublicKey::CredentialSigning(public_key) => {
                 let public_key = public_key.into();

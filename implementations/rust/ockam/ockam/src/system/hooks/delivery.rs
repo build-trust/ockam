@@ -87,7 +87,7 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
 
             // For any "ACK" we receive we can delete the
             // corresponding ACK id from the journal
-            Some(ref tt) if tt == &"ockam.pipe.ack" => {
+            Some("ockam.pipe.ack") => {
                 let ack_id = msg
                     .scope
                     .get(0)
@@ -100,7 +100,7 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
             // When receiving a notify message we check whether an ACK
             // handle still exists, and if it does we re-send the
             // message
-            Some(ref tt) if tt == &"ockam.pipe.resend_notify" => {
+            Some("ockam.pipe.resend_notify") => {
                 let ack_id = msg
                     .generic
                     .as_ref()

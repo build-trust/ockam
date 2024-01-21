@@ -113,7 +113,7 @@ impl Identities {
 
 impl Identities {
     /// Create a new identities module
-    pub(crate) fn new(
+    pub fn new(
         vault: Vault,
         change_history_repository: Arc<dyn ChangeHistoryRepository>,
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
@@ -130,17 +130,14 @@ impl Identities {
     /// Return a default builder for identities
     #[cfg(feature = "storage")]
     pub async fn builder() -> Result<IdentitiesBuilder> {
-        Ok(IdentitiesBuilder {
-            vault: Vault::create().await?,
-            change_history_repository: ChangeHistorySqlxDatabase::create().await?,
-            identity_attributes_repository: IdentityAttributesSqlxDatabase::create().await?,
-            purpose_keys_repository: PurposeKeysSqlxDatabase::create().await?,
-        })
+        Ok(Self::create(
+            SqlxDatabase::in_memory("identities-builder").await?,
+        ))
     }
 
     /// Return a builder for identities with a specific database
     #[cfg(feature = "storage")]
-    pub fn create(database: Arc<SqlxDatabase>) -> IdentitiesBuilder {
+    pub fn create(database: SqlxDatabase) -> IdentitiesBuilder {
         IdentitiesBuilder {
             vault: Vault::create_with_database(database.clone()),
             change_history_repository: Arc::new(ChangeHistorySqlxDatabase::new(database.clone())),

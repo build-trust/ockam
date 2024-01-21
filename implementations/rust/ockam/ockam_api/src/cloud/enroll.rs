@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use crate::cloud::enroll::enrollment_token::{
     AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
 };
-use crate::cloud::Controller;
+use crate::cloud::ControllerClient;
 
 use ockam::identity::Attributes;
 use ockam_core::api::Request;
@@ -43,7 +43,7 @@ trait Enroll {
 }
 
 #[async_trait]
-impl Enroll for Controller {
+impl Enroll for ControllerClient {
     async fn generate_enrollment_token(
         &self,
         ctx: &Context,

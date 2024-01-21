@@ -35,8 +35,8 @@ impl NodeManager {
     pub(crate) async fn create_controller_client(
         &self,
         timeout: Option<Duration>,
-    ) -> Result<Controller> {
-        NodeManager::controller_node(
+    ) -> Result<ControllerClient> {
+        NodeManager::controller_node_client(
             &self.tcp_transport,
             self.secure_channels.clone(),
             &self.identifier(),
@@ -50,8 +50,8 @@ impl NodeManager {
         authority_identifier: &Identifier,
         authority_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
-    ) -> Result<AuthorityNode> {
-        NodeManager::authority_node(
+    ) -> Result<AuthorityNodeClient> {
+        NodeManager::authority_node_client(
             &self.tcp_transport,
             self.secure_channels.clone(),
             authority_identifier,
@@ -66,8 +66,8 @@ impl NodeManager {
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
-    ) -> Result<ProjectNode> {
-        NodeManager::project_node(
+    ) -> Result<ProjectNodeClient> {
+        NodeManager::project_node_client(
             &self.tcp_transport,
             self.secure_channels.clone(),
             project_identifier,
@@ -83,7 +83,7 @@ impl NodeManager {
         multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
     ) -> Result<GenericSecureClient> {
-        NodeManager::generic(
+        NodeManager::generic_client(
             &self.tcp_transport,
             self.secure_channels.clone(),
             identifier,
@@ -93,12 +93,12 @@ impl NodeManager {
         .await
     }
 
-    pub async fn controller_node(
+    pub async fn controller_node_client(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         caller_identifier: &Identifier,
         timeout: Option<Duration>,
-    ) -> Result<Controller> {
+    ) -> Result<ControllerClient> {
         let mut controller_route = Self::controller_route(tcp_transport).await?;
         let controller_identifier = Self::load_controller_identifier()?;
 
@@ -108,7 +108,7 @@ impl NodeManager {
             None
         };
 
-        Ok(Controller {
+        Ok(ControllerClient {
             secure_client: SecureClient::new(
                 secure_channels,
                 controller_route.route,
@@ -120,13 +120,13 @@ impl NodeManager {
         })
     }
 
-    pub async fn authority_node(
+    pub async fn authority_node_client(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         authority_identifier: &Identifier,
         authority_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
-    ) -> Result<AuthorityNode> {
+    ) -> Result<AuthorityNodeClient> {
         let mut authority_route =
             Self::resolve_secure_route(tcp_transport, authority_multiaddr).await?;
 
@@ -136,7 +136,7 @@ impl NodeManager {
             None
         };
 
-        Ok(AuthorityNode {
+        Ok(AuthorityNodeClient {
             secure_client: SecureClient::new(
                 secure_channels,
                 authority_route.route,
@@ -148,13 +148,13 @@ impl NodeManager {
         })
     }
 
-    pub async fn project_node(
+    pub async fn project_node_client(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
-    ) -> Result<ProjectNode> {
+    ) -> Result<ProjectNodeClient> {
         let mut project_route =
             Self::resolve_secure_route(tcp_transport, project_multiaddr).await?;
 
@@ -164,7 +164,7 @@ impl NodeManager {
             None
         };
 
-        Ok(ProjectNode {
+        Ok(ProjectNodeClient {
             secure_client: SecureClient::new(
                 secure_channels,
                 project_route.route,
@@ -176,7 +176,7 @@ impl NodeManager {
         })
     }
 
-    pub async fn generic(
+    pub async fn generic_client(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         identifier: &Identifier,
@@ -240,17 +240,17 @@ impl NodeManager {
     }
 }
 
-pub struct AuthorityNode {
+pub struct AuthorityNodeClient {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
 
-pub struct ProjectNode {
+pub struct ProjectNodeClient {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
 
-pub struct Controller {
+pub struct ControllerClient {
     pub(crate) secure_client: SecureClient,
     pub(crate) tcp_connection: Option<(TcpConnection, Context)>,
 }
@@ -264,19 +264,19 @@ pub trait HasSecureClient {
     fn get_secure_client(&self) -> &SecureClient;
 }
 
-impl HasSecureClient for AuthorityNode {
+impl HasSecureClient for AuthorityNodeClient {
     fn get_secure_client(&self) -> &SecureClient {
         &self.secure_client
     }
 }
 
-impl HasSecureClient for ProjectNode {
+impl HasSecureClient for ProjectNodeClient {
     fn get_secure_client(&self) -> &SecureClient {
         &self.secure_client
     }
 }
 
-impl HasSecureClient for Controller {
+impl HasSecureClient for ControllerClient {
     fn get_secure_client(&self) -> &SecureClient {
         &self.secure_client
     }
@@ -288,7 +288,7 @@ impl HasSecureClient for GenericSecureClient {
     }
 }
 
-impl AuthorityNode {
+impl AuthorityNodeClient {
     pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
         self.secure_client.create_secure_channel(ctx).await
     }
@@ -298,7 +298,7 @@ impl AuthorityNode {
     }
 }
 
-impl ProjectNode {
+impl ProjectNodeClient {
     pub async fn create_secure_channel(&self, ctx: &Context) -> Result<SecureChannel> {
         self.secure_client.create_secure_channel(ctx).await
     }
@@ -308,7 +308,7 @@ impl ProjectNode {
     }
 }
 
-impl Drop for AuthorityNode {
+impl Drop for AuthorityNodeClient {
     fn drop(&mut self) {
         if let Some((tcp_connection, context)) = self.tcp_connection.take() {
             spawn(async move {
@@ -322,7 +322,7 @@ impl Drop for AuthorityNode {
     }
 }
 
-impl Drop for ProjectNode {
+impl Drop for ProjectNodeClient {
     fn drop(&mut self) {
         if let Some((tcp_connection, context)) = self.tcp_connection.take() {
             spawn(async move {
@@ -336,7 +336,7 @@ impl Drop for ProjectNode {
     }
 }
 
-impl Drop for Controller {
+impl Drop for ControllerClient {
     fn drop(&mut self) {
         if let Some((tcp_connection, context)) = self.tcp_connection.take() {
             spawn(async move {

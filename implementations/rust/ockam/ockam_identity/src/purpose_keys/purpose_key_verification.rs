@@ -42,7 +42,7 @@ impl PurposeKeyVerification {
         let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
 
         if versioned_data.version != 1 {
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         let purpose_key_data = PurposeKeyAttestationData::get_data(&versioned_data)?;
@@ -50,7 +50,7 @@ impl PurposeKeyVerification {
         if let Some(expected_subject) = expected_subject {
             if expected_subject != &purpose_key_data.subject {
                 // We expected purpose key that belongs to someone else
-                return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+                return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
             }
         }
         let identity = self
@@ -69,17 +69,17 @@ impl PurposeKeyVerification {
 
         if &purpose_key_data.subject_latest_change_hash != latest_change.change_hash() {
             // Only verifying with the latest key is currently implemented, see the `TODO` above
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         if purpose_key_data.expires_at > latest_change.data().expires_at {
             // PurposeKey validity time range should be inside the identity key validity time range
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         if purpose_key_data.created_at < latest_change.data().created_at {
             // PurposeKey validity time range should be inside the identity key validity time range
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         let now = now()?;
@@ -88,12 +88,12 @@ impl PurposeKeyVerification {
             && purpose_key_data.created_at - now > MAX_ALLOWED_TIME_DRIFT
         {
             // PurposeKey can't be created in the future
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         if purpose_key_data.expires_at < now {
             // PurposeKey expired
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         let identity_public_key = latest_change.primary_public_key();
@@ -107,7 +107,7 @@ impl PurposeKeyVerification {
             )
             .await?
         {
-            return Err(IdentityError::PurposeKeyAttestationVerificationFailed.into());
+            return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
         Ok(purpose_key_data)

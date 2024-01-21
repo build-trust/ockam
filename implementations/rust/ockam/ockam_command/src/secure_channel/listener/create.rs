@@ -5,7 +5,7 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
-use ockam_api::nodes::{BackgroundNode, NODEMANAGER_ADDR};
+use ockam_api::nodes::{BackgroundNodeClient, NODEMANAGER_ADDR};
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
@@ -56,7 +56,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     initialize_default_node(ctx, &opts).await?;
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(&cmd.address, cmd.authorized, cmd.identity),
     );

@@ -24,4 +24,5 @@ defmodule Ockam.SecureChannel do
   defdelegate established?(worker), to: Channel
   defdelegate disconnect(worker), to: Channel
   defdelegate role(worker), to: Channel
+  defdelegate update_credentials(worker, credentials), to: Channel
 end

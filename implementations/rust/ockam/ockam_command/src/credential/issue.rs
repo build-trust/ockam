@@ -3,7 +3,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
-use ockam::identity::{MAX_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
+use ockam::identity::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
 use ockam::Context;
 use ockam_core::compat::collections::HashMap;
 
@@ -50,10 +50,6 @@ impl IssueCommand {
         }
         Ok(attributes)
     }
-
-    pub fn identity_identifier(&self) -> &Identifier {
-        &self.identity_identifier
-    }
 }
 
 async fn run_impl(
@@ -85,9 +81,9 @@ async fn run_impl(
         .credentials_creation()
         .issue_credential(
             &authority,
-            cmd.identity_identifier(),
+            &cmd.identity_identifier,
             attributes_builder.build(),
-            MAX_CREDENTIAL_VALIDITY,
+            DEFAULT_CREDENTIAL_VALIDITY,
         )
         .await
         .into_diagnostic()?;

@@ -10,7 +10,7 @@ use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -73,7 +73,7 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
         ctx: &Context,
-        node: &BackgroundNode,
+        node: &BackgroundNodeClient,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .await
@@ -100,7 +100,7 @@ impl CreateCommand {
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
     initialize_default_node(&ctx, &opts).await?;
-    let node = BackgroundNode::create_to_node(&ctx, &opts.state, &cmd.from).await?;
+    let node = BackgroundNodeClient::create_to_node(&ctx, &opts.state, &cmd.from).await?;
 
     opts.terminal
         .write_line(&fmt_log!("Creating Secure Channel...\n"))?;

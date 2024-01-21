@@ -3,7 +3,7 @@ use std::process;
 
 use nix::errno::Errno;
 use serde::Serialize;
-use sysinfo::{Pid, ProcessExt, ProcessStatus, System, SystemExt};
+use sysinfo::{Pid, ProcessStatus, System};
 
 use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
@@ -240,8 +240,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("There is no node with name {node_name}"),
-            )
-            .into())
+            ))?
         }
     }
 
@@ -252,11 +251,16 @@ impl CliState {
 
     /// Return information about the default node (if there is one)
     pub async fn get_default_node(&self) -> Result<NodeInfo> {
-        self.nodes_repository()
+        Ok(self
+            .nodes_repository()
             .await?
             .get_default_node()
             .await?
-            .ok_or(Error::new(Origin::Api, Kind::NotFound, "There is no default node").into())
+            .ok_or(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "There is no default node",
+            ))?)
     }
 
     /// Return the node information for the given node name, otherwise for the default node
@@ -280,8 +284,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("there is no project associated to node {node_name}"),
-            )
-            .into()),
+            ))?,
         }
     }
 

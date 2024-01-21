@@ -31,7 +31,11 @@ impl CliState {
         let repository = self.users_repository().await?;
         match repository.get_default_user().await? {
             Some(user) => Ok(user),
-            None => Err(Error::new(Origin::Api, Kind::NotFound, "there is no default user").into()),
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "there is no default user",
+            ))?,
         }
     }
 }

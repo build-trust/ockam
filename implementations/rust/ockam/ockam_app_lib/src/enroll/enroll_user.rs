@@ -187,7 +187,7 @@ impl AppState {
                     title: "Provisioning a project".to_string(),
                     message:
                         "We're provisioning a dedicated project for you in Ockam Orchestrator. \
-                        This can take upto 3 minutes."
+                        This can take up to 3 minutes."
                             .to_string(),
                 });
                 let ctx = &self.context();

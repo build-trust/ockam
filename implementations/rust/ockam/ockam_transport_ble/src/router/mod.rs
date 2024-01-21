@@ -56,12 +56,12 @@ impl BleRouter {
         if let Some(f) = accepts.first().cloned() {
             debug!("BLE registration request: {} => {}", f, self_addr);
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         for accept in &accepts {
             if self.map.contains_key(accept) {
-                return Err(TransportError::AlreadyConnected.into());
+                return Err(TransportError::AlreadyConnected)?;
             }
         }
 
@@ -83,7 +83,7 @@ impl BleRouter {
             Some(addr) => addr.clone(),
             None => {
                 error!("unknown route: {:?}", onward);
-                return Err(TransportError::UnknownRoute.into());
+                return Err(TransportError::UnknownRoute)?;
             }
         };
 
@@ -128,7 +128,7 @@ impl Worker for BleRouter {
                 }
             };
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         Ok(())

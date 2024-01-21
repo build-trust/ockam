@@ -1,0 +1,27 @@
+defmodule Ockam.SecureChannel.Messages.Tests do
+  use ExUnit.Case, async: true
+  doctest Ockam.SecureChannel.Messages
+  alias Ockam.SecureChannel.Messages
+
+  describe "Ockam.SecureChannel.Messages.RefreshCredentials" do
+    test "refresh credential can be parsed" do
+      # sample value encoded from rust
+      hex_msg =
+        "8201818281825837830101583285f682008158208bd01513a019c95d96553015b1b0a3014e7bd67c7f3c8e6223e839111041f8d6f41a659c99fd1a78689cfd820081584067118992d037593809f8b217641aed54dc983f2847f95b2068207c3647beb73a60b0e14012c14bfee487c880f0f74d9f8a7d7abd3ef333f2f90f097ef366900c81828258e183010358dc855820904192e6e480915e0d1256d3abf9c3c9c67bc2b4c41ffca77550d8a3f12fbb1e5820904192e6e480915e0d1256d3abf9c3c9c67bc2b4c41ffca77550d8a3f12fbb1e8201a44b6f636b616d2d72656c6179412a4a6f636b616d2d726f6c6548656e726f6c6c65724a70726f6a6563745f6964582437363764343631632d393835312d346330622d626663362d3664333333346235626363325074727573745f636f6e746578745f6964582437363764343631632d393835312d346330622d626663362d3664333333346235626363321a659ca3cf1a659ca3ed8200815840cf27a0a3052c53b1f27bf7776ca95c7dcdd7a0f493cc5b1e30f9d35712bb8fde16f69065aa9f70b3689a8f1b7b05fc13e6e807efa719031d1a415d25b61c360b82587c8301025877855820b1fea1775d75079abdb1e78b96921fa9ec340bc2b5aa70f37e65342d859cf5505820b1fea1775d75079abdb1e78b96921fa9ec340bc2b5aa70f37e65342d859cf5508201818200815820389852b0f4fee7b6b962442a924d1672c56b8813fb846a50da80db7e1bbe41591a659c9a2f1a6f029baf8200815840adf4a66e097de839d3539694a6c6a82a978ff009205df8bf7eb03b9990958b7c4e7037fd9d365cf220a2757ed60f0542f47965d8b9f354fd950841ce66304606"
+
+      {:ok, b} = Base.decode16(hex_msg, case: :lower)
+      {:ok, %Messages.RefreshCredentials{}} = Messages.decode(b)
+    end
+  end
+
+  describe "Ockam.SecureChannel.Messages.Close" do
+    test ":close can be parsed" do
+      # sample value encoded from rust
+      hex_msg = "820280"
+
+      {:ok, b} = Base.decode16(hex_msg, case: :lower)
+      {:ok, :close} = Messages.decode(b)
+      {:ok, ^b} = Messages.encode(:close)
+    end
+  end
+end

@@ -84,12 +84,12 @@ impl WebSocketRouterHandle {
             if let Some(p) = iter.find(|x| x.is_ipv4()) {
                 peer_addr = p;
             } else {
-                return Err(TransportError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress)?;
             }
 
             hostnames = vec![peer_str];
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         Ok((peer_addr, hostnames))

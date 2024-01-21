@@ -61,10 +61,10 @@ impl TryFrom<&str> for Identifier {
             if let Ok(data) = hex::decode(value) {
                 data.try_into()
             } else {
-                Err(IdentityError::InvalidIdentifier(value.into()).into())
+                Err(IdentityError::InvalidIdentifier(value.into()))?
             }
         } else {
-            Err(IdentityError::InvalidIdentifier(value.into()).into())
+            Err(IdentityError::InvalidIdentifier(value.into()))?
         }
     }
 }
@@ -76,7 +76,7 @@ impl TryFrom<&[u8]> for Identifier {
         if let Ok(value) = <[u8; IDENTIFIER_LEN]>::try_from(value) {
             Ok(Self(value))
         } else {
-            Err(IdentityError::InvalidIdentifier(hex::encode(value)).into())
+            Err(IdentityError::InvalidIdentifier(hex::encode(value)))?
         }
     }
 }
@@ -143,7 +143,7 @@ impl TryFrom<&str> for ChangeHash {
         if let Ok(data) = hex::decode(value) {
             data.try_into()
         } else {
-            Err(IdentityError::InvalidIdentifier(value.into()).into())
+            Err(IdentityError::InvalidIdentifier(value.into()))?
         }
     }
 }
@@ -155,7 +155,7 @@ impl TryFrom<&[u8]> for ChangeHash {
         if let Ok(value) = <[u8; CHANGE_HASH_LEN]>::try_from(value) {
             Ok(Self(value))
         } else {
-            Err(IdentityError::InvalidIdentifier(hex::encode(value)).into())
+            Err(IdentityError::InvalidIdentifier(hex::encode(value)))?
         }
     }
 }

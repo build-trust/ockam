@@ -5,7 +5,7 @@ use ockam_core::async_trait;
 use std::process::Command;
 use tracing::{debug, info};
 
-pub trait BackgroundNodeClient: Send + Sync + 'static {
+pub trait BackgroundNodeClientTrait: Send + Sync + 'static {
     fn nodes(&self) -> Box<dyn Nodes>;
     fn projects(&self) -> Box<dyn Projects>;
 }
@@ -45,7 +45,7 @@ fn log_command(cmd: &mut Command) -> std::io::Result<()> {
     Ok(())
 }
 
-impl BackgroundNodeClient for Cli {
+impl BackgroundNodeClientTrait for Cli {
     fn nodes(&self) -> Box<dyn Nodes> {
         Box::new(self.clone())
     }
@@ -89,7 +89,7 @@ impl Projects for Cli {
         let node_name = node_name.to_string();
         let hex_encoded_ticket = hex_encoded_ticket.to_string();
         let bin = self.bin.clone();
-        spawn_blocking(move || {
+        Ok(spawn_blocking(move || {
             let _ = duct::cmd!(
                 &bin,
                 "--no-input",
@@ -107,7 +107,6 @@ impl Projects for Cli {
                 debug!(node = %node_name, "Node enrolled using enrollment ticket");
             });
         })
-        .await
-        .map_err(|err| err.into())
+        .await?)
     }
 }

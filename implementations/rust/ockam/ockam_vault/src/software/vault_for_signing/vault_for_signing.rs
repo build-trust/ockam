@@ -34,7 +34,9 @@ impl SoftwareVaultForSigning {
     /// Create an in-memory Software implementation Vault
     #[cfg(feature = "storage")]
     pub async fn create() -> Result<Arc<SoftwareVaultForSigning>> {
-        Ok(Arc::new(Self::new(SecretsSqlxDatabase::create().await?)))
+        Ok(Arc::new(Self::new(Arc::new(
+            SecretsSqlxDatabase::create().await?,
+        ))))
     }
 
     /// Import a key from a binary
@@ -143,6 +145,7 @@ impl VaultForSigning for SoftwareVaultForSigning {
 }
 
 impl SoftwareVaultForSigning {
+    #[track_caller]
     fn from_bytes<T: core::fmt::Display>(e: T) -> Error {
         #[cfg(feature = "no_std")]
         use ockam_core::compat::string::ToString;
@@ -180,7 +183,7 @@ impl SoftwareVaultForSigning {
                 let verifying_key = verifying_key.to_sec1_bytes().to_vec();
 
                 if verifying_key.len() != ECDSA_SHA256_CURVEP256_PUBLIC_KEY_LENGTH {
-                    return Err(VaultError::InvalidPublicLength.into());
+                    return Err(VaultError::InvalidPublicLength)?;
                 }
 
                 let verifying_key =

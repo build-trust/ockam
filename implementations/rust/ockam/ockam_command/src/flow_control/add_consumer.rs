@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
@@ -40,7 +40,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: AddConsumerCommand,
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
     node.tell(ctx, api::add_consumer(cmd.flow_control_id, cmd.address))
         .await?;
 

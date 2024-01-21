@@ -212,7 +212,7 @@ pub async fn clean_nodes_multiaddr(
                 // No substitution done here. It will be done later by `clean_projects_multiaddr`.
                 new_ma.push_back_value(&p)?
             }
-            Space::CODE => return Err(miette!("/space/ substitutions are not supported!").into()),
+            Space::CODE => return Err(miette!("/space/ substitutions are not supported!"))?,
             _ => new_ma.push_back_value(&p)?,
         }
     }
@@ -231,7 +231,9 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     let port = address.port();
     let ip = address.ip();
     if TcpListener::bind((ip, port)).is_err() {
-        return Err(miette!("Another process is already listening on port {port}!").into());
+        Err(miette!(
+            "Another process is already listening on port {port}!"
+        ))?;
     }
     Ok(())
 }

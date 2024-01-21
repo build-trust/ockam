@@ -3,15 +3,19 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use miette::IntoDiagnostic;
+use ockam::abac::expr::{eq, ident, str};
+use ockam::abac::{Policy, Resource};
 use tracing::{debug, info, warn};
 
 use ockam_api::address::get_free_address;
+use ockam_api::nodes::service::actions;
 use ockam_api::nodes::service::portals::Inlets;
+use ockam_api::nodes::Policies;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_multiaddr::MultiAddr;
 
-use crate::background_node::BackgroundNodeClient;
+use crate::background_node::BackgroundNodeClientTrait;
 use crate::incoming_services::state::{IncomingService, Port};
 use crate::state::AppState;
 
@@ -74,7 +78,7 @@ impl AppState {
 
     async fn refresh_inlet(
         &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
+        background_node_client: Arc<dyn BackgroundNodeClientTrait>,
         service: &IncomingService,
     ) -> crate::Result<Option<Port>> {
         let inlet_node_name = &service.local_node_name();
@@ -118,7 +122,7 @@ impl AppState {
     /// Returns the inlet [`Port`] if successful
     async fn create_inlet(
         &self,
-        background_node_client: Arc<dyn BackgroundNodeClient>,
+        background_node_client: Arc<dyn BackgroundNodeClientTrait>,
         service: &IncomingService,
     ) -> crate::Result<Port> {
         debug!(
@@ -163,13 +167,27 @@ impl AppState {
             None => get_free_address()?,
         };
 
+        let inlet_alias = service.inlet_name().to_string();
+
+        // Add a policy to check that the outlet node identity
+        // is the enroller of its project and not any enrolled
+        // identity.
+        inlet_node
+            .add_policy(
+                &self.context(),
+                &Resource::new(&inlet_alias),
+                &actions::HANDLE_MESSAGE,
+                &Policy::new(eq([ident("subject.ockam-role"), str("enroller")])),
+            )
+            .await?;
+
         inlet_node
             .create_inlet(
                 &self.context(),
                 &bind_address.to_string(),
                 &MultiAddr::from_str(&service.service_route(project_name.as_deref()))
                     .into_diagnostic()?,
-                &Some(service.inlet_name().to_string()),
+                &Some(inlet_alias),
                 &None,
                 Duration::from_secs(5),
             )

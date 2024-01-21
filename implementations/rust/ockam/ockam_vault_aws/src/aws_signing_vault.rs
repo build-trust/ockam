@@ -85,7 +85,7 @@ impl VaultForSigning for AwsSigningVault {
         signing_key_type: SigningKeyType,
     ) -> Result<SigningSecretKeyHandle> {
         if signing_key_type != SigningKeyType::ECDSASHA256CurveP256 {
-            return Err(VaultError::InvalidKeyType.into());
+            return Err(VaultError::InvalidKeyType)?;
         }
 
         let key = self.client.create_key().await?;

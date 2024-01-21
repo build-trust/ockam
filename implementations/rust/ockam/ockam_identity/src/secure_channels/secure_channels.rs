@@ -24,7 +24,7 @@ pub struct SecureChannels {
 
 impl SecureChannels {
     /// Constructor
-    pub(crate) fn new(
+    pub fn new(
         identities: Arc<Identities>,
         secure_channel_registry: SecureChannelRegistry,
     ) -> Self {

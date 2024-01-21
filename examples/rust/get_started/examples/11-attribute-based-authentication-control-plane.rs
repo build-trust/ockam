@@ -11,7 +11,7 @@ use ockam::remote::RemoteRelayOptions;
 use ockam::{node, route, Context, Result, TcpOutletOptions, TcpTransportExtension};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::nodes::NodeManager;
-use ockam_api::{multiaddr_to_route, DefaultAddress};
+use ockam_api::{multiaddr_to_route, multiaddr_to_transport_route, DefaultAddress};
 use ockam_multiaddr::MultiAddr;
 
 /// This node supports a "control" server on which several "edge" devices can connect
@@ -60,7 +60,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     //    to retrieve the node credential
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
-    let authority_node = NodeManager::authority_node(
+    let authority_node = NodeManager::authority_node_client(
         &tcp,
         node.secure_channels().clone(),
         &control_plane,
@@ -71,14 +71,15 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     authority_node.present_token(node.context(), token).await.unwrap();
 
     let project = import_project(project_information_path, node.identities()).await?;
-    let tcp_project_session = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let project_authority_route = multiaddr_to_transport_route(&project.authority_route()).unwrap(); // FIXME: Handle error
 
     // Create a trust context that will be used to authenticate credential exchanges
     let credentials_retriever = Arc::new(RemoteCredentialsRetriever::new(
+        Arc::new(tcp.clone()),
         node.secure_channels(),
         RemoteCredentialsRetrieverInfo::new(
             project.authority_identifier(),
-            tcp_project_session.route,
+            project_authority_route,
             DefaultAddress::CREDENTIAL_ISSUER.into(),
         ),
     ));

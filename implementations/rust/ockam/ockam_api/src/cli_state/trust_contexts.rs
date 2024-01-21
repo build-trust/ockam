@@ -12,7 +12,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpTransport;
 
 use crate::cli_state::CliState;
-use crate::multiaddr_to_route;
+use crate::multiaddr_to_transport_route;
 use crate::nodes::service::default_address::DefaultAddress;
 
 use super::Result;
@@ -30,8 +30,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 format!("there is no trust context with name {name}"),
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -47,8 +46,7 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 "there is no default trust context",
-            )
-            .into()),
+            ))?,
         }
     }
 
@@ -280,19 +278,17 @@ impl NamedTrustContext {
             }
             (None, Some(identifier), Some(route)) => {
                 let credential_retriever = RemoteCredentialsRetriever::new(
+                    Arc::new(tcp_transport.clone()),
                     secure_channels.clone(),
                     RemoteCredentialsRetrieverInfo::new(
                         identifier.clone(),
-                        multiaddr_to_route(&route, tcp_transport)
-                            .await
-                            .ok_or_else(|| {
-                                Error::new(
-                                    Origin::Api,
-                                    Kind::Internal,
-                                    format!("cannot create a route from the address {route}"),
-                                )
-                            })?
-                            .route,
+                        multiaddr_to_transport_route(&route).ok_or_else(|| {
+                            Error::new(
+                                Origin::Api,
+                                Kind::Internal,
+                                format!("cannot create a route from the address {route}"),
+                            )
+                        })?,
                         DefaultAddress::CREDENTIAL_ISSUER.into(),
                     ),
                 );

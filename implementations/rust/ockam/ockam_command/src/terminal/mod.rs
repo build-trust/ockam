@@ -12,7 +12,6 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 pub use colors::*;
-pub use fmt::*;
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
@@ -261,7 +260,7 @@ impl<W: TerminalWriter> Terminal<W> {
             match self.confirm(prompt_msg)? {
                 ConfirmResult::Yes => Ok(true),
                 ConfirmResult::No => Ok(false),
-                ConfirmResult::NonTTY => Err(miette!("Use --yes to confirm").into()),
+                ConfirmResult::NonTTY => Err(miette!("Use --yes to confirm"))?,
             }
         }
     }
@@ -442,7 +441,7 @@ impl<W: TerminalWriter> Terminal<W, ToStdOut> {
             && self.mode.output.machine.is_none()
             && self.mode.output.json.is_none()
         {
-            return Err(miette!("At least one output format must be defined").into());
+            return Err(miette!("At least one output format must be defined"))?;
         }
 
         let plain = self.mode.output.plain.as_ref();

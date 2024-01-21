@@ -25,11 +25,11 @@ impl CredentialData {
     /// Extract [`CredentialData`] from [`VersionedData`]
     pub fn get_data(versioned_data: &VersionedData) -> Result<Self> {
         if versioned_data.version != 1 {
-            return Err(IdentityError::UnknownCredentialVersion.into());
+            return Err(IdentityError::UnknownCredentialVersion)?;
         }
 
         if versioned_data.data_type != CREDENTIAL_DATA_TYPE {
-            return Err(IdentityError::InvalidCredentialDataType.into());
+            return Err(IdentityError::InvalidCredentialDataType)?;
         }
 
         Ok(minicbor::decode(&versioned_data.data)?)

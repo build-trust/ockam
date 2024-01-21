@@ -6,7 +6,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
@@ -41,7 +41,7 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let inlet_status = node
         .show_inlet(&ctx, &cmd.alias)
         .await?

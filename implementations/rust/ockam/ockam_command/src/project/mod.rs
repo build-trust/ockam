@@ -12,7 +12,6 @@ pub use show::ShowCommand;
 pub use ticket::TicketCommand;
 pub use version::VersionCommand;
 
-pub use crate::credential::get::GetCommand;
 use crate::CommandGlobalOpts;
 
 mod addon;

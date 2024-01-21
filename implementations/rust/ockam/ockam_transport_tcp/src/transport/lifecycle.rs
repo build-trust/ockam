@@ -20,13 +20,13 @@ impl TcpTransport {
     /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
         let tcp = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: Arc::new(ctx.async_try_clone().await?),
             registry: TcpRegistry::default(),
         };
         // make the TCP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as TCP
         // worker addresses
-        ctx.register_transport(Arc::new(tcp.async_try_clone().await?));
+        ctx.register_transport(Arc::new(tcp.clone()));
         Ok(tcp)
     }
 }
@@ -129,21 +129,35 @@ impl Transport for TcpTransport {
             ))
         }
     }
+
+    async fn disconnect(&self, address: Address) -> Result<()> {
+        self.disconnect(address).await
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use ockam_transport_core::TransportError;
-    use std::net::TcpListener;
+    use std::time::Duration;
+    use tokio::net::TcpListener;
 
     #[ockam_macros::test]
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_address = "127.0.0.1:0";
         let initial_workers = ctx.list_workers().await?;
-        let listener = TcpListener::bind(tcp_address).map_err(TransportError::from)?;
+        let listener = TcpListener::bind(tcp_address)
+            .await
+            .map_err(TransportError::from)?;
         let local_address = listener.local_addr().unwrap().to_string();
+
+        tokio::spawn(async move {
+            // Accept two connections, sleep for 100ms and quit
+            let (_stream1, _) = listener.accept().await.unwrap();
+            let (_stream2, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        });
 
         let resolved = tcp
             .resolve_address(Address::new(TCP, local_address.clone()))
@@ -168,12 +182,26 @@ mod tests {
     #[ockam_macros::test]
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
-        let result = tcp
-            .resolve_address(Address::new(TCP, "www.google.com:80"))
+        let tcp_address = "127.0.0.1:0";
+        let listener = TcpListener::bind(tcp_address)
             .await
-            .is_ok();
+            .map_err(TransportError::from)?;
+        let socket_address = listener.local_addr().unwrap();
 
-        assert!(result);
+        tokio::spawn(async move {
+            // Accept two connections, sleep for 100ms and quit
+            let (_stream, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        });
+
+        let result = tcp
+            .resolve_address(Address::new(
+                TCP,
+                format!("localhost:{}", socket_address.port()),
+            ))
+            .await;
+
+        assert!(result.is_ok());
         ctx.stop().await
     }
 }

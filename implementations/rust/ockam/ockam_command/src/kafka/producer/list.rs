@@ -3,7 +3,7 @@ use colorful::Colorful;
 
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
@@ -35,7 +35,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let services: ServiceList = node
         .ask(
             &ctx,

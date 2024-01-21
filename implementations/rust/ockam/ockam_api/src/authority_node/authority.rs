@@ -2,8 +2,6 @@ use std::path::Path;
 
 use tracing::info;
 
-use ockam::identity::storage::PurposeKeysSqlxDatabase;
-use ockam::identity::{ChangeHistorySqlxDatabase, Vault};
 use ockam::identity::{
     CredentialsIssuer, Identifier, Identities, IdentityAttributesRepository,
     IdentityAttributesSqlxDatabase, SecureChannelListenerOptions, SecureChannels,
@@ -12,6 +10,7 @@ use ockam::identity::{
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env, Policy};
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result, Worker};
@@ -62,23 +61,21 @@ impl Authority {
         // create the database
         let database_path = &configuration.database_path;
         Self::create_ockam_directory_if_necessary(database_path)?;
-        let database = Arc::new(SqlxDatabase::create(database_path).await?);
+        let database = SqlxDatabase::create_with_node_name(database_path, "authority").await?;
 
-        // create the repositories
-        let vault = Vault::create_with_database(database.clone());
-        let identity_attributes_repository =
-            Arc::new(IdentityAttributesSqlxDatabase::new(database.clone()));
-        let identity_attributes_repository =
-            Self::bootstrap_repository(identity_attributes_repository, configuration);
-        let change_history_repository = Arc::new(ChangeHistorySqlxDatabase::new(database.clone()));
-        let purpose_keys_repository = Arc::new(PurposeKeysSqlxDatabase::new(database));
+        // create the bootstrapped identity attributes repository
+        let identity_attributes_repository = Self::bootstrap_repository(
+            Arc::new(IdentityAttributesSqlxDatabase::new(database.clone())),
+            configuration,
+        );
+
+        let identities = Identities::create(database.clone())
+            .with_identity_attributes_repository(identity_attributes_repository)
+            .build();
 
         let secure_channels = SecureChannels::builder()
             .await?
-            .with_vault(vault)
-            .with_identity_attributes_repository(identity_attributes_repository)
-            .with_change_history_repository(change_history_repository)
-            .with_purpose_keys_repository(purpose_keys_repository)
+            .with_identities(identities)
             .build();
 
         let identifier = configuration.identifier();
@@ -210,6 +207,8 @@ impl Authority {
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
+        let ttl = get_env("CREDENTIAL_TTL_SECS")?;
+
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
             self.secure_channels
@@ -218,6 +217,7 @@ impl Authority {
             self.secure_channels.identities().credentials(),
             &self.identifier,
             configuration.project_identifier(),
+            ttl,
         );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
@@ -361,12 +361,11 @@ impl Authority {
             "resource.trust_context_id",
             str(configuration.project_identifier.clone()),
         );
-        let abac = Arc::new(AbacAccessControl::new(
+        Arc::new(AbacAccessControl::new(
             self.identity_attributes_repository(),
             Policy::new(rule),
             env,
-        ));
-        abac
+        ))
     }
 }
 

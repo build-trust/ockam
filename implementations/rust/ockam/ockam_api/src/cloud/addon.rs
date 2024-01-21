@@ -8,7 +8,7 @@ use ockam_node::Context;
 
 use crate::cloud::operation::CreateOperationResponse;
 use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
-use crate::cloud::Controller;
+use crate::cloud::ControllerClient;
 
 const TARGET: &str = "ockam_api::cloud::addon";
 const API_SERVICE: &str = "projects";
@@ -113,7 +113,7 @@ pub trait Addons {
 }
 
 #[async_trait]
-impl Addons for Controller {
+impl Addons for ControllerClient {
     async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
         trace!(target: TARGET, project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));

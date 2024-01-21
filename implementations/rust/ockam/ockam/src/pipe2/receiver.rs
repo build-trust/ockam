@@ -37,7 +37,7 @@ impl Worker for PipeReceiver {
             (ref addr, Some(ref init)) if addr == init => {
                 let peer_route = match msg.body().scope.get(0) {
                     Some(data) => Route::decode(data)?,
-                    None => return Err(OckamError::InvalidParameter.into()),
+                    None => return Err(OckamError::InvalidParameter)?,
                 };
                 trace!("Successfully initialised PipeReceiver!");
                 ctx.send(peer_route, OckamMessage::new(Any)?).await

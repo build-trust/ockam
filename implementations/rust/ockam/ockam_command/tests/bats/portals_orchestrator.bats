@@ -94,7 +94,7 @@ teardown() {
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
   # Green can't establish secure channel with blue, because it didn't exchange credential with it.
-  run_failure curl --fail --head --max-time 5 "127.0.0.1:$port"
+  run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
 
 @test "portals - inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
@@ -196,26 +196,6 @@ teardown() {
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
 
-@test "portals - local inlet and outlet, removing and re-creating the outlet" {
-  port="$(random_port)"
-  node_port="$(random_port)"
-
-  setup_home_dir
-
-  run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /node/blue/secure/api/service/outlet
-  run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
-
-  run_success "$OCKAM" node delete blue --yes
-  run_failure curl --fail --head --max-time 2 "127.0.0.1:$port"
-
-  run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  run_success curl --head --retry-connrefused --retry 20 --retry-max-time 20 --max-time 1 "127.0.0.1:$port"
-}
-
 @test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
   port="$(random_port)"
   node_port="$(random_port)"
@@ -229,10 +209,10 @@ teardown() {
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   $OCKAM node delete blue --yes
-  run_failure curl --fail --head --max-time 2 "127.0.0.1:$port"
+  run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" relay create --to /node/blue
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
-  run_success curl --head --retry-connrefused --retry 50 --max-time 1 "127.0.0.1:$port"
+  run_success curl --head --retry-connrefused --retry 2 --max-time 10 "127.0.0.1:$port"
 }

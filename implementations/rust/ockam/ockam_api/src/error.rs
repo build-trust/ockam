@@ -41,10 +41,16 @@ pub enum ParseError {
 }
 
 impl ApiError {
+    #[track_caller]
     pub fn message<T: fmt::Display>(m: T) -> ApiError {
-        ockam_core::Error::new(Origin::Application, Kind::Unknown, m.to_string()).into()
+        crate::error::ApiError::from(ockam_core::Error::new(
+            Origin::Application,
+            Kind::Unknown,
+            m.to_string(),
+        ))
     }
 
+    #[track_caller]
     pub fn core<T: fmt::Display>(m: T) -> ockam_core::Error {
         ockam_core::Error::new(Origin::Application, Kind::Unknown, m.to_string())
     }

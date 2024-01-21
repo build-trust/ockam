@@ -4,7 +4,6 @@ use rand::random;
 
 use cli_state::error::Result;
 use ockam::SqlxDatabase;
-use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Executor;
 
@@ -27,7 +26,7 @@ use crate::cli_state::CliStateError;
 #[derive(Debug, Clone)]
 pub struct CliState {
     dir: PathBuf,
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl CliState {
@@ -40,8 +39,16 @@ impl CliState {
         self.dir.clone()
     }
 
+    pub fn database(&self) -> SqlxDatabase {
+        self.database.clone()
+    }
+
     pub fn database_path(&self) -> PathBuf {
         Self::make_database_path(&self.dir)
+    }
+
+    pub fn set_node_name(&mut self, node_name: String) {
+        self.database.node_name = Some(node_name)
     }
 }
 
@@ -73,7 +80,7 @@ impl CliState {
 
     /// Backup and reset is used to save aside
     /// some corrupted local state for later inspection and then reset the state
-    pub fn backup_and_reset() -> Result<CliState> {
+    pub fn backup_and_reset() -> Result<()> {
         let dir = Self::default_dir()?;
 
         // Reset backup directory
@@ -98,7 +105,7 @@ impl CliState {
         let dir = &state.dir;
         let backup_dir = CliState::backup_default_dir().unwrap();
         eprintln!("The {dir:?} directory has been reset and has been backed up to {backup_dir:?}");
-        Ok(state)
+        Ok(())
     }
 
     /// Returns the default backup directory for the CLI state.
@@ -122,14 +129,10 @@ impl CliState {
     /// Create a new CliState where the data is stored at a given path
     pub(super) async fn create(dir: PathBuf) -> Result<Self> {
         std::fs::create_dir_all(&dir)?;
-        let database = Arc::new(SqlxDatabase::create(Self::make_database_path(&dir)).await?);
+        let database = SqlxDatabase::create(Self::make_database_path(&dir)).await?;
         debug!("Opened the database with options {:?}", database);
         let state = Self { dir, database };
         Ok(state)
-    }
-
-    pub(super) fn database(&self) -> Arc<SqlxDatabase> {
-        self.database.clone()
     }
 
     pub(super) fn make_database_path(root_path: &Path) -> PathBuf {

@@ -142,7 +142,7 @@ impl PacketBuffer {
                 "Received packet fragment is too long for packet buffer: {}",
                 self.buffer.len()
             );
-            return Err(BleError::ReadError.into());
+            return Err(BleError::ReadError)?;
         }
 
         // append fragment to packet buffer

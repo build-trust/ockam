@@ -58,12 +58,24 @@ defmodule Ockam.SecureChannel.Messages do
     end
 
     def to_cbor_term(%RefreshCredentials{contact: contact, credentials: credentials}) do
+      {:ok, contact, ""} = CBOR.decode(contact)
+
+      credentials =
+        Enum.map(credentials, fn c ->
+          {:ok, d, ""} = CBOR.decode(c)
+          d
+        end)
+
       {:ok, [contact, credentials]}
     end
   end
 
-  @enum_schema {:enum,
-                [{Ockam.SecureChannel.Messages.Payload, 0}, RefreshCredentials: 1, close: 2]}
+  @enum_schema {:variant_enum,
+                [
+                  {Ockam.SecureChannel.Messages.Payload, 0},
+                  {Ockam.SecureChannel.Messages.RefreshCredentials, 1},
+                  close: 2
+                ]}
 
   def decode(encoded) do
     TypedCBOR.decode_strict(@enum_schema, encoded)

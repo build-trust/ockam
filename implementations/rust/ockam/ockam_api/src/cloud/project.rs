@@ -7,7 +7,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
 use ockam::identity::models::ChangeHistory;
-use ockam::identity::{identities, Identifier, Identity};
+use ockam::identity::{Identifier, Identity};
 use ockam_core::api::Request;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Result};
@@ -19,7 +19,7 @@ use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::operation::{Operation, Operations};
 use crate::cloud::share::ShareScope;
-use crate::cloud::{Controller, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::cloud::{ControllerClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 use crate::nodes::InMemoryNode;
@@ -160,16 +160,9 @@ impl Project {
     /// Return the identity of the project's authority
     pub async fn authority_identity(&self) -> Result<Identity> {
         match &self.authority_identity {
-            Some(authority_identity) => {
-                let decoded = hex::decode(authority_identity.as_bytes())
-                    .map_err(|e| Error::new(Origin::Api, Kind::Serialization, e.to_string()))?;
-                let identities = identities().await?;
-                let identifier = identities
-                    .identities_creation()
-                    .import(None, &decoded)
-                    .await?;
-                Ok(identities.get_identity(&identifier).await?)
-            }
+            Some(authority_identity) => Ok(Identity::create(authority_identity)
+                .await
+                .map_err(|e| Error::new(Origin::Api, Kind::Serialization, e.to_string()))?),
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,
@@ -391,7 +384,7 @@ pub trait Projects {
     ) -> miette::Result<Project>;
 }
 
-impl Controller {
+impl ControllerClient {
     pub async fn create_project(
         &self,
         ctx: &Context,

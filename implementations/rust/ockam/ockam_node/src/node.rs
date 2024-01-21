@@ -19,6 +19,7 @@ impl ockam_core::Worker for NullWorker {
 /// builder API to customise the underlying node that is created.
 pub struct NodeBuilder {
     logging: bool,
+    exit_on_panic: bool,
 }
 
 impl Default for NodeBuilder {
@@ -30,12 +31,26 @@ impl Default for NodeBuilder {
 impl NodeBuilder {
     /// Create a node
     pub fn new() -> Self {
-        Self { logging: true }
+        Self {
+            logging: true,
+            exit_on_panic: true,
+        }
     }
 
     /// Disable logging on this node
     pub fn no_logging(self) -> Self {
-        Self { logging: false }
+        Self {
+            logging: false,
+            exit_on_panic: self.exit_on_panic,
+        }
+    }
+
+    /// Disable exit on panic on this node
+    pub fn no_exit_on_panic(self) -> Self {
+        Self {
+            logging: self.logging,
+            exit_on_panic: false,
+        }
     }
 
     /// Consume this builder and yield a new Ockam Node
@@ -43,6 +58,24 @@ impl NodeBuilder {
     pub fn build(self) -> (Context, Executor) {
         if self.logging {
             setup_tracing();
+        }
+
+        // building a node should happen only once per process
+        // to create the Context and the Executor (containing the Router)
+        // Since the Executor is used to run async functions we need to catch
+        // any panic raised by those functions and exit the current process in case this happens.
+        // Otherwise the Executor might stay blocked on the Router execution.
+        #[cfg(feature = "std")]
+        if self.exit_on_panic {
+            std::panic::set_hook(Box::new(|panic_info| {
+                let message1 = format!("A fatal error occurred: {panic_info}.");
+                let message2 = "Please report this issue, with a copy of your logs, to https://github.com/build-trust/ockam/issues.";
+                error!(message1);
+                error!(message2);
+                println!("{}", message1);
+                println!("{}", message2);
+                std::process::exit(1);
+            }));
         }
 
         info!("Initializing ockam node");

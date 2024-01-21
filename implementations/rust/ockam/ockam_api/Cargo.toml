@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.56.0"
+version = "0.59.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
@@ -30,15 +30,15 @@ storage = ["ockam/storage"]
 
 [dependencies]
 anyhow = "1"
-aws-config = { version = "1.1.1", default-features = false, features = ["rustls"] }
-base64-url = "2.0.1"
+aws-config = { version = "1.1.2", default-features = false, features = ["rustls"] }
+base64-url = "2.0.2"
 bytes = { version = "1.5.0", default-features = false, features = ["serde"] }
 either = { version = "1.9.0", default-features = false }
 fs2 = { version = "0.4.3" }
-futures = { version = "0.3.28" }
+futures = { version = "0.3.30" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
-kafka-protocol = "0.7.0"
+kafka-protocol = "0.8.2"
 miette = "5.10.0"
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 nix = { version = "0.27", features = ["signal"] }
@@ -47,10 +47,10 @@ petname = { version = "2.0.0-beta.4", default-features = false, features = ["def
 rand = "0.8"
 regex = "1.10.2"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
+serde = { version = "1.0.195", features = ["derive"] }
+serde_json = "1.0.111"
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite"] }
-sysinfo = "0.29"
+sysinfo = "0.30"
 thiserror = "1.0"
 time = { version = "0.3.31", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
@@ -63,23 +63,23 @@ tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
 url = "2.4.1"
 
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.42.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.103.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.45.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.106.0" }
 
 [dependencies.ockam_core]
-version = "0.98.0"
+version = "0.101.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.105.0"
+version = "0.108.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.98.0"
+version = "0.101.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -87,19 +87,19 @@ default-features = false
 features = ["std"]
 
 [dependencies.ockam_vault_aws]
-version = "0.24.0"
+version = "0.27.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.113.0"
+version = "^0.116.0"
 path = "../ockam"
 default-features = false
 features = ["ockam_transport_tcp", "storage"]
 
 [dependencies.ockam_abac]
-version = "0.46.0"
+version = "0.49.0"
 path = "../ockam_abac"
 default-features = false
 
@@ -114,6 +114,6 @@ ockam_macros = { path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
 quickcheck = "1.0.1"
-tempfile = "3.8.0"
+tempfile = "3.9.0"
 tokio = { version = "1.35.1", features = ["full"] }
-uuid = "1.6.1"
+uuid = "1.7.0"

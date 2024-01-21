@@ -7,7 +7,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::project::{OktaAuth0, Project};
-use ockam_api::cloud::AuthorityNode;
+use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
@@ -90,7 +90,7 @@ async fn run_impl(
         Some(trust_context),
     )
     .await?;
-    let authority_node: AuthorityNode = node
+    let authority_node: AuthorityNodeClient = node
         .create_authority_client(
             &project.authority_identifier().await.into_diagnostic()?,
             &project.authority_access_route().into_diagnostic()?,
@@ -168,7 +168,7 @@ async fn parse_trust_context(
                 return Err(miette!(
                     "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
                     trust_context_name
-                ).into());
+                ))?;
             }
         }
     }

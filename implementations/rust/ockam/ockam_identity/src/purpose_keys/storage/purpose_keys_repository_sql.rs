@@ -5,7 +5,6 @@ use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::compat::string::{String, ToString};
-use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
@@ -19,21 +18,19 @@ use crate::Purpose;
 /// Storage for own [`super::super::super::purpose_key::PurposeKey`]s
 #[derive(Clone)]
 pub struct PurposeKeysSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl PurposeKeysSqlxDatabase {
     /// Create a new database for purpose keys
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for purpose keys");
         Self { database }
     }
 
     /// Create a new in-memory database for purpose keys
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("purpose keys").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("purpose keys").await?))
     }
 }
 
@@ -49,14 +46,14 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
             .bind(subject.to_sql())
             .bind(purpose.to_sql())
             .bind(minicbor::to_vec(purpose_key_attestation)?.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete_purpose_key(&self, subject: &Identifier, purpose: Purpose) -> Result<()> {
         let query = query("DELETE FROM purpose_key WHERE identifier = ? and purpose = ?")
             .bind(subject.to_sql())
             .bind(purpose.to_sql());
-        query.execute(&self.database.pool).await.void()
+        query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_purpose_key(
@@ -68,7 +65,7 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
             .bind(identifier.to_sql())
             .bind(purpose.to_sql());
         let row: Option<PurposeKeyRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(row.map(|r| r.purpose_key_attestation()).transpose()?)
@@ -76,7 +73,7 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
 
     async fn delete_all(&self) -> Result<()> {
         query("DELETE FROM purpose_key")
-            .execute(&self.database.pool)
+            .execute(&*self.database.pool)
             .await
             .void()
     }
@@ -136,6 +133,7 @@ mod tests {
     use super::*;
     use crate::identities;
     use crate::models::PurposeKeyAttestationSignature;
+    use ockam_core::compat::sync::Arc;
     use ockam_vault::ECDSASHA256CurveP256Signature;
 
     #[tokio::test]
@@ -180,7 +178,7 @@ mod tests {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn PurposeKeysRepository>> {
-        Ok(PurposeKeysSqlxDatabase::create().await?)
+        Ok(Arc::new(PurposeKeysSqlxDatabase::create().await?))
     }
 
     async fn create_identity() -> Result<Identifier> {

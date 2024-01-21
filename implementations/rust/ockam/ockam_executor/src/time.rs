@@ -74,6 +74,7 @@ pub mod error {
     impl error::Error for Elapsed {}
 
     impl From<Elapsed> for io::Error {
+        #[track_caller]
         fn from(_err: Elapsed) -> io::Error {
             io::ErrorKind::TimedOut.into()
         }

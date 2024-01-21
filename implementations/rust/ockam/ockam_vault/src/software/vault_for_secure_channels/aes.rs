@@ -12,19 +12,21 @@ use cfg_if::cfg_if;
 impl AesGen {
     pub fn encrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
         if nonce.len() != AES_NONCE_LENGTH {
-            return Err(VaultError::AeadAesGcmEncrypt.into());
+            return Err(VaultError::AeadAesGcmEncrypt)?;
         }
 
-        self.encrypt(nonce.into(), Payload { aad, msg })
-            .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
+        Ok(self
+            .encrypt(nonce.into(), Payload { aad, msg })
+            .map_err(|_| VaultError::AeadAesGcmEncrypt)?)
     }
     pub fn decrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
         if nonce.len() != AES_NONCE_LENGTH {
-            return Err(VaultError::AeadAesGcmEncrypt.into());
+            return Err(VaultError::AeadAesGcmEncrypt)?;
         }
 
-        self.decrypt(nonce.into(), Payload { aad, msg })
-            .map_err(|_| VaultError::AeadAesGcmDecrypt.into())
+        Ok(self
+            .decrypt(nonce.into(), Payload { aad, msg })
+            .map_err(|_| VaultError::AeadAesGcmDecrypt)?)
     }
 }
 

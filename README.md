@@ -1,4 +1,10 @@
+🚀 _[Portals for Mac](https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md) – A macOS app built in Swift that uses the Ockam Rust library to privately share a service on your Mac with anyone, anywhere. The service is shared securely over an end-to-end encrypted and mutually authenticated Ockam Portal. Your friends will have access to it on their *localhost*! This app is a great example of the kinds of things you can build with Ockam_ [👉](https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md)
+
+---
+
 <a href="https://discord.gg/RAbjRr3kds"><img alt="Discord" src="https://img.shields.io/discord/1074960884490833952?label=Discord&logo=discord&style=flat&logoColor=white"></a>
+[![RepoRater](https://repo-rater.eddiehub.io/api/badge?owner=build-trust&name=ockam)](https://repo-rater.eddiehub.io/rate?owner=build-trust&name=ockam)
+
 
 # Trust for Data-in-Motion
 
@@ -155,13 +161,21 @@ Orchestrate nodes, vaults, identities, credentials, secure channels, relays, por
 [👉](https://docs.ockam.io/reference/command)
 
 * [__Ockam Programming Libraries__](https://docs.ockam.io/reference/libraries)
-Rust, Elixir and soon Typescript libraries to build secure by design applications for any environment
-– from highly scalable cloud infrastructure to tiny battery operated microcontroller based devices.
+Rust and Elixir libraries to build secure by design applications for any environment
+– from highly scalable cloud infrastructure to tiny battery operated microcontroller devices.
+[👉](https://docs.ockam.io/reference/libraries)
+
+* [__Ockam Protocols__](https://docs.ockam.io/reference/protocols)
+Cryptographic and Messaging Protocols that make up the core of Ockam and provide the foundation for end-to-end application layer trust in data.
 [👉](https://docs.ockam.io/reference/libraries)
 
 ## License
 
 The code in this repository is licensed under the terms of the [Apache License 2.0](LICENSE).
+
+## Sponsorship Matching Program
+
+Ockam sponsors open source builders who are making it possible for software to be more private and secure-by-design. This includes builders of tools and libraries that Ockam depends on. Under our matching program, if you sponsor the Ockam Open Source project, we will match your contribution and pass it along to other open source developers. For example: If you sponsor Ockam for $10 a month, we will match your $10, and will send $20 back out into the community. Learn more about our [sponsorship matching program](https://github.com/sponsors/build-trust) [👉](https://github.com/sponsors/build-trust)
 
 ## Learn more about Ockam
 

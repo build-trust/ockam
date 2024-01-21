@@ -5,7 +5,7 @@ use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
 use ockam_api::nodes::models::services::{StartKafkaProducerRequest, StartServiceRequest};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -55,7 +55,7 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
 
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let node = BackgroundNode::create(&ctx, &opts.state, &node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &node_opts.at_node).await?;
 
         let payload = StartKafkaProducerRequest::new(
             bootstrap_server.to_owned(),
@@ -94,6 +94,12 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
     let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
     let (_, _) = try_join!(send_req, progress_output)?;
 
+    let script_to_run = if kafka_entity == "KafkaProducer" {
+        "kafka-console-producer.sh --version"
+    } else {
+        "kafka-console-consumer.sh --version"
+    };
+
     opts.terminal
         .stdout()
         .plain(
@@ -104,10 +110,18 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
                     .to_string()
                     .color(OckamColor::PrimaryResource.color())
             ) + &fmt_log!(
-                "Brokers port range set to {}",
+                "Brokers port range set to {}\n\n",
                 &brokers_port_range
                     .to_string()
                     .color(OckamColor::PrimaryResource.color())
+            ) + &fmt_log!(
+                "{}\n",
+                "Kafka clients v3.4.x are supported.".color(OckamColor::FmtWARNBackground.color())
+            ) + &fmt_log!(
+                "{}: '{}'.\n",
+                "You can find the version you have with"
+                    .color(OckamColor::FmtWARNBackground.color()),
+                script_to_run.color(OckamColor::Success.color())
             ),
         )
         .write_line()?;

@@ -29,7 +29,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::CliState;
 use crate::cli_state::NamedTrustContext;
-use crate::cloud::{AuthorityNode, ProjectNode};
+use crate::cloud::{AuthorityNodeClient, ProjectNodeClient};
 use crate::error::ApiError;
 use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
@@ -45,7 +45,7 @@ use crate::session::MedicHandle;
 use super::registry::Registry;
 
 pub mod actions;
-pub(crate) mod background_node;
+pub(crate) mod background_node_client;
 pub(crate) mod credentials;
 pub mod default_address;
 mod flow_controls;
@@ -53,7 +53,7 @@ pub(crate) mod in_memory_node;
 pub mod kafka_services;
 pub mod message;
 mod node_services;
-mod policy;
+pub(crate) mod policy;
 pub mod portals;
 mod projects;
 pub mod relay;
@@ -173,7 +173,7 @@ impl NodeManager {
         authority_identifier: &Identifier,
         authority_multiaddr: &MultiAddr,
         caller_identity_name: Option<String>,
-    ) -> miette::Result<AuthorityNode> {
+    ) -> miette::Result<AuthorityNodeClient> {
         self.make_authority_node_client(
             authority_identifier,
             authority_multiaddr,
@@ -191,7 +191,7 @@ impl NodeManager {
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
         caller_identity_name: Option<String>,
-    ) -> miette::Result<ProjectNode> {
+    ) -> miette::Result<ProjectNodeClient> {
         self.make_project_node_client(
             project_identifier,
             project_multiaddr,
@@ -361,7 +361,8 @@ impl NodeManager {
         );
 
         debug!("create the identity repository");
-        let cli_state = general_options.cli_state;
+        let mut cli_state = general_options.cli_state;
+        cli_state.set_node_name(general_options.node_name.clone());
 
         let secure_channels = cli_state
             .secure_channels(
@@ -621,7 +622,6 @@ impl NodeManagerWorker {
             }
 
             // ==*== Services ==*==
-            //<<<<<<< HEAD
             (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => encode_response(
                 req,
                 self.start_authenticated_service(ctx, dec.decode()?).await,

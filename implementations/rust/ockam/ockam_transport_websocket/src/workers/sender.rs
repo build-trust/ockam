@@ -161,7 +161,7 @@ where
             )
             .await?;
         } else {
-            return Err(TransportError::GenericIo.into());
+            return Err(TransportError::GenericIo)?;
         }
 
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
@@ -186,7 +186,7 @@ where
         let ws_sink = if let Some(ws_sink) = &mut self.ws_sink {
             ws_sink
         } else {
-            return Err(TransportError::PeerNotFound.into());
+            return Err(TransportError::PeerNotFound)?;
         };
 
         let recipient = msg.msg_addr();

@@ -50,7 +50,7 @@ impl TcpInletListenProcessor {
             Ok(addr) => addr,
             Err(err) => {
                 error!(%addr, %err, "could not bind to address");
-                return Err(TransportError::from(err).into());
+                return Err(TransportError::from(err))?;
             }
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;

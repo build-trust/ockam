@@ -46,7 +46,7 @@ impl TryFrom<SecretType> for SecretAttributes {
 
     fn try_from(value: SecretType) -> Result<Self, Self::Error> {
         match value {
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType)?,
             SecretType::X25519 => Ok(SecretAttributes::X25519),
             SecretType::Ed25519 => Ok(SecretAttributes::Ed25519),
             SecretType::NistP256 => Ok(SecretAttributes::NistP256),

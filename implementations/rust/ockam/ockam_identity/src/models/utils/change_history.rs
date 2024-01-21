@@ -26,11 +26,11 @@ impl ChangeData {
     /// Extract [`ChangeData`] from [`VersionedData`]
     pub fn get_data(versioned_data: &VersionedData) -> Result<Self> {
         if versioned_data.version != 1 {
-            return Err(IdentityError::UnknownIdentityVersion.into());
+            return Err(IdentityError::UnknownIdentityVersion)?;
         }
 
         if versioned_data.data_type != CHANGE_DATA_TYPE {
-            return Err(IdentityError::InvalidIdentityDataType.into());
+            return Err(IdentityError::InvalidIdentityDataType)?;
         }
 
         Ok(minicbor::decode(&versioned_data.data)?)

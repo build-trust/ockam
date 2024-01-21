@@ -108,7 +108,7 @@ impl UdpHolePunchWorker {
 
         match res {
             RendezvousResponse::Query(r) => r,
-            _ => Err(PunchError::Internal.into()),
+            _ => Err(PunchError::Internal)?,
         }
     }
 
@@ -245,7 +245,7 @@ impl UdpHolePunchWorker {
                 debug!("Puncher => App: {:?}", msg);
                 ctx.forward(LocalMessage::new(msg, vec![])).await?;
             }
-            _ => return Err(PunchError::Internal.into()),
+            _ => return Err(PunchError::Internal)?,
         }
         Ok(())
     }
@@ -313,7 +313,7 @@ impl UdpHolePunchWorker {
             debug!("Puncher => Peer: {:?}", msg);
             ctx.forward(LocalMessage::new(msg, vec![])).await
         } else {
-            Err(PunchError::HoleNotOpen.into())
+            Err(PunchError::HoleNotOpen)?
         }
     }
 }
@@ -362,7 +362,7 @@ impl Worker for UdpHolePunchWorker {
                             // will not be informed until it's closed and
                             // opened again. Is this what we want?
                         }
-                        _ => return Err(PunchError::Internal.into()),
+                        _ => return Err(PunchError::Internal)?,
                     }
                 }
             }
@@ -372,7 +372,7 @@ impl Worker for UdpHolePunchWorker {
                 self.handle_local(ctx, msg).await?;
             }
 
-            _ => return Err(PunchError::Internal.into()),
+            _ => return Err(PunchError::Internal)?,
         };
 
         Ok(())

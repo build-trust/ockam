@@ -3,7 +3,7 @@ use colorful::Colorful;
 
 use ockam::Context;
 use ockam_abac::{Action, Resource};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::policy::policy_path;
@@ -45,7 +45,7 @@ async fn run_impl(
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this policy?")?
     {
-        let node = BackgroundNode::create(ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
         let policy_path = policy_path(&cmd.resource, &cmd.action);
         let req = Request::delete(&policy_path);
         node.tell(ctx, req).await?;

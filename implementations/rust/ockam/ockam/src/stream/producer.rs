@@ -67,7 +67,7 @@ async fn handle_response(
             );
             Ok(())
         }
-        _ => Err(OckamError::NoSuchProtocol.into()),
+        _ => Err(OckamError::NoSuchProtocol)?,
     }
 }
 

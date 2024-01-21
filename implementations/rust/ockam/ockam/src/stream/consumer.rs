@@ -136,7 +136,7 @@ async fn handle_response(
             Ok(())
         }
 
-        _ => Err(OckamError::NoSuchProtocol.into()),
+        _ => Err(OckamError::NoSuchProtocol)?,
     }
 }
 
@@ -164,7 +164,7 @@ async fn handle_cmd(
         }
         f => {
             warn!("Unhandled message type {:?}", f);
-            Err(OckamError::NoSuchProtocol.into())
+            Err(OckamError::NoSuchProtocol)?
         }
     }
 }

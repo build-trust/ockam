@@ -182,11 +182,11 @@ impl CommonStateMachine {
             match &purpose_key.public_key {
                 PurposePublicKey::SecureChannelStatic(public_key) => {
                     if public_key.0 != peer_public_key.0 {
-                        return Err(IdentityError::InvalidKeyData.into());
+                        return Err(IdentityError::InvalidKeyData)?;
                     }
                 }
                 PurposePublicKey::CredentialSigning(_) => {
-                    return Err(IdentityError::InvalidKeyType.into());
+                    return Err(IdentityError::InvalidKeyType)?;
                 }
             }
         }
@@ -218,7 +218,7 @@ impl CommonStateMachine {
             let trusted = trust_policy.check(&trust_info).await?;
             if !trusted {
                 // TODO: Shutdown? Communicate error?
-                return Err(IdentityError::SecureChannelTrustCheckFailed.into());
+                return Err(IdentityError::SecureChannelTrustCheckFailed)?;
             }
             debug!(
                 "Checked trust policy for SecureChannel from: {}",
@@ -245,15 +245,13 @@ impl CommonStateMachine {
                 if let Some(err) = result.err() {
                     warn!("a credential could not be validated {}", err.to_string());
                     // TODO: consider the possibility of keep going when a credential validation fails
-                    return Err(
-                        IdentityError::SecureChannelVerificationFailedIncorrectCredential.into(),
-                    );
+                    return Err(IdentityError::SecureChannelVerificationFailedIncorrectCredential)?;
                 }
             }
         } else if !credentials.is_empty() {
             warn!("no credentials have been received");
             // we cannot validate credentials without a trust context
-            return Err(IdentityError::SecureChannelVerificationFailedMissingTrustContext.into());
+            return Err(IdentityError::SecureChannelVerificationFailedMissingTrustContext)?;
         };
 
         Ok(())

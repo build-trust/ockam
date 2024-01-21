@@ -111,7 +111,7 @@ impl SecureChannelRegistry {
             .insert(info.encryptor_messaging_address.clone(), info);
 
         if res.is_some() {
-            return Err(IdentityError::DuplicateSecureChannel.into());
+            return Err(IdentityError::DuplicateSecureChannel)?;
         }
 
         Ok(())

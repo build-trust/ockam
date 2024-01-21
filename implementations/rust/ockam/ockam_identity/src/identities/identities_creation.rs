@@ -141,7 +141,7 @@ impl IdentitiesCreation {
                 .get_verifying_public_key(signing_secret_key_handle)
                 .await?
         {
-            return Err(IdentityError::WrongSecretKey.into());
+            return Err(IdentityError::WrongSecretKey)?;
         }
         Ok(identity.identifier().clone())
     }

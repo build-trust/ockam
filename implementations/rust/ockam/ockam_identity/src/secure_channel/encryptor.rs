@@ -49,7 +49,7 @@ impl Encryptor {
     pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         let current_nonce = self.nonce;
         if current_nonce == u64::MAX {
-            return Err(IdentityError::NonceOverflow.into());
+            return Err(IdentityError::NonceOverflow)?;
         }
 
         self.nonce += 1;

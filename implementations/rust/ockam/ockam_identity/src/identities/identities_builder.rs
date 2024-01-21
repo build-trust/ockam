@@ -26,7 +26,7 @@ pub async fn identities() -> Result<Arc<Identities>> {
 
 /// Return identities backed by a specific database
 #[cfg(feature = "storage")]
-pub fn create(database: Arc<SqlxDatabase>) -> Arc<Identities> {
+pub fn create(database: SqlxDatabase) -> Arc<Identities> {
     Identities::create(database).build()
 }
 

@@ -6,7 +6,6 @@ use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
-use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 
@@ -17,21 +16,19 @@ use crate::{ChangeHistoryRepository, Identity, IdentityError, IdentityHistoryCom
 /// using sqlx as its API, and Sqlite as its driver
 #[derive(Clone)]
 pub struct ChangeHistorySqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl ChangeHistorySqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for change history");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("change history").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("change history").await?))
     }
 }
 
@@ -56,7 +53,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
                 match identity.compare(&known_identity) {
                     IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
-                        return Err(IdentityError::ConsistencyError.into());
+                        return Err(IdentityError::ConsistencyError)?;
                     }
                     IdentityHistoryComparison::Newer => true,
                     IdentityHistoryComparison::Equal => false,
@@ -79,7 +76,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
         change_history: ChangeHistory,
     ) -> Result<()> {
         Self::insert_query(identifier, &change_history)
-            .execute(&self.database.pool)
+            .execute(&*self.database.pool)
             .await
             .void()
     }
@@ -100,7 +97,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
         let query = query_as("SELECT identifier, change_history FROM identity WHERE identifier=$1")
             .bind(identifier.to_sql());
         let row: Option<ChangeHistoryRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.change_history()).transpose()
@@ -108,7 +105,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
     async fn get_change_histories(&self) -> Result<Vec<ChangeHistory>> {
         let query = query_as("SELECT identifier, change_history FROM identity");
-        let row: Vec<ChangeHistoryRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let row: Vec<ChangeHistoryRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.change_history()).collect()
     }
 }
@@ -160,6 +157,8 @@ impl ChangeHistoryRow {
 mod tests {
     use super::*;
     use crate::{identities, Identity};
+
+    use ockam_core::compat::sync::Arc;
 
     #[tokio::test]
     async fn test_identities_repository() -> Result<()> {
@@ -226,7 +225,7 @@ mod tests {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn ChangeHistoryRepository>> {
-        Ok(ChangeHistorySqlxDatabase::create().await?)
+        Ok(Arc::new(ChangeHistorySqlxDatabase::create().await?))
     }
 
     async fn create_identity() -> Result<Identity> {

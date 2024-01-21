@@ -64,7 +64,7 @@ where
             }
             Err(e) => {
                 error!("BleRecvProcessor::process poll error: {:?}", e);
-                return Err(crate::error::BleError::ReadError.into());
+                return Err(crate::error::BleError::ReadError)?;
             }
         }
 
@@ -93,7 +93,7 @@ where
                 let mut msg = match result {
                     Err(e) => {
                         error!("Error decoding message: {:?}", e);
-                        return Err(e.into());
+                        return Err(e)?;
                     }
                     Ok(msg) => msg,
                 };

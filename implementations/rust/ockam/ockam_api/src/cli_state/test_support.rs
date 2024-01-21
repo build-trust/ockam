@@ -6,7 +6,9 @@ use std::path::PathBuf;
 impl CliState {
     /// Return a test CliState with a random root directory
     pub async fn test() -> Result<Self> {
-        Self::create(Self::test_dir()?).await
+        let mut state = Self::create(Self::test_dir()?).await?;
+        state.set_node_name(random_name());
+        Ok(state)
     }
 
     /// Return a random root directory

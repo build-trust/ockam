@@ -60,7 +60,7 @@ impl Handshake {
         state.mix_hash(payload);
 
         if message1.len() > NOISE_MAX_MESSAGE_SIZE {
-            return Err(XXError::ExceededMaxMessageLen.into());
+            return Err(XXError::ExceededMaxMessageLen)?;
         }
 
         self.state = state;
@@ -70,7 +70,7 @@ impl Handshake {
     /// Decode the first message to get the ephemeral public key sent by the initiator
     pub(super) async fn decode_message1(&mut self, message1: &[u8]) -> Result<Vec<u8>> {
         if message1.len() > NOISE_MAX_MESSAGE_SIZE {
-            return Err(XXError::ExceededMaxMessageLen.into());
+            return Err(XXError::ExceededMaxMessageLen)?;
         }
 
         let mut state = self.state.clone();
@@ -116,7 +116,7 @@ impl Handshake {
         message2.extend(c);
 
         if message2.len() > NOISE_MAX_MESSAGE_SIZE {
-            return Err(XXError::ExceededMaxMessageLen.into());
+            return Err(XXError::ExceededMaxMessageLen)?;
         }
 
         self.state = state;
@@ -126,7 +126,7 @@ impl Handshake {
     /// Decode the second message sent by the responder
     pub(super) async fn decode_message2(&mut self, message2: &[u8]) -> Result<Vec<u8>> {
         if message2.len() > NOISE_MAX_MESSAGE_SIZE {
-            return Err(XXError::ExceededMaxMessageLen.into());
+            return Err(XXError::ExceededMaxMessageLen)?;
         }
 
         let mut state = self.state.clone();
@@ -180,7 +180,7 @@ impl Handshake {
         message3.extend(c);
 
         if message3.len() > NOISE_MAX_MESSAGE_SIZE {
-            return Err(XXError::ExceededMaxMessageLen.into());
+            return Err(XXError::ExceededMaxMessageLen)?;
         }
 
         self.state = state;
@@ -190,7 +190,7 @@ impl Handshake {
     /// Decode the third message sent by the initiator
     pub(super) async fn decode_message3(&mut self, message3: &[u8]) -> Result<Vec<u8>> {
         if message3.len() > NOISE_MAX_MESSAGE_SIZE {
-            return Err(XXError::ExceededMaxMessageLen.into());
+            return Err(XXError::ExceededMaxMessageLen)?;
         }
 
         let mut state = self.state.clone();
@@ -433,23 +433,23 @@ impl Handshake {
 
     /// Read the first 'length' bytes of the message
     fn read_start<const N: usize>(message: &[u8]) -> Result<&[u8; N]> {
-        message[..N]
+        Ok(message[..N]
             .try_into()
-            .map_err(|_| XXError::MessageLenMismatch.into())
+            .map_err(|_| XXError::MessageLenMismatch)?)
     }
 
     /// Read the bytes of the message after the first 'drop_length' bytes
     fn read_end<const N: usize>(message: &[u8]) -> Result<&[u8]> {
-        message[N..]
+        Ok(message[N..]
             .try_into()
-            .map_err(|_| XXError::MessageLenMismatch.into())
+            .map_err(|_| XXError::MessageLenMismatch)?)
     }
 
     /// Read 'length' bytes of the message after the first 'drop_length' bytes
     fn read_middle<const N: usize, const L: usize>(message: &[u8]) -> Result<&[u8]> {
-        message[N..(N + L)]
+        Ok(message[N..(N + L)]
             .try_into()
-            .map_err(|_| XXError::MessageLenMismatch.into())
+            .map_err(|_| XXError::MessageLenMismatch)?)
     }
 
     /// Read the bytes of a key at the beginning of a message
@@ -605,9 +605,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_initialization() -> Result<()> {
-        let vault = Arc::new(SoftwareVaultForSecureChannels::new(
+        let vault = Arc::new(SoftwareVaultForSecureChannels::new(Arc::new(
             SecretsSqlxDatabase::create().await?,
-        ));
+        )));
 
         let static_key = vault.generate_static_x25519_secret_key().await?;
         let mut handshake = Handshake::new_with_protocol(

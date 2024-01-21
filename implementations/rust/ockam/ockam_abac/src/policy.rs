@@ -27,7 +27,7 @@ pub struct PolicyAccessControl {
 impl Debug for PolicyAccessControl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let resource = &self.resource;
-        let action = &self.resource;
+        let action = &self.action;
         let environment = &self.environment;
         f.write_str(format!("resource {resource:?}").as_str())?;
         f.write_str(format!("action {action:?}").as_str())?;

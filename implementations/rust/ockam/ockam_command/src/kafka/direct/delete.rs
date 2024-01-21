@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 
-use ockam_api::nodes::{models, BackgroundNode};
+use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
@@ -31,7 +31,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
     let req = Request::delete("/node/services/kafka_direct").body(
         models::services::DeleteServiceRequest::new(cmd.address.clone()),
     );

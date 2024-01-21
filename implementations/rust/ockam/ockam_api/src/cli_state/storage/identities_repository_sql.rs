@@ -4,7 +4,6 @@ use sqlx::*;
 
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
-use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 
@@ -14,21 +13,19 @@ use crate::cli_state::{IdentitiesRepository, NamedIdentity};
 /// using sqlx as its API, and Sqlite as its driver
 #[derive(Clone)]
 pub struct IdentitiesSqlxDatabase {
-    database: Arc<SqlxDatabase>,
+    database: SqlxDatabase,
 }
 
 impl IdentitiesSqlxDatabase {
     /// Create a new database
-    pub fn new(database: Arc<SqlxDatabase>) -> Self {
+    pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for identities");
         Self { database }
     }
 
     /// Create a new in-memory database
-    pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(
-            SqlxDatabase::in_memory("identities").await?,
-        )))
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(SqlxDatabase::in_memory("identities").await?))
     }
 }
 
@@ -127,7 +124,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         )
         .bind(name.to_sql());
         let row: Option<NamedIdentityRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.identifier()).transpose()
@@ -140,7 +137,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query =
             query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
         let row: Option<NamedIdentityRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         Ok(row.map(|r| r.name()))
@@ -152,7 +149,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         )
         .bind(name.to_sql());
         let row: Option<NamedIdentityRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_identity()).transpose()
@@ -165,7 +162,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query =
             query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
         let row: Option<NamedIdentityRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_identity()).transpose()
@@ -173,7 +170,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
     async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
         let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity");
-        let row: Vec<NamedIdentityRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let row: Vec<NamedIdentityRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_identity()).collect()
     }
 
@@ -182,7 +179,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         vault_name: &str,
     ) -> Result<Vec<NamedIdentity>> {
         let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE vault_name=?").bind(vault_name.to_sql());
-        let row: Vec<NamedIdentityRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        let row: Vec<NamedIdentityRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_identity()).collect()
     }
 
@@ -222,7 +219,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query =
             query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE is_default=$1").bind(true.to_sql());
         let row: Option<NamedIdentityRow> = query
-            .fetch_optional(&self.database.pool)
+            .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
         row.map(|r| r.named_identity()).transpose()
@@ -264,6 +261,7 @@ impl NamedIdentityRow {
 #[cfg(test)]
 mod tests {
     use ockam::identity::identities;
+    use ockam_core::compat::sync::Arc;
 
     use super::*;
 
@@ -376,7 +374,7 @@ mod tests {
 
     /// HELPERS
     async fn create_repository() -> Result<Arc<dyn IdentitiesRepository>> {
-        Ok(IdentitiesSqlxDatabase::create().await?)
+        Ok(Arc::new(IdentitiesSqlxDatabase::create().await?))
     }
 
     async fn create_identity() -> Result<Identifier> {

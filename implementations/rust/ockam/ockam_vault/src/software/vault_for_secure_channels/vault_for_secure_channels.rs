@@ -43,7 +43,9 @@ impl SoftwareVaultForSecureChannels {
     /// Create Software implementation Vault with an in-memory implementation to store secrets
     #[cfg(feature = "storage")]
     pub async fn create() -> Result<Arc<Self>> {
-        Ok(Arc::new(Self::new(SecretsSqlxDatabase::create().await?)))
+        Ok(Arc::new(Self::new(Arc::new(
+            SecretsSqlxDatabase::create().await?,
+        ))))
     }
 }
 
@@ -184,23 +186,24 @@ impl SoftwareVaultForSecureChannels {
             return Ok(secret.clone());
         }
 
-        self.static_x25519_secrets
+        Ok(self
+            .static_x25519_secrets
             .get_x25519_secret(handle)
             .await?
-            .ok_or(VaultError::KeyNotFound.into())
+            .ok_or(VaultError::KeyNotFound)?)
     }
 
     async fn get_buffer_secret(&self, handle: &SecretBufferHandle) -> Result<BufferSecret> {
         match self.ephemeral_buffer_secrets.read().unwrap().get(handle) {
             Some(secret) => Ok(secret.clone()),
-            None => Err(VaultError::KeyNotFound.into()),
+            None => Err(VaultError::KeyNotFound)?,
         }
     }
 
     async fn get_aead_secret(&self, handle: &AeadSecretKeyHandle) -> Result<AeadSecret> {
         match self.ephemeral_aead_secrets.read().unwrap().get(handle) {
             Some(secret) => Ok(secret.clone()),
-            None => Err(VaultError::KeyNotFound.into()),
+            None => Err(VaultError::KeyNotFound)?,
         }
     }
 }
@@ -260,7 +263,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
 
         if chunks.len() != number_of_outputs {
             // Should not happen
-            return Err(VaultError::HkdfExpandError.into());
+            return Err(VaultError::HkdfExpandError)?;
         }
 
         let output = chunks
@@ -372,11 +375,11 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
             .remove(&secret_buffer_handle)
         {
             Some(buffer) => buffer,
-            None => return Err(VaultError::KeyNotFound.into()),
+            None => return Err(VaultError::KeyNotFound)?,
         };
 
         if buffer.data().len() < AEAD_SECRET_LENGTH {
-            return Err(VaultError::InvalidSecretLength.into());
+            return Err(VaultError::InvalidSecretLength)?;
         }
 
         let secret = buffer.data()[..AEAD_SECRET_LENGTH]

@@ -3,7 +3,7 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::{CreateTcpListener, TransportStatus};
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -37,7 +37,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
     let transport_status: TransportStatus = node
         .ask(
             &ctx,

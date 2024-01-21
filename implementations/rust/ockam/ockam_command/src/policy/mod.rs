@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Policy, Resource};
 use ockam_api::nodes::models::policy::PolicyList;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::policy::create::CreateCommand;
@@ -54,7 +54,7 @@ pub(crate) async fn has_policy(
     opts: &CommandGlobalOpts,
     resource: &Resource,
 ) -> Result<bool> {
-    let node = BackgroundNode::create_to_node(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
     let req = Request::get(format!("/policy/{resource}"));
     let policies: PolicyList = node.ask(ctx, req).await?;
     Ok(!policies.expressions().is_empty())
@@ -67,7 +67,7 @@ pub(crate) async fn add_default_project_policy(
     project_id: String,
     resource: &Resource,
 ) -> miette::Result<()> {
-    let node = BackgroundNode::create_to_node(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
 
     let expr = eq([ident("subject.trust_context_id"), str(project_id)]);
     let bdy = Policy::new(expr);

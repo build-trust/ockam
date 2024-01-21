@@ -52,7 +52,7 @@ async fn run_impl(
     )
     .await
     {
-        Ok(_) => (true, fmt_ok!("Credential is")),
+        Ok(_) => (true, fmt_ok!("Credential is valid")),
         Err(e) => (
             false,
             fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
@@ -61,9 +61,9 @@ async fn run_impl(
 
     opts.terminal
         .stdout()
-        .machine(is_valid.to_string())
-        .json(serde_json::json!({ "is_valid": is_valid }))
         .plain(plain_text)
+        .json(serde_json::json!({ "is_valid": is_valid }))
+        .machine(is_valid.to_string())
         .write_line()?;
 
     Ok(())
@@ -106,16 +106,16 @@ pub async fn verify_credential(
             Ok(i) => i,
             Err(e) => {
                 *is_finished.lock().await = true;
-                return Err(e.into());
+                return Err(e)?;
             }
         };
 
         let result = validate_encoded_credential(identities, issuer, &credential_as_str).await;
         *is_finished.lock().await = true;
-        result.map_err(|e| miette!("Credential is invalid\n{}", e).into())
+        Ok(result.map_err(|e| e.wrap_err("Credential is invalid"))?)
     };
 
-    let output_messages = vec![format!("Verifying credential...")];
+    let output_messages = vec!["Verifying credential...".to_string()];
 
     let progress_output = opts
         .terminal

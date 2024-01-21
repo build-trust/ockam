@@ -2,7 +2,7 @@
 version: 2
 updates:
 
-  # Maintain dependencies for GitHub Actions
+  # Maintain dependencies of GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     commit-message:
@@ -13,7 +13,7 @@ updates:
       - "Type: Dependencies"
       - "Component: CI/CD"
 
-  # Maintain dependencies for rust crates
+  # Maintain dependencies of rust crates
   - package-ecosystem: "cargo"
     directory: "/"
     commit-message:
@@ -24,7 +24,7 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Rust"
 
-  # Maintain dependencies for typescript packages
+  # Maintain dependencies of typescript packages
   - package-ecosystem: "npm"
     directory: "/implementations/typescript"
     commit-message:
@@ -35,9 +35,9 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Typescript"
 
-# Maintain dependencies for elixir ockam application
+  # Maintain dependencies of elixir applications
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam"
+    directory: "/"
     commit-message:
       prefix: "build:"
     schedule:
@@ -45,69 +45,7 @@ updates:
     labels:
       - "Type: Dependencies"
       - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_services application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_services"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_metrics application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_metrics"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_healthcheck application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_healthcheck"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_cloud_node application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_cloud_node"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_kafka application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_kafka"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_typed_cbor application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_typed_cbor"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Elixir"
+    groups:
+      elixir-deps:
+        patterns:
+          - "*"

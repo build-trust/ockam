@@ -1,11 +1,11 @@
 use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, DenyAll, Encodable,
-    LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, TransportMessage, Worker,
+    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, DenyAll, LocalMessage,
+    Mailbox, Mailboxes, Message, Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_core::TransportError;
+use ockam_transport_core::{prepare_message, TransportError};
 use serde::{Deserialize, Serialize};
 use socket2::SockRef;
 use tokio::{
@@ -184,7 +184,7 @@ impl Worker for UdsSendWorker {
                 debug!("Failed to determine peer path.");
                 self.stop_and_unregister(ctx).await?;
 
-                return Err(TransportError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress)?;
             }
         };
 
@@ -201,7 +201,7 @@ impl Worker for UdsSendWorker {
                     debug!(addr = %path_display, err = %e, "Failed to connect");
                     self.stop_and_unregister(ctx).await?;
 
-                    return Err(TransportError::from(e).into());
+                    return Err(TransportError::from(e))?;
                 }
             };
 
@@ -249,7 +249,7 @@ impl Worker for UdsSendWorker {
     ) -> Result<()> {
         let tx = match &mut self.tx {
             Some(tx) => tx,
-            None => return Err(TransportError::PeerNotFound.into()),
+            None => return Err(TransportError::PeerNotFound)?,
         };
 
         let recipient = msg.msg_addr();
@@ -285,28 +285,4 @@ impl Worker for UdsSendWorker {
 
         Ok(())
     }
-}
-
-/// Helper that creates a length-prefixed buffer containing the given
-/// `TransportMessage`'s payload
-///
-/// The length-prefix is encoded as a big-endian 16-bit unsigned
-/// integer.
-fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
-    let mut msg_buf = msg.encode().map_err(|_| TransportError::SendBadMessage)?;
-
-    // Create a buffer that includes the message length in big endian
-    let mut len = (msg_buf.len() as u16).to_be_bytes().to_vec();
-
-    // Fun fact: reversing a vector in place, appending the length,
-    // and then reversing it again is faster for large message sizes
-    // than adding the large chunk of data.
-    //
-    // https://play.rust-lang.org/?version=stable&mode=release&edition=2018&gist=8669a640004ac85c7be38b19e3e73dcb
-    msg_buf.reverse();
-    len.reverse();
-    msg_buf.append(&mut len);
-    msg_buf.reverse();
-
-    Ok(msg_buf)
 }

@@ -59,8 +59,11 @@ pub(super) async fn foreground_mode(
         listener.socket_address()
     );
 
-    let node_info = opts
-        .state
+    // Set node_name so that node can isolate its data in the storage from other nodes
+    let mut state = opts.state.clone();
+    state.set_node_name(node_name.clone());
+
+    let node_info = state
         .start_node_with_optional_values(
             &node_name,
             &cmd.identity,
@@ -70,8 +73,7 @@ pub(super) async fn foreground_mode(
         .await?;
     debug!("created node {node_info:?}");
 
-    let named_trust_context = opts
-        .state
+    let named_trust_context = state
         .retrieve_trust_context(
             &cmd.trust_context_opts.trust_context,
             &cmd.trust_context_opts.project_name,
@@ -85,7 +87,7 @@ pub(super) async fn foreground_mode(
     let node_man = InMemoryNode::new(
         &ctx,
         NodeManagerGeneralOptions::new(
-            opts.state.clone(),
+            state,
             node_name.clone(),
             pre_trusted_identities,
             cmd.launch_config.is_none(),
@@ -205,7 +207,7 @@ where
     let mut dec = Decoder::new(&buf);
     let hdr = dec.decode::<ResponseHeader>()?;
     if hdr.status() != Some(Status::Ok) {
-        return Err(miette!("Request failed with status: {:?}", hdr.status()).into());
+        return Err(miette!("Request failed with status: {:?}", hdr.status()))?;
     }
     Ok(())
 }

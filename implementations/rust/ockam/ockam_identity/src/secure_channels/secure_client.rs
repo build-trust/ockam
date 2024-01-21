@@ -40,6 +40,8 @@ pub struct SecureClient {
 
 impl SecureClient {
     /// Create a new secure client
+    /// WARNING: The caller is responsible for cleaning all the resources
+    ///          involved in the Route when it's no longer used (like TCP connections or Secure Channels)
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         server_route: Route,
@@ -47,10 +49,9 @@ impl SecureClient {
         client_identifier: &Identifier,
         timeout: Duration,
     ) -> SecureClient {
-        let secure_route = route![server_route.clone()];
         Self {
             secure_channels,
-            secure_route,
+            secure_route: server_route,
             server_identifier: server_identifier.clone(),
             client_identifier: client_identifier.clone(),
             timeout,

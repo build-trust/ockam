@@ -19,13 +19,13 @@ body:
       required: true
   - type: textarea
     attributes:
-      label: Expected behavior
-      description: "Please describe what you were you expexting to happen instead:"
+      label: Desired behavior
+      description: "Please describe what you think should be the behaviour instead:"
     validations:
       required: true
   - type: input
     attributes:
       label: Ockam Version
-      description: "Please tell us the version of Ockam Command or Library that you’re using:"
+      description: "Please tell us the version of Ockam Command, Portals App or Library that you’re using:"
     validations:
       required: true

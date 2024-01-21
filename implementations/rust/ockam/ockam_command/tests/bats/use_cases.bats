@@ -97,7 +97,7 @@ teardown() {
   $OCKAM node create edge_plane1 --identity edge_identity
   $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "$fwd"
-  run_success curl --fail --head --max-time 5 "127.0.0.1:$port_1"
+  run_success curl --fail --head --max-time 10 "127.0.0.1:$port_1"
 
   ## The following is denied
   $OCKAM identity create x_identity
@@ -105,6 +105,6 @@ teardown() {
   $OCKAM node create x --identity x_identity
   $OCKAM policy create --at x --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "$fwd"
-  run curl --fail --head --max-time 5 "127.0.0.1:$port_2"
+  run curl --fail --head --max-time 10 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
 }

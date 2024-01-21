@@ -36,7 +36,6 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.IdentityProof
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol, as: XX
   alias Ockam.SecureChannel.Messages
-  alias Ockam.SecureChannel.ServiceMessage
   alias Ockam.Session.Spawner
   alias Ockam.Worker
 
@@ -92,8 +91,6 @@ defmodule Ockam.SecureChannel.Channel do
     field(:channel_state, Handshaking.t() | Established.t())
 
     field(:authorities, [Identity.t()])
-
-    field(:credentials, [binary()])
   end
 
   @handshake_timeout 30_000
@@ -179,6 +176,12 @@ defmodule Ockam.SecureChannel.Channel do
     Ockam.Worker.call(worker, :get_remote_identity_with_id)
   end
 
+  @spec update_credentials(Ockam.Address.t(), [binary()]) ::
+          :ok | {:error, any()}
+  def update_credentials(worker, credentials) do
+    Ockam.Worker.call(worker, {:update_credentials, credentials})
+  end
+
   @spec get_remote_identity(Ockam.Address.t()) :: {:ok, Ockam.Identity.t()} | {:error, any()}
   def get_remote_identity(worker) do
     Ockam.Worker.call(worker, :get_remote_identity)
@@ -234,6 +237,35 @@ defmodule Ockam.SecureChannel.Channel do
   ## GenServer
   @impl true
   def handle_call(
+        {:update_credentials, credentials},
+        _from,
+        %{state: %Channel{channel_state: %Established{}}} = state
+      ) do
+    %{state: c} = state
+    %Channel{channel_state: e} = c
+
+    payload = %Messages.RefreshCredentials{
+      contact: Identity.get_data(c.identity),
+      credentials: credentials
+    }
+
+    with {:ok, encrypt_st} <-
+           send_payload_over_encrypted_channel(
+             payload,
+             e.encrypt_st,
+             c.peer_route,
+             c.inner_address
+           ) do
+      {:reply, :ok,
+       %{state | state: %Channel{c | channel_state: %Established{e | encrypt_st: encrypt_st}}}}
+    end
+  end
+
+  def handle_call({:update_credentials, _credentials}, _from, state) do
+    {:reply, {:error, :handshake_not_finished}, state}
+  end
+
+  def handle_call(
         :get_remote_identity,
         _from,
         %{state: %Channel{channel_state: %Established{peer_identity: remote_identity}}} = state
@@ -284,9 +316,7 @@ defmodule Ockam.SecureChannel.Channel do
         _from,
         %{state: %Channel{channel_state: %Established{} = e} = s} = ws
       ) do
-    payload = ServiceMessage.encode!(%ServiceMessage{command: :disconnect})
-    msg = %Message{onward_route: [], return_route: [], payload: payload}
-    send_over_encrypted_channel(msg, e.encrypt_st, s.peer_route, s.inner_address)
+    send_payload_over_encrypted_channel(:close, e.encrypt_st, s.peer_route, s.inner_address)
     {:stop, :normal, :ok, ws}
   end
 
@@ -531,7 +561,14 @@ defmodule Ockam.SecureChannel.Channel do
                true <- peer_identity_id == channel_state.peer_identity_id,
                :ok <- process_credentials(credentials, peer_identity_id, state.authorities) do
             {:ok,
-             %Channel{state | channel_state: %{channel_state | peer_identity: peer_identity}}}
+             %Channel{
+               state
+               | channel_state: %{
+                   channel_state
+                   | peer_identity: peer_identity,
+                     decrypt_st: decrypt_st
+                 }
+             }}
           else
             error ->
               Logger.warning("Invalid credential refresh: #{inspect(error)}")
@@ -546,19 +583,6 @@ defmodule Ockam.SecureChannel.Channel do
       error ->
         Logger.warning("Failed to decrypt message, discarded: #{inspect(error)}")
         {:ok, state}
-    end
-  end
-
-  defp handle_decrypted_message(
-         %{onward_route: [], payload: payload} = msg,
-         %Channel{channel_state: %Established{}} = state
-       ) do
-    case ServiceMessage.decode_strict(payload) do
-      {:ok, %ServiceMessage{command: :disconnect}} ->
-        {:stop, :normal, state}
-
-      _error ->
-        {:error, {:unknown_service_msg, msg}}
     end
   end
 
@@ -599,7 +623,10 @@ defmodule Ockam.SecureChannel.Channel do
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route, inner_address) do
     payload = struct(Messages.Payload, Map.from_struct(message))
+    send_payload_over_encrypted_channel(payload, encrypt_st, peer_route, inner_address)
+  end
 
+  defp send_payload_over_encrypted_channel(payload, encrypt_st, peer_route, inner_address) do
     with {:ok, encoded} <- Messages.encode(payload),
          {:ok, ciphertext, encrypt_st} <- Encryptor.encrypt("", encoded, encrypt_st) do
       ciphertext = :bare.encode(ciphertext, :data)

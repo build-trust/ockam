@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment};
 use ockam_api::cloud::project::OrchestratorVersionInfo;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
-use ockam_api::nodes::{BackgroundNode, InMemoryNode};
+use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 
 use crate::util::{api, duration::duration_parser, node_rpc};
 use crate::CommandGlobalOpts;
@@ -74,7 +74,7 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     }
     let default_node_name = opts.state.get_default_node().await?.name();
     let mut node_client =
-        BackgroundNode::create_to_node(ctx, &opts.state, &default_node_name).await?;
+        BackgroundNodeClient::create_to_node(ctx, &opts.state, &default_node_name).await?;
     node_client.set_timeout(Duration::from_millis(200));
 
     for node in nodes {
@@ -90,7 +90,7 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     Ok(node_details)
 }
 
-async fn get_node_status(ctx: &Context, node: &BackgroundNode) -> Result<String> {
+async fn get_node_status(ctx: &Context, node: &BackgroundNodeClient) -> Result<String> {
     let node_status_model: miette::Result<NodeStatusModel> =
         node.ask(ctx, api::query_status()).await;
     Ok(node_status_model

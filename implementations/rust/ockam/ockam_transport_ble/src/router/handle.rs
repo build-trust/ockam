@@ -91,7 +91,7 @@ impl BleRouterHandle {
             peer_addr = p;
             servicenames = vec![];
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress)?;
         }
 
         Ok((peer_addr, servicenames))

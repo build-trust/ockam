@@ -12,13 +12,14 @@ use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::CliState;
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::{AuthorityNode, Controller};
+use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
 use ockam_api::logs::WorkerGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
@@ -27,7 +28,7 @@ use crate::api::state::rust::{
     ServiceGroup,
 };
 use crate::api::state::OrchestratorStatus;
-use crate::background_node::{BackgroundNodeClient, Cli};
+use crate::background_node::{BackgroundNodeClientTrait, Cli};
 use crate::incoming_services::IncomingServicesState;
 use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
 use crate::scheduler::Scheduler;
@@ -64,7 +65,7 @@ pub struct AppState {
     orchestrator_status: Arc<Mutex<OrchestratorStatus>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
-    background_node_client: Arc<RwLock<Arc<dyn BackgroundNodeClient>>>,
+    background_node_client: Arc<RwLock<Arc<dyn BackgroundNodeClientTrait>>>,
     projects: Arc<RwLock<Vec<Project>>>,
     invitations: Arc<RwLock<InvitationState>>,
     incoming_services: Arc<RwLock<IncomingServicesState>>,
@@ -97,7 +98,8 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state = CliState::with_default_dir()?;
+        let mut cli_state = CliState::with_default_dir()?;
+        cli_state.set_node_name(NODE_NAME.to_string());
         let (context, mut executor) = NodeBuilder::new().no_logging().build();
         let context = Arc::new(context);
 
@@ -140,7 +142,7 @@ impl AppState {
     ) -> AppState {
         // create the application state and its dependencies
         let node_manager = create_node_manager(context.clone(), &cli_state).await;
-        let model_state_repository = create_model_state_repository(&cli_state).await;
+        let model_state_repository = create_model_state_repository(&cli_state);
         let model_state = model_state_repository
             .load()
             .await
@@ -286,7 +288,7 @@ impl AppState {
             *writer = ModelState::default();
         }
         let cli_state = &self.state().await;
-        let new_state_repository = create_model_state_repository(cli_state).await;
+        let new_state_repository = create_model_state_repository(cli_state);
         {
             let mut writer = self.model_state_repository.write().await;
             *writer = new_state_repository;
@@ -367,7 +369,7 @@ impl AppState {
     }
 
     /// Return a client to access the Controller
-    pub async fn controller(&self) -> Result<Controller> {
+    pub async fn controller(&self) -> Result<ControllerClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager.create_controller().await?)
     }
@@ -377,7 +379,7 @@ impl AppState {
         authority_identifier: &Identifier,
         authority_multiaddr: &MultiAddr,
         caller_identity_name: Option<String>,
-    ) -> Result<AuthorityNode> {
+    ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
             .create_authority_client(
@@ -388,8 +390,18 @@ impl AppState {
             .await?)
     }
 
-    pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNode> {
-        Ok(BackgroundNode::create_to_node(&self.context(), &self.state().await, node_name).await?)
+    pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNodeClient> {
+        let tcp = self
+            .node_manager
+            .read()
+            .await
+            .tcp_transport()
+            .async_try_clone()
+            .await?;
+        Ok(
+            BackgroundNodeClient::create_to_node_with_tcp(&tcp, &self.state().await, node_name)
+                .await?,
+        )
     }
 
     pub async fn delete_background_node(&self, node_name: &str) -> Result<()> {
@@ -397,10 +409,10 @@ impl AppState {
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
-        self.state().await.is_enrolled().await.map_err(|e| {
+        Ok(self.state().await.is_enrolled().await.map_err(|e| {
             warn!(%e, "Failed to check if user is enrolled");
-            e.into()
-        })
+            e
+        })?)
     }
 
     /// Return the list of currently running outlets
@@ -431,7 +443,7 @@ impl AppState {
         f(&model_state)
     }
 
-    pub async fn background_node_client(&self) -> Arc<dyn BackgroundNodeClient> {
+    pub async fn background_node_client(&self) -> Arc<dyn BackgroundNodeClientTrait> {
         self.background_node_client.read().await.clone()
     }
     pub fn orchestrator_status(&self) -> OrchestratorStatus {
@@ -715,14 +727,6 @@ pub(crate) async fn make_node_manager(
 }
 
 /// Create the repository containing the model state
-async fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
-    let database_path = state.database_path();
-
-    match ModelStateSqlxDatabase::create_at(database_path).await {
-        Ok(model_state_repository) => model_state_repository,
-        Err(e) => {
-            error!(%e, "Cannot create a model state repository manager");
-            panic!("Cannot create a model state repository manager: {e:?}");
-        }
-    }
+fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
+    Arc::new(ModelStateSqlxDatabase::new(state.database()))
 }

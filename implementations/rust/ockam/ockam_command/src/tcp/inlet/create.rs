@@ -15,7 +15,7 @@ use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::nodes::BackgroundNode;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
@@ -118,7 +118,7 @@ impl CreateCommand {
             // The user provided the name of the relay
             Err(_) => {
                 if to.contains('/') {
-                    return Err(Error::arg_validation("to", to, None).into());
+                    return Err(Error::arg_validation("to", to, None))?;
                 }
                 let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
                 MultiAddr::from_str(&format!(
@@ -144,7 +144,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     ))?;
     display_parse_logs(&opts);
 
-    let mut node = BackgroundNode::create(&ctx, &opts.state, &cmd.at).await?;
+    let mut node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
     cmd.timeout.map(|t| node.set_timeout(t));
 
     let is_finished: Mutex<bool> = Mutex::new(false);
@@ -152,7 +152,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let create_inlet = async {
         port_is_free_guard(&cmd.from)?;
         if cmd.to().matches(0, &[Project::CODE.into()]) && cmd.authorized.is_some() {
-            return Err(miette!("--authorized can not be used with project addresses").into());
+            return Err(miette!(
+                "--authorized can not be used with project addresses"
+            ))?;
         }
 
         let inlet = loop {

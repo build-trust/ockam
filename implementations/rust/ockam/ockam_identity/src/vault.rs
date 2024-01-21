@@ -54,25 +54,25 @@ impl Vault {
     /// Create [`SoftwareVaultForSigning`] with an in-memory storage
     #[cfg(feature = "storage")]
     pub async fn create_identity_vault() -> Result<Arc<dyn VaultForSigning>> {
-        Ok(Arc::new(SoftwareVaultForSigning::new(
+        Ok(Arc::new(SoftwareVaultForSigning::new(Arc::new(
             SecretsSqlxDatabase::create().await?,
-        )))
+        ))))
     }
 
     /// Create [`SoftwareSecureChannelVault`] with an in-memory storage
     #[cfg(feature = "storage")]
     pub async fn create_secure_channel_vault() -> Result<Arc<dyn VaultForSecureChannels>> {
-        Ok(Arc::new(SoftwareVaultForSecureChannels::new(
+        Ok(Arc::new(SoftwareVaultForSecureChannels::new(Arc::new(
             SecretsSqlxDatabase::create().await?,
-        )))
+        ))))
     }
 
     /// Create [`SoftwareVaultForSigning`] with an in-memory storage
     #[cfg(feature = "storage")]
     pub async fn create_credential_vault() -> Result<Arc<dyn VaultForSigning>> {
-        Ok(Arc::new(SoftwareVaultForSigning::new(
+        Ok(Arc::new(SoftwareVaultForSigning::new(Arc::new(
             SecretsSqlxDatabase::create().await?,
-        )))
+        ))))
     }
 
     /// Create [`SoftwareVaultForVerifyingSignatures`]
@@ -84,7 +84,7 @@ impl Vault {
 impl Vault {
     /// Create Software Vaults and persist them to a sql database
     #[cfg(feature = "storage")]
-    pub fn create_with_database(database: Arc<SqlxDatabase>) -> Vault {
+    pub fn create_with_database(database: SqlxDatabase) -> Vault {
         Self::create_with_secrets_repository(Arc::new(SecretsSqlxDatabase::new(database)))
     }
 

@@ -14,7 +14,7 @@ use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
-use ockam_api::cloud::Controller;
+use ockam_api::cloud::ControllerClient;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
@@ -193,7 +193,7 @@ async fn retrieve_user_project(
 
 /// Enroll a user with a token, using the controller
 pub async fn enroll_with_node(
-    controller: &Controller,
+    controller: &ControllerClient,
     ctx: &Context,
     token: OidcToken,
 ) -> miette::Result<()> {

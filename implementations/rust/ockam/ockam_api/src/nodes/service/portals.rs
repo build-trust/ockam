@@ -22,9 +22,8 @@ use crate::nodes::models::portal::{
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::default_address::DefaultAddress;
-use crate::nodes::service::policy::Policies;
 use crate::nodes::service::{actions, random_alias, resources};
-use crate::nodes::{BackgroundNode, InMemoryNode};
+use crate::nodes::{BackgroundNodeClient, InMemoryNode, Policies};
 use crate::session::sessions::{
     ConnectionStatus, Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
 };
@@ -117,6 +116,7 @@ impl NodeManagerWorker {
                 worker_addr,
                 alias,
                 reachable_from_default_secure_channel,
+                None,
             )
             .await
         {
@@ -173,6 +173,7 @@ impl NodeManager {
         worker_addr: Address,
         alias: Option<String>,
         reachable_from_default_secure_channel: bool,
+        access_control: Option<Arc<dyn IncomingAccessControl>>,
     ) -> Result<OutletStatus> {
         info!(
             "Handling request to create outlet portal at {:?} with worker {:?}",
@@ -195,14 +196,17 @@ impl NodeManager {
             ));
         }
 
-        let access_control = self
-            .access_control(
+        let access_control = if let Some(access_control) = access_control {
+            access_control
+        } else {
+            self.access_control(
                 &resource,
                 &actions::HANDLE_MESSAGE,
                 self.trust_context_id().as_deref(),
                 None,
             )
-            .await?;
+            .await?
+        };
 
         let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
         let options = if self.trust_context_id().is_none() {
@@ -725,7 +729,7 @@ pub trait Inlets {
 }
 
 #[async_trait]
-impl Inlets for BackgroundNode {
+impl Inlets for BackgroundNodeClient {
     async fn create_inlet(
         &self,
         ctx: &Context,

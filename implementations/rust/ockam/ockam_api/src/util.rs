@@ -375,7 +375,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 #[cfg(test)]
 pub mod test_utils {
     use ockam::identity::utils::AttributesBuilder;
-    use ockam::identity::MAX_CREDENTIAL_VALIDITY;
+    use ockam::identity::DEFAULT_CREDENTIAL_VALIDITY;
     use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
@@ -443,7 +443,7 @@ pub mod test_utils {
                 &identifier,
                 &identifier,
                 attributes,
-                MAX_CREDENTIAL_VALIDITY,
+                DEFAULT_CREDENTIAL_VALIDITY,
             )
             .await
             .unwrap();
