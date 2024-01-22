@@ -3824,7 +3824,7 @@ dependencies = [
  "rustyline",
  "rustyline-derive",
  "sqlx",
- "str-buf 3.0.2",
+ "str-buf 3.0.3",
  "tempfile",
  "tokio",
  "tracing",
@@ -6096,9 +6096,9 @@ checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
 
 [[package]]
 name = "str-buf"
-version = "3.0.2"
+version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e75b72ee54e2f93c3ea1354066162be893ee5e25773ab743de3e088cecbb4f31"
+checksum = "0ceb97b7225c713c2fd4db0153cb6b3cab244eb37900c3f634ed4d43310d8c34"
 
 [[package]]
 name = "string"
