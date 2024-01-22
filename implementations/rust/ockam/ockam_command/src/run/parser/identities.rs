@@ -1,25 +1,25 @@
-use crate::node::CreateCommand;
+use crate::identity::CreateCommand;
 use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, ResourcesContainer};
-use crate::{node, OckamSubcommand};
+use crate::{identity, OckamSubcommand};
 use miette::{miette, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Nodes {
-    pub nodes: Option<ResourcesContainer>,
+pub struct Identities {
+    pub identities: Option<ResourcesContainer>,
 }
 
-impl ArgsToCommands<CreateCommand> for Nodes {
+impl ArgsToCommands<CreateCommand> for Identities {
     fn into_commands(self) -> Result<Vec<CreateCommand>> {
         let get_subcommand = |args: &[String]| -> Result<CreateCommand> {
-            if let OckamSubcommand::Node(cmd) = parse_cmd_from_args("node create", args)? {
-                if let node::NodeSubcommand::Create(c) = cmd.subcommand {
+            if let OckamSubcommand::Identity(cmd) = parse_cmd_from_args("identity create", args)? {
+                if let identity::IdentitySubcommand::Create(c) = cmd.subcommand {
                     return Ok(c);
                 }
             }
             Err(miette!("Failed to parse command"))
         };
-        match self.nodes {
+        match self.identities {
             Some(c) => c.into_commands(get_subcommand),
             None => Ok(vec![]),
         }
@@ -32,72 +32,81 @@ mod tests {
     use miette::IntoDiagnostic;
 
     #[test]
-    fn single_node_config() {
+    fn single_identity_config() {
         let test = |c: &str| {
-            let parsed: Nodes = serde_yaml::from_str(c).unwrap();
+            let parsed: Identities = serde_yaml::from_str(c).unwrap();
             let cmds = parsed.into_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
-            assert_eq!(cmd.node_name, "n1");
+            assert_eq!(cmd.name, "i1");
         };
 
         // Name only
         let config = r#"
-            nodes:
-              - n1
+            identities:
+              - i1
         "#;
         test(config);
 
         let config = r#"
-            nodes: n1
+            identities: i1
         "#;
         test(config);
 
         // Config only
         let config = r#"
-            nodes:
-              n1:
-                identity: i1
+            identities:
+              i1:
+                vault: v1
         "#;
         test(config);
     }
 
     #[test]
-    fn multiple_node_config() {
+    fn multiple_identity_config() {
         let test = |c: &str| {
-            let parsed: Nodes = serde_yaml::from_str(c).unwrap();
+            let parsed: Identities = serde_yaml::from_str(c).unwrap();
             let cmds = parsed.into_commands().unwrap();
             assert_eq!(cmds.len(), 2);
-            assert_eq!(cmds[0].node_name, "n1");
-            assert_eq!(cmds[1].node_name, "n2");
+            assert_eq!(cmds[0].name, "i1");
+            assert_eq!(cmds[1].name, "i2");
         };
 
         // Name only
         let config = r#"
-            nodes:
-              - n1
-              - n2
+            identities:
+              - i1
+              - i2
         "#;
         test(config);
 
         // Config only
         let config = r#"
-            nodes:
-              n1:
-                identity: i1
-              n2:
-                project: p1
+            identities:
+              i1:
+                vault: v1
+              i2:
+                vault: v1
         "#;
         test(config);
 
-        // Mixing name and args will fail
+        // Mixing name and args as a list
         let config = r#"
-            nodes:
-              - n1
-              n2:
-                identity: i1
+            identities:
+              - i1
+              - i2:
+                  vault: v1
         "#;
-        let parsed: Result<Nodes> = serde_yaml::from_str(config).into_diagnostic();
+        test(config);
+
+        // Mixing name and args as a map will fail
+        let config = r#"
+            identities:
+              i1:
+              i2:
+                vault: v1
+        "#;
+        let parsed: Result<Identities> = serde_yaml::from_str(config).into_diagnostic();
         assert!(parsed.is_err());
     }
 }

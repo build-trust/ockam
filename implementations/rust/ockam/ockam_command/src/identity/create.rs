@@ -3,7 +3,6 @@ use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::random_name;
 
@@ -22,15 +21,15 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = random_name())]
-    name: String,
+    pub name: String,
 
     /// Vault name to store the identity key
     #[arg(long, value_name = "VAULT_NAME", global = true)]
-    vault: Option<String>,
+    pub vault: Option<String>,
 
     /// Key ID to use for the identity creation
     #[arg(short, long)]
-    key_id: Option<String>,
+    pub key_id: Option<String>,
 }
 
 impl CreateCommand {
@@ -47,13 +46,13 @@ impl CreateCommand {
     }
 
     async fn run_impl(
-        _ctx: Context,
+        ctx: Context,
         (options, cmd): (CommandGlobalOpts, CreateCommand),
     ) -> miette::Result<()> {
-        cmd.create_identity(options).await.map(|_| ())
+        cmd.async_run(&ctx, options).await
     }
 
-    pub async fn create_identity(&self, opts: CommandGlobalOpts) -> miette::Result<Identifier> {
+    pub async fn async_run(&self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         opts.terminal.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self
@@ -125,6 +124,6 @@ impl CreateCommand {
             .machine(identifier.clone())
             .json(serde_json::json!({ "identifier": &identifier }))
             .write_line()?;
-        Ok(identifier.clone())
+        Ok(())
     }
 }

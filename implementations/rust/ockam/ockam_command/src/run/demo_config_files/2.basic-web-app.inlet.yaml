@@ -1,17 +1,16 @@
 # https://docs.ockam.io/guides/examples/basic-web-app
-version: '1'
+version: 1
 
 projects:
   enroll:
-    - ticket: webapp.ticket
+    ticket: webapp.ticket
 
-nodes:
-  - web
+nodes: web
 
 policies:
-  - at: web
-    resource: tcp-inlet
-    expression: '(= subject.component "db")'
+  at: web
+  resource: tcp-inlet
+  expression: '(= subject.component "db")'
 
 tcp-inlets:
   web-inlet:

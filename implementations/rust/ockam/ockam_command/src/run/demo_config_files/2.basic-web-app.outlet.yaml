@@ -1,21 +1,19 @@
 # https://docs.ockam.io/guides/examples/basic-web-app
-version: '1'
+version: 1
 
 projects:
   enroll:
-    - ticket: db.ticket
+    ticket: db.ticket
 
-nodes:
-  - db
+nodes: db
+
+relays: db
 
 policies:
-  - at: db
-    resource: tcp-outlet
-    expression: '(= subject.component "web")'
+  at: db
+  resource: tcp-outlet
+  expression: '(= subject.component "web")'
 
 tcp-outlets:
   db-outlet:
     to: $PG_PORT
-
-relays:
-  - db

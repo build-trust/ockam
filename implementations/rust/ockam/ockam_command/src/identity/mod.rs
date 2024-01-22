@@ -25,7 +25,7 @@ long_about = docs::about(LONG_ABOUT),
 )]
 pub struct IdentityCommand {
     #[command(subcommand)]
-    subcommand: IdentitySubcommand,
+    pub subcommand: IdentitySubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
