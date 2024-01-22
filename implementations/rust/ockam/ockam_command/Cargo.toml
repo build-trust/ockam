@@ -88,7 +88,7 @@ r3bl_rs_utils_core = "0.9.12"
 r3bl_tui = "0.5.2"
 r3bl_tuify = "0.1.25"
 rand = "0.8"
-regex = "1.10.2"
+regex = "1.10.3"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots", "blocking"] }
 rustls = "0.22.2"
 rustls-native-certs = "0.7.0"
