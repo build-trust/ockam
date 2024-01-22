@@ -6,8 +6,27 @@ defmodule Ockam.API.Request.Tests do
   alias Ockam.Message
 
   test "Encode/decode" do
-    ## Only these 4 firelds are encoded
-    request = %Request{id: Request.gen_id(), path: "my_path", method: :get, body: "something"}
+    request = %Request{
+      id: Request.gen_id(),
+      path: "my_path",
+      method: :get,
+      body: "something"
+    }
+
+    encoded = Request.encode!(request)
+    {:ok, decoded} = Request.decode(encoded)
+    assert request == decoded
+  end
+
+  test "supports an optional tracing context" do
+    request = %Request{
+      id: Request.gen_id(),
+      path: "my_path",
+      method: :get,
+      body: "with_tracing",
+      tracing_context: "{\"traceparent\":\"00-1234-01\",\"tracestate\":{}}"
+    }
+
     encoded = Request.encode!(request)
     {:ok, decoded} = Request.decode(encoded)
     assert request == decoded
