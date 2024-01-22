@@ -6,15 +6,29 @@ pub struct Version {
     pub version: VersionValue,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum VersionValue {
-    #[serde(rename = "1")]
-    V1,
+    String(String),
+    Int(u8),
 }
 
 impl VersionValue {
     pub fn latest() -> Self {
-        VersionValue::V1
+        VersionValue::Int(1)
+    }
+
+    pub fn value(&self) -> u8 {
+        match self {
+            VersionValue::String(s) => s.parse().unwrap_or(Self::latest().value()),
+            VersionValue::Int(i) => *i,
+        }
+    }
+}
+
+impl PartialEq for VersionValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.value() == other.value()
     }
 }
 
@@ -26,6 +40,10 @@ mod tests {
     fn version_config() {
         let config = "version: '1'";
         let parsed: Version = serde_yaml::from_str(config).unwrap();
-        assert_eq!(parsed.version, VersionValue::V1);
+        assert_eq!(parsed.version, VersionValue::Int(1));
+
+        let config = "version: 1";
+        let parsed: Version = serde_yaml::from_str(config).unwrap();
+        assert_eq!(parsed.version, VersionValue::Int(1));
     }
 }

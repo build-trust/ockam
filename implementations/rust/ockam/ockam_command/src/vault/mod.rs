@@ -5,7 +5,7 @@ mod move_vault;
 mod show;
 mod util;
 
-use crate::vault::create::CreateCommand;
+pub use crate::vault::create::CreateCommand;
 use crate::vault::delete::DeleteCommand;
 use crate::vault::list::ListCommand;
 use crate::vault::move_vault::MoveCommand;
@@ -25,7 +25,7 @@ long_about = docs::about(LONG_ABOUT),
 )]
 pub struct VaultCommand {
     #[command(subcommand)]
-    subcommand: VaultSubcommand,
+    pub subcommand: VaultSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

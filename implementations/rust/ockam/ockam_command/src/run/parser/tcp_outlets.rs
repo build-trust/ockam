@@ -1,4 +1,4 @@
-use crate::run::parser::{parse_cmd_from_args, ArgsToCommands, ResourcesNamesAndArgs};
+use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, ResourceNameOrMap};
 use crate::tcp::outlet::create::CreateCommand;
 use crate::{tcp::outlet, OckamSubcommand};
 use miette::{miette, Result};
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct TcpOutlets {
     #[serde(alias = "tcp-outlets")]
-    pub tcp_outlets: Option<ResourcesNamesAndArgs>,
+    pub tcp_outlets: Option<ResourceNameOrMap>,
 }
 
 impl ArgsToCommands<CreateCommand> for TcpOutlets {

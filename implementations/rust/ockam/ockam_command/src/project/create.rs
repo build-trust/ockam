@@ -40,27 +40,23 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(options.rt.clone(), rpc, (options, self));
     }
+
+    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let project = node
+            .create_project(ctx, &self.space_name, &self.project_name, vec![])
+            .await?;
+        let project = check_for_project_completion(&opts, ctx, &node, project).await?;
+        let project = check_project_readiness(&opts, ctx, &node, project).await?;
+        opts.terminal
+            .stdout()
+            .plain(project.output()?)
+            .json(serde_json::json!(&project))
+            .write_line()?;
+        Ok(())
+    }
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
-
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: CreateCommand,
-) -> miette::Result<()> {
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let project = node
-        .create_project(ctx, &cmd.space_name, &cmd.project_name, vec![])
-        .await?;
-    let project = check_for_project_completion(&opts, ctx, &node, project).await?;
-    let project = check_project_readiness(&opts, ctx, &node, project).await?;
-    opts.terminal
-        .stdout()
-        .plain(project.output()?)
-        .json(serde_json::json!(&project))
-        .write_line()?;
-    Ok(())
+    cmd.async_run(&ctx, opts).await
 }

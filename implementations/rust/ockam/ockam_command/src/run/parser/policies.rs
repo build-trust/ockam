@@ -1,12 +1,12 @@
 use crate::policy::CreateCommand;
-use crate::run::parser::{parse_cmd_from_args, ArgsToCommands, ResourcesArgs};
+use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, UnnamedResources};
 use crate::{policy, OckamSubcommand};
 use miette::{miette, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Policies {
-    pub policies: Option<ResourcesArgs>,
+    pub policies: Option<UnnamedResources>,
 }
 
 impl ArgsToCommands<CreateCommand> for Policies {
@@ -31,7 +31,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tcp_policy_config() {
+    fn single_policy_config() {
+        let config = r#"
+            policies:
+              at: n1
+              resource: r1
+              expression: (= subject.component "c1")
+        "#;
+        let parsed: Policies = serde_yaml::from_str(config).unwrap();
+        let cmds = parsed.into_commands().unwrap();
+        assert_eq!(cmds.len(), 1);
+        assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
+        assert_eq!(&cmds[0].resource.to_string(), "r1");
+        assert_eq!(
+            &cmds[0].expression.to_string(),
+            "(= subject.component \"c1\")"
+        );
+    }
+
+    #[test]
+    fn multiple_policy_config() {
         let config = r#"
             policies:
               - at: n1

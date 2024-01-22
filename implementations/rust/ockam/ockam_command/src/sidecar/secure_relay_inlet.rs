@@ -87,7 +87,7 @@ impl SecureRelayInlet {
             recipe.as_str().dark_gray()
         ))?;
 
-        ConfigRunner::go(&ctx, opts, &recipe).await
+        ConfigRunner::run_config(&ctx, opts, &recipe).await
     }
 
     fn create_config_recipe(&self) -> String {
@@ -120,8 +120,7 @@ impl SecureRelayInlet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::run::parser::ArgsToCommands;
-    use crate::run::Config;
+    use crate::run::parser::{ArgsToCommands, Config};
     use ockam::identity::OneTimeCode;
     use ockam_api::EnrollmentTicket;
     use std::str::FromStr;
