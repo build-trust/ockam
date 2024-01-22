@@ -46,7 +46,7 @@ rusqlite = { version = "0.30.0", optional = true }
 rustyline = { version = "13.0.0", optional = true }
 rustyline-derive = { version = "0.10.0", optional = true }
 sqlx = { version = "0.7.3", optional = true }
-str-buf = "3.0.1"
+str-buf = "3.0.3"
 tokio = { version = "1.35", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false }
 wast = { version = "70.0.0", default-features = false, optional = true }
