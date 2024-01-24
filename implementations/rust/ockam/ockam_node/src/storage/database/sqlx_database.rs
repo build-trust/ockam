@@ -144,11 +144,13 @@ impl SqlxDatabase {
     }
 
     /// Map a sqlx error into an ockam error
+    #[track_caller]
     pub fn map_sql_err(err: sqlx::Error) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 
     /// Map a sqlx migration error into an ockam error
+    #[track_caller]
     pub fn map_migrate_err(err: sqlx::migrate::MigrateError) -> Error {
         Error::new(
             Origin::Application,
@@ -158,6 +160,7 @@ impl SqlxDatabase {
     }
 
     /// Map a minicbor decode error into an ockam error
+    #[track_caller]
     pub fn map_decode_err(err: minicbor::decode::Error) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
@@ -170,6 +173,7 @@ pub trait FromSqlxError<T> {
 }
 
 impl<T> FromSqlxError<T> for core::result::Result<T, sqlx::error::Error> {
+    #[track_caller]
     fn into_core(self) -> Result<T> {
         self.map_err(|e| Error::new(Origin::Api, Kind::Internal, e.to_string()))
     }
