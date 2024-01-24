@@ -105,15 +105,10 @@ defmodule Ockam.Services.API.Endpoint do
 
       @impl true
       def setup(options, state) do
-        {:ok, endpoint_state, routes} = init_endpoint(options)
-
-        case DispatchTable.compile_dispatch_table(routes) do
-          {:ok, dispatch_table} ->
-            {:ok,
-             Map.merge(state, %{dispatch_table: dispatch_table, endpoint_state: endpoint_state})}
-
-          error ->
-            error
+        with {:ok, endpoint_state, routes} <- init_endpoint(options),
+             {:ok, dispatch_table} <- DispatchTable.compile_dispatch_table(routes) do
+          {:ok,
+           Map.merge(state, %{dispatch_table: dispatch_table, endpoint_state: endpoint_state})}
         end
       end
 

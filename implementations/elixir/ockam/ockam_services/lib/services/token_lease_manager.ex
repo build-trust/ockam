@@ -104,22 +104,26 @@ defmodule Ockam.Services.TokenLeaseManager do
 
   defp initialization(options) do
     {cloud_service_module, cloud_options} = options[:cloud_service]
-    {:ok, cloud_service_config} = cloud_service_module.init(cloud_options)
-    {:ok, leases} = cloud_service_module.get_all(cloud_service_config)
-    Logger.info("Loading #{Enum.count(leases)} leases from backend service")
     storage_service_module = options[:storage_service_module]
-    {:ok, storage_service_config} = storage_service_module.init(leases: leases)
-    ttl = options[:ttl]
-    Enum.each(leases, &schedule_expire/1)
 
-    {:ok,
-     %{
-       cloud_service: cloud_service_module,
-       cloud_service_config: cloud_service_config,
-       storage_service: storage_service_module,
-       storage_service_config: storage_service_config,
-       ttl: ttl
-     }}
+    with {:ok, cloud_service_config} <- cloud_service_module.init(cloud_options),
+         {:ok, leases} <- cloud_service_module.get_all(cloud_service_config),
+         _ <- Logger.info("Loading #{Enum.count(leases)} leases from backend service"),
+         {:ok, storage_service_config} <- storage_service_module.init(leases: leases) do
+      ttl = options[:ttl]
+      Enum.each(leases, &schedule_expire/1)
+
+      {:ok,
+       %{
+         cloud_service: cloud_service_module,
+         cloud_service_config: cloud_service_config,
+         storage_service: storage_service_module,
+         storage_service_config: storage_service_config,
+         ttl: ttl
+       }}
+    else
+      error -> {:error, {:error_initializing_token_lease_manager, error}}
+    end
   end
 
   def schedule_expire(lease) do
