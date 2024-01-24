@@ -3,7 +3,6 @@
 # https://docs.ockam.io/use-cases
 
 # ===== SETUP
-
 setup_file() {
   load load/base.bash
 }
@@ -16,12 +15,16 @@ setup() {
 }
 
 teardown() {
+  kill_kafka_contents || true
+  kill_flask_server || true
+  kill_telegraf_instace || true
   teardown_home_dir
 }
 
 # ===== TESTS
 
 # https://docs.ockam.io/guides/use-cases/add-end-to-end-encryption-to-any-client-and-server-application-with-no-code-change
+# Please update the docs repository if this bats test is updated
 @test "use-case - end-to-end encryption, local" {
   port="$(random_port)"
   run_success "$OCKAM" node create relay
@@ -42,28 +45,25 @@ teardown() {
 }
 
 # https://docs.ockam.io/
+# Please update the docs repository if this bats test is updated
 @test "use-case - end-to-end encryption, orchestrator" {
   skip_if_orchestrator_tests_not_enabled
   copy_local_orchestrator_data
 
-  port="$(random_port)"
+  inlet_port="$(random_port)"
 
   # Service
-  run_success "$OCKAM" node create s
-  run_success "$OCKAM" tcp-outlet create --at /node/s --to 127.0.0.1:5000
-
-  fwd=$(random_str)
-  run_success "$OCKAM" relay create "$fwd" --to /node/s
+  run_success "$OCKAM" tcp-outlet create --to 5000
+  run_success "$OCKAM" relay create
 
   # Client
-  run_success "$OCKAM" node create c
-  run_success bash -c "$OCKAM secure-channel create --from /node/c --to /project/default/service/forward_to_$fwd/service/api \
-              | $OCKAM tcp-inlet create --at /node/c --from 127.0.0.1:$port --to -/service/outlet"
+  run_success $OCKAM tcp-inlet create --from "$inlet_port"
 
-  run_success curl --head --max-time 10 "127.0.0.1:$port"
+  run_success curl --head --max-time 10 "127.0.0.1:$inlet_port"
 }
 
 # https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac
+# Please update the docs repository if this bats test is updated
 @test "use-case - abac" {
   skip_if_orchestrator_tests_not_enabled
   copy_local_orchestrator_data
@@ -73,27 +73,28 @@ teardown() {
   fwd=$(random_str)
 
   # Administrator
-  cp1_token=$($OCKAM project ticket --attribute component=control --relay $fwd)
-  ep1_token=$($OCKAM project ticket --attribute component=edge)
-  x_token=$($OCKAM project ticket --attribute component=x)
+  ADMIN_HOME="$OCKAM_HOME"
+  run_success bash -c "$OCKAM project ticket --attribute component=control --relay $fwd > $OCKAM_HOME/control.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute component=edge > $OCKAM_HOME/edge.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute component=x > $OCKAM_HOME/x.ticket"
 
   # Control plane
   setup_home_dir
   run_success "$OCKAM" project import --project-file $PROJECT_PATH
 
-  $OCKAM identity create control_identity
-  $OCKAM project enroll $cp1_token --identity control_identity
-  $OCKAM node create control_plane1 --identity control_identity
-  $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
-  $OCKAM tcp-outlet create --at /node/control_plane1 --to 127.0.0.1:5000
-  run_success "$OCKAM" relay create "$fwd" --to /node/control_plane1
+  run_success $OCKAM identity create control_identity
+  run_success $OCKAM project enroll "$ADMIN_HOME/control.ticket" --identity control_identity
+  run_success $OCKAM node create control_plane1 --identity control_identity
+  run_success $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
+  run_success $OCKAM tcp-outlet create --at /node/control_plane1 --to 127.0.0.1:5000
+  run_success "$OCKAM" relay create "$fwd" --at /project/default --to /node/control_plane1
 
   # Edge plane
   setup_home_dir
   run_success "$OCKAM" project import --project-file $PROJECT_PATH
 
   $OCKAM identity create edge_identity
-  $OCKAM project enroll $ep1_token --identity edge_identity
+  $OCKAM project enroll "$ADMIN_HOME/edge.ticket" --identity edge_identity
   $OCKAM node create edge_plane1 --identity edge_identity
   $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "$fwd"
@@ -101,10 +102,366 @@ teardown() {
 
   ## The following is denied
   $OCKAM identity create x_identity
-  $OCKAM project enroll $x_token --identity x_identity
+  $OCKAM project enroll "$ADMIN_HOME/x.ticket" --identity x_identity
   $OCKAM node create x --identity x_identity
   $OCKAM policy create --at x --resource tcp-inlet --expression '(= subject.component "control")'
   $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "$fwd"
   run curl --fail --head --max-time 10 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
+}
+
+start_python_server() {
+  pushd $OCKAM_HOME
+
+  cat >main.py <<-EOM
+import os
+import psycopg2
+from flask import Flask
+CREATE_TABLE = (
+  "CREATE TABLE IF NOT EXISTS events (id SERIAL PRIMARY KEY, name TEXT);"
+)
+INSERT_RETURN_ID = "INSERT INTO events (name) VALUES (%s) RETURNING id;"
+app = Flask(__name__)
+pg_port = os.environ['APP_PG_PORT']
+url = "postgres://postgres:password@localhost:%s/"%pg_port
+connection = psycopg2.connect(url)
+
+@app.route("/")
+def hello_world():
+  with connection:
+    with connection.cursor() as cursor:
+        cursor.execute(CREATE_TABLE)
+        cursor.execute(INSERT_RETURN_ID, ("",))
+        id = cursor.fetchone()[0]
+  return "I've been visited {} times".format(id), 201
+EOM
+
+  flask --app main run -p "$FLASK_PORT" &>>$OCKAM_HOME/file.log &
+  pid="$!"
+  echo "$pid" >"flask.pid"
+  sleep 5
+  popd
+}
+
+kill_flask_server() {
+  pid=$(cat "${OCKAM_HOME}/flask.pid")
+  kill -9 "$pid" || true
+  wait "$pid" 2>>/dev/null || true
+}
+
+# https://docs.ockam.io/guides/examples/basic-web-app
+# Please update the docs repository if this bats test is updated
+@test "use-case - basic-web-app" {
+  skip_if_docs_tests_not_enabled
+  copy_local_orchestrator_data
+
+  export OCKAM_PG_PORT=5433
+  export OCKAM_PG_PORT_MACHINE_C=5434
+  export PG_PORT=5432
+  export FLASK_PORT="$(random_port)"
+
+  MACHINE_A="$OCKAM_HOME"
+  run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT"
+  run_success $OCKAM relay create
+
+  run_success $OCKAM tcp-inlet create --from $OCKAM_PG_PORT
+
+  # Kickstart webserver
+  export APP_PG_PORT="$OCKAM_PG_PORT"
+  run_success start_python_server
+
+  # Visit website
+  run_success curl "http://127.0.0.1:$FLASK_PORT"
+  assert_output --partial "I've been visited 1 times"
+  # Visit website second time
+  run_success curl "http://127.0.0.1:$FLASK_PORT"
+  assert_output --partial "I've been visited 2 times"
+
+  run_success kill_flask_server
+
+  # Run the web app on different machines
+
+  # On machine A
+  run_success bash -c "$OCKAM project ticket --attribute component=db --relay db > ${MACHINE_A}/db.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute component=web > ${MACHINE_A}/webapp.ticket"
+
+  # Machine B
+  setup_home_dir
+  run_success $OCKAM identity create db
+  run_success $OCKAM project enroll "${MACHINE_A}/db.ticket" --identity db
+  run_success $OCKAM node create db --identity db
+  run_success $OCKAM policy create --at db --resource tcp-outlet --expression '(= subject.component "web")'
+  run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT"
+  run_success $OCKAM relay create db
+
+  # Machine C
+  setup_home_dir
+  run_success $OCKAM identity create web
+  run_success $OCKAM project enroll ${MACHINE_A}/webapp.ticket --identity web
+  run_success $OCKAM node create web --identity web
+  run_success $OCKAM policy create --at web --resource tcp-inlet --expression '(= subject.component "db")'
+  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --to db
+
+  export APP_PG_PORT="$OCKAM_PG_PORT_MACHINE_C"
+  run_success start_python_server
+
+  # Visit website
+  run_success curl "http://127.0.0.1:$FLASK_PORT"
+  assert_output --partial "I've been visited 3 times"
+  # Visit website second time
+  run_success curl "http://127.0.0.1:$FLASK_PORT"
+  assert_output --partial "I've been visited 4 times"
+}
+
+# https://docs.ockam.io/guides/examples/create-secure-communication-with-a-private-database-from-anywhere
+# Please update the docs repository if this bats test is updated
+@test "use-case - create-secure-communication-with-a-private-database-from-anywhere" {
+  skip_if_docs_tests_not_enabled
+  copy_local_orchestrator_data
+
+  export PGHOST="$PG_HOST"
+  export PGPASSWORD="password"
+  run_success createdb -U postgres app_db
+
+  run_success "$OCKAM" tcp-outlet create --to "$PG_HOST:5432"
+  run_success "$OCKAM" relay create
+
+  run_success $OCKAM tcp-inlet create --from 7777
+  # Call the list database -l
+  run_success psql --host="127.0.0.1" --port=7777 -U postgres app_db -l
+}
+
+# https://docs.ockam.io/guides/examples/okta
+# Please update the docs repository if this bats test is updated
+@test "use-case - okta" {
+  skip "not yet finalized" # We require an okta login we performing ockam enroll --okta, enrolling automatically isn't supported right now
+  skip_if_docs_tests_not_enabled
+  copy_local_orchestrator_data
+
+  ADMIN_HOME="$OCKAM_HOME"
+  run_success "$OCKAM" project addon configure okta \
+    --tenant "$OKTA_TENANT" --client-id "$OKTA_CLIENT_ID" \
+    --attribute email --attribute city --attribute department
+
+  run_success bash -c "$OCKAM project information --output json > project.json"
+
+  # Generate enrollment tickets
+  run_success bash -c "$OCKAM project ticket --attribute application='Smart Factory' --attribute city='San Francisco' --relay m1 > m1.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute application='Smart Factory' --attribute city='New York' --relay m2 > m2.ticket"
+
+  # Machine 1
+  setup_home_dir
+  run_success "$OCKAM" identity create m1
+  run_success "$OCKAM" project enroll m1.ticket --identity m1
+  run_success "$OCKAM" node create m1 --identity m1
+  run_success "$OCKAM" policy create --at m1 --resource tcp-outlet \
+    --expression '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "San Francisco")))'
+  run_success "$OCKAM" tcp-outlet create --at /node/m1 --from /service/outlet --to 127.0.0.1:5000
+  run_success "$OCKAM" relay create m1 --at /project/default --to /node/m1
+
+  # Machine 2
+  setup_home_dir
+  run_success "$OCKAM" identity create m2
+  run_success "$OCKAM" project enroll m2.ticket --identity m2
+  run_success "$OCKAM" node create m2 --identity m2
+  run_success "$OCKAM" policy create --at m2 --resource tcp-outlet \
+    --expression '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "New York")))'
+  run_success "$OCKAM" tcp-outlet create --at /node/m2 --from /service/outlet --to 127.0.0.1:6000
+  run_success "$OCKAM" relay create m2 --at /project/default --to /node/m2
+
+  # Alice
+  setup_home_dir
+  run_success "$OCKAM" project import --project-file project.json
+  run_success "$OCKAM" project enroll --okta
+  run_success "$OCKAM" node create alice
+  run_success "$OCKAM" policy create --at alice --resource tcp-inlet --expression '(= subject.application "Smart Factory")'
+
+  # Alice request to access Machine 1 in San Francisco is allowed
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --to m1
+  run_success curl --head 127.0.0.1:8000
+
+  # Alice request to access Machine 2 in New York is denied
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --to m2
+  run_failure curl --head 127.0.0.1:9000
+}
+
+kill_kafka_contents() {
+  kafka-topics.sh --bootstrap-server localhost:4000 --command-config "$KAFKA_CONFIG" --delete --topic $DEMO_TOPIC || true
+
+  pid=$(cat "$ADMIN_HOME/kafka.pid") || return
+  kill -9 "$pid"
+  wait "$pid" 2>>/dev/null || true
+}
+
+# https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka
+# Please update the docs repository if this bats test is updated
+@test "use-case - end-to-end-encrypted-kafka" {
+  skip_if_docs_tests_not_enabled
+  copy_local_orchestrator_data
+
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+  run_success "$OCKAM" project addon configure confluent --bootstrap-server "$CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS"
+  run_success bash -c "$OCKAM project ticket --attribute role=member --relay '*' > ${ADMIN_HOME}/consumer.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute role=member --relay '*' > ${ADMIN_HOME}/producer1.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute role=member --relay '*' > ${ADMIN_HOME}/producer2.ticket"
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export KAFKA_CONFIG="$ADMIN_HOME/kafka.config"
+
+  cat >"$KAFKA_CONFIG" <<EOF
+request.timeout.ms=30000
+security.protocol=SASL_PLAINTEXT
+sasl.mechanism=PLAIN
+sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+        username="$CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY" \
+        password="$CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET";
+EOF
+
+  export DEMO_TOPIC="$(random_str)"
+
+  # Consumer
+  setup_home_dir
+  run_success "$OCKAM" identity create consumer
+  run_success "$OCKAM" project enroll "${ADMIN_HOME}/consumer.ticket" --identity consumer
+  run_success "$OCKAM" node create consumer --identity consumer
+  run_success "$OCKAM" kafka-consumer create --at consumer
+
+  run kafka-topics.sh --bootstrap-server localhost:4000 --command-config "$KAFKA_CONFIG" --create --topic "$DEMO_TOPIC" --partitions 3
+  kafka-console-consumer.sh --topic "$DEMO_TOPIC" \
+    --bootstrap-server localhost:4000 --consumer.config "$KAFKA_CONFIG" >"$CONSUMER_OUTPUT" 2>&1 &
+
+  consumer_pid="$!"
+  echo "$consumer_pid" >"$ADMIN_HOME/kafka.pid"
+
+  # Producer 1
+  run_success "$OCKAM" identity create producer1
+  run_success "$OCKAM" project enroll "${ADMIN_HOME}/producer1.ticket" --identity producer1
+  run_success "$OCKAM" node create producer1 --identity producer1
+  run_success "$OCKAM" kafka-producer create --at producer1 --bootstrap-server 127.0.0.1:6000
+
+  run bash -c "echo 'Hello from producer 1' | kafka-console-producer.sh --topic $DEMO_TOPIC \
+    --bootstrap-server localhost:6000 \
+    --producer.config $KAFKA_CONFIG"
+
+  run_success cat $CONSUMER_OUTPUT
+  assert_output "Hello from producer 1"
+
+  # Producer 2
+  setup_home_dir
+  run_success "$OCKAM" identity create producer2
+  run_success "$OCKAM" project enroll "${ADMIN_HOME}/producer2.ticket" --identity producer2
+  run_success "$OCKAM" node create producer2 --identity producer2
+
+  run_success "$OCKAM" kafka-producer create --at producer2 \
+    --bootstrap-server 127.0.0.1:7000
+
+  run_success bash -c "echo 'Hello from producer 2' | kafka-console-producer.sh --topic $DEMO_TOPIC \
+    --bootstrap-server localhost:7000 \
+    --producer.config $KAFKA_CONFIG"
+
+  run_success cat $CONSUMER_OUTPUT
+  assert_output --partial "Hello from producer 2"
+}
+
+start_telegraf_instance() {
+  telegraf_conf="$(mktemp)/telegraf.conf"
+
+  cat >$telegraf_conf <<EOF
+[[outputs.influxdb_v2]]
+  urls = ["http://127.0.0.1:${INFLUX_PORT}"]
+  token = "${INFLUX_TOKEN}"
+  organization = "${INFLUX_ORG}"
+  bucket = "${INFLUX_BUCKET}"
+
+[[inputs.cpu]]
+EOF
+
+  telegraf --config $telegraf_conf &
+  pid="$!"
+  echo "$pid" >"${ADMIN_HOME}/telegraf.pid"
+  sleep 5
+}
+
+kill_telegraf_instace() {
+  pid=$(cat "${ADMIN_HOME}/telegraf.pid") || return
+  kill -9 "$pid"
+  wait "$pid" 2>>/dev/null || true
+}
+
+# https://docs.ockam.io/guides/examples/telegraf-+-influxdb
+# Please update the docs repository if this bats test is updated
+@test "use-case - Telegraf + InfluxDB" {
+  skip_if_docs_tests_not_enabled
+  copy_local_orchestrator_data
+
+  export ADMIN_HOME="$OCKAM_HOME"
+  run_success start_telegraf_instance
+
+  # Ensure that telegraf works without using Ockam route
+  run_success curl \
+    --header "Authorization: Token $INFLUX_TOKEN" \
+    --header "Accept: application/csv" \
+    --header 'Content-type: application/vnd.flux' \
+    --data "from(bucket:\"$INFLUX_BUCKET\") |> range(start:-1m)" \
+    "http://localhost:$INFLUX_PORT/api/v2/query?org=$INFLUX_ORG"
+
+  run_success bash -c "$OCKAM project ticket --attribute component=influxdb --relay influxdb > ${ADMIN_HOME}/influxdb.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute component=telegraf > ${ADMIN_HOME}/telegraf.ticket"
+
+  # InfluxDB instance
+  setup_home_dir
+  run_success "$OCKAM" identity create influxdb
+  ockam project enroll "${ADMIN_HOME}/influxdb.ticket" --identity influxdb
+  run_success "$OCKAM" node create influxdb --identity influxdb
+  run_success "$OCKAM" policy create --at influxdb --resource tcp-outlet --expression '(= subject.component "telegraf")'
+  run_success "$OCKAM" tcp-outlet create --at /node/influxdb --from /service/outlet --to "127.0.0.1:${INFLUX_PORT}"
+  run_success "$OCKAM" relay create influxdb --at /project/default --to /node/influxdb
+
+  # Telegraf instance
+  setup_home_dir
+  export INFLUX_PORT="$(random_port)"
+
+  run_success "$OCKAM" identity create telegraf
+  run_success "$OCKAM" project enroll "${ADMIN_HOME}/telegraf.ticket" --identity telegraf
+  run_success "$OCKAM" node create telegraf --identity telegraf
+  run_success "$OCKAM" policy create --at telegraf --resource tcp-inlet --expression '(= subject.component "influxdb")'
+  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "127.0.0.1:${INFLUX_PORT}" --to influxdb
+
+  run_success kill_telegraf_instace
+  run_success start_telegraf_instance
+
+  # Ensure that telegraf works with using Ockam route
+  run_success curl \
+    --header "Authorization: Token $INFLUX_TOKEN" \
+    --header "Accept: application/csv" \
+    --header 'Content-type: application/vnd.flux' \
+    --data "from(bucket:\"$INFLUX_BUCKET\") |> range(start:-1m)" \
+    "http://localhost:$INFLUX_PORT/api/v2/query?org=$INFLUX_ORG"
+}
+
+# https://docs.ockam.io/guides/examples/okta
+# Please update the docs repository if this bats test is updated
+@test "use-case - InfluxDB Cloud token lease management" {
+  skip "Influx DB needs a fix" # Not working currently
+  skip_if_docs_tests_not_enabled
+  copy_local_orchestrator_data
+
+  export INFLUXDB_LEASE_PERMISSIONS="[{\"action\":  \"read\", \"resource\": {\"type\": \"authorizations\", \"orgID\": \"$INFLUXDB_ORG_ID\"}}]"
+  export ADMIN_HOME="$OCKAM_HOME"
+
+  run_success "$OCKAM" project addon configure influxdb \
+    --endpoint-url "$INFLUXDB_ENDPOINT_URL" \
+    --token "$INFLUXDB_ADMIN_TOKEN" \
+    --org-id "$INFLUXDB_ORG_ID" \
+    --permissions "$INFLUXDB_LEASE_PERMISSIONS" \
+    --max-ttl 900
+
+  run_success bash -c "$OCKAM project ticket --attribute service=iot-sensor > ${ADMIN_HOME}/sensor.ticket"
+
+  # Client
+  setup_home_dir
+  run_success "$OCKAM" identity create iot-sensor
+  run_success "$OCKAM" project enroll "${ADMIN_HOME}/sensor.ticket" --identity iot-sensor
+  run_success "$OCKAM" lease create --identity iot-sensor
 }

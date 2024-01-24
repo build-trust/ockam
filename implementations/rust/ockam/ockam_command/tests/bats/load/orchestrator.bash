@@ -14,6 +14,13 @@ function skip_if_orchestrator_tests_not_enabled() {
   fi
 }
 
+function skip_if_docs_tests_not_enabled() {
+  # shellcheck disable=SC2031
+  if [ -z "${DOCS_TESTS}" ]; then
+    skip "DOCS_TEST are not enabled"
+  fi
+}
+
 function copy_local_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
     export PROJECT_NAME="default"
