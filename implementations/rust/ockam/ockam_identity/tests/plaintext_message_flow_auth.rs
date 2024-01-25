@@ -57,7 +57,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
-    ctx.stop().await
+    Ok(())
 }
 
 // Alice: TCP connection + Secure Channel
@@ -137,5 +137,5 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
-    ctx.stop().await
+    Ok(())
 }

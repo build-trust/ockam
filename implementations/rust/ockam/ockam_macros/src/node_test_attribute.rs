@@ -108,7 +108,7 @@ fn output(mut cont: Container) -> TokenStream {
             executor
                 .execute(async move {
                     // Wraps the test function call in a `catch_unwind` to catch possible panics.
-                    match AssertUnwindSafe(async {
+                    let result = AssertUnwindSafe(async {
                         match timeout(Duration::from_millis(#timeout_ms), #test_fn_ident(&mut #ctx_ident)).await {
                             // Test went well. Return result as is.
                             Ok(r) => r,
@@ -117,22 +117,15 @@ fn output(mut cont: Container) -> TokenStream {
                         }
                     })
                     .catch_unwind()
-                    .await
-                    {
-                        // Return test result.
-                        Ok(r) => {
-                            // It returned an error, so the context might not have been stopped.
-                            // In that case, we try to stop the context manually.
-                            if r.is_err() {
-                                #ctx_stop_stmt
-                            }
-                            r
-                        },
-                        // Test panicked. Stop the context and bubble up the panic to make the test fail.
-                        Err(_) => {
-                            #ctx_stop_stmt
-                            panic!("Test panicked");
-                        }
+                    .await;
+
+                    // Stop the context
+                    #ctx_stop_stmt
+
+                    // The test panicked. Bubble up the panic to make the test fail.
+                    match result {
+                        Ok(r) => r,
+                        Err(_) => panic!("Test panicked"),
                     }
                 })
                 .expect("Test panicked")

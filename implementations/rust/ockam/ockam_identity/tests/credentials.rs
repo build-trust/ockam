@@ -91,7 +91,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     assert_eq!(val.as_slice(), b"true");
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -202,7 +202,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         b"true"
     );
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -307,7 +307,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 1);
 
-    ctx.stop().await
+    Ok(())
 }
 
 struct CountingWorker {

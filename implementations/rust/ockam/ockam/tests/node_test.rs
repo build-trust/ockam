@@ -4,8 +4,8 @@ use ockam_node::Context;
 use std::time::Duration;
 
 #[ockam_macros::test]
-async fn ok_if_return_ok(ctx: &mut Context) -> Result<()> {
-    ctx.stop().await
+async fn ok_if_return_ok(_ctx: &mut Context) -> Result<()> {
+    Ok(())
 }
 
 #[ockam_macros::test]
