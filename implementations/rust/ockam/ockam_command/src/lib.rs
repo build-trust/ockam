@@ -439,6 +439,13 @@ pub fn run() {
 
 impl OckamCommand {
     pub fn run(self) {
+        // If test_argument_parser is true, command arguments are checked
+        // but the command is not executed. This is useful to test arguments
+        // without having to execute their logic.
+        if self.global_args.test_argument_parser {
+            return;
+        }
+
         // Sets a hook using our own Error Report Handler
         // This allows us to customize how we
         // format the error messages and their content.
@@ -470,13 +477,6 @@ impl OckamCommand {
         } else {
             None
         };
-
-        // If test_argument_parser is true, command arguments are checked
-        // but the command is not executed. This is useful to test arguments
-        // without having to execute their logic.
-        if options.global_args.test_argument_parser {
-            return;
-        }
 
         if let Err(err) = check_if_an_upgrade_is_available(&options) {
             warn!("Failed to check for upgrade, error={err}");
