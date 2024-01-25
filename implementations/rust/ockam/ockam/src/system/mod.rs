@@ -60,7 +60,7 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
 
     /// Return the set of used addresses in this system
     pub fn addresses(&self) -> Vec<Address> {
-        self.map.keys().map(Clone::clone).collect()
+        self.map.keys().cloned().collect()
     }
 
     /// Attach a system handler to this system

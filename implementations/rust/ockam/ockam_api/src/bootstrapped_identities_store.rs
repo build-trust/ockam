@@ -142,10 +142,9 @@ impl IdentityAttributesRepository for PreTrustedIdentities {
                 .into_iter()
                 .map(|(k, v)| (k.to_owned(), v.to_owned()))
                 .collect()),
-            PreTrustedIdentities::ReloadFrom(path) => Ok(Self::parse_from_disk(path)?
-                .into_iter()
-                .map(|(k, v)| (k, v))
-                .collect()),
+            PreTrustedIdentities::ReloadFrom(path) => {
+                Ok(Self::parse_from_disk(path)?.into_iter().collect())
+            }
         }
     }
 

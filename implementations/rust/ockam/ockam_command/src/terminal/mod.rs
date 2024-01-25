@@ -501,7 +501,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
 
     pub async fn progress_output(
         &self,
-        output_messages: &Vec<String>,
+        output_messages: &[String],
         is_finished: &Mutex<bool>,
     ) -> Result<()> {
         let spinner = self.progress_spinner();
@@ -512,7 +512,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
 
     pub async fn progress_output_with_progress_bar(
         &self,
-        output_messages: &Vec<String>,
+        output_messages: &[String],
         is_finished: &Mutex<bool>,
         progress_bar: Option<&ProgressBar>,
     ) -> Result<()> {

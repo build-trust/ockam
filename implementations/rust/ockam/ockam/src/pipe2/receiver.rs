@@ -35,7 +35,7 @@ impl Worker for PipeReceiver {
 
         match (msg.msg_addr(), &self.init_addr) {
             (ref addr, Some(ref init)) if addr == init => {
-                let peer_route = match msg.body().scope.get(0) {
+                let peer_route = match msg.body().scope.first() {
                     Some(data) => Route::decode(data)?,
                     None => return Err(OckamError::InvalidParameter)?,
                 };

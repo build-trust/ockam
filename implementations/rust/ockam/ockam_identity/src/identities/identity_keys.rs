@@ -107,9 +107,11 @@ impl IdentitiesKeys {
             .identity_vault
             .get_verifying_public_key(&secret_key)
             .await?;
-
+        let (previous_change, previous_key) = previous
+            .map(|(x, y)| (Some(x), Some(y)))
+            .unwrap_or((None, None));
         let change_data = ChangeData {
-            previous_change: previous.as_ref().map(|x| x.0.clone()),
+            previous_change,
             primary_public_key: public_key.into(),
             revoke_all_purpose_keys: identity_options.revoke_all_purpose_keys,
             created_at: identity_options.created_at,
@@ -128,7 +130,7 @@ impl IdentitiesKeys {
 
         // If we have previous_key passed we should sign using it
         // If there is no previous_key - we're creating new identity, so we just generated the key
-        let previous_signature = match previous.map(|x| x.1) {
+        let previous_signature = match previous_key {
             Some(previous_key) => {
                 let previous_signature = self.identity_vault.sign(&previous_key, &hash.0).await?;
 

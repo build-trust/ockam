@@ -90,7 +90,7 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
             Some("ockam.pipe.ack") => {
                 let ack_id = msg
                     .scope
-                    .get(0)
+                    .first()
                     .and_then(|id| Address::decode(id).ok())
                     .unwrap();
                 info!("Received ACK for message: {}", ack_id);
