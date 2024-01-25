@@ -1,4 +1,5 @@
 use minicbor::{Decode, Encode};
+
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
@@ -22,5 +23,30 @@ impl AddConsumer {
     }
     pub fn address(&self) -> &MultiAddr {
         &self.address
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ockam_core::flow_control::FlowControlId;
+    use ockam_multiaddr::MultiAddr;
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+
+    use crate::nodes::models::flow_controls::AddConsumer;
+    use crate::schema::tests::validate_with_schema;
+
+    quickcheck! {
+        fn add_consumer(g: AddConsumer) -> TestResult {
+            validate_with_schema("add_consumer", g)
+        }
+    }
+
+    impl Arbitrary for AddConsumer {
+        fn arbitrary(g: &mut Gen) -> Self {
+            AddConsumer {
+                flow_control_id: FlowControlId::from(String::arbitrary(g)),
+                address: MultiAddr::default(),
+            }
+        }
     }
 }

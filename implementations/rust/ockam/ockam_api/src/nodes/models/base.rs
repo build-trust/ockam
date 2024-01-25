@@ -30,3 +30,26 @@ impl NodeStatus {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::nodes::models::base::NodeStatus;
+    use crate::schema::tests::validate_with_schema;
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    quickcheck! {
+        fn project(n: NodeStatus) -> TestResult {
+            validate_with_schema("node_status", n)
+        }
+    }
+
+    impl Arbitrary for NodeStatus {
+        fn arbitrary(g: &mut Gen) -> Self {
+            NodeStatus {
+                node_name: String::arbitrary(g),
+                status: String::arbitrary(g),
+                workers: u32::arbitrary(g),
+                pid: i32::arbitrary(g),
+            }
+        }
+    }
+}

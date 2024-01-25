@@ -40,3 +40,37 @@ impl PresentCredentialRequest {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
+    use crate::schema::tests::validate_with_schema;
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    quickcheck! {
+        fn get_credential_request(g: GetCredentialRequest) -> TestResult {
+            validate_with_schema("get_credential_request", g)
+        }
+
+        fn present_credential_request(g: PresentCredentialRequest) -> TestResult {
+            validate_with_schema("present_credential_request", g)
+        }
+    }
+
+    impl Arbitrary for GetCredentialRequest {
+        fn arbitrary(g: &mut Gen) -> Self {
+            GetCredentialRequest {
+                overwrite: bool::arbitrary(g),
+                identity_name: bool::arbitrary(g).then(|| String::arbitrary(g)),
+            }
+        }
+    }
+
+    impl Arbitrary for PresentCredentialRequest {
+        fn arbitrary(g: &mut Gen) -> Self {
+            PresentCredentialRequest {
+                route: String::arbitrary(g),
+                oneway: bool::arbitrary(g),
+            }
+        }
+    }
+}

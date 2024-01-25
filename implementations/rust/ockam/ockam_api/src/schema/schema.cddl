@@ -249,3 +249,55 @@ activate_subscription = {
     ?3: text,       ;; space_name
     ?4: [+ text]    ;; owner_emails
 }
+
+;;; base ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+node_status = {
+     1: text,       ;; node_name
+     2: text,       ;; status
+     3: uint,       ;; workers
+     4: int,        ;; pid
+}
+
+;;; credentials ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+get_credential_request = {
+     1: bool,       ;; overwrite
+    ?2: text,       ;; identity_name
+}
+
+present_credential_request = {
+     1: text,       ;; route
+     2: bool,       ;; oneway
+}
+
+;;; flow_controls ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+add_consumer = {
+     1: flow_control_id,    ;; id
+     2: multi_addr,         ;; address
+}
+
+flow_control_id = {
+    1: text                 ;; id
+}
+
+multi_addr = bytes
+
+;;; policy ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+policy_list = {
+    1: [* expression]                                   ;; expressions
+}
+
+expression = [action expr]                              ;; Expression
+action = (nil text)                                     ;; action
+expr = [Str / Int / Float / Bool / Ident / Seq / List]  ;; expr
+
+Str = (1  [ text ])
+Int =  (2 [ int ])
+Float = (3 [ float])
+Bool = (4 [bool])
+Ident = (5 [text])
+Seq =  (6 [[+ expr]])
+List = (7 [[+ expr]])

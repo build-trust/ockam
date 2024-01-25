@@ -9,7 +9,7 @@ use ockam::identity::{secure_channel_required, IdentityAttributesRepository, TRU
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{CowStr, Result, Routed, Worker};
+use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
 use crate::authenticator::direct::types::AddMember;
@@ -34,7 +34,7 @@ impl DirectAuthenticator {
         &self,
         enroller: &Identifier,
         id: &Identifier,
-        attrs: &HashMap<CowStr<'a>, CowStr<'a>>,
+        attrs: &HashMap<String, String>,
     ) -> Result<()> {
         let auth_attrs = attrs
             .iter()
