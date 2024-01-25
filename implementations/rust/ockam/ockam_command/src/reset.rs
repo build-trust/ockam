@@ -2,6 +2,8 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, WrapErr};
 use ockam_api::cloud::space::Spaces;
+use ockam_api::CliState;
+use tracing::error;
 
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
@@ -29,6 +31,12 @@ impl ResetCommand {
 
     pub fn name(&self) -> String {
         "reset".to_string()
+    }
+
+    pub fn hard_reset(&self) {
+        if let Err(err) = CliState::hard_reset() {
+            error!("Failed to hard reset CliState, err={err}");
+        }
     }
 }
 

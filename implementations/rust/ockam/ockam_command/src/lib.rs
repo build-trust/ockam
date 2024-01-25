@@ -24,7 +24,7 @@ use std::{path::PathBuf, sync::Mutex};
 use clap::{ArgAction, Args, Parser, Subcommand};
 use colorful::Colorful;
 use console::Term;
-use miette::GraphicalReportHandler;
+use miette::{miette, GraphicalReportHandler};
 use once_cell::sync::Lazy;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
@@ -87,6 +87,7 @@ use crate::output::OutputFormat;
 use crate::run::RunCommand;
 use crate::sidecar::SidecarCommand;
 use crate::subscription::SubscriptionCommand;
+use crate::terminal::color_primary;
 pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 
 mod admin;
@@ -255,19 +256,40 @@ pub struct CommandGlobalOpts {
 }
 
 impl CommandGlobalOpts {
-    pub fn new(global_args: GlobalArgs) -> Self {
+    pub fn new(global_args: GlobalArgs, cmd: &OckamSubcommand) -> Self {
         let terminal = Terminal::from(&global_args);
         let state = match CliState::with_default_dir() {
             Ok(state) => state,
             Err(err) => {
+                // If the user is trying to run `ockam reset` and the local state is corrupted,
+                // we can try to hard reset the local state.
+                if let OckamSubcommand::Reset(c) = cmd {
+                    c.hard_reset();
+                    terminal
+                        .stdout()
+                        .plain(fmt_ok!("Local Ockam configuration deleted"))
+                        .write_line()
+                        .unwrap();
+                    exit(exitcode::OK);
+                }
                 terminal
-                    .write_line(fmt_err!("Failed to initialize local state, error={}", err))
+                    .write_line(fmt_err!("Failed to initialize local state"))
                     .unwrap();
                 terminal
                     .write_line(fmt_log!(
-                        "Consider upgrading to the latest version of Ockam Command, \
-                        or try removing the local state directory at ~/.ockam"
+                        "Consider upgrading to the latest version of Ockam Command"
                     ))
+                    .unwrap();
+                terminal
+                    .write_line(fmt_log!(
+                        "You can also try removing the local state using {} \
+                        or deleting the directory at {}",
+                        color_primary("ockam reset"),
+                        color_primary("~/.ockam")
+                    ))
+                    .unwrap();
+                terminal
+                    .write_line(format!("\n{:?}", miette!(err.to_string())))
                     .unwrap();
                 exit(exitcode::SOFTWARE);
             }
@@ -450,7 +472,7 @@ impl OckamCommand {
                     .with_urls(false),
             )
         }));
-        let options = CommandGlobalOpts::new(self.global_args.clone());
+        let options = CommandGlobalOpts::new(self.global_args.clone(), &self.subcommand);
 
         let tracing_guard = if !options.global_args.quiet {
             let log_path = self.log_path(&options);

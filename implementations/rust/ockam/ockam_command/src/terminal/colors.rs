@@ -50,12 +50,12 @@ macro_rules! color {
     };
 }
 
-pub fn color_primary(input: String) -> CString {
-    input.color(OckamColor::PrimaryResource.color())
+pub fn color_primary(input: impl Into<String>) -> CString {
+    input.into().color(OckamColor::PrimaryResource.color())
 }
 
-pub fn color_email(input: String) -> CString {
-    input.color(OckamColor::PrimaryResource.color())
+pub fn color_email(input: impl Into<String>) -> CString {
+    input.into().color(OckamColor::PrimaryResource.color())
 }
 
 pub fn color_uri(input: &str) -> String {
