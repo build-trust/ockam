@@ -257,10 +257,27 @@ impl CommandGlobalOpts {
     pub fn new(global_args: GlobalArgs) -> Self {
         let terminal = Terminal::from(&global_args);
         let state = match CliState::with_default_dir() {
+<<<<<<< Updated upstream
             Ok(state) => state,
             Err(err) => {
+||||||| Stash base
+            Ok(state) => state,
+            Err(_) => {
+=======
+            Ok(state) => {
+                println!("here");
+                state
+            },
+            Err(e) => {
+>>>>>>> Stashed changes
                 terminal
+<<<<<<< Updated upstream
                     .write_line(fmt_err!("Failed to initialize local state, error={}", err))
+||||||| Stash base
+                    .write_line(fmt_err!("Failed to initialize local state"))
+=======
+                    .write_line(fmt_err!("Failed to initialize local state: {e:?}"))
+>>>>>>> Stashed changes
                     .unwrap();
                 terminal
                     .write_line(fmt_log!(
@@ -438,7 +455,20 @@ pub fn run() {
 }
 
 impl OckamCommand {
+<<<<<<< Updated upstream
     pub fn run(self) {
+||||||| Stash base
+    pub fn run(self) -> miette::Result<()> {
+=======
+    pub fn run(self) -> miette::Result<()> {
+        // If test_argument_parser is true, command arguments are checked
+        // but the command is not executed. This is useful to test arguments
+        // without having to execute their logic.
+        if self.global_args.test_argument_parser {
+            return Ok(());
+        }
+
+>>>>>>> Stashed changes
         // Sets a hook using our own Error Report Handler
         // This allows us to customize how we
         // format the error messages and their content.
@@ -471,6 +501,7 @@ impl OckamCommand {
             None
         };
 
+<<<<<<< Updated upstream
         // If test_argument_parser is true, command arguments are checked
         // but the command is not executed. This is useful to test arguments
         // without having to execute their logic.
@@ -478,6 +509,16 @@ impl OckamCommand {
             return;
         }
 
+||||||| Stash base
+        // If test_argument_parser is true, command arguments are checked
+        // but the command is not executed. This is useful to test arguments
+        // without having to execute their logic.
+        if options.global_args.test_argument_parser {
+            return Ok(());
+        }
+
+=======
+>>>>>>> Stashed changes
         // Display Header if needed
         if self.subcommand.should_display_header() {
             let ockam_header = include_str!("../static/ockam_ascii.txt").trim();
