@@ -198,7 +198,7 @@ pub struct CloudOpts {
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct TrustContextOpts {
-    /// Trust Context config file
+    /// Trust Context name, or path to JSON config file
     #[arg(
         global = true,
         long,
@@ -206,6 +206,7 @@ pub struct TrustContextOpts {
     )]
     pub trust_context: Option<String>,
 
+    /// Project name to use for the command
     #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
     pub project_name: Option<String>,
 }

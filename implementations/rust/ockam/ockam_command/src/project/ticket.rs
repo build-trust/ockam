@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use clap::Args;
+use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::Identifier;
@@ -13,15 +14,18 @@ use ockam_api::cloud::project::Project;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
-use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::duration::duration_parser;
-use crate::util::node_rpc;
 use crate::{docs, CommandGlobalOpts, Result};
+use crate::{fmt_ok, util::node_rpc};
+use crate::{
+    output::OutputFormat,
+    util::api::{CloudOpts, TrustContextOpts},
+};
+use crate::{terminal::color_primary, util::duration::duration_parser};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");
 
-/// Add members to a project as an authorised enroller.
+/// Add members to a project, as an authorized enroller, directly or via an enrollment ticket
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
@@ -35,19 +39,29 @@ pub struct TicketCommand {
     #[command(flatten)]
     trust_opts: TrustContextOpts,
 
-    #[arg(long, short, conflicts_with = "expires_in")]
+    /// Bypass ticket creation, add this member directly to the project's authority, with the given attributes
+    #[arg(value_name = "IDENTIFIER", long, short, conflicts_with = "expires_in")]
     member: Option<Identifier>,
 
-    #[arg(long, short, default_value = "/project/default")]
+    /// The project name from this option is used to create the enrollment ticket. This takes precedence over `--project`
+    #[arg(
+        long,
+        short,
+        default_value = "/project/default",
+        value_name = "ROUTE_TO_PROJECT"
+    )]
     to: MultiAddr,
 
-    /// Attributes in `key=value` format to be attached to the member
+    /// Attributes in `key=value` format to be attached to the member. You can specify this option multiple times for multiple attributes
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 
+    // Note: MAX_TOKEN_DURATION holds the default value.
+    /// Duration for which the enrollment ticket is valid, if you don't specify this, the default is 10 minutes. Examples: 10000ms, 600s, 600, 10m, 1h, 1d. If you don't specify a length sigil, it is assumed to be seconds
     #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser = duration_parser)]
     expires_in: Option<Duration>,
 
+    /// Number of times the ticket can be used to enroll, the default is 1
     #[arg(
         long = "usage-count",
         value_name = "USAGE_COUNT",
@@ -55,8 +69,8 @@ pub struct TicketCommand {
     )]
     usage_count: Option<u64>,
 
-    /// The name of the relay that the identity using the ticket will be allowed to create
-    #[arg(long = "relay", value_name = "RELAY_NAME")]
+    /// Name of the relay that the identity using the ticket will be allowed to create. This name is transformed into attributes to prevent collisions when creating relay names. For example: `--relay foo` is shorthand for `--attribute ockam-relay=foo`
+    #[arg(long = "relay", value_name = "ENROLEE_ALLOWED_RELAY_NAME")]
     allowed_relay_name: Option<String>,
 }
 
@@ -84,6 +98,13 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, TicketCommand),
 ) -> miette::Result<()> {
+    if opts.global_args.output_format == OutputFormat::Json {
+        return Err(miette::miette!(
+            "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
+            Please try running it again without '--output json'."
+        ));
+    }
+
     let trust_context = opts
         .state
         .retrieve_trust_context(
@@ -103,7 +124,7 @@ async fn run_impl(
 
     let mut project: Option<Project> = None;
 
-    let authority_node = if let Some(name) = cmd.trust_opts.trust_context.as_ref() {
+    let authority_node_client = if let Some(name) = cmd.trust_opts.trust_context.as_ref() {
         let authority = if let Some(authority) = opts
             .state
             .get_trust_context(name)
@@ -141,20 +162,28 @@ async fn run_impl(
     } else {
         return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
     };
+
     // If an identity identifier is given add it as a member, otherwise
     // request an enrollment token that a future member can use to get a
     // credential.
     if let Some(id) = &cmd.member {
-        authority_node
+        authority_node_client
             .add_member(&ctx, id.clone(), cmd.attributes()?)
             .await?
     } else {
-        let token = authority_node
+        let token = authority_node_client
             .create_token(&ctx, cmd.attributes()?, cmd.expires_in, cmd.usage_count)
             .await?;
 
         let ticket = EnrollmentTicket::new(token, project);
         let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
+
+        opts.terminal.write_line(&fmt_ok!(
+            "{}: {}",
+            "Created enrollment ticket. You can use it to enroll another machine using",
+            color_primary("ockam project enroll".to_string())
+        ))?;
+
         opts.terminal
             .clone()
             .stdout()
@@ -173,7 +202,7 @@ async fn get_project(cli_state: &CliState, input: &MultiAddr) -> Result<Option<P
         if proto.code() == proto::Project::CODE {
             let project_name = proto.cast::<proto::Project>().expect("project protocol");
             match cli_state.get_project_by_name(&project_name).await.ok() {
-                None => Err(miette!("unknown project {}", project_name.to_string()))?,
+                None => Err(miette!("Unknown project '{}'. Run 'ockam project list' to get a list of available projects.", project_name.to_string()))?,
                 Some(project) => {
                     if project.authority_identifier().await.is_err() {
                         Err(miette!(
