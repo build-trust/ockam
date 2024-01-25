@@ -89,6 +89,12 @@ impl CliState {
         self.delete()
     }
 
+    /// Removes all the directories storing state without loading the current state
+    pub fn hard_reset() -> Result<()> {
+        let dir = Self::default_dir()?;
+        Self::delete_at(&dir)
+    }
+
     /// Delete the local database and log files
     pub fn delete(&self) -> Result<()> {
         Self::delete_at(&self.dir)
