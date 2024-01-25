@@ -86,12 +86,12 @@ pub(crate) fn render(body: &str) -> &'static str {
 /// Use a shell syntax highlighter to render the fenced code blocks in terminals
 fn process_terminal_docs(input: String) -> String {
     let mut output: Vec<String> = Vec::new();
-    let mut code_highlighter = FencedCodeBlockHighlighter::new();
+
+    let mut _code_highlighter = FencedCodeBlockHighlighter::new();
+
     for line in LinesWithEndings::from(input.as_str()) {
-        // Try to process fenced code blocks
-        if code_highlighter.process_line(line, &mut output) {
-            continue;
-        }
+        // TODO: fix the fenced code block highlighter (currently disabled) - then use _code_highlighter here
+
         // Replace headers with bold and underline text
         if HEADER_RE.is_match(line) {
             output.push(line.to_string().bold().underlined().to_string());
@@ -128,6 +128,8 @@ impl FencedCodeBlockHighlighter<'_> {
         }
     }
 
+    // TODO: fix the fenced code block highlighter, as it does not work on macOS or Linux
+    #[allow(dead_code)]
     fn process_line(&mut self, line: &str, output: &mut Vec<String>) -> bool {
         if let Some(highlighter) = &mut self.inner {
             if line == "```sh\n" {

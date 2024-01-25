@@ -1,7 +1,17 @@
 ```sh
-# From the admin machine, generate an enrollment ticket
-$ ticket=$(ockam project ticket --attribute component=user)
+# 1) Use hex encoded string enrollment ticket:
 
-# From the user machine, enroll the local identity to the project using the enrollment ticket
-$ ockam project enroll $ticket --identity control_identity
+# From the admin machine, generate an enrollment ticket
+$ TICKET=$(ockam project ticket --attribute component=user)
+
+# From the user machine, enroll the local identity to the project using the ticket
+$ ockam project enroll $TICKET --identity control_identity
+
+# 2) Use file enrollment ticket:
+
+# From the admin machine, generate an enrollment ticket, save to a file
+$ ockam project ticket --attribute component=user > $NAME.ticket
+
+# From the user machine, enroll the local identity to the project using the file
+$ ockam project enroll --identity control_identity $NAME.ticket
 ```

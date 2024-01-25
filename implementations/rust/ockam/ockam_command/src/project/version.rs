@@ -12,7 +12,7 @@ use crate::{docs, fmt_ok, CommandGlobalOpts};
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/version/after_long_help.txt");
 
-/// Return the version of the Orchestrator Controller and the Projects
+/// Return the version of the Orchestrator Controller and the projects
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),

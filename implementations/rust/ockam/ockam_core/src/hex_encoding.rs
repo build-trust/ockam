@@ -5,11 +5,11 @@ use serde::{Deserializer, Serializer};
 
 /// By default, serde serializes using a sequence of integers.
 /// We rather serialize a using hex string.
-pub fn serialize<S: Serializer>(value: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize<S: Serializer>(value: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(&hex::encode(value.as_slice()))
+    serializer.serialize_str(&hex::encode(value))
 }
 
 /// To keep back-compatibility we parse both sequence of integer or a hex string

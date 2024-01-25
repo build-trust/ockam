@@ -1,7 +1,10 @@
 ```sh
-# To enroll a known identity
-$ ockam project ticket --member id_identifier
+# To generate an enrollment ticket that can be used to enroll a machine
+$ ockam project ticket --attribute component=db --attribute location=sf
 
-# To generate an enrollment ticket that can be used to enroll a device
-$ ockam project ticket --attribute component=control
+# To generate an enrollment ticket that can be used to enroll a machine and save it to a file
+$ ockam project ticket --attribute component=db --attribute location=sf > ticket.txt
+
+# To enroll a known identity (run `ockam identity list` to see known identities)
+$ ockam project ticket --member identifier
 ```
