@@ -246,7 +246,7 @@ impl Default for MultiAddr {
 
 impl PartialEq for MultiAddr {
     fn eq(&self, other: &Self) -> bool {
-        self.as_ref().eq(other.as_ref())
+        self.as_ref() == other.as_ref()
     }
 }
 

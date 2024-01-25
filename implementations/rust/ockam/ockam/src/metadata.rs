@@ -166,7 +166,7 @@ fn nest_metadata() {
         .unwrap();
     assert_eq!(msg_type, "pipemsg".as_bytes());
 
-    let index = ockam_msg2.scope.get(0).unwrap();
+    let index = ockam_msg2.scope.first().unwrap();
     assert_eq!(index, &vec![1]);
 
     // Then we peel the previous message type

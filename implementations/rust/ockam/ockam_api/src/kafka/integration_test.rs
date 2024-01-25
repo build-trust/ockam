@@ -178,7 +178,7 @@ mod test {
             .unwrap()
             .1
             .partition_data
-            .get(0)
+            .first()
             .unwrap()
             .records
             .as_ref()
@@ -188,7 +188,7 @@ mod test {
         let records = RecordBatchDecoder::decode(&mut encrypted_body).unwrap();
 
         assert_ne!(
-            records.get(0).unwrap().value.as_ref().unwrap(),
+            records.first().unwrap().value.as_ref().unwrap(),
             "hello world!".as_bytes()
         );
 
@@ -214,11 +214,11 @@ mod test {
 
         let plain_content = plain_fetch_response
             .responses
-            .get(0)
+            .first()
             .as_ref()
             .unwrap()
             .partitions
-            .get(0)
+            .first()
             .as_ref()
             .unwrap()
             .records
@@ -229,7 +229,7 @@ mod test {
         let records = RecordBatchDecoder::decode(&mut plain_content).unwrap();
 
         assert_eq!(
-            records.get(0).as_ref().unwrap().value.as_ref().unwrap(),
+            records.first().as_ref().unwrap().value.as_ref().unwrap(),
             "hello world!".as_bytes()
         );
 
@@ -372,7 +372,7 @@ mod test {
             .get(&topic_name)
             .unwrap()
             .partition_data
-            .get(0)
+            .first()
             .unwrap()
             .records
             .clone();

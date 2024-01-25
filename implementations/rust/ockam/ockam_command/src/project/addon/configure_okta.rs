@@ -172,9 +172,7 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
         )
         .into_diagnostic().wrap_err("failed to write to tcp stream")?;
 
-    let connection = Connection::try_from(client_connection)
-        .into_diagnostic()
-        .wrap_err("failed to get connection")?;
+    let connection = Connection::from(client_connection);
     let certificate_chain = connection
         .peer_certificates()
         .ok_or(miette!("could not discover certificate chain"))?;

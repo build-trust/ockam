@@ -121,7 +121,7 @@ fn generate_markdown_page(
     dir: &Path,
     name: &str,
     cmd: &Command,
-    parent_cmd: &Vec<String>,
+    parent_cmd: &[String],
 ) -> io::Result<()> {
     let mut buffer = Vec::<u8>::new();
     let buffer = &mut buffer;
@@ -235,7 +235,7 @@ fn generate_markdown_page(
     Ok(())
 }
 
-fn get_parent_commands(parent_cmd: &Vec<String>, separator: &str) -> String {
+fn get_parent_commands(parent_cmd: &[String], separator: &str) -> String {
     if parent_cmd.is_empty() {
         String::new()
     } else {
