@@ -56,5 +56,5 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
 
     assert_eq!(2, client.list_identifiers(ctx).await.unwrap().len());
 
-    ctx.stop().await
+    Ok(())
 }

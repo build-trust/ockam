@@ -8,6 +8,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     // auth0
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(prefix_args);
+    println!("{:?}",cmd.assert());
     cmd.assert().success();
 
     Ok(())

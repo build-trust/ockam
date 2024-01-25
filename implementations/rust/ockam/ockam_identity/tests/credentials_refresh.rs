@@ -91,7 +91,7 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
     // Server asks for a credential on second 0; 4 and 8
     assert_eq!(call_counter_server.load(Ordering::Relaxed), 3);
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -183,7 +183,7 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
     assert_eq!(added3, added2);
     assert!(added3 < added4);
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -255,7 +255,7 @@ async fn autorefresh_retry(ctx: &mut Context) -> Result<()> {
     assert_eq!(call_counter.load(Ordering::Relaxed), 3);
     assert_eq!(failed_call_counter.load(Ordering::Relaxed), 1);
 
-    ctx.stop().await
+    Ok(())
 }
 struct LocalCredentialsRetriever {
     credentials: Arc<Credentials>,

@@ -118,5 +118,5 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             .map
             .get::<ByteSlice>(b"attr".as_slice().into())
     );
-    ctx.stop().await
+    Ok(())
 }

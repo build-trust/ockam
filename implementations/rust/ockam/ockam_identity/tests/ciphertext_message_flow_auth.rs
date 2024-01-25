@@ -59,7 +59,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         "We can create multiple secure channels with that connection"
     );
 
-    ctx.stop().await
+    Ok(())
 }
 
 // Alice: TCP connection + Secure Channel listener
@@ -98,5 +98,5 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, &channel_to_alice.address).await?;
     message_should_not_pass(ctx, &channel_to_bob).await?;
 
-    ctx.stop().await
+    Ok(())
 }

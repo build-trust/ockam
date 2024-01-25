@@ -78,7 +78,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 
     assert_eq!("Hello, Alice!", msg.body());
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -219,7 +219,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         bob_attributes.attrs().get("bob_2".as_bytes()).unwrap()
     );
 
-    context.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -276,7 +276,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
 
     assert!(result.is_err());
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -408,7 +408,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     assert_eq!(bob_channel_data.my_id(), &bob);
     assert_eq!(bob_channel_data.their_id(), &alice);
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -518,7 +518,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     assert_eq!(decrypted_alice, b"Pong");
     assert_eq!(decrypted_bob, b"Ping");
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -593,7 +593,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         .await?;
     assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -684,7 +684,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .await?;
     assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -825,7 +825,7 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
 
     assert_eq!(received_count.load(Ordering::Relaxed), 1);
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[allow(non_snake_case)]
@@ -875,7 +875,7 @@ async fn access_control__unknown_participant__should_not_pass_messages(
 
     assert_eq!(received_count.load(Ordering::Relaxed), 0);
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[allow(non_snake_case)]
@@ -905,7 +905,7 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
 
     assert_eq!(received_count.load(Ordering::Relaxed), 0);
 
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -1091,5 +1091,5 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     assert!(!workers.contains(channel2.decryptor_messaging_address()));
     assert!(!workers.contains(channel2.encryptor_messaging_address()));
 
-    ctx.stop().await
+    Ok(())
 }

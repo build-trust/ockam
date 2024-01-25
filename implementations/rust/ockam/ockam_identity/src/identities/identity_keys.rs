@@ -156,15 +156,14 @@ mod test {
     use core::str::FromStr;
     use ockam_core::errcode::{Kind, Origin};
     use ockam_core::Error;
-    use ockam_node::Context;
     use ockam_vault::SigningKeyType;
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
     }
 
-    #[ockam_macros::test]
-    async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
+    #[tokio::test]
+    async fn test_basic_identity_key_ops() -> Result<()> {
         let identities = identities().await?;
         let identities_keys = identities.identities_keys();
 
@@ -266,7 +265,6 @@ mod test {
             .get_verifying_public_key(&secret2)
             .await
             .is_ok());
-
-        ctx.stop().await
+        Ok(())
     }
 }
