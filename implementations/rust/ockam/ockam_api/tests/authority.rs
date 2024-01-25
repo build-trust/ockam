@@ -30,8 +30,6 @@ async fn authority_starts_with_default_configuration(ctx: &mut Context) -> Resul
 
     assert!(!workers.contains(&Address::from(DefaultAddress::DIRECT_AUTHENTICATOR)));
 
-    ctx.stop().await?;
-
     Ok(())
 }
 
@@ -81,8 +79,6 @@ async fn controlling_authority_by_member_times_out(ctx: &mut Context) -> Result<
 
     assert!(timeout.load(Ordering::Relaxed));
 
-    ctx.stop().await?;
-
     Ok(())
 }
 
@@ -118,8 +114,6 @@ async fn one_admin_test_api(ctx: &mut Context) -> Result<()> {
     let members = admin.client.list_member_ids(ctx).await.unwrap();
     assert_eq!(members.len(), 1);
     assert_eq!(members[0], admin.identifier);
-
-    ctx.stop().await?;
 
     Ok(())
 }
@@ -190,8 +184,6 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
     let members = admin.client.list_members(ctx).await.unwrap();
     assert_eq!(members.len(), 1);
     assert!(members.get(&admin.identifier).is_some());
-
-    ctx.stop().await?;
 
     Ok(())
 }
@@ -311,8 +303,6 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
     assert_eq!(members1.len(), 2);
     assert!(members1.get(&admin1.identifier).is_some());
     assert!(members1.get(&admin2.identifier).is_some());
-
-    ctx.stop().await?;
 
     Ok(())
 }

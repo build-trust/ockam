@@ -33,7 +33,7 @@ async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> R
         diff < Duration::from_secs(2),
         "1 sec timeout definitely should not take longer than 2 secs"
     );
-    ctx.stop().await
+    Ok(())
 }
 
 #[allow(non_snake_case)]
@@ -152,7 +152,7 @@ async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> R
         .start_processor("dummy_processor", DummyProcessor)
         .await
         .is_err());
-    ctx.stop().await
+    Ok(())
 }
 
 struct CountingProcessor {
@@ -213,7 +213,7 @@ async fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_f
     assert!(shutdown_was_called.load(Ordering::Relaxed));
     assert_eq!(5, run_called_count.load(Ordering::Relaxed));
 
-    ctx.stop().await
+    Ok(())
 }
 
 struct WaitingProcessor {
@@ -270,7 +270,7 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(shutdown_was_called.load(Ordering::Relaxed));
-    ctx.stop().await
+    Ok(())
 }
 
 struct MessagingProcessor {
@@ -350,7 +350,7 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(shutdown_was_called.load(Ordering::Relaxed));
 
-    ctx.stop().await
+    Ok(())
 }
 
 struct BadWorker;
@@ -476,7 +476,7 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
         counter_a.load(Ordering::Relaxed),
         counter_b.load(Ordering::Relaxed)
     );
-    ctx.stop().await
+    Ok(())
 }
 
 struct SendReceiveWorker;
@@ -524,7 +524,7 @@ async fn use_context_send_and_receive(ctx: &mut Context) -> Result<()> {
     if let SendReceiveResponse::Connect(Err(e)) = msg_rx {
         panic!("test failure: {}", e)
     }
-    ctx.stop().await
+    Ok(())
 }
 
 struct DummyWorker;
@@ -559,7 +559,7 @@ async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Resu
         .start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)
         .await
         .is_err());
-    ctx.stop().await
+    Ok(())
 }
 
 struct CountingErrorWorker {
@@ -608,5 +608,5 @@ async fn message_handle__error_during_handling__keep_worker_running(
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(3, counter.load(Ordering::Relaxed));
 
-    ctx.stop().await
+    Ok(())
 }

@@ -24,8 +24,7 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .await?;
 
     assert_eq!(resp, "Hello");
-
-    ctx.stop().await
+    Ok(())
 }
 
 // Cloud: Hosts a Relay service and listens on a tcp port. No flow control
@@ -71,8 +70,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .await?;
 
     assert_eq!(resp, "Hello");
-
-    ctx.stop().await
+    Ok(())
 }
 
 // Server: Connects to a Cloud using tcp and creates a dynamic Relay. Using flow control
@@ -131,8 +129,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         .await?;
 
     assert_eq!(res.body(), "Hello");
-
-    ctx.stop().await
+    Ok(())
 }
 
 // Cloud:
@@ -251,5 +248,5 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     assert_eq!(resp, "Hello");
 
-    ctx.stop().await
+    Ok(())
 }

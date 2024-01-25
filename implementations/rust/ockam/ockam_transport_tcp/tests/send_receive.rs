@@ -45,10 +45,5 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
 
         assert_eq!(reply, msg, "Should receive the same message");
     };
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
-
     Ok(())
 }

@@ -208,9 +208,6 @@ mod tests {
         // Query service for non-existent node, should error
         let res = query_operation("DoesNotExist", ctx, &rendezvous_route).await;
         assert!(res.is_err(), "Query operation should have failed");
-
-        // Shutdown
-        ctx.stop().await?;
         Ok(())
     }
 
@@ -222,9 +219,6 @@ mod tests {
             .send_and_receive(rendezvous_route, RendezvousRequest::Ping)
             .await?;
         assert!(matches!(res, RendezvousResponse::Pong));
-
-        // Shutdown
-        ctx.stop().await?;
         Ok(())
     }
 

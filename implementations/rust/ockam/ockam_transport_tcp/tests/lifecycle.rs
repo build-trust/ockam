@@ -55,10 +55,6 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
         .await?;
     assert_eq!(reply2, msg2, "Should receive the same message");
 
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
-
     Ok(())
 }
 
@@ -122,11 +118,6 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .send(route![connection2.clone(), "echoer"], msg3.clone())
         .await;
     assert!(res.is_err(), "Should not send messages after disconnection");
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
-
     Ok(())
 }
 
@@ -180,10 +171,5 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .send_and_receive(route![tx_address.clone(), "echoer"], msg2.clone())
         .await?;
     assert_eq!(reply2, msg2, "Should receive the same message");
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
-
     Ok(())
 }

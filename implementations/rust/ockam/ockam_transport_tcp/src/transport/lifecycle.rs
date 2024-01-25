@@ -177,8 +177,7 @@ mod tests {
         let _route = tcp
             .resolve_address(Address::new(TCP, local_address))
             .await?;
-
-        ctx.stop().await
+        Ok(())
     }
 
     #[ockam_macros::test]
@@ -204,6 +203,6 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
-        ctx.stop().await
+        Ok(())
     }
 }

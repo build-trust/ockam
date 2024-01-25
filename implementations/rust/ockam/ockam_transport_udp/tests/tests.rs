@@ -54,7 +54,6 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
         );
     };
 
-    ctx.stop().await?;
     Ok(())
 }
 
@@ -104,7 +103,6 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
         .await;
     assert!(res.is_ok(), "Should have been able to send message");
 
-    ctx.stop().await?;
     Ok(())
 }
 
@@ -143,7 +141,6 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
         assert_eq!(reply, msg, "Should receive the same message");
     }
 
-    ctx.stop().await?;
     Ok(())
 }
 
@@ -187,8 +184,6 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
             assert_eq!(reply, msg, "Should receive the same message");
         }
     };
-
-    ctx.stop().await?;
     Ok(())
 }
 
