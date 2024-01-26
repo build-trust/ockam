@@ -155,7 +155,7 @@ impl CliState {
 /// Low-level functions for creating / deleting CliState files
 impl CliState {
     /// Create a new CliState where the data is stored at a given path
-    pub(super) async fn create(dir: PathBuf) -> Result<Self> {
+    pub async fn create(dir: PathBuf) -> Result<Self> {
         std::fs::create_dir_all(&dir)?;
         let database = SqlxDatabase::create(Self::make_database_path(&dir)).await?;
         let application_database = SqlxDatabase::create_with_migration(
