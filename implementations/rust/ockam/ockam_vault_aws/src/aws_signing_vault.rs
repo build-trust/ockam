@@ -43,7 +43,7 @@ impl AwsSigningVault {
                 // There are different possible causes here, but it's also possible that
                 // the Key may in deletion pending state, or have a different key type.
                 // Therefore, the best strategy is to just skip that key
-                Err(err) =>  Err(err)?
+                Err(err) => Err(err)?,
             }
         }
 
