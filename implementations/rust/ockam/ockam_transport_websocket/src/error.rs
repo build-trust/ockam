@@ -41,6 +41,7 @@ impl From<WebSocketError> for Error {
 }
 
 impl From<TungsteniteError> for WebSocketError {
+    #[track_caller]
     fn from(e: TungsteniteError) -> Self {
         match e {
             TungsteniteError::ConnectionClosed => Self::Transport(TransportError::ConnectionDrop),

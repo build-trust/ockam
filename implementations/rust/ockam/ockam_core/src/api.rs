@@ -407,6 +407,7 @@ impl Display for Error {
 }
 
 impl From<crate::Error> for Error {
+    #[track_caller]
     fn from(e: crate::Error) -> Self {
         Error {
             method: None,
@@ -418,6 +419,7 @@ impl From<crate::Error> for Error {
 }
 
 impl From<crate::Error> for Response<Error> {
+    #[track_caller]
     fn from(e: crate::Error) -> Self {
         match e.code().kind {
             Kind::NotFound => Response::not_found_no_request(&e.to_string()),
@@ -427,6 +429,7 @@ impl From<crate::Error> for Response<Error> {
 }
 
 impl From<minicbor::decode::Error> for Response<Error> {
+    #[track_caller]
     fn from(e: minicbor::decode::Error) -> Self {
         Response::bad_request_no_request(&e.to_string())
     }

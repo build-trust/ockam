@@ -54,12 +54,14 @@ pub enum CliStateError {
 }
 
 impl From<&str> for CliStateError {
+    #[track_caller]
     fn from(e: &str) -> Self {
         CliStateError::InvalidOperation(e.to_string())
     }
 }
 
 impl From<CliStateError> for ockam_core::Error {
+    #[track_caller]
     fn from(e: CliStateError) -> Self {
         match e {
             CliStateError::Ockam(e) => e,

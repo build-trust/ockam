@@ -83,18 +83,21 @@ impl std::error::Error for Error {
 }
 
 impl From<unsigned_varint::decode::Error> for Error {
+    #[track_caller]
     fn from(e: unsigned_varint::decode::Error) -> Self {
         Error(ErrorImpl::InvalidVarint(e))
     }
 }
 
 impl From<fmt::Error> for Error {
+    #[track_caller]
     fn from(e: fmt::Error) -> Self {
         Error(ErrorImpl::Format(e))
     }
 }
 
 impl From<Error> for ockam_core::Error {
+    #[track_caller]
     fn from(e: Error) -> Self {
         ockam_core::Error::new(Origin::Unknown, Kind::Invalid, e)
     }

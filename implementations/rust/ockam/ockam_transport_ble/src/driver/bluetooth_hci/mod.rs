@@ -333,6 +333,7 @@ where
     E: Debug,
     VS: Debug,
 {
+    #[track_caller]
     fn from(e: bluetooth_hci::host::Error<E, VS>) -> Self {
         trace!("bluetooth_hci::host::Error error: {:?}", e);
         Self::HardwareError
@@ -345,6 +346,7 @@ where
     E: Debug,
     VS: Debug,
 {
+    #[track_caller]
     fn from(e: bluetooth_hci::host::uart::Error<E, VS>) -> Self {
         trace!("bluetooth_hci::host::uart::Error error: {:?}", e);
         Self::HardwareError
@@ -357,6 +359,7 @@ where
     SpiError: Debug,
     GpioError: Debug,
 {
+    #[track_caller]
     fn from(e: bluenrg::Error<SpiError, GpioError>) -> Self {
         trace!("bluenrg::Error error: {:?}", e);
         Self::HardwareError
@@ -368,6 +371,7 @@ impl<E> From<bluenrg::gap::Error<E>> for BleError
 where
     E: Debug,
 {
+    #[track_caller]
     fn from(e: bluenrg::gap::Error<E>) -> Self {
         trace!("bluenrg::gap error: {:?}", e);
         Self::HardwareError
@@ -379,6 +383,7 @@ impl<E> From<bluenrg::gatt::Error<E>> for BleError
 where
     E: Debug,
 {
+    #[track_caller]
     fn from(e: bluenrg::gatt::Error<E>) -> Self {
         trace!("bluenrg::gatt error: {:?}", e);
         Self::HardwareError
@@ -390,6 +395,7 @@ impl<GpioError> From<nb::Error<GpioError>> for BleError
 where
     GpioError: Debug,
 {
+    #[track_caller]
     fn from(e: nb::Error<GpioError>) -> Self {
         trace!("bluenrg::gatt error: {:?}", e);
         Self::HardwareError
