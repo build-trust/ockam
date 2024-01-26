@@ -68,6 +68,7 @@ impl Projects for InMemoryNode {
     ) -> miette::Result<()> {
         let controller = self.create_controller().await?;
         controller.delete_project(ctx, space_id, project_id).await?;
+        self.cli_state.reset_project_journey(project_id).await?;
         Ok(self.cli_state.delete_project(project_id).await?)
     }
 

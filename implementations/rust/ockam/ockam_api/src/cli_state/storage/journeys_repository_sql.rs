@@ -48,6 +48,12 @@ impl JourneysRepository for JourneysSqlxDatabase {
         Ok(row.map(|r| r.project_journey()).transpose()?)
     }
 
+    async fn delete_project_journey(&self, project_id: &str) -> Result<()> {
+        let query =
+            query("DELETE FROM project_journey where project_id = ?").bind(project_id.to_sql());
+        query.execute(&*self.database.pool).await.void()
+    }
+
     async fn store_host_journey(&self, host_journey: HostJourney) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO host_journey VALUES (?, ?)")
             .bind(host_journey.opentelemetry_context.to_string().to_sql())
@@ -212,6 +218,11 @@ mod test {
             .await?;
         let actual = repository.get_project_journey("project_id").await?;
         assert_eq!(actual, Some(project_journey));
+
+        // delete a project journey
+        repository.delete_project_journey("project_id").await?;
+        let actual = repository.get_project_journey("project_id").await?;
+        assert_eq!(actual, None);
         Ok(())
     }
 
