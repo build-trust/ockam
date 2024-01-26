@@ -111,6 +111,11 @@ impl CliState {
         Ok(result)
     }
 
+    pub async fn reset_project_journey(&self, project_id: &str) -> Result<()> {
+        let repository = self.user_journey_repository().await?;
+        Ok(repository.delete_project_journey(project_id).await?)
+    }
+
     /// Create the initial host journey, with a random trace id
     fn create_host_journey(&self) -> HostJourney {
         let (opentelemetry_context, now) = self.create_journey(

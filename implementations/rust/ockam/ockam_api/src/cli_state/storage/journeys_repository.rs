@@ -9,6 +9,8 @@ pub trait JourneysRepository: Send + Sync + 'static {
 
     async fn get_project_journey(&self, project_id: &str) -> Result<Option<ProjectJourney>>;
 
+    async fn delete_project_journey(&self, project_id: &str) -> Result<()>;
+
     /// Store a host journey
     async fn store_host_journey(&self, host_journey: HostJourney) -> Result<()>;
 
