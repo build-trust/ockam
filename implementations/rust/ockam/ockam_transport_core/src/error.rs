@@ -95,6 +95,7 @@ impl From<TransportError> for Error {
 }
 
 impl From<io::Error> for TransportError {
+    #[track_caller]
     fn from(e: io::Error) -> Self {
         match e.kind() {
             io::ErrorKind::ConnectionRefused => Self::PeerNotFound,

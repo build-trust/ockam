@@ -26,6 +26,7 @@ const TX_UUID: Uuid = Uuid::from_u128(driver::uuid::READ);
 
 /// Convert btleplug::Error to BleError
 impl From<btleplug::Error> for BleError {
+    #[track_caller]
     fn from(e: btleplug::Error) -> BleError {
         trace!("From<btleplug::Error> -> {:?}", e);
         match e {

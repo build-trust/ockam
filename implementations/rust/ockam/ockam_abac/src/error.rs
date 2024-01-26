@@ -46,18 +46,21 @@ impl EvalError {
 }
 
 impl From<Utf8Error> for ParseError {
+    #[track_caller]
     fn from(e: Utf8Error) -> Self {
         Self::Utf8(e)
     }
 }
 
 impl From<ParseIntError> for ParseError {
+    #[track_caller]
     fn from(e: ParseIntError) -> Self {
         Self::Int(e)
     }
 }
 
 impl From<ParseFloatError> for ParseError {
+    #[track_caller]
     fn from(e: ParseFloatError) -> Self {
         Self::Float(e)
     }
@@ -65,6 +68,7 @@ impl From<ParseFloatError> for ParseError {
 
 #[cfg(feature = "std")]
 impl From<wast::Error> for ParseError {
+    #[track_caller]
     fn from(e: wast::Error) -> Self {
         Self::Other(format!("{e:?}"))
     }
@@ -117,12 +121,14 @@ impl std::error::Error for EvalError {
 }
 
 impl From<ParseError> for ockam_core::Error {
+    #[track_caller]
     fn from(e: ParseError) -> Self {
         ockam_core::Error::new(Origin::Application, Kind::Invalid, e.to_string())
     }
 }
 
 impl From<EvalError> for ockam_core::Error {
+    #[track_caller]
     fn from(e: EvalError) -> Self {
         ockam_core::Error::new(Origin::Application, Kind::Invalid, e.to_string())
     }

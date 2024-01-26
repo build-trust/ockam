@@ -112,6 +112,7 @@ impl Error {
 }
 
 impl From<anyhow::Error> for Error {
+    #[track_caller]
     fn from(e: anyhow::Error) -> Self {
         Error::new(exitcode::SOFTWARE, miette!(e.to_string()))
     }
@@ -172,6 +173,7 @@ impl miette::ReportHandler for ErrorReportHandler {
 macro_rules! gen_from_impl {
     ($t:ty, $c:ident) => {
         impl From<$t> for Error {
+            #[track_caller]
             fn from(e: $t) -> Self {
                 use miette::miette;
                 Error::new(exitcode::$c, miette!(e.to_string()))

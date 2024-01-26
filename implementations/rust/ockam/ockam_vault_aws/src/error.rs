@@ -35,6 +35,7 @@ pub enum Error {
 }
 
 impl From<Error> for ockam_core::Error {
+    #[track_caller]
     fn from(e: Error) -> Self {
         ockam_core::Error::new(Origin::Other, Kind::Io, e)
     }

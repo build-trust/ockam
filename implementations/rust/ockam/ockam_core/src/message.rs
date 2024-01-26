@@ -128,12 +128,14 @@ impl Decodable for NeutralMessage {
 impl Message for NeutralMessage {}
 
 impl From<serde_bare::error::Error> for Error {
+    #[track_caller]
     fn from(e: serde_bare::error::Error) -> Self {
         Error::new(Origin::Core, Kind::Io, e)
     }
 }
 
 impl From<minicbor::decode::Error> for Error {
+    #[track_caller]
     fn from(e: minicbor::decode::Error) -> Self {
         Error::new(Origin::Unknown, Kind::Invalid, e)
     }
@@ -144,6 +146,7 @@ impl<E> From<minicbor::encode::Error<E>> for Error
 where
     E: std::error::Error + Send + Sync + 'static,
 {
+    #[track_caller]
     fn from(e: minicbor::encode::Error<E>) -> Self {
         Error::new(Origin::Unknown, Kind::Invalid, e)
     }
@@ -151,6 +154,7 @@ where
 
 #[cfg(not(feature = "std"))]
 impl<E: Display> From<minicbor::encode::Error<E>> for Error {
+    #[track_caller]
     fn from(e: minicbor::encode::Error<E>) -> Self {
         Error::new(Origin::Unknown, Kind::Invalid, e)
     }

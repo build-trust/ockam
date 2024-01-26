@@ -25,12 +25,14 @@ pub enum Error {
 }
 
 impl From<Error> for String {
+    #[track_caller]
     fn from(e: Error) -> Self {
         e.to_string()
     }
 }
 
 impl From<miette::Report> for Error {
+    #[track_caller]
     fn from(e: miette::Report) -> Self {
         Error::InternalFailure(e.to_string())
     }
