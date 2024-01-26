@@ -6,7 +6,6 @@ use ockam_vault::{
     Signature, SigningKeyType, SigningSecretKeyHandle, VaultError, VaultForSigning,
     VerifyingPublicKey,
 };
-use tracing::error;
 
 struct AwsKeyPair {
     key: SigningSecretKeyHandle,
@@ -37,14 +36,13 @@ impl AwsSigningVault {
         let mut key_pairs: Vec<AwsKeyPair> = vec![];
         // Fetch list of all keys, then fetch the public key for each key
         let keys = client.list_keys().await?;
-
         for key in keys {
             match client.public_key(&key).await {
                 Ok(public_key) => key_pairs.push(AwsKeyPair { key, public_key }),
                 // There are different possible causes here, but it's also possible that
                 // the Key may in deletion pending state, or have a different key type.
                 // Therefore, the best strategy is to just skip that key
-                Err(err) => error!("Error exporting public key: {err}"),
+                Err(err) => Err(err)?,
             }
         }
 

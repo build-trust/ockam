@@ -10,9 +10,9 @@ pub enum Error {
     Sign { keyid: String, error: String },
     #[error("aws sdk error verifying message with key {keyid}")]
     Verify { keyid: String, error: String },
-    #[error("aws sdk error exporting public key {keyid}")]
+    #[error("aws sdk error exporting public key {keyid} {error}")]
     Export { keyid: String, error: String },
-    #[error("aws sdk error exporting public key {keyid}")]
+    #[error("aws sdk error deleting public key {keyid}")]
     Delete { keyid: String, error: String },
     #[error("aws did not return a key id")]
     MissingKeyId,
