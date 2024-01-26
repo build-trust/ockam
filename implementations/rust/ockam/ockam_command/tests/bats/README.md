@@ -62,3 +62,20 @@ The tests can be executed in parallel by using the `--jobs`/`-j` option. For exa
 ```bash
 bats implementations/rust/ockam/ockam_command/tests/bats --jobs 4
 ```
+
+
+## Running Docs tests
+
+To run docs tests, we need to setup the required environment
+
+- Postgres server `docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=password postgres`
+- Influx server `docker run --name influxdb -p 8086:8086 influxdb:2.7.4`
+- Setup Influx, this requires [Nix](https://nixos.org/) `nix shell nixpkgs#influxdb2-cli --command influx setup --username username --password password --token token --org org --bucket bucket --name name --force`
+- Setup required environment variables `export CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS="*********" CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY="********" CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET="****" PG_HOST="127.0.0.1" INFLUX_PORT=8086 INFLUX_ORG=org INFLUX_BUCKET=bucket INFLUX_TOKEN=token`
+- We use an old client of Kafka v3.4.x, you can [download the Kafka client here](https://downloads.apache.org/kafka/3.4.1/kafka_2.13-3.4.1.tgz) and untar and set the required path, e.g., export PATH="$PATH_TO_KAFKA_BIN:$PATH"
+
+
+To run the bats test, we use a [Nix shell](https://nixos.org/manual/nix/stable/command-ref/nix-shell)
+```bash
+nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql python311Packages.psycopg2 python311Packages.flask telegraf ]; }' --command sh -c "BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 DOCS_TESTS=1 bats ./implementations/rust/ockam/ockam_command/tests/bats/use_cases.bats"
+```
