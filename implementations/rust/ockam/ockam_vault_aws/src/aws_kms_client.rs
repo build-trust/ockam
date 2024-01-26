@@ -161,7 +161,7 @@ impl AwsKmsClient {
                 log::error!(%key, %err, "failed to get public key");
                 Error::Export {
                     keyid: key.to_string(),
-                    error: err.to_string(),
+                    error: format!("{:?}", err)
                 }
             })?;
         if output.key_spec() != Some(&KeySpec::EccNistP256) {
