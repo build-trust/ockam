@@ -6,7 +6,6 @@ use ockam_vault::{
     Signature, SigningKeyType, SigningSecretKeyHandle, VaultError, VaultForSigning,
     VerifyingPublicKey,
 };
-use tracing::error;
 
 struct AwsKeyPair {
     key: SigningSecretKeyHandle,
