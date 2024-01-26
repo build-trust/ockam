@@ -38,10 +38,18 @@ impl NodeManagerWorker {
             alias,
             at_rust_node,
             authorized,
+            relay_address,
         } = create_relay;
         match self
             .node_manager
-            .create_relay(ctx, &address, alias, at_rust_node, authorized)
+            .create_relay(
+                ctx,
+                &address,
+                alias,
+                at_rust_node,
+                authorized,
+                relay_address,
+            )
             .await
         {
             Ok(body) => Ok(Response::ok().with_headers(req).body(body)),
@@ -56,19 +64,19 @@ impl NodeManagerWorker {
     pub async fn delete_relay(
         &self,
         req: &RequestHeader,
-        remote_address: &str,
+        alias: &str,
     ) -> Result<Response<()>, Response<Error>> {
-        debug!(%remote_address , "Handling DeleteRelay request");
-        match self.node_manager.delete_relay_impl(remote_address).await {
+        debug!(%alias , "Handling DeleteRelay request");
+        match self.node_manager.delete_relay_impl(alias).await {
             Ok(_) => Ok(Response::ok().with_headers(req).body(())),
             Err(err) => match err.code().kind {
                 Kind::NotFound => Err(Response::not_found(
                     req,
-                    &format!("Relay with address {} not found.", remote_address),
+                    &format!("Relay with address {alias} not found."),
                 )),
                 _ => Err(Response::internal_error(
                     req,
-                    &format!("Failed to delete relay at {}: {}", remote_address, err),
+                    &format!("Failed to delete relay at {alias}: {err}"),
                 )),
             },
         }
@@ -77,9 +85,9 @@ impl NodeManagerWorker {
     pub async fn show_relay(
         &self,
         req: &RequestHeader,
-        remote_address: &str,
+        alias: &str,
     ) -> Result<Response<RelayInfo>, Response<Error>> {
-        self.node_manager.show_relay(req, remote_address).await
+        self.node_manager.show_relay(req, alias).await
     }
 
     pub async fn get_relays(
@@ -117,18 +125,19 @@ impl NodeManager {
         self: &Arc<Self>,
         ctx: &Context,
         addr: &MultiAddr,
-        alias: Option<String>,
+        alias: String,
         at_rust_node: bool,
         authorized: Option<Identifier>,
+        relay_address: Option<String>,
     ) -> Result<RelayInfo> {
         let replacer = RelaySessionReplacer {
             node_manager: self.clone(),
             context: Arc::new(ctx.async_try_clone().await?),
             addr: addr.clone(),
-            alias: alias.clone(),
             at_rust_node,
+            relay_address,
             connection: None,
-            relay_address: None,
+            relay_worker_address: None,
             authorized,
         };
 
@@ -143,9 +152,8 @@ impl NodeManager {
                     }
                 })?;
 
-        let key = format!("forward_to_{}", alias.as_deref().unwrap_or("default"));
-        if self.registry.relays.contains_key(&key).await {
-            let message = format!("A relay with the name '{key}' already exists");
+        if self.registry.relays.contains_key(&alias).await {
+            let message = format!("A relay with the name '{alias}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
                 Kind::AlreadyExists,
@@ -153,18 +161,16 @@ impl NodeManager {
             ));
         }
 
+        let registry_relay_info = RegistryRelayInfo {
+            destination_address: addr.clone(),
+            alias: alias.clone(),
+            at_rust_node,
+            session,
+        };
+
         self.registry
             .relays
-            .insert(
-                key.clone(),
-                RegistryRelayInfo {
-                    destination_address: addr.clone(),
-                    alias,
-                    at_rust_node,
-                    session,
-                    key,
-                },
-            )
+            .insert(alias, registry_relay_info.clone())
             .await;
 
         debug!(
@@ -173,32 +179,32 @@ impl NodeManager {
             "CreateRelay request processed, sending back response"
         );
 
-        Ok(relay_info.into())
+        Ok(registry_relay_info.into())
     }
 
     /// Delete a relay.
     ///
     /// This function removes a relay from the node registry and stops the relay worker.
-    pub async fn delete_relay_impl(&self, remote_address: &str) -> Result<(), ockam::Error> {
-        if let Some(relay_to_delete) = self.registry.relays.remove(remote_address).await {
-            debug!(%remote_address, "Successfully removed relay from node registry");
+    pub async fn delete_relay_impl(&self, alias: &str) -> Result<(), ockam::Error> {
+        if let Some(relay_to_delete) = self.registry.relays.remove(alias).await {
+            debug!(%alias, "Successfully removed relay from node registry");
             let result = relay_to_delete.session.close().await;
             match result {
                 Ok(_) => {
-                    debug!(%remote_address, "Successfully stopped relay");
+                    debug!(%alias, "Successfully stopped relay");
                     Ok(())
                 }
                 Err(err) => {
-                    error!(%remote_address, ?err, "Failed to delete relay from node registry");
+                    error!(%alias, ?err, "Failed to delete relay from node registry");
                     Err(err)
                 }
             }
         } else {
-            error!(%remote_address, "Relay not found in the node registry");
+            error!(%alias, "Relay not found in the node registry");
             Err(ockam::Error::new(
                 Origin::Api,
                 Kind::NotFound,
-                format!("Relay with address {} not found.", remote_address),
+                format!("Relay with alias {alias} not found."),
             ))
         }
     }
@@ -207,16 +213,16 @@ impl NodeManager {
     pub(super) async fn show_relay(
         &self,
         req: &RequestHeader,
-        remote_address: &str,
+        alias: &str,
     ) -> Result<Response<RelayInfo>, Response<Error>> {
         debug!("Handling ShowRelay request");
-        if let Some(registry_info) = self.registry.relays.get(remote_address).await {
+        if let Some(registry_info) = self.registry.relays.get(alias).await {
             Ok(Response::ok().with_headers(req).body(registry_info.into()))
         } else {
-            error!(%remote_address, "Relay not found in the node registry");
+            error!(%alias, "Relay not found in the node registry");
             Err(Response::not_found(
                 req,
-                &format!("Relay with address {} not found.", remote_address),
+                &format!("Relay with alias {alias} not found."),
             ))
         }
     }
@@ -227,12 +233,13 @@ impl InMemoryNode {
         &self,
         ctx: &Context,
         address: &MultiAddr,
-        alias: Option<String>,
+        alias: String,
         at_rust_node: bool,
         authorized: Option<Identifier>,
+        relay_address: Option<String>,
     ) -> Result<RelayInfo> {
         self.node_manager
-            .create_relay(ctx, address, alias, at_rust_node, authorized)
+            .create_relay(ctx, address, alias, at_rust_node, authorized, relay_address)
             .await
     }
 
@@ -247,17 +254,17 @@ struct RelaySessionReplacer {
 
     // current status
     connection: Option<Connection>,
-    relay_address: Option<Address>,
-    alias: Option<String>,
+    relay_worker_address: Option<Address>,
     addr: MultiAddr,
     at_rust_node: bool,
     authorized: Option<Identifier>,
+    relay_address: Option<String>,
 }
 
 #[async_trait]
 impl SessionReplacer for RelaySessionReplacer {
     async fn create(&mut self) -> std::result::Result<ReplacerOutcome, ockam_core::Error> {
-        debug!(addr = self.addr.to_string(), alias = ?self.alias, at_rust_node = ?self.at_rust_node, "Handling CreateRelay request");
+        debug!(addr = self.addr.to_string(), relay_address = ?self.relay_address, at_rust_node = ?self.at_rust_node, "Handling CreateRelay request");
         let connection = self
             .node_manager
             .make_connection(
@@ -281,19 +288,19 @@ impl SessionReplacer for RelaySessionReplacer {
         let options = RemoteRelayOptions::new();
 
         let relay_info = if self.at_rust_node {
-            if let Some(alias) = self.alias.as_ref() {
+            if let Some(relay_address) = self.relay_address.as_ref() {
                 RemoteRelay::create_static_without_heartbeats(
                     &self.context,
                     route.clone(),
-                    alias,
+                    relay_address,
                     options,
                 )
                 .await
             } else {
                 RemoteRelay::create(&self.context, route.clone(), options).await
             }
-        } else if let Some(alias) = self.alias.as_ref() {
-            RemoteRelay::create_static(&self.context, route.clone(), alias, options).await
+        } else if let Some(relay_address) = self.relay_address.as_ref() {
+            RemoteRelay::create_static(&self.context, route.clone(), relay_address, options).await
         } else {
             RemoteRelay::create(&self.context, route.clone(), options).await
         }?;
@@ -309,7 +316,7 @@ impl SessionReplacer for RelaySessionReplacer {
             connection.close(&self.context, &self.node_manager).await?;
         }
 
-        if let Some(relay_address) = self.relay_address.take() {
+        if let Some(relay_address) = self.relay_worker_address.take() {
             match self.context.stop_worker(relay_address.clone()).await {
                 Ok(_) => {
                     debug!(%relay_address, "Successfully stopped relay");
@@ -332,8 +339,9 @@ pub trait Relays {
         &self,
         ctx: &Context,
         address: &MultiAddr,
-        alias: Option<String>,
+        alias: String,
         authorized: Option<Identifier>,
+        relay_address: Option<String>,
     ) -> miette::Result<RelayInfo>;
 }
 
@@ -343,13 +351,19 @@ impl Relays for BackgroundNodeClient {
         &self,
         ctx: &Context,
         address: &MultiAddr,
-        alias: Option<String>,
+        alias: String,
         authorized: Option<Identifier>,
+        relay_address: Option<String>,
     ) -> miette::Result<RelayInfo> {
         let at_rust_node = !address.starts_with(Project::CODE);
-        let body = CreateRelay::new(address.clone(), alias, at_rust_node, authorized);
-        self.ask(ctx, Request::post("/node/forwarder").body(body))
-            .await
+        let body = CreateRelay::new(
+            address.clone(),
+            alias,
+            at_rust_node,
+            authorized,
+            relay_address,
+        );
+        self.ask(ctx, Request::post("/node/relay").body(body)).await
     }
 }
 

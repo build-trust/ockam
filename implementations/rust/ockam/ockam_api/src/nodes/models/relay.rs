@@ -7,7 +7,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
-use crate::route_to_multiaddr;
+use crate::{route_to_multiaddr, ConnectionStatus};
 
 /// Request body when instructing a node to create a relay
 #[derive(Debug, Clone, Decode, Encode)]
@@ -17,27 +17,31 @@ pub struct CreateRelay {
     /// Address to create relay at.
     #[n(1)] pub(crate) address: MultiAddr,
     /// Relay alias.
-    #[n(2)] pub(crate) alias: Option<String>,
+    #[n(2)] pub(crate) alias: String,
     /// Forwarding service is at rust node.
     #[n(3)] pub(crate) at_rust_node: bool,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
     #[n(4)] pub(crate) authorized: Option<Identifier>,
+    /// Relay address.
+    #[n(5)] pub(crate) relay_address: Option<String>,
 }
 
 impl CreateRelay {
     pub fn new(
         address: MultiAddr,
-        alias: Option<String>,
+        alias: String,
         at_rust_node: bool,
         auth: Option<Identifier>,
+        relay_address: Option<String>,
     ) -> Self {
         Self {
             address,
             alias,
             at_rust_node,
             authorized: auth,
+            relay_address,
         }
     }
 
@@ -45,8 +49,8 @@ impl CreateRelay {
         &self.address
     }
 
-    pub fn alias(&self) -> Option<&str> {
-        self.alias.as_deref()
+    pub fn alias(&self) -> &str {
+        &self.alias
     }
 
     pub fn at_rust_node(&self) -> bool {
@@ -55,6 +59,10 @@ impl CreateRelay {
 
     pub fn authorized(&self) -> Option<Identifier> {
         self.authorized.clone()
+    }
+
+    pub fn relay_address(&self) -> Option<&str> {
+        self.relay_address.as_deref()
     }
 }
 
@@ -67,13 +75,60 @@ pub struct RelayInfo {
     #[n(2)] remote_address: Option<String>,
     #[n(3)] worker_address: Option<String>,
     #[n(4)] flow_control_id: Option<FlowControlId>,
-    #[n(5)] destination_address: MultiAddr,
-    #[n(6)] alias: Option<String>,
-    #[n(7)] at_rust_node: bool,
-    #[n(8)] key: String,
+    #[n(5)] connection_status: ConnectionStatus,
+    #[n(6)] destination_address: MultiAddr,
+    #[n(7)] alias: String,
+    #[n(8)] at_rust_node: bool,
 }
 
 impl RelayInfo {
+    pub fn new(
+        destination_address: MultiAddr,
+        alias: String,
+        at_rust_node: bool,
+        connection_status: ConnectionStatus,
+    ) -> Self {
+        Self {
+            destination_address,
+            alias,
+            at_rust_node,
+            forwarding_route: None,
+            remote_address: None,
+            worker_address: None,
+            flow_control_id: None,
+            connection_status,
+        }
+    }
+
+    pub fn with(self, remote_relay_info: RemoteRelayInfo) -> Self {
+        Self {
+            forwarding_route: Some(remote_relay_info.forwarding_route().to_string()),
+            remote_address: Some(remote_relay_info.remote_address().into()),
+            worker_address: Some(remote_relay_info.worker_address().to_string()),
+            flow_control_id: remote_relay_info.flow_control_id().clone(),
+            connection_status: self.connection_status,
+            destination_address: self.destination_address,
+            alias: self.alias,
+            at_rust_node: self.at_rust_node,
+        }
+    }
+
+    pub fn connection_status(&self) -> ConnectionStatus {
+        self.connection_status
+    }
+
+    pub fn destination_address(&self) -> &MultiAddr {
+        &self.destination_address
+    }
+
+    pub fn alias(&self) -> &str {
+        &self.alias
+    }
+
+    pub fn at_rust_node(&self) -> bool {
+        self.at_rust_node
+    }
+
     pub fn forwarding_route(&self) -> &Option<String> {
         &self.forwarding_route
     }
@@ -96,10 +151,6 @@ impl RelayInfo {
         }
     }
 
-    pub fn key(&self) -> &String {
-        &self.key
-    }
-
     pub fn worker_address_ma(&self) -> Result<Option<MultiAddr>, ockam_core::Error> {
         if let Some(addr) = &self.worker_address {
             route_to_multiaddr(&route![addr.to_string()])
@@ -107,56 +158,6 @@ impl RelayInfo {
                 .map(|ma| Some(ma))
         } else {
             Ok(None)
-        }
-    }
-
-    pub fn with_destination_address(mut self, destination_address: MultiAddr) -> Self {
-        self.destination_address = destination_address;
-        self
-    }
-
-    pub fn with_alias(mut self, alias: Option<String>) -> Self {
-        self.alias = alias;
-        self
-    }
-
-    pub fn with_at_rust_node(mut self, at_rust_node: bool) -> Self {
-        self.at_rust_node = at_rust_node;
-        self
-    }
-
-    pub fn with_key(mut self, key: String) -> Self {
-        self.key = key;
-        self
-    }
-}
-
-impl Default for RelayInfo {
-    fn default() -> Self {
-        Self {
-            forwarding_route: None,
-            remote_address: None,
-            worker_address: None,
-            flow_control_id: None,
-            destination_address: Default::default(),
-            alias: None,
-            at_rust_node: false,
-            key: "".to_string(),
-        }
-    }
-}
-
-impl From<RemoteRelayInfo> for RelayInfo {
-    fn from(inner: RemoteRelayInfo) -> Self {
-        Self {
-            forwarding_route: Some(inner.forwarding_route().to_string()),
-            remote_address: Some(inner.remote_address().into()),
-            worker_address: Some(inner.worker_address().to_string()),
-            flow_control_id: inner.flow_control_id().clone(),
-            destination_address: Default::default(),
-            alias: None,
-            at_rust_node: false,
-            key: "".to_string(),
         }
     }
 }

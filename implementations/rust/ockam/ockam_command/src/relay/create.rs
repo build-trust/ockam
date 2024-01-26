@@ -20,7 +20,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use crate::node::util::initialize_default_node;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, process_nodes_multiaddr};
+use crate::util::{colorize_connection_status, node_rpc, process_nodes_multiaddr};
 use crate::{display_parse_logs, fmt_ok, CommandGlobalOpts};
 use crate::{docs, fmt_log, Error, Result};
 
@@ -35,7 +35,7 @@ const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the relay
+    /// Name of the relay. If not provided, 'default' will be used.
     #[arg(hide_default_value = true, default_value = "default")]
     relay_name: String,
 
@@ -50,6 +50,10 @@ pub struct CreateCommand {
     /// Authorized identity for secure channel connection
     #[arg(long, id = "AUTHORIZED")]
     authorized: Option<Identifier>,
+
+    /// Relay address to use. By default, inherits the relay name.
+    #[arg(long)]
+    relay_address: Option<String>,
 }
 
 fn default_at_addr() -> String {
@@ -132,8 +136,14 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
                 ))?;
             };
             info!("creating a relay at {} to {}", at, node.node_name());
-            node.create_relay(&ctx, &at, Some(alias), cmd.authorized)
-                .await?
+            node.create_relay(
+                &ctx,
+                &at,
+                alias.clone(),
+                cmd.authorized,
+                Some(cmd.relay_address.unwrap_or(alias)),
+            )
+            .await?
         };
         *is_finished.lock().await = true;
         Ok(relay_info)
@@ -178,11 +188,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         .color(OckamColor::PrimaryResource.color());
         fmt_ok!("Now relaying messages from {from} → {to}")
     };
+
     let machine = relay
         .remote_address_ma()
         .into_diagnostic()?
         .map(|x| x.to_string())
         .unwrap_or("N/A".into());
+
     let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
     opts.terminal
         .stdout()
@@ -196,42 +208,50 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
 impl Output for RelayInfo {
     fn output(&self) -> Result<String> {
-        let output = format!(
-            r#"
-Relay {}:
-    Route: {}
-    Remote Address: {}
-    Worker Address: {}
-    Flow Control Id: {}"
-"#,
-            self.key(),
-            self.forwarding_route().as_deref().unwrap_or("N/A"),
-            self.remote_address_ma()?
-                .map(|x| x.to_string())
-                .unwrap_or("N/A".into()),
-            self.worker_address_ma()?
-                .map(|x| x.to_string())
-                .unwrap_or("N/A".into()),
-            self.flow_control_id()
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or("<none>".into())
-        );
-
-        Ok(output)
+        Ok(r#"
+Relay:
+    "#
+        .to_owned()
+            + self.list_output()?.as_str())
     }
 
     fn list_output(&self) -> Result<String> {
         let output = format!(
-            r#"Relay {}
-Route {}"#,
-            self.key()
-                .as_str()
+            r#"Alias: {alias}
+Destination: {destination_address}
+Status: {connection_status}
+Route: {forwarding_route}
+Remote Address: {remote_address}
+Worker Address: {worker_address}
+Flow Control Id: {flow_control_id}"#,
+            alias = self.alias().color(OckamColor::PrimaryResource.color()),
+            connection_status = colorize_connection_status(self.connection_status()),
+            destination_address = self
+                .destination_address()
+                .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            self.forwarding_route()
+            // these fields are not available when the relay is down or degraded
+            forwarding_route = self
+                .forwarding_route()
                 .as_deref()
                 .unwrap_or("N/A")
                 .color(OckamColor::PrimaryResource.color()),
+            remote_address = self
+                .remote_address_ma()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
+                .color(OckamColor::PrimaryResource.color()),
+            worker_address = self
+                .worker_address_ma()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
+                .color(OckamColor::PrimaryResource.color()),
+            flow_control_id = self
+                .flow_control_id()
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("<none>".into())
+                .color(OckamColor::PrimaryResource.color())
         );
 
         Ok(output)

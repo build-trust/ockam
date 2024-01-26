@@ -82,13 +82,15 @@ impl AppState {
                     debug!(project = %project.name(), "Creating relay at project");
                     let project_route = format!("/project/{}", project.name());
                     let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
+                    let relay_name_and_alias = bare_relay_name(cli_state).await?;
                     let relay = node_manager
                         .create_relay(
                             context,
                             &project_address,
-                            Some(bare_relay_name(cli_state).await?),
+                            relay_name_and_alias.clone(),
                             false,
                             None,
+                            Some(relay_name_and_alias),
                         )
                         .await
                         .into_diagnostic()?;

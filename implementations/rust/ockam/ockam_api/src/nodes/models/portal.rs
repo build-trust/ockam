@@ -1,6 +1,6 @@
 //! Inlets and outlet request/response types
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
@@ -158,34 +158,22 @@ impl CreateOutlet {
 #[cbor(map)]
 pub struct InletStatus {
     #[n(1)] pub bind_addr: String,
-    #[n(2)] pub worker_addr: String,
+    #[n(2)] pub worker_addr: Option<String>,
     #[n(3)] pub alias: String,
     /// An optional status payload
     #[n(4)] pub payload: Option<String>,
-    #[n(5)] pub outlet_route: String,
+    #[n(5)] pub outlet_route: Option<String>,
     #[n(6)] pub status: ConnectionStatus,
     #[n(7)] pub outlet_addr: String,
 }
 
 impl InletStatus {
-    pub fn bad_request(reason: &'static str) -> Self {
-        Self {
-            bind_addr: "".into(),
-            worker_addr: "".into(),
-            alias: "".into(),
-            payload: Some(reason.into()),
-            outlet_route: "".into(),
-            status: ConnectionStatus::Down,
-            outlet_addr: "".to_string(),
-        }
-    }
-
     pub fn new(
         bind_addr: impl Into<String>,
-        worker_addr: impl Into<String>,
+        worker_addr: impl Into<Option<String>>,
         alias: impl Into<String>,
         payload: impl Into<Option<String>>,
-        outlet_route: impl Into<String>,
+        outlet_route: impl Into<Option<String>>,
         status: ConnectionStatus,
         outlet_addr: impl Into<String>,
     ) -> Self {
@@ -214,15 +202,6 @@ pub struct OutletStatus {
 }
 
 impl OutletStatus {
-    pub fn bad_request(reason: &'static str) -> Self {
-        Self {
-            socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 80),
-            worker_addr: "".into(),
-            alias: "".into(),
-            payload: Some(reason.into()),
-        }
-    }
-
     pub fn new(
         socket_addr: SocketAddr,
         worker_addr: Address,

@@ -437,10 +437,10 @@ impl NodeManager {
             inlet_to_delete.session.close().await?;
             Ok(InletStatus::new(
                 inlet_to_delete.bind_addr,
-                "".to_string(),
+                None,
                 alias,
                 None,
-                "".to_string(),
+                None,
                 ConnectionStatus::Down,
                 inlet_to_delete.outlet_addr.to_string(),
             ))
@@ -475,10 +475,10 @@ impl NodeManager {
             } else {
                 Some(InletStatus::new(
                     inlet_info.bind_addr.to_string(),
-                    "".to_string(),
+                    None,
                     alias,
                     None,
-                    "",
+                    None,
                     ConnectionStatus::Down,
                     inlet_info.outlet_addr.to_string(),
                 ))
@@ -515,10 +515,10 @@ impl NodeManager {
                     } else {
                         InletStatus::new(
                             &info.bind_addr,
-                            "".to_string(),
+                            None,
                             alias,
                             None,
-                            "".to_string(),
+                            None,
                             ConnectionStatus::Down,
                             info.outlet_addr.to_string(),
                         )

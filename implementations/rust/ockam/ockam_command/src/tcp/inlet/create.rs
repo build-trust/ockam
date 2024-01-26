@@ -269,7 +269,7 @@ mod tests {
         CreateCommand::parse_arg_to(&state, "/alice/service", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_to(&state, "alice/forwarder", default_project_name)
+        CreateCommand::parse_arg_to(&state, "alice/relay", default_project_name)
             .await
             .expect_err("Invalid protocol");
 

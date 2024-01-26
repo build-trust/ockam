@@ -682,15 +682,14 @@ impl NodeManagerWorker {
             }
 
             // ==*== Relay commands ==*==
-            // TODO: change the path to 'relay' instead of 'forwarder'
-            (Get, ["node", "forwarder", remote_address]) => {
-                encode_response(req, self.show_relay(req, remote_address).await)?
+            (Get, ["node", "relay", alias]) => {
+                encode_response(req, self.show_relay(req, alias).await)?
             }
-            (Get, ["node", "forwarder"]) => encode_response(req, self.get_relays(req).await)?,
-            (Delete, ["node", "forwarder", remote_address]) => {
-                encode_response(req, self.delete_relay(req, remote_address).await)?
+            (Get, ["node", "relay"]) => encode_response(req, self.get_relays(req).await)?,
+            (Delete, ["node", "relay", alias]) => {
+                encode_response(req, self.delete_relay(req, alias).await)?
             }
-            (Post, ["node", "forwarder"]) => {
+            (Post, ["node", "relay"]) => {
                 encode_response(req, self.create_relay(ctx, req, dec.decode()?).await)?
             }
 

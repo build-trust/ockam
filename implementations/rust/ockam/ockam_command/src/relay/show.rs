@@ -10,13 +10,13 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use ockam_api::ConnectionStatus;
 use serde::Serialize;
 
 use crate::output::Output;
-use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::{colorize_connection_status, node_rpc};
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -29,8 +29,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
-    /// Name assigned to the Relay, prefixed with 'forward_to_'. Example: 'forward_to_myrelay'
-    #[arg(value_parser = relay_name_parser)]
+    /// Name assigned to the Relay
     relay_name: Option<String>,
 
     /// Node which the relay belongs to
@@ -97,19 +96,15 @@ impl ShowCommandTui for ShowTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         let relays: Vec<RelayInfo> = self
             .node
-            .ask(&self.ctx, Request::get("/node/forwarder"))
+            .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        let names = relays.into_iter().map(|i| i.key().to_string()).collect();
-        Ok(names)
+        Ok(relays.into_iter().map(|i| i.alias().to_string()).collect())
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let relay: RelayInfo = self
             .node
-            .ask(
-                &self.ctx,
-                Request::get(format!("/node/forwarder/{item_name}")),
-            )
+            .ask(&self.ctx, Request::get(format!("/node/relay/{item_name}")))
             .await?;
         let relay = RelayShowOutput::from(relay);
         self.terminal()
@@ -124,19 +119,22 @@ impl ShowCommandTui for ShowTui {
     async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
         let relays: Vec<RelayInfo> = self
             .node
-            .ask(&self.ctx, Request::get("/node/forwarder"))
+            .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
+
         let relays = relays
             .into_iter()
-            .filter(|it| items_names.contains(it.key()))
+            .filter(|it| items_names.contains(&it.alias().to_string()))
             .map(RelayShowOutput::from)
             .collect::<Vec<RelayShowOutput>>();
+
         let node_name = self.node.node_name();
         let plain = self.terminal().build_list(
             &relays,
             &format!("Relays on Node {node_name}"),
             &format!("No Relays found on Node {node_name}."),
         )?;
+
         let json = serde_json::to_string(&relays).into_diagnostic()?;
         self.terminal()
             .stdout()
@@ -149,6 +147,9 @@ impl ShowCommandTui for ShowTui {
 
 #[derive(Serialize)]
 struct RelayShowOutput {
+    pub alias: String,
+    pub destination: MultiAddr,
+    pub connection_status: ConnectionStatus,
     pub relay_route: Option<String>,
     pub remote_address: Option<MultiAddr>,
     pub worker_address: Option<MultiAddr>,
@@ -157,6 +158,9 @@ struct RelayShowOutput {
 impl From<RelayInfo> for RelayShowOutput {
     fn from(r: RelayInfo) -> Self {
         Self {
+            alias: r.alias().to_string(),
+            destination: r.destination_address().clone(),
+            connection_status: r.connection_status(),
             relay_route: r.forwarding_route().clone(),
             remote_address: r.remote_address_ma().into_diagnostic().unwrap(),
             worker_address: r.worker_address_ma().into_diagnostic().unwrap(),
@@ -169,10 +173,16 @@ impl Output for RelayShowOutput {
         Ok(formatdoc!(
             r#"
         Relay:
+            Alias: {alias}
+            Destination: {destination_address}
+            Status: {connection_status}
             Relay Route: {route}
             Remote Address: {remote_addr}
             Worker Address: {worker_addr}
         "#,
+            alias = self.alias,
+            connection_status = colorize_connection_status(self.connection_status),
+            destination_address = self.destination.to_string(),
             route = self.relay_route.as_deref().unwrap_or("N/A"),
             remote_addr = self
                 .remote_address
@@ -190,9 +200,15 @@ impl Output for RelayShowOutput {
     fn list_output(&self) -> crate::error::Result<String> {
         Ok(formatdoc!(
             r#"
+            Alias: {alias}
+            Destination: {destination_address}
+            Status: {connection_status}
             Relay Route: {route}
             Remote Address: {remote_addr}
             Worker Address: {worker_addr}"#,
+            alias = self.alias,
+            connection_status = self.connection_status,
+            destination_address = self.destination.to_string(),
             route = self.relay_route.as_deref().unwrap_or("N/A"),
             remote_addr = self
                 .remote_address

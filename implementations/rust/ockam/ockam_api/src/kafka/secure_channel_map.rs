@@ -95,8 +95,14 @@ impl NodeManagerRelayCreator {
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
-                Request::post("/node/forwarder")
-                    .body(CreateRelay::new(relay_service, Some(alias), is_rust, None))
+                Request::post("/node/relay")
+                    .body(CreateRelay::new(
+                        relay_service,
+                        alias.clone(),
+                        is_rust,
+                        None,
+                        Some(alias),
+                    ))
                     .to_vec()?,
             )
             .await?;

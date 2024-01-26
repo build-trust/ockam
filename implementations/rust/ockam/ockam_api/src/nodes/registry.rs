@@ -192,28 +192,36 @@ impl OutletInfo {
 #[derive(Clone)]
 pub struct RegistryRelayInfo {
     pub(crate) destination_address: MultiAddr,
-    pub(crate) alias: Option<String>,
+    pub(crate) alias: String,
     pub(crate) at_rust_node: bool,
-    pub(crate) key: String,
     pub(crate) session: Session,
 }
 
 impl From<RegistryRelayInfo> for RelayInfo {
     fn from(registry_relay_info: RegistryRelayInfo) -> Self {
-        registry_relay_info
-            .session
-            .status()
-            .map(|info| match &info.kind {
-                ReplacerOutputKind::Inlet(_) => {
-                    panic!("InletInfo should not be in the registry")
-                }
-                ReplacerOutputKind::Relay(info) => RelayInfo::from(info.clone()),
-            })
-            .unwrap_or_default()
-            .with_key(registry_relay_info.key.clone())
-            .with_alias(registry_relay_info.alias.clone())
-            .with_at_rust_node(registry_relay_info.at_rust_node)
-            .with_destination_address(registry_relay_info.destination_address.clone())
+        let relay_info = RelayInfo::new(
+            registry_relay_info.destination_address.clone(),
+            registry_relay_info.alias.clone(),
+            registry_relay_info.at_rust_node,
+            registry_relay_info.session.connection_status(),
+        );
+
+        let current_relay_status =
+            registry_relay_info
+                .session
+                .status()
+                .map(|info| match info.kind {
+                    ReplacerOutputKind::Inlet(_) => {
+                        panic!("InletInfo should not be in the registry")
+                    }
+                    ReplacerOutputKind::Relay(info) => info,
+                });
+
+        if let Some(current_relay_status) = current_relay_status {
+            relay_info.with(current_relay_status)
+        } else {
+            relay_info
+        }
     }
 }
 

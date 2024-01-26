@@ -47,7 +47,7 @@ async fn run_impl(
     let is_finished: Mutex<bool> = Mutex::new(false);
 
     let get_relays = async {
-        let relay_infos: Vec<RelayInfo> = node.ask(&ctx, Request::get("/node/forwarder")).await?;
+        let relay_infos: Vec<RelayInfo> = node.ask(&ctx, Request::get("/node/relay")).await?;
         *is_finished.lock().await = true;
         Ok(relay_infos)
     };

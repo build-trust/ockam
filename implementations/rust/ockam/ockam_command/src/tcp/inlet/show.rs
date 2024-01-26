@@ -53,13 +53,19 @@ pub async fn run_impl(
         alias,
         bind_addr,
         outlet_route,
+        status,
+        outlet_addr,
         ..
     } = inlet_status;
+
+    let outlet_route = outlet_route.unwrap_or("N/A".to_string());
     let plain = formatdoc! {r#"
         Inlet:
           Alias: {alias}
+          Status: {status}
           TCP Address: {bind_addr}
-          To Outlet Address: {outlet_route}
+          Outlet Route: {outlet_route}
+          Outlet Destination: {outlet_addr}
     "#};
     let machine = bind_addr;
     opts.terminal
