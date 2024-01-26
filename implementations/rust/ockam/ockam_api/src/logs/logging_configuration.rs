@@ -15,7 +15,7 @@ pub struct LoggingConfiguration {
     format: LogFormat,
     colored: Colored,
     log_dir: Option<PathBuf>,
-    crates: Vec<String>,
+    crates: Option<Vec<String>>,
 }
 
 impl LoggingConfiguration {
@@ -28,7 +28,7 @@ impl LoggingConfiguration {
         format: LogFormat,
         colored: Colored,
         log_dir: Option<PathBuf>,
-        crates: &[&str],
+        crates: Option<&[&str]>,
     ) -> LoggingConfiguration {
         LoggingConfiguration {
             level,
@@ -38,7 +38,7 @@ impl LoggingConfiguration {
             format,
             colored,
             log_dir,
-            crates: crates.iter().map(|c| c.to_string()).collect(),
+            crates: crates.map(|cs| cs.iter().map(|c| c.to_string()).collect()),
         }
     }
 
@@ -70,7 +70,7 @@ impl LoggingConfiguration {
         self.log_dir.clone()
     }
 
-    pub fn crates(&self) -> Vec<String> {
+    pub fn crates(&self) -> Option<Vec<String>> {
         self.crates.clone()
     }
 
@@ -83,22 +83,27 @@ impl LoggingConfiguration {
 
     pub fn set_crates(self, crates: &[&str]) -> LoggingConfiguration {
         LoggingConfiguration {
-            crates: crates.iter().map(|c| c.to_string()).collect(),
+            crates: Some(crates.iter().map(|c| c.to_string()).collect()),
             ..self
         }
     }
 
     pub fn env_filter(&self) -> EnvFilter {
-        let builder = EnvFilter::builder();
-        builder
-            .with_default_directive(self.level().into())
-            .parse_lossy(
-                self.crates()
-                    .iter()
-                    .map(|c| format!("{c}={}", self.level()))
-                    .collect::<Vec<_>>()
-                    .join(","),
-            )
+        match &self.crates {
+            Some(crates) => {
+                let builder = EnvFilter::builder();
+                builder
+                    .with_default_directive(self.level().into())
+                    .parse_lossy(
+                        crates
+                            .iter()
+                            .map(|c| format!("{c}={}", self.level()))
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    )
+            }
+            None => EnvFilter::default().add_directive(self.level.into()),
+        }
     }
 
     pub fn off() -> LoggingConfiguration {
@@ -110,7 +115,7 @@ impl LoggingConfiguration {
             LogFormat::Default,
             Colored::Off,
             None,
-            &[],
+            None,
         )
     }
 
@@ -123,20 +128,20 @@ impl LoggingConfiguration {
             log_format(),
             Colored::Off,
             log_dir,
-            crates,
+            Some(crates),
         )
     }
 
-    fn default_crates() -> Vec<String> {
-        vec![
-            "ockam".to_string(),
-            "ockam_node".to_string(),
-            "ockam_core".to_string(),
-            "ockam_vault".to_string(),
-            "ockam_identity".to_string(),
-            "ockam_transport_tcp".to_string(),
-            "ockam_api".to_string(),
-            "ockam_command".to_string(),
+    pub fn default_crates() -> &'static [&'static str] {
+        &[
+            "ockam",
+            "ockam_node",
+            "ockam_core",
+            "ockam_vault",
+            "ockam_identity",
+            "ockam_transport_tcp",
+            "ockam_api",
+            "ockam_command",
         ]
     }
 }
@@ -151,10 +156,7 @@ impl Default for LoggingConfiguration {
             LogFormat::Default,
             Colored::Off,
             None,
-            &LoggingConfiguration::default_crates()
-                .iter()
-                .map(|c| c.as_str())
-                .collect::<Vec<&str>>(),
+            None,
         )
     }
 }
@@ -225,7 +227,7 @@ pub fn new_logging_configuration(
         log_format(),
         colored,
         log_dir,
-        crates,
+        Some(crates),
     )
 }
 
@@ -275,7 +277,7 @@ fn legacy_logging_configuration(
             format: log_format(),
             colored,
             log_dir,
-            crates: crates.iter().map(|c| c.to_string()).collect(),
+            crates: Some(crates.iter().map(|c| c.to_string()).collect()),
         })
 }
 
