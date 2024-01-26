@@ -31,6 +31,7 @@ use opentelemetry::{global, Context};
 use tokio::runtime::Runtime;
 use tracing::instrument;
 
+use account::AccountCommand;
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -90,6 +91,7 @@ use crate::subscription::SubscriptionCommand;
 use crate::terminal::color_primary;
 pub use crate::terminal::{OckamColor, Terminal, TerminalStream};
 
+mod account;
 mod admin;
 mod authenticated;
 mod authority;
@@ -370,6 +372,7 @@ pub enum OckamSubcommand {
     Status(StatusCommand),
     Reset(ResetCommand),
     Authenticated(AuthenticatedCommand),
+    Account(AccountCommand),
     Configuration(ConfigurationCommand),
 
     Completion(CompletionCommand),
@@ -592,6 +595,7 @@ impl OckamCommand {
             OckamSubcommand::Status(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
             OckamSubcommand::Authenticated(c) => c.run(options),
+            OckamSubcommand::Account(c) => c.run(options),
             OckamSubcommand::Configuration(c) => c.run(options),
 
             OckamSubcommand::Completion(c) => c.run(),
