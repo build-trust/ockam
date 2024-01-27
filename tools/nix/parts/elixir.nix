@@ -10,13 +10,13 @@ in {
   options = {
     ockam.elixir = {
       erlangVersion = mkOption {
-        type = types.nullOr types.string;
+        type = types.nullOr types.str;
         default = "25.3.2";
       };
       languageServer = mkEnableOption "elixir-ls" // {default = true;};
       shadowAsdf = mkEnableOption "override ASDF to use Nix-provided binaries" // {default = true;};
       version = mkOption {
-        type = types.nullOr types.string;
+        type = types.nullOr types.str;
         default = "1.14.4";
       };
     };
