@@ -177,6 +177,9 @@ mod tests {
         let _route = tcp
             .resolve_address(Address::new(TCP, local_address))
             .await?;
+
+        tokio::time::sleep(Duration::from_millis(250)).await;
+
         Ok(())
     }
 
@@ -201,8 +204,10 @@ mod tests {
                 format!("localhost:{}", socket_address.port()),
             ))
             .await;
-
         assert!(result.is_ok());
+
+        tokio::time::sleep(Duration::from_millis(250)).await;
+
         Ok(())
     }
 }
