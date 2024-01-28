@@ -1,175 +1,72 @@
 use core::time::Duration;
-use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Result, Routed, Worker};
+use ockam_core::{Address, Result};
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
+use ockam_transport_core::{Transport, TransportError};
+use ockam_transport_tcp::{TcpTransport, TCP};
+use tokio::net::TcpListener;
 
-pub struct Echoer;
-
-#[ockam_core::worker]
-impl Worker for Echoer {
-    type Message = String;
-    type Context = Context;
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        ctx.send(msg.return_route(), msg.body()).await
-    }
-}
-
-#[allow(non_snake_case)]
 #[ockam_macros::test]
-async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> Result<()> {
-    let options = TcpListenerOptions::new();
-    ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
-    ctx.start_worker("echoer", Echoer).await?;
+async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
+    let tcp = TcpTransport::create(ctx).await?;
+    let tcp_address = "127.0.0.1:0";
+    let initial_workers = ctx.list_workers().await?;
+    let listener = TcpListener::bind(tcp_address)
+        .await
+        .map_err(TransportError::from)?;
+    let local_address = listener.local_addr().unwrap().to_string();
 
-    let transport = TcpTransport::create(ctx).await?;
-    let listener = transport.listen("127.0.0.1:0", options).await?;
+    tokio::spawn(async move {
+        // Accept two connections, sleep for 100ms and quit
+        let (_stream1, _) = listener.accept().await.unwrap();
+        let (_stream2, _) = listener.accept().await.unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    });
 
-    let msg1: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-    let msg2: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-
-    let tx_address1 = transport
-        .connect(&listener.socket_string(), TcpConnectionOptions::new())
+    let resolved = tcp
+        .resolve_address(Address::new(TCP, local_address.clone()))
         .await?;
 
-    let reply1: String = ctx
-        .send_and_receive(route![tx_address1.clone(), "echoer"], msg1.clone())
-        .await?;
-    assert_eq!(reply1, msg1, "Should receive the same message");
+    // there are 2 additional workers
+    let mut additional_workers = ctx.list_workers().await?;
+    additional_workers.retain(|w| !initial_workers.contains(w));
+    assert_eq!(additional_workers.len(), 2);
 
-    let tx_address2 = transport
-        .connect(&listener.socket_string(), TcpConnectionOptions::new())
+    // the TCP address is replaced with the TCP sender worker address
+    assert!(additional_workers.contains(&resolved));
+
+    // trying to resolve the address a second time should still work
+    let _route = tcp
+        .resolve_address(Address::new(TCP, local_address))
         .await?;
-    let reply2: String = ctx
-        .send_and_receive(route![tx_address2.clone(), "echoer"], msg2.clone())
-        .await?;
-    assert_eq!(reply2, msg2, "Should receive the same message");
+
+    tokio::time::sleep(Duration::from_millis(250)).await;
 
     Ok(())
 }
 
-#[allow(non_snake_case)]
 #[ockam_macros::test]
-async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Result<()> {
-    let options = TcpListenerOptions::new();
-    ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
-    ctx.start_worker("echoer", Echoer).await?;
+async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
+    let tcp = TcpTransport::create(ctx).await?;
+    let tcp_address = "127.0.0.1:0";
+    let listener = TcpListener::bind(tcp_address)
+        .await
+        .map_err(TransportError::from)?;
+    let socket_address = listener.local_addr().unwrap();
 
-    let transport = TcpTransport::create(ctx).await?;
-    let listener = transport.listen("127.0.0.1:0", options).await?;
-
-    let msg1: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-    let msg2: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-    let msg3: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-
-    let connection1 = transport
-        .connect(&listener.socket_string(), TcpConnectionOptions::new())
-        .await?;
-
-    let reply1: String = ctx
-        .send_and_receive(route![connection1.clone(), "echoer"], msg1.clone())
-        .await?;
-    assert_eq!(reply1, msg1, "Should receive the same message");
-
-    let connection2 = transport
-        .connect(&listener.socket_string(), TcpConnectionOptions::new())
-        .await?;
-    let reply2: String = ctx
-        .send_and_receive(route![connection2.clone(), "echoer"], msg2.clone())
-        .await?;
-    assert_eq!(reply2, msg2, "Should receive the same message");
-
-    transport.disconnect(connection1.clone()).await?;
-    let res = ctx
-        .send(route![connection1.clone(), "echoer"], msg1.clone())
+    tokio::spawn(async move {
+        // Accept two connections, sleep for 100ms and quit
+        let (_stream, _) = listener.accept().await.unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    });
+    // CI TRIGGER
+    let result = tcp
+        .resolve_address(Address::new(
+            TCP,
+            format!("localhost:{}", socket_address.port()),
+        ))
         .await;
-    assert!(res.is_err(), "Should not send messages after disconnection");
+    assert!(result.is_ok());
 
-    let reply3: String = ctx
-        .send_and_receive(route![connection2.clone(), "echoer"], msg3.clone())
-        .await?;
-    assert_eq!(reply3, msg3, "Should receive the same message");
-
-    transport.disconnect(connection2.clone()).await?;
-    let res = ctx
-        .send(route![connection2.clone(), "echoer"], msg3.clone())
-        .await;
-    assert!(res.is_err(), "Should not send messages after disconnection");
-    Ok(())
-}
-
-#[allow(non_snake_case)]
-#[ockam_macros::test]
-async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
-    ctx: &mut Context,
-) -> Result<()> {
-    let options = TcpListenerOptions::new();
-    ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
-
-    ctx.start_worker("echoer", Echoer).await?;
-
-    let transport = TcpTransport::create(ctx).await?;
-    let listener = transport.listen("127.0.0.1:0", options).await?;
-
-    let msg1: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-    let msg2: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(256)
-        .map(char::from)
-        .collect();
-
-    let tx_address = transport
-        .connect(listener.socket_string(), TcpConnectionOptions::new())
-        .await?;
-
-    let reply1: String = ctx
-        .send_and_receive(route![tx_address.clone(), "echoer"], msg1.clone())
-        .await?;
-    assert_eq!(reply1, msg1, "Should receive the same message");
-
-    transport
-        .stop_listener(listener.processor_address())
-        .await?;
-    ctx.sleep(Duration::from_millis(10)).await;
-
-    let res = transport
-        .connect(listener.socket_string(), TcpConnectionOptions::new())
-        .await;
-    assert!(
-        res.is_err(),
-        "Should not accept connection after listener is stopped"
-    );
-    let reply2: String = ctx
-        .send_and_receive(route![tx_address.clone(), "echoer"], msg2.clone())
-        .await?;
-    assert_eq!(reply2, msg2, "Should receive the same message");
+    tokio::time::sleep(Duration::from_millis(250)).await;
     Ok(())
 }

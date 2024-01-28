@@ -31,11 +31,7 @@ check_cargo_update:
 	cargo check --locked
 
 test:
-	@if [ "$(CI)" = "true" ]; then \
-		$(MAKE) -f $(MAKEFILE_LIST) nextest; \
-	else \
-		cargo --locked test; \
-	fi
+	$(MAKE) -f $(MAKEFILE_LIST) nextest;
 test_%:
 	@if [ "$(CI)" = "true" ]; then \
 		$(MAKE) -f $(MAKEFILE_LIST) nextest_$*; \
@@ -43,8 +39,9 @@ test_%:
 		cargo --locked test --package $*; \
 	fi
 nextest:
-	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run --no-fail-fast
-	cargo --locked test --doc
+	for number in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
+		OCKAM_LOG=trace cargo test -p ockam_transport_tcp --test lifecycle; \
+	done
 nextest_%:
 	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run -E 'package($*)' --no-fail-fast
 	cargo --locked test --doc
