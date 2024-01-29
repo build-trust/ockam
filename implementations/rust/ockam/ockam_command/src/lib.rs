@@ -76,6 +76,7 @@ use vault::VaultCommand;
 use version::Version;
 use worker::WorkerCommand;
 
+
 use crate::admin::AdminCommand;
 use crate::authority::AuthorityCommand;
 use crate::flow_control::FlowControlCommand;
@@ -96,7 +97,7 @@ mod authority;
 mod completion;
 mod configuration;
 mod credential;
-mod docs;
+pub mod docs;
 pub mod enroll;
 mod environment;
 pub mod error;

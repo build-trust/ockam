@@ -30,7 +30,7 @@ static THEME: Lazy<Option<Theme>> = Lazy::new(|| {
     let theme_name = match TerminalBackground::detect_background_color() {
         TerminalBackground::Light => "base16-ocean.light",
         TerminalBackground::Dark => "base16-ocean.dark",
-        TerminalBackground::Unknown => return None,
+        TerminalBackground::Unknown => "base16-ocean.dark" //return None,
     };
     let mut theme_set = ThemeSet::load_defaults();
     let theme = theme_set.themes.remove(theme_name).unwrap();
@@ -86,35 +86,40 @@ pub(crate) fn render(body: &str) -> &'static str {
 /// Use a shell syntax highlighter to render the fenced code blocks in terminals
 fn process_terminal_docs(input: String) -> String {
     let mut output: Vec<String> = Vec::new();
+    let mut code_highlighter = FencedCodeBlockHighlighter::new();
 
-    let mut _code_highlighter = FencedCodeBlockHighlighter::new();
+    for line in LinesWithEndings::from(&input) {
+        eprintln!("Processing line: {}", line);
+        
+        // Check if the current line is a code block start/end or content.
+        let is_code_line = code_highlighter.process_line(line, &mut output);
+        if !is_code_line {
+            // The line was not part of a code block, so process normally.
 
-    for line in LinesWithEndings::from(input.as_str()) {
-        // TODO: fix the fenced code block highlighter (currently disabled) - then use _code_highlighter here
-
-        // Replace headers with bold and underline text
-        if HEADER_RE.is_match(line) {
-            output.push(line.to_string().bold().underlined().to_string());
-        }
-        // Replace subheaders with underlined text
-        else if line.starts_with("#### ") {
-            output.push(line.replace("#### ", "").underlined().to_string());
-        }
-        // Catch all
-        else {
-            output.push(line.to_string());
+            // Replace headers with bold and underline text
+            if HEADER_RE.is_match(line) {
+                output.push(line.to_string().bold().underlined().to_string());
+            }
+            // Replace subheaders with underlined text
+            else if line.starts_with("#### ") {
+                output.push(line.replace("#### ", "").underlined().to_string());
+            }
+            // Catch all other lines
+            else {
+                output.push(line.to_string());
+            }
         }
     }
     output.join("")
 }
 
-struct FencedCodeBlockHighlighter<'a> {
+pub struct FencedCodeBlockHighlighter<'a> {
     inner: Option<HighlightLines<'a>>,
     in_fenced_block: bool,
 }
 
 impl FencedCodeBlockHighlighter<'_> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let inner = match &*THEME {
             Some(theme) => {
                 let syntax = SYNTAX_SET.find_syntax_by_extension("sh").unwrap();
@@ -130,7 +135,8 @@ impl FencedCodeBlockHighlighter<'_> {
 
     // TODO: fix the fenced code block highlighter, as it does not work on macOS or Linux
     #[allow(dead_code)]
-    fn process_line(&mut self, line: &str, output: &mut Vec<String>) -> bool {
+    pub fn process_line(&mut self, line: &str, output: &mut Vec<String>) -> bool {
+
         if let Some(highlighter) = &mut self.inner {
             if line == "```sh\n" {
                 self.in_fenced_block = true;
