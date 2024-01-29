@@ -43,6 +43,11 @@ pub struct CreateCommand {
     #[arg(display_order = 900, long, short)]
     pub foreground: bool,
 
+    /// Skip the check if such node is already running.
+    /// Useful for kubernetes when the pid is the same on each run.
+    #[arg(long, short, value_name = "BOOL", default_value_t = false)]
+    skip_is_running_check: bool,
+
     /// Watch stdin for EOF
     #[arg(display_order = 900, long = "exit-on-eof", short)]
     pub exit_on_eof: bool,
@@ -85,6 +90,7 @@ impl Default for CreateCommand {
     fn default() -> Self {
         let node_manager_defaults = NodeManagerDefaults::default();
         Self {
+            skip_is_running_check: false,
             node_name: random_name(),
             exit_on_eof: false,
             tcp_listener_address: node_manager_defaults.tcp_listener_address,

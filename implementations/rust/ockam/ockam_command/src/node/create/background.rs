@@ -25,7 +25,9 @@ pub(crate) async fn background_mode(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    if !cmd.skip_is_running_check {
+        guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    }
 
     let node_name = cmd.node_name.clone();
     opentelemetry::Context::current()
@@ -105,6 +107,7 @@ pub(crate) async fn spawn_background_node(
     info!("spawning a new node {}", &cmd.node_name);
     spawn_node(
         opts,
+        cmd.skip_is_running_check,
         &cmd.node_name,
         &cmd.identity,
         &cmd.tcp_listener_address,

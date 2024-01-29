@@ -159,6 +159,7 @@ async fn run_node(
     // Restart node
     spawn_node(
         opts,
+        false,         // Skip is running check
         node_name,     // The selected node name
         &None,         // Use the default identity
         &node_address, // The selected node api address

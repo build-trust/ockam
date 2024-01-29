@@ -26,7 +26,9 @@ pub(super) async fn foreground_mode(
     ctx: Context,
     (opts, cmd, tracing_guard): (CommandGlobalOpts, CreateCommand, Option<TracingGuard>),
 ) -> miette::Result<()> {
-    guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    if !cmd.skip_is_running_check {
+        guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    }
 
     let node_name = cmd.node_name.clone();
     debug!("create node {node_name} in foreground mode");

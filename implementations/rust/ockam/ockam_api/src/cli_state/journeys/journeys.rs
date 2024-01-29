@@ -112,7 +112,7 @@ impl CliState {
     }
 
     pub async fn reset_project_journey(&self, project_id: &str) -> Result<()> {
-        let repository = self.user_journey_repository().await?;
+        let repository = self.user_journey_repository();
         Ok(repository.delete_project_journey(project_id).await?)
     }
 
