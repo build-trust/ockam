@@ -21,7 +21,7 @@ pub(crate) mod sessions;
 
 const MAX_FAILURES: usize = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(5);
-const PING_INTERVAL: Duration = Duration::from_secs(3);
+const PING_INTERVAL: Duration = Duration::from_secs(10);
 
 pub struct Medic {
     retry_delay: Duration,
@@ -40,9 +40,17 @@ pub struct Message {
 
 impl Medic {
     pub fn new(registry: Arc<Registry>) -> Self {
+        Self::new_extended(registry, RETRY_DELAY, PING_INTERVAL)
+    }
+
+    pub fn new_extended(
+        registry: Arc<Registry>,
+        retry_delay: Duration,
+        ping_interval: Duration,
+    ) -> Self {
         Self {
-            retry_delay: RETRY_DELAY,
-            ping_interval: PING_INTERVAL,
+            retry_delay,
+            ping_interval,
             registry,
             pings: JoinSet::new(),
             replacements: JoinSet::new(),
@@ -81,7 +89,9 @@ impl Medic {
 
                 for session in sessions {
                     let key = session.key().to_string();
-                    if session.pings().len() < MAX_FAILURES {
+                    if session.pings().len() < MAX_FAILURES
+                        && session.connection_status() == ConnectionStatus::Up
+                    {
                         let message = Message::new(session.key().to_string());
                         session.add_ping(message.ping);
                         let encoded_message =
@@ -309,6 +319,7 @@ impl MedicHandle {
 #[cfg(test)]
 mod tests {
     use core::sync::atomic::{AtomicBool, Ordering};
+    use std::time::Duration;
 
     use ockam::{route, Address, Context};
     use ockam_core::compat::sync::Arc;
@@ -362,7 +373,11 @@ mod tests {
         let registry = Arc::new(Registry::default());
 
         // Create a new Medic instance
-        let medic = Medic::new(registry.clone());
+        let medic = Medic::new_extended(
+            registry.clone(),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        );
 
         // Start the Medic in a separate task
         let new_ctx = ctx.async_try_clone().await?;
@@ -428,7 +443,7 @@ mod tests {
                 break;
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
             continue;
         }
 

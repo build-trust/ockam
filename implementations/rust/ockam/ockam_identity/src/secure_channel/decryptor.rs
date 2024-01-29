@@ -19,7 +19,7 @@ use crate::{
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 use tracing_attributes::instrument;
 
 pub(crate) struct DecryptorHandler {
@@ -63,9 +63,10 @@ impl DecryptorHandler {
         ctx: &mut Context,
         msg: Routed<Any>,
     ) -> Result<()> {
-        debug!(
+        trace!(
             "SecureChannel {} received Decrypt API {}",
-            self.role, &self.addresses.decryptor_remote
+            self.role,
+            &self.addresses.decryptor_remote
         );
 
         let return_route = msg.return_route();
@@ -168,9 +169,10 @@ impl DecryptorHandler {
         ctx: &mut Context,
         msg: Routed<Any>,
     ) -> Result<()> {
-        debug!(
+        trace!(
             "SecureChannel {} received Decrypt {}",
-            self.role, &self.addresses.decryptor_remote
+            self.role,
+            &self.addresses.decryptor_remote
         );
 
         // Decode raw payload binary

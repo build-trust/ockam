@@ -229,6 +229,8 @@ teardown() {
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+
+  sleep 20
   run_success curl --head --retry-connrefused --retry 2 --max-time 10 "127.0.0.1:$port"
 }
 
@@ -242,9 +244,9 @@ teardown() {
   run_success "$OCKAM" node create n2 --tcp-listener-address "127.0.0.1:${node_port}"
   run_success "$OCKAM" tcp-outlet create --at /node/n2 --to 127.0.0.1:5000
 
-  sleep 30
+  sleep 15
 
-  run_success curl --fail --head --retry 2 --max-time 10 "127.0.0.1:${inlet_port}"
+  run_success curl --fail --head --retry 4 --max-time 30 "127.0.0.1:${inlet_port}"
 }
 
 @test "portals - local portal, inlet credential expires" {

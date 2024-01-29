@@ -125,7 +125,7 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// #[ockam::test]
-/// async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
+/// async fn main(ctx: &mut ockam::Context) -> ockam::Result<()> {
 ///     ctx.stop().await
 /// }
 /// ```

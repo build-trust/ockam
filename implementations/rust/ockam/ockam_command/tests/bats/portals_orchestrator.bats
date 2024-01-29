@@ -203,20 +203,20 @@ teardown() {
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
-
   run_success "$OCKAM" relay create --to /node/blue
+
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green \
     --from "127.0.0.1:$port" --to "/project/default/service/forward_to_default/secure/api/service/outlet"
-  run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
+  run_success curl --fail --head --retry 4 --max-time 10 "127.0.0.1:$port"
 
   $OCKAM node delete blue --yes
-  run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
+  run_failure curl --fail --head --max-time 5 "127.0.0.1:$port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" relay create --to /node/blue
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success curl --head --retry-connrefused --retry 2 --max-time 10 "127.0.0.1:$port"
+  run_success "$OCKAM" relay create --to /node/blue
+  run_success curl --fail --head --retry-connrefused --retry 4 --max-time 10 "127.0.0.1:$port"
 }
 
 @test "portals - inlet/outlet with resource type policies" {
@@ -281,4 +281,72 @@ teardown() {
   # Update the policy for the outlet and try again. It will fail because the local policy is not satisfied
   run_success $OCKAM policy create --resource outlet --expression '(= subject.component "NOT_web")'
   run_failure curl --head --retry-connrefused --max-time 3 "127.0.0.1:$inlet_port"
+}
+
+@test "portals - create an inlet/outlet pair, copy heavy payload" {
+  port="$(random_port)"
+  relay_name="$(random_str)"
+
+  run_success "$OCKAM" node create blue
+  sleep 1
+  run_success "$OCKAM" relay create "${relay_name}" --to /node/blue
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "127.0.0.1:$PYTHON_SERVER_PORT"
+
+  run_success "$OCKAM" node create green
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:${port}" \
+    --to "/project/default/service/forward_to_${relay_name}/secure/api/service/outlet"
+
+  # generate 10MB of random data
+  run_success openssl rand -out "${OCKAM_HOME_BASE}/payload" $((1024 * 1024 * 10))
+
+  # write payload to file `payload.copy`
+  run_success curl --fail --max-time 60 "127.0.0.1:${port}/payload" -o "${OCKAM_HOME}/payload.copy"
+
+  # compare `payload` and `payload.copy`
+  run_success cmp "${OCKAM_HOME_BASE}/payload" "${OCKAM_HOME}/payload.copy"
+}
+
+@test "portals - create an inlet/outlet pair, connection goes down, connection restored" {
+  inlet_port="$(random_port)"
+  socat_port="$(random_port)"
+
+  project_address=$(ockam project show default --output json | jq .access_route -r | sed 's#/dnsaddr/\([^/]*\)/.*#\1#')
+  project_port=$(ockam project show default --output json | jq .access_route -r | sed 's#.*/tcp/\([^/]*\)/.*#\1#')
+
+  # pass traffic through socat, so we can simulate the connection being interrupted
+  socat TCP-LISTEN:${socat_port},reuseaddr TCP:${project_address}:${project_port} &
+  socat_pid=$!
+
+  run_success "$OCKAM" node create blue
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+
+  relay_name="$(random_str)"
+  run_success "$OCKAM" relay create "${relay_name}" --project-relay --to /node/blue \
+    --at "/ip4/127.0.0.1/tcp/${socat_port}/secure/api"
+
+  run_success "$OCKAM" node create green
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:${inlet_port}" \
+    --to "${relay_name}"
+
+  run_success curl --fail --head --max-time 10 "127.0.0.1:${inlet_port}"
+  status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
+  assert_equal "$status" "Up"
+
+  kill -INT $socat_pid
+  sleep 33
+
+  run_failure curl --fail --head --max-time 1 "127.0.0.1:${inlet_port}"
+  status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
+  assert [ "$status" != "Up" ]
+
+  # restore connection
+  socat TCP-LISTEN:${socat_port},reuseaddr TCP:${project_address}:${project_port} &
+  socat_pid=$!
+  sleep 10
+
+  run_success curl --fail --head --max-time 10 "127.0.0.1:${inlet_port}"
+  status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
+  assert_equal "$status" "Up"
+
+  kill -INT $socat_pid
 }

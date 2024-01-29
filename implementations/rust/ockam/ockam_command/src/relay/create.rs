@@ -13,7 +13,7 @@ use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::service::relay::Relays;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{is_local_node, CliState};
+use ockam_api::CliState;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
@@ -53,6 +53,11 @@ pub struct CreateCommand {
     /// Relay address to use. By default, inherits the relay name.
     #[arg(long)]
     relay_address: Option<String>,
+
+    /// Whether the relay will be used to relay messages at a project.
+    /// By default, this information will be inferred from the `--at` argument.
+    #[arg(long)]
+    project_relay: bool,
 }
 
 pub fn default_at_addr() -> String {
@@ -94,6 +99,7 @@ impl CreateCommand {
                     alias.clone(),
                     cmd.authorized,
                     Some(cmd.relay_address.unwrap_or(alias)),
+                    !cmd.project_relay,
                 )
                 .await?
             };
@@ -167,7 +173,8 @@ impl CreateCommand {
             .ok()
             .map(|p| p.name());
         let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_deref()).await?;
-        let relay_name = Self::parse_arg_relay_name(self.relay_name, &at)?;
+        self.project_relay |= at.starts_with(Project::CODE);
+        let relay_name = Self::parse_arg_relay_name(self.relay_name, !self.project_relay)?;
         self.at = at.to_string();
         self.relay_name = relay_name;
         Ok(self)
@@ -192,9 +199,8 @@ impl CreateCommand {
         process_nodes_multiaddr(&ma, state).await
     }
 
-    fn parse_arg_relay_name(relay_name: impl Into<String>, at: &MultiAddr) -> Result<String> {
+    fn parse_arg_relay_name(relay_name: impl Into<String>, at_rust_node: bool) -> Result<String> {
         let relay_name = relay_name.into();
-        let at_rust_node = is_local_node(at)?;
         if at_rust_node {
             Ok(format!("forward_to_{relay_name}"))
         } else {
@@ -282,13 +288,11 @@ mod tests {
     #[tokio::test]
     async fn test_parse_arg_relay_name() {
         // `--at` is a local route
-        let at = MultiAddr::from_str("/node/alice").unwrap();
-        let res = CreateCommand::parse_arg_relay_name("relay", &at).unwrap();
+        let res = CreateCommand::parse_arg_relay_name("relay", true).unwrap();
         assert_eq!(res, "forward_to_relay");
 
         // `--at` is a remote route
-        let at = MultiAddr::from_str("/project/p1").unwrap();
-        let res = CreateCommand::parse_arg_relay_name("relay", &at).unwrap();
+        let res = CreateCommand::parse_arg_relay_name("relay", false).unwrap();
         assert_eq!(res, "relay");
     }
 }
