@@ -17,6 +17,7 @@ _: {
         jq
         parallel
         which
+        socat
       ];
 
       BATS_LIB = "${config.packages.bats}/share/bats";

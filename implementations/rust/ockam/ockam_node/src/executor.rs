@@ -9,8 +9,7 @@ use crate::{
     NodeMessage,
 };
 use core::future::Future;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, Result};
+use ockam_core::{compat::sync::Arc, Address, Result};
 
 #[cfg(feature = "metrics")]
 use crate::metrics::Metrics;

@@ -44,6 +44,7 @@ pub(crate) struct TcpPortalWorker {
     remote_route: Option<Route>,
     is_disconnecting: bool,
     portal_type: PortalType,
+    last_received_packet_counter: u16,
 }
 
 impl TcpPortalWorker {
@@ -129,6 +130,7 @@ impl TcpPortalWorker {
             remote_route: None,
             is_disconnecting: false,
             portal_type,
+            last_received_packet_counter: u16::MAX,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -421,7 +423,28 @@ impl Worker for TcpPortalWorker {
                     let msg = PortalMessage::decode(msg.payload())?;
 
                     match msg {
-                        PortalMessage::Payload(payload) => {
+                        PortalMessage::Payload(payload, packet_counter) => {
+                            // detects both missing or out of order packets
+                            if let Some(packet_counter) = packet_counter {
+                                let expected_counter =
+                                    if self.last_received_packet_counter == u16::MAX {
+                                        0
+                                    } else {
+                                        self.last_received_packet_counter + 1
+                                    };
+
+                                if packet_counter != expected_counter {
+                                    warn!(
+                                        "Received packet with counter {} while expecting {}, disconnecting",
+                                        packet_counter, expected_counter
+                                    );
+                                    self.start_disconnection(ctx, DisconnectionReason::FailedRx)
+                                        .await?;
+                                    return Err(TransportError::RecvBadMessage)?;
+                                }
+                                self.last_received_packet_counter = packet_counter;
+                            }
+
                             if let Some(tx) = &mut self.write_half {
                                 match tx.write_all(&payload).await {
                                     Ok(()) => {}

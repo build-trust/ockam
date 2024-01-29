@@ -9,8 +9,7 @@ use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, AsyncTryClone};
-use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 use crate::nodes::connection::Connection;
@@ -342,6 +341,7 @@ pub trait Relays {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
+        at_rust_node: bool,
     ) -> miette::Result<RelayInfo>;
 }
 
@@ -354,8 +354,8 @@ impl Relays for BackgroundNodeClient {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
+        at_rust_node: bool,
     ) -> miette::Result<RelayInfo> {
-        let at_rust_node = !address.starts_with(Project::CODE);
         let body = CreateRelay::new(
             address.clone(),
             alias,

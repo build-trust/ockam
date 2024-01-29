@@ -98,9 +98,9 @@ impl NodeBuilder {
         // Shared instance of FlowControls
         let flow_controls = FlowControls::new();
 
-        let rt = self.rt.unwrap_or(Arc::new(
-            Runtime::new().expect("cannot initialize the tokio runtime"),
-        ));
+        let rt = self.rt.unwrap_or_else(|| {
+            Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"))
+        });
         let mut exe = Executor::new(rt.clone(), &flow_controls);
         let addr: Address = "app".into();
 

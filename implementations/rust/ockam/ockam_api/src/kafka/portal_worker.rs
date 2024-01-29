@@ -81,7 +81,7 @@ impl Worker for KafkaPortalWorker {
         let portal_message = routed_message.as_body();
 
         match portal_message {
-            PortalMessage::Payload(message) => {
+            PortalMessage::Payload(message, _) => {
                 let result = self
                     .intercept_and_transform_messages(context, message)
                     .await;
@@ -243,7 +243,7 @@ impl KafkaPortalWorker {
             let message = LocalMessage::new()
                 .with_onward_route(onward_route.clone())
                 .with_return_route(return_route.clone())
-                .with_payload(PortalMessage::Payload(chunk.to_vec()).encode()?)
+                .with_payload(PortalMessage::Payload(chunk.to_vec(), None).encode()?)
                 .with_local_info(local_info.to_vec());
 
             context.forward(message).await?;
@@ -483,7 +483,7 @@ mod test {
             _context: &mut Self::Context,
             message: Routed<Self::Message>,
         ) -> ockam_core::Result<()> {
-            if let PortalMessage::Payload(payload) = message.as_body() {
+            if let PortalMessage::Payload(payload, _) = message.as_body() {
                 self.buffer.lock().unwrap().extend_from_slice(payload);
             }
             Ok(())
@@ -544,19 +544,19 @@ mod test {
         context
             .send(
                 route![portal_inlet_address.clone(), context.address()],
-                PortalMessage::Payload(first_piece_of_payload.to_vec()),
+                PortalMessage::Payload(first_piece_of_payload.to_vec(), None),
             )
             .await?;
         context
             .send(
                 route![portal_inlet_address, context.address()],
-                PortalMessage::Payload(second_piece_of_payload.to_vec()),
+                PortalMessage::Payload(second_piece_of_payload.to_vec(), None),
             )
             .await?;
 
         let message = context.receive::<PortalMessage>().await?;
 
-        if let PortalMessage::Payload(payload) = message.as_body() {
+        if let PortalMessage::Payload(payload, _) = message.as_body() {
             assert_eq!(payload, request_buffer.as_ref());
         } else {
             panic!("invalid message")
@@ -587,12 +587,12 @@ mod test {
         context
             .send(
                 route![portal_inlet_address.clone(), context.address()],
-                PortalMessage::Payload(double_payload.to_vec()),
+                PortalMessage::Payload(double_payload.to_vec(), None),
             )
             .await?;
         let message = context.receive::<PortalMessage>().await?;
 
-        if let PortalMessage::Payload(payload) = message.as_body() {
+        if let PortalMessage::Payload(payload, _) = message.as_body() {
             assert_eq!(payload, double_payload);
         } else {
             panic!("invalid message")
@@ -637,7 +637,7 @@ mod test {
             let _error = context
                 .send(
                     route![portal_inlet_address.clone(), context.address()],
-                    PortalMessage::Payload(chunk.to_vec()),
+                    PortalMessage::Payload(chunk.to_vec(), None),
                 )
                 .await;
         }
@@ -702,7 +702,7 @@ mod test {
             context
                 .send(
                     route![portal_inlet_address.clone(), "tcp_payload_receiver"],
-                    PortalMessage::Payload(chunk.to_vec()),
+                    PortalMessage::Payload(chunk.to_vec(), None),
                 )
                 .await?;
         }
@@ -796,7 +796,7 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let handle = crate::test_utils::start_manager_for_tests(context).await?;
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let authority = handle.node_manager.node_manager.authority().unwrap();
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
@@ -836,7 +836,7 @@ mod test {
         context
             .send(
                 route![portal_inlet_address, context.address()],
-                PortalMessage::Payload(request_buffer.to_vec()),
+                PortalMessage::Payload(request_buffer.to_vec(), None),
             )
             .await?;
 
@@ -844,7 +844,7 @@ mod test {
             .receive_extended::<PortalMessage>(MessageReceiveOptions::new().without_timeout())
             .await?;
 
-        if let PortalMessage::Payload(payload) = message.as_body() {
+        if let PortalMessage::Payload(payload, _) = message.as_body() {
             assert_eq!(&request_buffer.to_vec(), payload);
         } else {
             panic!("invalid message type")
@@ -899,7 +899,7 @@ mod test {
         context
             .send(
                 message.return_route(),
-                PortalMessage::Payload(response_buffer.to_vec()),
+                PortalMessage::Payload(response_buffer.to_vec(), None),
             )
             .await?;
 
@@ -907,7 +907,7 @@ mod test {
             .receive_extended::<PortalMessage>(MessageReceiveOptions::new().without_timeout())
             .await?;
 
-        if let PortalMessage::Payload(payload) = message.body() {
+        if let PortalMessage::Payload(payload, _) = message.body() {
             assert_ne!(&response_buffer.to_vec(), &payload);
             let mut buffer_received = BytesMut::from(payload.as_slice());
             let _size = buffer_received.get_u32();

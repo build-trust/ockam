@@ -5,7 +5,7 @@ pub type MessageReceiver<T> = crate::tokio::sync::mpsc::Receiver<T>;
 
 /// Create message channel
 pub fn message_channel<T>() -> (MessageSender<T>, MessageReceiver<T>) {
-    crate::tokio::sync::mpsc::channel(16)
+    crate::tokio::sync::mpsc::channel(8)
 }
 
 /// Router sender

@@ -18,6 +18,7 @@ pub(crate) struct TcpPortalRecvProcessor {
     read_half: OwnedReadHalf,
     sender_address: Address,
     onward_route: Route,
+    payload_packet_counter: u16,
 }
 
 impl TcpPortalRecvProcessor {
@@ -34,6 +35,7 @@ impl TcpPortalRecvProcessor {
             read_half,
             sender_address,
             onward_route,
+            payload_packet_counter: 0,
         }
     }
 }
@@ -94,13 +96,16 @@ impl Processor for TcpPortalRecvProcessor {
 
         // Loop just in case buf was extended (should not happen though)
         for chunk in self.buf.chunks(MAX_PAYLOAD_SIZE) {
-            ctx.forward(
-                LocalMessage::new()
-                    .with_onward_route(self.onward_route.clone())
-                    .with_return_route(route![self.sender_address.clone()])
-                    .with_payload(PortalMessage::Payload(chunk.to_vec()).encode()?),
-            )
-            .await?;
+            let msg = LocalMessage::new()
+                .with_onward_route(self.onward_route.clone())
+                .with_return_route(route![self.sender_address.clone()])
+                .with_payload(
+                    PortalMessage::Payload(chunk.to_vec(), Some(self.payload_packet_counter))
+                        .encode()?,
+                );
+
+            self.payload_packet_counter += 1;
+            ctx.forward(msg).await?;
         }
 
         Ok(true)
