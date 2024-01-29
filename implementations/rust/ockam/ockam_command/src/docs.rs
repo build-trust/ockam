@@ -74,7 +74,7 @@ pub(crate) fn after_help(text: &str) -> &'static str {
 
 /// Render the string if the document should be displayed in a terminal
 /// Otherwise, if it is a Markdown document just return a static string
-pub(crate) fn render(body: &str) -> &'static str {
+pub fn render(body: &str) -> &'static str { // add (crate)
     if is_markdown() {
         Box::leak(body.to_string().into_boxed_str())
     } else {

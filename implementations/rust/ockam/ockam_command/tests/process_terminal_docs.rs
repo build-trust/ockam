@@ -1,4 +1,6 @@
 use ockam_command::docs::FencedCodeBlockHighlighter;
+use ockam_command::docs::render;
+
 
 #[cfg(test)]
 mod test_fenced_code_block_highlighter {
@@ -37,3 +39,28 @@ mod test_fenced_code_block_highlighter {
 }
 
 
+#[cfg(test)]
+mod tests_process_terminal_docs {
+    use super::*;
+
+    #[test]
+    fn test_process_terminal_docs_with_code_blocks() {
+        let input = "```sh
+        # To enroll a known identity
+        $ ockam project ticket --member id_identifier
+        
+        # To generate an enrollment ticket that can be used to enroll a device
+        $ ockam project ticket --attribute component=control
+        ```
+        
+        ";
+
+        let result = render(input);
+
+        assert!(result.contains("\x1b["), "The output should contain ANSI escape codes.");
+        assert!(result.contains("\x1b[0m"), "The output should reset ANSI coloring at the end.");
+
+        // Print the result to the terminal (stdout)
+        println!("Highlighted text:\n{}", result);
+    }
+}
