@@ -68,6 +68,7 @@ pub async fn initialize_default_node(
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_node(
     opts: &CommandGlobalOpts,
+    skip_is_running_check: bool,
     name: &str,
     identity_name: &Option<String>,
     address: &str,
@@ -90,6 +91,10 @@ pub async fn spawn_node(
         "--foreground".to_string(),
         "--child-process".to_string(),
     ];
+
+    if skip_is_running_check {
+        args.push("--skip-is-running-check".to_string());
+    }
 
     if logging_to_file || !opts.terminal.is_tty() {
         args.push("--no-color".to_string());

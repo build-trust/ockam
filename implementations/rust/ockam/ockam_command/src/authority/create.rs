@@ -42,6 +42,11 @@ pub struct CreateCommand {
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     foreground: bool,
 
+    /// Skip the check if such node is already running.
+    /// Useful for kubernetes when the pid is the same on each run.
+    #[arg(long, short, value_name = "BOOL", default_value_t = false)]
+    skip_is_running_check: bool,
+
     /// `authority create` started a child process to run this node in foreground.
     #[arg(long, hide = true)]
     pub child_process: bool,
@@ -105,7 +110,9 @@ async fn spawn_background_node(
     opts: &CommandGlobalOpts,
     cmd: &CreateCommand,
 ) -> miette::Result<()> {
-    guard_node_is_not_already_running(opts, &cmd.node_name, cmd.child_process).await?;
+    if !cmd.skip_is_running_check {
+        guard_node_is_not_already_running(opts, &cmd.node_name, cmd.child_process).await?;
+    }
     // Create the authority identity if it has not been created before
     // If no name is specified on the command line, use "authority"
     let identity_name = cmd.identity.clone().unwrap_or("authority".to_string());
@@ -135,6 +142,10 @@ async fn spawn_background_node(
         "--trusted-identities".to_string(),
         cmd.trusted_identities.to_string(),
     ];
+
+    if cmd.skip_is_running_check {
+        args.push("--skip-is-running-check".to_string());
+    }
 
     if cmd.logging_to_file() || !opts.terminal.is_tty() {
         args.push("--no-color".to_string());
@@ -232,7 +243,9 @@ async fn start_authority_node(
     args: (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     let (opts, cmd) = args;
-    guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    if !cmd.skip_is_running_check {
+        guard_node_is_not_already_running(&opts, &cmd.node_name, cmd.child_process).await?;
+    }
 
     let mut state = opts.state.clone();
     state.set_node_name(cmd.node_name.to_string());
