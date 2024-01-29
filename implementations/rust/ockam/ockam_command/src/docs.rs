@@ -89,7 +89,6 @@ fn process_terminal_docs(input: String) -> String {
     let mut code_highlighter = FencedCodeBlockHighlighter::new();
 
     for line in LinesWithEndings::from(&input) {
-        eprintln!("Processing line: {}", line);
         
         // Check if the current line is a code block start/end or content.
         let is_code_line = code_highlighter.process_line(line, &mut output);
