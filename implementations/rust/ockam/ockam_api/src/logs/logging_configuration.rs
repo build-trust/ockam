@@ -121,7 +121,7 @@ impl LoggingConfiguration {
 
     pub fn background(log_dir: Option<PathBuf>, crates: &[&str]) -> LoggingConfiguration {
         LoggingConfiguration::new(
-            log_level(LevelFilter::TRACE),
+            log_level(None, LevelFilter::TRACE),
             LoggingEnabled::On,
             log_max_size_bytes(),
             log_max_files(),
@@ -204,23 +204,39 @@ pub enum Colored {
 }
 
 pub fn logging_configuration(
-    default_log_level: LevelFilter,
+    preferred_log_level: Option<LevelFilter>,
+    fallback_log_level: LevelFilter,
     colored: Colored,
     log_dir: Option<PathBuf>,
     crates: &[&str],
 ) -> LoggingConfiguration {
-    legacy_logging_configuration(default_log_level, colored, log_dir.clone(), crates)
-        .unwrap_or_else(|| new_logging_configuration(default_log_level, colored, log_dir, crates))
+    legacy_logging_configuration(
+        preferred_log_level,
+        fallback_log_level,
+        colored,
+        log_dir.clone(),
+        crates,
+    )
+    .unwrap_or_else(|| {
+        new_logging_configuration(
+            preferred_log_level,
+            fallback_log_level,
+            colored,
+            log_dir,
+            crates,
+        )
+    })
 }
 
 pub fn new_logging_configuration(
-    default_log_level: LevelFilter,
+    preferred_log_level: Option<LevelFilter>,
+    fallback_log_level: LevelFilter,
     colored: Colored,
     log_dir: Option<PathBuf>,
     crates: &[&str],
 ) -> LoggingConfiguration {
     LoggingConfiguration::new(
-        log_level(default_log_level),
+        log_level(preferred_log_level, fallback_log_level),
         logging_enabled(),
         log_max_size_bytes(),
         log_max_files(),
@@ -231,11 +247,16 @@ pub fn new_logging_configuration(
     )
 }
 
-fn log_level(default_log_level: LevelFilter) -> LevelFilter {
-    let log_level = match get_env::<String>("OCKAM_LOG_LEVEL").unwrap_or(None) {
-        Some(s) => LevelFilter::from_str(&s).unwrap_or(default_log_level),
-        None => default_log_level,
-    };
+fn log_level(
+    preferred_log_level: Option<LevelFilter>,
+    default_log_level: LevelFilter,
+) -> LevelFilter {
+    let log_level = preferred_log_level.unwrap_or_else(|| {
+        get_env::<String>("OCKAM_LOG_LEVEL")
+            .unwrap_or(None)
+            .map(|s| LevelFilter::from_str(&s).unwrap_or(default_log_level))
+            .unwrap_or(default_log_level)
+    });
 
     // If we end-up with a log level that is not defined but tracing is on
     // then we still need to provide a LevelFilter, since since parameter is used for both logs and traces
@@ -262,15 +283,18 @@ fn log_format() -> LogFormat {
 }
 
 fn legacy_logging_configuration(
-    default_log_level: LevelFilter,
+    preferred_log_level: Option<LevelFilter>,
+    fallback_log_level: LevelFilter,
     colored: Colored,
     log_dir: Option<PathBuf>,
     crates: &[&str],
 ) -> Option<LoggingConfiguration> {
-    get_env::<String>("OCKAM_LOG")
-        .unwrap_or(None)
-        .map(|s| LoggingConfiguration {
-            level: LevelFilter::from_str(&s).unwrap_or(default_log_level),
+    preferred_log_level
+        .or(get_env::<String>("OCKAM_LOG")
+            .unwrap_or(None)
+            .map(|s| LevelFilter::from_str(&s).unwrap_or(fallback_log_level)))
+        .map(|level| LoggingConfiguration {
+            level,
             enabled: LoggingEnabled::On,
             max_size_bytes: log_max_size_bytes(),
             max_files: log_max_files(),
