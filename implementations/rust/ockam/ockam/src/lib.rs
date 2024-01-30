@@ -52,7 +52,6 @@ extern crate core;
 extern crate tracing;
 
 pub use error::OckamError;
-pub use metadata::OckamMessage;
 pub use node::*;
 #[cfg(feature = "std")]
 pub use ockam_abac as abac;
@@ -88,18 +87,14 @@ pub use ockam_transport_tcp::{
     TcpTransportExtension,
 };
 pub use relay_service::{RelayService, RelayServiceOptions};
-pub use unique::unique_with_prefix;
+pub use stream::unique_with_prefix;
 
 // ---
 
 // ---
 
-mod delay;
 mod error;
-mod metadata;
-mod monotonic;
 mod relay_service;
-mod unique;
 
 pub mod protocols;
 pub mod remote;

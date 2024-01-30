@@ -40,14 +40,6 @@ impl<M: Message> DelayedEvent<M> {
         Self { d, ..self }
     }
 
-    /// Adjust the delay time in seconds
-    pub(crate) fn with_seconds(self, secs: u64) -> Self {
-        Self {
-            d: Duration::from_secs(secs),
-            ..self
-        }
-    }
-
     /// Run this delayed event
     pub(crate) fn spawn(self) {
         let Self { route, ctx, d, msg } = self;

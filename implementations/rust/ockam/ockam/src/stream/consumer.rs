@@ -1,10 +1,10 @@
 use crate::{
-    delay::DelayedEvent,
-    monotonic::Monotonic,
     protocols::{
         stream::{requests::*, responses::*},
         ProtocolParser, ProtocolPayload,
     },
+    stream::delay::DelayedEvent,
+    stream::monotonic::Monotonic,
     stream::StreamWorkerCmd,
     OckamError, TransportMessage,
 };
