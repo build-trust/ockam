@@ -51,7 +51,7 @@ impl OutgoingAccessControl for AllowOnwardAddresses {
 mod tests {
     use crate::{
         route, Address, AllowOnwardAddress, AllowOnwardAddresses, LocalMessage,
-        OutgoingAccessControl, RelayMessage, Result, TransportMessage,
+        OutgoingAccessControl, RelayMessage, Result,
     };
 
     #[tokio::test]
@@ -62,34 +62,22 @@ mod tests {
 
         let ac = AllowOnwardAddress(onward_address1.clone());
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address1.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address1.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address1.clone(), msg);
 
         assert!(ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address2.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address2.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address2.clone(), msg);
 
         assert!(!ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address1.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address1.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address2.clone(), msg);
 
         assert!(ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address2, route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address2], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address, onward_address1, msg);
 
         assert!(!ac.is_authorized(&msg).await?);
@@ -106,42 +94,27 @@ mod tests {
 
         let ac = AllowOnwardAddresses(vec![onward_address1.clone(), onward_address2.clone()]);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address1.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address1.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address1.clone(), msg);
 
         assert!(ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address2.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address2.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address2, msg);
 
         assert!(ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address3.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address3.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address3.clone(), msg);
 
         assert!(!ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address3.clone(), route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address3.clone()], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address.clone(), onward_address1.clone(), msg);
 
         assert!(!ac.is_authorized(&msg).await?);
 
-        let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address1, route![], vec![]),
-            vec![],
-        );
+        let msg = LocalMessage::new(route![onward_address1], route![], vec![], vec![]);
         let msg = RelayMessage::new(source_address, onward_address3, msg);
 
         assert!(ac.is_authorized(&msg).await?);

@@ -87,8 +87,7 @@ impl Worker for OutletManagerService {
         let mut message = message.into_local_message();
 
         // Remove our address
-        message.transport_mut().onward_route.step()?;
-        let onward_route = message.transport().onward_route.clone();
+        message = message.pop_front_onward_route()?;
 
         // Retrieve the flow id from the previous hop if it exists
         let secure_channel_flow_control_id = context
@@ -99,7 +98,7 @@ impl Worker for OutletManagerService {
         let worker_address = KafkaPortalWorker::create_outlet_side_kafka_portal(
             context,
             None,
-            onward_route,
+            message.onward_route(),
             Arc::new(OutletInterceptorImpl::new(
                 self.outlet_controller.clone(),
                 self.flow_control_id.clone(),
@@ -113,20 +112,16 @@ impl Worker for OutletManagerService {
         )
         .await?;
 
-        message
-            .transport_mut()
-            .onward_route
-            .modify()
-            .prepend(worker_address.clone());
+        message = message.push_front_return_route(&worker_address);
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
-            &message.transport().onward_route,
-            &message.transport().return_route,
+            &message.onward_route_ref(),
+            &message.return_route_ref(),
             worker_address
         );
 
-        context.forward(message).await?;
+        context.send_local_message(message).await?;
         Ok(())
     }
 }

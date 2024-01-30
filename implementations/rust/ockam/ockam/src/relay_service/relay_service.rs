@@ -52,7 +52,7 @@ impl Worker for RelayService {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let forward_route = msg.return_route();
-        let payload = msg.into_transport_message().payload;
+        let payload = msg.payload();
 
         let random_address = Address::random_tagged("Relay.service");
 
@@ -73,7 +73,7 @@ impl Worker for RelayService {
             ctx,
             address,
             forward_route,
-            payload,
+            payload.to_vec(),
             self.options.relays_incoming_access_control.clone(),
         )
         .await?;

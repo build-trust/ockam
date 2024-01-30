@@ -38,7 +38,7 @@ impl IdentitySecureChannelLocalInfo {
 
     /// Find `IdentitySecureChannelLocalInfo` in a list of general `LocalInfo` of that `LocalMessage`
     pub fn find_info(local_msg: &LocalMessage) -> Result<Self> {
-        Self::find_info_from_list(local_msg.local_info())
+        Self::find_info_from_list(local_msg.local_info_ref())
     }
 
     /// Find `IdentitySecureChannelLocalInfo` in a list of general `LocalInfo`

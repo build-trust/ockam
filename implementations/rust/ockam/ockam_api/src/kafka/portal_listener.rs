@@ -31,17 +31,17 @@ impl Worker for KafkaPortalListener {
         let mut message = message.into_local_message();
 
         // Remove our address
-        message.transport_mut().onward_route.step()?;
+        message = message.pop_front_onward_route()?;
 
-        let next_hop = message.transport().onward_route.next()?;
+        let next_hop = message.next_on_onward_route()?;
 
         // Retrieve the flow id from the next hop if it exists
         let flow_control_id = context
             .flow_controls()
-            .find_flow_control_with_producer_address(next_hop)
+            .find_flow_control_with_producer_address(&next_hop)
             .map(|x| x.flow_control_id().clone());
 
-        let inlet_responder_address = message.transport().return_route.next()?.clone();
+        let inlet_responder_address = message.return_route_ref().next()?.clone();
 
         let worker_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
@@ -54,20 +54,16 @@ impl Worker for KafkaPortalListener {
         )
         .await?;
 
-        message
-            .transport_mut()
-            .onward_route
-            .modify()
-            .prepend(worker_address.clone());
+        message = message.push_front_onward_route(&worker_address);
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
-            &message.transport().onward_route,
-            &message.transport().return_route,
+            &message.onward_route_ref(),
+            &message.return_route_ref(),
             worker_address
         );
 
-        context.forward(message).await?;
+        context.send_local_message(message).await?;
 
         Ok(())
     }

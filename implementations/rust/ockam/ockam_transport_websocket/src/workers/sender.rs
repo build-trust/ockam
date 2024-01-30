@@ -205,13 +205,13 @@ where
             }
             debug!("Sent heartbeat to peer {}", self.peer);
         } else {
-            let mut msg = LocalMessage::decode(msg.payload())?.into_transport_message();
+            let mut msg = LocalMessage::decode(msg.payload())?;
 
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
-            msg.onward_route.step()?;
+            msg = msg.pop_front_onward_route()?;
 
-            let msg = WebSocketMessage::from(msg.encode()?);
+            let msg = WebSocketMessage::from(msg.into_transport_message().encode()?);
             if ws_sink.send(msg).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
                 ctx.stop_worker(ctx.address()).await?;

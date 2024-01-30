@@ -75,8 +75,8 @@ impl Worker for PrefixRelayService {
             }
         };
 
+        // prefix consumer_ to the address
         let new_address = format!("{}_{}", &self.prefix, address);
-
         debug!("prefix relay, renamed from {} to {}", address, new_address);
 
         let mut bytes = new_address.clone().into_bytes();
@@ -84,14 +84,9 @@ impl Worker for PrefixRelayService {
         new_payload.append(&mut bytes);
 
         let mut message = msg.into_local_message();
-        let transport_message = message.transport_mut();
+        message = message.pop_front_onward_route()?.set_payload(new_payload);
 
-        transport_message.onward_route.step()?;
-
-        // prefix consumer_ to the address
-        transport_message.payload = new_payload;
-
-        ctx.forward(message).await?;
+        ctx.send_local_message(message).await?;
 
         // The new relay needs to be reachable by the default secure channel listener
         ctx.flow_controls().add_consumer(

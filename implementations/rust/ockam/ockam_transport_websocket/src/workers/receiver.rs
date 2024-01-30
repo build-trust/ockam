@@ -78,24 +78,25 @@ where
         let encoded_msg = ws_msg.into_data();
 
         // Deserialize the message
-        let mut msg =
+        let msg =
             TransportMessage::decode(&encoded_msg).map_err(|_| TransportError::RecvBadMessage)?;
+        let mut msg = LocalMessage::from_transport_message(msg);
 
         // Heartbeat message
-        if msg.onward_route.next().is_err() {
+        if !msg.has_next_on_onward_route() {
             trace!("Got heartbeat message from: {}", self.peer_addr);
         }
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        msg.return_route.modify().prepend(self.peer_addr.clone());
+        msg = msg.push_front_return_route(&self.peer_addr);
 
         // Some verbose logging we may want to remove
-        trace!("Message onward route: {}", msg.onward_route);
-        trace!("Message return route: {}", msg.return_route);
+        trace!("Message onward route: {}", msg.onward_route_ref());
+        trace!("Message return route: {}", msg.return_route_ref());
 
         // Forward the message to the next hop in the route
-        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
+        ctx.send_local_message(msg).await?;
 
         Ok(true)
     }

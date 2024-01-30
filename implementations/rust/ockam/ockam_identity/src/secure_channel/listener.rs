@@ -103,12 +103,8 @@ impl Worker for SecureChannelListenerWorker {
         .await?;
 
         let mut local_message = message.into_local_message();
-        local_message
-            .transport_mut()
-            .onward_route
-            .modify()
-            .replace(addresses.decryptor_remote);
+        local_message = local_message.replace_front_onward_route(&addresses.decryptor_remote)?;
 
-        ctx.forward(local_message).await
+        ctx.send_local_message(local_message).await
     }
 }

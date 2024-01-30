@@ -4,7 +4,7 @@ use crate::{
         vec::Vec,
     },
     errcode::{Kind, Origin},
-    Address, Error, LocalMessage, Result, Route, TransportMessage,
+    Address, Error, LocalMessage, Result, Route,
 };
 use core::{
     fmt::{self, Debug, Display, Formatter},
@@ -221,18 +221,18 @@ impl<M: Message> Routed<M> {
     /// Return a copy of the onward route for the wrapped message.
     #[inline]
     pub fn onward_route(&self) -> Route {
-        self.local_msg.transport().onward_route.clone()
+        self.local_msg.onward_route()
     }
 
     /// Return a copy of the full return route for the wrapped message.
     #[inline]
     pub fn return_route(&self) -> Route {
-        self.local_msg.transport().return_route.clone()
+        self.local_msg.return_route()
     }
     /// Return a copy of the sender address for the wrapped message.
     #[inline]
     pub fn sender(&self) -> Result<Address> {
-        self.local_msg.transport().return_route.recipient()
+        self.local_msg.return_route().recipient()
     }
 
     /// Consume the message wrapper and return the original message.
@@ -253,12 +253,6 @@ impl<M: Message> Routed<M> {
         self.local_msg
     }
 
-    /// Consume the message wrapper and return the underlying transport message.
-    #[inline]
-    pub fn into_transport_message(self) -> TransportMessage {
-        self.into_local_message().into_transport_message()
-    }
-
     /// Return a reference to the underlying local message.
     #[inline]
     pub fn local_message(&self) -> &LocalMessage {
@@ -268,20 +262,20 @@ impl<M: Message> Routed<M> {
     /// Return a reference to the underlying transport message's binary payload.
     #[inline]
     pub fn payload(&self) -> &[u8] {
-        &self.local_msg.transport().payload
+        self.local_msg.payload_ref()
     }
 
     /// Consume the message wrapper and return the underlying transport message's binary payload.
     #[inline]
     pub fn take_payload(self) -> Vec<u8> {
-        self.local_msg.into_transport_message().payload
+        self.local_msg.payload()
     }
 }
 
 impl Routed<Any> {
     /// Try to cast an `Any` message into another valid message type
     pub fn cast<M: Message>(self) -> Result<Routed<M>> {
-        let inner = M::decode(&self.local_msg.transport().payload)?;
+        let inner = M::decode(self.local_msg.payload_ref())?;
         Ok(Routed {
             inner,
             msg_addr: self.msg_addr,
@@ -348,14 +342,10 @@ impl<M: Message + Display> Display for Routed<M> {
 ///     /// This Worker will take any incoming message, print out the payload
 ///     /// and then forward it to the next hop in its onward route.
 ///     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-///         let mut local_msg = msg.into_local_message();
-///         let transport_msg = local_msg.transport_mut();
-///         transport_msg.onward_route.step()?;
-///         transport_msg.return_route.modify().prepend(ctx.address());
+///         let mut local_msg = msg.into_local_message();///
+///         let payload = local_msg.payload_ref();
 ///
-///         let payload = transport_msg.payload.clone();
-///
-///         if let Ok(str) = String::from_utf8(payload.clone()) {
+///         if let Ok(str) = String::from_utf8(payload.to_vec()) {
 ///             println!("Address: {}, Received string: {}", ctx.address(), str);
 ///         } else {
 ///             println!("Address: {}, Received binary: {}", ctx.address(), hex::encode(&payload));

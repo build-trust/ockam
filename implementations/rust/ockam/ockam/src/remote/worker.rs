@@ -47,17 +47,16 @@ impl Worker for RemoteRelay {
             Ok(())
         } else if msg.msg_addr() == self.addresses.main_remote {
             let return_route = msg.return_route();
-            let mut message = msg.into_local_message();
-            let transport_message = message.transport_mut();
+            let mut local_message = msg.into_local_message();
 
             // Remove my address from the onward_route
-            transport_message.onward_route.step()?;
+            local_message = local_message.pop_front_onward_route()?;
 
-            match transport_message.onward_route.next() {
+            match local_message.onward_route().next() {
                 Err(_) => {
                     debug!("RemoteRelay received service message");
 
-                    let payload = Vec::<u8>::decode(&transport_message.payload)
+                    let payload = Vec::<u8>::decode(local_message.payload_ref())
                         .map_err(|_| OckamError::InvalidHubResponse)?;
                     let payload =
                         String::from_utf8(payload).map_err(|_| OckamError::InvalidHubResponse)?;
@@ -106,8 +105,11 @@ impl Worker for RemoteRelay {
                     debug!("RemoteRelay received payload message");
 
                     // Send the message on its onward_route
-                    ctx.forward_from_address(message, self.addresses.main_internal.clone())
-                        .await?;
+                    ctx.send_local_message_from(
+                        local_message,
+                        self.addresses.main_internal.clone(),
+                    )
+                    .await?;
 
                     // We received message from the other node, our registration is still alive, let's reset
                     // heartbeat timer

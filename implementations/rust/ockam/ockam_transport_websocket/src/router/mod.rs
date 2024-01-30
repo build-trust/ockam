@@ -151,14 +151,11 @@ impl Worker for WebSocketRouter {
 }
 
 impl WebSocketRouter {
-    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
-        trace!(
-            "WS route request: {:?}",
-            msg.transport().onward_route.next()
-        );
+    async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
+        trace!("WS route request: {:?}", msg.onward_route_ref().next());
 
         // Get the next hop
-        let onward = msg.transport().onward_route.next()?;
+        let onward = msg.onward_route_ref().next()?;
 
         let next;
         // Look up the connection worker responsible
@@ -180,12 +177,7 @@ impl WebSocketRouter {
             }
         }
 
-        let _ = msg.transport_mut().onward_route.step()?;
-        // Modify the transport message route
-        msg.transport_mut()
-            .onward_route
-            .modify()
-            .prepend(next.clone());
+        let msg = msg.replace_front_onward_route(&next)?;
 
         // Send the transport message to the connection worker
         ctx.send(next.clone(), msg).await?;

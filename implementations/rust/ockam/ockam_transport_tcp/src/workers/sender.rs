@@ -10,7 +10,7 @@ use ockam_core::{
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_core::{prepare_message, TransportError};
+use ockam_transport_core::{encode_transport_message, TransportError};
 
 use serde::{Deserialize, Serialize};
 use socket2::{SockRef, TcpKeepalive};
@@ -207,12 +207,12 @@ impl Worker for TcpSendWorker {
                 }
             }
         } else {
-            let mut msg = msg.into_transport_message();
+            let mut local_message = msg.into_local_message();
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
-            msg.onward_route.step()?;
+            local_message = local_message.pop_front_onward_route()?;
             // Create a message buffer with prepended length
-            let msg = prepare_message(msg)?;
+            let msg = encode_transport_message(local_message.into_transport_message())?;
 
             if self.write_half.write_all(msg.as_slice()).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);

@@ -2,8 +2,7 @@ use crate::hole_puncher::message::PunchMessage;
 use crate::rendezvous_service::{RendezvousRequest, RendezvousResponse};
 use crate::PunchError;
 use ockam_core::{
-    Address, AllowAll, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes, Result, Route,
-    Routed, Worker,
+    Address, AllowAll, Any, Decodable, Encodable, Mailbox, Mailboxes, Result, Route, Routed, Worker,
 };
 use ockam_node::{Context, DelayedEvent, MessageSendReceiveOptions, WorkerBuilder};
 use std::sync::Arc;
@@ -234,16 +233,14 @@ impl UdpHolePunchWorker {
             }
             PunchMessage::Payload(data) => {
                 trace!("Received Payload from peer. Will forward to local entity");
+                debug!("Puncher => App: {:?}", msg);
 
                 // Update routing & payload
-                let mut msg = msg.into_transport_message();
-                msg.onward_route.step()?;
-                msg.return_route.modify().prepend(self.local_addr.clone());
-                msg.payload = data;
+                let mut local_message = msg.into_local_message();
+                local_message = local_message.forward(&self.local_addr)?.set_payload(data);
 
                 // Forward
-                debug!("Puncher => App: {:?}", msg);
-                ctx.forward(LocalMessage::new(msg, vec![])).await?;
+                ctx.send_local_message(local_message).await?;
             }
             _ => return Err(PunchError::Internal)?,
         }
@@ -296,22 +293,28 @@ impl UdpHolePunchWorker {
         debug!("Local => Puncher: {:?}", msg);
 
         if let Some(peer_route) = self.peer_route.as_ref() {
-            let mut msg = msg.into_transport_message();
-            debug!("App => Puncher: {:?}", msg);
+            let mut local_message = msg.into_local_message();
+            debug!("App => Puncher: {:?}", local_message);
 
             // Update routing
-            msg.onward_route.step()?;
-            if !msg.onward_route.contains_route(peer_route)? {
-                msg.onward_route.modify().prepend_route(peer_route.clone());
-            }
-            msg.return_route.modify().prepend(self.main_addr.clone());
-
+            local_message = local_message.pop_front_onward_route()?;
+            local_message = if !local_message
+                .onward_route_ref()
+                .contains_route(peer_route)?
+            {
+                local_message.prepend_front_onward_route(peer_route)
+            } else {
+                local_message
+            };
             // Wrap payload
-            msg.payload = PunchMessage::Payload(msg.payload).encode()?;
+            let wrapped_payload = PunchMessage::Payload(local_message.payload()).encode()?;
+            local_message = local_message
+                .push_front_return_route(&self.main_addr)
+                .set_payload(wrapped_payload);
 
             // Forward
-            debug!("Puncher => Peer: {:?}", msg);
-            ctx.forward(LocalMessage::new(msg, vec![])).await
+            debug!("Puncher => Peer: {:?}", local_message);
+            ctx.send_local_message(local_message).await
         } else {
             Err(PunchError::HoleNotOpen)?
         }

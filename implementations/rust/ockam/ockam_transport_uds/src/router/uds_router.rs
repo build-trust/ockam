@@ -179,26 +179,19 @@ impl UdsRouter {
 
     /// Handle any messages sent to the `main` [`Mailbox`] received by this
     /// nodes worker
-    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
-        trace!(
-            "UDS route request: {:?}",
-            msg.transport().onward_route.next()
-        );
+    async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
+        trace!("UDS route request: {:?}", msg.next_on_onward_route()?);
 
         // Get the next hop
-        let onward = msg.transport().onward_route.next()?;
+        let onward = msg.next_on_onward_route()?;
 
         // Resolve route to the connection worker responsible for the next hop
-        let next = self.resolve_route(onward).await?;
+        let next = self.resolve_route(&onward).await?;
 
         // Modify the transport message route
-        let _ = msg.transport_mut().onward_route.step()?;
-        msg.transport_mut()
-            .onward_route
-            .modify()
-            .prepend(next.clone());
+        let msg = msg.replace_front_onward_route(&next)?;
 
-        // Send the transport message to the connection worker
+        // Send the local message to the connection worker
         ctx.send(next.clone(), msg).await?;
 
         Ok(())

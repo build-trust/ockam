@@ -94,11 +94,10 @@ impl UdpRouter {
     }
 
     /// Handle the routing of 'client' messages
-    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
+    async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
         // Forward message to sender for 'client' messages
-        let addr = self.client_sender.clone();
-        msg.transport_mut().onward_route.modify().prepend(addr);
-        ctx.forward(msg).await
+        ctx.send_local_message(msg.push_front_onward_route(&self.client_sender))
+            .await
     }
 
     /// Create a sender, listener pair for the given socket address.

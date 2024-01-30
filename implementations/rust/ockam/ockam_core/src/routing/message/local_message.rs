@@ -1,116 +1,210 @@
-use crate::{compat::string::String, compat::vec::Vec, Message, TransportMessage};
+use crate::{compat::vec::Vec, Address, Message, Route, TransportMessage};
+use crate::{LocalInfo, Result};
 use serde::{Deserialize, Serialize};
-
-/// Contains metadata that will only be routed locally within the
-/// local Ockam Node.
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
-pub struct LocalInfo {
-    type_identifier: String,
-    data: Vec<u8>,
-}
-
-impl LocalInfo {
-    /// Creates a new `LocalInfo` structure from the provided type identifier and data.
-    pub fn new(type_identifier: String, data: Vec<u8>) -> Self {
-        LocalInfo {
-            type_identifier,
-            data,
-        }
-    }
-}
-
-impl LocalInfo {
-    /// LocalInfo unique type identifier
-    pub fn type_identifier(&self) -> &str {
-        &self.type_identifier
-    }
-    /// LocalInfo raw binary data
-    pub fn data(&self) -> &[u8] {
-        &self.data
-    }
-}
 
 /// A message type that is routed locally within a single node.
 ///
-/// `LocalMessage` consists of a [`TransportMessage`] and
-/// [`LocalInfo`] in binary format, that can be added by Workers
-/// within the same node.
+/// [`LocalMessage`] contains:
+///  - An onward route for the message
+///  - A return route
+///  - A binary payload
+///  - Additional metadata as [`LocalInfo`] in binary format, that can be added by Workers
+///    within the same node.
 ///
-/// Transport Messages are used to transfer messages between different
-/// nodes using Transport Workers. Upon arrival at a receiving
-/// Transport Worker, `TransportMessage` is wrapped inside
-/// `LocalMessage` and forwarded to other Workers inside that node.
+/// A [`LocalMessage`] can be converted from a [`TransportMessage`] that has just been deserialized
+/// from some binary data arriving on a node.
 ///
-/// `LocalMessage` provides a mechanism for transporting metadata that
-/// is trusted to come from the same node. This is convenient for
-/// delegating Authentication/Authorization mechanisms to dedicated
-/// local Workers.
+/// It can also be converted to a [`TransportMessage`] to be serialized and sent to another node.
 ///
-/// This type is exposed in `ockam_core` (and the root `ockam` crate) in
-/// order to provide a mechanism for third-party developers to create
-/// custom transport channel routers.
+/// When a [`LocalMessage`] has been processed by a worker, its `onward_route` and `return_route` need to be modified
+/// before the message is sent to another worker. This is generally done by:
 ///
-/// Casual users of Ockam should never have to interact with this type
-/// directly.
+///  - popping the first address of the onward route (which should be the worker address)
+///  - push a new return address at the front of the return route (this can be the current worker address but this can
+///    also be the address of another worker, depending on the desired topology).
 ///
-/// # Examples
+/// Therefore, a certain number of functions are available on [`LocalMessage`] to manipulate the onward and return routes:
 ///
-/// See `ockam_transport_tcp::workers::receiver::TcpRecvProcessor` for a usage example.
+/// - pop_front_onward_route: remove the first address of the onward route
+/// - replace_front_onward_route: replace the first address of the onward route with another address
+/// - push_front_onward_route: add an address at the front of the onward route
+/// - prepend_front_onward_route: prepend a whole route at the front of the onward route
+/// - set_onward_route: set a new route for the onward route
+///
+/// There are similar functions for return routes. All modification functions can be composed. For example:
+///
+/// self.pop_front_onward_route()?.prepend_front_return_route(&new_route)
 ///
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct LocalMessage {
-    transport_message: TransportMessage,
+    /// Onward message route.
+    onward_route: Route,
+    /// Return message route. This field must be populated by routers handling this message along the way.
+    return_route: Route,
+    /// The message payload.
+    payload: Vec<u8>,
+    /// Local information added by workers to give additional context to the message
+    /// independently from its payload. For example this can be used to store the identifier that
+    /// was used to encrypt the payload
     local_info: Vec<LocalInfo>,
 }
 
 impl LocalMessage {
-    /// Consumes the message and returns the underlying transport message.
-    pub fn into_transport_message(self) -> TransportMessage {
-        self.transport_message
+    /// Return the message onward route
+    pub fn onward_route(&self) -> Route {
+        self.onward_route.clone()
     }
-    /// Return a reference to the underlying transport message.
-    pub fn transport(&self) -> &TransportMessage {
-        &self.transport_message
+
+    /// Return a reference to the message onward route
+    pub fn onward_route_ref(&self) -> &Route {
+        &self.onward_route
     }
-    /// Return a mutable reference to the underlying transport message.
-    pub fn transport_mut(&mut self) -> &mut TransportMessage {
-        &mut self.transport_message
+
+    /// Return the next address on the onward route
+    pub fn next_on_onward_route(&self) -> Result<Address> {
+        Ok(self.onward_route.next()?.clone())
     }
-    /// Return a reference to local information added by Workers within the same node.
-    pub fn local_info(&self) -> &[LocalInfo] {
+
+    /// Return true if an address exists on the onward route
+    pub fn has_next_on_onward_route(&self) -> bool {
+        self.onward_route.next().is_ok()
+    }
+
+    /// Remove the first address of the onward route
+    pub fn pop_front_onward_route(mut self) -> Result<Self> {
+        let _ = self.onward_route.step()?;
+        Ok(self)
+    }
+
+    /// Prepend an address on the onward route
+    pub fn push_front_onward_route(mut self, address: &Address) -> Self {
+        self.onward_route.modify().prepend(address.clone());
+        self
+    }
+
+    /// Replace the first address on the onward route
+    pub fn replace_front_onward_route(self, address: &Address) -> Result<Self> {
+        Ok(self
+            .pop_front_onward_route()?
+            .push_front_onward_route(address))
+    }
+
+    /// Prepend a route to the onward route
+    pub fn prepend_front_onward_route(mut self, route: &Route) -> Self {
+        self.onward_route.modify().prepend_route(route.clone());
+        self
+    }
+
+    /// Set the message onward route
+    pub fn set_onward_route(mut self, route: Route) -> Self {
+        self.onward_route = route;
+        self
+    }
+
+    /// Return the message return route
+    pub fn return_route(&self) -> Route {
+        self.return_route.clone()
+    }
+
+    /// Return a reference to the message return route
+    pub fn return_route_ref(&self) -> &Route {
+        &self.return_route
+    }
+
+    /// Set the message return route
+    pub fn set_return_route(mut self, route: Route) -> Self {
+        self.return_route = route;
+        self
+    }
+
+    /// Prepend an address to the return route
+    pub fn push_front_return_route(mut self, address: &Address) -> Self {
+        self.return_route.modify().prepend(address.clone());
+        self
+    }
+
+    /// Prepend a route to the return route
+    pub fn prepend_front_return_route(mut self, route: &Route) -> Self {
+        self.return_route.modify().prepend_route(route.clone());
+        self
+    }
+
+    /// Remove the first address on the onward route and push another address on the return route
+    pub fn forward(self, address: &Address) -> Result<Self> {
+        Ok(self
+            .pop_front_onward_route()?
+            .push_front_return_route(address))
+    }
+
+    /// Return the message payload
+    pub fn payload(&self) -> Vec<u8> {
+        self.payload.clone()
+    }
+
+    /// Return a reference to the message payload
+    pub fn payload_ref(&self) -> &[u8] {
+        &self.payload
+    }
+
+    /// Return a mutable reference to the message payload
+    pub fn payload_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.payload
+    }
+
+    /// Prepend an address to the return route
+    pub fn set_payload(mut self, payload: Vec<u8>) -> Self {
+        self.payload = payload;
+        self
+    }
+
+    /// Return the message local info
+    pub fn local_info(&self) -> Vec<LocalInfo> {
+        self.local_info.clone()
+    }
+
+    /// Return a reference to the message local info
+    pub fn local_info_ref(&self) -> &[LocalInfo] {
         &self.local_info
     }
-    /// Dissolve
-    pub fn dissolve(self) -> (TransportMessage, Vec<LocalInfo>) {
-        (self.transport_message, self.local_info)
-    }
-}
 
-impl LocalMessage {
-    /// Append a new [`LocalInfo`] entry.
-    pub fn append_local_info(&mut self, local_info: LocalInfo) {
-        self.local_info.push(local_info)
+    /// Return a mutable reference to the message local info
+    pub fn local_info_mut(&mut self) -> &mut Vec<LocalInfo> {
+        &mut self.local_info
     }
 
-    /// Replace all [`LocalInfo`] entries matching the type identifier
-    /// of the given `LocalInfo` with itself.
-    pub fn replace_local_info(&mut self, local_info: LocalInfo) {
-        self.clear_local_info(local_info.type_identifier());
-        self.local_info.push(local_info)
+    /// Clear all [`LocalInfo`] entries
+    pub fn clear_local_info(&mut self) {
+        self.local_info.clear()
     }
 
-    /// Clear all [`LocalInfo`] entries with the given type identifier.
-    pub fn clear_local_info(&mut self, type_identifier: &str) {
-        self.local_info
-            .retain(|x| x.type_identifier() != type_identifier)
+    /// Create a [`LocalMessage`] from a decoded [`TransportMessage`]
+    pub fn from_transport_message(transport_message: TransportMessage) -> LocalMessage {
+        LocalMessage::new(
+            transport_message.onward_route,
+            transport_message.return_route,
+            transport_message.payload,
+            vec![],
+        )
+    }
+
+    /// Create a [`TransportMessage`] from a [`LocalMessage`]
+    pub fn into_transport_message(self) -> TransportMessage {
+        TransportMessage::v1(self.onward_route(), self.return_route(), self.payload())
     }
 }
 
 impl LocalMessage {
     /// Create a new `LocalMessage` from the provided transport message and local information.
-    pub fn new(transport_message: TransportMessage, local_info: Vec<LocalInfo>) -> Self {
+    pub fn new(
+        onward_route: Route,
+        return_route: Route,
+        payload: Vec<u8>,
+        local_info: Vec<LocalInfo>,
+    ) -> Self {
         LocalMessage {
-            transport_message,
+            onward_route,
+            return_route,
+            payload,
             local_info,
         }
     }

@@ -1,7 +1,7 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Any, Result, Routed, TransportMessage};
+use ockam_core::{Any, Result, Routed};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
@@ -69,7 +69,7 @@ impl DecryptorHandler {
         let return_route = msg.return_route();
 
         // Decode raw payload binary
-        let request = DecryptionRequest::decode(&msg.into_transport_message().payload)?;
+        let request = DecryptionRequest::decode(msg.payload())?;
 
         // Decrypt the binary
         let decrypted_payload = self.decryptor.decrypt(&request.0).await;
@@ -96,18 +96,15 @@ impl DecryptorHandler {
             .modify()
             .prepend(self.addresses.encryptor.clone());
 
-        let transport_message =
-            TransportMessage::v1(msg.onward_route, msg.return_route, msg.payload);
-
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
         let local_info =
             IdentitySecureChannelLocalInfo::mark(vec![], self.their_identity_id.clone())?;
 
-        let msg = LocalMessage::new(transport_message, local_info);
+        let msg = LocalMessage::new(msg.onward_route, msg.return_route, msg.payload, local_info);
 
         match ctx
-            .forward_from_address(msg, self.addresses.decryptor_internal.clone())
+            .send_local_message_from(msg, self.addresses.decryptor_internal.clone())
             .await
         {
             Ok(_) => Ok(()),
@@ -170,8 +167,8 @@ impl DecryptorHandler {
         );
 
         // Decode raw payload binary
-        let payload = msg.into_transport_message().payload;
-        let payload = Vec::<u8>::decode(&payload)?;
+        let payload = msg.payload();
+        let payload = Vec::<u8>::decode(payload)?;
 
         // Decrypt the binary
         let decrypted_payload = self.decryptor.decrypt(&payload).await?;
