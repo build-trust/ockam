@@ -1,4 +1,5 @@
 use crate::terminal::TerminalBackground;
+use r3bl_ansi_color::{AnsiStyledText, Style as StyleAnsi, Color};
 use colorful::Colorful;
 use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
@@ -7,7 +8,7 @@ use syntect::{
     highlighting::{Style, Theme, ThemeSet},
     parsing::Regex,
     parsing::SyntaxSet,
-    util::{as_24_bit_terminal_escaped, LinesWithEndings},
+    util::{LinesWithEndings},
 };
 
 const FOOTER: &str = "
@@ -132,7 +133,7 @@ impl FencedCodeBlockHighlighter<'_> {
         }
     }
 
-    // TODO: fix the fenced code block highlighter, as it does not work on macOS or Linux
+
     #[allow(dead_code)]
     pub fn process_line(&mut self, line: &str, output: &mut Vec<String>) -> bool {
 
@@ -157,7 +158,10 @@ impl FencedCodeBlockHighlighter<'_> {
             let ranges: Vec<(Style, &str)> = highlighter
                 .highlight_line(line, &SYNTAX_SET)
                 .unwrap_or_default();
-            output.push(as_24_bit_terminal_escaped(&ranges[..], false));
+
+            // Convert each syntect range to an ANSI styled string
+            convert_syntect_style_to_ansi(output, &ranges);
+
             true
         } else {
             false
@@ -178,4 +182,19 @@ fn enrich_preview_tag(text: &str) -> String {
     let preview = "<b>Preview</b>";
     let container = format!("<div class=\"chip t\">{}{}</div>", preview, tooltip);
     text.replace("[Preview]", &container)
+}
+
+
+/// Convert a vector of syntect ranges to ANSI styled strings
+pub fn convert_syntect_style_to_ansi(output: &mut Vec<String>, ranges: &Vec<(Style, &str)>) {
+    for (style, text) in ranges {
+        let ansi_styled_text = AnsiStyledText {
+            text: text,
+            style: &[
+                StyleAnsi::Foreground(Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b)),
+            ],
+        };
+
+        output.push(ansi_styled_text.to_string());
+    }
 }

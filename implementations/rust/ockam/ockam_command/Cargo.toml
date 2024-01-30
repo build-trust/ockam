@@ -87,6 +87,7 @@ opentelemetry = { version = "0.21.0", features = ["metrics", "trace"] }
 opentelemetry-otlp = { version = "0.14.0", features = ["metrics", "tls", "logs", "trace"], default-features = false }
 pem-rfc7468 = { version = "0.7.0", features = ["std"] }
 r3bl_rs_utils_core = "0.9.12"
+r3bl_ansi_color = "0.6.9"
 r3bl_tui = "0.5.2"
 r3bl_tuify = "0.1.25"
 rand = "0.8"

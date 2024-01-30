@@ -4362,6 +4362,7 @@ dependencies = [
  "opentelemetry-otlp",
  "pem-rfc7468",
  "proptest",
+ "r3bl_ansi_color",
  "r3bl_rs_utils_core",
  "r3bl_tui",
  "r3bl_tuify",
