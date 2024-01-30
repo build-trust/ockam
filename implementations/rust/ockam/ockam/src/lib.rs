@@ -88,7 +88,6 @@ pub use ockam_transport_tcp::{
     TcpTransportExtension,
 };
 pub use relay_service::{RelayService, RelayServiceOptions};
-pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;
 
 // ---
@@ -100,7 +99,6 @@ mod error;
 mod metadata;
 mod monotonic;
 mod relay_service;
-mod system;
 mod unique;
 
 pub mod protocols;
