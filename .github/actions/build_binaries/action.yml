@@ -106,16 +106,18 @@ runs:
               DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
               PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
               CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
-              OTHER_CODE_SIGN_FLAGS="--keychain \"${keychain_path}\"" \
+              KEYCHAIN_PROFILE="${KEYCHAIN_PATH}" \
               ARCH=x86_64
           else
             make swift_xcode_build_signed \
               DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
               PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
               CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
-              OTHER_CODE_SIGN_FLAGS="--keychain \"${keychain_path}\"" \
+              KEYCHAIN_PROFILE="${KEYCHAIN_PATH}" \
               ARCH=arm64
           fi
 
           make swift_package_only
+
+          xcrun notarytool submit implementations/swift/build/Ockam.dmg --team-id ${{ env.DEVELOPMENT_TEAM }} --apple-id ${{ env.NOTARIZATION_EMAIL }} --password ${{ env.NOTARIZATION_PASSWORD }} --wait
         fi
