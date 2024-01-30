@@ -4474,14 +4474,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_kafka"
-version = "0.1.0"
-dependencies = [
- "example_test_helper",
- "ockam",
-]
-
-[[package]]
 name = "ockam_macros"
 version = "0.33.0"
 dependencies = [
