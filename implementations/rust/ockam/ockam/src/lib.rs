@@ -103,7 +103,6 @@ mod relay_service;
 mod system;
 mod unique;
 
-pub mod pipe;
 pub mod protocols;
 pub mod remote;
 pub mod stream;
