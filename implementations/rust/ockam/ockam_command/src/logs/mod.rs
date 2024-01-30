@@ -19,8 +19,6 @@ pub fn setup_logging_tracing(
     } else {
         Colored::Off
     };
-    let default_log_level = verbose_log_level(verbose);
-
     if background_node {
         LoggingTracing::setup(
             LoggingConfiguration::background(log_path, LoggingConfiguration::default_crates()),
@@ -28,9 +26,14 @@ pub fn setup_logging_tracing(
             "local node",
         )
     } else {
+        let preferred_log_level = match verbose_log_level(verbose) {
+            LevelFilter::OFF => None,
+            level => Some(level),
+        };
         LoggingTracing::setup(
             logging_configuration(
-                default_log_level,
+                preferred_log_level,
+                LevelFilter::OFF,
                 colored,
                 log_path,
                 LoggingConfiguration::default_crates(),
