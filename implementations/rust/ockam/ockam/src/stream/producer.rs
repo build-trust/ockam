@@ -1,9 +1,9 @@
 use crate::{
-    monotonic::Monotonic,
     protocols::{
         stream::{requests::*, responses::*},
         ProtocolParser, ProtocolPayload,
     },
+    stream::monotonic::Monotonic,
     Any, Context, OckamError, Result, Route, Routed, Worker,
 };
 use ockam_core::compat::{boxed::Box, collections::VecDeque, string::String};
