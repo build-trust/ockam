@@ -192,6 +192,8 @@ jobs:
       DEVELOPMENT_TEAM: ${{ vars.DEVELOPMENT_TEAM }}
       PROVISIONING_PROFILE_SPECIFIER: ${{ vars.PROVISIONING_PROFILE_SPECIFIER }}
       CODE_SIGN_IDENTITY: ${{ vars.CODE_SIGN_IDENTITY }}
+      NOTARIZATION_EMAIL: ${{ vars.NOTARIZATION_EMAIL }}
+      NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
     permissions:
       contents: write
 
@@ -281,6 +283,9 @@ jobs:
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+        # Add keychain path to env
+        echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "$GITHUB_ENV"
 
     - uses: ./.github/actions/build_binaries
       with:
