@@ -17,9 +17,9 @@
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
 
+use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
-use std::{path::PathBuf};
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use colorful::Colorful;

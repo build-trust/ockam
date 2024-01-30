@@ -133,8 +133,7 @@ impl EnrollCommand {
         attributes.insert(USER_EMAIL, user_email.as_str());
         opts.state
             .add_journey_event(JourneyEvent::Enrolled, attributes)
-            .await
-            .unwrap();
+            .await?;
 
         // Print final message.
         opts.terminal.write_line(&fmt_ok!(
