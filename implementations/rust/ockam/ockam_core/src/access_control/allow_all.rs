@@ -24,15 +24,14 @@ impl OutgoingAccessControl for AllowAll {
 #[cfg(test)]
 mod tests {
     use crate::compat::future::poll_once;
-    use crate::{route, Address, LocalMessage, RelayMessage, TransportMessage};
+    use crate::{route, Address, LocalMessage, RelayMessage};
 
     use super::{AllowAll, IncomingAccessControl};
 
     #[test]
     fn test_allow_all() {
         let is_authorized = poll_once(async {
-            let local_message =
-                LocalMessage::new(TransportMessage::v1(route![], route![], vec![]), vec![]);
+            let local_message = LocalMessage::new(route![], route![], vec![], vec![]);
             let relay_message = RelayMessage::new(
                 Address::random_local(),
                 Address::random_local(),

@@ -7,7 +7,7 @@ use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, 
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error, LocalInfo,
-    LocalMessage, Route, Routed, TransportMessage, Worker,
+    LocalMessage, Route, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -149,9 +149,9 @@ impl Worker for KafkaPortalWorker {
                         // the pong also to the other worker to update the fixed onward route
                         // with the final route
                         let mut local_message = routed_message.local_message().clone();
-                        local_message.transport_mut().onward_route =
-                            route![self.other_worker_address.clone()];
-                        context.forward(local_message).await?;
+                        local_message = local_message
+                            .set_onward_route(route![self.other_worker_address.clone()]);
+                        context.send_local_message(local_message).await?;
 
                         self.forward(context, routed_message).await?
                     }
@@ -176,43 +176,40 @@ impl KafkaPortalWorker {
         context: &mut Context,
         routed_message: Routed<PortalMessage>,
     ) -> ockam_core::Result<()> {
+        let mut local_message = routed_message.into_local_message();
         trace!(
             "before: onwards={:?}; return={:?};",
-            routed_message.local_message().transport().onward_route,
-            routed_message.local_message().transport().return_route
+            local_message.onward_route_ref(),
+            local_message.return_route_ref()
         );
-        let mut local_message = routed_message.into_local_message();
-        let transport = local_message.transport_mut();
 
-        if let Some(fixed_onward_route) = &self.fixed_onward_route {
+        local_message = if let Some(fixed_onward_route) = &self.fixed_onward_route {
             trace!(
                 "replacing onward_route {:?} with {:?}",
-                transport.onward_route,
+                local_message.onward_route_ref(),
                 fixed_onward_route
             );
-            transport.onward_route = fixed_onward_route.clone();
-            transport
-                .return_route
-                .modify()
-                .prepend(self.other_worker_address.clone());
+            local_message
+                .set_onward_route(fixed_onward_route.clone())
+                .push_front_return_route(&self.other_worker_address)
         } else {
-            transport.onward_route.step()?;
+            local_message = local_message.pop_front_onward_route()?;
             // Since we force the return route next step (fixed_onward_route in the other worker),
             // we can omit the previous return route.
             trace!(
                 "replacing return_route {:?} with {:?}",
-                transport.return_route,
+                local_message.return_route_ref(),
                 self.other_worker_address
             );
-            transport.return_route = route![self.other_worker_address.clone()];
-        }
+            local_message.set_return_route(route![self.other_worker_address.clone()])
+        };
 
         trace!(
             "after: onwards={:?}; return={:?};",
-            local_message.transport().onward_route,
-            local_message.transport().return_route
+            local_message.onward_route_ref(),
+            local_message.return_route_ref(),
         );
-        context.forward(local_message).await
+        context.send_local_message(local_message).await
     }
 
     async fn split_and_send(
@@ -244,15 +241,13 @@ impl KafkaPortalWorker {
 
         for chunk in buffer.chunks(MAX_PAYLOAD_SIZE) {
             let message = LocalMessage::new(
-                TransportMessage::v1(
-                    onward_route.clone(),
-                    return_route.clone(),
-                    PortalMessage::Payload(chunk.to_vec()).encode()?,
-                ),
+                onward_route.clone(),
+                return_route.clone(),
+                PortalMessage::Payload(chunk.to_vec()).encode()?,
                 local_info.to_vec(),
             );
 
-            context.forward(message).await?;
+            context.send_local_message(message).await?;
         }
         Ok(())
     }

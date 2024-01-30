@@ -54,7 +54,7 @@ impl Processor for UdpListenProcessor {
         debug!("Waiting for incoming UDP datagram...");
         let (mut msg, addr) = match self.stream.next().await {
             Some(res) => match res {
-                Ok((msg, addr)) => (msg, addr),
+                Ok((msg, addr)) => (LocalMessage::from_transport_message(msg), addr),
                 Err(e) => {
                     warn!(
                         "Failed to read message, will wait for next message: {:?}",
@@ -70,16 +70,17 @@ impl Processor for UdpListenProcessor {
         };
 
         // Set return route to go directly to paired sender, skipping the UDP router
-        msg.return_route = route![
+        let new_route = route![
             self.sender_addr.clone(),
             Address::new(UDP, addr.to_string()),
-            msg.return_route
+            msg.return_route(),
         ];
+        msg = msg.set_return_route(new_route);
 
-        debug!(onward_route = %msg.onward_route,
-            return_route = %msg.return_route,
+        debug!(onward_route = %msg.onward_route_ref(),
+            return_route = %msg.return_route_ref(),
             "Forwarding UDP message");
-        ctx.forward(LocalMessage::new(msg, vec![])).await?;
+        ctx.send_local_message(msg).await?;
 
         Ok(true)
     }

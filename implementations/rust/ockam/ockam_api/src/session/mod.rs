@@ -2,7 +2,7 @@ use minicbor::{Decode, Encode};
 use tokio::task::JoinHandle;
 use tracing as log;
 
-use ockam::{LocalMessage, Route, TransportMessage, Worker};
+use ockam::{LocalMessage, Route, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
 use ockam_core::{
     route, Address, AllowAll, AsyncTryClone, Decodable, DenyAll, Encodable, Error, Routed, LOCAL,
@@ -114,12 +114,16 @@ impl Medic {
                                 ctx.flow_controls()
                                     .add_consumer(Collector::address(), &flow_control_id);
                             }
-                            let t = TransportMessage::v1(echo_route, Collector::address(), v);
-                            LocalMessage::new(t, Vec::new())
+                            LocalMessage::new(
+                                echo_route,
+                                route![Collector::address()],
+                                v,
+                                Vec::new(),
+                            )
                         };
                         let sender = ctx.clone();
                         self.pings
-                            .spawn(async move { (key, sender.forward(l).await) });
+                            .spawn(async move { (key, sender.send_local_message(l).await) });
                     } else {
                         match session.status() {
                             ConnectionStatus::Up | ConnectionStatus::Down => {

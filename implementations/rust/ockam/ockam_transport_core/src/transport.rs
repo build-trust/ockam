@@ -27,7 +27,7 @@ pub trait Transport: Send + Sync + 'static {
 ///
 /// The length-prefix is encoded as a big-endian 16-bit unsigned
 /// integer.
-pub fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
+pub fn encode_transport_message(msg: TransportMessage) -> Result<Vec<u8>> {
     let mut msg_buf = msg.encode().map_err(|_| TransportError::SendBadMessage)?;
 
     if msg_buf.len() > MAXIMUM_MESSAGE_LENGTH {
@@ -52,13 +52,13 @@ pub fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod test {
-    use super::{prepare_message, TransportMessage};
+    use super::{encode_transport_message, TransportMessage};
     use ockam_core::route;
 
     #[test]
     fn prepare_message_should_discard_large_messages() {
         let msg = TransportMessage::v1(route![], route![], vec![0; u16::MAX as usize + 1]);
-        let result = prepare_message(msg);
+        let result = encode_transport_message(msg);
         assert!(result.is_err());
     }
 }

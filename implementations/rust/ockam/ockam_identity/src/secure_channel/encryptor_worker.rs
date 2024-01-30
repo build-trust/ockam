@@ -92,7 +92,7 @@ impl EncryptorWorker {
         let return_route = msg.return_route();
 
         // Decode raw payload binary
-        let request = EncryptionRequest::decode(&msg.into_transport_message().payload)?;
+        let request = EncryptionRequest::decode(msg.payload())?;
 
         let mut should_stop = false;
 
@@ -141,7 +141,7 @@ impl EncryptorWorker {
         let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,
-            payload: msg.into_transport_message().payload,
+            payload: msg.payload().to_vec(),
         };
         let msg = SecureChannelMessage::Payload(msg);
 

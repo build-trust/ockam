@@ -1,6 +1,5 @@
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -95,23 +94,23 @@ where
                         error!("Error decoding message: {:?}", e);
                         return Err(e)?;
                     }
-                    Ok(msg) => msg,
+                    Ok(msg) => LocalMessage::from_transport_message(msg),
                 };
 
                 trace!("Deserialized message successfully: {:?}", msg);
 
                 // Insert the peer address into the return route so that
                 // reply routing can be properly resolved
-                msg.return_route.modify().prepend(self.peer_addr.clone());
+                msg = msg.push_front_return_route(&self.peer_addr);
 
                 // Some verbose logging we may want to remove
-                debug!("Message onward route: {}", msg.onward_route);
-                debug!("Message return route: {}", msg.return_route);
+                debug!("Message onward route: {}", msg.onward_route_ref());
+                debug!("Message return route: {}", msg.return_route_ref());
 
                 // Forward the message to the final destination worker,
                 // which consumes the TransportMessage and yields the
                 // final message type
-                ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
+                ctx.send_local_message(msg).await?;
 
                 // reset packet buffer
                 self.packet_buffer.reset();

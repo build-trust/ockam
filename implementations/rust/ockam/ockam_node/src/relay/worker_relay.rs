@@ -42,7 +42,7 @@ where
     ///    to perform a cheaper clone on the message.
     ///
     fn wrap_direct_message(relay_msg: RelayMessage) -> Result<Routed<M>> {
-        let payload = relay_msg.local_message().transport().payload.as_slice();
+        let payload = relay_msg.payload();
         let msg = parser::message::<M>(payload).map_err(|e| {
             error!("Failed to decode message payload for worker" /* FIXME */);
             e

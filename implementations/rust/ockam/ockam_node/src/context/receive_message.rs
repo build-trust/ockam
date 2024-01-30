@@ -101,7 +101,7 @@ impl Context {
             let local_msg = msg.into_local_message();
 
             // FIXME: make message parsing idempotent to avoid cloning
-            match parser::message(&local_msg.transport().payload) {
+            match parser::message(local_msg.payload_ref()) {
                 Ok(msg) => {
                     let routed_msg = Routed::new(msg, destination_addr, src_addr, local_msg);
                     break Ok(routed_msg);

@@ -7,7 +7,7 @@ use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
-    RelayMessage, Result, Route, Routed, TransportMessage,
+    RelayMessage, Result, Route, Routed,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -252,10 +252,10 @@ impl Context {
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
-        let transport_msg = TransportMessage::v1(route, route![sending_address.clone()], payload);
 
         // Pack transport message into a LocalMessage wrapper
-        let local_msg = LocalMessage::new(transport_msg, local_info);
+        let local_msg =
+            LocalMessage::new(route, route![sending_address.clone()], payload, local_info);
 
         // Pack local message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
@@ -281,25 +281,17 @@ impl Context {
     }
 
     /// Forward a transport message to its next routing destination
-    ///
-    /// Similar to [`Context::send`], but taking a
-    /// [`TransportMessage`], which contains the full destination
-    /// route, and calculated return route for this hop.
-    ///
-    /// **Note:** you most likely want to use
-    /// [`Context::send`] instead, unless you are writing an
-    /// external router implementation for ockam node.
-    ///
-    /// [`Context::send`]: crate::Context::send
-    /// [`TransportMessage`]: ockam_core::TransportMessage
+    /// This removes the message first onward address (considered as processed)
+    /// and appends the current Context address to the message return route
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
-        self.forward_from_address(local_msg, self.address()).await
+        self.send_local_message(local_msg.forward(&self.address())?)
+            .await
     }
 
     /// Forward a transport message to its next routing destination
     ///
     /// Similar to [`Context::send`], but taking a
-    /// [`TransportMessage`], which contains the full destination
+    /// [`LocalMessage`], which contains the full destination
     /// route, and calculated return route for this hop.
     ///
     /// **Note:** you most likely want to use
@@ -307,8 +299,25 @@ impl Context {
     /// external router implementation for ockam node.
     ///
     /// [`Context::send`]: crate::Context::send
-    /// [`TransportMessage`]: ockam_core::TransportMessage
-    pub async fn forward_from_address(
+    /// [`LocalMessage`]: ockam_core::LocalMessage
+    pub async fn send_local_message(&self, local_msg: LocalMessage) -> Result<()> {
+        self.send_local_message_from(local_msg, self.address())
+            .await
+    }
+
+    /// Forward a transport message to its next routing destination
+    ///
+    /// Similar to [`Context::send`], but taking a
+    /// [`LocalMessage`], which contains the full destination
+    /// route, and calculated return route for this hop.
+    ///
+    /// **Note:** you most likely want to use
+    /// [`Context::send`] instead, unless you are writing an
+    /// external router implementation for ockam node.
+    ///
+    /// [`Context::send`]: crate::Context::send
+    /// [`LocalMessage`]: ockam_core::LocalMessage
+    pub async fn send_local_message_from(
         &self,
         local_msg: LocalMessage,
         sending_address: Address,
@@ -320,13 +329,13 @@ impl Context {
 
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
-        let next = match local_msg.transport().onward_route.next() {
+        let next = match local_msg.onward_route_ref().next() {
             Ok(next) => next,
             Err(err) => {
                 // TODO: communicate bad routes to calling function
                 error!(
                     "Invalid onward route for message forwarded from {}",
-                    local_msg.transport().return_route
+                    local_msg.return_route()
                 );
                 return Err(err);
             }

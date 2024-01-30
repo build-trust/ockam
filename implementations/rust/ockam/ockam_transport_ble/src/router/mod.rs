@@ -72,14 +72,14 @@ impl BleRouter {
         Ok(())
     }
 
-    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
-        debug!("Ble route request: {:?}", msg.transport().onward_route);
+    async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
+        debug!("Ble route request: {:?}", msg.onward_route_ref());
 
         // Get the next hop
-        let onward = msg.transport().onward_route.next()?;
+        let onward = msg.next_on_onward_route()?;
 
         // Look up the connection worker responsible
-        let next = match self.map.get(onward) {
+        let next = match self.map.get(&onward) {
             Some(addr) => addr.clone(),
             None => {
                 error!("unknown route: {:?}", onward);
@@ -87,13 +87,8 @@ impl BleRouter {
             }
         };
 
-        let _ = msg.transport_mut().onward_route.step()?;
-
         // Modify the transport message route
-        msg.transport_mut()
-            .onward_route
-            .modify()
-            .prepend(next.clone());
+        let msg = msg.replace_front_onward_route(&next)?;
 
         // Send the transport message to the connection worker
         ctx.send(next.clone(), msg).await?;
@@ -117,7 +112,7 @@ impl Worker for BleRouter {
 
         if msg_addr == self.main_addr {
             let msg = LocalMessage::decode(msg.payload())?;
-            trace!("handle_message route: {:?}", msg.transport().onward_route);
+            trace!("handle_message route: {:?}", msg.onward_route_ref());
             self.handle_route(ctx, msg).await?;
         } else if msg_addr == self.api_addr {
             let msg = BleRouterMessage::decode(msg.payload())?;

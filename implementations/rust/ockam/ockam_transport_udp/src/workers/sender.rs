@@ -37,13 +37,13 @@ impl Worker for UdpSendWorker {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         // Parse message and remove our address from its routing
-        let mut msg = msg.into_transport_message();
-        msg.onward_route.step()?;
-
-        trace!("Sending message to {:?}", msg.onward_route);
+        let mut msg = msg.into_local_message();
+        msg = msg.pop_front_onward_route()?;
+        trace!("Sending message to {:?}", msg.onward_route_ref());
 
         // Resolve peer address to IPv4 SocketAddr(s).
-        let peer_addr = msg.onward_route.step()?;
+        let peer_addr = msg.next_on_onward_route()?;
+        msg = msg.pop_front_onward_route()?;
 
         if peer_addr.transport_type() != UDP {
             error!(addr = %peer_addr,
@@ -74,7 +74,7 @@ impl Worker for UdpSendWorker {
         }
 
         // Send
-        match self.sink.send((msg.clone(), addr)).await {
+        match self.sink.send((msg.into_transport_message(), addr)).await {
             Ok(()) => {
                 trace!("Successful send to {}", addr);
                 Ok(())

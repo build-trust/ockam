@@ -2,8 +2,8 @@ use crate::Context;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    Address, AllowAll, AllowOnwardAddress, Any, IncomingAccessControl, LocalMessage,
-    OutgoingAccessControl, Result, Route, Routed, TransportMessage, Worker,
+    route, Address, AllowAll, AllowOnwardAddress, Any, IncomingAccessControl, LocalMessage,
+    OutgoingAccessControl, Result, Route, Routed, Worker,
 };
 use ockam_node::WorkerBuilder;
 use tracing::info;
@@ -61,9 +61,14 @@ impl Worker for Relay {
             .payload
             .take()
             .expect("payload must be available on init");
-        let msg = TransportMessage::v1(self.forward_route.clone(), ctx.address(), payload);
 
-        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
+        ctx.send_local_message(LocalMessage::new(
+            self.forward_route.clone(),
+            route![ctx.address()],
+            payload,
+            vec![],
+        ))
+        .await?;
 
         // Remove the last hop so that just route to the node itself is left
         self.forward_route.modify().pop_back();
@@ -76,20 +81,14 @@ impl Worker for Relay {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let mut message = msg.into_local_message();
-        let transport_message = message.transport_mut();
+        let mut local_message = msg.into_local_message();
 
-        // Remove my address from the onward_route
-        transport_message.onward_route.step()?;
+        local_message = local_message
+            .pop_front_onward_route()?
+            .prepend_front_onward_route(&self.forward_route);
 
-        // Prepend forward route
-        transport_message
-            .onward_route
-            .modify()
-            .prepend_route(self.forward_route.clone());
-
-        let next_hop = transport_message.onward_route.next()?.clone();
-        let prev_hop = transport_message.return_route.next()?.clone();
+        let next_hop = local_message.next_on_onward_route()?;
+        let prev_hop = local_message.return_route_ref().next()?;
 
         if let Some(info) = ctx
             .flow_controls()
@@ -101,12 +100,12 @@ impl Worker for Relay {
 
         if let Some(info) = ctx
             .flow_controls()
-            .find_flow_control_with_producer_address(&prev_hop)
+            .find_flow_control_with_producer_address(prev_hop)
         {
             ctx.flow_controls()
-                .add_consumer(next_hop, info.flow_control_id());
+                .add_consumer(next_hop.clone(), info.flow_control_id());
         }
 
-        ctx.forward(message).await
+        ctx.send_local_message(local_message).await
     }
 }

@@ -1,7 +1,7 @@
 use crate::portal::portal_message::MAX_PAYLOAD_SIZE;
 use crate::{PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::vec::Vec;
-use ockam_core::{async_trait, Encodable, LocalMessage, Route, TransportMessage};
+use ockam_core::{async_trait, Encodable, LocalMessage, Route};
 use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
@@ -81,24 +81,26 @@ impl Processor for TcpPortalRecvProcessor {
                 );
             }
 
-            let msg = TransportMessage::v1(
+            ctx.send_local_message(LocalMessage::new(
                 self.onward_route.clone(),
-                self.sender_address.clone(),
+                route![self.sender_address.clone()],
                 PortalMessage::Disconnect.encode()?,
-            );
-            ctx.forward(LocalMessage::new(msg, vec![])).await?;
+                vec![],
+            ))
+            .await?;
 
             return Ok(false);
         }
 
         // Loop just in case buf was extended (should not happen though)
         for chunk in self.buf.chunks(MAX_PAYLOAD_SIZE) {
-            let msg = TransportMessage::v1(
+            ctx.send_local_message(LocalMessage::new(
                 self.onward_route.clone(),
-                self.sender_address.clone(),
+                route![self.sender_address.clone()],
                 PortalMessage::Payload(chunk.to_vec()).encode()?,
-            );
-            ctx.forward(LocalMessage::new(msg, vec![])).await?;
+                vec![],
+            ))
+            .await?;
         }
 
         Ok(true)

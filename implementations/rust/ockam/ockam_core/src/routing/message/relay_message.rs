@@ -38,12 +38,17 @@ impl RelayMessage {
 
     /// Onward route
     pub fn onward_route(&self) -> &Route {
-        &self.local_msg.transport().onward_route
+        self.local_msg.onward_route_ref()
     }
 
     /// Return route
     pub fn return_route(&self) -> &Route {
-        &self.local_msg.transport().return_route
+        self.local_msg.return_route_ref()
+    }
+
+    /// Payload
+    pub fn payload(&self) -> &[u8] {
+        self.local_msg.payload_ref()
     }
 
     /// Local message

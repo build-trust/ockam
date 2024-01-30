@@ -1,7 +1,7 @@
 use mitm_node::tcp_interceptor::{ProcessorInfo, Role, TcpMitmTransport};
 use ockam::{Context, Result};
 use ockam_core::{route, Address, AsyncTryClone, TransportMessage};
-use ockam_transport_core::prepare_message;
+use ockam_transport_core::encode_transport_message;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tracing::info;
@@ -23,7 +23,7 @@ impl MitmMonitor {
 
             let msg = TransportMessage::v1(route![should_be_not_reachable_address.clone()], route![], vec![]);
 
-            let msg = prepare_message(msg)?;
+            let msg = encode_transport_message(msg)?;
             {
                 let mut write_half = processor.write_half.lock().await;
                 info!(

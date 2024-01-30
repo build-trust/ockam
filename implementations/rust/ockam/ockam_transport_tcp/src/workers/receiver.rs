@@ -163,29 +163,25 @@ impl Processor for TcpRecvProcessor {
         }
 
         // Deserialize the message now
-        let mut msg = TransportMessage::decode(&buf).map_err(|_| TransportError::RecvBadMessage)?;
+        let msg = TransportMessage::decode(&buf).map_err(|_| TransportError::RecvBadMessage)?;
+        let msg = LocalMessage::from_transport_message(msg);
 
         // Heartbeat message
-        if msg.onward_route.next().is_err() {
+        if !msg.has_next_on_onward_route() {
             trace!("Got heartbeat message from: {}", self.socket_address);
             return Ok(true);
         }
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        msg.return_route
-            .modify()
-            .prepend(self.addresses.sender_address().clone());
+        let msg = msg.push_front_return_route(self.addresses.sender_address());
 
-        trace!("Message onward route: {}", msg.onward_route);
-        trace!("Message return route: {}", msg.return_route);
+        trace!("Message onward route: {}", msg.onward_route_ref());
+        trace!("Message return route: {}", msg.return_route_ref());
 
         // Forward the message to the next hop in the route
-        ctx.forward_from_address(
-            LocalMessage::new(msg, vec![]),
-            self.addresses.receiver_address().clone(),
-        )
-        .await?;
+        ctx.send_local_message_from(msg, self.addresses.receiver_address().clone())
+            .await?;
 
         Ok(true)
     }
