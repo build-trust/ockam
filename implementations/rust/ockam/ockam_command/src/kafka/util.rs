@@ -15,7 +15,7 @@ use crate::node::NodeOpts;
 use crate::service::start::start_service_impl;
 use crate::terminal::OckamColor;
 use crate::util::process_nodes_multiaddr;
-use crate::{display_parse_logs, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::{fmt_log, fmt_ok, CommandGlobalOpts};
 
 pub struct ArgOpts {
     pub endpoint: String,
@@ -52,8 +52,6 @@ pub async fn async_run(
 
     opts.terminal
         .write_line(&fmt_log!("Creating {} service...\n", kafka_entity))?;
-
-    display_parse_logs(&opts);
 
     let project_route = process_nodes_multiaddr(&project_route, &opts.state).await?;
 

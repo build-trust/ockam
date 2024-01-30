@@ -27,7 +27,7 @@ use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{async_cmd, find_available_port, port_is_free_guard, process_nodes_multiaddr};
 use crate::Error;
-use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -97,7 +97,6 @@ impl CreateCommand {
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
-        display_parse_logs(&opts);
 
         let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
         cmd.timeout.map(|t| node.set_timeout(t));

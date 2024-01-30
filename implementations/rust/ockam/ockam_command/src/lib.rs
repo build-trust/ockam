@@ -19,13 +19,12 @@
 
 use std::process::exit;
 use std::sync::Arc;
-use std::{path::PathBuf, sync::Mutex};
+use std::{path::PathBuf};
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use colorful::Colorful;
 use console::Term;
 use miette::{miette, GraphicalReportHandler};
-use once_cell::sync::Lazy;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
 use tokio::runtime::Runtime;
@@ -134,8 +133,6 @@ mod worker;
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
-
-static PARSER_LOGS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec![]));
 
 #[derive(Debug, Parser)]
 #[command(
@@ -662,17 +659,6 @@ impl OckamCommand {
             return Some(opts.state.node_dir(&c.node_name));
         }
         None
-    }
-}
-
-/// Display and clear any known messages from parsing.
-pub(crate) fn display_parse_logs(opts: &CommandGlobalOpts) {
-    if let Ok(mut logs) = PARSER_LOGS.lock() {
-        logs.iter().for_each(|msg| {
-            let _ = opts.terminal.write_line(msg);
-        });
-
-        logs.clear();
     }
 }
 
