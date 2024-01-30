@@ -28,7 +28,7 @@ use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
 use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
-use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 use crate::{fmt_warn, node::util::initialize_default_node};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -86,7 +86,6 @@ impl EnrollCommand {
         ))?;
 
         ctrlc_handler(opts.clone());
-        display_parse_logs(&opts);
 
         let oidc_service = OidcService::default();
         let token = if self.authorization_code_flow {

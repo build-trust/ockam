@@ -18,13 +18,13 @@ use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
+use crate::fmt_log;
 use crate::node::util::initialize_default_node;
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
-use crate::{display_parse_logs, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -70,7 +70,6 @@ impl CreateCommand {
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
-        display_parse_logs(&opts);
 
         let node_name = opts.state.get_node_or_default(&self.at).await?.name();
         let project = opts.state.get_node_project(&node_name).await.ok();
