@@ -87,7 +87,6 @@ pub use ockam_transport_tcp::{
     TcpTransportExtension,
 };
 pub use relay_service::{RelayService, RelayServiceOptions};
-pub use stream::unique_with_prefix;
 
 // ---
 
@@ -96,9 +95,7 @@ pub use stream::unique_with_prefix;
 mod error;
 mod relay_service;
 
-pub mod protocols;
 pub mod remote;
-pub mod stream;
 pub mod workers;
 
 /// Access Control

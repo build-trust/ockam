@@ -22,7 +22,6 @@ use crate::identity::{
 };
 use crate::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
-use crate::stream::Stream;
 use crate::OckamError;
 
 /// This struct supports all the ockam services for managing identities
@@ -70,11 +69,6 @@ impl Node {
     /// Return the current context
     pub fn context(&self) -> &Context {
         &self.context
-    }
-
-    /// Create a new stream
-    pub async fn create_stream(&self) -> Result<Stream> {
-        Stream::new(self.get_context()).await
     }
 
     /// Create a new relay
