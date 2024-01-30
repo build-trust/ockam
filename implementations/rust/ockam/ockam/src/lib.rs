@@ -104,7 +104,6 @@ mod system;
 mod unique;
 
 pub mod pipe;
-pub mod pipe2;
 pub mod protocols;
 pub mod remote;
 pub mod stream;
