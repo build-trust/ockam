@@ -59,19 +59,6 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         Ok(identity_attributes.map(|r| r.attributes()).transpose()?)
     }
 
-    async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
-        let query = query_as(
-            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name=$1",
-            )
-            .bind(self.database.node_name()?.to_sql());
-        let result: Vec<IdentityAttributesRow> =
-            query.fetch_all(&*self.database.pool).await.into_core()?;
-        result
-            .into_iter()
-            .map(|r| r.identifier().and_then(|i| r.attributes().map(|a| (i, a))))
-            .collect::<Result<Vec<_>>>()
-    }
-
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {
         let query = query(
             "INSERT OR REPLACE INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES (?, ?, ?, ?, ?, ?)"
@@ -81,13 +68,6 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             .bind(entry.added_at().to_sql())
             .bind(entry.expires_at().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()))
-            .bind(self.database.node_name()?.to_sql());
-        query.execute(&*self.database.pool).await.void()
-    }
-
-    async fn delete(&self, identity: &Identifier) -> Result<()> {
-        let query = query("DELETE FROM identity_attributes WHERE identifier = ? AND node_name = ?")
-            .bind(identity.to_sql())
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -120,6 +100,7 @@ struct IdentityAttributesRow {
 }
 
 impl IdentityAttributesRow {
+    #[allow(dead_code)]
     fn identifier(&self) -> Result<Identifier> {
         Identifier::from_str(&self.identifier)
     }
@@ -176,22 +157,6 @@ mod tests {
             .get_attributes(&identifier1, &identifier1)
             .await?;
         assert_eq!(result, Some(attributes1.clone()));
-
-        let result = repository.list_attributes_by_identifier().await?;
-        assert_eq!(
-            result,
-            vec![
-                (identifier1.clone(), attributes1.clone()),
-                (identifier2.clone(), attributes2.clone())
-            ]
-        );
-
-        // delete attributes
-        repository.delete(&identifier1).await?;
-        let result = repository
-            .get_attributes(&identifier1, &identifier1)
-            .await?;
-        assert_eq!(result, None);
 
         Ok(())
     }
