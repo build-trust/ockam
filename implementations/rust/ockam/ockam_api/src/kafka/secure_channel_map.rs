@@ -205,9 +205,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::check_credential_only(
-            secure_channels
-                .identities()
-                .identity_attributes_repository(),
+            secure_channels.identities().identities_attributes(),
             authority_identifier,
         );
 

@@ -4,6 +4,7 @@ use ockam_core::Result;
 #[cfg(feature = "storage")]
 use ockam_node::database::SqlxDatabase;
 
+use crate::identities::identities_attributes::IdentitiesAttributes;
 #[cfg(feature = "storage")]
 use crate::identities::storage::ChangeHistorySqlxDatabase;
 use crate::identities::storage::CredentialRepository;
@@ -44,11 +45,6 @@ impl Identities {
         self.change_history_repository.clone()
     }
 
-    /// Return the identity attributes repository
-    pub fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
-        self.identity_attributes_repository.clone()
-    }
-
     /// Return the purpose keys repository
     pub fn purpose_keys_repository(&self) -> Arc<dyn PurposeKeysRepository> {
         self.purpose_keys_repository.clone()
@@ -76,6 +72,13 @@ impl Identities {
     /// Export an [`Identity`] from the repository
     pub async fn export_identity(&self, identifier: &Identifier) -> Result<Vec<u8>> {
         self.get_identity(identifier).await?.export()
+    }
+
+    /// Return the service responsible for managing identities attributes
+    pub fn identities_attributes(&self) -> Arc<IdentitiesAttributes> {
+        Arc::new(IdentitiesAttributes::new(
+            self.identity_attributes_repository.clone(),
+        ))
     }
 
     /// Return the [`PurposeKeys`] instance

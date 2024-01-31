@@ -2,18 +2,18 @@ use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::IdentityAttributesRepository;
+use ockam::identity::IdentitiesAttributes;
 use ockam::identity::{AttributesEntry, Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
-use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
 use ockam_node::Context;
 use reqwest::StatusCode;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::trace;
 
 pub struct Server {
-    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+    identities_attributes: Arc<IdentitiesAttributes>,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
     attributes: Vec<String>,
@@ -39,7 +39,7 @@ impl Worker for Server {
 
 impl Server {
     pub fn new(
-        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         tenant_base_url: &str,
         certificate: &str,
         attributes: &[String],
@@ -47,7 +47,7 @@ impl Server {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::core(err.to_string()))?;
         Ok(Server {
-            identity_attributes_repository,
+            identities_attributes,
             tenant_base_url: tenant_base_url.to_string(),
             certificate,
             attributes: attributes.iter().map(|s| s.to_string()).collect(),
@@ -90,7 +90,7 @@ impl Server {
                             None,
                             None,
                         );
-                        self.identity_attributes_repository
+                        self.identities_attributes
                             .put_attributes(from, entry)
                             .await?;
                         Response::ok().with_headers(&req).to_vec()?

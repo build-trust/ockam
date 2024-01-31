@@ -6,7 +6,7 @@ use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
-use ockam_identity::utils::{now, AttributesBuilder};
+use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
     CredentialAccessControl, SecureChannelListenerOptions, SecureChannelOptions,
     TrustIdentifierPolicy,
@@ -18,7 +18,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identity_attributes_repository = identities.identity_attributes_repository();
+    let identities_attributes = identities.identities_attributes();
     let credentials = identities.credentials();
 
     let authority = identities_creation.create_identity().await?;
@@ -59,8 +59,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(200)).await;
 
-    let attrs = identity_attributes_repository
-        .get_attributes(&client, &authority, now()?)
+    let attrs = identities_attributes
+        .get_attributes(&client, &authority)
         .await?
         .unwrap();
 
@@ -76,7 +76,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identity_attributes_repository = identities.identity_attributes_repository();
+    let identities_attributes = identities.identities_attributes();
     let credentials = identities.credentials();
 
     let authority = identities_creation.create_identity().await?;
@@ -131,8 +131,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(200)).await;
 
-    let attrs1 = identity_attributes_repository
-        .get_attributes(&client1, &authority, now()?)
+    let attrs1 = identities_attributes
+        .get_attributes(&client1, &authority)
         .await?
         .unwrap();
 
@@ -145,8 +145,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         b"true"
     );
 
-    let attrs2 = identity_attributes_repository
-        .get_attributes(&client2, &authority, now()?)
+    let attrs2 = identities_attributes
+        .get_attributes(&client2, &authority)
         .await?
         .unwrap();
 
@@ -163,7 +163,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identity_attributes_repository = identities.identity_attributes_repository();
+    let identities_attributes = identities.identities_attributes();
     let credentials = identities.credentials();
 
     let authority = identities_creation.create_identity().await?;
@@ -215,11 +215,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     };
 
     let required_attributes = vec![(b"is_superuser".to_vec(), b"true".to_vec())];
-    let access_control = CredentialAccessControl::new(
-        &required_attributes,
-        authority,
-        identity_attributes_repository.clone(),
-    );
+    let access_control =
+        CredentialAccessControl::new(&required_attributes, authority, identities_attributes);
 
     ctx.flow_controls()
         .add_consumer("counter", listener.flow_control_id());

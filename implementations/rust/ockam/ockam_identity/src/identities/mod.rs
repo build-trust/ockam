@@ -1,5 +1,6 @@
 #[allow(clippy::module_inception)]
 mod identities;
+mod identities_attributes;
 mod identities_builder;
 mod identities_creation;
 mod identities_verification;
@@ -9,6 +10,7 @@ mod identity_options;
 mod storage;
 
 pub use identities::*;
+pub use identities_attributes::*;
 pub use identities_builder::*;
 pub use identities_creation::*;
 pub use identities_verification::*;

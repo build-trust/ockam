@@ -1,12 +1,12 @@
 use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::IncomingAccessControl;
-use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
+use ockam_core::compat::sync::Arc;
+use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
 
 use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
-use crate::utils::now;
-use crate::{Identifier, IdentityAttributesRepository};
+use crate::{Identifier, IdentitiesAttributes};
 
 /// Access control checking that message senders have a specific set of attributes
 #[derive(Clone)]
@@ -14,7 +14,7 @@ pub struct CredentialAccessControl {
     // FIXME: Can we use ABAC instead?
     required_attributes: Vec<(Vec<u8>, Vec<u8>)>,
     authority: Identifier,
-    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+    identities_attributes: Arc<IdentitiesAttributes>,
 }
 
 impl CredentialAccessControl {
@@ -22,12 +22,12 @@ impl CredentialAccessControl {
     pub fn new(
         required_attributes: &[(Vec<u8>, Vec<u8>)],
         authority: Identifier,
-        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
     ) -> Self {
         Self {
             required_attributes: required_attributes.to_vec(),
             authority,
-            identity_attributes_repository,
+            identities_attributes,
         }
     }
 }
@@ -48,10 +48,9 @@ impl IncomingAccessControl for CredentialAccessControl {
         if let Ok(msg_identity_id) =
             IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
-            let now = now()?;
             let attributes = match self
-                .identity_attributes_repository
-                .get_attributes(&msg_identity_id.their_identity_id(), &self.authority, now)
+                .identities_attributes
+                .get_attributes(&msg_identity_id.their_identity_id(), &self.authority)
                 .await?
             {
                 Some(a) => a,
