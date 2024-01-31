@@ -52,7 +52,11 @@ pub struct NamedResources {
 }
 
 impl NamedResources {
-    pub fn into_commands<C, F>(self, get_subcommand: F, name_arg: Option<&str>) -> Result<Vec<C>>
+    pub fn into_commands<C, F>(
+        self,
+        get_subcommand: F,
+        name_arg_key: Option<&str>,
+    ) -> Result<Vec<C>>
     where
         C: ClapArgs,
         F: Fn(&[String]) -> Result<C>,
@@ -60,7 +64,7 @@ impl NamedResources {
         self.items
             .into_iter()
             .map(|(n, a)| {
-                let mut args = match name_arg {
+                let mut args = match name_arg_key {
                     None => vec![n],
                     Some(arg) => vec![as_keyword_arg(&arg.to_string()), n],
                 };
@@ -75,18 +79,28 @@ impl NamedResources {
 #[serde(untagged)]
 pub enum ResourceNameOrMap {
     Name(ResourceName),
-    Map(NamedResources),
+    NamedMap(NamedResources),
+    RandomlyNamedMap(UnnamedResources),
 }
 
 impl ResourceNameOrMap {
-    pub fn into_commands<C, F>(self, get_subcommand: F, name_arg: Option<&str>) -> Result<Vec<C>>
+    pub fn into_commands<C, F>(
+        self,
+        get_subcommand: F,
+        name_arg_key: Option<&str>,
+    ) -> Result<Vec<C>>
     where
         C: ClapArgs,
         F: Fn(&[String]) -> Result<C>,
     {
         match self {
             ResourceNameOrMap::Name(name) => Ok(vec![get_subcommand(&[name])?]),
-            ResourceNameOrMap::Map(resources) => resources.into_commands(get_subcommand, name_arg),
+            ResourceNameOrMap::NamedMap(resources) => {
+                resources.into_commands(get_subcommand, name_arg_key)
+            }
+            ResourceNameOrMap::RandomlyNamedMap(resources) => {
+                resources.into_commands(get_subcommand)
+            }
         }
     }
 }
@@ -183,11 +197,10 @@ pub fn as_keyword_arg(k: &ArgKey) -> String {
 pub fn resolve(v: &ArgValue) -> String {
     match v {
         ArgValue::String(v) => {
-            if v.starts_with('$') {
-                let v = v.trim_start_matches('$');
-                if let Ok(v) = std::env::var(v) {
-                    return v;
-                }
+            if v.contains('$') {
+                return shellexpand::env(v)
+                    .expect("Failed to resolve environment variables")
+                    .to_string();
             }
             v.to_string()
         }
@@ -211,4 +224,23 @@ pub fn parse_cmd_from_args(cmd: &str, args: &[String]) -> Result<OckamSubcommand
 
 pub trait ArgsToCommands<T> {
     fn into_commands(self) -> Result<Vec<T>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_env_vars() {
+        // Set a random env var
+        std::env::set_var("MY_ENV_VAR", "my_env_var_value");
+
+        // Simple case: the arg value is the name of an environment variable
+        let v = resolve(&ArgValue::String("$MY_ENV_VAR".into()));
+        assert_eq!(&v, "my_env_var_value");
+
+        // Complex case: the arg value contains the name of an environment variable
+        let v = resolve(&ArgValue::String("foo $MY_ENV_VAR bar".into()));
+        assert_eq!(&v, "foo my_env_var_value bar");
+    }
 }
