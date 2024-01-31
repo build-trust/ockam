@@ -37,6 +37,18 @@ impl IdentityAttributesSqlxDatabase {
         db.node_name = Some(node_name.to_string());
         Ok(Self::new(db))
     }
+
+    async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
+        // We need to delete expired attributes regularly
+        // Also makes sure we don't get expired attributes right after this call
+        let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
+            .bind(now.to_sql())
+            .bind(self.database.node_name()?.to_sql());
+
+        query.execute(&*self.database.pool).await.void()?;
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -45,7 +57,10 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         &self,
         identity: &Identifier,
         attested_by: &Identifier,
+        now: TimestampInSeconds,
     ) -> Result<Option<AttributesEntry>> {
+        self.delete_expired_attributes(now).await?;
+
         let query = query_as(
             "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1 AND attested_by=$2 AND node_name=$3"
             )
@@ -59,7 +74,12 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         Ok(identity_attributes.map(|r| r.attributes()).transpose()?)
     }
 
-    async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
+    async fn list_attributes_by_identifier(
+        &self,
+        now: TimestampInSeconds,
+    ) -> Result<Vec<(Identifier, AttributesEntry)>> {
+        self.delete_expired_attributes(now).await?;
+
         let query = query_as(
             "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name=$1",
             )
@@ -141,19 +161,23 @@ mod tests {
     use ockam_core::compat::collections::BTreeMap;
     use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
+    use std::time::Duration;
 
     use super::*;
     use crate::identities;
+    use crate::utils::now;
 
     #[tokio::test]
     async fn test_identities_attributes_repository() -> Result<()> {
         let repository = create_repository().await?;
 
+        let now = now()?;
+
         // store and retrieve attributes by identity
         let identifier1 = create_identity().await?;
-        let attributes1 = create_attributes_entry(&identifier1).await?;
+        let attributes1 = create_attributes_entry(&identifier1, now, 2.into()).await?;
         let identifier2 = create_identity().await?;
-        let attributes2 = create_attributes_entry(&identifier2).await?;
+        let attributes2 = create_attributes_entry(&identifier2, now, 2.into()).await?;
 
         repository
             .put_attributes(&identifier1, attributes1.clone())
@@ -163,11 +187,11 @@ mod tests {
             .await?;
 
         let result = repository
-            .get_attributes(&identifier1, &identifier1)
+            .get_attributes(&identifier1, &identifier1, now)
             .await?;
         assert_eq!(result, Some(attributes1.clone()));
 
-        let result = repository.list_attributes_by_identifier().await?;
+        let result = repository.list_attributes_by_identifier(now).await?;
         assert_eq!(
             result,
             vec![
@@ -179,22 +203,66 @@ mod tests {
         // delete attributes
         repository.delete(&identifier1).await?;
         let result = repository
-            .get_attributes(&identifier1, &identifier1)
+            .get_attributes(&identifier1, &identifier1, now)
             .await?;
         assert_eq!(result, None);
 
         Ok(())
     }
 
+    #[tokio::test]
+    async fn test_identities_attributes_repository_expiration() -> Result<()> {
+        let repository = create_repository().await?;
+
+        // store and retrieve attributes by identity
+        let identifier1 = create_identity().await?;
+        let identifier2 = create_identity().await?;
+        let attributes1 = create_attributes_entry(&identifier1, now()?, 2.into()).await?;
+        let attributes2 = create_attributes_entry(&identifier2, now()?, 6.into()).await?;
+
+        repository
+            .put_attributes(&identifier1, attributes1.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier2, attributes2.clone())
+            .await?;
+
+        tokio::time::sleep(Duration::from_secs(4)).await;
+
+        let result = repository
+            .get_attributes(&identifier1, &identifier1, now()?)
+            .await?;
+        assert_eq!(result, None);
+
+        let result = repository
+            .get_attributes(&identifier2, &identifier2, now()?)
+            .await?;
+        assert_eq!(result, Some(attributes2.clone()));
+
+        let result = repository.list_attributes_by_identifier(now()?).await?;
+        assert_eq!(result, vec![(identifier2.clone(), attributes2.clone())]);
+
+        tokio::time::sleep(Duration::from_secs(4)).await;
+
+        let result = repository.list_attributes_by_identifier(now()?).await?;
+        assert!(result.is_empty());
+
+        Ok(())
+    }
+
     /// HELPERS
-    async fn create_attributes_entry(identifier: &Identifier) -> Result<AttributesEntry> {
+    async fn create_attributes_entry(
+        identifier: &Identifier,
+        now: TimestampInSeconds,
+        ttl: TimestampInSeconds,
+    ) -> Result<AttributesEntry> {
         Ok(AttributesEntry::new(
             BTreeMap::from([
                 ("name".as_bytes().to_vec(), "alice".as_bytes().to_vec()),
                 ("age".as_bytes().to_vec(), "20".as_bytes().to_vec()),
             ]),
-            TimestampInSeconds(1000),
-            Some(TimestampInSeconds(2000)),
+            now,
+            Some(now + ttl),
             Some(identifier.clone()),
         ))
     }

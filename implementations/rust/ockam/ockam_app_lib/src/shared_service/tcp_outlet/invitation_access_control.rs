@@ -1,5 +1,6 @@
 use crate::invitations::state::InvitationState;
 use crate::state::AppState;
+use ockam::identity::utils::now;
 use ockam::identity::{Identifier, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
 use ockam_core::errcode::Origin;
 use ockam_core::{async_trait, IncomingAccessControl, RelayMessage};
@@ -86,7 +87,7 @@ impl IncomingAccessControl for InvitationAccessControl {
         if let Ok(msg_identity_id) =
             IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
-            // allows messages when they comes from our own local identity
+            // allows messages when they come from our own local identity
             if msg_identity_id.their_identity_id() == self.local_identity {
                 return Ok(true);
             }
@@ -96,6 +97,7 @@ impl IncomingAccessControl for InvitationAccessControl {
                 .get_attributes(
                     &msg_identity_id.their_identity_id(),
                     &self.authority_identifier,
+                    now()?,
                 )
                 .await?
             {

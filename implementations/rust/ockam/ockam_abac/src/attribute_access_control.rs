@@ -16,6 +16,7 @@ use crate::{eval, Env, Expr, Policy};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
+use ockam_identity::utils::now;
 use ockam_identity::{Identifier, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
 
 /// This AccessControl uses a storage for authenticated attributes in order
@@ -97,7 +98,7 @@ impl AbacAccessControl {
         // Get identity attributes and populate the environment:
         match self
             .identity_attributes_repository
-            .get_attributes(&id, &self.authority)
+            .get_attributes(&id, &self.authority, now()?)
             .await?
         {
             Some(attrs) => {

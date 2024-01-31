@@ -5,7 +5,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
 use ockam_identity::secure_channels::secure_channels;
-use ockam_identity::utils::AttributesBuilder;
+use ockam_identity::utils::{now, AttributesBuilder};
 use ockam_identity::{
     DecryptionResponse, EncryptionRequest, EncryptionResponse, IdentityAccessControlBuilder,
     IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
@@ -173,7 +173,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let alice_attributes = secure_channels
         .identities()
         .identity_attributes_repository()
-        .get_attributes(&alice, &authority)
+        .get_attributes(&alice, &authority, now()?)
         .await?
         .unwrap();
 
@@ -192,7 +192,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     let bob_attributes = secure_channels
         .identities()
         .identity_attributes_repository()
-        .get_attributes(&bob, &authority)
+        .get_attributes(&bob, &authority, now()?)
         .await?
         .unwrap();
 

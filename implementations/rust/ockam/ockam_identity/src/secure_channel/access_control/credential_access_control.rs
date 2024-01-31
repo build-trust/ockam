@@ -5,6 +5,7 @@ use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
 
 use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
+use crate::utils::now;
 use crate::{Identifier, IdentityAttributesRepository};
 
 /// Access control checking that message senders have a specific set of attributes
@@ -47,9 +48,10 @@ impl IncomingAccessControl for CredentialAccessControl {
         if let Ok(msg_identity_id) =
             IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
+            let now = now()?;
             let attributes = match self
                 .identity_attributes_repository
-                .get_attributes(&msg_identity_id.their_identity_id(), &self.authority)
+                .get_attributes(&msg_identity_id.their_identity_id(), &self.authority, now)
                 .await?
             {
                 Some(a) => a,
