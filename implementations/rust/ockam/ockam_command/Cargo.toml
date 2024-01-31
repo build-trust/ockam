@@ -40,7 +40,7 @@ dockerfile = "../../../../tools/cross/Cross.Dockerfile.armv7"
 # `../ockam`) and the `ockam` binary (in `./src/bin/ockam.rs`). I won't
 # enumerate them here, but an example: `rustdoc` will try to place the docs for
 # both of these in the same path, without realizing it, which may result in one
-# overwriting the other)
+# overwriting the other
 #
 # Anyway a result, we disable them for the binary crate, which is just a single
 # file (`src/bin/ockam.rs`) which contains a single function call into

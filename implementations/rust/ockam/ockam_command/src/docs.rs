@@ -8,7 +8,7 @@ use syntect::{
     highlighting::{Style, Theme, ThemeSet},
     parsing::Regex,
     parsing::SyntaxSet,
-    util::{LinesWithEndings},
+    util::LinesWithEndings,
 };
 
 const FOOTER: &str = "
@@ -189,7 +189,7 @@ fn enrich_preview_tag(text: &str) -> String {
 pub fn convert_syntect_style_to_ansi(output: &mut Vec<String>, ranges: &Vec<(Style, &str)>) {
     for (style, text) in ranges {
         let ansi_styled_text = AnsiStyledText {
-            text: text,
+            text,
             style: &[
                 StyleAnsi::Foreground(Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b)),
             ],
