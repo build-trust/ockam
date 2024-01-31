@@ -4,7 +4,7 @@ use miette::miette;
 
 use crate::output::Output;
 use crate::util::api::{self, CloudOpts};
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cli_state::random_name;
@@ -34,55 +34,53 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "create space".into()
+    }
 
-async fn run_impl(
-    ctx: &Context,
-    opts: CommandGlobalOpts,
-    cmd: CreateCommand,
-) -> miette::Result<()> {
-    if !opts
-        .state
-        .is_identity_enrolled(&cmd.cloud_opts.identity)
-        .await?
-    {
-        return Err(miette!(
-            "Please enroll using 'ockam enroll' before using this command"
-        ));
-    };
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if !opts
+            .state
+            .is_identity_enrolled(&self.cloud_opts.identity)
+            .await?
+        {
+            return Err(miette!(
+                "Please enroll using 'ockam enroll' before using this command"
+            ));
+        };
 
-    opts.terminal.write_line(format!(
-        "\n{}",
-        "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
-            .light_magenta(),
-    ))?;
-    opts.terminal.write_line(format!(
-        "{}",
-        "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
-    ))?;
+        opts.terminal.write_line(format!(
+            "\n{}",
+            "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
+                .light_magenta(),
+        ))?;
+        opts.terminal.write_line(format!(
+            "{}",
+            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
+        ))?;
 
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let space = node
-        .create_space(
-            ctx,
-            &cmd.name,
-            cmd.admins.iter().map(|a| a.as_ref()).collect(),
-        )
-        .await?;
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let space = node
+            .create_space(
+                ctx,
+                &self.name,
+                self.admins.iter().map(|a| a.as_ref()).collect(),
+            )
+            .await?;
 
-    opts.terminal
-        .stdout()
-        .plain(space.output()?)
-        .json(serde_json::json!(&space))
-        .write_line()?;
-    Ok(())
+        opts.terminal
+            .stdout()
+            .plain(space.output()?)
+            .json(serde_json::json!(&space))
+            .write_line()?;
+        Ok(())
+    }
 }
 
 fn validate_space_name(s: &str) -> Result<String, String> {

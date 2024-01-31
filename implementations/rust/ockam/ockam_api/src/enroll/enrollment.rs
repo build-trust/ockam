@@ -1,9 +1,10 @@
+use crate::authenticator::one_time_code::OneTimeCode;
 use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
 use crate::cloud::HasSecureClient;
 use crate::nodes::service::default_address::DefaultAddress;
 use miette::IntoDiagnostic;
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::{OneTimeCode, SecureClient};
+use ockam::identity::SecureClient;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::async_trait;
 use ockam_node::Context;
@@ -67,6 +68,7 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
     }
 }
 
+// FiXME: this has duplicate with AuthorityNodeClient
 #[async_trait]
 impl Enrollment for SecureClient {
     async fn enroll_with_oidc_token(

@@ -20,6 +20,10 @@ pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.tr
 pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.span_id");
 pub const APPLICATION_EVENT_TIMESTAMP: &Key = &Key::from_static_str("app.event.timestamp");
 pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project_id");
+pub const APPLICATION_EVENT_ERROR_MESSAGE: &Key = &Key::from_static_str("app.event.error_message");
+
+/// Journey events have a fixed duration
+pub const EVENT_DURATION: Duration = Duration::from_secs(100);
 
 /// The CliState can register events for major actions happening during the application execution:
 ///
@@ -38,7 +42,26 @@ pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.
 ///
 ///
 impl CliState {
+    pub async fn add_journey_error(&self, command_name: &str, message: String) -> Result<()> {
+        self.add_a_journey_event(
+            JourneyEvent::Error {
+                command_name: command_name.to_string(),
+                message,
+            },
+            HashMap::default(),
+        )
+        .await
+    }
+
     pub async fn add_journey_event(
+        &self,
+        event: JourneyEvent,
+        attributes: HashMap<&Key, &str>,
+    ) -> Result<()> {
+        self.add_a_journey_event(event, attributes).await
+    }
+
+    async fn add_a_journey_event(
         &self,
         event: JourneyEvent,
         attributes: HashMap<&Key, &str>,
@@ -56,18 +79,27 @@ impl CliState {
 
         // for both the host and the project journey create a span with a fixed duration
         // and add attributes to the span
+        let start_time = SystemTime::from(Utc::now());
+        let end_time = start_time.add(EVENT_DURATION);
+
         let journeys = self.get_journeys().await?;
         for journey in journeys {
-            let mut span_builder = SpanBuilder::from_name(event.to_string());
-            span_builder.start_time = Some(journey.start_system_time());
-            span_builder.end_time = Some(journey.start_system_time().add(Duration::from_millis(1)));
-            span_builder.links = Some(vec![Link::new(event_span_context.clone(), vec![])]);
+            let span_builder = SpanBuilder::from_name(event.to_string())
+                .with_start_time(start_time)
+                .with_end_time(end_time)
+                .with_links(vec![Link::new(event_span_context.clone(), vec![])]);
             let span = tracer.build_with_context(span_builder, &journey.extract_context());
             let cx = Context::current_with_span(span);
             let _guard = cx.attach();
+
             for (name, value) in attributes.iter() {
                 CurrentSpan::set_attribute(name, value)
             }
+            if let JourneyEvent::Error { message, .. } = &event {
+                CurrentSpan::set_attribute(&Key::from_static_str("error"), "true");
+                CurrentSpan::set_attribute(APPLICATION_EVENT_ERROR_MESSAGE, message);
+            };
+
             CurrentSpan::set_attribute(
                 APPLICATION_EVENT_TRACE_ID,
                 event_trace_id.to_string().as_ref(),
@@ -86,7 +118,7 @@ impl CliState {
 
     /// Return a list of journeys for which we want to add spans
     async fn get_journeys(&self) -> Result<Vec<HostJourney>> {
-        let repository = self.user_journey_repository().await?;
+        let repository = self.user_journey_repository();
         let mut result = vec![];
         if let Some(host_journey) = repository.get_host_journey().await? {
             result.push(host_journey)
@@ -112,7 +144,7 @@ impl CliState {
     }
 
     pub async fn reset_project_journey(&self, project_id: &str) -> Result<()> {
-        let repository = self.user_journey_repository().await?;
+        let repository = self.user_journey_repository();
         Ok(repository.delete_project_journey(project_id).await?)
     }
 
@@ -165,84 +197,5 @@ impl CliState {
         let _guard = cx.clone().attach();
         let opentelemetry_context = OpenTelemetryContext::current();
         (opentelemetry_context, now)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::logs::{LoggingConfiguration, LoggingTracing};
-    use crate::random_name;
-    use ockam_node::Executor;
-    use opentelemetry::trace::FutureExt;
-    use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
-    use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
-    use tempfile::NamedTempFile;
-
-    #[test]
-    fn test_create_journey_event() {
-        let spans_exporter = InMemorySpanExporter::default();
-        let logs_exporter = InMemoryLogsExporter::default();
-
-        let tracing_guard = LoggingTracing::setup_with_exporters(
-            spans_exporter.clone(),
-            logs_exporter.clone(),
-            None,
-            LoggingConfiguration::off().set_crates(&["ockam_api"]),
-            "test",
-        );
-        let tracer = global::tracer("ockam-test");
-        let result = tracer.in_span("user event", |cx| {
-            let _guard = cx.with_value(Utc::now()).attach();
-
-            Executor::execute_future(
-                async move {
-                    let db_file = NamedTempFile::new().unwrap();
-                    let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-                    let cli = CliState::create(cli_state_directory)
-                        .await
-                        .unwrap()
-                        .set_tracing_enabled();
-
-                    let mut map = HashMap::new();
-                    map.insert(USER_EMAIL, "etorreborre@yahoo.com");
-                    map.insert(USER_NAME, "eric");
-                    cli.add_journey_event(JourneyEvent::Enrolled, map.clone())
-                        .await
-                        .unwrap();
-                    cli.add_journey_event(JourneyEvent::PortalCreated, map)
-                        .await
-                        .unwrap();
-                }
-                .with_current_context(),
-            )
-        });
-        assert!(result.is_ok());
-
-        tracing_guard.force_flush();
-        let mut spans = spans_exporter.get_finished_spans().unwrap();
-        spans.sort_by_key(|s| s.start_time);
-        assert_eq!(spans.len(), 4);
-
-        let span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
-        assert_eq!(
-            span_names,
-            vec![
-                "user event",
-                "start host journey",
-                "enrolled",
-                "portal created"
-            ]
-        );
-        // remove the first event
-        spans.remove(0);
-
-        // all user events have the same start/end times and have a duration of 1ms
-        let first_span = spans.first().unwrap().clone();
-        for span in spans {
-            assert_eq!(span.start_time, first_span.start_time);
-            assert_eq!(span.end_time, first_span.end_time);
-            assert_eq!(span.start_time.add(Duration::from_millis(1)), span.end_time);
-        }
     }
 }

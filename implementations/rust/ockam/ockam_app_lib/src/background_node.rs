@@ -3,7 +3,7 @@ use crate::Result;
 use ockam::compat::tokio::task::spawn_blocking;
 use ockam_core::async_trait;
 use std::process::Command;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 pub trait BackgroundNodeClientTrait: Send + Sync + 'static {
     fn nodes(&self) -> Box<dyn Nodes>;
@@ -12,7 +12,7 @@ pub trait BackgroundNodeClientTrait: Send + Sync + 'static {
 
 #[async_trait]
 pub trait Nodes: Send + Sync + 'static {
-    async fn create(&mut self, node_name: &str, trust_context_name: &str) -> Result<()>;
+    async fn create(&mut self, node_name: &str, project_name: &str) -> Result<()>;
 }
 
 #[async_trait]
@@ -57,25 +57,32 @@ impl BackgroundNodeClientTrait for Cli {
 
 #[async_trait]
 impl Nodes for Cli {
-    async fn create(&mut self, node_name: &str, trust_context_name: &str) -> Result<()> {
+    async fn create(&mut self, node_name: &str, project_name: &str) -> Result<()> {
         let bin = self.bin.clone();
         let node_name = node_name.to_string();
-        let trust_context_name = trust_context_name.to_string();
+        let project_name = project_name.to_string();
         spawn_blocking(move || {
-            let _ = duct::cmd!(
+            match duct::cmd!(
                 &bin,
                 "--no-input",
                 "node",
                 "create",
                 &node_name,
-                "--trust-context",
-                &trust_context_name
+                "--project",
+                &project_name
             )
             .before_spawn(log_command)
             .stderr_null()
             .stdout_capture()
             .run()
-            .map(|_| debug!(node = %node_name, "Node created"));
+            {
+                Ok(_) => {
+                    debug!(node = %node_name, "Node created")
+                }
+                Err(err) => {
+                    error!(node = %node_name, error=%err, "Failed to create node")
+                }
+            }
         })
         .await?;
 
@@ -90,22 +97,19 @@ impl Projects for Cli {
         let hex_encoded_ticket = hex_encoded_ticket.to_string();
         let bin = self.bin.clone();
         Ok(spawn_blocking(move || {
-            let _ = duct::cmd!(
-                &bin,
-                "--no-input",
-                "project",
-                "enroll",
-                "--new-trust-context-name",
-                &node_name,
-                &hex_encoded_ticket,
-            )
-            .before_spawn(log_command)
-            .stderr_null()
-            .stdout_capture()
-            .run()
-            .map(|_| {
-                debug!(node = %node_name, "Node enrolled using enrollment ticket");
-            });
+            match duct::cmd!(&bin, "--no-input", "project", "enroll", &hex_encoded_ticket)
+                .before_spawn(log_command)
+                .stderr_null()
+                .stdout_capture()
+                .run()
+            {
+                Ok(_) => {
+                    debug!(node = %node_name, "Node enrolled using enrollment ticket");
+                }
+                Err(err) => {
+                    error!(node = %node_name, error=%err, "Failed to enroll node")
+                }
+            }
         })
         .await?)
     }

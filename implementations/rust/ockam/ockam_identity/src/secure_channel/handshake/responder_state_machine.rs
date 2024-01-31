@@ -17,7 +17,7 @@ use crate::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
     StateMachine, Status,
 };
-use crate::{Identities, Role, SecureChannelPurposeKey, TrustContext, TrustPolicy};
+use crate::{Identities, Role, SecureChannelPurposeKey, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the responder side
 #[async_trait]
@@ -108,7 +108,7 @@ impl ResponderStateMachine {
         purpose_key: SecureChannelPurposeKey,
         credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
-        trust_context: Option<TrustContext>,
+        authority: Option<Identifier>,
     ) -> Result<ResponderStateMachine> {
         let common = CommonStateMachine::new(
             identities,
@@ -116,7 +116,7 @@ impl ResponderStateMachine {
             purpose_key.attestation().clone(),
             credentials,
             trust_policy,
-            trust_context,
+            authority,
         );
         let identity_payload = common.make_identity_payload().await?;
 

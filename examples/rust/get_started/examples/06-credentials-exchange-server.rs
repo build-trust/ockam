@@ -3,14 +3,14 @@
 use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
-use ockam::identity::{AuthorityService, SecureChannelListenerOptions, TrustContext, Vault};
+use ockam::identity::{SecureChannelListenerOptions, Vault};
+use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
 use ockam::{Context, Result, TcpListenerOptions};
 use ockam::{Node, TcpTransportExtension};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -70,27 +70,22 @@ async fn main(ctx: Context) -> Result<()> {
         .verify_credential(Some(&server), &[issuer.clone()], &credential)
         .await?;
 
-    // Create a trust context that will be used to authenticate credential exchanges
-    let trust_context = TrustContext::new(
-        "trust_context_id".to_string(),
-        Some(AuthorityService::new(node.credentials(), issuer.clone(), None)),
-    );
-
     // Start an echoer worker that will only accept incoming requests from
     // identities that have authenticated credentials issued by the above credential
     // issuer. These credentials must also attest that requesting identity is
     // a member of the production cluster.
     let tcp_listener_options = TcpListenerOptions::new();
     let sc_listener_options = SecureChannelListenerOptions::new()
-        .with_trust_context(trust_context)
-        .with_credential(credential)
+        .with_authority(issuer.clone())
+        .with_credential(credential)?
         .as_consumer(&tcp_listener_options.spawner_flow_control_id());
 
     node.flow_controls().add_consumer(
         DefaultAddress::ECHO_SERVICE,
         &sc_listener_options.spawner_flow_control_id(),
     );
-    let allow_production = AbacAccessControl::create(node.identity_attributes_repository(), "cluster", "production");
+    let allow_production =
+        AbacAccessControl::create(node.identity_attributes_repository(), issuer, "cluster", "production");
     node.start_worker_with_access_control(DefaultAddress::ECHO_SERVICE, Echoer, allow_production, AllowAll)
         .await?;
 

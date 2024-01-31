@@ -13,7 +13,7 @@ use crate::secure_channel::{
 };
 #[cfg(feature = "storage")]
 use crate::SecureChannelsBuilder;
-use crate::{SecureChannel, SecureChannelListener, TrustContext, Vault};
+use crate::{CredentialRetriever, SecureChannel, SecureChannelListener, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -85,27 +85,23 @@ impl SecureChannels {
     }
 
     /// If credentials are not provided via list in options
-    /// get them from the trust context
+    /// get them from the credential retriever
     pub(crate) async fn get_credentials(
         identifier: &Identifier,
-        credentials: &[CredentialAndPurposeKey],
-        trust_context: Option<&TrustContext>,
+        credential_retriever: &Option<Arc<dyn CredentialRetriever>>,
         ctx: &Context,
     ) -> Result<Vec<CredentialAndPurposeKey>> {
-        let credential = if credentials.is_empty() {
-            if let Some(trust_context) = trust_context {
-                trust_context
-                    .get_credential(ctx, identifier)
-                    .await?
-                    .into_iter()
-                    .collect::<Vec<_>>()
+        let credentials = if let Some(credential_retriever) = credential_retriever {
+            if let Some(credential) = credential_retriever.retrieve(ctx, identifier).await? {
+                vec![credential]
             } else {
                 vec![]
             }
         } else {
-            credentials.to_vec()
+            vec![]
         };
-        Ok(credential)
+
+        Ok(credentials)
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
@@ -133,13 +129,8 @@ impl SecureChannels {
             .get_or_create_secure_channel_purpose_key(identifier)
             .await?;
 
-        let credentials = Self::get_credentials(
-            identifier,
-            &options.credentials,
-            options.trust_context.as_ref(),
-            ctx,
-        )
-        .await?;
+        let credentials =
+            Self::get_credentials(identifier, &options.credential_retriever, ctx).await?;
 
         HandshakeWorker::create(
             ctx,
@@ -152,7 +143,8 @@ impl SecureChannels {
             credentials,
             options.min_credential_refresh_interval,
             options.credential_refresh_time_gap,
-            options.trust_context,
+            options.credential_retriever,
+            options.authority,
             Some(route),
             Some(options.timeout),
             Role::Initiator,

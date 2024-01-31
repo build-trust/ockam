@@ -68,8 +68,7 @@ impl Worker for SecureChannelListenerWorker {
 
         let credentials = SecureChannels::get_credentials(
             &self.identifier,
-            &self.options.credentials,
-            self.options.trust_context.as_ref(),
+            &self.options.credential_retriever,
             ctx,
         )
         .await
@@ -96,7 +95,8 @@ impl Worker for SecureChannelListenerWorker {
             credentials,
             self.options.min_credential_refresh_interval,
             self.options.refresh_credential_time_gap,
-            self.options.trust_context.clone(),
+            self.options.credential_retriever.clone(),
+            self.options.authority.clone(),
             None,
             None,
             Role::Responder,

@@ -15,7 +15,9 @@ use tracing::{debug, info};
 use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, VersionedData};
 use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::encryptor_worker::EncryptorWorker;
+use crate::secure_channel::encryptor_worker::{
+    EncryptorWorker, EncryptorWorkerCredentialsOptions, SecureChannelSharedState,
+};
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
@@ -27,8 +29,8 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    ChangeHistoryRepository, IdentityError, SecureChannelPurposeKey, SecureChannelRegistryEntry,
-    SecureChannels, TimestampInSeconds, TrustContext, TrustPolicy,
+    ChangeHistoryRepository, CredentialRetriever, IdentityError, SecureChannelPurposeKey,
+    SecureChannelRegistryEntry, SecureChannels, TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -42,12 +44,13 @@ pub(crate) struct HandshakeWorker {
     role: Role,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
-    min_credential_refresh_interval: Duration,
-    min_credential_expiration: Option<TimestampInSeconds>,
-    refresh_credential_time_gap: Duration,
-    trust_context: Option<TrustContext>,
+
+    authority: Option<Identifier>,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
-    should_send_close: Arc<AtomicBool>,
+
+    credential_options: EncryptorWorkerCredentialsOptions,
+
+    shared_state: SecureChannelSharedState,
 }
 
 #[ockam_core::worker]
@@ -167,7 +170,8 @@ impl HandshakeWorker {
         credentials: Vec<CredentialAndPurposeKey>,
         min_credential_refresh_interval: Duration,
         refresh_credential_time_gap: Duration,
-        trust_context: Option<TrustContext>,
+        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+        authority: Option<Identifier>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
@@ -175,6 +179,7 @@ impl HandshakeWorker {
         let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
 
+        let number_of_credentials = credentials.len();
         let min_credential_expiration = credentials
             .iter()
             .filter_map(|credential| {
@@ -193,7 +198,7 @@ impl HandshakeWorker {
                     purpose_key,
                     credentials,
                     trust_policy,
-                    trust_context.clone(),
+                    authority.clone(),
                 )
                 .await?,
             )
@@ -206,7 +211,7 @@ impl HandshakeWorker {
                     purpose_key,
                     credentials,
                     trust_policy,
-                    trust_context.clone(),
+                    authority.clone(),
                 )
                 .await?,
             )
@@ -219,6 +224,15 @@ impl HandshakeWorker {
             (None, None)
         };
 
+        let credential_options = EncryptorWorkerCredentialsOptions {
+            min_credential_expiration,
+            min_credential_refresh_interval,
+            refresh_credential_time_gap,
+            credential_retriever,
+        };
+        let shared_state = SecureChannelSharedState {
+            should_send_close: Arc::new(AtomicBool::new(true)),
+        };
         let worker = Self {
             secure_channels,
             callback_sender,
@@ -228,12 +242,10 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
-            min_credential_refresh_interval,
-            min_credential_expiration,
-            refresh_credential_time_gap,
-            trust_context,
+            credential_options,
+            authority,
             change_history_repository: identities.change_history_repository(),
-            should_send_close: Arc::new(AtomicBool::new(true)),
+            shared_state,
         };
 
         WorkerBuilder::new(worker)
@@ -246,8 +258,8 @@ impl HandshakeWorker {
 
         let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
-            "Starting SecureChannel {} at remote: {}",
-            role, &decryptor_remote
+            "Starting SecureChannel {} at remote: {} with {} credentials",
+            role, &decryptor_remote, number_of_credentials
         );
 
         // before sending messages make sure that the handshake is finished and
@@ -316,13 +328,13 @@ impl HandshakeWorker {
         // create a decryptor to delegate the processing of all messages after the handshake
         let decryptor = DecryptorHandler::new(
             self.secure_channels.identities.clone(),
-            self.trust_context.clone(),
+            self.authority.clone(),
             self.role.str(),
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
             self.secure_channels.identities.vault().secure_channel_vault,
             handshake_results.their_identifier.clone(),
-            self.should_send_close.clone(),
+            self.shared_state.clone(),
         );
 
         // create a separate encryptor worker which will be started independently
@@ -338,11 +350,8 @@ impl HandshakeWorker {
                 ),
                 self.identifier.clone(),
                 self.change_history_repository.clone(),
-                self.min_credential_expiration,
-                self.min_credential_refresh_interval,
-                self.refresh_credential_time_gap,
-                self.trust_context.clone(),
-                self.should_send_close.clone(),
+                self.credential_options.clone(),
+                self.shared_state.clone(),
             );
 
             let next_hop = self.remote_route()?.next()?.clone();

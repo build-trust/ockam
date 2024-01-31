@@ -5,9 +5,12 @@ use std::time::Duration;
 use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
 use ockam::abac::{Policy, Resource};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use ockam_api::address::get_free_address;
+use ockam_api::authenticator::direct::{
+    OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
+};
 use ockam_api::nodes::service::actions;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::Policies;
@@ -18,6 +21,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::background_node::BackgroundNodeClientTrait;
 use crate::incoming_services::state::{IncomingService, Port};
 use crate::state::AppState;
+use crate::Error;
 
 impl AppState {
     pub(crate) async fn refresh_inlets(&self) -> crate::Result<()> {
@@ -135,9 +139,22 @@ impl AppState {
         // skip enrollment if the ticket is referring to one of our own projects
         // this is useful for testing and in the case the user is connecting
         // multiple devices on the same account
-        let (trust_context_name, project_name) = match self.match_owned_projects(service).await? {
-            Some((trust_context_name, project_name)) => (trust_context_name, Some(project_name)),
+        let project_name = match self.match_owned_projects(service).await? {
+            Some(project_name) => project_name,
             None => {
+                let project_name = service
+                    .enrollment_ticket()
+                    .project
+                    .as_ref()
+                    .map(|x| x.name.clone());
+                let project_name = if let Some(project_name) = project_name {
+                    project_name
+                } else {
+                    error!("Enrollment Ticket doesn't contain Project info");
+                    return Err(Error::App(
+                        "Enrollment Ticket doesn't contain Project info".to_string(),
+                    ));
+                };
                 background_node_client
                     .projects()
                     .enroll(
@@ -145,17 +162,17 @@ impl AppState {
                         &service.enrollment_ticket().hex_encoded()?,
                     )
                     .await?;
-                // the node name is the trust context for enrolled nodes
-                (local_node_name.clone(), None)
+                // the node name is the project name for enrolled nodes
+                project_name
             }
         };
 
-        // Recreate the node using the trust context
+        // Recreate the node using the project name
         debug!(node = %local_node_name, "Creating node to host TCP inlet");
         let _ = self.delete_background_node(&local_node_name).await;
         background_node_client
             .nodes()
-            .create(&local_node_name, &trust_context_name)
+            .create(&local_node_name, &project_name)
             .await?;
         tokio::time::sleep(Duration::from_millis(250)).await;
 
@@ -177,7 +194,10 @@ impl AppState {
                 &self.context(),
                 &Resource::new(&inlet_alias),
                 &actions::HANDLE_MESSAGE,
-                &Policy::new(eq([ident("subject.ockam-role"), str("enroller")])),
+                &Policy::new(eq([
+                    ident(format!("subject.{}", OCKAM_ROLE_ATTRIBUTE_KEY)),
+                    str(OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE),
+                ])),
             )
             .await?;
 
@@ -185,7 +205,7 @@ impl AppState {
             .create_inlet(
                 &self.context(),
                 &bind_address.to_string(),
-                &MultiAddr::from_str(&service.service_route(project_name.as_deref()))
+                &MultiAddr::from_str(&service.service_route(Some(project_name.as_str())))
                     .into_diagnostic()?,
                 &Some(inlet_alias),
                 &None,
@@ -202,12 +222,12 @@ impl AppState {
         Ok(bind_address.port())
     }
 
-    /// Returns the trust context name and project name if one of user own projects matches with
+    /// Returns project name if one of user own projects matches with
     /// the project in the enrollment ticket
     async fn match_owned_projects(
         &self,
         service: &IncomingService,
-    ) -> crate::Result<Option<(String, String)>> {
+    ) -> crate::Result<Option<String>> {
         let ticket_project = service
             .enrollment_ticket()
             .project
@@ -235,8 +255,7 @@ impl AppState {
                 "Skipping enrollment, the project {} is owned by the user",
                 my_project.name
             );
-            // the project name is also the trust context name
-            Ok(Some((my_project.name.clone(), my_project.name.clone())))
+            Ok(Some(my_project.name.clone()))
         } else {
             Ok(None)
         }

@@ -47,11 +47,19 @@ pub enum AddonSubcommand {
 }
 
 impl AddonCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             AddonSubcommand::List(cmd) => cmd.run(opts),
             AddonSubcommand::Disable(cmd) => cmd.run(opts),
             AddonSubcommand::Configure(cmd) => cmd.run(opts),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match &self.subcommand {
+            AddonSubcommand::List(c) => c.name(),
+            AddonSubcommand::Disable(c) => c.name(),
+            AddonSubcommand::Configure(c) => c.name(),
         }
     }
 }
@@ -70,7 +78,7 @@ pub enum ConfigureAddonCommand {
 }
 
 impl ConfigureAddonCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
             ConfigureAddonCommand::Okta(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Influxdb(cmd) => cmd.run(opts),
@@ -80,6 +88,19 @@ impl ConfigureAddonCommand {
             ConfigureAddonCommand::Redpanda(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Warpstream(cmd) => cmd.run(opts),
             ConfigureAddonCommand::Kafka(cmd) => cmd.run(opts),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match &self {
+            ConfigureAddonCommand::Okta(c) => c.name(),
+            ConfigureAddonCommand::Influxdb(c) => c.name(),
+            ConfigureAddonCommand::Confluent(c) => c.name(),
+            ConfigureAddonCommand::InstaclustrKafka(c) => c.name(),
+            ConfigureAddonCommand::AivenKafka(c) => c.name(),
+            ConfigureAddonCommand::Redpanda(c) => c.name(),
+            ConfigureAddonCommand::Warpstream(c) => c.name(),
+            ConfigureAddonCommand::Kafka(c) => c.name(),
         }
     }
 }

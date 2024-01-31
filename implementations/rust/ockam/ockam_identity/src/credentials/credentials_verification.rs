@@ -44,16 +44,32 @@ impl CredentialsVerification {
 
 impl CredentialsVerification {
     /// Verify a [`Credential`]
-    // TODO: Move to CredentialsVerification
     pub async fn verify_credential(
         &self,
         expected_subject: Option<&Identifier>,
         authorities: &[Identifier],
         credential_and_purpose_key: &CredentialAndPurposeKey,
     ) -> Result<CredentialAndPurposeKeyData> {
+        Self::verify_credential_static(
+            self.purpose_keys_verification.clone(),
+            self.verifying_vault.clone(),
+            expected_subject,
+            authorities,
+            credential_and_purpose_key,
+        )
+        .await
+    }
+
+    /// Verify a [`Credential`]
+    pub async fn verify_credential_static(
+        purpose_keys_verification: Arc<PurposeKeyVerification>,
+        verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
+        expected_subject: Option<&Identifier>,
+        authorities: &[Identifier],
+        credential_and_purpose_key: &CredentialAndPurposeKey,
+    ) -> Result<CredentialAndPurposeKeyData> {
         debug!("verify purpose key attestation");
-        let purpose_key_data = self
-            .purpose_keys_verification
+        let purpose_key_data = purpose_keys_verification
             .verify_purpose_key_attestation(
                 None,
                 &credential_and_purpose_key.purpose_key_attestation,
@@ -80,8 +96,7 @@ impl CredentialsVerification {
 
         debug!("verify signature");
         let public_key = public_key.into();
-        let versioned_data_hash = self
-            .verifying_vault
+        let versioned_data_hash = verifying_vault
             .sha256(&credential_and_purpose_key.credential.data)
             .await?;
 
@@ -91,8 +106,7 @@ impl CredentialsVerification {
             .clone()
             .into();
 
-        if !self
-            .verifying_vault
+        if !verifying_vault
             .verify_signature(&public_key, &versioned_data_hash.0, &signature)
             .await?
         {
@@ -163,8 +177,7 @@ impl CredentialsVerification {
             //     In such cases some limited tolerance may be introduced.
         }
 
-        // FIXME: Verify if given authority is allowed to issue credentials with given Schema <-- Should be handled somewhere in the TrustContext
-        // FIXME: Verify if Schema aligns with Attributes <-- Should be handled somewhere in the TrustContext
+        // FIXME: Verify if Schema aligns with Attributes
 
         Ok(CredentialAndPurposeKeyData {
             credential_data,

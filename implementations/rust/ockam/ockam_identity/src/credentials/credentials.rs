@@ -55,7 +55,7 @@ impl Credentials {
             self.purpose_keys.purpose_keys_creation(),
             self.credential_vault.clone(),
             self.verifying_vault.clone(),
-            self.identities_creation.clone(),
+            self.identities_creation.identities_verification(),
         ))
     }
 
@@ -104,7 +104,7 @@ mod tests {
                 &issuer,
                 &subject,
                 subject_attributes,
-                Duration::from_secs(60),
+                Duration::from_secs(60 * 60),
             )
             .await?;
 

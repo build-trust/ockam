@@ -160,6 +160,7 @@ impl<T: Display> Display for Reply<T> {
 impl<T> Reply<T> {
     /// Return the value T as a success.
     /// Any failure indicated by a non-OK status is interpreted as an error
+    #[track_caller]
     pub fn success(self) -> Result<T> {
         match self {
             Reply::Successful(t) => Ok(t),
@@ -173,6 +174,7 @@ impl<T> Reply<T> {
 
     /// Return the value T as an option if it has been found .
     /// Any failure indicated by a non-OK or not-NotFound status is interpreted as an error
+    #[track_caller]
     pub fn found(self) -> Result<Option<T>> {
         match self {
             Reply::Successful(t) => Ok(Some(t)),
@@ -333,6 +335,7 @@ pub struct Error {
 }
 
 impl Error {
+    #[track_caller]
     pub fn new(path: &str) -> Self {
         Error {
             method: None,
@@ -342,6 +345,7 @@ impl Error {
         }
     }
 
+    #[track_caller]
     pub fn new_without_path() -> Self {
         Error {
             method: None,
@@ -351,6 +355,7 @@ impl Error {
         }
     }
 
+    #[track_caller]
     pub fn from_failed_request(req: &RequestHeader, message: &str) -> Error {
         let mut e = Error::new(req.path()).with_message(message);
         if let Some(m) = req.method() {

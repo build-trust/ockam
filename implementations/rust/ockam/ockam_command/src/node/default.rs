@@ -2,9 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_node::Context;
-
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
@@ -22,40 +20,43 @@ pub struct DefaultCommand {
 }
 
 impl DefaultCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(
-    _cxt: Context,
-    (opts, cmd): (CommandGlobalOpts, DefaultCommand),
-) -> miette::Result<()> {
-    if let Some(node_name) = cmd.node_name {
-        if opts
-            .state
-            .get_node(&node_name)
-            .await
-            .ok()
-            .map(|n| n.is_default())
-            .unwrap_or(false)
-        {
-            return Err(miette!("The node '{node_name}' is already the default"));
-        } else {
-            opts.state.set_default_node(&node_name).await?;
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!("The node '{node_name}' is now the default"))
-                .machine(&node_name)
-                .write_line()?;
-        }
-    } else {
-        let default_node_name = opts.state.get_default_node().await?.name();
-        let _ = opts
-            .terminal
-            .stdout()
-            .plain(fmt_ok!("The default node is '{default_node_name}'"))
-            .write_line();
+    pub fn name(&self) -> String {
+        "get default node".into()
     }
-    Ok(())
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if let Some(node_name) = &self.node_name {
+            if opts
+                .state
+                .get_node(node_name)
+                .await
+                .ok()
+                .map(|n| n.is_default())
+                .unwrap_or(false)
+            {
+                return Err(miette!("The node '{node_name}' is already the default"));
+            } else {
+                opts.state.set_default_node(node_name).await?;
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("The node '{node_name}' is now the default"))
+                    .machine(node_name)
+                    .write_line()?;
+            }
+        } else {
+            let default_node_name = opts.state.get_default_node().await?.name();
+            let _ = opts
+                .terminal
+                .stdout()
+                .plain(fmt_ok!("The default node is '{default_node_name}'"))
+                .write_line();
+        }
+        Ok(())
+    }
 }

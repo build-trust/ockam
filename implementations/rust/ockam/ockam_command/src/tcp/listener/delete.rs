@@ -8,7 +8,7 @@ use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -29,49 +29,52 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
-
-    // Check if there an TCP listener with the provided address exists
-    let address = cmd.address;
-    node.ask_and_get_reply::<_, TransportStatus>(
-        &ctx,
-        Request::get(format!("/node/tcp/listener/{address}")),
-    )
-    .await?
-    .found()
-    .into_diagnostic()?
-    .ok_or(miette!(
-        "TCP listener with address {address} was not found on Node {}",
-        node.node_name()
-    ))?;
-
-    // Proceed with the deletion
-    if opts.terminal.confirmed_with_flag_or_prompt(
-        cmd.yes,
-        "Are you sure you want to delete this TCP listener?",
-    )? {
-        let req = Request::delete("/node/tcp/listener")
-            .body(models::transport::DeleteTransport::new(address.clone()));
-        node.tell(&ctx, req).await?;
-
-        opts.terminal
-            .stdout()
-            .plain(fmt_ok!(
-                "TCP listener with address {address} on Node {} has been deleted",
-                node.node_name()
-            ))
-            .json(serde_json::json!({"node": node.node_name() }))
-            .write_line()
-            .unwrap();
+    pub fn name(&self) -> String {
+        "delete tcp listener".into()
     }
-    Ok(())
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+
+        // Check if there an TCP listener with the provided address exists
+        let address = self.address.clone();
+        node.ask_and_get_reply::<_, TransportStatus>(
+            ctx,
+            Request::get(format!("/node/tcp/listener/{address}")),
+        )
+        .await?
+        .found()
+        .into_diagnostic()?
+        .ok_or(miette!(
+            "TCP listener with address {address} was not found on Node {}",
+            node.node_name()
+        ))?;
+
+        // Proceed with the deletion
+        if opts.terminal.confirmed_with_flag_or_prompt(
+            self.yes,
+            "Are you sure you want to delete this TCP listener?",
+        )? {
+            let req = Request::delete("/node/tcp/listener")
+                .body(models::transport::DeleteTransport::new(address.clone()));
+            node.tell(ctx, req).await?;
+
+            opts.terminal
+                .stdout()
+                .plain(fmt_ok!(
+                    "TCP listener with address {address} on Node {} has been deleted",
+                    node.node_name()
+                ))
+                .json(serde_json::json!({"node": node.node_name() }))
+                .write_line()
+                .unwrap();
+        }
+        Ok(())
+    }
 }

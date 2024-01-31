@@ -10,7 +10,7 @@ use ockam_core::api::Request;
 
 use crate::node::NodeOpts;
 use crate::terminal::OckamColor;
-use crate::util::{api, node_rpc};
+use crate::util::{api, async_cmd};
 use crate::{fmt_ok, CommandGlobalOpts};
 use crate::{fmt_warn, Result};
 
@@ -29,97 +29,42 @@ pub enum StartSubCommand {
         #[arg(long, default_value_t = hop_default_addr())]
         addr: String,
     },
-    Authenticated {
-        #[arg(long, default_value_t = authenticated_default_addr())]
-        addr: String,
-    },
-    Credentials {
-        #[arg(long)]
-        identity: String,
-
-        #[arg(long, default_value_t = credentials_default_addr())]
-        addr: String,
-
-        #[arg(long)]
-        oneway: bool,
-    },
-    Authenticator {
-        #[arg(long, default_value_t = authenticator_default_addr())]
-        addr: String,
-
-        #[arg(long)]
-        project: String,
-    },
 }
 
 fn hop_default_addr() -> String {
     DefaultAddress::HOP_SERVICE.to_string()
 }
 
-fn authenticated_default_addr() -> String {
-    DefaultAddress::AUTHENTICATED_SERVICE.to_string()
-}
-
-fn credentials_default_addr() -> String {
-    DefaultAddress::CREDENTIALS_SERVICE.to_string()
-}
-
-fn authenticator_default_addr() -> String {
-    DefaultAddress::DIRECT_AUTHENTICATOR.to_string()
-}
-
 impl StartCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StartCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "start service".into()
+    }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
-    let mut is_hop_service = false;
-    let addr = match cmd.create_subcommand {
-        StartSubCommand::Hop { addr, .. } => {
-            is_hop_service = true;
-            start_hop_service(ctx, &node, &addr).await?;
-            addr
-        }
-        StartSubCommand::Authenticated { addr, .. } => {
-            let req = api::start_authenticated_service(&addr);
-            start_service_impl(ctx, &node, "Authenticated", req).await?;
-            addr
-        }
-        StartSubCommand::Credentials {
-            identity,
-            addr,
-            oneway,
-            ..
-        } => {
-            let req = api::start_credentials_service(&identity, &addr, oneway);
-            start_service_impl(ctx, &node, "Credentials", req).await?;
-            addr
-        }
-        StartSubCommand::Authenticator { addr, project, .. } => {
-            start_authenticator_service(ctx, &node, &addr, &project).await?;
-            addr
-        }
-    };
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let addr = match &self.create_subcommand {
+            StartSubCommand::Hop { addr, .. } => {
+                start_hop_service(ctx, &node, addr).await?;
+                opts.terminal.write_line(&fmt_warn!(
+                    "SECURITY WARNING: Don't use Hop service in production nodes"
+                ))?;
+                addr
+            }
+        };
 
-    opts.terminal.write_line(&fmt_ok!(
-        "Service started at address {}",
-        addr.color(OckamColor::PrimaryResource.color())
-    ))?;
-
-    if is_hop_service {
-        opts.terminal.write_line(&fmt_warn!(
-            "SECURITY WARNING: Don't use Hop service in production nodes"
+        opts.terminal.write_line(&fmt_ok!(
+            "Service started at address {}",
+            addr.to_string().color(OckamColor::PrimaryResource.color())
         ))?;
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 /// Helper function.
@@ -146,16 +91,4 @@ pub async fn start_hop_service(
 ) -> Result<()> {
     let req = api::start_hop_service(serv_addr);
     start_service_impl(ctx, node, "Hop", req).await
-}
-
-/// Public so `ockam_command::node::create` can use it.
-#[allow(clippy::too_many_arguments)]
-pub async fn start_authenticator_service(
-    ctx: &Context,
-    node: &BackgroundNodeClient,
-    serv_addr: &str,
-    project: &str,
-) -> Result<()> {
-    let req = api::start_authenticator_service(serv_addr, project);
-    start_service_impl(ctx, node, "Authenticator", req).await
 }

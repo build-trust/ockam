@@ -52,17 +52,15 @@ teardown() {
   run "$OCKAM" identity create m3
   run "$OCKAM" identity create m4
   run "$OCKAM" identity create m5
-  run "$OCKAM" identity create m6
 
   enroller_identifier=$($OCKAM identity show enroller)
   authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
   m1_identifier=$($OCKAM identity show m1)
-  m2_identifier=$($OCKAM identity show m2)
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   # For the first test we start the node with no direct authentication service nor token enrollment
-  trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\", \"project_id\" : \"1\", \"trust_context_id\" : \"1\"}, \"$enroller_identifier\": {\"project_id\": \"1\", \"trust_context_id\": \"1\", \"ockam-role\": \"enroller\"}}"
-  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --no-token-enrollment
+  trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\"}, \"$enroller_identifier\": {\"ockam-role\": \"enroller\"}}"
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication
   sleep 1 # wait for authority to start TCP listener
 
   cat <<EOF >>"$OCKAM_HOME/project.json"
@@ -89,29 +87,18 @@ EOF
   run_success "$OCKAM" project enroll --identity m1
   assert_output --partial "sample_val"
 
-  echo "$trusted" >"$OCKAM_HOME/trusted-anchors.json"
-  # Restart the authority node with a trusted identities file and check that m1 can still enroll
-  run_success "$OCKAM" node delete authority --yes
-  run_success "$OCKAM" authority create --tcp-listener-address=127.0.0.1:$port --project-identifier 1 --reload-from-trusted-identities-file "$OCKAM_HOME/trusted-anchors.json"
-  sleep 1 # wait for authority to start TCP listener
-
-  run_success "$OCKAM" project ticket --identity enroller --member $m2_identifier --attribute sample_attr=m2_member
-
-  run_success "$OCKAM" project enroll --force --identity m2
+  token1=$($OCKAM project ticket --identity enroller --attribute sample_attr=m2_member)
+  run_success "$OCKAM" project enroll $token1 --identity m2
   assert_output --partial "m2_member"
 
-  token1=$($OCKAM project ticket --identity enroller --attribute sample_attr=m3_member)
-  run_success "$OCKAM" project enroll --force $token1 --identity m3
-  assert_output --partial "m3_member"
-
   token2=$($OCKAM project ticket --identity enroller --usage-count 2 --attribute sample_attr=members_group)
-  run_success "$OCKAM" project enroll --force $token2 --identity m4
+  run_success "$OCKAM" project enroll $token2 --identity m3
   assert_output --partial "members_group"
 
-  run_success "$OCKAM" project enroll --force $token2 --identity m5
+  run_success "$OCKAM" project enroll $token2 --identity m4
   assert_output --partial "members_group"
 
-  run "$OCKAM" project enroll --force $token2 --identity m6
+  run "$OCKAM" project enroll $token2 --identity m5
   assert_failure
 }
 
@@ -127,7 +114,7 @@ EOF
   authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
 
   # Start the authority node.
-  trusted="{\"$enroller_identifier\": {\"project_id\": \"1\", \"trust_context_id\": \"1\", \"ockam-role\": \"enroller\"}}"
+  trusted="{\"$enroller_identifier\": {\"ockam-role\": \"enroller\"}}"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   sleep 1 # wait for authority to start TCP listener
 

@@ -17,7 +17,7 @@ cbor = ["minicbor"]
 [dependencies]
 minicbor = { version = "0.20.0", default-features = false, features = ["alloc"], optional = true }
 once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
-serde = { version = "1.0.195", default-features = false, optional = true }
+serde = { version = "1.0.196", default-features = false, optional = true }
 tinyvec = { version = "1.5.1", features = ["alloc"] }
 unsigned-varint = "0.8.0"
 
@@ -33,4 +33,4 @@ multiaddr = "0.18"
 ockam_multiaddr = { path = ".", features = ["cbor", "std", "serde"] }
 quickcheck = "1.0.3"
 rand = "0.8.5"
-serde_json = "1.0.111"
+serde_json = "1.0.113"

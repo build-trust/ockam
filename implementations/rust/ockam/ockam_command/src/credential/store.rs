@@ -2,27 +2,24 @@ use std::path::PathBuf;
 
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
+use miette::miette;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::identity::Identity;
+use ockam::identity::{CredentialRepository, CredentialSqlxDatabase, Identifier};
 use ockam::Context;
-use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::random_name;
 
 use crate::credential::verify::verify_credential;
 use crate::node::util::initialize_default_node;
-use crate::{fmt_log, fmt_ok, terminal::OckamColor, util::node_rpc, CommandGlobalOpts};
+use crate::node::NodeOpts;
+use crate::util::async_cmd;
+use crate::util::parsers::identity_identifier_parser;
+use crate::{fmt_log, fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {
-    #[arg(hide_default_value = true, default_value_t = random_name())]
-    pub credential_name: String,
-
-    /// The full hex-encoded Identity that was used to issue the credential
-    #[arg(long = "issuer", value_name = "HEX_ENCODED_FULL_IDENTITY")]
-    pub issuer: String,
+    #[arg(long = "issuer", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
+    pub issuer: Identifier,
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
@@ -30,114 +27,111 @@ pub struct StoreCommand {
     #[arg(group = "credential_value", value_name = "CREDENTIAL_FILE", long)]
     pub credential_path: Option<PathBuf>,
 
-    /// Name of the Vault that was used to issue the credential
-    #[arg(value_name = "VAULT_NAME")]
-    pub vault: Option<String>,
-
     /// Store the identity attributes of the credential for the specified node
-    #[arg(id = "for", value_name = "NODE_NAME", long, value_parser = extract_address_value)]
-    pub node: Option<String>,
+    #[command(flatten)]
+    pub node_opts: NodeOpts,
 }
 
 impl StoreCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, StoreCommand),
-) -> miette::Result<()> {
-    // Set node name in state to store identity attributes to it
-    initialize_default_node(&ctx, &opts).await?;
-    let node_name = opts.state.get_node_or_default(&cmd.node).await?.name();
-    let mut state = opts.state.clone();
-    state.set_node_name(node_name);
+    pub fn name(&self) -> String {
+        "store credential".into()
+    }
 
-    opts.terminal.write_line(&fmt_log!(
-        "Storing credential {}...\n",
-        cmd.credential_name.clone()
-    ))?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        // Set node name in state to store identity attributes to it
+        initialize_default_node(ctx, &opts).await?;
+        let node_name = opts
+            .state
+            .get_node_or_default(&self.node_opts.at_node)
+            .await?
+            .name();
+        let mut state = opts.state.clone();
+        state.set_node_name(node_name);
 
-    let is_finished: Mutex<bool> = Mutex::new(false);
+        let database = state.database();
+        let storage = CredentialSqlxDatabase::new(database);
 
-    let send_req = async {
-        let issuer = verify_issuer(&opts, &cmd.issuer, &cmd.vault).await?;
-        let credential_and_purpose_key = verify_credential(
-            &opts,
-            issuer.identifier(),
-            &cmd.credential,
-            &cmd.credential_path,
-            &cmd.vault,
-        )
-        .await?;
-        // store
-        state
-            .store_credential(
-                &cmd.credential_name,
-                &issuer,
-                credential_and_purpose_key.clone(),
+        opts.terminal
+            .write_line(&fmt_log!("Storing credential...\n"))?;
+
+        let is_finished: Mutex<bool> = Mutex::new(false);
+
+        let send_req = async {
+            let credential = match verify_credential(
+                &opts,
+                &self.issuer,
+                &self.credential,
+                &self.credential_path,
             )
             .await
-            .into_diagnostic()?;
-
-        *is_finished.lock().await = true;
-        Ok(credential_and_purpose_key
-            .encode_as_string()
-            .into_diagnostic()?)
-    };
-
-    let output_messages = vec![format!("Storing credential...")];
-
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
-
-    let (credential, _) = try_join!(send_req, progress_output)?;
-
-    opts.terminal
-        .stdout()
-        .machine(credential.clone())
-        .json(serde_json::json!(
             {
-                "name": cmd.credential_name,
-                "issuer": cmd.issuer,
-                "credential": credential
-            }
-        ))
-        .plain(fmt_ok!(
-            "Credential {} stored\n",
-            cmd.credential_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))
-        .write_line()?;
+                Ok(credential) => credential,
+                Err(_err) => {
+                    *is_finished.lock().await = true;
+                    return Err(miette!("Credential is not verified"))?;
+                }
+            };
 
-    Ok(())
-}
+            let credential_data = credential
+                .credential
+                .get_credential_data()
+                .map_err(|_| miette!("Invalid credential"))?;
+            let purpose_key_data = credential
+                .purpose_key_attestation
+                .get_attestation_data()
+                .map_err(|_| miette!("Invalid credential"))?;
 
-async fn verify_issuer(
-    opts: &CommandGlobalOpts,
-    issuer: &str,
-    vault: &Option<String>,
-) -> miette::Result<Identity> {
-    let vault = opts
-        .state
-        .get_named_vault_or_default(vault)
-        .await?
-        .vault()
-        .await?;
-    let identities = opts.state.make_identities(vault).await?;
+            let subject = match credential_data.subject {
+                None => {
+                    *is_finished.lock().await = true;
+                    return Err(miette!("credential subject is missing"))?;
+                }
+                Some(subject) => subject,
+            };
 
-    let identifier = identities
-        .identities_creation()
-        .import(None, &hex::decode(issuer).into_diagnostic()?)
-        .await
-        .into_diagnostic()?;
-    let identity = identities
-        .get_identity(&identifier)
-        .await
-        .into_diagnostic()?;
-    Ok(identity)
+            // store
+            storage
+                .put(
+                    &subject,
+                    &purpose_key_data.subject,
+                    credential_data.expires_at,
+                    credential.clone(),
+                )
+                .await
+                .map_err(|_e| miette!("Invalid credential"))?;
+
+            *is_finished.lock().await = true;
+            Ok(credential
+                .encode_as_string()
+                .map_err(|_e| miette!("Invalid credential"))?)
+        };
+
+        let output_messages = vec![format!("Storing credential...")];
+
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
+
+        let (credential, _) = try_join!(send_req, progress_output)?;
+
+        opts.terminal
+            .stdout()
+            .machine(credential.clone())
+            .json(serde_json::json!(
+                {
+                    "issuer": self.issuer,
+                    "credential": credential
+                }
+            ))
+            .plain(fmt_ok!("Credential stored\n"))
+            .write_line()?;
+
+        Ok(())
+    }
 }

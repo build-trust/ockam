@@ -1,10 +1,9 @@
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{color, docs, fmt_info, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
 
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -27,76 +26,83 @@ pub struct StopCommand {
 }
 
 impl StopCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
-    }
-}
-
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, StopCommand),
-) -> miette::Result<()> {
-    let running_nodes = opts
-        .state
-        .get_nodes()
-        .await?
-        .iter()
-        .filter(|node| node.is_running())
-        .map(|node| node.name())
-        .collect::<Vec<String>>();
-    if running_nodes.is_empty() {
-        opts.terminal
-            .stdout()
-            .plain(fmt_info!("There are no nodes running"))
-            .write_line()?;
-        return Ok(());
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
 
-    if cmd.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
-        let node_name = opts.state.get_node_or_default(&cmd.node_name).await?.name();
-        if !running_nodes.contains(&node_name) {
-            return Err(miette!(
-                "The node {} was not found",
-                node_name.light_magenta()
-            ));
-        }
-        stop_node(opts, &node_name, cmd.force).await?;
-        return Ok(());
+    pub fn name(&self) -> String {
+        "stop node".into()
     }
 
-    match running_nodes.len() {
-        0 => {
-            unreachable!("this case is already handled above");
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let running_nodes = opts
+            .state
+            .get_nodes()
+            .await?
+            .iter()
+            .filter(|node| node.is_running())
+            .map(|node| node.name())
+            .collect::<Vec<String>>();
+        if running_nodes.is_empty() {
+            opts.terminal
+                .stdout()
+                .plain(fmt_info!("There are no nodes running"))
+                .write_line()?;
+            return Ok(());
         }
-        1 => {
-            let node_name = running_nodes[0].as_str();
-            stop_node(opts, node_name, cmd.force).await?;
+
+        if self.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
+            let node_name = opts
+                .state
+                .get_node_or_default(&self.node_name)
+                .await?
+                .name();
+            if !running_nodes.contains(&node_name) {
+                return Err(miette!(
+                    "The node {} was not found",
+                    node_name.light_magenta()
+                ));
+            }
+            stop_node(opts, &node_name, self.force).await?;
+            return Ok(());
         }
-        _ => {
-            let selected_item_names = opts.terminal.select_multiple(
-                "Select one or more nodes that you want to stop".to_string(),
-                running_nodes,
-            );
-            match selected_item_names.len() {
-                0 => {
-                    opts.terminal
-                        .stdout()
-                        .plain(fmt_info!("No nodes selected to stop"))
-                        .write_line()?;
-                }
-                1 => {
-                    let node_name = selected_item_names[0].as_str();
-                    stop_node(opts, node_name, cmd.force).await?;
-                }
-                _ => {
-                    for item_name in selected_item_names {
-                        stop_node(opts.clone(), &item_name, cmd.force).await?;
+
+        match running_nodes.len() {
+            0 => {
+                unreachable!("this case is already handled above");
+            }
+            1 => {
+                let node_name = running_nodes[0].as_str();
+                stop_node(opts, node_name, self.force).await?;
+            }
+            _ => {
+                let selected_item_names = opts.terminal.select_multiple(
+                    "Select one or more nodes that you want to stop".to_string(),
+                    running_nodes,
+                );
+                match selected_item_names.len() {
+                    0 => {
+                        opts.terminal
+                            .stdout()
+                            .plain(fmt_info!("No nodes selected to stop"))
+                            .write_line()?;
+                    }
+                    1 => {
+                        let node_name = selected_item_names[0].as_str();
+                        stop_node(opts, node_name, self.force).await?;
+                    }
+                    _ => {
+                        for item_name in selected_item_names {
+                            stop_node(opts.clone(), &item_name, self.force).await?;
+                        }
                     }
                 }
             }
         }
+        Ok(())
     }
-    Ok(())
 }
 
 async fn stop_node(opts: CommandGlobalOpts, node_name: &str, force: bool) -> miette::Result<()> {

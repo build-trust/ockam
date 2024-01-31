@@ -21,12 +21,12 @@ impl ConfigRunner {
 
         let vaults = config.vaults.into_commands()?;
         for vault in vaults {
-            vault.async_run(ctx, opts.clone()).await?;
+            vault.async_run(opts.clone()).await?;
         }
 
         let identities = config.identities.into_commands()?;
         for identity in identities {
-            identity.async_run(ctx, opts.clone()).await?;
+            identity.async_run(opts.clone()).await?;
         }
 
         let projects = config.projects.into_commands()?;

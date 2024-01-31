@@ -56,8 +56,8 @@ pub async fn import_project(path: &str, identities: Arc<Identities>) -> Result<P
             let project_identifier = Identifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;
 
             let authority_identity = get_field_as_str(&values, "authority_identity")?;
-            let identities_creation = identities.identities_creation();
-            let authority_public_identifier = identities_creation
+            let identities_verification = identities.identities_verification();
+            let authority_public_identifier = identities_verification
                 .import(None, &hex::decode(authority_identity).unwrap())
                 .await?;
             let authority_identity = identities.get_identity(&authority_public_identifier).await?;

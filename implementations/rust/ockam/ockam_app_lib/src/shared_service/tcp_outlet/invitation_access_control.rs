@@ -1,6 +1,7 @@
 use crate::invitations::state::InvitationState;
 use crate::state::AppState;
 use ockam::identity::{Identifier, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
+use ockam_core::errcode::Origin;
 use ockam_core::{async_trait, IncomingAccessControl, RelayMessage};
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ pub(super) struct InvitationAccessControl {
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     invitations: Arc<RwLock<InvitationState>>,
     local_identity: Identifier,
+    authority_identifier: Identifier,
 }
 
 impl Debug for InvitationAccessControl {
@@ -20,6 +22,7 @@ impl Debug for InvitationAccessControl {
         f.debug_struct("InvitationAccessControl")
             .field("portal_name", &self.portal_name)
             .field("local_identity", &self.local_identity)
+            .field("authority_identifier", &self.authority_identifier)
             .finish()
     }
 }
@@ -30,12 +33,14 @@ impl InvitationAccessControl {
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         invitations: Arc<RwLock<InvitationState>>,
         local_identity: Identifier,
+        authority_identifier: Identifier,
     ) -> Self {
         Self {
             portal_name,
             identity_attributes_repository,
             invitations,
             local_identity,
+            authority_identifier,
         }
     }
 }
@@ -45,9 +50,8 @@ impl AppState {
         &self,
         portal_name: String,
     ) -> ockam_core::Result<Arc<InvitationAccessControl>> {
-        let identity_attributes_repository = self
-            .node_manager()
-            .await
+        let node_manager = self.node_manager().await;
+        let identity_attributes_repository = node_manager
             .secure_channels()
             .identities()
             .identity_attributes_repository();
@@ -58,11 +62,20 @@ impl AppState {
             .get_or_create_default_named_identity()
             .await?
             .identifier();
+
+        let authority = node_manager
+            .authority()
+            .ok_or(ockam_core::Error::new_unknown(
+                Origin::Application,
+                "NodeManager has no authority",
+            ))?;
+
         Ok(Arc::new(InvitationAccessControl::new(
             portal_name,
             identity_attributes_repository,
             invitations,
             local_identity,
+            authority,
         )))
     }
 }
@@ -80,7 +93,10 @@ impl IncomingAccessControl for InvitationAccessControl {
 
             let attributes = match self
                 .identity_attributes_repository
-                .get_attributes(&msg_identity_id.their_identity_id())
+                .get_attributes(
+                    &msg_identity_id.their_identity_id(),
+                    &self.authority_identifier,
+                )
                 .await?
             {
                 Some(a) => a,

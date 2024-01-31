@@ -2,12 +2,10 @@ use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
 
-use ockam_node::Context;
-
 use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::vault::util::VaultOutput;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
@@ -28,16 +26,19 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    ShowTui::run(opts, cmd).await
+    pub fn name(&self) -> String {
+        "show vault".into()
+    }
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowTui::run(opts, self.clone()).await
+    }
 }
 
 pub struct ShowTui {

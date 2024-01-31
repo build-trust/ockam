@@ -54,8 +54,8 @@ petname = { version = "2.0.0-beta.4", default-features = false, features = ["def
 rand = "0.8"
 regex = "1.10.3"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = "1.0.111"
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.113"
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite"] }
 sysinfo = "0.30"
 thiserror = "1.0"
@@ -117,14 +117,15 @@ default-features = false
 cddl-cat = "0.6.1"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
-indexmap = "2.1.0"
-itertools = "0.12.0"
+indexmap = "2.2.1"
+itertools = "0.12.1"
 mockall = "0.12"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.21.2", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 quickcheck = "1.0.1"
+quickcheck_macros = "1.0.0"
 tempfile = "3.9.0"
 tokio = { version = "1.35.1", features = ["full"] }
 tracing-core = "0.1.32"

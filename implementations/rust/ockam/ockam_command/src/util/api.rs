@@ -7,10 +7,7 @@ use regex::Regex;
 
 use ockam::identity::Identifier;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
-use ockam_api::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartHopServiceRequest, StartOktaIdentityProviderRequest,
-};
+use ockam_api::nodes::models::services::StartHopServiceRequest;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::*;
 use ockam_core::api::Request;
@@ -19,7 +16,6 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
-use crate::service::config::OktaIdentityProviderConfig;
 use crate::Result;
 
 ////////////// !== generators
@@ -32,15 +28,6 @@ pub(crate) fn query_status() -> Request<()> {
 /// Construct a request to query node tcp listeners
 pub(crate) fn list_tcp_listeners() -> Request<()> {
     Request::get("/node/tcp/listener")
-}
-
-/// Construct a request to create node tcp connection
-pub(crate) fn create_tcp_connection(
-    cmd: &crate::tcp::connection::CreateCommand,
-) -> Request<models::transport::CreateTcpConnection> {
-    let payload = models::transport::CreateTcpConnection::new(cmd.address.clone());
-
-    Request::post("/node/tcp/connection").body(payload)
 }
 
 /// Construct a request to print a list of services for the given node
@@ -127,51 +114,9 @@ pub(crate) fn start_hop_service(addr: &str) -> Request<StartHopServiceRequest> {
     Request::post(node_service(DefaultAddress::HOP_SERVICE)).body(payload)
 }
 
-/// Construct a request to start an Authenticated Service
-pub(crate) fn start_authenticated_service(addr: &str) -> Request<StartAuthenticatedServiceRequest> {
-    let payload = StartAuthenticatedServiceRequest::new(addr);
-    Request::post(node_service(DefaultAddress::AUTHENTICATED_SERVICE)).body(payload)
-}
-
-/// Construct a request to start a Credential Service
-pub(crate) fn start_credentials_service(
-    public_identity: &str,
-    addr: &str,
-    oneway: bool,
-) -> Request<StartCredentialsService> {
-    let payload = StartCredentialsService::new(public_identity, addr, oneway);
-    Request::post(node_service(DefaultAddress::CREDENTIALS_SERVICE)).body(payload)
-}
-
-/// Construct a request to start an Authenticator Service
-pub(crate) fn start_authenticator_service(
-    addr: &str,
-    project: &str,
-) -> Request<StartAuthenticatorRequest> {
-    let payload = StartAuthenticatorRequest::new(addr, project.as_bytes());
-    Request::post(node_service(DefaultAddress::DIRECT_AUTHENTICATOR)).body(payload)
-}
-
 pub(crate) fn add_consumer(id: FlowControlId, address: MultiAddr) -> Request<AddConsumer> {
     let payload = AddConsumer::new(id, address);
     Request::post("/node/flow_controls/add_consumer").body(payload)
-}
-
-pub(crate) fn start_okta_service(
-    cfg: &OktaIdentityProviderConfig,
-) -> Request<StartOktaIdentityProviderRequest> {
-    let payload = StartOktaIdentityProviderRequest::new(
-        &cfg.address,
-        &cfg.tenant_base_url,
-        &cfg.certificate,
-        cfg.attributes.clone(),
-        cfg.project.as_bytes(),
-    );
-    Request::post(format!(
-        "/node/services/{}",
-        DefaultAddress::OKTA_IDENTITY_PROVIDER
-    ))
-    .body(payload)
 }
 
 /// Return the path of a service given its name
@@ -197,24 +142,18 @@ pub struct CloudOpts {
 }
 
 #[derive(Clone, Debug, Args, Default)]
-pub struct TrustContextOpts {
-    /// Trust Context name, or path to JSON config file
-    #[arg(
-        global = true,
-        long,
-        value_name = "TRUST_CONTEXT_NAME | TRUST_CONTEXT_JSON_PATH"
-    )]
-    pub trust_context: Option<String>,
-
+pub struct TrustOpts {
     /// Project name to use for the command
     #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
     pub project_name: Option<String>,
-}
 
-impl TrustContextOpts {
-    pub fn project_name(&self) -> Option<String> {
-        self.project_name.clone()
-    }
+    /// Hex encoded Identity
+    #[arg(long, value_name = "IDENTITY")]
+    pub authority_identity: Option<String>,
+
+    /// Address to the Authority node
+    #[arg(long)]
+    pub authority_route: Option<MultiAddr>,
 }
 
 ////////////// !== validators

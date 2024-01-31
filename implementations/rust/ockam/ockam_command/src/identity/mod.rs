@@ -38,23 +38,23 @@ pub enum IdentitySubcommand {
 }
 
 impl IdentityCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            IdentitySubcommand::Create(c) => c.run(options),
-            IdentitySubcommand::Show(c) => c.run(options),
-            IdentitySubcommand::List(c) => c.run(options),
-            IdentitySubcommand::Delete(c) => c.run(options),
-            IdentitySubcommand::Default(c) => c.run(options),
+            IdentitySubcommand::Create(c) => c.run(opts),
+            IdentitySubcommand::Show(c) => c.run(opts),
+            IdentitySubcommand::List(c) => c.run(opts),
+            IdentitySubcommand::Delete(c) => c.run(opts),
+            IdentitySubcommand::Default(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            IdentitySubcommand::Create(_) => "create identity",
-            IdentitySubcommand::Show(_) => "show identity",
-            IdentitySubcommand::List(_) => "list identities",
-            IdentitySubcommand::Default(_) => "default identity",
-            IdentitySubcommand::Delete(_) => "delete identity",
+            IdentitySubcommand::Create(c) => c.name(),
+            IdentitySubcommand::Show(c) => c.name(),
+            IdentitySubcommand::List(c) => c.name(),
+            IdentitySubcommand::Delete(c) => c.name(),
+            IdentitySubcommand::Default(c) => c.name(),
         }
         .to_string()
     }

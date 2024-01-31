@@ -48,5 +48,6 @@ pub async fn start_node(ctx: &Context, configuration: &Configuration) -> Result<
     debug!("echo service started");
 
     info!("authority node started");
+
     Ok(())
 }

@@ -1,11 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use ockam_node::Context;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -36,16 +35,19 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    DeleteTui::run(opts, cmd).await
+    pub fn name(&self) -> String {
+        "delete node".into()
+    }
+
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        DeleteTui::run(opts, self.clone()).await
+    }
 }
 
 pub struct DeleteTui {

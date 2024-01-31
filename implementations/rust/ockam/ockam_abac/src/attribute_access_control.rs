@@ -24,6 +24,7 @@ use ockam_identity::{Identifier, IdentityAttributesRepository, IdentitySecureCha
 /// as [`crate::PoliciesRepository`] can be used to retrieve a specific policy for a given resource and action
 pub struct AbacAccessControl {
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+    authority: Identifier,
     policy: Policy,
     environment: Env,
 }
@@ -40,11 +41,13 @@ impl AbacAccessControl {
     /// Create a new AccessControl using a specific policy for checking attributes
     pub fn new(
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        authority: Identifier,
         policy: Policy,
         environment: Env,
     ) -> Self {
         Self {
             identity_attributes_repository,
+            authority,
             policy,
             environment,
         }
@@ -54,10 +57,10 @@ impl AbacAccessControl {
     /// a message has an authenticated attribute with the correct name and value
     pub fn create(
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        authority: Identifier,
         attribute_name: &str,
         attribute_value: &str,
-    ) -> AbacAccessControl
-where {
+    ) -> AbacAccessControl {
         let expression = List(vec![
             Ident("=".into()),
             Ident(format!("subject.{attribute_name}")),
@@ -65,7 +68,22 @@ where {
         ]);
         AbacAccessControl::new(
             identity_attributes_repository,
+            authority,
             Policy::new(expression),
+            Env::new(),
+        )
+    }
+
+    /// Create an AccessControl which will verify that the sender of
+    /// a message has an authenticated credential without checking any attributes
+    pub fn check_credential_only(
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        authority: Identifier,
+    ) -> AbacAccessControl {
+        AbacAccessControl::new(
+            identity_attributes_repository,
+            authority,
+            Policy::new(true.into()),
             Env::new(),
         )
     }
@@ -77,56 +95,67 @@ impl AbacAccessControl {
         let mut environment = self.environment.clone();
 
         // Get identity attributes and populate the environment:
-        if let Some(attrs) = self
+        match self
             .identity_attributes_repository
-            .get_attributes(&id)
+            .get_attributes(&id, &self.authority)
             .await?
         {
-            for (key, value) in attrs.attrs() {
-                let key = match from_utf8(key) {
-                    Ok(key) => key,
-                    Err(_) => {
-                        log::warn! {
-                            policy = %self.policy,
-                            id     = %id,
-                            "attribute key is not utf-8"
-                        }
-                        continue;
-                    }
-                };
-                if key.find(|c: char| c.is_whitespace()).is_some() {
-                    log::warn! {
-                        policy = %self.policy,
-                        id     = %id,
-                        key    = %key,
-                        "attribute key with whitespace ignored"
-                    }
-                }
-                match str::from_utf8(value) {
-                    Ok(s) => {
-                        if environment.contains(key) {
-                            log::debug! {
+            Some(attrs) => {
+                for (key, value) in attrs.attrs() {
+                    let key = match from_utf8(key) {
+                        Ok(key) => key,
+                        Err(_) => {
+                            log::warn! {
                                 policy = %self.policy,
                                 id     = %id,
-                                key    = %key,
-                                "attribute already present"
+                                "attribute key is not utf-8"
                             }
-                        } else {
-                            environment.put(format!("subject.{key}"), str(s.to_string()));
+                            continue;
                         }
-                    }
-                    Err(e) => {
+                    };
+                    if key.find(|c: char| c.is_whitespace()).is_some() {
                         log::warn! {
                             policy = %self.policy,
                             id     = %id,
                             key    = %key,
-                            err    = %e,
-                            "failed to interpret attribute as string"
+                            "attribute key with whitespace ignored"
+                        }
+                    }
+                    match str::from_utf8(value) {
+                        Ok(s) => {
+                            if environment.contains(key) {
+                                log::debug! {
+                                    policy = %self.policy,
+                                    id     = %id,
+                                    key    = %key,
+                                    "attribute already present"
+                                }
+                            } else {
+                                environment.put(format!("subject.{key}"), str(s.to_string()));
+                            }
+                        }
+                        Err(e) => {
+                            log::warn! {
+                                policy = %self.policy,
+                                id     = %id,
+                                key    = %key,
+                                err    = %e,
+                                "failed to interpret attribute as string"
+                            }
                         }
                     }
                 }
             }
-        };
+            None => {
+                log::debug! {
+                    policy        = %self.policy,
+                    id            = %id,
+                    is_authorized = %false,
+                    "policy evaluated to false because subject has no attributes"
+                }
+                return Ok(false);
+            }
+        }
 
         // add the identifier itself as a subject parameter
         environment.put("subject.identifier", str(id.to_string()));

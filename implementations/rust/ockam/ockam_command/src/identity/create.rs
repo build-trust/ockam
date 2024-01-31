@@ -3,11 +3,10 @@ use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::Context;
 use ockam_api::cli_state::random_name;
 
 use crate::terminal::OckamColor;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -41,18 +40,17 @@ impl CreateCommand {
         }
     }
 
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), Self::run_impl, (options, self))
+    pub fn name(&self) -> String {
+        "create identity".into()
     }
 
-    async fn run_impl(
-        ctx: Context,
-        (options, cmd): (CommandGlobalOpts, CreateCommand),
-    ) -> miette::Result<()> {
-        cmd.async_run(&ctx, options).await
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
     }
 
-    pub async fn async_run(&self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub(crate) async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         opts.terminal.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self

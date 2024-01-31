@@ -20,9 +20,7 @@
 extern crate tracing;
 
 pub mod address;
-pub mod auth;
 pub mod authenticator;
-pub mod bootstrapped_identities_store;
 pub mod cli_state;
 pub mod cloud;
 pub mod config;

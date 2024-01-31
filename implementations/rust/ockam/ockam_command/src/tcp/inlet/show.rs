@@ -10,7 +10,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -32,41 +32,44 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-pub async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
-    let inlet_status = node
-        .show_inlet(&ctx, &cmd.alias)
-        .await?
-        .success()
-        .into_diagnostic()?;
+    pub fn name(&self) -> String {
+        "show tcp inlet".into()
+    }
 
-    let json = serde_json::to_string(&inlet_status).into_diagnostic()?;
-    let InletStatus {
-        alias,
-        bind_addr,
-        outlet_route,
-        ..
-    } = inlet_status;
-    let plain = formatdoc! {r#"
+    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let inlet_status = node
+            .show_inlet(ctx, &self.alias)
+            .await?
+            .success()
+            .into_diagnostic()?;
+
+        let json = serde_json::to_string(&inlet_status).into_diagnostic()?;
+        let InletStatus {
+            alias,
+            bind_addr,
+            outlet_route,
+            ..
+        } = inlet_status;
+        let plain = formatdoc! {r#"
         Inlet:
           Alias: {alias}
           TCP Address: {bind_addr}
           To Outlet Address: {outlet_route}
     "#};
-    let machine = bind_addr;
-    opts.terminal
-        .stdout()
-        .plain(fmt_ok!("{}", plain))
-        .machine(machine)
-        .json(json)
-        .write_line()?;
-    Ok(())
+        let machine = bind_addr;
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("{}", plain))
+            .machine(machine)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }

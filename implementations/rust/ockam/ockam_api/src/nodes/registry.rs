@@ -94,12 +94,6 @@ impl SecureChannelListenerInfo {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct IdentityServiceInfo {}
-
-#[derive(Default, Clone)]
-pub(crate) struct AuthenticatedServiceInfo {}
-
-#[derive(Default, Clone)]
 pub(crate) struct OktaIdentityProviderServiceInfo {}
 
 #[derive(Default, Clone)]
@@ -110,12 +104,6 @@ pub(crate) struct EchoerServiceInfo {}
 
 #[derive(Default, Clone)]
 pub(crate) struct HopServiceInfo {}
-
-#[derive(Default, Clone)]
-pub(crate) struct VerifierServiceInfo {}
-
-#[derive(Default, Clone)]
-pub(crate) struct CredentialsServiceInfo {}
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum KafkaServiceKind {
@@ -199,12 +187,10 @@ impl OutletInfo {
 pub(crate) struct Registry {
     pub(crate) secure_channels: SecureChannelRegistry,
     pub(crate) secure_channel_listeners: RegistryOf<Address, SecureChannelListenerInfo>,
-    pub(crate) authenticated_services: RegistryOf<Address, AuthenticatedServiceInfo>,
     pub(crate) uppercase_services: RegistryOf<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
-    pub(crate) credentials_services: RegistryOf<Address, CredentialsServiceInfo>,
     pub(crate) relays: RegistryOf<String, RemoteRelayInfo>,
     pub(crate) inlets: RegistryOf<Alias, InletInfo>,
     pub(crate) outlets: RegistryOf<Alias, OutletInfo>,

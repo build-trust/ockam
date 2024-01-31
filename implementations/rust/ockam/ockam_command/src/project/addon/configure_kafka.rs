@@ -13,7 +13,7 @@ use ockam_api::cloud::addon::{Addons, KafkaConfig};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 pub use aiven::AddonConfigureAivenSubcommand;
@@ -59,36 +59,41 @@ pub struct AddonConfigureKafkaSubcommand {
 }
 
 impl AddonConfigureKafkaSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(
-            opts.rt.clone(),
-            run_impl,
-            (opts, "Apache Kafka", self.config),
-        );
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts, "Apache Kafka").await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, addon_name, cmd): (CommandGlobalOpts, &str, KafkaCommandConfig),
-) -> miette::Result<()> {
-    let KafkaCommandConfig {
-        project_name,
-        bootstrap_server,
-    } = cmd;
-    let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
-    let config = KafkaConfig::new(bootstrap_server);
+    pub fn name(&self) -> String {
+        "configure kafka addon".into()
+    }
 
-    let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+    async fn async_run(
+        &self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+        addon_name: &str,
+    ) -> miette::Result<()> {
+        let project_id = &opts
+            .state
+            .get_project_by_name(&self.config.project_name.clone())
+            .await?
+            .id();
+        let config = KafkaConfig::new(self.config.bootstrap_server.clone());
 
-    let response = controller
-        .configure_confluent_addon(&ctx, project_id, config)
-        .await?;
-    check_configuration_completion(&opts, &ctx, &node, project_id, &response.operation_id).await?;
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
-    opts.terminal
-        .write_line(&fmt_ok!("{} addon configured successfully", addon_name))?;
+        let response = controller
+            .configure_confluent_addon(ctx, project_id, config)
+            .await?;
+        check_configuration_completion(&opts, ctx, &node, project_id, &response.operation_id)
+            .await?;
 
-    Ok(())
+        opts.terminal
+            .write_line(&fmt_ok!("{} addon configured successfully", addon_name))?;
+
+        Ok(())
+    }
 }

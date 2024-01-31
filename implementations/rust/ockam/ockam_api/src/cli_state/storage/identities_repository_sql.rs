@@ -9,7 +9,7 @@ use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 
 use crate::cli_state::{IdentitiesRepository, NamedIdentity};
 
-/// Implementation of `IdentitiesRepository` trait based on an underlying database
+/// Implementation of [`IdentitiesRepository`] trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
 #[derive(Clone)]
 pub struct IdentitiesSqlxDatabase {

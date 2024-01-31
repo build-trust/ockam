@@ -7,11 +7,15 @@ use miette::{miette, IntoDiagnostic};
 use tokio::{sync::Mutex, try_join};
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::{Identifier, Identities};
-use ockam::Context;
+use ockam::identity::{
+    ChangeHistoryRepository, ChangeHistorySqlxDatabase, CredentialsVerification, Identifier,
+    PurposeKeyVerification,
+};
+use ockam_vault::{SoftwareVaultForVerifyingSignatures, VaultForVerifyingSignatures};
 
+use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
-use crate::{fmt_err, fmt_log, fmt_ok, util::node_rpc, CommandGlobalOpts};
+use crate::{fmt_err, fmt_log, fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {
@@ -23,50 +27,48 @@ pub struct VerifyCommand {
 
     #[arg(group = "credential_value", value_name = "CREDENTIAL_FILE", long)]
     pub credential_path: Option<PathBuf>,
-
-    /// Name of the Vault that was used to issue the credential
-    #[arg(value_name = "VAULT_NAME")]
-    pub vault: Option<String>,
 }
 
 impl VerifyCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "verify credential".into()
     }
 
     pub fn issuer(&self) -> &Identifier {
         &self.issuer
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, VerifyCommand),
-) -> miette::Result<()> {
-    let (is_valid, plain_text) = match verify_credential(
-        &opts,
-        cmd.issuer(),
-        &cmd.credential,
-        &cmd.credential_path,
-        &cmd.vault,
-    )
-    .await
-    {
-        Ok(_) => (true, fmt_ok!("Credential is valid")),
-        Err(e) => (
-            false,
-            fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
-        ),
-    };
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let (is_valid, plain_text) = match verify_credential(
+            &opts,
+            self.issuer(),
+            &self.credential,
+            &self.credential_path,
+        )
+        .await
+        {
+            Ok(_) => (true, fmt_ok!("Credential is valid")),
+            Err(e) => (
+                false,
+                fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
+            ),
+        };
 
-    opts.terminal
-        .stdout()
-        .plain(plain_text)
-        .json(serde_json::json!({ "is_valid": is_valid }))
-        .machine(is_valid.to_string())
-        .write_line()?;
+        opts.terminal
+            .stdout()
+            .plain(plain_text)
+            .json(serde_json::json!({ "is_valid": is_valid }))
+            .machine(is_valid.to_string())
+            .write_line()?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 pub async fn verify_credential(
@@ -74,7 +76,6 @@ pub async fn verify_credential(
     issuer: &Identifier,
     credential: &Option<String>,
     credential_path: &Option<PathBuf>,
-    vault: &Option<String>,
 ) -> miette::Result<CredentialAndPurposeKey> {
     opts.terminal
         .write_line(&fmt_log!("Verifying credential...\n"))?;
@@ -96,21 +97,16 @@ pub async fn verify_credential(
             }
         };
 
-        let vault = opts
-            .state
-            .get_named_vault_or_default(vault)
-            .await?
-            .vault()
-            .await?;
-        let identities = match opts.state.make_identities(vault).await {
-            Ok(i) => i,
-            Err(e) => {
-                *is_finished.lock().await = true;
-                return Err(e)?;
-            }
-        };
+        let change_history_repository = ChangeHistorySqlxDatabase::new(opts.state.database());
 
-        let result = validate_encoded_credential(identities, issuer, &credential_as_str).await;
+        let result = validate_encoded_credential(
+            Arc::new(change_history_repository),
+            SoftwareVaultForVerifyingSignatures::create(),
+            issuer,
+            &credential_as_str,
+        )
+        .await;
+
         *is_finished.lock().await = true;
         Ok(result.map_err(|e| e.wrap_err("Credential is invalid"))?)
     };
@@ -127,16 +123,24 @@ pub async fn verify_credential(
 }
 
 async fn validate_encoded_credential(
-    identities: Arc<Identities>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
+    verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     issuer: &Identifier,
     credential_as_str: &str,
 ) -> miette::Result<CredentialAndPurposeKey> {
-    let verification = identities.credentials().credentials_verification();
     let credential_and_purpose_key: CredentialAndPurposeKey =
         minicbor::decode(&hex::decode(credential_as_str).into_diagnostic()?).into_diagnostic()?;
-    verification
-        .verify_credential(None, &[issuer.clone()], &credential_and_purpose_key)
-        .await
-        .into_diagnostic()?;
+    CredentialsVerification::verify_credential_static(
+        Arc::new(PurposeKeyVerification::new(
+            verifying_vault.clone(),
+            change_history_repository,
+        )),
+        verifying_vault,
+        None,
+        &[issuer.clone()],
+        &credential_and_purpose_key,
+    )
+    .await
+    .into_diagnostic()?;
     Ok(credential_and_purpose_key)
 }

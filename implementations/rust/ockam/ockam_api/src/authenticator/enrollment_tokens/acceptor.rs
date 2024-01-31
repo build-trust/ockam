@@ -1,108 +1,73 @@
-use minicbor::Decoder;
+use either::Either;
 use ockam::identity::utils::now;
-use ockam::identity::OneTimeCode;
-use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
-use ockam::identity::{AttributesEntry, IdentityAttributesRepository};
-use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
-use ockam_core::api::{Method, RequestHeader, Response};
+use ockam::identity::Identifier;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Result, Routed, Worker};
-use ockam_node::Context;
-use tracing::trace;
+use ockam_core::Result;
 
-use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
+use crate::authenticator::common::EnrollerAccessControlChecks;
+use crate::authenticator::one_time_code::OneTimeCode;
+use crate::authenticator::{
+    AuthorityEnrollmentTokenRepository, AuthorityMember, AuthorityMembersRepository,
+};
 
-pub struct EnrollmentTokenAcceptor(
-    pub(super) EnrollmentTokenAuthenticator,
-    pub(super) Arc<dyn IdentityAttributesRepository>,
-);
+pub struct EnrollmentTokenAcceptorError(pub String);
+
+pub type EnrollmentTokenAcceptorResult<T> = Either<T, EnrollmentTokenAcceptorError>;
+
+pub struct EnrollmentTokenAcceptor {
+    pub(super) tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
+    pub(super) members: Arc<dyn AuthorityMembersRepository>,
+}
 
 impl EnrollmentTokenAcceptor {
-    async fn accept_token(
+    pub fn new(
+        tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
+        members: Arc<dyn AuthorityMembersRepository>,
+    ) -> Self {
+        Self { tokens, members }
+    }
+
+    pub async fn accept_token(
         &mut self,
-        req: &RequestHeader,
         otc: OneTimeCode,
         from: &Identifier,
-    ) -> Result<Vec<u8>> {
-        let token = {
-            let mut tokens = match self.0.tokens.write() {
-                Ok(tokens) => tokens,
-                Err(_) => {
-                    return Ok(Response::internal_error(
-                        req,
-                        "Failed to get read lock on tokens table",
-                    )
-                    .to_vec()?);
-                }
-            };
+    ) -> Result<EnrollmentTokenAcceptorResult<()>> {
+        let check =
+            EnrollerAccessControlChecks::check_identifier(self.members.clone(), from).await?;
 
-            let token = if let Some(token) = tokens.remove(otc.code()) {
-                if token.created_at.elapsed() > token.ttl {
-                    return Ok(Response::forbidden(req, "expired token").to_vec()?);
-                } else {
-                    token
-                }
-            } else {
-                return Ok(Response::forbidden(req, "unknown token").to_vec()?);
-            };
+        // Not allow updating existing members
+        if check.is_member {
+            warn!("{} is already a member", from);
+            return Ok(Either::Right(EnrollmentTokenAcceptorError(
+                "Already a member".to_string(),
+            )));
+        }
 
-            if token.ttl_count > 1 {
-                let mut token_clone = token.clone();
-                token_clone.ttl_count -= 1;
-                tokens.insert(*otc.code(), token_clone);
+        let token = match self.tokens.use_token(otc, now()?).await {
+            Ok(Some(token)) => token,
+            Ok(None) | Err(_) => {
+                warn!("Unknown token received from {}", from);
+                return Ok(Either::Right(EnrollmentTokenAcceptorError(
+                    "Unknown token received from {}".to_string(),
+                )));
             }
-
-            token
         };
 
-        //TODO: fixme:  unify use of hashmap vs btreemap
-        let trust_context = self.0.trust_context.as_bytes().to_vec();
         let attrs = token
             .attrs
             .iter()
             .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-            .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)])
             .collect();
-        let entry =
-            AttributesEntry::new(attrs, now().unwrap(), None, Some(token.issued_by.clone()));
 
-        if let Err(_err) = self.1.put_attributes(from, entry).await {
-            return Ok(Response::internal_error(req, "attributes storage error").to_vec()?);
+        let member = AuthorityMember::new(from.clone(), attrs, token.issued_by, now()?, false);
+
+        if let Err(err) = self.members.add_member(member).await {
+            warn!("Error adding member {} using token: {}", from, err);
+            return Ok(Either::Right(EnrollmentTokenAcceptorError(
+                "Error adding member using token".to_string(),
+            )));
         }
 
-        Ok(Response::ok().with_headers(req).to_vec()?)
-    }
-}
-
-#[ockam_core::worker]
-impl Worker for EnrollmentTokenAcceptor {
-    type Context = Context;
-    type Message = Vec<u8>;
-
-    async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
-        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
-            let from = i.their_identity_id();
-            let mut dec = Decoder::new(m.as_body());
-            let req: RequestHeader = dec.decode()?;
-            trace! {
-                target: "ockam_api::authenticator::direct::enrollment_token_acceptor",
-                from   = %from,
-                id     = %req.id(),
-                method = ?req.method(),
-                path   = %req.path(),
-                body   = %req.has_body(),
-                "request"
-            }
-            let res = match (req.method(), req.path()) {
-                (Some(Method::Post), "/") | (Some(Method::Post), "/credential") => {
-                    let otc: OneTimeCode = dec.decode()?;
-                    self.accept_token(&req, otc, &from).await?
-                }
-                _ => Response::unknown_path(&req).to_vec()?,
-            };
-            c.send(m.return_route(), res).await
-        } else {
-            secure_channel_required(c, m).await
-        }
+        Ok(Either::Left(()))
     }
 }

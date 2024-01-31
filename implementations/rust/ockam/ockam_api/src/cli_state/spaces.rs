@@ -13,7 +13,7 @@ impl CliState {
         space_name: &str,
         users: Vec<&str>,
     ) -> Result<Space> {
-        let repository = self.spaces_repository().await?;
+        let repository = self.spaces_repository();
         let space = Space {
             id: space_id.to_string(),
             name: space_name.to_string(),
@@ -32,7 +32,7 @@ impl CliState {
     }
 
     pub async fn get_default_space(&self) -> Result<Space> {
-        match self.spaces_repository().await?.get_default_space().await? {
+        match self.spaces_repository().get_default_space().await? {
             Some(space) => Ok(space),
             None => Err(Error::new(
                 Origin::Api,
@@ -43,12 +43,7 @@ impl CliState {
     }
 
     pub async fn get_space_by_name(&self, name: &str) -> Result<Space> {
-        match self
-            .spaces_repository()
-            .await?
-            .get_space_by_name(name)
-            .await?
-        {
+        match self.spaces_repository().get_space_by_name(name).await? {
             Some(space) => Ok(space),
             None => Err(Error::new(
                 Origin::Api,
@@ -59,11 +54,11 @@ impl CliState {
     }
 
     pub async fn get_spaces(&self) -> Result<Vec<Space>> {
-        Ok(self.spaces_repository().await?.get_spaces().await?)
+        Ok(self.spaces_repository().get_spaces().await?)
     }
 
     pub async fn delete_space(&self, space_id: &str) -> Result<()> {
-        let repository = self.spaces_repository().await?;
+        let repository = self.spaces_repository();
         // delete the space
         let space_exists = repository.get_space(space_id).await.is_ok();
         repository.delete_space(space_id).await?;
@@ -81,11 +76,7 @@ impl CliState {
     }
 
     pub async fn set_space_as_default(&self, space_id: &str) -> Result<()> {
-        Ok(self
-            .spaces_repository()
-            .await?
-            .set_default_space(space_id)
-            .await?)
+        Ok(self.spaces_repository().set_default_space(space_id).await?)
     }
 }
 

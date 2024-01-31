@@ -40,7 +40,7 @@ std = [
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
-no_std = ["core2", "hex", "rand_pcg", "spin", "ockam_macros/no_std"]
+no_std = ["core2", "hex", "rand_pcg", "spin", "ockam_macros/no_std", "utcnow"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = [
@@ -81,6 +81,8 @@ spin = { version = "0.9.8", default-features = false, features = ["mutex", "rwlo
 tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 tracing = { version = "0.1", default-features = false }
 tracing-error = { version = "0.2", default-features = false, optional = true }
+# Wasn't tested on no_std
+utcnow = { version = "0.2.4", default-features = false, features = ["fallback"], optional = true }
 
 [dev-dependencies]
 cddl-cat = { version = "0.6.1" }

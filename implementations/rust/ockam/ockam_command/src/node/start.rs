@@ -6,7 +6,7 @@ use ockam_node::Context;
 
 use crate::node::show::print_query_status;
 use crate::node::util::spawn_node;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
@@ -26,70 +26,77 @@ pub struct StartCommand {
 }
 
 impl StartCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
-    }
-}
-
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, StartCommand),
-) -> miette::Result<()> {
-    if cmd.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
-        let node_name = opts.state.get_node_or_default(&cmd.node_name).await?.name();
-        start_single_node(&node_name, opts, &ctx).await?;
-        return Ok(());
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
 
-    let inactive_nodes = get_inactive_nodes(&opts).await?;
-    match inactive_nodes.len() {
-        0 => {
-            opts.terminal
-                .stdout()
-                .plain(fmt_info!(
-                    "All the nodes are already started, nothing to do. Exiting gratefully"
-                ))
-                .write_line()?;
+    pub fn name(&self) -> String {
+        "start node".into()
+    }
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if self.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
+            let node_name = opts
+                .state
+                .get_node_or_default(&self.node_name)
+                .await?
+                .name();
+            start_single_node(&node_name, opts, ctx).await?;
+            return Ok(());
         }
-        1 => {
-            start_single_node(&inactive_nodes[0], opts, &ctx).await?;
-        }
-        _ => {
-            let selected_nodes = opts
-                .terminal
-                .select_multiple("Select the nodes".to_string(), inactive_nodes);
-            match selected_nodes.len() {
-                0 => {
-                    opts.terminal
-                        .stdout()
-                        .plain(fmt_info!("No node selected, exiting gratefully!"))
-                        .write_line()?;
-                }
-                1 => start_single_node(&selected_nodes[0], opts, &ctx).await?,
-                _ => {
-                    if !opts.terminal.confirm_interactively(format!(
-                        "You are about to start the given nodes:[ {} ]. Confirm?",
-                        &selected_nodes.join(", ")
-                    )) {
+
+        let inactive_nodes = get_inactive_nodes(&opts).await?;
+        match inactive_nodes.len() {
+            0 => {
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_info!(
+                        "All the nodes are already started, nothing to do. Exiting gratefully"
+                    ))
+                    .write_line()?;
+            }
+            1 => {
+                start_single_node(&inactive_nodes[0], opts, ctx).await?;
+            }
+            _ => {
+                let selected_nodes = opts
+                    .terminal
+                    .select_multiple("Select the nodes".to_string(), inactive_nodes);
+                match selected_nodes.len() {
+                    0 => {
                         opts.terminal
                             .stdout()
                             .plain(fmt_info!("No node selected, exiting gratefully!"))
                             .write_line()?;
-                        return Ok(());
                     }
+                    1 => start_single_node(&selected_nodes[0], opts, ctx).await?,
+                    _ => {
+                        if !opts.terminal.confirm_interactively(format!(
+                            "You are about to start the given nodes:[ {} ]. Confirm?",
+                            &selected_nodes.join(", ")
+                        )) {
+                            opts.terminal
+                                .stdout()
+                                .plain(fmt_info!("No node selected, exiting gratefully!"))
+                                .write_line()?;
+                            return Ok(());
+                        }
 
-                    let formatted_starts_result =
-                        start_multiple_nodes(&ctx, &opts, &selected_nodes).await?;
+                        let formatted_starts_result =
+                            start_multiple_nodes(ctx, &opts, &selected_nodes).await?;
 
-                    opts.terminal
-                        .stdout()
-                        .plain(formatted_starts_result.join("\n"))
-                        .write_line()?;
+                        opts.terminal
+                            .stdout()
+                            .plain(formatted_starts_result.join("\n"))
+                            .write_line()?;
+                    }
                 }
             }
         }
+        Ok(())
     }
-    Ok(())
 }
 
 /// Starts a single node and display the output on the console
@@ -159,17 +166,15 @@ async fn run_node(
     // Restart node
     spawn_node(
         opts,
+        false,         // Skip is running check
         node_name,     // The selected node name
         &None,         // Use the default identity
         &node_address, // The selected node api address
-        None,          // No project information available
-        None,          // No trusted identities
-        None,          // "
         None,          // Launch config
-        None,          // Authority Identity
-        None,          // Credential
-        None,          // Trust Context
-        true,          // Restarted nodes will log to files,
+        None,          // No project information available
+        None,          // No Authority Identity
+        None,          // No Authority Address
+        true,          // Restarted nodes will log to files
         None,          // No opentelemetry context
     )
     .await?;

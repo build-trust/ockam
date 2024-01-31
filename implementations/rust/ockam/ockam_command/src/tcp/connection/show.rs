@@ -6,7 +6,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::node::NodeOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -26,33 +26,36 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
-    let transport_status: TransportStatus = node
-        .ask(
-            &ctx,
-            Request::get(format!("/node/tcp/connection/{}", &cmd.address)),
-        )
-        .await?;
+    pub fn name(&self) -> String {
+        "show tcp connection".into()
+    }
 
-    println!("TCP Connection:");
-    println!("  Type: {}", transport_status.tt);
-    println!("  Mode: {}", transport_status.tm);
-    println!("  Socket address: {}", transport_status.socket_addr);
-    println!("  Worker address: {}", transport_status.worker_addr);
-    println!(
-        "  Processor address: {}",
-        transport_status.processor_address
-    );
-    println!("  Flow Control Id: {}", transport_status.flow_control_id);
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let transport_status: TransportStatus = node
+            .ask(
+                ctx,
+                Request::get(format!("/node/tcp/connection/{}", &self.address)),
+            )
+            .await?;
 
-    Ok(())
+        println!("TCP Connection:");
+        println!("  Type: {}", transport_status.tt);
+        println!("  Mode: {}", transport_status.tm);
+        println!("  Socket address: {}", transport_status.socket_addr);
+        println!("  Worker address: {}", transport_status.worker_addr);
+        println!(
+            "  Processor address: {}",
+            transport_status.processor_address
+        );
+        println!("  Flow Control Id: {}", transport_status.flow_control_id);
+
+        Ok(())
+    }
 }

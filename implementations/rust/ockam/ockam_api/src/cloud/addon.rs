@@ -8,7 +8,7 @@ use ockam_node::Context;
 
 use crate::cloud::operation::CreateOperationResponse;
 use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
-use crate::cloud::ControllerClient;
+use crate::cloud::{ControllerClient, HasSecureClient};
 
 const TARGET: &str = "ockam_api::cloud::addon";
 const API_SERVICE: &str = "projects";
@@ -103,7 +103,7 @@ impl Addons for ControllerClient {
     async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
         trace!(target: TARGET, project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -122,7 +122,7 @@ impl Addons for ControllerClient {
             "/v1/projects/{project_id}/configure_addon/confluent"
         ))
         .body(config);
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -139,7 +139,7 @@ impl Addons for ControllerClient {
         trace!(target: TARGET, project_id, "configuring okta addon");
         let req =
             Request::post(format!("/v1/projects/{project_id}/configure_addon/okta")).body(config);
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -159,7 +159,7 @@ impl Addons for ControllerClient {
             "/v1/projects/{project_id}/configure_addon/influxdb_token_lease_manager"
         ))
         .body(config);
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
@@ -176,7 +176,7 @@ impl Addons for ControllerClient {
         trace!(target: TARGET, project_id, "disabling addon");
         let req = Request::post(format!("/v1/projects/{project_id}/disable_addon"))
             .body(DisableAddon::new(addon_id));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?

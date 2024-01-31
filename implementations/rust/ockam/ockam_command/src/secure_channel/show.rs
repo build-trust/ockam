@@ -7,11 +7,8 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::output::Output;
-use crate::{
-    docs,
-    util::{api, node_rpc},
-    CommandGlobalOpts,
-};
+use crate::util::async_cmd;
+use crate::{docs, util::api, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -36,21 +33,27 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
+    pub fn name(&self) -> String {
+        "show secure channel".into()
+    }
 
-    let address = &cmd.address;
-    let response: ShowSecureChannelResponse =
-        node.ask(&ctx, api::show_secure_channel(address)).await?;
-    opts.terminal
-        .stdout()
-        .plain(response.output()?)
-        .json(serde_json::to_string_pretty(&response).into_diagnostic()?)
-        .write_line()?;
-    Ok(())
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+
+        let address = &self.address;
+        let response: ShowSecureChannelResponse =
+            node.ask(ctx, api::show_secure_channel(address)).await?;
+        opts.terminal
+            .stdout()
+            .plain(response.output()?)
+            .json(serde_json::to_string_pretty(&response).into_diagnostic()?)
+            .write_line()?;
+        Ok(())
+    }
 }

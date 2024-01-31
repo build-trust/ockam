@@ -19,27 +19,25 @@ pub fn setup_logging_tracing(
     } else {
         Colored::Off
     };
-    let ockam_crates = [
-        "ockam",
-        "ockam_node",
-        "ockam_core",
-        "ockam_vault",
-        "ockam_identity",
-        "ockam_transport_tcp",
-        "ockam_api",
-        "ockam_command",
-    ];
-    let default_log_level = verbose_log_level(verbose);
-
     if background_node {
         LoggingTracing::setup(
-            LoggingConfiguration::background(log_path, &ockam_crates),
+            LoggingConfiguration::background(log_path, LoggingConfiguration::default_crates()),
             tracing_configuration(),
             "local node",
         )
     } else {
+        let preferred_log_level = match verbose_log_level(verbose) {
+            LevelFilter::OFF => None,
+            level => Some(level),
+        };
         LoggingTracing::setup(
-            logging_configuration(default_log_level, colored, log_path, &ockam_crates),
+            logging_configuration(
+                preferred_log_level,
+                LevelFilter::OFF,
+                colored,
+                log_path,
+                LoggingConfiguration::default_crates(),
+            ),
             tracing_configuration(),
             "cli",
         )

@@ -1,12 +1,11 @@
 use std::time::Duration;
 
-use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
-    Identifier, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
-use ockam::identity::{Identities, TrustEveryonePolicy};
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Response};
@@ -47,20 +46,12 @@ impl NodeManagerWorker {
             authorized_identifiers,
             timeout,
             identity_name: identity,
-            credential_name,
             ..
         } = create_secure_channel;
 
         let response = self
             .node_manager
-            .create_secure_channel(
-                ctx,
-                addr,
-                identity,
-                authorized_identifiers,
-                credential_name,
-                timeout,
-            )
+            .create_secure_channel(ctx, addr, identity, authorized_identifiers, timeout)
             .await
             .map(|secure_channel| {
                 Response::ok().body(CreateSecureChannelResponse::new(secure_channel))
@@ -172,24 +163,13 @@ impl NodeManager {
         addr: MultiAddr,
         identity_name: Option<String>,
         authorized_identifiers: Option<Vec<Identifier>>,
-        credential_name: Option<String>,
         timeout: Option<Duration>,
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
-        let credential = self
-            .retrieve_credential(ctx, &identifier, credential_name, timeout)
-            .await?;
 
         let connection_ctx = Arc::new(ctx.async_try_clone().await?);
         let connection = self
-            .make_connection(
-                connection_ctx,
-                &addr,
-                identifier.clone(),
-                None,
-                credential.clone(),
-                timeout,
-            )
+            .make_connection(connection_ctx, &addr, identifier.clone(), None, timeout)
             .await?;
         let sc = self
             .create_secure_channel_internal(
@@ -198,68 +178,11 @@ impl NodeManager {
                 &identifier,
                 authorized_identifiers,
                 timeout,
-                credential,
             )
             .await?;
 
         // Return secure channel
         Ok(sc)
-    }
-
-    pub async fn retrieve_credential(
-        &self,
-        ctx: &Context,
-        identifier: &Identifier,
-        credential_name: Option<String>,
-        timeout: Option<Duration>,
-    ) -> Result<Option<CredentialAndPurposeKey>> {
-        debug!("getting a credential");
-        if let Some(credential_name) = credential_name {
-            debug!(
-                "get the credential using a credential name {}",
-                &credential_name
-            );
-            Ok(Some(
-                self.cli_state
-                    .get_credential_by_name(&credential_name)
-                    .await?
-                    .credential_and_purpose_key(),
-            ))
-        } else {
-            self.get_credential(ctx, identifier, timeout).await
-        }
-    }
-
-    pub async fn get_credential(
-        &self,
-        ctx: &Context,
-        identifier: &Identifier,
-        timeout: Option<Duration>,
-    ) -> Result<Option<CredentialAndPurposeKey>> {
-        if let Some(tc) = self.trust_context.as_ref() {
-            debug!("getting a credential");
-            if let Some(t) = timeout {
-                ockam_node::compat::timeout(t, tc.get_credential(ctx, identifier))
-                    .await
-                    .map_err(|e| {
-                        ockam_core::Error::new(Origin::Api, Kind::Timeout, e.to_string())
-                    })?
-            } else {
-                tc.get_credential(ctx, identifier).await
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub async fn get_credential_by_identity_name(
-        &self,
-        ctx: &Context,
-        name: Option<String>,
-        timeout: Option<Duration>,
-    ) -> Result<Option<CredentialAndPurposeKey>> {
-        let identifier = self.get_identifier_by_name(name).await?;
-        self.get_credential(ctx, &identifier, timeout).await
     }
 
     pub(crate) async fn create_secure_channel_internal(
@@ -269,7 +192,6 @@ impl NodeManager {
         identifier: &Identifier,
         authorized_identifiers: Option<Vec<Identifier>>,
         timeout: Option<Duration>,
-        credential: Option<CredentialAndPurposeKey>,
     ) -> Result<SecureChannel> {
         debug!(%sc_route, "Creating secure channel");
         let options = SecureChannelOptions::new();
@@ -280,22 +202,21 @@ impl NodeManager {
             options
         };
 
-        let options = if let Some(credential) = credential {
-            options.with_credential(credential)
-        } else if let Some(credential) = self.get_credential(ctx, identifier, timeout).await? {
-            options.with_credential(credential)
-        } else {
-            options
+        let options = match self.authority() {
+            Some(authority) => options.with_authority(authority),
+            None => options,
+        };
+
+        let options = match self.credential_retriever.as_ref() {
+            None => options,
+            Some(credential_retriever) => {
+                options.with_credential_retriever(credential_retriever.clone())?
+            }
         };
 
         let options = match authorized_identifiers.clone() {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
-        };
-
-        let options = match self.trust_context.clone() {
-            Some(trust_context) => options.with_trust_context(trust_context),
-            None => options,
         };
 
         let sc = self
@@ -389,10 +310,16 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let options = if let Ok(trust_context) = self.trust_context() {
-            options.with_trust_context(trust_context.clone())
-        } else {
-            options
+        let options = match self.authority() {
+            Some(authority) => options.with_authority(authority),
+            None => options,
+        };
+
+        let options = match self.credential_retriever.as_ref() {
+            None => options,
+            Some(credential_retriever) => {
+                options.with_credential_retriever(credential_retriever.clone())?
+            }
         };
 
         let listener = secure_channels
@@ -414,11 +341,6 @@ impl NodeManager {
 
         ctx.flow_controls().add_consumer(
             DefaultAddress::UPPERCASE_SERVICE,
-            listener.flow_control_id(),
-        );
-
-        ctx.flow_controls().add_consumer(
-            DefaultAddress::CREDENTIALS_SERVICE,
             listener.flow_control_id(),
         );
 

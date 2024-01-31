@@ -1,5 +1,6 @@
 use clap::{Args, Subcommand};
 use ockam_api::address::extract_address_value;
+use std::sync::Arc;
 
 pub use create::CreateCommand;
 pub use create::*;
@@ -70,36 +71,33 @@ pub enum NodeSubcommand {
 impl NodeSubcommand {
     pub fn name(&self) -> String {
         match self {
-            NodeSubcommand::Create(cmd) => {
-                if cmd.child_process {
-                    "create background node"
-                } else {
-                    "create node"
-                }
-            }
-            NodeSubcommand::Delete(_) => "delete node",
-            NodeSubcommand::List(_) => "list nodes",
-            NodeSubcommand::Logs(_) => "logs node",
-            NodeSubcommand::Show(_) => "show node",
-            NodeSubcommand::Start(_) => "start node",
-            NodeSubcommand::Stop(_) => "stop node",
-            NodeSubcommand::Default(_) => "default node",
+            NodeSubcommand::Create(c) => c.name(),
+            NodeSubcommand::Delete(c) => c.name(),
+            NodeSubcommand::List(c) => c.name(),
+            NodeSubcommand::Logs(c) => c.name(),
+            NodeSubcommand::Show(c) => c.name(),
+            NodeSubcommand::Start(c) => c.name(),
+            NodeSubcommand::Stop(c) => c.name(),
+            NodeSubcommand::Default(c) => c.name(),
         }
-        .to_string()
     }
 }
 
 impl NodeCommand {
-    pub fn run(self, options: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
+    pub fn run(
+        self,
+        opts: CommandGlobalOpts,
+        tracing_guard: Option<Arc<TracingGuard>>,
+    ) -> miette::Result<()> {
         match self.subcommand {
-            NodeSubcommand::Create(c) => c.run(options, tracing_guard),
-            NodeSubcommand::Delete(c) => c.run(options),
-            NodeSubcommand::List(c) => c.run(options),
-            NodeSubcommand::Show(c) => c.run(options),
-            NodeSubcommand::Start(c) => c.run(options),
-            NodeSubcommand::Stop(c) => c.run(options),
-            NodeSubcommand::Logs(c) => c.run(options),
-            NodeSubcommand::Default(c) => c.run(options),
+            NodeSubcommand::Create(c) => c.run(opts, tracing_guard),
+            NodeSubcommand::Delete(c) => c.run(opts),
+            NodeSubcommand::List(c) => c.run(opts),
+            NodeSubcommand::Show(c) => c.run(opts),
+            NodeSubcommand::Start(c) => c.run(opts),
+            NodeSubcommand::Stop(c) => c.run(opts),
+            NodeSubcommand::Logs(c) => c.run(opts),
+            NodeSubcommand::Default(c) => c.run(opts),
         }
     }
 }

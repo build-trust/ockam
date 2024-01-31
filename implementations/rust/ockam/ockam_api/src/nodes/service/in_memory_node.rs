@@ -8,11 +8,11 @@ use ockam::identity::SecureChannels;
 use ockam::{Context, Result, TcpTransport};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
+use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
-use crate::cli_state::NamedTrustContext;
 use crate::cloud::ControllerClient;
 use crate::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::logs::CurrentSpan;
@@ -70,15 +70,14 @@ impl Drop for InMemoryNode {
 impl InMemoryNode {
     /// Start an in memory node
     pub async fn start(ctx: &Context, cli_state: &CliState) -> miette::Result<Self> {
-        Self::start_with_trust_context(ctx, cli_state, None, None).await
+        Self::start_with_project_name(ctx, cli_state, None).await
     }
 
-    /// Start an in memory node with some project and trust context data
-    pub async fn start_with_trust_context(
+    /// Start an in memory node with some project
+    pub async fn start_with_project_name(
         ctx: &Context,
         cli_state: &CliState,
         project_name: Option<String>,
-        trust_context: Option<NamedTrustContext>,
     ) -> miette::Result<Self> {
         let default_identity_name = cli_state
             .get_or_create_default_named_identity()
@@ -89,9 +88,21 @@ impl InMemoryNode {
             cli_state,
             &default_identity_name,
             project_name,
-            trust_context,
+            None,
+            None,
         )
         .await
+    }
+
+    /// Start an in memory node with some project and identity
+    pub async fn start_with_project_name_and_identity(
+        ctx: &Context,
+        cli_state: &CliState,
+        identity: Option<String>,
+        project_name: Option<String>,
+    ) -> miette::Result<Self> {
+        let identity = cli_state.get_identity_name_or_default(&identity).await?;
+        Self::start_node(ctx, cli_state, &identity, project_name, None, None).await
     }
 
     /// Start an in memory node with a specific identity
@@ -100,7 +111,7 @@ impl InMemoryNode {
         cli_state: &CliState,
         identity_name: &str,
     ) -> miette::Result<InMemoryNode> {
-        Self::start_node(ctx, cli_state, identity_name, None, None).await
+        Self::start_node(ctx, cli_state, identity_name, None, None, None).await
     }
 
     /// Start an in memory node
@@ -110,7 +121,8 @@ impl InMemoryNode {
         cli_state: &CliState,
         identity_name: &str,
         project_name: Option<String>,
-        trust_context: Option<NamedTrustContext>,
+        authority_identity: Option<String>,
+        authority_route: Option<MultiAddr>,
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
@@ -133,11 +145,16 @@ impl InMemoryNode {
             .await
             .into_diagnostic()?;
 
-        let node_manager = InMemoryNode::new(
+        let trust_options = cli_state
+            .retrieve_trust_options(&project_name, &authority_identity, &authority_route)
+            .await
+            .into_diagnostic()?;
+
+        let node_manager = Self::new(
             ctx,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node.name(), None, false, false),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node.name(), false, false),
             NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),
-            NodeManagerTrustOptions::new(trust_context),
+            trust_options,
         )
         .await
         .into_diagnostic()?;

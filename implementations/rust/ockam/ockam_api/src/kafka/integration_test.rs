@@ -71,11 +71,12 @@ mod test {
         listener_address: Address,
         outlet_address: Address,
     ) -> ockam::Result<u16> {
+        let authority = handler.node_manager.node_manager.authority().unwrap();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::try_from("/service/api")?),
             Some(HopRelayCreator {}),
-            "test_trust_context_id".to_string(),
+            authority,
         );
 
         let mut interceptor_multiaddr = MultiAddr::default();
@@ -114,11 +115,11 @@ mod test {
     async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let handler = crate::util::test_utils::start_manager_for_tests(context).await?;
+        let handle = crate::util::test_utils::start_manager_for_tests(context).await?;
 
         let consumer_bootstrap_port = create_kafka_service(
             context,
-            &handler,
+            &handle,
             "kafka_consumer_listener".into(),
             "kafka_consumer_outlet".into(),
         )
@@ -126,7 +127,7 @@ mod test {
 
         let producer_bootstrap_port = create_kafka_service(
             context,
-            &handler,
+            &handle,
             "kafka_producer_listener".into(),
             "kafka_producer_outlet".into(),
         )
@@ -136,7 +137,7 @@ mod test {
         // so the sidecar can react by creating the relay for the partition 1 of 'my-topic'
         {
             let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
-            handler
+            handle
                 .tcp
                 .create_outlet(
                     "kafka_consumer_outlet",
@@ -156,7 +157,7 @@ mod test {
         }
 
         let mut producer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
-        handler
+        handle
             .tcp
             .create_outlet(
                 "kafka_producer_outlet",
@@ -193,7 +194,7 @@ mod test {
         );
 
         let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
-        handler
+        handle
             .tcp
             .create_outlet(
                 "kafka_consumer_outlet",

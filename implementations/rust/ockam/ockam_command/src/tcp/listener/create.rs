@@ -9,7 +9,7 @@ use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use crate::{fmt_log, fmt_ok};
 
@@ -28,38 +28,42 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
-    let transport_status: TransportStatus = node
-        .ask(
-            &ctx,
-            Request::post("/node/tcp/listener").body(CreateTcpListener::new(cmd.address)),
-        )
-        .await?;
+    pub fn name(&self) -> String {
+        "create tcp listener".into()
+    }
 
-    let socket = transport_status.socket_addr().into_diagnostic()?;
-    let port = socket.port();
-    let mut multiaddr = MultiAddr::default();
-    multiaddr
-        .push_back(DnsAddr::new("localhost"))
-        .into_diagnostic()?;
-    multiaddr.push_back(Tcp::new(port)).into_diagnostic()?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let transport_status: TransportStatus = node
+            .ask(
+                ctx,
+                Request::post("/node/tcp/listener")
+                    .body(CreateTcpListener::new(self.address.clone())),
+            )
+            .await?;
 
-    opts.terminal
-        .stdout()
-        .plain(
-            fmt_ok!("Tcp listener created! You can send messages to it via this route:\n")
-                + &fmt_log!("{multiaddr}"),
-        )
-        .write_line()?;
+        let socket = transport_status.socket_addr().into_diagnostic()?;
+        let port = socket.port();
+        let mut multiaddr = MultiAddr::default();
+        multiaddr
+            .push_back(DnsAddr::new("localhost"))
+            .into_diagnostic()?;
+        multiaddr.push_back(Tcp::new(port)).into_diagnostic()?;
 
-    Ok(())
+        opts.terminal
+            .stdout()
+            .plain(
+                fmt_ok!("Tcp listener created! You can send messages to it via this route:\n")
+                    + &fmt_log!("{multiaddr}"),
+            )
+            .write_line()?;
+
+        Ok(())
+    }
 }

@@ -28,7 +28,7 @@ impl EncodeFormat {
             }
         };
 
-        print!("{o}");
+        println!("{o}");
         Ok(())
     }
 }

@@ -1,7 +1,7 @@
 use clap::Args;
 
-use crate::project::addon::configure_kafka::{run_impl, KafkaCommandConfig};
-use crate::util::node_rpc;
+use crate::project::addon::configure_kafka::{AddonConfigureKafkaSubcommand, KafkaCommandConfig};
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("../static/configure_aiven/long_about.txt");
@@ -19,11 +19,17 @@ pub struct AddonConfigureAivenSubcommand {
 }
 
 impl AddonConfigureAivenSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(
-            opts.rt.clone(),
-            run_impl,
-            (opts, "Aiven (Kafka)", self.config),
-        );
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            AddonConfigureKafkaSubcommand {
+                config: self.config,
+            }
+            .async_run(&ctx, opts, "Aiven (Kafka)")
+            .await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "configure aiven kafka addon".into()
     }
 }

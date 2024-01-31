@@ -19,15 +19,15 @@ pub enum FlowControlSubcommand {
 }
 
 impl FlowControlCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            FlowControlSubcommand::AddConsumer(c) => c.run(options),
+            FlowControlSubcommand::AddConsumer(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            FlowControlSubcommand::AddConsumer(_) => "add flowcontrol consumer",
+            FlowControlSubcommand::AddConsumer(c) => c.name(),
         }
         .to_string()
     }

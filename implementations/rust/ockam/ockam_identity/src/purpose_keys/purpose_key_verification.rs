@@ -4,7 +4,7 @@ use ockam_vault::VaultForVerifyingSignatures;
 
 use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, VersionedData};
 use crate::utils::now;
-use crate::{IdentitiesCreation, IdentityError, TimestampInSeconds};
+use crate::{ChangeHistoryRepository, IdentitiesVerification, IdentityError, TimestampInSeconds};
 
 /// We allow purpose keys to be created in the future related to this machine's time due to
 /// possible time dyssynchronization
@@ -14,19 +14,27 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 #[derive(Clone)]
 pub struct PurposeKeyVerification {
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_creation: Arc<IdentitiesCreation>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
 }
 
 impl PurposeKeyVerification {
     /// Create a new identities module
-    pub(crate) fn new(
+    pub fn new(
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_creation: Arc<IdentitiesCreation>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
     ) -> Self {
         Self {
             verifying_vault,
-            identities_creation,
+            change_history_repository,
         }
+    }
+
+    /// Return identities verification service
+    pub fn identities_verification(&self) -> Arc<IdentitiesVerification> {
+        Arc::new(IdentitiesVerification::new(
+            self.change_history_repository.clone(),
+            self.verifying_vault.clone(),
+        ))
     }
 }
 
@@ -54,7 +62,7 @@ impl PurposeKeyVerification {
             }
         }
         let identity = self
-            .identities_creation
+            .identities_verification()
             .get_identity(&purpose_key_data.subject)
             .await?;
         let latest_change = identity.get_latest_change()?;

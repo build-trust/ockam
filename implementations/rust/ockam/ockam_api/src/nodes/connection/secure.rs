@@ -5,7 +5,6 @@ use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
-use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::Identifier;
 use ockam_core::{async_trait, route, AsyncTryClone, Error, Route};
 use ockam_multiaddr::proto::Secure;
@@ -15,7 +14,6 @@ use ockam_node::Context;
 /// Creates secure connection from existing transport
 pub(crate) struct SecureChannelInstantiator {
     identifier: Identifier,
-    credential: Option<CredentialAndPurposeKey>,
     authorized_identities: Option<Vec<Identifier>>,
     timeout: Option<Duration>,
 }
@@ -23,13 +21,11 @@ pub(crate) struct SecureChannelInstantiator {
 impl SecureChannelInstantiator {
     pub(crate) fn new(
         identifier: &Identifier,
-        credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
         authorized_identities: Option<Vec<Identifier>>,
     ) -> Self {
         Self {
             identifier: identifier.clone(),
-            credential,
             authorized_identities,
             timeout,
         }
@@ -63,7 +59,6 @@ impl Instantiator for SecureChannelInstantiator {
                 &self.identifier,
                 self.authorized_identities.clone(),
                 self.timeout,
-                self.credential.clone(),
             )
             .await?;
 

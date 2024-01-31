@@ -28,22 +28,21 @@ pub enum TcpConnectionSubCommand {
 }
 
 impl TcpConnectionCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpConnectionSubCommand::Create(c) => c.run(options),
-            TcpConnectionSubCommand::Delete(c) => c.run(options),
-            TcpConnectionSubCommand::List(c) => c.run(options),
-            TcpConnectionSubCommand::Show(c) => c.run(options),
+            TcpConnectionSubCommand::Create(c) => c.run(opts),
+            TcpConnectionSubCommand::Delete(c) => c.run(opts),
+            TcpConnectionSubCommand::List(c) => c.run(opts),
+            TcpConnectionSubCommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            TcpConnectionSubCommand::Create(_) => "create tcp connection",
-            TcpConnectionSubCommand::Delete(_) => "delete tcp connection",
-
-            TcpConnectionSubCommand::List(_) => "list tcp connections",
-            TcpConnectionSubCommand::Show(_) => "show tcp connection",
+            TcpConnectionSubCommand::Create(c) => c.name(),
+            TcpConnectionSubCommand::Delete(c) => c.name(),
+            TcpConnectionSubCommand::List(c) => c.name(),
+            TcpConnectionSubCommand::Show(c) => c.name(),
         }
         .to_string()
     }

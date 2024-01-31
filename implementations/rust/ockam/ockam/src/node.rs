@@ -5,7 +5,9 @@ use ockam_core::{
     Address, AsyncTryClone, IncomingAccessControl, Message, OutgoingAccessControl, Processor,
     Result, Route, Routed, Worker,
 };
-use ockam_identity::{IdentityAttributesRepository, PurposeKeys, Vault};
+use ockam_identity::{
+    CredentialRepository, IdentitiesVerification, IdentityAttributesRepository, PurposeKeys, Vault,
+};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_vault::storage::SecretsRepository;
 use ockam_vault::SigningSecretKeyHandle;
@@ -14,13 +16,12 @@ use crate::identity::models::Identifier;
 #[cfg(feature = "storage")]
 use crate::identity::secure_channels;
 use crate::identity::{
-    ChangeHistoryRepository, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, SecureChannel, SecureChannelListener, SecureChannelRegistry, SecureChannels,
+    ChangeHistoryRepository, Credentials, Identities, IdentitiesCreation, IdentitiesKeys,
+    SecureChannel, SecureChannelListener, SecureChannelRegistry, SecureChannels,
     SecureChannelsBuilder,
 };
 use crate::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
-use crate::stream::Stream;
 use crate::OckamError;
 
 /// This struct supports all the ockam services for managing identities
@@ -68,11 +69,6 @@ impl Node {
     /// Return the current context
     pub fn context(&self) -> &Context {
         &self.context
-    }
-
-    /// Create a new stream
-    pub async fn create_stream(&self) -> Result<Stream> {
-        Stream::new(self.get_context()).await
     }
 
     /// Create a new relay
@@ -129,7 +125,7 @@ impl Node {
         expected_identifier: Option<&Identifier>,
         data: &str,
     ) -> Result<Identifier> {
-        self.identities_creation()
+        self.identities_verification()
             .import(
                 expected_identifier,
                 &hex::decode(data).map_err(|_| OckamError::InvalidHex)?,
@@ -277,6 +273,11 @@ impl Node {
         self.secure_channels.identities().identities_creation()
     }
 
+    /// Return services to create and import identities
+    pub fn identities_verification(&self) -> Arc<IdentitiesVerification> {
+        self.secure_channels.identities().identities_verification()
+    }
+
     /// Return services to manage identities keys
     pub fn identities_keys(&self) -> Arc<IdentitiesKeys> {
         self.secure_channels.identities().identities_keys()
@@ -295,11 +296,6 @@ impl Node {
     /// Return the vault used by secure channels
     pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
         self.secure_channels.identities().purpose_keys()
-    }
-
-    /// Return services to serve credentials
-    pub fn credentials_server(&self) -> Arc<dyn CredentialsServer> {
-        self.secure_channels.identities().credentials_server()
     }
 
     /// Return the repository used to store identities data
@@ -373,6 +369,15 @@ impl NodeBuilder {
         repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         self.builder = self.builder.with_identity_attributes_repository(repository);
+        self
+    }
+
+    /// Set a specific cached credential repository
+    pub fn with_cached_credential_repository(
+        mut self,
+        repository: Arc<dyn CredentialRepository>,
+    ) -> Self {
+        self.builder = self.builder.with_cached_credential_repository(repository);
         self
     }
 

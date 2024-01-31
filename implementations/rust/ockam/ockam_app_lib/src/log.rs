@@ -30,6 +30,7 @@ impl AppState {
         ];
         let guard = LoggingTracing::setup(
             logging_configuration(
+                None,
                 LevelFilter::TRACE,
                 Colored::Off,
                 Some(node_dir),

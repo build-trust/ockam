@@ -5,6 +5,7 @@ use ockam_core::Result;
 use ockam_node::database::SqlxDatabase;
 use ockam_vault::storage::SecretsRepository;
 
+use crate::identities::storage::CredentialRepository;
 use crate::identities::{ChangeHistoryRepository, Identities};
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{IdentityAttributesRepository, Vault};
@@ -16,6 +17,7 @@ pub struct IdentitiesBuilder {
     pub(crate) change_history_repository: Arc<dyn ChangeHistoryRepository>,
     pub(crate) identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     pub(crate) purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
+    pub(crate) cached_credentials_repository: Arc<dyn CredentialRepository>,
 }
 
 /// Return a default identities
@@ -70,6 +72,15 @@ impl IdentitiesBuilder {
         self
     }
 
+    /// Set a specific repository for Cached Credentials
+    pub fn with_cached_credential_repository(
+        mut self,
+        repository: Arc<dyn CredentialRepository>,
+    ) -> Self {
+        self.cached_credentials_repository = repository;
+        self
+    }
+
     /// Build identities
     pub fn build(self) -> Arc<Identities> {
         Arc::new(Identities::new(
@@ -77,6 +88,7 @@ impl IdentitiesBuilder {
             self.change_history_repository,
             self.identity_attributes_repository,
             self.purpose_keys_repository,
+            self.cached_credentials_repository,
         ))
     }
 }
