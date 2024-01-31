@@ -99,6 +99,12 @@ impl EnrollCommand {
             .await?;
         opts.state.store_user(&user_info).await?;
 
+        let default_identity_exist = match opts.state.check_default_named_identity().await {
+            Ok(exists) => exists,
+            Err(_) => false, // or handle the error as needed
+        };
+
+
         let identity_name = opts
             .state
             .get_named_identity_or_default(&self.identity)
@@ -141,6 +147,7 @@ impl EnrollCommand {
             color_email(user_info.email.to_string())
         ))?;
 
+
         // Print the identity name if it exists.
         if let Ok(named_identity) = opts
             .state
@@ -148,20 +155,30 @@ impl EnrollCommand {
             .await
         {
 
-            if named_identity.is_default() {
+            // Notify the user that a new identity was created for them.
+            if !default_identity_exist {
+                opts.terminal.write_line(&fmt_log!(
+                    "\nNo Identity name exists. A new identity was created for you: '{}'.", 
+                    color_primary(named_identity.name())
+                ))?;
+            }
+            // Notify the user that the default identity will be used.
+            else if named_identity.is_default() && self.identity.is_none() {
                 opts.terminal
-                    .write_line(&fmt_log!("Existing default identity: '{}' will be used for enrollment. \
+                    .write_line(&fmt_log!("\nExisting default identity: '{}' will be used for enrollment. \
                     To use a different identity, run `ockam enroll --identity <IDENTITY_NAME>`.", 
                         color_primary(named_identity.name()))
                     )?;
             }
+            // Notify the user that the chosen identity will be used.
             else {
                 opts.terminal
-                    .write_line(&fmt_log!("Chosen identity: '{}' will be used for enrollment. \
-                     To use the default identity, run `ockam enroll` instead.", 
+                    .write_line(&fmt_log!("\nChosen identity: '{}' will be used for enrollment. \
+                        To use the default identity, run `ockam enroll` instead.", 
                         color_primary(named_identity.name()))
                     )?;
             }
+            
         }
 
         // Print the identity identifier.

@@ -253,6 +253,18 @@ impl CliState {
         }
     }
 
+    /// Check if a default named identity exists
+    pub async fn check_default_named_identity(&self) -> Result<bool> {
+        match self
+            .identities_repository()
+            .get_default_named_identity()
+            .await?
+        {
+            Some(named_identity) => Ok(true),
+            None => Ok(false),
+        }
+    }
+
     /// Return true if there is an identity with that name and it is the default one
     pub async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
         Ok(self
