@@ -140,6 +140,7 @@ impl EnrollCommand {
             "Enrolled the following as one of the Identities of your Orchestrator account ({}):",
             color_email(user_info.email.to_string())
         ))?;
+
         // Print the identity name if it exists.
         if let Ok(named_identity) = opts
             .state
@@ -147,8 +148,12 @@ impl EnrollCommand {
             .await
         {
             opts.terminal
-                .write_line(&fmt_log!("name: {}", color_primary(named_identity.name())))?;
+                .write_line(&fmt_log!("Existing default identity: '{}' will be used for enrollment. \
+                To use a different identity, run `ockam enroll --identity <IDENTITY_NAME>`.", 
+                    color_primary(named_identity.name()))
+                )?;
         }
+
         // Print the identity identifier.
         opts.terminal.write_line(&fmt_log!(
             "identifier: {}\n",
@@ -409,3 +414,5 @@ async fn get_user_project(
     ))?;
     Ok(Some(project))
 }
+
+
