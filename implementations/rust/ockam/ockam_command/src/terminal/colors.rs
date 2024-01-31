@@ -54,6 +54,11 @@ pub fn color_primary(input: impl Into<String>) -> CString {
     input.into().color(OckamColor::PrimaryResource.color())
 }
 
+#[allow(dead_code)]
+pub fn color_primary_alt(input: impl Into<String>) -> String {
+    ColorWheel::lolcat_into_string(&input.into())
+}
+
 pub fn color_email(input: impl Into<String>) -> CString {
     input.into().color(OckamColor::PrimaryResource.color())
 }

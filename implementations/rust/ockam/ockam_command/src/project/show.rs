@@ -1,13 +1,10 @@
 use clap::Args;
 use miette::IntoDiagnostic;
-use opentelemetry::trace::FutureExt;
 
 use crate::terminal::tui::ShowCommandTui;
 
 use ockam::Context;
-use ockam_api::cloud::project::{Project, Projects};
-
-use tokio::try_join;
+use ockam_api::cloud::project::Projects;
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -17,7 +14,7 @@ use crate::util::api::CloudOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use ockam_core::AsyncTryClone;
-use tokio::sync::Mutex;
+
 use tracing::instrument;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -97,9 +94,8 @@ impl ShowCommandTui for ShowTui {
     }
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self
-            .opts
-            .state
-            .get_projects()
+            .node
+            .get_admin_projects(&self.ctx)
             .await?
             .iter()
             .map(|p| p.name())
@@ -123,46 +119,6 @@ impl ShowCommandTui for ShowTui {
             .stdout()
             .plain(project_output.output()?)
             .json(serde_json::to_string_pretty(&project_output).into_diagnostic()?)
-            .write_line()?;
-        Ok(())
-    }
-    async fn show_multiple(&self, selected_items_names: Vec<String>) -> miette::Result<()> {
-        let is_finished: Mutex<bool> = Mutex::new(false);
-        let terminal = self.terminal();
-        let mut projects_list: Vec<Project> = Vec::with_capacity(selected_items_names.len());
-        let get_projects = async {
-            for project_name in selected_items_names.iter() {
-                let project = self
-                    .node
-                    .get_project_by_name(&self.ctx, project_name)
-                    .await?;
-                projects_list.push(project)
-            }
-            *is_finished.lock().await = true;
-            Ok(projects_list)
-        }
-        .with_current_context();
-
-        let output_messages = vec![format!("Listing projects...\n",)];
-        let progress_output = terminal.progress_output(&output_messages, &is_finished);
-
-        let (projects, _) = try_join!(get_projects, progress_output)?;
-
-        let plain = self.terminal().build_list(
-            &projects,
-            "Projects",
-            "No projects found on this system.",
-        )?;
-        let mut project_outputs = vec![];
-        for project in projects {
-            project_outputs.push(ProjectConfigCompact(project));
-        }
-        let json = serde_json::to_string_pretty(&project_outputs).into_diagnostic()?;
-
-        self.terminal()
-            .stdout()
-            .plain(plain)
-            .json(json)
             .write_line()?;
         Ok(())
     }

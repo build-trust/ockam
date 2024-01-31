@@ -3,7 +3,7 @@ use console::Term;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::space::{Space, Spaces};
+use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 use ockam_core::AsyncTryClone;
 
@@ -116,24 +116,6 @@ impl ShowCommandTui for ShowTui {
             .plain(space.output()?)
             .json(serde_json::to_string(&space).into_diagnostic()?)
             .machine(&space.name)
-            .write_line()?;
-        Ok(())
-    }
-
-    async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let spaces: Vec<Space> = self.node.get_spaces(&self.ctx).await?;
-        let filtered: Vec<Space> = spaces
-            .into_iter()
-            .filter(|s| items_names.contains(&s.name))
-            .collect();
-        let plain = self
-            .terminal()
-            .build_list(&filtered, "Spaces", "No Spaces found")?;
-        let json = serde_json::to_string(&filtered).into_diagnostic()?;
-        self.terminal()
-            .stdout()
-            .plain(plain)
-            .json(json)
             .write_line()?;
         Ok(())
     }

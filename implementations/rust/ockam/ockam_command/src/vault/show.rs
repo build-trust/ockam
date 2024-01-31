@@ -101,26 +101,4 @@ impl ShowCommandTui for ShowTui {
             .write_line()?;
         Ok(())
     }
-
-    async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let filtered = self
-            .opts
-            .state
-            .get_named_vaults()
-            .await?
-            .into_iter()
-            .map(|v| VaultOutput::new(&v))
-            .filter(|v| items_names.contains(&v.name()))
-            .collect::<Vec<_>>();
-        let plain = self
-            .terminal()
-            .build_list(&filtered, "Vaults", "No Vaults found")?;
-        let json = serde_json::to_string(&filtered).into_diagnostic()?;
-        self.terminal()
-            .stdout()
-            .plain(plain)
-            .json(json)
-            .write_line()?;
-        Ok(())
-    }
 }

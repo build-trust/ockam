@@ -6,14 +6,16 @@ use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
 use ockam::{route, Context};
-use ockam_api::nodes::models::portal::{OutletList, OutletStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::route_to_multiaddr;
+use ockam_api::{
+    address::extract_address_value,
+    nodes::models::portal::{OutletList, OutletStatus},
+};
 use ockam_core::api::Request;
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::NodeOpts;
 use crate::output::Output;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::ShowCommandTui;
@@ -25,19 +27,21 @@ use crate::{docs, CommandGlobalOpts, Term, Terminal, TerminalStream};
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
-/// Show a TCP Outlet's details
+/// Show detailed information on TCP Outlets
 #[derive(Clone, Debug, Args)]
 #[command(
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
-    /// Name assigned to outlet that will be shown
+    /// Show detailed information about the Outlet that has this alias. If you don't
+    /// provide an alias, you will be prompted to select from a list of available Outlets
+    /// to show
     #[arg(display_order = 900, id = "ALIAS", value_parser = alias_parser)]
-    alias: Option<String>,
+    pub alias: Option<String>,
 
-    /// Node from the outlet that is to be shown. If none are provided, the default node will be used
-    #[command(flatten)]
-    node_opts: NodeOpts,
+    /// Show Outlet at the specified node. If you don't provide it, the default node will be used
+    #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
+    pub at: Option<String>,
 }
 
 impl ShowCommand {
@@ -82,25 +86,28 @@ impl Output for OutletInformation {
 }
 
 pub struct ShowTui {
-    ctx: Context,
-    opts: CommandGlobalOpts,
-    cmd: ShowCommand,
-    node: BackgroundNodeClient,
+    pub ctx: Context,
+    pub opts: CommandGlobalOpts,
+    pub cmd: ShowCommand,
+    pub node: BackgroundNodeClient,
 }
 
 impl ShowTui {
     pub async fn run(
         ctx: Context,
         opts: CommandGlobalOpts,
-        cmd: ShowCommand,
+        mut cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
+        cmd.at = Some(node.node_name());
+
         let tui = Self {
             ctx,
             opts,
             cmd,
             node,
         };
+
         tui.show().await
     }
 }
@@ -111,6 +118,10 @@ impl ShowCommandTui for ShowTui {
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
         self.cmd.alias.as_deref()
+    }
+
+    fn node_name(&self) -> Option<&str> {
+        self.cmd.at.as_deref()
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {
@@ -153,30 +164,6 @@ impl ShowCommandTui for ShowTui {
             .stdout()
             .plain(info.output()?)
             .json(serde_json::json!(info))
-            .write_line()?;
-        Ok(())
-    }
-
-    async fn show_multiple(&self, aliases: Vec<String>) -> miette::Result<()> {
-        let outlets: OutletList = self
-            .node
-            .ask(&self.ctx, Request::get("/node/outlet"))
-            .await?;
-        let outlets = outlets
-            .list
-            .into_iter()
-            .filter(|outlet| aliases.contains(&outlet.alias))
-            .collect::<Vec<_>>();
-        let node_name = self.node.node_name();
-        let plain = self.terminal().build_list(
-            &outlets,
-            &format!("TCP Outlets on Node {node_name}"),
-            &format!("No TCP Outlets found on Node {node_name}"),
-        )?;
-        self.terminal()
-            .stdout()
-            .plain(plain)
-            .json(serde_json::json!(outlets))
             .write_line()?;
         Ok(())
     }

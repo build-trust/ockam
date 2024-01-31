@@ -1,0 +1,5 @@
+Create a TCP Outlet that runs adjacent to a TCP server. The Outlet unwraps Ockam messages and delivers the raw TCP messages to the TCP server.
+
+You must specify the TCP address of the server, that your Outlet should send raw TCP traffic to. You can also name your Outlet by giving it an alias.
+
+When you create a TCP Outlet, on an Ockam node, running on your local machine, it makes the TCP server available from a worker address, to the corresponding TCP Inlet (see `ockam tcp-inlet`).

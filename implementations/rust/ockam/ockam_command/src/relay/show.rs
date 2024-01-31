@@ -131,31 +131,6 @@ impl ShowCommandTui for ShowTui {
             .write_line()?;
         Ok(())
     }
-
-    async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let relays: Vec<RelayInfo> = self
-            .node
-            .ask(&self.ctx, Request::get("/node/forwarder"))
-            .await?;
-        let relays = relays
-            .into_iter()
-            .filter(|it| items_names.contains(&it.remote_address().to_string()))
-            .map(RelayShowOutput::from)
-            .collect::<Vec<RelayShowOutput>>();
-        let node_name = self.node.node_name();
-        let plain = self.terminal().build_list(
-            &relays,
-            &format!("Relays on Node {node_name}"),
-            &format!("No Relays found on Node {node_name}."),
-        )?;
-        let json = serde_json::to_string(&relays).into_diagnostic()?;
-        self.terminal()
-            .stdout()
-            .plain(plain)
-            .json(json)
-            .write_line()?;
-        Ok(())
-    }
 }
 
 #[derive(Serialize)]
