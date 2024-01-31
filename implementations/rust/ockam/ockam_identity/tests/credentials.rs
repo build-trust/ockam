@@ -6,7 +6,7 @@ use ockam_core::{async_trait, Any, DenyAll};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
-use ockam_identity::utils::AttributesBuilder;
+use ockam_identity::utils::{now, AttributesBuilder};
 use ockam_identity::{
     CredentialAccessControl, SecureChannelListenerOptions, SecureChannelOptions,
     TrustIdentifierPolicy,
@@ -60,7 +60,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(200)).await;
 
     let attrs = identity_attributes_repository
-        .get_attributes(&client, &authority)
+        .get_attributes(&client, &authority, now()?)
         .await?
         .unwrap();
 
@@ -132,7 +132,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(200)).await;
 
     let attrs1 = identity_attributes_repository
-        .get_attributes(&client1, &authority)
+        .get_attributes(&client1, &authority, now()?)
         .await?
         .unwrap();
 
@@ -146,7 +146,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     );
 
     let attrs2 = identity_attributes_repository
-        .get_attributes(&client2, &authority)
+        .get_attributes(&client2, &authority, now()?)
         .await?
         .unwrap();
 
