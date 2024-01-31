@@ -1,8 +1,5 @@
 use ockam::identity::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
-use ockam::identity::{
-    ChangeHistoryRepository, ChangeHistorySqlxDatabase, IdentityAttributesRepository,
-    IdentityAttributesSqlxDatabase,
-};
+use ockam::identity::{ChangeHistoryRepository, ChangeHistorySqlxDatabase};
 use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
 use ockam_core::compat::sync::Arc;
 use ockam_vault::storage::{SecretsRepository, SecretsSqlxDatabase};
@@ -19,10 +16,6 @@ use crate::cli_state::{UsersRepository, UsersSqlxDatabase};
 impl CliState {
     pub(super) fn change_history_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
         Arc::new(ChangeHistorySqlxDatabase::new(self.database()))
-    }
-
-    pub(super) fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
-        Arc::new(IdentityAttributesSqlxDatabase::new(self.database()))
     }
 
     pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {

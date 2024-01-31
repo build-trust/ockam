@@ -46,9 +46,7 @@ impl OutletManagerService {
         flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
 
         let abac = AbacAccessControl::check_credential_only(
-            secure_channels
-                .identities()
-                .identity_attributes_repository(),
+            secure_channels.identities().identities_attributes(),
             authority,
         );
         let worker = OutletManagerService {

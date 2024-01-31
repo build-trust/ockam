@@ -55,7 +55,7 @@ impl CliState {
 
         Ok(PolicyAccessControl::new(
             policies,
-            self.identity_attributes_repository(),
+            self.identities_attributes(),
             authority,
             resource.clone(),
             action.clone(),

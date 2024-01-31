@@ -5,26 +5,25 @@ use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::Debug;
 use ockam_core::compat::fmt::Formatter;
 use ockam_core::compat::str;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::vec;
 use ockam_core::Result;
 use ockam_core::{IncomingAccessControl, RelayMessage};
-use tracing as log;
 
 use crate::expr::str;
 use crate::Expr::*;
 use crate::{eval, Env, Expr, Policy};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
-use ockam_core::compat::sync::Arc;
-use ockam_identity::utils::now;
-use ockam_identity::{Identifier, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
+use ockam_identity::{Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo};
+use tracing as log;
 
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
 /// A similar access control policy is available as [`crate::policy::PolicyAccessControl`] where
 /// as [`crate::PoliciesRepository`] can be used to retrieve a specific policy for a given resource and action
 pub struct AbacAccessControl {
-    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+    identities_attributes: Arc<IdentitiesAttributes>,
     authority: Identifier,
     policy: Policy,
     environment: Env,
@@ -41,13 +40,13 @@ impl Debug for AbacAccessControl {
 impl AbacAccessControl {
     /// Create a new AccessControl using a specific policy for checking attributes
     pub fn new(
-        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
         policy: Policy,
         environment: Env,
     ) -> Self {
         Self {
-            identity_attributes_repository,
+            identities_attributes,
             authority,
             policy,
             environment,
@@ -57,7 +56,7 @@ impl AbacAccessControl {
     /// Create an AccessControl which will verify that the sender of
     /// a message has an authenticated attribute with the correct name and value
     pub fn create(
-        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
         attribute_name: &str,
         attribute_value: &str,
@@ -68,7 +67,7 @@ impl AbacAccessControl {
             Str(attribute_value.into()),
         ]);
         AbacAccessControl::new(
-            identity_attributes_repository,
+            identities_attributes,
             authority,
             Policy::new(expression),
             Env::new(),
@@ -78,11 +77,11 @@ impl AbacAccessControl {
     /// Create an AccessControl which will verify that the sender of
     /// a message has an authenticated credential without checking any attributes
     pub fn check_credential_only(
-        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
     ) -> AbacAccessControl {
         AbacAccessControl::new(
-            identity_attributes_repository,
+            identities_attributes,
             authority,
             Policy::new(true.into()),
             Env::new(),
@@ -97,8 +96,8 @@ impl AbacAccessControl {
 
         // Get identity attributes and populate the environment:
         match self
-            .identity_attributes_repository
-            .get_attributes(&id, &self.authority, now()?)
+            .identities_attributes
+            .get_attributes(&id, &self.authority)
             .await?
         {
             Some(attrs) => {

@@ -12,8 +12,8 @@ use crate::authenticator::{
     AuthorityMembersRepository, AuthorityMembersSqlxDatabase,
 };
 use ockam::identity::{
-    Identifier, Identities, IdentityAttributesRepository, SecureChannelListenerOptions,
-    SecureChannels, TrustEveryonePolicy,
+    Identifier, Identities, IdentitiesAttributes, SecureChannelListenerOptions, SecureChannels,
+    TrustEveryonePolicy,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
@@ -74,10 +74,7 @@ impl Authority {
 
         let identities = Identities::create(database).build();
 
-        let secure_channels = SecureChannels::builder()
-            .await?
-            .with_identities(identities)
-            .build();
+        let secure_channels = SecureChannels::from_identities(identities);
 
         let identifier = configuration.identifier();
         info!(identifier=%identifier, "retrieved the authority identifier");
@@ -227,7 +224,7 @@ impl Authority {
     ) -> Result<()> {
         if let Some(okta) = &configuration.okta {
             let okta_worker = crate::okta::Server::new(
-                self.identity_attributes_repository(),
+                self.identities_attributes(),
                 okta.tenant_base_url(),
                 okta.certificate(),
                 okta.attributes().as_slice(),
@@ -263,9 +260,9 @@ impl Authority {
         self.secure_channels.identities()
     }
 
-    /// Return the identity attributes repository used by the authority
-    fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
-        self.identities().identity_attributes_repository().clone()
+    /// Return the service managing identities attributes used by the Authority
+    fn identities_attributes(&self) -> Arc<IdentitiesAttributes> {
+        self.identities().identities_attributes()
     }
 
     /// Create a directory to save storage files if they haven't been  created before

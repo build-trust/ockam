@@ -55,10 +55,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         .with_purpose_keys_repository(identities.purpose_keys_repository())
         .with_cached_credential_repository(identities.cached_credentials_repository())
         .build();
-    let secure_channels = SecureChannels::builder()
-        .await?
-        .with_identities(identities.clone())
-        .build();
+    let secure_channels = SecureChannels::from_identities(identities.clone());
     let identities_verification = identities.identities_verification();
 
     // Create the CredentialIssuer:

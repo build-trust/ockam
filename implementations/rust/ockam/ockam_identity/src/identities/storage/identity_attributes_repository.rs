@@ -12,14 +12,10 @@ pub trait IdentityAttributesRepository: Send + Sync + 'static {
         &self,
         subject: &Identifier,
         attested_by: &Identifier,
-        now: TimestampInSeconds,
     ) -> Result<Option<AttributesEntry>>;
 
     /// List all identities with their attributes
-    async fn list_attributes_by_identifier(
-        &self,
-        now: TimestampInSeconds,
-    ) -> Result<Vec<(Identifier, AttributesEntry)>>;
+    async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>>;
 
     /// Set the attributes associated with the given identity identifier.
     /// Previous values gets overridden.
@@ -27,4 +23,7 @@ pub trait IdentityAttributesRepository: Send + Sync + 'static {
 
     /// Remove all attributes for a given identity identifier
     async fn delete(&self, identity: &Identifier) -> Result<()>;
+
+    /// Remove all expired attributes
+    async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()>;
 }

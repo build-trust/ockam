@@ -6,7 +6,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{route, Result};
 use ockam_identity::models::{CredentialAndPurposeKey, CredentialSchemaIdentifier};
 use ockam_identity::secure_channels::secure_channels;
-use ockam_identity::utils::{now, AttributesBuilder};
+use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
     CredentialRetriever, Credentials, Identifier, IdentityError, SecureChannelListenerOptions,
     SecureChannelOptions,
@@ -125,29 +125,29 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(100)).await;
 
-    let attributes_reader = identities.identity_attributes_repository();
+    let attributes_reader = identities.identities_attributes();
 
     let added1 = attributes_reader
-        .get_attributes(&client, &authority, now()?)
+        .get_attributes(&client, &authority)
         .await?
         .unwrap()
         .added_at();
 
     ctx.sleep(Duration::from_millis(3_100)).await;
     let added2 = attributes_reader
-        .get_attributes(&client, &authority, now()?)
+        .get_attributes(&client, &authority)
         .await?
         .unwrap()
         .added_at();
     let added3 = attributes_reader
-        .get_attributes(&client, &authority, now()?)
+        .get_attributes(&client, &authority)
         .await?
         .unwrap()
         .added_at();
 
     ctx.sleep(Duration::from_millis(3_100)).await;
     let added4 = attributes_reader
-        .get_attributes(&client, &authority, now()?)
+        .get_attributes(&client, &authority)
         .await?
         .unwrap()
         .added_at();

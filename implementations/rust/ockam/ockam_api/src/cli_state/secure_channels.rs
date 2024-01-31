@@ -12,9 +12,6 @@ impl CliState {
         let identities = Identities::create(self.database())
             .with_vault(vault)
             .build();
-        Ok(SecureChannels::builder()
-            .await?
-            .with_identities(identities)
-            .build())
+        Ok(SecureChannels::from_identities(identities))
     }
 }

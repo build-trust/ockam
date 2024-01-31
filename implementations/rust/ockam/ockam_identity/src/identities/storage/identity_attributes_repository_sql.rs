@@ -37,18 +37,6 @@ impl IdentityAttributesSqlxDatabase {
         db.node_name = Some(node_name.to_string());
         Ok(Self::new(db))
     }
-
-    async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
-        // We need to delete expired attributes regularly
-        // Also makes sure we don't get expired attributes right after this call
-        let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
-            .bind(now.to_sql())
-            .bind(self.database.node_name()?.to_sql());
-
-        query.execute(&*self.database.pool).await.void()?;
-
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -57,10 +45,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         &self,
         identity: &Identifier,
         attested_by: &Identifier,
-        now: TimestampInSeconds,
     ) -> Result<Option<AttributesEntry>> {
-        self.delete_expired_attributes(now).await?;
-
         let query = query_as(
             "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1 AND attested_by=$2 AND node_name=$3"
             )
@@ -74,12 +59,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         Ok(identity_attributes.map(|r| r.attributes()).transpose()?)
     }
 
-    async fn list_attributes_by_identifier(
-        &self,
-        now: TimestampInSeconds,
-    ) -> Result<Vec<(Identifier, AttributesEntry)>> {
-        self.delete_expired_attributes(now).await?;
-
+    async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
         let query = query_as(
             "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name=$1",
             )
@@ -108,6 +88,14 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         let query = query("DELETE FROM identity_attributes WHERE identifier = ? AND node_name = ?")
             .bind(identity.to_sql())
+            .bind(self.database.node_name()?.to_sql());
+        query.execute(&*self.database.pool).await.void()
+    }
+
+    // This query is regularly invoked by IdentitiesAttributes to make sure that we expire attributes regularly
+    async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
+        let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
+            .bind(now.to_sql())
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -161,7 +149,6 @@ mod tests {
     use ockam_core::compat::collections::BTreeMap;
     use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
-    use std::time::Duration;
 
     use super::*;
     use crate::identities;
@@ -170,7 +157,6 @@ mod tests {
     #[tokio::test]
     async fn test_identities_attributes_repository() -> Result<()> {
         let repository = create_repository().await?;
-
         let now = now()?;
 
         // store and retrieve attributes by identity
@@ -187,11 +173,11 @@ mod tests {
             .await?;
 
         let result = repository
-            .get_attributes(&identifier1, &identifier1, now)
+            .get_attributes(&identifier1, &identifier1)
             .await?;
         assert_eq!(result, Some(attributes1.clone()));
 
-        let result = repository.list_attributes_by_identifier(now).await?;
+        let result = repository.list_attributes_by_identifier().await?;
         assert_eq!(
             result,
             vec![
@@ -203,49 +189,9 @@ mod tests {
         // delete attributes
         repository.delete(&identifier1).await?;
         let result = repository
-            .get_attributes(&identifier1, &identifier1, now)
+            .get_attributes(&identifier1, &identifier1)
             .await?;
         assert_eq!(result, None);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_identities_attributes_repository_expiration() -> Result<()> {
-        let repository = create_repository().await?;
-
-        // store and retrieve attributes by identity
-        let identifier1 = create_identity().await?;
-        let identifier2 = create_identity().await?;
-        let attributes1 = create_attributes_entry(&identifier1, now()?, 2.into()).await?;
-        let attributes2 = create_attributes_entry(&identifier2, now()?, 6.into()).await?;
-
-        repository
-            .put_attributes(&identifier1, attributes1.clone())
-            .await?;
-        repository
-            .put_attributes(&identifier2, attributes2.clone())
-            .await?;
-
-        tokio::time::sleep(Duration::from_secs(4)).await;
-
-        let result = repository
-            .get_attributes(&identifier1, &identifier1, now()?)
-            .await?;
-        assert_eq!(result, None);
-
-        let result = repository
-            .get_attributes(&identifier2, &identifier2, now()?)
-            .await?;
-        assert_eq!(result, Some(attributes2.clone()));
-
-        let result = repository.list_attributes_by_identifier(now()?).await?;
-        assert_eq!(result, vec![(identifier2.clone(), attributes2.clone())]);
-
-        tokio::time::sleep(Duration::from_secs(4)).await;
-
-        let result = repository.list_attributes_by_identifier(now()?).await?;
-        assert!(result.is_empty());
 
         Ok(())
     }
