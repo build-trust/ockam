@@ -130,6 +130,7 @@ mod tests {
     use ockam_core::compat::collections::BTreeMap;
     use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
+    use std::ops::Add;
 
     use super::*;
     use crate::identities;
@@ -142,9 +143,9 @@ mod tests {
 
         // store and retrieve attributes by identity
         let identifier1 = create_identity().await?;
-        let attributes1 = create_attributes_entry(&identifier1, now, 2.into()).await?;
+        let attributes1 = create_attributes_entry(&identifier1, now, Some(2.into())).await?;
         let identifier2 = create_identity().await?;
-        let attributes2 = create_attributes_entry(&identifier2, now, 2.into()).await?;
+        let attributes2 = create_attributes_entry(&identifier2, now, Some(2.into())).await?;
 
         repository
             .put_attributes(&identifier1, attributes1.clone())
@@ -158,6 +159,74 @@ mod tests {
             .await?;
         assert_eq!(result, Some(attributes1.clone()));
 
+        let result = repository
+            .get_attributes(&identifier2, &identifier2)
+            .await?;
+        assert_eq!(result, Some(attributes2.clone()));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_delete_expired_attributes() -> Result<()> {
+        let repository = create_repository().await?;
+        let now = now()?;
+
+        // store some attributes with and without an expiry date
+        let identifier1 = create_identity().await?;
+        let identifier2 = create_identity().await?;
+        let identifier3 = create_identity().await?;
+        let identifier4 = create_identity().await?;
+        let attributes1 = create_attributes_entry(&identifier1, now, Some(1.into())).await?;
+        let attributes2 = create_attributes_entry(&identifier2, now, Some(10.into())).await?;
+        let attributes3 = create_attributes_entry(&identifier3, now, Some(100.into())).await?;
+        let attributes4 = create_attributes_entry(&identifier4, now, None).await?;
+
+        repository
+            .put_attributes(&identifier1, attributes1.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier2, attributes2.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier3, attributes3.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier4, attributes4.clone())
+            .await?;
+
+        // delete all the attributes with an expiry date <= now + 10
+        // only attributes1 and attributes2 must be deleted
+        repository.delete_expired_attributes(now.add(10)).await?;
+
+        let result = repository
+            .get_attributes(&identifier1, &identifier1)
+            .await?;
+        assert_eq!(result, None);
+
+        let result = repository
+            .get_attributes(&identifier2, &identifier2)
+            .await?;
+        assert_eq!(result, None);
+
+        let result = repository
+            .get_attributes(&identifier3, &identifier3)
+            .await?;
+        assert_eq!(
+            result,
+            Some(attributes3),
+            "attributes 3 are not expired yet"
+        );
+
+        let result = repository
+            .get_attributes(&identifier4, &identifier4)
+            .await?;
+        assert_eq!(
+            result,
+            Some(attributes4),
+            "attributes 4 have no expiry date"
+        );
+
         Ok(())
     }
 
@@ -165,7 +234,7 @@ mod tests {
     async fn create_attributes_entry(
         identifier: &Identifier,
         now: TimestampInSeconds,
-        ttl: TimestampInSeconds,
+        ttl: Option<TimestampInSeconds>,
     ) -> Result<AttributesEntry> {
         Ok(AttributesEntry::new(
             BTreeMap::from([
@@ -173,7 +242,7 @@ mod tests {
                 ("age".as_bytes().to_vec(), "20".as_bytes().to_vec()),
             ]),
             now,
-            Some(now + ttl),
+            ttl.map(|ttl| now + ttl),
             Some(identifier.clone()),
         ))
     }
