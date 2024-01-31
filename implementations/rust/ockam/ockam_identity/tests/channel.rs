@@ -168,7 +168,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         )
         .await?;
 
-    context.sleep(Duration::from_millis(100)).await;
+    context.sleep(Duration::from_millis(250)).await;
 
     let alice_attributes = secure_channels
         .identities()
@@ -989,7 +989,7 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
             SecureChannelOptions::new(),
         )
         .await?;
-    ctx.sleep(Duration::from_millis(100)).await;
+    ctx.sleep(Duration::from_millis(250)).await;
 
     // k1, k2 and purpose key should exist
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
@@ -1051,7 +1051,7 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
         )
         .await?;
 
-    ctx.sleep(Duration::from_millis(100)).await;
+    ctx.sleep(Duration::from_millis(250)).await;
 
     let sc_list = secure_channels.secure_channel_registry().get_channel_list();
     assert_eq!(sc_list.len(), 2);
@@ -1064,7 +1064,7 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
         .stop_secure_channel(ctx, channel1.encryptor_messaging_address())
         .await?;
 
-    ctx.sleep(Duration::from_millis(100)).await;
+    ctx.sleep(Duration::from_millis(250)).await;
 
     assert_eq!(
         secure_channels
