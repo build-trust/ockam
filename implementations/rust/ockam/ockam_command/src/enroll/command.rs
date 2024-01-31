@@ -137,7 +137,7 @@ impl EnrollCommand {
 
         // Print final message.
         opts.terminal.write_line(&fmt_ok!(
-            "Enrolled the following as one of the Identities of your Orchestrator account ({}):",
+            "\nEnrolled the following as one of the Identities of your Orchestrator account ({}):",
             color_email(user_info.email.to_string())
         ))?;
 
@@ -147,11 +147,21 @@ impl EnrollCommand {
             .get_named_identity_by_identifier(&identifier)
             .await
         {
-            opts.terminal
-                .write_line(&fmt_log!("Existing default identity: '{}' will be used for enrollment. \
-                To use a different identity, run `ockam enroll --identity <IDENTITY_NAME>`.", 
-                    color_primary(named_identity.name()))
-                )?;
+
+            if named_identity.is_default() {
+                opts.terminal
+                    .write_line(&fmt_log!("Existing default identity: '{}' will be used for enrollment. \
+                    To use a different identity, run `ockam enroll --identity <IDENTITY_NAME>`.", 
+                        color_primary(named_identity.name()))
+                    )?;
+            }
+            else {
+                opts.terminal
+                    .write_line(&fmt_log!("Chosen identity: '{}' will be used for enrollment. \
+                     To use the default identity, run `ockam enroll` instead.", 
+                        color_primary(named_identity.name()))
+                    )?;
+            }
         }
 
         // Print the identity identifier.
