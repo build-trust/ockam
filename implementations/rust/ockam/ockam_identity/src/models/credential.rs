@@ -48,7 +48,7 @@ pub struct CredentialData {
 }
 
 /// Number that determines which keys&values to expect in the [`Attributes`]
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(transparent)]
 pub struct CredentialSchemaIdentifier(#[n(0)] pub u64);

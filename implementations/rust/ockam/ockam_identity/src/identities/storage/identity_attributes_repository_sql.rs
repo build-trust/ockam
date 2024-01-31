@@ -10,7 +10,7 @@ use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, To
 use crate::models::Identifier;
 use crate::{AttributesEntry, IdentityAttributesRepository, TimestampInSeconds};
 
-/// Implementation of `IdentitiesRepository` trait based on an underlying database
+/// Implementation of [`IdentityAttributesRepository`] trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
 #[derive(Clone)]
 pub struct IdentityAttributesSqlxDatabase {
@@ -41,11 +41,16 @@ impl IdentityAttributesSqlxDatabase {
 
 #[async_trait]
 impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
-    async fn get_attributes(&self, identity: &Identifier) -> Result<Option<AttributesEntry>> {
+    async fn get_attributes(
+        &self,
+        identity: &Identifier,
+        attested_by: &Identifier,
+    ) -> Result<Option<AttributesEntry>> {
         let query = query_as(
-            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1 AND node_name=$2"
+            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1 AND attested_by=$2 AND node_name=$3"
             )
             .bind(identity.to_sql())
+            .bind(attested_by.to_sql())
             .bind(self.database.node_name()?.to_sql());
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
@@ -73,8 +78,8 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             )
             .bind(subject.to_sql())
             .bind(minicbor::to_vec(entry.attrs())?.to_sql())
-            .bind(entry.added().to_sql())
-            .bind(entry.expires().map(|e| e.to_sql()))
+            .bind(entry.added_at().to_sql())
+            .bind(entry.expires_at().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()))
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
@@ -157,7 +162,9 @@ mod tests {
             .put_attributes(&identifier2, attributes2.clone())
             .await?;
 
-        let result = repository.get_attributes(&identifier1).await?;
+        let result = repository
+            .get_attributes(&identifier1, &identifier1)
+            .await?;
         assert_eq!(result, Some(attributes1.clone()));
 
         let result = repository.list_attributes_by_identifier().await?;
@@ -171,7 +178,9 @@ mod tests {
 
         // delete attributes
         repository.delete(&identifier1).await?;
-        let result = repository.get_attributes(&identifier1).await?;
+        let result = repository
+            .get_attributes(&identifier1, &identifier1)
+            .await?;
         assert_eq!(result, None);
 
         Ok(())

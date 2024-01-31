@@ -10,7 +10,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{api, node_rpc};
+use crate::util::{api, async_cmd};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -31,43 +31,46 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
-    let is_finished: Mutex<bool> = Mutex::new(false);
+    pub fn name(&self) -> String {
+        "list workers".into()
+    }
 
-    let get_workers = async {
-        let workers: WorkerList = node.ask(&ctx, api::list_workers()).await?;
-        *is_finished.lock().await = true;
-        Ok(workers)
-    };
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let is_finished: Mutex<bool> = Mutex::new(false);
 
-    let output_messages = vec![format!(
-        "Listing Workers on {}...\n",
-        node.node_name().color(OckamColor::PrimaryResource.color())
-    )];
+        let get_workers = async {
+            let workers: WorkerList = node.ask(ctx, api::list_workers()).await?;
+            *is_finished.lock().await = true;
+            Ok(workers)
+        };
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+        let output_messages = vec![format!(
+            "Listing Workers on {}...\n",
+            node.node_name().color(OckamColor::PrimaryResource.color())
+        )];
 
-    let (workers, _) = try_join!(get_workers, progress_output)?;
+        let progress_output = opts
+            .terminal
+            .progress_output(&output_messages, &is_finished);
 
-    let list = opts.terminal.build_list(
-        &workers.list,
-        &format!("Workers on {}", node.node_name()),
-        &format!("No workers found on {}.", node.node_name()),
-    )?;
-    opts.terminal.stdout().plain(list).write_line()?;
+        let (workers, _) = try_join!(get_workers, progress_output)?;
 
-    Ok(())
+        let list = opts.terminal.build_list(
+            &workers.list,
+            &format!("Workers on {}", node.node_name()),
+            &format!("No workers found on {}.", node.node_name()),
+        )?;
+        opts.terminal.stdout().plain(list).write_line()?;
+
+        Ok(())
+    }
 }
 
 impl Output for WorkerStatus {

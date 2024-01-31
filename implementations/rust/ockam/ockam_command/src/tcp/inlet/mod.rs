@@ -35,22 +35,21 @@ pub enum TcpInletSubCommand {
 }
 
 impl TcpInletCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpInletSubCommand::Create(c) => c.run(options),
-            TcpInletSubCommand::Delete(c) => c.run(options),
-            TcpInletSubCommand::List(c) => c.run(options),
-            TcpInletSubCommand::Show(c) => c.run(options),
+            TcpInletSubCommand::Create(c) => c.run(opts),
+            TcpInletSubCommand::Delete(c) => c.run(opts),
+            TcpInletSubCommand::List(c) => c.run(opts),
+            TcpInletSubCommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            TcpInletSubCommand::Create(_) => "create tcp inlet",
-            TcpInletSubCommand::Delete(_) => "delete tcp inlet",
-            TcpInletSubCommand::List(_) => "list tcp inlets",
-            TcpInletSubCommand::Show(_) => "show tcp inlet",
+            TcpInletSubCommand::Create(c) => c.name(),
+            TcpInletSubCommand::Delete(c) => c.name(),
+            TcpInletSubCommand::List(c) => c.name(),
+            TcpInletSubCommand::Show(c) => c.name(),
         }
-        .to_string()
     }
 }

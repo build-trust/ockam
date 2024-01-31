@@ -21,7 +21,7 @@ pub struct MarkdownCommand {
 }
 
 impl MarkdownCommand {
-    pub fn run(self) {
+    pub fn run(self) -> miette::Result<()> {
         let mark_dir = match get_markdown_page_directory(&self.dir) {
             Ok(path) => path,
             Err(error) => panic!("Error getting markdown page directory: {error:?}"),
@@ -39,6 +39,7 @@ impl MarkdownCommand {
         );
 
         std::fs::write(mark_dir.join("SUMMARY.md"), summary).expect("Error creating SUMMARY.md.");
+        Ok(())
     }
 
     pub fn name(&self) -> String {

@@ -11,7 +11,7 @@ use ockam_api::cloud::project::InfluxDBTokenLeaseManagerConfig;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
@@ -113,57 +113,54 @@ pub struct AddonConfigureInfluxdbSubcommand {
 }
 
 impl AddonConfigureInfluxdbSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AddonConfigureInfluxdbSubcommand),
-) -> miette::Result<()> {
-    let AddonConfigureInfluxdbSubcommand {
-        project_name,
-        endpoint_url,
-        token,
-        org_id,
-        permissions,
-        permissions_path,
-        max_ttl_secs,
-        user_access_role,
-        admin_access_role,
-    } = cmd;
-    let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
+    pub fn name(&self) -> String {
+        "configure influxdb addon".into()
+    }
 
-    let perms = match (permissions, permissions_path) {
-        (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
-        (Some(perms), _) => perms,
-        _ => {
-            return Err(miette!(
-                "Permissions JSON is required, supply --permissions or --permissions-path."
-            ));
-        }
-    };
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let project_id = &opts
+            .state
+            .get_project_by_name(&self.project_name)
+            .await?
+            .id();
 
-    let config = InfluxDBTokenLeaseManagerConfig::new(
-        endpoint_url,
-        token,
-        org_id,
-        perms,
-        max_ttl_secs,
-        user_access_role,
-        admin_access_role,
-    );
+        let perms = match (&self.permissions, &self.permissions_path) {
+            (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
+            (Some(perms), _) => perms.to_string(),
+            _ => {
+                return Err(miette!(
+                    "Permissions JSON is required, supply --permissions or --permissions-path."
+                ));
+            }
+        };
 
-    let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+        let config = InfluxDBTokenLeaseManagerConfig::new(
+            self.endpoint_url.clone(),
+            self.token.clone(),
+            self.org_id.clone(),
+            perms,
+            self.max_ttl_secs,
+            self.user_access_role.clone(),
+            self.admin_access_role.clone(),
+        );
 
-    let response = controller
-        .configure_influxdb_addon(&ctx, project_id, config)
-        .await?;
-    check_configuration_completion(&opts, &ctx, &node, project_id, &response.operation_id).await?;
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
-    opts.terminal
-        .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;
-    Ok(())
+        let response = controller
+            .configure_influxdb_addon(ctx, project_id, config)
+            .await?;
+        check_configuration_completion(&opts, ctx, &node, project_id, &response.operation_id)
+            .await?;
+
+        opts.terminal
+            .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;
+        Ok(())
+    }
 }

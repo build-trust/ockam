@@ -1,5 +1,5 @@
 use crate::cloud::lease_manager::models::influxdb::Token;
-use crate::cloud::ProjectNodeClient;
+use crate::cloud::{HasSecureClient, ProjectNodeClient};
 use miette::IntoDiagnostic;
 use ockam_core::api::Request;
 use ockam_core::async_trait;
@@ -19,7 +19,7 @@ pub trait InfluxDbTokenLease {
 #[async_trait]
 impl InfluxDbTokenLease for ProjectNodeClient {
     async fn create_token(&self, ctx: &Context) -> miette::Result<Token> {
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "influxdb_token_lease", Request::post("/"))
             .await
             .into_diagnostic()?
@@ -28,7 +28,7 @@ impl InfluxDbTokenLease for ProjectNodeClient {
     }
 
     async fn get_token(&self, ctx: &Context, token_id: String) -> miette::Result<Token> {
-        self.secure_client
+        self.get_secure_client()
             .ask(
                 ctx,
                 "influxdb_token_lease",
@@ -41,7 +41,7 @@ impl InfluxDbTokenLease for ProjectNodeClient {
     }
 
     async fn revoke_token(&self, ctx: &Context, token_id: String) -> miette::Result<()> {
-        self.secure_client
+        self.get_secure_client()
             .tell(
                 ctx,
                 "influxdb_token_lease",
@@ -54,7 +54,7 @@ impl InfluxDbTokenLease for ProjectNodeClient {
     }
 
     async fn list_tokens(&self, ctx: &Context) -> miette::Result<Vec<Token>> {
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "influxdb_token_lease", Request::get("/"))
             .await
             .into_diagnostic()?

@@ -321,12 +321,38 @@ pub mod vec {
 #[cfg(feature = "std")]
 pub mod time {
     pub use std::time::*;
+
+    /// Create a new timestamp using the system time
+    pub fn now() -> crate::Result<u64> {
+        if let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(now.as_secs())
+        } else {
+            Err(crate::Error::new(
+                crate::errcode::Origin::Core,
+                crate::errcode::Kind::Unsupported,
+                "Can't get time",
+            ))?
+        }
+    }
 }
 
 /// Provides `std::time` for no_std targets
 #[cfg(not(feature = "std"))]
 pub mod time {
     pub use core::time::Duration;
+
+    /// Create a new timestamp using the system time
+    #[cfg(not(feature = "std"))]
+    pub fn now() -> crate::Result<u64> {
+        match utcnow::utcnow() {
+            Ok(time) => Ok(time.as_secs() as u64),
+            Err(_err) => Err(crate::Error::new(
+                crate::errcode::Origin::Core,
+                crate::errcode::Kind::Unsupported,
+                "Can't get time",
+            ))?,
+        }
+    }
 }
 
 /// Provides `core::fmt`

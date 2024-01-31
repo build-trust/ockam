@@ -6,15 +6,13 @@ use serde_json::json;
 
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
-use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::nodes::{models, BackgroundNodeClient};
+use ockam_core::api::Request;
 use ockam_node::Context;
 
 use crate::output::OutputFormat;
-use crate::{
-    docs,
-    util::{api, node_rpc},
-    CommandGlobalOpts,
-};
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -39,8 +37,14 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create tcp connection".into()
     }
 
     #[allow(unused)]
@@ -89,32 +93,31 @@ impl CreateCommand {
         }
         Ok(())
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.from).await?;
-    let request = api::create_tcp_connection(&cmd);
-    let transport_status: TransportStatus = node.ask(&ctx, request).await?;
-    let from = opts
-        .state
-        .get_node_or_default(&cmd.node_opts.from)
-        .await?
-        .name();
-    let to = transport_status.socket_addr().into_diagnostic()?;
-    let plain = formatdoc! {r#"
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.from).await?;
+        let payload = models::transport::CreateTcpConnection::new(self.address.clone());
+        let request = Request::post("/node/tcp/connection").body(payload);
+
+        let transport_status: TransportStatus = node.ask(ctx, request).await?;
+        let from = opts
+            .state
+            .get_node_or_default(&self.node_opts.from)
+            .await?
+            .name();
+        let to = transport_status.socket_addr().into_diagnostic()?;
+        let plain = formatdoc! {r#"
         TCP Connection:
             From: /node/{from}
             To: {to} (/ip4/{}/tcp/{})
             Address: {}
     "#, to.ip(), to.port(), transport_status.multiaddr().into_diagnostic()?};
-    let json = json!([{"route": transport_status.multiaddr().into_diagnostic()? }]);
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-    Ok(())
+        let json = json!([{"route": transport_status.multiaddr().into_diagnostic()? }]);
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }

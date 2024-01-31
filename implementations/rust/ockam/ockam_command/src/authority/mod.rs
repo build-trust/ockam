@@ -15,21 +15,20 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 )]
 pub struct AuthorityCommand {
     #[command(subcommand)]
-    subcommand: AuthoritySubcommand,
+    pub(crate) subcommand: AuthoritySubcommand,
 }
 
 impl AuthorityCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            AuthoritySubcommand::Create(c) => c.run(options),
+            AuthoritySubcommand::Create(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            AuthoritySubcommand::Create(_) => "create authority",
+            AuthoritySubcommand::Create(c) => c.name(),
         }
-        .to_string()
     }
 }
 

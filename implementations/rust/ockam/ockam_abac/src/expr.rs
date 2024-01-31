@@ -173,12 +173,9 @@ impl From<f64> for Expr {
     }
 }
 
-pub fn t() -> Expr {
-    Expr::Bool(true)
-}
-
-pub fn f() -> Expr {
-    Expr::Bool(false)
+impl Expr {
+    pub const CONST_TRUE: Expr = Expr::Bool(true);
+    pub const CONST_FALSE: Expr = Expr::Bool(false);
 }
 
 pub fn unit() -> Expr {

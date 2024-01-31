@@ -25,9 +25,9 @@ use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
-use crate::util::{find_available_port, node_rpc, port_is_free_guard, process_nodes_multiaddr};
+use crate::util::{async_cmd, find_available_port, port_is_free_guard, process_nodes_multiaddr};
 use crate::Error;
-use crate::{display_parse_logs, docs, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -78,8 +78,14 @@ fn default_to_addr() -> String {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create tcp inlet".into()
     }
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -91,7 +97,6 @@ impl CreateCommand {
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         ))?;
-        display_parse_logs(&opts);
 
         let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
         cmd.timeout.map(|t| node.set_timeout(t));
@@ -247,10 +252,6 @@ impl CreateCommand {
         };
         Ok(process_nodes_multiaddr(&ma, state).await?.to_string())
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
 }
 
 #[cfg(test)]

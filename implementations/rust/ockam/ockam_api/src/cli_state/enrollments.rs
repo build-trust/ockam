@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::authenticator::one_time_code::OneTimeCode;
 use ockam::identity::Identifier;
-use ockam::identity::OneTimeCode;
 
 use crate::cli_state::Result;
 use crate::cli_state::{CliState, CliStateError};
@@ -13,7 +13,7 @@ use crate::error::ApiError;
 ///
 impl CliState {
     pub async fn is_identity_enrolled(&self, name: &Option<String>) -> Result<bool> {
-        let repository = self.enrollment_repository().await?;
+        let repository = self.enrollment_repository();
 
         match name {
             Some(name) => Ok(repository.is_identity_enrolled(name).await?),
@@ -24,7 +24,6 @@ impl CliState {
     pub async fn is_default_identity_enrolled(&self) -> Result<bool> {
         Ok(self
             .enrollment_repository()
-            .await?
             .is_default_identity_enrolled()
             .await?)
     }
@@ -32,7 +31,6 @@ impl CliState {
     pub async fn set_identifier_as_enrolled(&self, identifier: &Identifier) -> Result<()> {
         Ok(self
             .enrollment_repository()
-            .await?
             .set_as_enrolled(identifier)
             .await?)
     }
@@ -45,7 +43,7 @@ impl CliState {
         &self,
         enrollment_status: EnrollmentStatus,
     ) -> Result<Vec<IdentityEnrollment>> {
-        let repository = self.enrollment_repository().await?;
+        let repository = self.enrollment_repository();
         match enrollment_status {
             EnrollmentStatus::Enrolled => Ok(repository.get_enrolled_identities().await?),
             EnrollmentStatus::Any => Ok(repository.get_all_identities_enrollments().await?),

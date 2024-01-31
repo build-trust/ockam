@@ -11,29 +11,24 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {
-    // TODO: Check how it looks serialized with both serde and minicbor
-    #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
-    #[n(2)] added: TimestampInSeconds,
-    #[n(3)] expires: Option<TimestampInSeconds>,
+    #[n(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+    #[n(2)] added_at: TimestampInSeconds,
+    #[n(3)] expires_at: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
 }
 
 impl AttributesEntry {
-    //TODO: since we are converting from HashMap to BTreeMap in different parts,
-    //      it will make sense to have a constructor here taking a HashMap and doing
-    //      the conversion here.   Better:  standardize on either of the above for attributes.
-
     /// Constructor
     pub fn new(
         attrs: BTreeMap<Vec<u8>, Vec<u8>>,
-        added: TimestampInSeconds,
-        expires: Option<TimestampInSeconds>,
+        added_at: TimestampInSeconds,
+        expires_at: Option<TimestampInSeconds>,
         attested_by: Option<Identifier>,
     ) -> Self {
         Self {
             attrs,
-            added,
-            expires,
+            added_at,
+            expires_at,
             attested_by,
         }
     }
@@ -44,13 +39,13 @@ impl AttributesEntry {
     }
 
     /// Expiration time for this entry
-    pub fn expires(&self) -> Option<TimestampInSeconds> {
-        self.expires
+    pub fn expires_at(&self) -> Option<TimestampInSeconds> {
+        self.expires_at
     }
 
     /// Date that the entry was added
-    pub fn added(&self) -> TimestampInSeconds {
-        self.added
+    pub fn added_at(&self) -> TimestampInSeconds {
+        self.added_at
     }
 
     /// Who attested this attributes for this identity identifier
@@ -64,14 +59,14 @@ impl AttributesEntry {
     pub fn single(
         attribute_name: Vec<u8>,
         attribute_value: Vec<u8>,
-        expires: Option<TimestampInSeconds>,
+        expires_at: Option<TimestampInSeconds>,
         attested_by: Option<Identifier>,
     ) -> Result<Self> {
         let attrs = BTreeMap::from([(attribute_name, attribute_value)]);
         Ok(Self {
             attrs,
-            added: now()?,
-            expires,
+            added_at: now()?,
+            expires_at,
             attested_by,
         })
     }

@@ -1,8 +1,8 @@
 use minicbor::Decoder;
 
 use ockam::identity::{
-    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
-    SecureChannelRegistryEntry, SecureChannels, TRUST_CONTEXT_ID_UTF8,
+    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse, Identifier,
+    SecureChannelRegistryEntry, SecureChannels,
 };
 use ockam_abac::AbacAccessControl;
 use ockam_core::api::{Request, ResponseHeader, Status};
@@ -174,7 +174,7 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
         consumer_node_multiaddr: ConsumerNodeAddr,
-        trust_context_id: String,
+        authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         let relay_creator = match consumer_node_multiaddr.clone() {
             ConsumerNodeAddr::Direct(_) => None,
@@ -191,7 +191,7 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
             secure_channels,
             consumer_node_multiaddr,
             relay_creator,
-            trust_context_id,
+            authority_identifier,
         )
     }
 }
@@ -202,14 +202,13 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         secure_channels: Arc<SecureChannels>,
         consumer_node_multiaddr: ConsumerNodeAddr,
         relay_creator: Option<F>,
-        trust_context_id: String,
+        authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<F> {
-        let access_control = AbacAccessControl::create(
+        let access_control = AbacAccessControl::check_credential_only(
             secure_channels
                 .identities()
                 .identity_attributes_repository(),
-            TRUST_CONTEXT_ID_UTF8,
-            &trust_context_id,
+            authority_identifier,
         );
 
         Self {
@@ -238,12 +237,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/secure_channel")
-                    .body(CreateSecureChannelRequest::new(
-                        &destination,
-                        None,
-                        None,
-                        None,
-                    ))
+                    .body(CreateSecureChannelRequest::new(&destination, None, None))
                     .to_vec()?,
             )
             .await?;

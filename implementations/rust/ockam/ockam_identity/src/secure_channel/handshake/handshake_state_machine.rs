@@ -11,9 +11,7 @@ use ockam_vault::{AeadSecretKeyHandle, X25519PublicKey};
 use crate::models::{
     ChangeHistory, CredentialAndPurposeKey, PurposeKeyAttestation, PurposePublicKey,
 };
-use crate::{
-    Identifier, Identities, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
-};
+use crate::{Identifier, Identities, IdentityError, SecureChannelTrustInfo, TrustPolicy};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -69,7 +67,7 @@ pub(crate) struct CommonStateMachine {
     pub(super) purpose_key_attestation: PurposeKeyAttestation,
     pub(super) credentials: Vec<CredentialAndPurposeKey>,
     pub(super) trust_policy: Arc<dyn TrustPolicy>,
-    pub(super) trust_context: Option<TrustContext>,
+    pub(super) authority: Option<Identifier>, // TODO: Replace with ABAC
     their_identifier: Option<Identifier>,
 }
 
@@ -80,7 +78,7 @@ impl CommonStateMachine {
         purpose_key_attestation: PurposeKeyAttestation,
         credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
-        trust_context: Option<TrustContext>,
+        authority: Option<Identifier>,
     ) -> Self {
         Self {
             identities,
@@ -88,7 +86,7 @@ impl CommonStateMachine {
             purpose_key_attestation,
             credentials,
             trust_policy,
-            trust_context,
+            authority,
             their_identifier: None,
         }
     }
@@ -122,7 +120,7 @@ impl CommonStateMachine {
         let identifier = Self::process_identity_payload_static(
             self.identities.clone(),
             Some(self.trust_policy.clone()),
-            self.trust_context.clone(),
+            self.authority.clone(),
             None,
             peer.change_history,
             peer.credentials,
@@ -160,7 +158,7 @@ impl CommonStateMachine {
     pub(crate) async fn process_identity_payload_static(
         identities: Arc<Identities>,
         trust_policy: Option<Arc<dyn TrustPolicy>>,
-        trust_context: Option<TrustContext>,
+        authority: Option<Identifier>,
         expected_identifier: Option<Identifier>,
         change_history: ChangeHistory,
         credentials: Vec<CredentialAndPurposeKey>,
@@ -168,7 +166,7 @@ impl CommonStateMachine {
         peer_public_key: Option<(PurposeKeyAttestation, X25519PublicKey)>,
     ) -> Result<Identifier> {
         let their_identifier = identities
-            .identities_creation()
+            .identities_verification()
             .import_from_change_history(expected_identifier.as_ref(), change_history.clone())
             .await?;
 
@@ -191,26 +189,16 @@ impl CommonStateMachine {
             }
         }
 
-        Self::verify_credentials(
-            identities,
-            trust_policy,
-            trust_context,
-            &their_identifier,
-            credentials,
-        )
-        .await?;
+        Self::check_trust_policy(trust_policy, &their_identifier).await?;
+        Self::verify_credentials(identities, authority, &their_identifier, credentials).await?;
 
         Ok(their_identifier)
     }
 
-    /// Verify that the credentials sent by the other party are valid using a trust context
-    /// and store them
-    async fn verify_credentials(
-        identities: Arc<Identities>,
+    /// Verify that the credentials sent by the other party are valid using
+    async fn check_trust_policy(
         trust_policy: Option<Arc<dyn TrustPolicy>>,
-        trust_context: Option<TrustContext>,
         their_identifier: &Identifier,
-        credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
         if let Some(trust_policy) = trust_policy {
             // check our TrustPolicy
@@ -226,9 +214,23 @@ impl CommonStateMachine {
             );
         }
 
-        if let Some(trust_context) = &trust_context {
+        Ok(())
+    }
+
+    /// Verify that the credentials sent by the other party are valid
+    async fn verify_credentials(
+        identities: Arc<Identities>,
+        // TODO: Do we really care if the authority is known here?.
+        //       Having Authority's change history in the storage is enough to verify credentials
+        //       Checking whether that's the right authority may be actually better at ABAC level
+        //       Also, ABAC will be used here as well
+        authority: Option<Identifier>,
+        their_identifier: &Identifier,
+        credentials: Vec<CredentialAndPurposeKey>,
+    ) -> Result<()> {
+        if let Some(authority) = &authority {
             debug!(
-                "got a trust context to check the credentials. There are {} credentials to check",
+                "Got an Authority to check the credentials. There are {} credentials to check",
                 credentials.len()
             );
             for credential in &credentials {
@@ -237,7 +239,7 @@ impl CommonStateMachine {
                     .credentials_verification()
                     .receive_presented_credential(
                         their_identifier,
-                        &trust_context.authorities(),
+                        &[authority.clone()],
                         credential,
                     )
                     .await;
@@ -249,9 +251,9 @@ impl CommonStateMachine {
                 }
             }
         } else if !credentials.is_empty() {
-            warn!("no credentials have been received");
-            // we cannot validate credentials without a trust context
-            return Err(IdentityError::SecureChannelVerificationFailedMissingTrustContext)?;
+            warn!("credentials were presented, but Authority is missing");
+            // we cannot validate credentials without an Authority
+            return Err(IdentityError::SecureChannelVerificationFailedMissingAuthority)?;
         };
 
         Ok(())

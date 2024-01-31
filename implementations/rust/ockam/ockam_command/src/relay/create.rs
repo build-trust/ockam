@@ -20,9 +20,9 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use crate::node::util::initialize_default_node;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{node_rpc, process_nodes_multiaddr};
-use crate::{display_parse_logs, fmt_ok, CommandGlobalOpts};
+use crate::util::{async_cmd, process_nodes_multiaddr};
 use crate::{docs, fmt_log, Error, Result};
+use crate::{fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -57,8 +57,14 @@ pub fn default_at_addr() -> String {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create relay".into()
     }
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -68,7 +74,6 @@ impl CreateCommand {
         let alias = cmd.relay_name();
 
         opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
-        display_parse_logs(&opts);
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
@@ -180,10 +185,6 @@ impl CreateCommand {
             Ok(relay_name)
         }
     }
-}
-
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
 }
 
 impl Output for RelayInfo {

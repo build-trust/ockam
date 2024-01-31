@@ -18,7 +18,7 @@ use ockam_api::minicbor_url::Url;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
@@ -80,57 +80,62 @@ pub struct AddonConfigureOktaSubcommand {
 }
 
 impl AddonConfigureOktaSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AddonConfigureOktaSubcommand),
-) -> miette::Result<()> {
-    let AddonConfigureOktaSubcommand {
-        project_name,
-        tenant,
-        certificate,
-        certificate_path,
-        client_id,
-        attributes,
-    } = cmd;
-    let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
+    pub fn name(&self) -> String {
+        "configure okta addon".into()
+    }
 
-    let base_url = Url::parse(tenant.as_str())
-        .into_diagnostic()
-        .context("could not parse tenant url")?;
-    let domain = base_url
-        .host_str()
-        .ok_or(miette!("could not read domain from tenant url"))?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let project_id = &opts
+            .state
+            .get_project_by_name(&self.project_name)
+            .await?
+            .id();
 
-    let certificate = match (certificate, certificate_path) {
-        (Some(c), _) => c,
-        (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
-        _ => query_certificate_chain(domain)?,
-    };
+        let base_url = Url::parse(self.tenant.as_str())
+            .into_diagnostic()
+            .context("could not parse tenant url")?;
+        let domain = base_url
+            .host_str()
+            .ok_or(miette!("could not read domain from tenant url"))?;
 
-    let okta_config = OktaConfig::new(base_url, certificate, client_id, attributes);
+        let certificate = match (&self.certificate, &self.certificate_path) {
+            (Some(c), _) => c.to_string(),
+            (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
+            _ => query_certificate_chain(domain)?,
+        };
 
-    // Validate okta configuration
-    let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config.clone().into())));
-    auth0.validate_provider_config().await?;
+        let okta_config = OktaConfig::new(
+            base_url,
+            certificate,
+            self.client_id.clone(),
+            self.attributes.clone(),
+        );
 
-    // Do request
-    let node = InMemoryNode::start(&ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
+        // Validate okta configuration
+        let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config.clone().into())));
+        auth0.validate_provider_config().await?;
 
-    let response = controller
-        .configure_okta_addon(&ctx, project_id, okta_config)
-        .await?;
-    check_configuration_completion(&opts, &ctx, &node, project_id, &response.operation_id).await?;
+        // Do request
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
 
-    opts.terminal
-        .write_line(&fmt_ok!("Okta addon configured successfully"))?;
+        let response = controller
+            .configure_okta_addon(ctx, project_id, okta_config)
+            .await?;
+        check_configuration_completion(&opts, ctx, &node, project_id, &response.operation_id)
+            .await?;
 
-    Ok(())
+        opts.terminal
+            .write_line(&fmt_ok!("Okta addon configured successfully"))?;
+
+        Ok(())
+    }
 }
 
 fn query_certificate_chain(domain: &str) -> Result<String> {

@@ -15,7 +15,7 @@ use crate::node::NodeOpts;
 use crate::service::start::start_service_impl;
 use crate::terminal::OckamColor;
 use crate::util::process_nodes_multiaddr;
-use crate::{display_parse_logs, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::{fmt_log, fmt_ok, CommandGlobalOpts};
 
 pub struct ArgOpts {
     pub endpoint: String,
@@ -34,8 +34,12 @@ pub(crate) fn make_brokers_port_range(bootstrap_server: &SocketAddr) -> PortRang
     PortRange::new(boostrap_server_port + 1, boostrap_server_port + 100).unwrap()
 }
 
-pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> miette::Result<()> {
-    initialize_default_node(&ctx, &opts).await?;
+pub async fn async_run(
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+    args: ArgOpts,
+) -> miette::Result<()> {
+    initialize_default_node(ctx, &opts).await?;
     let ArgOpts {
         endpoint,
         kafka_entity,
@@ -49,13 +53,11 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
     opts.terminal
         .write_line(&fmt_log!("Creating {} service...\n", kafka_entity))?;
 
-    display_parse_logs(&opts);
-
     let project_route = process_nodes_multiaddr(&project_route, &opts.state).await?;
 
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &node_opts.at_node).await?;
 
         let payload = StartKafkaProducerRequest::new(
             bootstrap_server.to_owned(),
@@ -64,7 +66,7 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
         );
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post(endpoint).body(payload);
-        start_service_impl(&ctx, &node, &kafka_entity, req).await?;
+        start_service_impl(ctx, &node, &kafka_entity, req).await?;
 
         *is_finished.lock().await = true;
 

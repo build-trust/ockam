@@ -5,7 +5,10 @@ use ockam_core::{Address, OutgoingAccessControl, Result};
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::Addresses;
-use crate::{TrustContext, TrustEveryonePolicy, TrustPolicy};
+use crate::{
+    CredentialRetriever, Identifier, IdentityError, MemoryCredentialRetriever, TrustEveryonePolicy,
+    TrustPolicy,
+};
 
 use core::fmt;
 use core::fmt::Formatter;
@@ -25,8 +28,10 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 pub struct SecureChannelOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
-    pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) credentials: Vec<CredentialAndPurposeKey>,
+    // To verify other party's credentials
+    pub(crate) authority: Option<Identifier>,
+    // To obtain our credentials
+    pub(crate) credential_retriever: Option<Arc<dyn CredentialRetriever>>,
     pub(crate) timeout: Duration,
     pub(crate) min_credential_refresh_interval: Duration,
     pub(crate) credential_refresh_time_gap: Duration,
@@ -49,8 +54,8 @@ impl SecureChannelOptions {
         Self {
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
-            trust_context: None,
-            credentials: vec![],
+            authority: None,
+            credential_retriever: None,
             timeout: DEFAULT_TIMEOUT,
             min_credential_refresh_interval: DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL,
             credential_refresh_time_gap: DEFAULT_REFRESH_CREDENTIAL_TIME_GAP,
@@ -63,21 +68,26 @@ impl SecureChannelOptions {
         self
     }
 
-    /// Adds provided credentials
-    pub fn with_credentials(mut self, credentials: Vec<CredentialAndPurposeKey>) -> Self {
-        self.credentials.extend(credentials);
-        self
+    /// Set [`CredentialRetriever`]
+    pub fn with_credential_retriever(
+        mut self,
+        credential_retriever: Arc<dyn CredentialRetriever>,
+    ) -> Result<Self> {
+        if self.credential_retriever.is_some() {
+            return Err(IdentityError::CredentialRetrieverAlreadySet.into());
+        }
+        self.credential_retriever = Some(credential_retriever);
+        Ok(self)
     }
 
-    /// Adds a single credential
-    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Self {
-        self.credentials.push(credential);
-        self
+    /// Set credential
+    pub fn with_credential(self, credential: CredentialAndPurposeKey) -> Result<Self> {
+        self.with_credential_retriever(Arc::new(MemoryCredentialRetriever::new(credential)))
     }
 
-    /// Sets trust context
-    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
-        self.trust_context = Some(trust_context);
+    /// Sets Trusted Authority
+    pub fn with_authority(mut self, authority: Identifier) -> Self {
+        self.authority = Some(authority);
         self
     }
 
@@ -157,8 +167,10 @@ pub struct SecureChannelListenerOptions {
     pub(crate) consumer: Vec<FlowControlId>,
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
-    pub(crate) trust_context: Option<TrustContext>,
-    pub(crate) credentials: Vec<CredentialAndPurposeKey>,
+    // To verify other party's credentials
+    pub(crate) authority: Option<Identifier>,
+    // To obtain our credentials
+    pub(crate) credential_retriever: Option<Arc<dyn CredentialRetriever>>,
     pub(crate) min_credential_refresh_interval: Duration,
     pub(crate) refresh_credential_time_gap: Duration,
 }
@@ -179,8 +191,8 @@ impl SecureChannelListenerOptions {
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
-            trust_context: None,
-            credentials: vec![],
+            authority: None,
+            credential_retriever: None,
             min_credential_refresh_interval: DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL,
             refresh_credential_time_gap: DEFAULT_REFRESH_CREDENTIAL_TIME_GAP,
         }
@@ -195,21 +207,26 @@ impl SecureChannelListenerOptions {
         self
     }
 
-    /// Adds provided credentials
-    pub fn with_credentials(mut self, credentials: Vec<CredentialAndPurposeKey>) -> Self {
-        self.credentials.extend(credentials);
-        self
+    /// Set [`CredentialRetriever`]
+    pub fn with_credential_retriever(
+        mut self,
+        credential_retriever: Arc<dyn CredentialRetriever>,
+    ) -> Result<Self> {
+        if self.credential_retriever.is_some() {
+            return Err(IdentityError::CredentialRetrieverAlreadySet.into());
+        }
+        self.credential_retriever = Some(credential_retriever);
+        Ok(self)
     }
 
-    /// Adds a single credential
-    pub fn with_credential(mut self, credential: CredentialAndPurposeKey) -> Self {
-        self.credentials.push(credential);
-        self
+    /// Set credential
+    pub fn with_credential(self, credential: CredentialAndPurposeKey) -> Result<Self> {
+        self.with_credential_retriever(Arc::new(MemoryCredentialRetriever::new(credential)))
     }
 
-    /// Sets trust context
-    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
-        self.trust_context = Some(trust_context);
+    /// Sets Trusted Authority
+    pub fn with_authority(mut self, authority: Identifier) -> Self {
+        self.authority = Some(authority);
         self
     }
 

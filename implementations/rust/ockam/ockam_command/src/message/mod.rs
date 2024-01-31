@@ -19,16 +19,15 @@ pub enum MessageSubcommand {
 }
 
 impl MessageCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            MessageSubcommand::Send(c) => c.run(options),
+            MessageSubcommand::Send(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            MessageSubcommand::Send(_) => "send message",
+            MessageSubcommand::Send(c) => c.name(),
         }
-        .to_string()
     }
 }

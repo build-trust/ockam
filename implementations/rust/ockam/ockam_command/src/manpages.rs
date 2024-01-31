@@ -32,13 +32,14 @@ pub struct ManpagesCommand {
 }
 
 impl ManpagesCommand {
-    pub fn run(self) {
+    pub fn run(self) -> miette::Result<()> {
         let man_dir = match get_man_page_directory(&self.dir) {
             Ok(path) => path,
             Err(error) => panic!("Error getting man page directory: {error:?}"),
         };
         let clap_command = <OckamCommand as CommandFactory>::command();
         generate_man_pages(man_dir.as_path(), &clap_command, None, self.no_compression);
+        Ok(())
     }
 
     pub fn name(&self) -> String {

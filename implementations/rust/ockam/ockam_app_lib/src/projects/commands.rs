@@ -1,5 +1,5 @@
 use miette::IntoDiagnostic;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::time::Duration;
 use tracing::{debug, info, trace};
 
@@ -39,7 +39,7 @@ impl AppState {
         let otc = authority_node
             .create_token(
                 &self.context(),
-                HashMap::from([("invitation_email", invitation_email.to_string().as_str())]),
+                BTreeMap::from([("invitation_email".to_string(), invitation_email.to_string())]),
                 Some(Duration::from_secs(60 * 60 * 24 * 14)),
                 None,
             )

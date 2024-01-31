@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{path::PathBuf, str::FromStr};
 
 use clap::Args;
@@ -7,19 +8,16 @@ use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use tracing::instrument;
 
-use ockam::identity::Identity;
 use ockam_api::cli_state::random_name;
 use ockam_api::logs::TracingGuard;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 
-use crate::node::create::background::background_mode;
-use crate::node::create::foreground::foreground_mode;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
-use crate::util::api::TrustContextOpts;
+use crate::util::api::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
-use crate::util::{local_cmd, node_rpc};
+use crate::util::{async_cmd, local_cmd};
 use crate::{docs, CommandGlobalOpts, Result};
 use ockam_node::{opentelemetry_context_parser, OpenTelemetryContext};
 
@@ -43,6 +41,11 @@ pub struct CreateCommand {
     /// Run the node in foreground.
     #[arg(display_order = 900, long, short)]
     pub foreground: bool,
+
+    /// Skip the check if such node is already running.
+    /// Useful for kubernetes when the pid is the same on each run.
+    #[arg(long, short, value_name = "BOOL", default_value_t = false)]
+    skip_is_running_check: bool,
 
     /// Watch stdin for EOF
     #[arg(display_order = 900, long = "exit-on-eof", short)]
@@ -70,26 +73,12 @@ pub struct CreateCommand {
     #[arg(long, hide = true, value_parser = parse_launch_config)]
     pub launch_config: Option<Config>,
 
-    #[arg(long, group = "trusted")]
-    pub trusted_identities: Option<String>,
-    #[arg(long, group = "trusted")]
-    pub trusted_identities_file: Option<PathBuf>,
-    #[arg(long, group = "trusted")]
-    pub reload_from_trusted_identities_file: Option<PathBuf>,
-
     /// Name of the Identity that the node will use
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 
-    /// Hex encoded Identity
-    #[arg(long, value_name = "IDENTITY")]
-    authority_identity: Option<String>,
-
-    #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
-    pub credential: Option<String>,
-
     #[command(flatten)]
-    pub trust_context_opts: TrustContextOpts,
+    pub trust_opts: TrustOpts,
 
     /// Serialized opentelemetry context
     #[arg(long, hide = true, value_parser = opentelemetry_context_parser)]
@@ -100,6 +89,7 @@ impl Default for CreateCommand {
     fn default() -> Self {
         let node_manager_defaults = NodeManagerDefaults::default();
         Self {
+            skip_is_running_check: false,
             node_name: random_name(),
             exit_on_eof: false,
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
@@ -107,12 +97,7 @@ impl Default for CreateCommand {
             child_process: false,
             launch_config: None,
             identity: None,
-            authority_identity: None,
-            trusted_identities: None,
-            trusted_identities_file: None,
-            reload_from_trusted_identities_file: None,
-            credential: None,
-            trust_context_opts: node_manager_defaults.trust_context_opts,
+            trust_opts: node_manager_defaults.trust_opts,
             opentelemetry_context: None,
         }
     }
@@ -120,7 +105,11 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     #[instrument(skip_all)]
-    pub fn run(self, opts: CommandGlobalOpts, tracing_guard: Option<TracingGuard>) {
+    pub fn run(
+        self,
+        opts: CommandGlobalOpts,
+        tracing_guard: Option<Arc<TracingGuard>>,
+    ) -> miette::Result<()> {
         if self.foreground {
             if self.child_process {
                 opentelemetry::Context::current()
@@ -129,11 +118,19 @@ impl CreateCommand {
             }
             local_cmd(embedded_node_that_is_not_stopped(
                 opts.rt.clone(),
-                foreground_mode,
-                (opts, self, tracing_guard),
-            ));
+                |ctx| async move { self.foreground_mode(&ctx, opts, tracing_guard).await },
+            ))
         } else {
-            node_rpc(opts.rt.clone(), background_mode, (opts, self))
+            async_cmd(&self.name(), opts.clone(), |ctx| async move {
+                self.background_mode(&ctx, opts).await
+            })
+        }
+    }
+    pub fn name(&self) -> String {
+        if self.child_process {
+            "create background node".into()
+        } else {
+            "create node".into()
         }
     }
 
@@ -145,16 +142,10 @@ impl CreateCommand {
     ) -> miette::Result<()> {
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.foreground {
-            foreground_mode(ctx, (opts, self, tracing_guard)).await
+            self.foreground_mode(&ctx, opts, tracing_guard.map(Arc::new))
+                .await
         } else {
-            background_mode(ctx, (opts, self)).await
-        }
-    }
-
-    async fn authority_identity(&self) -> Result<Option<Identity>> {
-        match &self.authority_identity {
-            Some(i) => Ok(Some(Identity::create(i).await.into_diagnostic()?)),
-            None => Ok(None),
+            self.background_mode(&ctx, opts).await
         }
     }
 
@@ -173,6 +164,20 @@ impl CreateCommand {
     pub fn logging_to_stdout(&self) -> bool {
         !self.logging_to_file()
     }
+
+    pub async fn guard_node_is_not_already_running(
+        &self,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        if !self.child_process {
+            if let Ok(node) = opts.state.get_node(&self.node_name).await {
+                if node.is_running() {
+                    return Err(miette!("Node {} is already running", &self.node_name));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
@@ -185,18 +190,4 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
             Config::read(path)
         }
     }
-}
-
-pub async fn guard_node_is_not_already_running(
-    opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
-) -> miette::Result<()> {
-    if !cmd.child_process {
-        if let Ok(node) = opts.state.get_node(&cmd.node_name).await {
-            if node.is_running() {
-                return Err(miette!("Node {} is already running", &cmd.node_name));
-            }
-        }
-    }
-    Ok(())
 }

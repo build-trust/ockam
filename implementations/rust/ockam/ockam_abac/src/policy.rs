@@ -1,6 +1,6 @@
 use crate::types::{Action, Resource};
+use crate::Env;
 use crate::{AbacAccessControl, PoliciesRepository};
-use crate::{Env, Expr};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::boxed::Box;
@@ -8,7 +8,7 @@ use ockam_core::compat::format;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{IncomingAccessControl, Result};
-use ockam_identity::IdentityAttributesRepository;
+use ockam_identity::{Identifier, IdentityAttributesRepository};
 use tracing as log;
 
 /// Evaluates a policy expression against an environment of attributes.
@@ -20,6 +20,7 @@ pub struct PolicyAccessControl {
     action: Action,
     policies: Arc<dyn PoliciesRepository>,
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+    authority: Identifier,
     environment: Env,
 }
 
@@ -44,6 +45,7 @@ impl PolicyAccessControl {
     pub fn new(
         policies: Arc<dyn PoliciesRepository>,
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        authority: Identifier,
         resource: Resource,
         action: Action,
         env: Env,
@@ -53,6 +55,7 @@ impl PolicyAccessControl {
             action,
             policies,
             identity_attributes_repository,
+            authority,
             environment: env,
         }
     }
@@ -67,13 +70,7 @@ impl IncomingAccessControl for PolicyAccessControl {
             .get_policy(&self.resource, &self.action)
             .await?
         {
-            if let Expr::Bool(b) = policy.expression() {
-                // If the policy is a constant there is no need to populate
-                // the environment or look for message metadata.
-                return Ok(*b);
-            } else {
-                policy
-            }
+            policy
         } else {
             // If no policy exists for this resource and action access is denied:
             log::debug! {
@@ -86,6 +83,7 @@ impl IncomingAccessControl for PolicyAccessControl {
 
         AbacAccessControl::new(
             self.identity_attributes_repository.clone(),
+            self.authority.clone(),
             policy,
             self.environment.clone(),
         )

@@ -19,7 +19,7 @@ use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::operation::{Operation, Operations};
 use crate::cloud::share::ShareScope;
-use crate::cloud::{ControllerClient, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::cloud::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use crate::error::ApiError;
 use crate::minicbor_url::Url;
 use crate::nodes::InMemoryNode;
@@ -395,7 +395,7 @@ impl ControllerClient {
         trace!(target: TARGET, %space_id, project_name = name, "creating project");
         let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
             .body(CreateProject::new(name.to_string(), users));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -406,7 +406,7 @@ impl ControllerClient {
     pub async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
         trace!(target: TARGET, %project_id, "getting project");
         let req = Request::get(format!("/v0/{project_id}"));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -422,7 +422,7 @@ impl ControllerClient {
     ) -> miette::Result<()> {
         trace!(target: TARGET, %space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
-        self.secure_client
+        self.get_secure_client()
             .tell(ctx, "projects", req)
             .await
             .into_diagnostic()?
@@ -435,7 +435,7 @@ impl ControllerClient {
         ctx: &Context,
     ) -> miette::Result<OrchestratorVersionInfo> {
         trace!(target: TARGET, "getting orchestrator version information");
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "version_info", Request::get(""))
             .await
             .into_diagnostic()?
@@ -446,7 +446,7 @@ impl ControllerClient {
     #[instrument(skip_all)]
     pub async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         let req = Request::get("/v0");
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?

@@ -2,6 +2,10 @@
 // binary names. The issue is that we need to avoid the `ockam` binary colliding
 // with the `ockam` crate.
 
+use ockam_command::util::exitcode;
+
 fn main() {
-    ockam_command::run()
+    if ockam_command::run().is_err() {
+        std::process::exit(exitcode::SOFTWARE);
+    }
 }

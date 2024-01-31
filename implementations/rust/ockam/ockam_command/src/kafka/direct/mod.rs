@@ -5,10 +5,10 @@ use crate::kafka::direct::delete::DeleteCommand;
 use crate::kafka::direct::list::ListCommand;
 use crate::CommandGlobalOpts;
 
+pub(crate) mod command;
 mod create;
 mod delete;
 mod list;
-mod rpc;
 
 /// Manage Kafka Consumers
 #[derive(Clone, Debug, Args)]
@@ -26,20 +26,19 @@ pub enum KafkaDirectSubcommand {
 }
 
 impl KafkaDirectCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaDirectSubcommand::Create(c) => c.run(options),
-            KafkaDirectSubcommand::Delete(c) => c.run(options),
-            KafkaDirectSubcommand::List(c) => c.run(options),
+            KafkaDirectSubcommand::Create(c) => c.run(opts),
+            KafkaDirectSubcommand::Delete(c) => c.run(opts),
+            KafkaDirectSubcommand::List(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            KafkaDirectSubcommand::Create(_) => "create kafka direct",
-            KafkaDirectSubcommand::Delete(_) => "delete kafka direct",
-
-            KafkaDirectSubcommand::List(_) => "list kafka direct",
+            KafkaDirectSubcommand::Create(c) => c.name(),
+            KafkaDirectSubcommand::Delete(c) => c.name(),
+            KafkaDirectSubcommand::List(c) => c.name(),
         }
         .to_string()
     }

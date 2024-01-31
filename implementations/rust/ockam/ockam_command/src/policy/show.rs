@@ -6,7 +6,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
 use crate::policy::policy_path;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -22,19 +22,21 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, (options, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
-    run_impl(&ctx, opts, cmd).await
-}
+    pub fn name(&self) -> String {
+        "show policy".into()
+    }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ShowCommand) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &cmd.at).await?;
-    let req = Request::get(policy_path(&cmd.resource, &cmd.action));
-    let policy: Policy = node.ask(ctx, req).await?;
-    println!("{}", policy.expression());
-    Ok(())
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.at).await?;
+        let req = Request::get(policy_path(&self.resource, &self.action));
+        let policy: Policy = node.ask(ctx, req).await?;
+        println!("{}", policy.expression());
+        Ok(())
+    }
 }

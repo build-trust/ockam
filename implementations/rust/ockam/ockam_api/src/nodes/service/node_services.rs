@@ -1,21 +1,18 @@
 use either::Either;
 
-use ockam::identity::{AuthorityService, Identifier, Identity, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::Resource;
 use ockam_core::api::{Error, Response};
 use ockam_node::WorkerBuilder;
 
-use crate::auth::Server;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::services::{
-    ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartCredentialsService,
-    StartEchoerServiceRequest, StartHopServiceRequest, StartUppercaseServiceRequest,
+    ServiceList, ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest,
+    StartUppercaseServiceRequest,
 };
-use crate::nodes::registry::CredentialsServiceInfo;
 use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
@@ -24,21 +21,6 @@ use crate::uppercase::Uppercase;
 use super::{actions, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    pub(super) async fn start_authenticated_service(
-        &self,
-        ctx: &Context,
-        request: StartAuthenticatedServiceRequest,
-    ) -> Result<Response, Response<Error>> {
-        match self
-            .node_manager
-            .start_authenticated_service(ctx, request.addr.into())
-            .await
-        {
-            Ok(_) => Ok(Response::ok()),
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-        }
-    }
-
     pub(super) async fn start_uppercase_service(
         &self,
         ctx: &Context,
@@ -46,7 +28,7 @@ impl NodeManagerWorker {
     ) -> Result<Response, Response<Error>> {
         match self
             .node_manager
-            .start_uppercase_service(ctx, request.addr.into())
+            .start_uppercase_service_impl(ctx, request.addr.into())
             .await
         {
             Ok(_) => Ok(Response::ok()),
@@ -77,28 +59,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .start_hop_service(ctx, request.addr.into())
-            .await
-        {
-            Ok(_) => Ok(Response::ok()),
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-        }
-    }
-
-    pub(super) async fn start_credentials_service(
-        &self,
-        ctx: &Context,
-        request: StartCredentialsService,
-    ) -> Result<Response, Response<Error>> {
-        let addr: Address = request.address().into();
-        let oneway = request.oneway();
-        let encoded_identity = request.public_identity();
-        let identifier = match Identity::create(encoded_identity).await {
-            Ok(identity) => identity.identifier().clone(),
-            Err(e) => return Err(Response::bad_request_no_request(&e.to_string())),
-        };
-        match self
-            .node_manager
-            .start_credentials_service_with_trusted_identity(ctx, &identifier, addr, oneway)
             .await
         {
             Ok(_) => Ok(Response::ok()),
@@ -158,17 +118,6 @@ impl NodeManager {
     pub async fn list_services(&self) -> Result<Vec<ServiceStatus>> {
         let mut list = Vec::new();
         self.registry
-            .authenticated_services
-            .keys()
-            .await
-            .iter()
-            .for_each(|addr| {
-                list.push(ServiceStatus::new(
-                    addr.address(),
-                    DefaultAddress::AUTHENTICATED_SERVICE,
-                ))
-            });
-        self.registry
             .uppercase_services
             .keys()
             .await
@@ -202,17 +151,6 @@ impl NodeManager {
                 ))
             });
         self.registry
-            .credentials_services
-            .keys()
-            .await
-            .iter()
-            .for_each(|addr| {
-                list.push(ServiceStatus::new(
-                    addr.address(),
-                    DefaultAddress::CREDENTIALS_SERVICE,
-                ))
-            });
-        self.registry
             .kafka_services
             .entries()
             .await
@@ -232,77 +170,11 @@ impl NodeManager {
         Ok(list)
     }
 
-    pub(super) async fn start_credentials_service(
-        &self,
-        ctx: &Context,
-        trust_context: TrustContext,
-        addr: Address,
-        oneway: bool,
-    ) -> Result<()> {
-        if self.registry.credentials_services.contains_key(&addr).await {
-            return Err(ApiError::core("Credentials service exists at this address"));
-        }
-
-        self.credentials_service()
-            .start(ctx, trust_context, self.identifier(), addr.clone(), !oneway)
-            .await?;
-
-        self.registry
-            .credentials_services
-            .insert(addr.clone(), CredentialsServiceInfo::default())
-            .await;
-
-        Ok(())
-    }
-
-    pub(super) async fn start_credentials_service_with_trusted_identity(
-        &self,
-        ctx: &Context,
-        identifier: &Identifier,
-        addr: Address,
-        oneway: bool,
-    ) -> Result<()> {
-        let trust_context = TrustContext::new(
-            identifier.to_string(),
-            Some(AuthorityService::new(
-                self.identities().credentials(),
-                identifier.clone(),
-                None,
-            )),
-        );
-
-        self.start_credentials_service(ctx, trust_context, addr, oneway)
-            .await
-    }
-
-    pub(super) async fn start_authenticated_service(
+    pub(super) async fn start_uppercase_service_impl(
         &self,
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
-        if self
-            .registry
-            .authenticated_services
-            .contains_key(&addr)
-            .await
-        {
-            return Err(ApiError::core(
-                "Authenticated service exists at this address",
-            ));
-        }
-
-        let server = Server::new(self.identity_attributes_repository());
-        ctx.start_worker(addr.clone(), server).await?;
-
-        self.registry
-            .authenticated_services
-            .insert(addr, Default::default())
-            .await;
-
-        Ok(())
-    }
-
-    pub(super) async fn start_uppercase_service(&self, ctx: &Context, addr: Address) -> Result<()> {
         if self.registry.uppercase_services.contains_key(&addr).await {
             return Err(ApiError::core("Uppercase service exists at this address"));
         }
@@ -322,13 +194,12 @@ impl NodeManager {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
 
-        let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id());
         let resource = Resource::assert_inline(addr.address());
         let ac = self
             .access_control(
                 &resource,
                 &actions::HANDLE_MESSAGE,
-                maybe_trust_context_id,
+                self.authority.clone(),
                 None,
             )
             .await?;

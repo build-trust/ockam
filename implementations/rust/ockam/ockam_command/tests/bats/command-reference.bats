@@ -217,7 +217,6 @@ teardown() {
   "$OCKAM" credential issue --as "$a" --for ${id_b_short} --encoding hex >/${BATS_TEST_TMPDIR}/b.credential
 
   run_success "$OCKAM" credential verify --issuer ${id_a_short} --credential-path /${BATS_TEST_TMPDIR}/b.credential
-  run_success "$OCKAM" credential store c1 --issuer ${id_a} --credential-path /${BATS_TEST_TMPDIR}/b.credential
 }
 
 @test "trust anchors" {
@@ -252,35 +251,29 @@ teardown() {
   i1="$(random_str)"
   i2="$(random_str)"
   authority="$(random_str)"
-  authority_exported=/${BATS_TEST_TMPDIR}/authority
 
   run_success "$OCKAM" identity create "$authority"
-  "$OCKAM" identity show "$authority" >/${BATS_TEST_TMPDIR}/authority.identifier
-  "$OCKAM" identity show "$authority" --full --encoding hex >$authority_exported
+  AUTHORITY_IDENTIFIER=$("$OCKAM" identity show "$authority")
+  AUTHORITY_IDENTITY=$("$OCKAM" identity show "$authority" --full --encoding hex)
 
   run_success "$OCKAM" identity create "$i1"
-  "$OCKAM" identity show "$i1" >/${BATS_TEST_TMPDIR}/i1
-  "$OCKAM" credential issue --as "$authority" \
-    --for $(cat /${BATS_TEST_TMPDIR}/i1) --attribute city="New York" \
-    --encoding hex >/${BATS_TEST_TMPDIR}/i1.credential
-  run_success "$OCKAM" credential store c1 --issuer $(cat $authority_exported) \
-    --credential-path /${BATS_TEST_TMPDIR}/i1.credential
-  run_success "$OCKAM" trust-context create tc --credential c1 --authority-identity $(cat $authority_exported)
-
   run_success "$OCKAM" identity create "$i2"
-  "$OCKAM" identity show "$i2" >/${BATS_TEST_TMPDIR}/i2
-  "$OCKAM" credential issue --as "$authority" \
-    --for $(cat /${BATS_TEST_TMPDIR}/i2) --attribute city="San Francisco" \
-    --encoding hex >/${BATS_TEST_TMPDIR}/i2.credential
-  run_success "$OCKAM" credential store c2 --issuer $(cat $authority_exported) \
-    --credential-path /${BATS_TEST_TMPDIR}/i2.credential
+  I1_IDENTIFIER=$("$OCKAM" identity show "$i1")
+  I1_CREDENTIAL=$("$OCKAM" credential issue --as "$authority" \
+    --for "$I1_IDENTIFIER" --attribute city="New York" \
+    --encoding hex)
 
-  run_success "$OCKAM" node create "$n1" --identity "$i1" --authority-identity $(cat $authority_exported) --trust-context tc
-  run_success "$OCKAM" node create "$n2" --identity "$i2" --authority-identity $(cat $authority_exported) --credential c2
+  run_success "$OCKAM" node create "$n1" --identity "$i1" --authority-identity "$AUTHORITY_IDENTITY"
+  run_success "$OCKAM" node create "$n2" --identity "$i2" --authority-identity "$AUTHORITY_IDENTITY"
 
-  run_success bash -c "$OCKAM secure-channel create --from $n1 --to /node/$n2/service/api --credential c1 --identity $i1 |
-    $OCKAM message send hello --from $n1 --to -/service/uppercase"
-  assert_output "HELLO"
+  run_success "$OCKAM" credential store --issuer "$AUTHORITY_IDENTIFIER" --credential "$I1_CREDENTIAL" --at "$n1"
+
+  run_success bash -c "$OCKAM secure-channel create --from $n1 --identity $i1 --to /node/$n2/service/api |
+    $OCKAM message send --timeout 1 hello --from $n1 --to -/service/echo"
+  assert_output "hello"
+
+  run_failure bash -c "$OCKAM secure-channel create --from $n2 --identity $i2 --to /node/$n1/service/api |
+    $OCKAM message send --timeout 1 hello --from $n2 --to -/service/echo"
 }
 
 @test "managed authorities" {

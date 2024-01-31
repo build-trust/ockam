@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::CloudOpts;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
@@ -24,32 +24,34 @@ pub struct VersionCommand {
 }
 
 impl VersionCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), rpc, options);
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-    run_impl(&ctx, opts).await
-}
+    pub fn name(&self) -> String {
+        "get version".into()
+    }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-    // Send request
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
-    let controller = node.create_controller().await?;
-    let project_version = controller.get_orchestrator_version_info(ctx).await?;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        // Send request
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let controller = node.create_controller().await?;
+        let project_version = controller.get_orchestrator_version_info(ctx).await?;
 
-    let json = serde_json::to_string(&project_version).into_diagnostic()?;
-    let project_version = project_version
-        .project_version
-        .unwrap_or("unknown".to_string());
-    let plain = fmt_ok!("The version of the Projects is '{project_version}'");
+        let json = serde_json::to_string(&project_version).into_diagnostic()?;
+        let project_version = project_version
+            .project_version
+            .unwrap_or("unknown".to_string());
+        let plain = fmt_ok!("The version of the Projects is '{project_version}'");
 
-    opts.terminal
-        .stdout()
-        .plain(plain)
-        .machine(project_version)
-        .json(json)
-        .write_line()?;
-    Ok(())
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .machine(project_version)
+            .json(json)
+            .write_line()?;
+        Ok(())
+    }
 }

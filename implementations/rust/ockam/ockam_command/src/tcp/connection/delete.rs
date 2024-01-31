@@ -5,7 +5,7 @@ use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -26,32 +26,36 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    if opts.terminal.confirmed_with_flag_or_prompt(
-        cmd.yes,
-        "Are you sure you want to delete this TCP connection?",
-    )? {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
-        let address = cmd.address;
-        let req = Request::delete("/node/tcp/connection")
-            .body(models::transport::DeleteTransport::new(address.clone()));
-        node.tell(&ctx, req).await?;
-        opts.terminal
-            .stdout()
-            .plain(fmt_ok!(
-                "TCP connection {address} has been successfully deleted"
-            ))
-            .json(serde_json::json!({ "address": address }))
-            .write_line()
-            .unwrap();
+    pub fn name(&self) -> String {
+        "delete tcp connection".into()
     }
-    Ok(())
+
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if opts.terminal.confirmed_with_flag_or_prompt(
+            self.yes,
+            "Are you sure you want to delete this TCP connection?",
+        )? {
+            let node =
+                BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+            let address = self.address.clone();
+            let req = Request::delete("/node/tcp/connection")
+                .body(models::transport::DeleteTransport::new(address.clone()));
+            node.tell(ctx, req).await?;
+            opts.terminal
+                .stdout()
+                .plain(fmt_ok!(
+                    "TCP connection {address} has been successfully deleted"
+                ))
+                .json(serde_json::json!({ "address": address }))
+                .write_line()
+                .unwrap();
+        }
+        Ok(())
+    }
 }

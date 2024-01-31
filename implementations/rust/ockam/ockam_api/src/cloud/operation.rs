@@ -1,4 +1,4 @@
-use crate::cloud::{ControllerClient, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::cloud::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 use ockam_core::api::Request;
@@ -76,7 +76,7 @@ impl Operations for ControllerClient {
     ) -> miette::Result<Option<Operation>> {
         trace!(target: TARGET, operation_id, "getting operation");
         let req = Request::get(format!("/v1/operations/{operation_id}"));
-        self.secure_client
+        self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?

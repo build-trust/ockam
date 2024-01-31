@@ -1,18 +1,19 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
+use ockam_core::AsyncTryClone;
 
 use crate::relay::util::relay_name_parser;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -35,16 +36,24 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(options.rt.clone(), run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-pub async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> miette::Result<()> {
-    DeleteTui::run(ctx, opts, cmd).await
+    pub fn name(&self) -> String {
+        "delete relay".into()
+    }
+
+    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        DeleteTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.clone(),
+        )
+        .await
+    }
 }
 
 struct DeleteTui {

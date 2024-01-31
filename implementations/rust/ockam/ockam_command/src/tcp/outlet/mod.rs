@@ -35,22 +35,21 @@ pub enum TcpOutletSubCommand {
 }
 
 impl TcpOutletCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpOutletSubCommand::Create(c) => c.run(options),
-            TcpOutletSubCommand::Delete(c) => c.run(options),
-            TcpOutletSubCommand::List(c) => c.run(options),
-            TcpOutletSubCommand::Show(c) => c.run(options),
+            TcpOutletSubCommand::Create(c) => c.run(opts),
+            TcpOutletSubCommand::Delete(c) => c.run(opts),
+            TcpOutletSubCommand::List(c) => c.run(opts),
+            TcpOutletSubCommand::Show(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            TcpOutletSubCommand::Create(_) => "create tcp outlet",
-            TcpOutletSubCommand::Delete(_) => "delete tcp outlet",
-            TcpOutletSubCommand::List(_) => "list tcp outlets",
-            TcpOutletSubCommand::Show(_) => "show tcp outlet",
+            TcpOutletSubCommand::Create(c) => c.name(),
+            TcpOutletSubCommand::Delete(c) => c.name(),
+            TcpOutletSubCommand::List(c) => c.name(),
+            TcpOutletSubCommand::Show(c) => c.name(),
         }
-        .to_string()
     }
 }

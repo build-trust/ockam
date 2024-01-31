@@ -1,13 +1,14 @@
 use std::net::SocketAddr;
 
-use crate::kafka::direct::rpc::{start, ArgOpts};
+use crate::kafka::direct::command::{start, ArgOpts};
 use crate::kafka::util::make_brokers_port_range;
+use crate::util::async_cmd;
 use crate::{
     kafka::{
         kafka_default_consumer_server, kafka_default_outlet_server, kafka_direct_default_addr,
     },
     node::NodeOpts,
-    util::{node_rpc, parsers::socket_addr_parser},
+    util::parsers::socket_addr_parser,
     CommandGlobalOpts,
 };
 use clap::{command, Args};
@@ -39,8 +40,9 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        let arg_opts = ArgOpts {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let cmd_name = self.name();
+        let args_opts = ArgOpts {
             endpoint: "/node/services/kafka_direct".to_string(),
             kafka_entity: "KafkaDirect".to_string(),
             node_opts: self.node_opts,
@@ -52,6 +54,12 @@ impl CreateCommand {
             consumer_route: self.consumer_route,
             bootstrap_server: self.bootstrap_server,
         };
-        node_rpc(opts.rt.clone(), start, (opts, arg_opts));
+        async_cmd(&cmd_name, opts.clone(), |ctx| async move {
+            start(&ctx, opts, args_opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "create kafka direct".into()
     }
 }

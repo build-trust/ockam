@@ -2,8 +2,8 @@ use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::utils::now;
+use ockam::identity::IdentityAttributesRepository;
 use ockam::identity::{AttributesEntry, Identifier, IdentitySecureChannelLocalInfo};
-use ockam::identity::{IdentityAttributesRepository, TRUST_CONTEXT_ID};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
@@ -14,7 +14,6 @@ use tracing::trace;
 
 pub struct Server {
     identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
-    project: String,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
     attributes: Vec<String>,
@@ -41,7 +40,6 @@ impl Worker for Server {
 impl Server {
     pub fn new(
         identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
-        project: String,
         tenant_base_url: &str,
         certificate: &str,
         attributes: &[String],
@@ -50,7 +48,6 @@ impl Server {
             .map_err(|err| ApiError::core(err.to_string()))?;
         Ok(Server {
             identity_attributes_repository,
-            project,
             tenant_base_url: tenant_base_url.to_string(),
             certificate,
             attributes: attributes.iter().map(|s| s.to_string()).collect(),
@@ -74,7 +71,7 @@ impl Server {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
                 // Device Flow authentication
                 ["v0", "enroll"] => {
-                    debug!("Checking token for project {:?}", self.project);
+                    debug!("Checking token");
                     // TODO: check token_type
                     // TODO: it's AuthenticateAuth0Token or something else?.  Probably rename.
                     let token: crate::cloud::enroll::auth0::AuthenticateOidcToken = dec.decode()?;
@@ -88,13 +85,6 @@ impl Server {
                             attrs
                                 .into_iter()
                                 .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-                                .chain(
-                                    [(
-                                        TRUST_CONTEXT_ID.to_owned(),
-                                        self.project.as_bytes().to_vec(),
-                                    )]
-                                    .into_iter(),
-                                )
                                 .collect(),
                             now().unwrap(),
                             None,

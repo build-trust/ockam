@@ -18,3 +18,8 @@ test-group = 'sequential'
 filter = 'package(tcp_inlet_and_outlet)'
 threads-required = 3
 test-group = 'sequential'
+
+[[profile.default.overrides]]
+filter = 'package(ockam_api)'
+threads-required = 3
+test-group = 'sequential'

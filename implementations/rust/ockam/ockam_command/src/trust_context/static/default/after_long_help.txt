@@ -1,8 +1,0 @@
-```sh
-# The first created trust context will be set as the default
-$ ockam trust-context create t1
-
-# Let's create a second trust context and assign it as default
-$ ockam trust-context create t2
-$ ockam trust-context default t2
-```

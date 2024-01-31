@@ -25,19 +25,19 @@ pub enum KafkaProducerSubcommand {
 }
 
 impl KafkaProducerCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaProducerSubcommand::Create(c) => c.run(options),
-            KafkaProducerSubcommand::Delete(c) => c.run(options),
-            KafkaProducerSubcommand::List(c) => c.run(options),
+            KafkaProducerSubcommand::Create(c) => c.run(opts),
+            KafkaProducerSubcommand::Delete(c) => c.run(opts),
+            KafkaProducerSubcommand::List(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            KafkaProducerSubcommand::Create(_) => "create kafka producer",
-            KafkaProducerSubcommand::Delete(_) => "delete kafka producer",
-            KafkaProducerSubcommand::List(_) => "list kafka producers",
+            KafkaProducerSubcommand::Create(c) => c.name(),
+            KafkaProducerSubcommand::Delete(c) => c.name(),
+            KafkaProducerSubcommand::List(c) => c.name(),
         }
         .to_string()
     }

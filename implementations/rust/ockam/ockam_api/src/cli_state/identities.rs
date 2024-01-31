@@ -102,16 +102,12 @@ impl CliState {
 impl CliState {
     /// Return all named identities
     pub async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
-        Ok(self
-            .identities_repository()
-            .await?
-            .get_named_identities()
-            .await?)
+        Ok(self.identities_repository().get_named_identities().await?)
     }
 
     /// Return a named identity given its name
     pub async fn get_named_identity(&self, name: &str) -> Result<NamedIdentity> {
-        let repository = self.identities_repository().await?;
+        let repository = self.identities_repository();
         match repository.get_named_identity(name).await? {
             Some(identity) => Ok(identity),
             None => Err(Error::new(
@@ -144,7 +140,7 @@ impl CliState {
         &self,
         name: &Option<String>,
     ) -> Result<Identifier> {
-        let repository = self.identities_repository().await?;
+        let repository = self.identities_repository();
         let result = match name {
             Some(name) => repository.get_identifier(name).await?,
             None => repository
@@ -162,14 +158,12 @@ impl CliState {
         let named_identity = match name {
             Some(name) => {
                 self.identities_repository()
-                    .await?
                     .get_named_identity(name)
                     .await?
             }
 
             None => {
                 self.identities_repository()
-                    .await?
                     .get_default_named_identity()
                     .await?
             }
@@ -197,7 +191,6 @@ impl CliState {
     pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
         match self
             .change_history_repository()
-            .await?
             .get_change_history(identifier)
             .await?
         {
@@ -223,7 +216,6 @@ impl CliState {
     pub async fn get_or_create_default_named_identity(&self) -> Result<NamedIdentity> {
         match self
             .identities_repository()
-            .await?
             .get_default_named_identity()
             .await?
         {
@@ -249,7 +241,6 @@ impl CliState {
     ) -> Result<NamedIdentity> {
         match self
             .identities_repository()
-            .await?
             .get_named_identity_by_identifier(identifier)
             .await?
         {
@@ -266,7 +257,6 @@ impl CliState {
     pub async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
         Ok(self
             .identities_repository()
-            .await?
             .get_named_identity(name)
             .await?
             .map(|n| n.is_default())
@@ -279,11 +269,7 @@ impl CliState {
     /// Set a named identity as the default
     /// Return an error if that identity does not exist
     pub async fn set_as_default_identity(&self, name: &str) -> Result<()> {
-        Ok(self
-            .identities_repository()
-            .await?
-            .set_as_default(name)
-            .await?)
+        Ok(self.identities_repository().set_as_default(name).await?)
     }
 
     /// Delete an identity by name:
@@ -295,14 +281,8 @@ impl CliState {
     pub async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
         let nodes = self.get_nodes_by_identity_name(name).await?;
         if nodes.is_empty() {
-            if let Some(identifier) = self
-                .identities_repository()
-                .await?
-                .delete_identity(name)
-                .await?
-            {
+            if let Some(identifier) = self.identities_repository().delete_identity(name).await? {
                 self.change_history_repository()
-                    .await?
                     .delete_change_history(&identifier)
                     .await?;
             };
@@ -331,7 +311,7 @@ impl CliState {
         name: &str,
         vault_name: &str,
     ) -> Result<NamedIdentity> {
-        let repository = self.identities_repository().await?;
+        let repository = self.identities_repository();
 
         // If there is no previously created identity we set this identity as the default one
         let is_default_identity = repository.get_default_named_identity().await?.is_none();
@@ -351,7 +331,6 @@ impl CliState {
     async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
         match self
             .change_history_repository()
-            .await?
             .get_change_history(identifier)
             .await?
         {

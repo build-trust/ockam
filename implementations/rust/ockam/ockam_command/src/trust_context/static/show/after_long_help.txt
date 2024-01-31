@@ -1,7 +1,0 @@
-```sh
-# To show the default trust context
-$ ockam trust-context show
-
-# To show a specific trust context
-$ ockam trust-context show t1
-```

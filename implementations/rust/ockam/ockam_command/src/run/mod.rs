@@ -1,7 +1,7 @@
 pub mod parser;
 mod runner;
 
-use crate::util::node_rpc;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::Context as _;
@@ -30,50 +30,48 @@ pub struct RunCommand {
 }
 
 impl RunCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
 
     pub fn name(&self) -> String {
         "run command".to_string()
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, RunCommand)) -> miette::Result<()> {
-    run_impl(ctx, opts, cmd).await
-}
-
-async fn run_impl(ctx: Context, opts: CommandGlobalOpts, cmd: RunCommand) -> miette::Result<()> {
-    let config = match cmd.inline {
-        Some(config) => config,
-        None => {
-            let path = match cmd.recipe {
-                Some(path) => path,
-                None => {
-                    let mut path = std::env::current_dir()
-                        .into_diagnostic()
-                        .context("Failed to get current directory")?;
-                    let default_file_names = ["ockam.yml", "ockam.yaml"];
-                    let mut found = false;
-                    for file_name in default_file_names.iter() {
-                        path.push(file_name);
-                        if path.exists() {
-                            found = true;
-                            break;
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let config = match &self.inline {
+            Some(config) => config.to_string(),
+            None => {
+                let path = match &self.recipe {
+                    Some(path) => path.clone(),
+                    None => {
+                        let mut path = std::env::current_dir()
+                            .into_diagnostic()
+                            .context("Failed to get current directory")?;
+                        let default_file_names = ["ockam.yml", "ockam.yaml"];
+                        let mut found = false;
+                        for file_name in default_file_names.iter() {
+                            path.push(file_name);
+                            if path.exists() {
+                                found = true;
+                                break;
+                            }
+                            path.pop();
                         }
-                        path.pop();
-                    }
-                    if !found {
-                        return Err(miette!(
-                            "No default configuration file found in current directory.\n\
+                        if !found {
+                            return Err(miette!(
+                                "No default configuration file found in current directory.\n\
                     Try passing the path to the config file with the --recipe flag."
-                        ));
+                            ));
+                        }
+                        path
                     }
-                    path
-                }
-            };
-            std::fs::read_to_string(path).into_diagnostic()?
-        }
-    };
-    runner::ConfigRunner::run_config(&ctx, opts, &config).await
+                };
+                std::fs::read_to_string(path).into_diagnostic()?
+            }
+        };
+        ConfigRunner::run_config(ctx, opts, &config).await
+    }
 }

@@ -5,15 +5,15 @@ use ockam_core::Result;
 use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
 
 use crate::models::{Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier};
-use crate::utils::{add_seconds, now};
-use crate::{IdentitiesCreation, PurposeKeyCreation};
+use crate::utils::now;
+use crate::{IdentitiesVerification, PurposeKeyCreation, TimestampInSeconds};
 
 /// Service for managing [`Credential`]s
 pub struct CredentialsCreation {
     purpose_keys_creation: Arc<PurposeKeyCreation>,
     credential_vault: Arc<dyn VaultForSigning>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_creation: Arc<IdentitiesCreation>,
+    identities_verification: Arc<IdentitiesVerification>,
 }
 
 impl CredentialsCreation {
@@ -22,13 +22,13 @@ impl CredentialsCreation {
         purpose_keys_creation: Arc<PurposeKeyCreation>,
         credential_vault: Arc<dyn VaultForSigning>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_creation: Arc<IdentitiesCreation>,
+        identities_verification: Arc<IdentitiesVerification>,
     ) -> Self {
         Self {
             purpose_keys_creation,
             verifying_vault,
             credential_vault,
-            identities_creation,
+            identities_verification,
         }
     }
 }
@@ -48,10 +48,10 @@ impl CredentialsCreation {
             .get_or_create_credential_purpose_key(issuer)
             .await?;
 
-        let subject_identity = self.identities_creation.get_identity(subject).await?;
+        let subject_identity = self.identities_verification.get_identity(subject).await?;
 
         let created_at = now()?;
-        let expires_at = add_seconds(&created_at, ttl.as_secs());
+        let expires_at = created_at + TimestampInSeconds(ttl.as_secs());
 
         let credential_data = CredentialData {
             subject: Some(subject.clone()),

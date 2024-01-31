@@ -3,15 +3,14 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
-use ockam::identity::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
-use ockam::Context;
+use ockam_api::authenticator::credential_issuer::{
+    DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA,
+};
 use ockam_core::compat::collections::HashMap;
 
 use crate::output::{CredentialAndPurposeKeyDisplay, EncodeFormat};
-use crate::{
-    util::{node_rpc, parsers::identity_identifier_parser},
-    CommandGlobalOpts, Result,
-};
+use crate::util::async_cmd;
+use crate::{util::parsers::identity_identifier_parser, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -36,8 +35,14 @@ pub struct IssueCommand {
 }
 
 impl IssueCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), run_impl, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
+            self.async_run(opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "issue credential".into()
     }
 
     fn attributes(&self) -> Result<HashMap<String, String>> {
@@ -50,46 +55,42 @@ impl IssueCommand {
         }
         Ok(attributes)
     }
-}
 
-async fn run_impl(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, IssueCommand),
-) -> miette::Result<()> {
-    let authority = opts
-        .state
-        .get_identifier_by_optional_name(&cmd.as_identity)
-        .await?;
+    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let authority = opts
+            .state
+            .get_identifier_by_optional_name(&self.as_identity)
+            .await?;
 
-    let vault = opts
-        .state
-        .get_named_vault_or_default(&cmd.vault)
-        .await?
-        .vault()
-        .await?;
-    let identities = opts.state.make_identities(vault).await?;
+        let vault = opts
+            .state
+            .get_named_vault_or_default(&self.vault)
+            .await?
+            .vault()
+            .await?;
+        let identities = opts.state.make_identities(vault).await?;
 
-    let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-        .with_attribute(TRUST_CONTEXT_ID.to_vec(), authority.to_string());
-    for (key, value) in cmd.attributes()? {
-        attributes_builder =
-            attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());
+        let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA);
+        for (key, value) in self.attributes()? {
+            attributes_builder = attributes_builder
+                .with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());
+        }
+
+        let credential = identities
+            .credentials()
+            .credentials_creation()
+            .issue_credential(
+                &authority,
+                &self.identity_identifier,
+                attributes_builder.build(),
+                DEFAULT_CREDENTIAL_VALIDITY,
+            )
+            .await
+            .into_diagnostic()?;
+
+        self.encode_format
+            .println_value(&CredentialAndPurposeKeyDisplay(credential))?;
+
+        Ok(())
     }
-
-    let credential = identities
-        .credentials()
-        .credentials_creation()
-        .issue_credential(
-            &authority,
-            &cmd.identity_identifier,
-            attributes_builder.build(),
-            DEFAULT_CREDENTIAL_VALIDITY,
-        )
-        .await
-        .into_diagnostic()?;
-
-    cmd.encode_format
-        .println_value(&CredentialAndPurposeKeyDisplay(credential))?;
-
-    Ok(())
 }

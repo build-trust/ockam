@@ -334,86 +334,6 @@ impl std::fmt::Display for LogFormat {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::logs::{LoggingConfiguration, LoggingTracing};
-    use crate::random_name;
-    use opentelemetry::global;
-    use opentelemetry::trace::Tracer;
-    use opentelemetry_sdk::{self as sdk};
-    use sdk::testing::logs::*;
-    use sdk::testing::trace::*;
-    use std::fs;
-    use tempfile::NamedTempFile;
-
-    #[test]
-    fn test_log_and_traces() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let log_directory = &temp_file.path().parent().unwrap().join(random_name());
-
-        let spans_exporter = InMemorySpanExporter::default();
-        let logs_exporter = InMemoryLogsExporter::default();
-        let ockam_crates = &["ockam_api"];
-        let guard = LoggingTracing::setup_with_exporters(
-            spans_exporter.clone(),
-            logs_exporter.clone(),
-            None,
-            LoggingConfiguration::default()
-                .set_log_directory(log_directory.into())
-                .set_crates(ockam_crates),
-            "test",
-        );
-
-        let tracer = global::tracer("ockam-test");
-        tracer.in_span("Logging::test", |_| {
-            info!("inside span");
-            error!("something went wrong!");
-        });
-
-        // check that the spans are exported
-        guard.force_flush();
-        let spans = spans_exporter.get_finished_spans().unwrap();
-        assert_eq!(spans.len(), 1);
-        let parent_span = spans.first().unwrap();
-
-        // check that log records are exported
-        let logs = logs_exporter.get_emitted_logs().unwrap();
-        assert_eq!(logs.len(), 2);
-        for log in logs {
-            assert_eq!(
-                log.clone().record.trace_context.map(|tc| tc.trace_id),
-                Some(parent_span.span_context.trace_id()),
-                "{log:?}\n{parent_span:?}"
-            )
-        }
-
-        // read the content of the log file to make sure that log messages are there
-        let mut stdout_file_checked = false;
-        for file in fs::read_dir(log_directory).unwrap() {
-            let file_path = file.unwrap().path();
-            if file_path.to_string_lossy().contains("stdout") {
-                let contents = fs::read_to_string(file_path).unwrap();
-                assert!(
-                    contents.contains("INFO ockam_api::logs::setup::tests: inside span"),
-                    "{:?}",
-                    contents
-                );
-                assert!(
-                    contents.contains("ERROR ockam_api::logs::setup::tests: something went wrong!"),
-                    "{:?}",
-                    contents
-                );
-                stdout_file_checked = true
-            }
-        }
-
-        assert!(
-            stdout_file_checked,
-            "the stdout log file must have been found and checked"
-        )
-    }
-}
-
 #[derive(Debug)]
 struct DecoratedLogExporter<L: LogExporter> {
     exporter: L,
@@ -422,7 +342,6 @@ struct DecoratedLogExporter<L: LogExporter> {
 #[async_trait]
 impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
     async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
-        // debug!("exporting {} logs", batch.len());
         self.exporter.export(batch).await
     }
 
@@ -486,7 +405,7 @@ impl CurrentSpan {
 
     pub fn set_attribute_time(name: &Key) {
         let current_utc: DateTime<Utc> = Utc::now();
-        let formatted_time: String = current_utc.format("%Y-%m-%dT%H:%M:%S").to_string();
+        let formatted_time: String = current_utc.format("%Y-%m-%dT%H:%M:%S.%3f").to_string();
         CurrentSpan::set_attribute(name, &formatted_time)
     }
 }

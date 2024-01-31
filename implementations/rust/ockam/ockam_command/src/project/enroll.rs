@@ -12,13 +12,12 @@ use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::NamedTrustContext;
 
 use crate::{enroll::OidcServiceExt, fmt_ok, output::OutputFormat, terminal::color_primary};
 use crate::{fmt_log, output::CredentialAndPurposeKeyDisplay};
 
-use crate::util::api::{CloudOpts, TrustContextOpts};
-use crate::util::node_rpc;
+use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
@@ -42,16 +41,9 @@ pub struct EnrollCommand {
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
 
+    /// Trust options, defaults to the default project
     #[command(flatten)]
-    pub trust_opts: TrustContextOpts,
-
-    /// Name of the new trust context to create, defaults to project name
-    #[arg(long)]
-    pub new_trust_context_name: Option<String>,
-
-    /// Execute enrollment even if the project is already enrolled
-    #[arg(long)]
-    pub force: bool,
+    pub trust_opts: TrustOpts,
 }
 
 pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentTicket> {
@@ -69,8 +61,14 @@ pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentT
 }
 
 impl EnrollCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    pub fn name(&self) -> String {
+        "enroll".into()
     }
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -85,16 +83,11 @@ impl EnrollCommand {
             .get_named_identity_or_default(&self.cloud_opts.identity)
             .await?;
         let project = parse_project(&opts, &self).await?;
-        let trust_context = parse_trust_context(&opts, &self, &project).await?;
 
         // Create secure channel to the project's authority node
-        let node = InMemoryNode::start_with_trust_context(
-            ctx,
-            &opts.state,
-            self.trust_opts.project_name.clone(),
-            Some(trust_context),
-        )
-        .await?;
+        let node =
+            InMemoryNode::start_with_project_name(ctx, &opts.state, Some(project.name.clone()))
+                .await?;
         let authority_node_client = node
             .create_authority_client(
                 &project.authority_identifier().await.into_diagnostic()?,
@@ -157,10 +150,6 @@ impl EnrollCommand {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> miette::Result<()> {
-    cmd.async_run(&ctx, opts).await
-}
-
 async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
     let project = if let Some(ticket) = &cmd.enroll_ticket {
@@ -182,40 +171,6 @@ async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<
             .await
             .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?
     };
+
     Ok(project)
-}
-
-async fn parse_trust_context(
-    opts: &CommandGlobalOpts,
-    cmd: &EnrollCommand,
-    project: &Project,
-) -> Result<NamedTrustContext> {
-    let trust_context_name = if let Some(trust_context_name) = &cmd.new_trust_context_name {
-        trust_context_name
-    } else {
-        &project.name
-    };
-
-    if !cmd.force {
-        if let Ok(trust_context) = opts.state.get_trust_context(trust_context_name).await {
-            if trust_context.trust_context_id() != project.id {
-                return Err(miette!(
-                    "A trust context with the name {} already exists and is associated with a different project. Please choose a different name.",
-                    trust_context_name
-                ))?;
-            }
-        }
-    }
-
-    let trust_context = opts
-        .state
-        .create_trust_context(
-            Some(trust_context_name.clone()),
-            Some(project.id()),
-            None,
-            project.authority_identity().await.ok(),
-            project.authority_access_route().ok(),
-        )
-        .await?;
-    Ok(trust_context)
 }

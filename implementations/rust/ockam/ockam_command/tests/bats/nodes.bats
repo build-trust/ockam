@@ -50,12 +50,8 @@ force_kill_node() {
   run_success "$OCKAM" node create n1
 
   # Check we can start service, but only once with the same name
-  run_success "$OCKAM" service start authenticated --addr my_authenticated --at n1
-  run_failure "$OCKAM" service start authenticated --addr my_authenticated --at n1
-
-  # Check we can start service, but only once with the same name
-  run_success "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81825837830101583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a654cf97d1a7818fc7d8200815840650c4c939b96142546559aed99c52b64aa8a2f7b242b46534f7f8d0c5cc083d2c97210b93e9bca990e9cb9301acc2b634ffb80be314025f9adc870713e6fde0d
-  run_failure "$OCKAM" service start credentials --addr my_credentials --at n1 --identity 81825837830101583285f68200815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef4f41a654cf97d1a7818fc7d8200815840650c4c939b96142546559aed99c52b64aa8a2f7b242b46534f7f8d0c5cc083d2c97210b93e9bca990e9cb9301acc2b634ffb80be314025f9adc870713e6fde0d
+  run_success "$OCKAM" service start hop --addr my_hop --at n1
+  run_failure "$OCKAM" service start hop --addr my_hop --at n1
 }
 
 @test "node - is restarted with default services" {

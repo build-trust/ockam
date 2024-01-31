@@ -11,7 +11,7 @@ use ockam_core::{Address, Route};
 
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
-use crate::util::{api, exitcode, node_rpc};
+use crate::util::{api, async_cmd, exitcode};
 use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -42,51 +42,54 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(opts.rt.clone(), rpc, (opts, self));
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(&self.name(), opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
     }
-}
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> miette::Result<()> {
-    run_impl(&ctx, (opts, cmd)).await
-}
+    pub fn name(&self) -> String {
+        "create secure channel listener".into()
+    }
 
-async fn run_impl(
-    ctx: &Context,
-    (opts, cmd): (CommandGlobalOpts, CreateCommand),
-) -> miette::Result<()> {
-    initialize_default_node(ctx, &opts).await?;
-    let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
-    let req = Request::post("/node/secure_channel_listener").body(
-        CreateSecureChannelListenerRequest::new(&cmd.address, cmd.authorized, cmd.identity),
-    );
-    let result = node.tell(ctx, req).await;
-    match result {
-        Ok(_) => {
-            let address = format!("/service/{}", cmd.address.address());
-            opts.terminal
-                .stdout()
-                .plain(
-                    fmt_ok!(
-                        "Secure Channel Listener at {} created successfully\n",
-                        address
-                            .to_string()
-                            .color(OckamColor::PrimaryResource.color())
-                    ) + &fmt_log!(
-                        "At node {}{}",
-                        "/node/".color(OckamColor::PrimaryResource.color()),
-                        node.node_name().color(OckamColor::PrimaryResource.color())
-                    ),
-                )
-                .machine(address.to_string())
-                .json(serde_json::json!([{ "address": address }]))
-                .write_line()?;
-            Ok(())
+    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let req = Request::post("/node/secure_channel_listener").body(
+            CreateSecureChannelListenerRequest::new(
+                &self.address,
+                self.authorized.clone(),
+                self.identity.clone(),
+            ),
+        );
+        let result = node.tell(ctx, req).await;
+        match result {
+            Ok(_) => {
+                let address = format!("/service/{}", self.address.address());
+                opts.terminal
+                    .stdout()
+                    .plain(
+                        fmt_ok!(
+                            "Secure Channel Listener at {} created successfully\n",
+                            address
+                                .to_string()
+                                .color(OckamColor::PrimaryResource.color())
+                        ) + &fmt_log!(
+                            "At node {}{}",
+                            "/node/".color(OckamColor::PrimaryResource.color()),
+                            node.node_name().color(OckamColor::PrimaryResource.color())
+                        ),
+                    )
+                    .machine(address.to_string())
+                    .json(serde_json::json!([{ "address": address }]))
+                    .write_line()?;
+                Ok(())
+            }
+            Err(e) => Err(miette!(
+                "An error occurred while creating the secure channel listener"
+            ))
+            .context(e),
         }
-        Err(e) => Err(miette!(
-            "An error occurred while creating the secure channel listener"
-        ))
-        .context(e),
     }
 }
 
