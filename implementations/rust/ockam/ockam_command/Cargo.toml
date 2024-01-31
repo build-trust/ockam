@@ -99,6 +99,7 @@ serde = { version = "1", features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 serde_json = "1"
 serde_yaml = "0.9"
+shellexpand = { version = "3.1.0", default-features = false, features = ["base-0"] }
 strip-ansi-escapes = "0.2.0"
 syntect = "5"
 thiserror = "1"

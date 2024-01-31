@@ -15,11 +15,11 @@ use std::path::PathBuf;
 #[command(hide = docs::hide())]
 pub struct RunCommand {
     /// Path to the recipe file
-    #[arg(long, conflicts_with = "inline")]
+    #[arg(conflicts_with = "inline", value_name = "PATH")]
     pub recipe: Option<PathBuf>,
 
     /// Inlined recipe contents
-    #[arg(long, conflicts_with = "recipe")]
+    #[arg(long, conflicts_with = "recipe", value_name = "CONTENTS")]
     pub inline: Option<String>,
 
     /// If true, block until all the created node exits it also
@@ -41,8 +41,8 @@ impl RunCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let config = match &self.inline {
-            Some(config) => config.to_string(),
+        let contents = match &self.inline {
+            Some(contents) => contents.to_string(),
             None => {
                 let path = match &self.recipe {
                     Some(path) => path.clone(),
@@ -72,6 +72,6 @@ impl RunCommand {
                 std::fs::read_to_string(path).into_diagnostic()?
             }
         };
-        ConfigRunner::run_config(ctx, opts, &config).await
+        ConfigRunner::run_config(ctx, opts, &contents).await
     }
 }
