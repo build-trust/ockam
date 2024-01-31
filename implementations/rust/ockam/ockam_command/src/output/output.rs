@@ -27,7 +27,7 @@ use ockam_vault::{
     ECDSASHA256CurveP256PublicKey, EdDSACurve25519PublicKey, VerifyingPublicKey, X25519PublicKey,
 };
 
-use crate::terminal::OckamColor;
+use crate::terminal::{color_primary, OckamColor};
 use crate::util::comma_separated;
 use crate::Result;
 
@@ -239,17 +239,11 @@ Outlet {}:
 
     fn list_output(&self) -> Result<String> {
         let output = format!(
-            r#"Outlet {}
-From {} to {}"#,
-            self.alias
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.worker_address()?
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.socket_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
+            r#"Outlet alias {}
+From address {} to TCP server {}"#,
+            color_primary(&self.alias),
+            color_primary(self.worker_address()?.to_string()),
+            color_primary(self.socket_addr.to_string()),
         );
 
         Ok(output)

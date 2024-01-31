@@ -1,0 +1,1 @@
+List all the TCP Outlets at a given node, and provide limited information about each Outlet. For detailed information about each Outlet, use `ockam tcp-outlet show`. If you don't specify a node using the `--at` option, the TCP Outlets on the default node will be listed.

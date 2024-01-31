@@ -1,5 +1,4 @@
 use clap::Args;
-use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -8,19 +7,22 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::node::NodeOpts;
-use crate::terminal::OckamColor;
 use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, fmt_info, CommandGlobalOpts};
+use crate::{node::NodeOpts, terminal::color_primary};
+use colorful::Colorful;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 
-/// List TCP Outlets on the default node
+/// List all the TCP Outlets at a given node with limited information
 #[derive(Clone, Debug, Args)]
 #[command(
-before_help = docs::before_help(PREVIEW_TAG),
-after_long_help = docs::after_help(AFTER_LONG_HELP))]
+    long_about = docs::about(LONG_ABOUT),
+    before_help = docs::before_help(PREVIEW_TAG),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct ListCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
@@ -50,7 +52,7 @@ impl ListCommand {
 
         let output_messages = vec![format!(
             "Listing TCP Outlets on node {}...\n",
-            node.node_name().color(OckamColor::PrimaryResource.color())
+            color_primary(node.node_name())
         )];
 
         let progress_output = opts
@@ -59,11 +61,21 @@ impl ListCommand {
 
         let (outlets, _) = try_join!(send_req, progress_output)?;
 
-        let list = opts.terminal.build_list(
-            &outlets.list,
-            &format!("Outlets on Node {}", node.node_name()),
-            &format!("No TCP Outlets found on node {}.", node.node_name()),
-        )?;
+        let list: String = {
+            let empty_message = fmt_info!(
+                "No TCP Outlets found on node {}",
+                color_primary(node.node_name())
+            );
+            match outlets.list.is_empty() {
+                true => empty_message,
+                false => opts.terminal.build_list(
+                    &outlets.list,
+                    &format!("TCP Outlets on node {}", color_primary(node.node_name())),
+                    &empty_message,
+                )?,
+            }
+        };
+
         let json: Vec<_> = outlets
             .list
             .iter()
@@ -76,6 +88,7 @@ impl ListCommand {
             })
             .flat_map(|res: Result<_, ockam_core::Error>| res.ok())
             .collect();
+
         opts.terminal
             .stdout()
             .plain(list)

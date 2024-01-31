@@ -18,7 +18,7 @@ use ockam_core::errcode::Kind;
 use r3bl_rs_utils_core::*;
 use r3bl_tuify::*;
 
-use crate::error::Error;
+use crate::{error::Error, fmt_info};
 use crate::{fmt_list, fmt_log, fmt_warn, GlobalArgs, OutputFormat, Result};
 
 pub mod colors;
@@ -361,13 +361,24 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
     ) -> Result<String> {
         let mut output = String::new();
 
+        // Early return, if the items are empty.
+        if items.is_empty() {
+            let empty_message = fmt_info!("{}", empty_message);
+            write!(output, "{}", empty_message)?;
+            return Ok(output);
+        }
+
         // Display header
-        let header_len = header.len();
+        let header_display_width = {
+            // Strip ANSI escape codes from header to correctly calculate its display width
+            let header_stripped = strip_ansi_escapes::strip(header);
+            header_stripped.len()
+        };
         let padding = 7;
         writeln!(
             output,
             "{}",
-            &fmt_log!("┌{}┐", "─".repeat(header_len + (padding * 2)))
+            &fmt_log!("┌{}┐", "─".repeat(header_display_width + (padding * 2)))
         )?;
         writeln!(
             output,
@@ -377,14 +388,8 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
         writeln!(
             output,
             "{}",
-            &fmt_log!("└{}┘\n", "─".repeat(header_len + (padding * 2)))
+            &fmt_log!("└{}┘\n", "─".repeat(header_display_width + (padding * 2)))
         )?;
-
-        // Display empty message if items is empty
-        if items.is_empty() {
-            writeln!(output, "{}", &fmt_warn!("{empty_message}"))?;
-            return Ok(output);
-        }
 
         // Display items with alternating colors
         for item in items {

@@ -13,7 +13,6 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 
-use crate::node::list;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::{api, async_cmd};
@@ -118,12 +117,6 @@ impl ShowCommandTui for ShowTui {
             BackgroundNodeClient::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
                 .await?;
         print_query_status(&self.opts, &self.ctx, &mut node, false).await?;
-        Ok(())
-    }
-
-    async fn show_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
-        let nodes = list::get_nodes_info(&self.opts, items_names).await?;
-        list::print_nodes_info(&self.opts, nodes)?;
         Ok(())
     }
 }

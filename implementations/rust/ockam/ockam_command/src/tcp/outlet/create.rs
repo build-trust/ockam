@@ -10,44 +10,59 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_abac::Resource;
-use ockam_api::address::extract_address_value;
 use ockam_api::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_ALIAS, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
 };
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::{address::extract_address_value, random_name};
 use ockam_core::api::Request;
 
-use crate::fmt_log;
 use crate::node::util::initialize_default_node;
-use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
-use crate::terminal::OckamColor;
 use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{
+    fmt_info,
+    policy::{add_default_project_policy, has_policy},
+};
+use crate::{fmt_log, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 
-/// Create a TCP Outlet
+/// Create a TCP Outlet that runs adjacent to a TCP server
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct CreateCommand {
-    /// Node on which to start the tcp outlet.
-    #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
-    pub at: Option<String>,
-
-    /// Address of the tcp outlet.
-    #[arg(long, display_order = 901, id = "OUTLET_ADDRESS", default_value_t = default_from_addr(), value_parser = extract_address_value)]
-    pub from: String,
-
-    /// TCP address to send raw tcp traffic.
-    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS", value_parser = socket_addr_parser)]
+    /// TCP address where your TCP server is running. Your Outlet will send raw TCP traffic to it
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", value_parser = socket_addr_parser)]
     pub to: SocketAddr,
 
-    /// Assign a name to this outlet.
-    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
-    pub alias: Option<String>,
+    /// Assign a name to your Outlet. This name must be unique. If you don't provide it, a
+    /// random name will be generated. This alias name is the resource name that you will
+    /// need if you declare an access control policy for this Outlet using `ockam policy
+    /// create`
+    #[arg(long, display_order = 901, id = "ALIAS", default_value_t = random_name(), value_parser = alias_parser)]
+    pub alias: String,
+
+    /// Address of your TCP Outlet, which is part of a route that is used in other
+    /// commands. This address must be unique. This address identifies the TCP Outlet
+    /// worker, on the node, on your local machine. Examples are `/service/my-outlet` or
+    /// `my-outlet`. If you don't provide it, `/service/outlet` will be used. You will
+    /// need this address when you create a TCP Inlet (using `ockam tcp-inlet create --to
+    /// <OUTLET_ADDRESS>`)
+    #[arg(long, display_order = 902, id = "OUTLET_ADDRESS", default_value = "/service/outlet", value_parser = extract_address_value)]
+    pub from: String,
+
+    /// Your TCP Outlet will be created on this node. If you don't provide it, the default
+    /// node will be used
+    #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
+    pub at: Option<String>,
 }
 
 impl CreateCommand {
@@ -63,13 +78,6 @@ impl CreateCommand {
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-        opts.terminal.write_line(&fmt_log!(
-            "Creating TCP Outlet to {}...\n",
-            &self
-                .to
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
 
         let node_name = opts.state.get_node_or_default(&self.at).await?.name();
         let project = opts.state.get_node_project(&node_name).await.ok();
@@ -82,26 +90,29 @@ impl CreateCommand {
 
         let send_req = async {
             let payload = CreateOutlet::new(self.to, self.from.clone().into(), self.alias, true);
-            let res = send_request(ctx, &opts, payload, node_name.clone()).await;
+            let node =
+                BackgroundNodeClient::create(ctx, &opts.state, &node_name.clone().into()).await?;
+            let req = Request::post("/node/outlet").body(payload);
+            let res: OutletStatus = node.ask(ctx, req).await?;
             *is_finished.lock().await = true;
-            res
+            Ok(res)
         }
         .with_current_context();
 
         let output_messages = vec![
             format!(
+                "Attempting to create TCP Outlet to {}...",
+                color_primary(self.to.to_string())
+            ),
+            format!(
                 "Creating outlet service on node {}...",
-                &node_name
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color()),
+                color_primary(&node_name)
             ),
             "Setting up TCP outlet worker...".to_string(),
-            format!(
-                "Hosting outlet service at {}...",
-                self.from.clone().color(OckamColor::PrimaryResource.color())
-            ),
+            format!("Hosting outlet service at {}...", color_primary(&self.from)),
         ];
 
+        // Display progress spinner.
         let progress_output = opts
             .terminal
             .progress_output(&output_messages, &is_finished);
@@ -119,41 +130,27 @@ impl CreateCommand {
         attributes.insert(NODE_NAME, node_name.as_str());
         opts.state
             .add_journey_event(JourneyEvent::TcpOutletCreated, attributes)
-            .await
-            .unwrap();
+            .await?;
 
         opts.terminal
             .stdout()
-            .plain(fmt_ok!(
-                "Created a new TCP Outlet on node {} from address {} to {}",
-                &node_name
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color()),
-                &self.from.color(OckamColor::PrimaryResource.color()),
-                &self
-                    .to
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ))
+            .plain(
+                fmt_ok!("Created a new TCP Outlet\n")
+                    + &fmt_log!("  Alias: {}\n", color_primary(outlet_status.alias.as_str()))
+                    + &fmt_log!("  Node: {}\n", color_primary(&node_name))
+                    + &fmt_log!("  Outlet Address: {}\n", color_primary(self.from))
+                    + &fmt_log!("  Socket Address: {}\n", color_primary(self.to.to_string()))
+                    + &fmt_info!(
+                        "You may want to take a look at the {}, {}, {} commands next",
+                        color_primary("ockam relay"),
+                        color_primary("ockam tcp-inlet"),
+                        color_primary("ockam policy")
+                    ),
+            )
             .machine(machine)
             .json(json)
             .write_line()?;
 
         Ok(())
     }
-}
-
-pub fn default_from_addr() -> String {
-    "/service/outlet".to_string()
-}
-
-pub async fn send_request(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    payload: CreateOutlet,
-    to_node: impl Into<Option<String>>,
-) -> crate::Result<OutletStatus> {
-    let node = BackgroundNodeClient::create(ctx, &opts.state, &to_node.into()).await?;
-    let req = Request::post("/node/outlet").body(payload);
-    Ok(node.ask(ctx, req).await?)
 }

@@ -1,1 +1,5 @@
-A TCP Outlet makes a TCP service available on a worker address (allows data to be transmitted to a listener on a TCP address). It is one end of a portal (tcp-inlet being the other), which receives Ockam Routing messages, unwraps them to extract TCP data and sends that data along to the target service.
+A TCP Inlet and TCP Outlet together form a portal, working hand in hand with Relays. A TCP Inlet defines where a node, running on another machine, listens for connections. The Inlet's route provides information on how to forward traffic to the Outlet (its address). Relays allow you to establish end-to-end protocols with services that operate in remote private networks.
+
+When you create a TCP Outlet, on an Ockam node, running on your local machine, it makes the TCP service available to the Inlet, from a worker address. You must specify the TCP address of the server, to which your Outlet should send raw TCP traffic. You can also name your Outlet by giving it an alias.
+
+A TCP Outlet runs adjacent to a TCP server. The Outlet unwraps Ockam messages and delivers the raw TCP messages to the TCP server. Conversely, it sends messages from the TCP server to the Inlet (refer to `ockam tcp-inlet` and `ockam relay`).

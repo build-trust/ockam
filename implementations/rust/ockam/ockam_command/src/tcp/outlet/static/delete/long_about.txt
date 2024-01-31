@@ -1,0 +1,1 @@
+Delete a TCP Outlet. This does not delete any TCP Inlets or Relays that you may have created, you can use `ockam tcp-inlet delete` and `ockam relay delete` to delete them.

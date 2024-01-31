@@ -89,10 +89,8 @@ impl LoggingTracing {
                 app_name,
             )
         };
-        info!(
-            "tracing initialized. {} {}",
-            logging_configuration, tracing_configuration
-        );
+        info!("tracing initialized");
+        debug!("{:#?} {:#?}", logging_configuration, tracing_configuration);
         result
     }
 

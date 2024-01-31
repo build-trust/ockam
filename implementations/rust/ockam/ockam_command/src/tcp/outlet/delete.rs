@@ -9,31 +9,38 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_core::AsyncTryClone;
 
-use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::async_cmd;
-use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
+use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
+use crate::{node::NodeOpts, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 
 /// Delete a TCP Outlet
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct DeleteCommand {
-    /// Delete the outlet with this alias
+    /// Delete the Outlet with this alias name. If you don't provide an alias, you will be
+    /// prompted to select from a list of available Outlets to delete
     #[arg(display_order = 900,  id = "ALIAS", value_parser = alias_parser)]
     alias: Option<String>,
 
-    /// Node on which to stop the tcp outlet. If none are provided, the default node will be used
+    /// Node on which to stop the TCP Outlet. If you don't provide it, the default node will be used
     #[command(flatten)]
     node_opts: NodeOpts,
 
-    /// Confirm the deletion without prompting
+    /// Run the delete command, without prompting for confirmation. This is useful for
+    /// scripts
     #[arg(display_order = 901, long, short)]
     yes: bool,
 
+    /// Delete all the TCP Outlets
     #[arg(long, short, group = "tcp-outlets")]
     all: bool,
 }
@@ -127,9 +134,9 @@ impl DeleteCommandTui for DeleteTui {
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "Outlet with alias {} on Node {} has been deleted",
-                color!(item_name, OckamColor::PrimaryResource),
-                color!(node_name, OckamColor::PrimaryResource)
+                "Outlet with alias {} on node {} has been deleted",
+                color_primary(item_name),
+                color_primary(&node_name)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "alias": item_name, "node": node_name }))
