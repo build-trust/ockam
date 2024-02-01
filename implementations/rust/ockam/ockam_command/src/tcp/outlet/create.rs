@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use clap::Args;
@@ -18,13 +17,13 @@ use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
-use crate::fmt_log;
 use crate::node::util::initialize_default_node;
 use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
+use crate::{default_attributes, fmt_log};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -110,7 +109,7 @@ impl CreateCommand {
         let machine = outlet_status.worker_address().into_diagnostic()?;
         let json = serde_json::to_string_pretty(&outlet_status).into_diagnostic()?;
 
-        let mut attributes = HashMap::default();
+        let mut attributes = default_attributes();
         let to = self.to.to_string();
         attributes.insert(TCP_OUTLET_AT, node_name.as_str());
         attributes.insert(TCP_OUTLET_FROM, self.from.as_str());

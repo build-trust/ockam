@@ -17,6 +17,7 @@
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
@@ -26,7 +27,7 @@ use colorful::Colorful;
 use console::Term;
 use miette::{miette, GraphicalReportHandler};
 use opentelemetry::trace::{TraceContextExt, Tracer};
-use opentelemetry::{global, Context};
+use opentelemetry::{global, Context, Key};
 use tokio::runtime::Runtime;
 use tracing::{error, instrument};
 
@@ -44,6 +45,9 @@ use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
+use ockam_api::journeys::{
+    APPLICATION_EVENT_OCKAM_GIT_HASH, APPLICATION_EVENT_OCKAM_HOME, APPLICATION_EVENT_OCKAM_VERSION,
+};
 use ockam_api::logs::{TracingGuard, OCKAM_TRACER_NAME};
 use ockam_core::env::get_env_with_default;
 use ockam_node::{Executor, OpenTelemetryContext};
@@ -478,8 +482,12 @@ fn send_error_message(command: &str, message: &str) {
             .span()
             .set_status(opentelemetry::trace::Status::error(message.clone()));
         error!("{}", &message);
+
         let _ = Executor::execute_future(async move {
-            state.unwrap().add_journey_error(&command, message).await
+            state
+                .unwrap()
+                .add_journey_error(&command, message, default_attributes())
+                .await
         });
     });
     guard.shutdown()
@@ -695,4 +703,12 @@ pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     } else {
         s
     }
+}
+
+pub fn default_attributes<'a>() -> HashMap<&'a Key, &'a str> {
+    let mut attributes = HashMap::new();
+    attributes.insert(APPLICATION_EVENT_OCKAM_HOME, env!("OCKAM_HOME"));
+    attributes.insert(APPLICATION_EVENT_OCKAM_VERSION, Version::crate_version());
+    attributes.insert(APPLICATION_EVENT_OCKAM_GIT_HASH, Version::git_hash());
+    attributes
 }

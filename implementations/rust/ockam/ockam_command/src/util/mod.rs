@@ -19,7 +19,7 @@ use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::error::Error;
-use crate::{CommandGlobalOpts, Result};
+use crate::{default_attributes, CommandGlobalOpts, Result};
 
 pub mod api;
 pub mod duration;
@@ -56,8 +56,9 @@ where
         async move {
             let res = f(ctx).await;
             if let Err(e) = &res {
+                let attributes = default_attributes();
                 opts.state
-                    .add_journey_error(&command_name, e.to_string())
+                    .add_journey_error(&command_name, e.to_string(), attributes)
                     .await
                     .unwrap_or_else(|e1| {
                         error!("Failed to trace an execution error: {e1:?}");

@@ -2,7 +2,6 @@ use colorful::Colorful;
 use miette::miette;
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
-use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{debug, info, instrument};
@@ -16,8 +15,8 @@ use crate::node::show::is_node_up;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
 use crate::terminal::OckamColor;
-use crate::CommandGlobalOpts;
 use crate::{color, fmt_log, fmt_ok};
+use crate::{default_attributes, CommandGlobalOpts};
 
 impl CreateCommand {
     // Create a new node running in the background (i.e. another, new OS process)
@@ -80,7 +79,7 @@ impl CreateCommand {
 
         let (_response, _) = try_join!(send_req, progress_output)?;
 
-        let mut attributes = HashMap::default();
+        let mut attributes = default_attributes();
         attributes.insert(NODE_NAME, node_name.as_str());
         opts.state
             .add_journey_event(JourneyEvent::NodeCreated, attributes)

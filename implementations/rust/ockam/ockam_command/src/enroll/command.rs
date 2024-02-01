@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -22,12 +21,12 @@ use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::fmt_heading;
 use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
 use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
+use crate::{default_attributes, fmt_heading};
 use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
 use crate::{fmt_warn, node::util::initialize_default_node};
 
@@ -127,7 +126,7 @@ impl EnrollCommand {
             warn!("{e}");
         }
 
-        let mut attributes = HashMap::default();
+        let mut attributes = default_attributes();
         let user_email = user_info.email.to_string();
         attributes.insert(USER_NAME, user_info.name.as_str());
         attributes.insert(USER_EMAIL, user_email.as_str());
