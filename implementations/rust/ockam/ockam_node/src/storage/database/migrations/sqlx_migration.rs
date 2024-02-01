@@ -1,5 +1,5 @@
 use crate::database::migration_20240111100001_add_authority_tables::AuthorityAttributes;
-use crate::database::migration_20240202100000_migrate_policies::PoliciesByNode;
+use crate::database::migration_20240111100002_delete_trust_context::PolicyTrustContextId;
 use crate::database::migrations::migration_20231231100000_node_name_identity_attributes::NodeNameIdentityAttributes;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Result};
@@ -36,7 +36,8 @@ impl NodesMigration {
     pub(crate) async fn migrate_data(&self, pool: &SqlitePool) -> Result<()> {
         NodeNameIdentityAttributes::migrate_attributes_node_name(pool).await?;
         AuthorityAttributes::migrate_authority_attributes_to_members(pool).await?;
-        PoliciesByNode::migrate_policies(pool).await?;
+        PolicyTrustContextId::migrate_update_policies(pool).await?;
+
         Ok(())
     }
 }

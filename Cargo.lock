@@ -4517,6 +4517,7 @@ dependencies = [
  "ockam_transport_core",
  "once_cell",
  "opentelemetry",
+ "regex",
  "serde",
  "serde_bare",
  "serde_json",
