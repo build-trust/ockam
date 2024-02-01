@@ -288,6 +288,8 @@ EOF
   consumer_pid="$!"
   echo "$consumer_pid" >"$ADMIN_HOME/kafka.pid"
 
+  sleep 5
+
   # Producer 1
   run_success "$OCKAM" identity create producer1
   run_success "$OCKAM" project enroll "${ADMIN_HOME}/producer1.ticket" --identity producer1
@@ -297,6 +299,8 @@ EOF
   run bash -c "echo 'Hello from producer 1' | kafka-console-producer.sh --topic $DEMO_TOPIC \
     --bootstrap-server localhost:6000 \
     --producer.config $KAFKA_CONFIG"
+
+  sleep 2
 
   run_success cat $CONSUMER_OUTPUT
   assert_output "Hello from producer 1"
@@ -313,6 +317,8 @@ EOF
   run_success bash -c "echo 'Hello from producer 2' | kafka-console-producer.sh --topic $DEMO_TOPIC \
     --bootstrap-server localhost:7000 \
     --producer.config $KAFKA_CONFIG"
+
+  sleep 2
 
   run_success cat $CONSUMER_OUTPUT
   assert_output --partial "Hello from producer 2"
