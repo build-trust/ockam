@@ -8,7 +8,7 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{info, warn};
+use tracing::{info, instrument, warn};
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
@@ -191,6 +191,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
         .expect("Error setting Ctrl-C handler");
 }
 
+#[instrument(skip_all)]
 async fn retrieve_user_space_and_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,

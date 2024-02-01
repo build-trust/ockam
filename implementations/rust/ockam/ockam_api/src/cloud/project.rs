@@ -505,6 +505,7 @@ impl ControllerClient {
 
 #[async_trait]
 impl Operations for InMemoryNode {
+    #[instrument(skip_all, fields(operation_id = operation_id))]
     async fn get_operation(
         &self,
         ctx: &Context,
@@ -516,6 +517,7 @@ impl Operations for InMemoryNode {
             .await
     }
 
+    #[instrument(skip_all, fields(operation_id = operation_id))]
     async fn wait_until_operation_is_complete(
         &self,
         ctx: &Context,

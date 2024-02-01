@@ -6,7 +6,7 @@ use crate::nodes::InMemoryNode;
 
 #[async_trait]
 impl Projects for InMemoryNode {
-    #[instrument(skip_all, fields(project_name, space_name))]
+    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
     async fn create_project(
         &self,
         ctx: &Context,
@@ -23,7 +23,7 @@ impl Projects for InMemoryNode {
         Ok(project)
     }
 
-    #[instrument(skip_all, fields(project_id))]
+    #[instrument(skip_all, fields(project_id = project_id))]
     async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
         let controller = self.create_controller().await?;
 
@@ -35,7 +35,7 @@ impl Projects for InMemoryNode {
         Ok(self.cli_state.get_project(project_id).await?)
     }
 
-    #[instrument(skip_all, fields(project_name))]
+    #[instrument(skip_all, fields(project_name = project_name))]
     async fn get_project_by_name_or_default(
         &self,
         ctx: &Context,
@@ -49,7 +49,7 @@ impl Projects for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
-    #[instrument(skip_all, fields(project_name))]
+    #[instrument(skip_all, fields(project_name = project_name))]
     async fn get_project_by_name(
         &self,
         ctx: &Context,
@@ -59,7 +59,7 @@ impl Projects for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
-    #[instrument(skip_all, fields(project_id, space_id))]
+    #[instrument(skip_all, fields(project_id = project_id, space_id = space_id))]
     async fn delete_project(
         &self,
         ctx: &Context,
@@ -72,7 +72,7 @@ impl Projects for InMemoryNode {
         Ok(self.cli_state.delete_project(project_id).await?)
     }
 
-    #[instrument(skip_all, fields(project_name, space_name))]
+    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
     async fn delete_project_by_name(
         &self,
         ctx: &Context,

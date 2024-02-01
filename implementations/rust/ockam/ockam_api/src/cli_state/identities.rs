@@ -25,6 +25,7 @@ use crate::cli_state::{random_name, CliState, Result};
 impl CliState {
     /// Create an identity associated with a name and a specific vault name
     /// If there is already an identity with that name, return its identifier
+    #[instrument(skip_all)]
     pub async fn create_identity_with_name_and_vault(
         &self,
         name: &str,
@@ -44,6 +45,7 @@ impl CliState {
 
     /// Create an identity associated with a name, using the default vault
     /// If there is already an identity with that name, return its identifier
+    #[instrument(skip_all)]
     pub async fn create_identity_with_name(&self, name: &str) -> Result<NamedIdentity> {
         let vault = self.get_or_create_default_named_vault().await?;
         self.create_identity_with_name_and_vault(name, &vault.name())
@@ -53,6 +55,7 @@ impl CliState {
     /// Create an identity with specific key id.
     /// This method is used when the vault is a KMS vault and we just need to store a key id
     /// for the identity key existing in the KMS
+    #[instrument(skip_all)]
     pub async fn create_identity_with_key_id(
         &self,
         name: &str,
