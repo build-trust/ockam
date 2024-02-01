@@ -4469,6 +4469,7 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
+ "tracing-attributes",
  "zeroize",
 ]
 

@@ -69,6 +69,7 @@ const API_SERVICE: &str = "projects";
 
 #[async_trait]
 impl Operations for ControllerClient {
+    #[instrument(skip_all, fields(operation_id = operation_id))]
     async fn get_operation(
         &self,
         ctx: &Context,
@@ -84,6 +85,7 @@ impl Operations for ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(operation_id = operation_id))]
     async fn wait_until_operation_is_complete(
         &self,
         ctx: &Context,

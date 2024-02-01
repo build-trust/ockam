@@ -80,8 +80,8 @@ impl CreateCommand {
 
         let (_response, _) = try_join!(send_req, progress_output)?;
 
-        let mut attributes = HashMap::default();
-        attributes.insert(NODE_NAME, node_name.as_str());
+        let mut attributes = HashMap::new();
+        attributes.insert(NODE_NAME, node_name.clone());
         opts.state
             .add_journey_event(JourneyEvent::NodeCreated, attributes)
             .await?;

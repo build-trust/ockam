@@ -1,10 +1,13 @@
+use crate::cloud::project::Project;
+use crate::journeys::attributes::{default_attributes, make_host_trace_id};
 use crate::journeys::JourneyEvent;
 use crate::logs::{CurrentSpan, OCKAM_TRACER_NAME};
 use crate::{CliState, ProjectJourney};
 use crate::{HostJourney, Result};
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 use ockam_node::OpenTelemetryContext;
-use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, TraceId, Tracer};
+use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
 use opentelemetry::{global, Context, Key};
 use opentelemetry_sdk::trace::{IdGenerator, RandomIdGenerator};
 use std::collections::HashMap;
@@ -16,11 +19,30 @@ pub const USER_EMAIL: &Key = &Key::from_static_str("app.user_email");
 pub const APP_NAME: &Key = &Key::from_static_str("app.name");
 pub const NODE_NAME: &Key = &Key::from_static_str("app.node_name");
 
+pub const APPLICATION_EVENT_SPACE_ID: &Key = &Key::from_static_str("app.event.space.id");
+pub const APPLICATION_EVENT_SPACE_NAME: &Key = &Key::from_static_str("app.event.space.name");
+pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project.id");
+pub const APPLICATION_EVENT_PROJECT_NAME: &Key = &Key::from_static_str("app.event.project.name");
+pub const APPLICATION_EVENT_PROJECT_USER_ROLES: &Key =
+    &Key::from_static_str("app.event.project.user_roles");
+pub const APPLICATION_EVENT_PROJECT_ACCESS_ROUTE: &Key =
+    &Key::from_static_str("app.event.project.access_route");
+pub const APPLICATION_EVENT_PROJECT_IDENTITY: &Key =
+    &Key::from_static_str("app.event.project.identity");
+pub const APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE: &Key =
+    &Key::from_static_str("app.event.project.authority_access_route");
+pub const APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY: &Key =
+    &Key::from_static_str("app.event.project.authority_identity");
+
 pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.trace_id");
 pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.span_id");
 pub const APPLICATION_EVENT_TIMESTAMP: &Key = &Key::from_static_str("app.event.timestamp");
-pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project_id");
 pub const APPLICATION_EVENT_ERROR_MESSAGE: &Key = &Key::from_static_str("app.event.error_message");
+pub const APPLICATION_EVENT_COMMAND: &Key = &Key::from_static_str("app.event.command");
+pub const APPLICATION_EVENT_OCKAM_HOME: &Key = &Key::from_static_str("app.event.ockam_home");
+pub const APPLICATION_EVENT_OCKAM_VERSION: &Key = &Key::from_static_str("app.event.ockam_version");
+pub const APPLICATION_EVENT_OCKAM_GIT_HASH: &Key =
+    &Key::from_static_str("app.event.ockam_git_hash");
 
 /// Journey events have a fixed duration
 pub const EVENT_DURATION: Duration = Duration::from_secs(100);
@@ -42,29 +64,37 @@ pub const EVENT_DURATION: Duration = Duration::from_secs(100);
 ///
 ///
 impl CliState {
-    pub async fn add_journey_error(&self, command_name: &str, message: String) -> Result<()> {
-        self.add_a_journey_event(
-            JourneyEvent::Error {
-                command_name: command_name.to_string(),
-                message,
-            },
-            HashMap::default(),
-        )
-        .await
-    }
-
+    /// This method adds a successful event to the project/host journeys
     pub async fn add_journey_event(
         &self,
         event: JourneyEvent,
-        attributes: HashMap<&Key, &str>,
+        attributes: HashMap<&Key, String>,
     ) -> Result<()> {
         self.add_a_journey_event(event, attributes).await
     }
 
+    /// This method adds an error event to the project/host journeys
+    pub async fn add_journey_error(
+        &self,
+        command_name: &str,
+        message: String,
+        attributes: HashMap<&Key, String>,
+    ) -> Result<()> {
+        self.add_a_journey_event(
+            JourneyEvent::error(command_name.to_string(), message),
+            attributes,
+        )
+        .await
+    }
+
+    /// Add a journey event
+    ///  - the event is represented as a span of fixed duration
+    ///  - it contains a link to the current execution trace
+    ///  - it is enriched with many attributes when available: project id, OCKAM_HOME, ockam version, etc...
     async fn add_a_journey_event(
         &self,
         event: JourneyEvent,
-        attributes: HashMap<&Key, &str>,
+        attributes: HashMap<&Key, String>,
     ) -> Result<()> {
         if !self.is_tracing_enabled() {
             return Ok(());
@@ -73,9 +103,7 @@ impl CliState {
         // get the journey context
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let event_span_context = Context::current().span().span_context().clone();
-        let event_trace_id = event_span_context.trace_id();
-        let event_span_id = event_span_context.span_id();
-        let project_id = self.get_default_project().await.ok().map(|p| p.id);
+        let project = self.get_default_project().await.ok();
 
         // for both the host and the project journey create a span with a fixed duration
         // and add attributes to the span
@@ -91,29 +119,80 @@ impl CliState {
             let span = tracer.build_with_context(span_builder, &journey.extract_context());
             let cx = Context::current_with_span(span);
             let _guard = cx.attach();
-
-            for (name, value) in attributes.iter() {
-                CurrentSpan::set_attribute(name, value)
-            }
-            if let JourneyEvent::Error { message, .. } = &event {
-                CurrentSpan::set_attribute(&Key::from_static_str("error"), "true");
-                CurrentSpan::set_attribute(APPLICATION_EVENT_ERROR_MESSAGE, message);
-            };
-
-            CurrentSpan::set_attribute(
-                APPLICATION_EVENT_TRACE_ID,
-                event_trace_id.to_string().as_ref(),
-            );
-            CurrentSpan::set_attribute(
-                APPLICATION_EVENT_SPAN_ID,
-                event_span_id.to_string().as_ref(),
-            );
-            CurrentSpan::set_attribute_time(APPLICATION_EVENT_TIMESTAMP);
-            if let Some(project_id) = project_id.as_ref() {
-                CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_ID, project_id);
-            }
+            self.set_current_span_attributes(&event, &attributes, &project)
         }
         Ok(())
+    }
+
+    /// Add both attributes to the current span
+    ///  - caller attributes
+    ///  - project attributes
+    ///  - build attributes
+    ///  - environment attributes
+    fn set_current_span_attributes(
+        &self,
+        event: &JourneyEvent,
+        attributes: &HashMap<&Key, String>,
+        project: &Option<Project>,
+    ) {
+        let mut attributes = attributes.clone();
+        attributes.extend(default_attributes());
+
+        let event_span_context = Context::current().span().span_context().clone();
+        let event_trace_id = event_span_context.trace_id();
+        let event_span_id = event_span_context.span_id();
+
+        for (name, value) in attributes.iter() {
+            CurrentSpan::set_attribute(name, value)
+        }
+        if let JourneyEvent::Error { message, .. } = &event {
+            CurrentSpan::set_attribute(&Key::from_static_str("error"), "true");
+            CurrentSpan::set_attribute(APPLICATION_EVENT_ERROR_MESSAGE, message);
+        };
+
+        CurrentSpan::set_attribute(
+            APPLICATION_EVENT_TRACE_ID,
+            event_trace_id.to_string().as_ref(),
+        );
+        CurrentSpan::set_attribute(
+            APPLICATION_EVENT_SPAN_ID,
+            event_span_id.to_string().as_ref(),
+        );
+        CurrentSpan::set_attribute_time(APPLICATION_EVENT_TIMESTAMP);
+        if let Some(project) = project.as_ref() {
+            CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_ID, &project.space_id);
+            CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_NAME, &project.space_name);
+            CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_NAME, &project.name);
+            CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_ID, &project.id);
+            CurrentSpan::set_attribute(
+                APPLICATION_EVENT_PROJECT_USER_ROLES,
+                &project
+                    .user_roles
+                    .iter()
+                    .map(|u| u.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
+            CurrentSpan::set_attribute(
+                APPLICATION_EVENT_PROJECT_ACCESS_ROUTE,
+                &project.access_route,
+            );
+            if let Some(identity) = project.identity.as_ref() {
+                CurrentSpan::set_attribute(
+                    APPLICATION_EVENT_PROJECT_IDENTITY,
+                    &identity.to_string(),
+                );
+            }
+            if let Some(route) = project.authority_access_route.as_ref() {
+                CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE, route);
+            }
+            if let Some(identity) = project.authority_identity.as_ref() {
+                CurrentSpan::set_attribute(
+                    APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY,
+                    &identity.to_string(),
+                );
+            }
+        }
     }
 
     /// Return a list of journeys for which we want to add spans
@@ -143,6 +222,7 @@ impl CliState {
         Ok(result)
     }
 
+    /// When a project is deleted the project journey needs to be restarted
     pub async fn reset_project_journey(&self, project_id: &str) -> Result<()> {
         let repository = self.user_journey_repository();
         Ok(repository.delete_project_journey(project_id).await?)
@@ -150,20 +230,27 @@ impl CliState {
 
     /// Create the initial host journey, with a random trace id
     fn create_host_journey(&self) -> HostJourney {
+        let random_id_generator = RandomIdGenerator::default();
         let (opentelemetry_context, now) = self.create_journey(
             "start host journey",
-            RandomIdGenerator::default().new_trace_id(),
+            make_host_trace_id(),
+            random_id_generator.new_span_id(),
         );
         HostJourney::new(opentelemetry_context, now)
     }
 
     /// Create the initial project journey, with a trace id based on the project id
     fn create_project_journey(&self, project_id: &str) -> ProjectJourney {
+        // take the first part of the project id, until '-' as the span id
+        let split = project_id.split('-').collect::<Vec<_>>();
+        let project_id_span_id = split.iter().take(2).join("");
+        let span_id = SpanId::from_hex(&project_id_span_id).unwrap();
+
+        // take the whole project without '-' as the trace id
         let project_id_trace_id = project_id.replace('-', "");
-        let (opentelemetry_context, now) = self.create_journey(
-            "start project journey",
-            TraceId::from_hex(&project_id_trace_id).unwrap(),
-        );
+        let trace_id = TraceId::from_hex(&project_id_trace_id).unwrap();
+        let (opentelemetry_context, now) =
+            self.create_journey("start project journey", trace_id, span_id);
         ProjectJourney::new(project_id, opentelemetry_context, now)
     }
 
@@ -176,6 +263,7 @@ impl CliState {
         &self,
         msg: &str,
         trace_id: TraceId,
+        span_id: SpanId,
     ) -> (OpenTelemetryContext, DateTime<Utc>) {
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let (span, now) = Context::map_current(|cx| {
@@ -185,7 +273,7 @@ impl CliState {
                 .add(Duration::from_millis(100));
             let mut span_builder = SpanBuilder::from_name(msg.to_string());
             span_builder.trace_id = Some(trace_id);
-            span_builder.span_id = Some(RandomIdGenerator::default().new_span_id());
+            span_builder.span_id = Some(span_id);
             span_builder.start_time = Some(SystemTime::from(now));
             span_builder.end_time = Some(SystemTime::from(now).add(Duration::from_millis(1)));
             (

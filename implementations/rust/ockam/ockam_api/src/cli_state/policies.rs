@@ -4,6 +4,7 @@ use ockam::identity::Identifier;
 use ockam_abac::{Action, Env, Policy, PolicyAccessControl, Resource};
 
 impl CliState {
+    #[instrument(skip_all, fields(resource = %resource, action = %action))]
     pub async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Policy>> {
         Ok(self
             .policies_repository()
@@ -11,6 +12,7 @@ impl CliState {
             .await?)
     }
 
+    #[instrument(skip_all, fields(resource = %resource, action = %action, policy = %policy))]
     pub async fn set_policy(
         &self,
         resource: &Resource,
@@ -23,6 +25,7 @@ impl CliState {
             .await?)
     }
 
+    #[instrument(skip_all, fields(resource = %resource, action = %action))]
     pub async fn delete_policy(&self, resource: &Resource, action: &Action) -> Result<()> {
         Ok(self
             .policies_repository()
@@ -30,6 +33,7 @@ impl CliState {
             .await?)
     }
 
+    #[instrument(skip_all, fields(resource = %resource))]
     pub async fn get_policies_by_resource(
         &self,
         resource: &Resource,
@@ -40,6 +44,7 @@ impl CliState {
             .await?)
     }
 
+    #[instrument(skip_all, fields(resource = %resource, action = %action, env = %env, authority = %authority))]
     pub async fn make_policy_access_control(
         &self,
         resource: &Resource,

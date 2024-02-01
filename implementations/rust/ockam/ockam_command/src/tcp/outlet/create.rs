@@ -121,13 +121,12 @@ impl CreateCommand {
         let machine = outlet_status.worker_address().into_diagnostic()?;
         let json = serde_json::to_string_pretty(&outlet_status).into_diagnostic()?;
 
-        let mut attributes = HashMap::default();
-        let to = self.to.to_string();
-        attributes.insert(TCP_OUTLET_AT, node_name.as_str());
-        attributes.insert(TCP_OUTLET_FROM, self.from.as_str());
-        attributes.insert(TCP_OUTLET_TO, to.as_str());
-        attributes.insert(TCP_OUTLET_ALIAS, outlet_status.alias.as_str());
-        attributes.insert(NODE_NAME, node_name.as_str());
+        let mut attributes = HashMap::new();
+        attributes.insert(TCP_OUTLET_AT, node_name.clone());
+        attributes.insert(TCP_OUTLET_FROM, self.from.clone());
+        attributes.insert(TCP_OUTLET_TO, self.to.to_string());
+        attributes.insert(TCP_OUTLET_ALIAS, outlet_status.alias.clone());
+        attributes.insert(NODE_NAME, node_name.clone());
         opts.state
             .add_journey_event(JourneyEvent::TcpOutletCreated, attributes)
             .await?;

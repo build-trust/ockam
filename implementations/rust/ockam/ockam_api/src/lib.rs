@@ -34,6 +34,7 @@ pub mod nodes;
 pub mod okta;
 pub mod port_range;
 pub mod uppercase;
+mod version;
 
 pub mod authority_node;
 mod influxdb_token_lease;
@@ -48,3 +49,4 @@ pub use influxdb_token_lease::*;
 pub use nodes::service::default_address::*;
 pub use session::sessions::ConnectionStatus;
 pub use util::*;
+pub use version::*;

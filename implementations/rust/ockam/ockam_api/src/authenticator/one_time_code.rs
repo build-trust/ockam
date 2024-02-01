@@ -1,3 +1,4 @@
+use crate::cloud::enroll::auth0::OidcToken;
 use core::str::FromStr;
 use minicbor::bytes::ByteArray;
 use minicbor::{Decode, Encode};
@@ -9,6 +10,7 @@ use ockam_core::Error;
 use ockam_core::Result;
 use ockam_node::database::{SqlxType, ToSqlxType};
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
@@ -18,6 +20,12 @@ use serde::{Deserialize, Serialize};
 #[cbor(map)]
 pub struct OneTimeCode {
     #[n(1)] code: ByteArray<32>,
+}
+
+impl Display for OidcToken {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.access_token.0)
+    }
 }
 
 impl OneTimeCode {

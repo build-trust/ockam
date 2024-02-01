@@ -32,6 +32,7 @@ impl EnrollmentTokenIssuer {
         Self { tokens, members }
     }
 
+    #[instrument(skip_all, fields(enroller = %enroller, token_duration = token_duration.map_or("n/a".to_string(), |d| d.as_secs().to_string()), ttl_count = ttl_count.map_or("n/a".to_string(), |t| t.to_string())))]
     pub async fn issue_token(
         &self,
         enroller: &Identifier,

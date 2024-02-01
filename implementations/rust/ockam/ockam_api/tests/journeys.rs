@@ -1,5 +1,7 @@
 use chrono::Utc;
-use ockam_api::journeys::{JourneyEvent, EVENT_DURATION, USER_EMAIL, USER_NAME};
+use ockam_api::journeys::{
+    JourneyEvent, APPLICATION_EVENT_TIMESTAMP, EVENT_DURATION, USER_EMAIL, USER_NAME,
+};
 use ockam_api::logs::{LoggingConfiguration, LoggingTracing};
 use ockam_api::{random_name, CliState};
 use ockam_node::Executor;
@@ -41,42 +43,53 @@ fn test_create_journey_event() {
                     .set_tracing_enabled();
 
                 let mut map = HashMap::new();
-                map.insert(USER_EMAIL, "etorreborre@yahoo.com");
-                map.insert(USER_NAME, "eric");
+                map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
+                map.insert(USER_NAME, "eric".to_string());
                 cli.add_journey_event(JourneyEvent::Enrolled, map.clone())
                     .await
                     .unwrap();
                 cli.add_journey_event(JourneyEvent::PortalCreated, map)
                     .await
                     .unwrap();
-                cli.add_journey_error("command", "sorry".to_string())
+                cli.add_journey_error("command", "sorry".to_string(), HashMap::default())
                     .await
                     .unwrap();
             }
             .with_current_context(),
         )
     });
-    assert!(result.is_ok());
+    if let Err(e) = result {
+        panic!("{e:?}");
+    }
 
     tracing_guard.force_flush();
     let mut spans = spans_exporter.get_finished_spans().unwrap();
     spans.sort_by_key(|s| s.start_time);
-    assert_eq!(spans.len(), 5);
+    assert_eq!(spans.len(), 11);
 
     let span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
     assert_eq!(
         span_names,
         vec![
             "user event",
-            "enrolled",
-            "portal created",
-            "command error",
-            "start host journey",
+            "get_default_project",
+            "✅ enrolled",
+            "get_default_project",
+            "get_default_project",
+            "✅ portal created",
+            "get_default_project",
+            "get_default_project",
+            "❌ command error",
+            "get_default_project",
+            "start host journey"
         ]
     );
-    // remove the first and last spans, which are starting traces
-    spans.remove(0);
-    spans.remove(3);
+    // collect only the user events spans
+    spans.retain(|s| {
+        s.attributes
+            .iter()
+            .any(|kv| &kv.key == APPLICATION_EVENT_TIMESTAMP)
+    });
 
     // all user events have a fixed duration
     for span in spans {

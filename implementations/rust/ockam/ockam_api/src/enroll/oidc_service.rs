@@ -50,6 +50,7 @@ impl OidcService {
 
     /// Request an authorization token with a PKCE flow
     /// See the full protocol here: https://datatracker.ietf.org/doc/html/rfc7636
+    #[instrument(skip_all)]
     pub async fn get_token_with_pkce(&self) -> Result<OidcToken> {
         let code_verifier = self.create_code_verifier();
         let authorization_code = self.authorization_code(&code_verifier).await?;
