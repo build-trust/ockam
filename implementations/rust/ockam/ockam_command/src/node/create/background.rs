@@ -10,7 +10,7 @@ use tracing::{debug, info, instrument};
 use ockam::Context;
 use ockam_api::journeys::{JourneyEvent, NODE_NAME};
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_node::OpenTelemetryContext;
+use ockam_core::OpenTelemetryContext;
 
 use crate::node::show::is_node_up;
 use crate::node::util::spawn_node;

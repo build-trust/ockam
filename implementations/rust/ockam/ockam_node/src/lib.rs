@@ -69,12 +69,6 @@ mod worker_builder;
 #[cfg(feature = "std")]
 pub mod runtime;
 
-/// Support for propagating OpenTelemetry trace contexts
-#[cfg(feature = "std")]
-pub mod opentelemetry;
-#[cfg(feature = "std")]
-pub use opentelemetry::*;
-
 pub use context::*;
 pub use delayed::*;
 pub use error::*;

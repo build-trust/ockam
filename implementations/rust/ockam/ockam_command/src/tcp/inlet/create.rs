@@ -112,7 +112,7 @@ impl CreateCommand {
         ))?;
 
         let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
-        cmd.timeout.map(|t| node.set_timeout(t));
+        cmd.timeout.map(|t| node.set_timeout_mut(t));
 
         let is_finished: Mutex<bool> = Mutex::new(false);
         let progress_bar = opts.terminal.progress_spinner();

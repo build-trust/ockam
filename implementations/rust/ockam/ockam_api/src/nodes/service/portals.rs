@@ -785,3 +785,36 @@ impl Inlets for BackgroundNodeClient {
         self.tell_and_get_reply(ctx, request).await
     }
 }
+
+#[async_trait]
+pub trait Outlets {
+    async fn create_outlet(
+        &self,
+        ctx: &Context,
+        to: &SocketAddr,
+        from: &Address,
+        alias: String,
+        policy_expression: Option<Expr>,
+    ) -> miette::Result<OutletStatus>;
+}
+
+#[async_trait]
+impl Outlets for BackgroundNodeClient {
+    #[instrument(skip_all, fields(to = %to, from = from.to_string(), alias = alias))]
+    async fn create_outlet(
+        &self,
+        ctx: &Context,
+        to: &SocketAddr,
+        from: &Address,
+        alias: String,
+        policy_expression: Option<Expr>,
+    ) -> miette::Result<OutletStatus> {
+        let mut payload = CreateOutlet::new(*to, from.clone(), alias, true);
+        if let Some(policy_expression) = policy_expression {
+            payload.set_policy_expression(policy_expression);
+        }
+        let req = Request::post("/node/outlet").body(payload);
+        let result: OutletStatus = self.ask(ctx, req).await?;
+        Ok(result)
+    }
+}

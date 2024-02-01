@@ -127,5 +127,21 @@ defmodule Ockam.Wire.Binary.V1.Tests do
       assert [] = return_route
       assert "" = payload
     end
+
+    test "encode/1 and decode/1 with tracing context" do
+      context = "{\"traceparent\":\"00-1234-01\",\"tracestate\":{}}"
+
+      {:ok, encoded} =
+        V1.encode(%Ockam.Message{
+          onward_route: ["printer"],
+          return_route: [],
+          payload: "hello",
+          local_metadata: %{tracing_context: context}
+        })
+
+      {:ok, decoded} = V1.decode(encoded)
+
+      assert decoded.local_metadata.tracing_context == context
+    end
   end
 end

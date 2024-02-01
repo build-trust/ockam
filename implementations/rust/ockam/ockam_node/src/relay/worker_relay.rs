@@ -2,7 +2,10 @@ use crate::channel_types::SmallReceiver;
 use crate::relay::CtrlSignal;
 use crate::tokio::runtime::Handle;
 use crate::{parser, Context};
+use cfg_if::cfg_if;
 use ockam_core::{Message, RelayMessage, Result, Routed, Worker};
+#[cfg(feature = "std")]
+use opentelemetry::trace::FutureExt;
 
 /// Worker relay machinery
 ///
@@ -70,8 +73,28 @@ where
         };
 
         // Call the worker handle function - pass errors up
-        let routed = Self::wrap_direct_message(relay_msg)?;
-        self.worker.handle_message(&mut self.ctx, routed).await?;
+        cfg_if! {
+            if #[cfg(feature = "std")] {
+                let tracing_context = relay_msg.local_message().tracing_context();
+                // We set the tracing context retrieved from the local message on the worker context
+                // This way, if the worker invokes ctx.send_message() to send a message to another worker,
+                // that same tracing context will be passed along when a LocalMessage will be created
+                // (see send_from_address_impl)
+                self.ctx.set_tracing_context(tracing_context.clone());
+
+                self.worker
+                    .handle_message(&mut self.ctx, Self::wrap_direct_message(relay_msg)?)
+                    // make sure we are using the latest tracing context to handle the message
+                    // the handle_message future
+                    .with_context(tracing_context.update().extract())
+                    .await?;
+            } else {
+                let routed = Self::wrap_direct_message(relay_msg)?;
+                self.worker
+                    .handle_message(&mut self.ctx, routed)
+                    .await?;
+                }
+        }
 
         // Signal to the outer loop that we would like to run again
         Ok(true)

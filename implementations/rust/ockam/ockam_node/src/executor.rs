@@ -121,6 +121,51 @@ impl Executor {
         Ok(res)
     }
 
+    /// Initialise and run the Ockam node executor context
+    ///
+    /// In this background this launches async execution of the Ockam
+    /// router, while blocking execution on the provided future.
+    ///
+    /// Any errors encountered by the router or provided application
+    /// code will be returned from this function.
+    ///
+    /// Don't abort the router in case of a failure
+    #[cfg(feature = "std")]
+    pub fn execute_no_abort<F, T>(&mut self, future: F) -> Result<F::Output>
+    where
+        F: Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        // Spawn the metrics collector first
+        #[cfg(feature = "metrics")]
+        let alive = Arc::new(AtomicBool::from(true));
+        #[cfg(feature = "metrics")]
+        self.rt.spawn(
+            self.metrics
+                .clone()
+                .run(alive.clone())
+                .with_current_context(),
+        );
+
+        // Spawn user code second
+        let join_body = self.rt.spawn(future.with_current_context());
+
+        // Then block on the execution of the router
+        self.rt.block_on(self.router.run().with_current_context())?;
+
+        // Shut down metrics collector
+        #[cfg(feature = "metrics")]
+        alive.fetch_or(true, Ordering::Acquire);
+
+        // Last join user code
+        let res = self
+            .rt
+            .block_on(join_body)
+            .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
+
+        Ok(res)
+    }
+
     /// Wrapper around the user provided future that will shut down the node on error
     #[cfg(feature = "std")]
     async fn wrapper<F, T, E>(

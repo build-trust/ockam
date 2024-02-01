@@ -4,6 +4,8 @@ use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::time::now;
 use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
 use ockam_core::flow_control::FlowControls;
+#[cfg(feature = "std")]
+use ockam_core::OpenTelemetryContext;
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AsyncTryClone, DenyAll, Error, IncomingAccessControl, Mailboxes,
@@ -63,6 +65,7 @@ impl Context {
         async_drop_sender: Option<AsyncDropSender>,
         transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
         flow_controls: &FlowControls,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
     ) -> (Self, SenderPair, SmallReceiver<CtrlSignal>) {
         let (mailbox_tx, receiver) = message_channel();
         let (ctrl_tx, ctrl_rx) = small_channel();
@@ -76,6 +79,8 @@ impl Context {
                 mailbox_count: Arc::new(0.into()),
                 transports,
                 flow_controls: flow_controls.clone(),
+                #[cfg(feature = "std")]
+                tracing_context,
             },
             SenderPair {
                 msgs: mailbox_tx,
@@ -96,6 +101,8 @@ impl Context {
             None,
             self.transports.clone(),
             &self.flow_controls,
+            #[cfg(feature = "std")]
+            self.tracing_context(),
         )
     }
 
@@ -111,6 +118,8 @@ impl Context {
             Some(drop_sender),
             self.transports.clone(),
             &self.flow_controls,
+            #[cfg(feature = "std")]
+            self.tracing_context(),
         )
     }
 

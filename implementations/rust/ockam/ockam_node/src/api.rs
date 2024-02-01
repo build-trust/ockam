@@ -2,8 +2,6 @@
 
 use minicbor::{Decode, Encode};
 
-#[cfg(feature = "std")]
-use crate::OpenTelemetryContext;
 use crate::{Context, MessageSendReceiveOptions};
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
@@ -126,8 +124,6 @@ impl Client {
         T: Encode<()>,
     {
         let mut buf = Vec::new();
-        #[cfg(feature = "std")]
-        let req = req.tracing_context(OpenTelemetryContext::current().to_string());
 
         req.encode(&mut buf)?;
         trace! {

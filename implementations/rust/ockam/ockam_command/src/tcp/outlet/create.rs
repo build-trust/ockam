@@ -13,10 +13,9 @@ use ockam_abac::Expr;
 use ockam_api::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_ALIAS, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
 };
-use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
+use ockam_api::nodes::service::portals::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{address::extract_address_value, random_name};
-use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
 use crate::tcp::util::alias_parser;
@@ -82,13 +81,16 @@ impl CreateCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {
-            let mut payload =
-                CreateOutlet::new(self.to, self.from.clone().into(), self.alias, true);
-            if let Some(policy_expression) = self.policy_expression {
-                payload.set_policy_expression(policy_expression);
-            }
-            let req = Request::post("/node/outlet").body(payload);
-            let res: OutletStatus = node.ask(ctx, req).await?;
+            let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+            let res = node
+                .create_outlet(
+                    ctx,
+                    &self.to,
+                    &self.from.clone().into(),
+                    self.alias,
+                    self.policy_expression,
+                )
+                .await?;
             *is_finished.lock().await = true;
             Ok(res)
         }

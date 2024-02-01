@@ -74,7 +74,7 @@ async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Ve
     let default_node_name = opts.state.get_default_node().await?.name();
     let mut node_client =
         BackgroundNodeClient::create_to_node(ctx, &opts.state, &default_node_name).await?;
-    node_client.set_timeout(Duration::from_millis(200));
+    node_client.set_timeout_mut(Duration::from_millis(200));
 
     for node in nodes {
         node_client.set_node_name(&node.name());

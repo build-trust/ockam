@@ -8,8 +8,6 @@ use std::time::Duration;
 
 use miette::IntoDiagnostic;
 use minicbor::{Decoder, Encode};
-use opentelemetry::global;
-use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::{
@@ -28,11 +26,9 @@ use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{AllowAll, AsyncTryClone, IncomingAccessControl};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::OpenTelemetryContext;
 
 use crate::cli_state::CliState;
 use crate::cloud::{AuthorityNodeClient, CredentialsEnabled, ProjectNodeClient};
-use crate::logs::OCKAM_TRACER_NAME;
 use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
@@ -52,7 +48,7 @@ pub mod default_address;
 mod flow_controls;
 pub(crate) mod in_memory_node;
 pub mod kafka_services;
-pub mod message;
+pub mod messages;
 mod node_services;
 pub(crate) mod policy;
 pub mod portals;
@@ -526,6 +522,7 @@ impl NodeManager {
 impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
+    #[instrument(skip_all, fields(method = ?req.method(), path = req.path()))]
     async fn handle_request(
         &mut self,
         ctx: &mut Context,
@@ -541,28 +538,6 @@ impl NodeManagerWorker {
             "request"
         }
 
-        if let Some(tracing_context) = req.tracing_context.as_ref() {
-            let opentelemetry_context: OpenTelemetryContext = tracing_context.clone().try_into()?;
-            let tracer = global::tracer(OCKAM_TRACER_NAME);
-            let span = tracer.start_with_context(
-                format!("handle request {} {}", req.method_string(), req.path),
-                &opentelemetry_context.extract(),
-            );
-            let cx = opentelemetry::Context::current_with_span(span);
-            self.handle_traced_request(ctx, req, dec)
-                .with_context(cx)
-                .await
-        } else {
-            self.handle_traced_request(ctx, req, dec).await
-        }
-    }
-
-    async fn handle_traced_request(
-        &mut self,
-        ctx: &mut Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Vec<u8>> {
         use Method::*;
         let path = req.path();
         let path_segments = req.path_segments::<5>();

@@ -1,12 +1,12 @@
 use crate::cloud::project::Project;
 use crate::journeys::attributes::{default_attributes, make_host_trace_id};
 use crate::journeys::JourneyEvent;
-use crate::logs::{CurrentSpan, OCKAM_TRACER_NAME};
+use crate::logs::CurrentSpan;
 use crate::{CliState, ProjectJourney};
 use crate::{HostJourney, Result};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use ockam_node::OpenTelemetryContext;
+use ockam_core::{OpenTelemetryContext, OCKAM_TRACER_NAME};
 use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
 use opentelemetry::{global, Context, Key};
 use std::collections::HashMap;

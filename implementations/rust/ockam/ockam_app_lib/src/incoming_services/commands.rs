@@ -104,7 +104,7 @@ impl AppState {
     async fn is_connected(&self, service: &IncomingService, inlet_node_name: &str) -> bool {
         if self.state().await.get_node(inlet_node_name).await.is_ok() {
             if let Ok(mut inlet_node) = self.background_node(inlet_node_name).await {
-                inlet_node.set_timeout(Duration::from_secs(5));
+                inlet_node.set_timeout_mut(Duration::from_secs(5));
                 if let Ok(Reply::Successful(inlet)) = inlet_node
                     .show_inlet(&self.context(), service.inlet_name())
                     .await
@@ -193,7 +193,7 @@ impl AppState {
         tokio::time::sleep(Duration::from_millis(250)).await;
 
         let mut inlet_node = self.background_node(&local_node_name).await?;
-        inlet_node.set_timeout(Duration::from_secs(5));
+        inlet_node.set_timeout_mut(Duration::from_secs(5));
 
         let bind_address = match service.address() {
             Some(address) => address,

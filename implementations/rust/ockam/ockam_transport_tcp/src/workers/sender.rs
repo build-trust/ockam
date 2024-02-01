@@ -17,7 +17,7 @@ use socket2::{SockRef, TcpKeepalive};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, instrument, trace, warn};
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -183,6 +183,7 @@ impl Worker for TcpSendWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
+    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.address()))]
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
@@ -212,7 +213,8 @@ impl Worker for TcpSendWorker {
             // knows what to do with the incoming message
             local_message = local_message.pop_front_onward_route()?;
             // Create a message buffer with prepended length
-            let msg = encode_transport_message(local_message.into_transport_message())?;
+            let transport_message = local_message.into_transport_message();
+            let msg = encode_transport_message(transport_message)?;
 
             if self.write_half.write_all(msg.as_slice()).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);

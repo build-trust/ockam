@@ -7,7 +7,7 @@ use crate::error::code::ErrorCode;
 use serde::{Deserialize, Serialize};
 
 mod formatting;
-#[cfg(all(feature = "std", feature = "error-traces"))]
+#[cfg(all(feature = "std", feature = "tracing-error"))]
 mod trace_config;
 
 type BoxDynErr = Box<dyn ErrorTrait + Send + Sync + 'static>;
