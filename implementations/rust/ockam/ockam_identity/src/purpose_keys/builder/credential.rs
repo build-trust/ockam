@@ -57,8 +57,8 @@ impl CredentialPurposeKeyBuilder {
         expires_at: TimestampInSeconds,
     ) -> Self {
         self.ttl = Ttl::FullTimestamps {
-            created_at,
-            expires_at,
+            from: created_at,
+            until: expires_at,
         };
         self
     }

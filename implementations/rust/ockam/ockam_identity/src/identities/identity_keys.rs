@@ -114,8 +114,8 @@ impl IdentitiesKeys {
             previous_change,
             primary_public_key: public_key.into(),
             revoke_all_purpose_keys: identity_options.revoke_all_purpose_keys,
-            created_at: identity_options.created_at,
-            expires_at: identity_options.expires_at,
+            attestations_valid_from: identity_options.attestations_valid_from,
+            attestations_valid_until: identity_options.attestations_valid_until,
         };
 
         let change_data = minicbor::to_vec(&change_data)?;
@@ -175,10 +175,15 @@ mod test {
             .await?;
 
         let now = now()?;
-        let created_at1 = now;
-        let expires_at1 = created_at1 + 120u64;
+        let attestations_valid_from1 = now;
+        let attestations_valid_until1 = attestations_valid_from1 + 120u64;
 
-        let options1 = IdentityOptions::new(key1.clone(), false, created_at1, expires_at1);
+        let options1 = IdentityOptions::new(
+            key1.clone(),
+            false,
+            attestations_valid_from1,
+            attestations_valid_until1,
+        );
         let identity1 = identities_keys.create_initial_key(options1).await?;
 
         // Identifier should not match
@@ -212,9 +217,14 @@ mod test {
             .generate_signing_secret_key(SigningKeyType::EdDSACurve25519)
             .await?;
 
-        let created_at2 = now + 10u64;
-        let expires_at2 = created_at2 + 120u64;
-        let options2 = IdentityOptions::new(key2.clone(), false, created_at2, expires_at2);
+        let attestations_valid_from2 = now + 10u64;
+        let attestations_valid_until2 = attestations_valid_from2 + 120u64;
+        let options2 = IdentityOptions::new(
+            key2.clone(),
+            false,
+            attestations_valid_from2,
+            attestations_valid_until2,
+        );
         let identity2 = identities_keys
             .rotate_key_with_options(identity1, options2)
             .await?;
