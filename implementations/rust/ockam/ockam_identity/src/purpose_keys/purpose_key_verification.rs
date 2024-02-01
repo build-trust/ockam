@@ -80,12 +80,12 @@ impl PurposeKeyVerification {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
-        if purpose_key_data.expires_at > latest_change.data().expires_at {
+        if purpose_key_data.expires_at > latest_change.data().attestations_valid_until {
             // PurposeKey validity time range should be inside the identity key validity time range
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
 
-        if purpose_key_data.created_at < latest_change.data().created_at {
+        if purpose_key_data.created_at < latest_change.data().attestations_valid_from {
             // PurposeKey validity time range should be inside the identity key validity time range
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }

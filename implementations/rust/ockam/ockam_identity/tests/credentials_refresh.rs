@@ -125,7 +125,7 @@ async fn autorefresh_attributes_update(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(100)).await;
 
-    let attributes_reader = identities.identity_attributes_repository();
+    let attributes_reader = identities.identities_attributes();
 
     let added1 = attributes_reader
         .get_attributes(&client, &authority)

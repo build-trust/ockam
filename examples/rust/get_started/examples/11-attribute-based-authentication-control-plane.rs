@@ -86,7 +86,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
     let access_control = AbacAccessControl::create(
-        node.identity_attributes_repository(),
+        node.identities_attributes(),
         project.authority_identifier(),
         "component",
         "edge",

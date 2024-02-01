@@ -112,7 +112,7 @@ mod tests {
             identities: Identities {
                 identities: Some(ResourcesContainer::List(vec![
                     ResourceNameOrMap::Name("i1".to_string()),
-                    ResourceNameOrMap::Map(NamedResources {
+                    ResourceNameOrMap::NamedMap(NamedResources {
                         items: vec![(
                             "i2".to_string(),
                             Args {
@@ -162,7 +162,7 @@ mod tests {
                 ])),
             },
             tcp_outlets: TcpOutlets {
-                tcp_outlets: Some(ResourceNameOrMap::Map(NamedResources {
+                tcp_outlets: Some(ResourceNameOrMap::NamedMap(NamedResources {
                     items: vec![
                         (
                             "to1".to_string(),
@@ -189,7 +189,7 @@ mod tests {
                 })),
             },
             tcp_inlets: TcpInlets {
-                tcp_inlets: Some(ResourceNameOrMap::Map(NamedResources {
+                tcp_inlets: Some(ResourceNameOrMap::NamedMap(NamedResources {
                     items: vec![
                         (
                             "ti1".to_string(),

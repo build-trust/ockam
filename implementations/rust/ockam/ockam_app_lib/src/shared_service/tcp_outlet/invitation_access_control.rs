@@ -1,6 +1,6 @@
 use crate::invitations::state::InvitationState;
 use crate::state::AppState;
-use ockam::identity::{Identifier, IdentityAttributesRepository, IdentitySecureChannelLocalInfo};
+use ockam::identity::{Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo};
 use ockam_core::errcode::Origin;
 use ockam_core::{async_trait, IncomingAccessControl, RelayMessage};
 use std::fmt::Debug;
@@ -11,7 +11,7 @@ use tracing::warn;
 #[derive(Clone)]
 pub(super) struct InvitationAccessControl {
     portal_name: String,
-    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+    identities_attributes: Arc<IdentitiesAttributes>,
     invitations: Arc<RwLock<InvitationState>>,
     local_identity: Identifier,
     authority_identifier: Identifier,
@@ -30,14 +30,14 @@ impl Debug for InvitationAccessControl {
 impl InvitationAccessControl {
     fn new(
         portal_name: String,
-        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         invitations: Arc<RwLock<InvitationState>>,
         local_identity: Identifier,
         authority_identifier: Identifier,
     ) -> Self {
         Self {
             portal_name,
-            identity_attributes_repository,
+            identities_attributes,
             invitations,
             local_identity,
             authority_identifier,
@@ -51,10 +51,10 @@ impl AppState {
         portal_name: String,
     ) -> ockam_core::Result<Arc<InvitationAccessControl>> {
         let node_manager = self.node_manager().await;
-        let identity_attributes_repository = node_manager
+        let identities_attributes = node_manager
             .secure_channels()
             .identities()
-            .identity_attributes_repository();
+            .identities_attributes();
         let invitations = self.invitations();
         let local_identity = self
             .state()
@@ -72,7 +72,7 @@ impl AppState {
 
         Ok(Arc::new(InvitationAccessControl::new(
             portal_name,
-            identity_attributes_repository,
+            identities_attributes,
             invitations,
             local_identity,
             authority,
@@ -86,13 +86,13 @@ impl IncomingAccessControl for InvitationAccessControl {
         if let Ok(msg_identity_id) =
             IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
-            // allows messages when they comes from our own local identity
+            // allows messages when they come from our own local identity
             if msg_identity_id.their_identity_id() == self.local_identity {
                 return Ok(true);
             }
 
             let attributes = match self
-                .identity_attributes_repository
+                .identities_attributes
                 .get_attributes(
                     &msg_identity_id.their_identity_id(),
                     &self.authority_identifier,

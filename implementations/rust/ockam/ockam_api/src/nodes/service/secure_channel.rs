@@ -393,10 +393,9 @@ impl NodeManager {
         let identities = Identities::create(self.cli_state.database())
             .with_vault(vault)
             .build();
-        Ok(SecureChannels::builder()
-            .await?
-            .with_identities(identities)
-            .with_secure_channels_registry(self.secure_channels.secure_channel_registry())
-            .build())
+        Ok(Arc::new(SecureChannels::new(
+            identities,
+            self.secure_channels.secure_channel_registry(),
+        )))
     }
 }

@@ -84,8 +84,7 @@ async fn main(ctx: Context) -> Result<()> {
         DefaultAddress::ECHO_SERVICE,
         &sc_listener_options.spawner_flow_control_id(),
     );
-    let allow_production =
-        AbacAccessControl::create(node.identity_attributes_repository(), issuer, "cluster", "production");
+    let allow_production = AbacAccessControl::create(node.identities_attributes(), issuer, "cluster", "production");
     node.start_worker_with_access_control(DefaultAddress::ECHO_SERVICE, Echoer, allow_production, AllowAll)
         .await?;
 

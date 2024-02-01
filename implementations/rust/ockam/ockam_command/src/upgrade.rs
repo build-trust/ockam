@@ -88,24 +88,53 @@ fn get_release_data() -> Result<Release> {
     // See https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api?apiVersion=2022-11-28#user-agent
     let client = reqwest::blocking::Client::builder()
         .user_agent("ockam")
+        .default_headers({
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(
+                reqwest::header::ACCEPT,
+                reqwest::header::HeaderValue::from_static("application/json"),
+            );
+            headers
+        })
         .build()
-        .into_diagnostic()?;
+        .into_diagnostic()
+        .wrap_err("Failed to create a HTTP client")?;
     let parsed = client
         .get("https://github.com/build-trust/ockam/releases/latest")
         .send()
         .and_then(|resp| resp.json::<ReleaseJson>())
-        .into_diagnostic()?;
+        .into_diagnostic()
+        .wrap_err("Failed to parse JSON response")?;
     Release::try_from(parsed)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio_retry::strategy::{jitter, FixedInterval};
-    use tokio_retry::Retry;
+    use std::thread::sleep;
+    use std::time::Duration;
 
     #[test]
-    fn parse_release_from_json_data() {
+    fn parse_release_from_json_response() {
+        let raw_response = r#"
+            {"id":136375799,"tag_name":"ockam_v0.116.0",
+            "update_url":"/build-trust/ockam/releases/tag/ockam_v0.116.0",
+            "update_authenticity_token":"token",
+            "delete_url":"/build-trust/ockam/releases/tag/ockam_v0.116.0",
+            "delete_authenticity_token":"token",
+            "edit_url":"/build-trust/ockam/releases/edit/ockam_v0.116.0"}
+        "#;
+        let json: ReleaseJson = serde_json::from_str(raw_response).unwrap();
+        let release = Release::try_from(json).unwrap();
+        assert_eq!(release.version, "0.116.0");
+        assert_eq!(
+            release.download_url,
+            Url::parse("https://github.com/build-trust/ockam/releases/tag/ockam_v0.116.0").unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_release_from_json_struct() {
         let crate_version = crate_version!().to_string();
 
         // Expected version format
@@ -139,15 +168,17 @@ mod tests {
         assert!(Release::try_from(json).is_err());
     }
 
-    #[tokio::test]
-    async fn get_and_parse_release_data_from_github() {
+    #[test]
+    fn get_and_parse_release_data_from_github() {
         // Make sure that the data received from GitHub is can be parsed correctly
-        let retry_strategy = FixedInterval::from_millis(5000).map(jitter).take(5);
-        Retry::spawn(retry_strategy, || async {
-            get_release_data().map_err(|e| {
-                eprintln!("Failed to get release data: {e:?}");
-                e
-            })
-        });
+        let mut is_ok = false;
+        for _ in 0..5 {
+            if get_release_data().is_ok() {
+                is_ok = true;
+                break;
+            }
+            sleep(Duration::from_secs(2));
+        }
+        assert!(is_ok);
     }
 }

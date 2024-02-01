@@ -54,10 +54,14 @@ pub struct ChangeData {
     /// be considered valid anymore.
     /// This is usually a desired behaviour if a Purpose Key was compromised.
     #[n(2)] pub revoke_all_purpose_keys: bool,
-    /// Creation [`TimestampInSeconds`] (UTC)
-    #[n(3)] pub created_at: TimestampInSeconds,
-    /// Expiration [`TimestampInSeconds`] (UTC)
-    #[n(4)] pub expires_at: TimestampInSeconds,
+    /// Timestamp (UTC) after which this key can either:
+    ///  1. Sign a [`super::PurposeKeyAttestation`] that is tied to this Identifier
+    ///  2. Sign [`ChangeData`] that belongs to the same [`ChangeHistory`] and goes straight after this one
+    #[n(3)] pub attestations_valid_from: TimestampInSeconds,
+    /// Timestamp (UTC) before which this key can either:
+    ///  1. Sign a [`super::PurposeKeyAttestation`] that is tied to this Identifier
+    ///  2. Sign [`ChangeData`] that belongs to the same [`ChangeHistory`] and goes straight after this one
+    #[n(4)] pub attestations_valid_until: TimestampInSeconds,
 }
 
 /// [`Change`]'s public key

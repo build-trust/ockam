@@ -59,19 +59,6 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         Ok(identity_attributes.map(|r| r.attributes()).transpose()?)
     }
 
-    async fn list_attributes_by_identifier(&self) -> Result<Vec<(Identifier, AttributesEntry)>> {
-        let query = query_as(
-            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name=$1",
-            )
-            .bind(self.database.node_name()?.to_sql());
-        let result: Vec<IdentityAttributesRow> =
-            query.fetch_all(&*self.database.pool).await.into_core()?;
-        result
-            .into_iter()
-            .map(|r| r.identifier().and_then(|i| r.attributes().map(|a| (i, a))))
-            .collect::<Result<Vec<_>>>()
-    }
-
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {
         let query = query(
             "INSERT OR REPLACE INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES (?, ?, ?, ?, ?, ?)"
@@ -85,9 +72,10 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         query.execute(&*self.database.pool).await.void()
     }
 
-    async fn delete(&self, identity: &Identifier) -> Result<()> {
-        let query = query("DELETE FROM identity_attributes WHERE identifier = ? AND node_name = ?")
-            .bind(identity.to_sql())
+    // This query is regularly invoked by IdentitiesAttributes to make sure that we expire attributes regularly
+    async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
+        let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
+            .bind(now.to_sql())
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -112,6 +100,7 @@ struct IdentityAttributesRow {
 }
 
 impl IdentityAttributesRow {
+    #[allow(dead_code)]
     fn identifier(&self) -> Result<Identifier> {
         Identifier::from_str(&self.identifier)
     }
@@ -141,19 +130,22 @@ mod tests {
     use ockam_core::compat::collections::BTreeMap;
     use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
+    use std::ops::Add;
 
     use super::*;
     use crate::identities;
+    use crate::utils::now;
 
     #[tokio::test]
     async fn test_identities_attributes_repository() -> Result<()> {
         let repository = create_repository().await?;
+        let now = now()?;
 
         // store and retrieve attributes by identity
         let identifier1 = create_identity().await?;
-        let attributes1 = create_attributes_entry(&identifier1).await?;
+        let attributes1 = create_attributes_entry(&identifier1, now, Some(2.into())).await?;
         let identifier2 = create_identity().await?;
-        let attributes2 = create_attributes_entry(&identifier2).await?;
+        let attributes2 = create_attributes_entry(&identifier2, now, Some(2.into())).await?;
 
         repository
             .put_attributes(&identifier1, attributes1.clone())
@@ -167,34 +159,90 @@ mod tests {
             .await?;
         assert_eq!(result, Some(attributes1.clone()));
 
-        let result = repository.list_attributes_by_identifier().await?;
-        assert_eq!(
-            result,
-            vec![
-                (identifier1.clone(), attributes1.clone()),
-                (identifier2.clone(), attributes2.clone())
-            ]
-        );
+        let result = repository
+            .get_attributes(&identifier2, &identifier2)
+            .await?;
+        assert_eq!(result, Some(attributes2.clone()));
 
-        // delete attributes
-        repository.delete(&identifier1).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_delete_expired_attributes() -> Result<()> {
+        let repository = create_repository().await?;
+        let now = now()?;
+
+        // store some attributes with and without an expiry date
+        let identifier1 = create_identity().await?;
+        let identifier2 = create_identity().await?;
+        let identifier3 = create_identity().await?;
+        let identifier4 = create_identity().await?;
+        let attributes1 = create_attributes_entry(&identifier1, now, Some(1.into())).await?;
+        let attributes2 = create_attributes_entry(&identifier2, now, Some(10.into())).await?;
+        let attributes3 = create_attributes_entry(&identifier3, now, Some(100.into())).await?;
+        let attributes4 = create_attributes_entry(&identifier4, now, None).await?;
+
+        repository
+            .put_attributes(&identifier1, attributes1.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier2, attributes2.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier3, attributes3.clone())
+            .await?;
+        repository
+            .put_attributes(&identifier4, attributes4.clone())
+            .await?;
+
+        // delete all the attributes with an expiry date <= now + 10
+        // only attributes1 and attributes2 must be deleted
+        repository.delete_expired_attributes(now.add(10)).await?;
+
         let result = repository
             .get_attributes(&identifier1, &identifier1)
             .await?;
         assert_eq!(result, None);
 
+        let result = repository
+            .get_attributes(&identifier2, &identifier2)
+            .await?;
+        assert_eq!(result, None);
+
+        let result = repository
+            .get_attributes(&identifier3, &identifier3)
+            .await?;
+        assert_eq!(
+            result,
+            Some(attributes3),
+            "attributes 3 are not expired yet"
+        );
+
+        let result = repository
+            .get_attributes(&identifier4, &identifier4)
+            .await?;
+        assert_eq!(
+            result,
+            Some(attributes4),
+            "attributes 4 have no expiry date"
+        );
+
         Ok(())
     }
 
     /// HELPERS
-    async fn create_attributes_entry(identifier: &Identifier) -> Result<AttributesEntry> {
+    async fn create_attributes_entry(
+        identifier: &Identifier,
+        now: TimestampInSeconds,
+        ttl: Option<TimestampInSeconds>,
+    ) -> Result<AttributesEntry> {
         Ok(AttributesEntry::new(
             BTreeMap::from([
                 ("name".as_bytes().to_vec(), "alice".as_bytes().to_vec()),
                 ("age".as_bytes().to_vec(), "20".as_bytes().to_vec()),
             ]),
-            TimestampInSeconds(1000),
-            Some(TimestampInSeconds(2000)),
+            now,
+            ttl.map(|ttl| now + ttl),
             Some(identifier.clone()),
         ))
     }

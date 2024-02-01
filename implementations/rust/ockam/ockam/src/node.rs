@@ -6,7 +6,8 @@ use ockam_core::{
     Result, Route, Routed, Worker,
 };
 use ockam_identity::{
-    CredentialRepository, IdentitiesVerification, IdentityAttributesRepository, PurposeKeys, Vault,
+    CredentialRepository, IdentitiesAttributes, IdentitiesVerification,
+    IdentityAttributesRepository, PurposeKeys, Vault,
 };
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_vault::storage::SecretsRepository;
@@ -305,11 +306,9 @@ impl Node {
             .change_history_repository()
     }
 
-    /// Return the repository used to store identities attributes
-    pub fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
-        self.secure_channels
-            .identities()
-            .identity_attributes_repository()
+    /// Return the service responsible for managing identities attributes
+    pub fn identities_attributes(&self) -> Arc<IdentitiesAttributes> {
+        self.secure_channels.identities().identities_attributes()
     }
 
     /// Return a new builder for top-level services

@@ -18,8 +18,8 @@ enum Key {
 enum Ttl {
     CreatedNowWithTtl(TimestampInSeconds),
     FullTimestamps {
-        created_at: TimestampInSeconds,
-        expires_at: TimestampInSeconds,
+        attestations_valid_from: TimestampInSeconds,
+        attestations_valid_until: TimestampInSeconds,
     },
 }
 
@@ -55,20 +55,20 @@ impl IdentityBuilder {
         self
     }
 
-    /// Set created_at and expires_at timestamps
+    /// Set attestations_valid_from and attestations_valid_until timestamps
     pub fn with_timestamps(
         mut self,
-        created_at: TimestampInSeconds,
-        expires_at: TimestampInSeconds,
+        attestations_valid_from: TimestampInSeconds,
+        attestations_valid_until: TimestampInSeconds,
     ) -> Self {
         self.ttl = Ttl::FullTimestamps {
-            created_at,
-            expires_at,
+            attestations_valid_from,
+            attestations_valid_until,
         };
         self
     }
 
-    /// Will set created_at to now and compute expires_at given the TTL
+    /// Will set attestations_valid_from to now and compute attestations_valid_until given the TTL
     pub fn with_ttl(mut self, ttl_seconds: impl Into<TimestampInSeconds>) -> Self {
         self.ttl = Ttl::CreatedNowWithTtl(ttl_seconds.into());
         self
@@ -92,21 +92,25 @@ impl IdentityBuilder {
             Key::Existing(signing_secret_key_handle) => signing_secret_key_handle,
         };
 
-        let (created_at, expires_at) = match self.ttl {
+        let (attestations_valid_from, attestations_valid_until) = match self.ttl {
             Ttl::CreatedNowWithTtl(ttl) => {
-                let created_at = now()?;
-                let expires_at = created_at + ttl;
+                let attestations_valid_from = now()?;
+                let attestations_valid_until = attestations_valid_from + ttl;
 
-                (created_at, expires_at)
+                (attestations_valid_from, attestations_valid_until)
             }
             Ttl::FullTimestamps {
-                created_at,
-                expires_at,
-            } => (created_at, expires_at),
+                attestations_valid_from,
+                attestations_valid_until,
+            } => (attestations_valid_from, attestations_valid_until),
         };
 
-        let options =
-            IdentityOptions::new(key, self.revoke_all_purpose_keys, created_at, expires_at);
+        let options = IdentityOptions::new(
+            key,
+            self.revoke_all_purpose_keys,
+            attestations_valid_from,
+            attestations_valid_until,
+        );
 
         Ok(options)
     }

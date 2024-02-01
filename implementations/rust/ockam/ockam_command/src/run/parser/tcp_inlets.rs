@@ -35,15 +35,15 @@ mod tests {
 
     #[test]
     fn tcp_inlet_config() {
-        let config = r#"
+        let named = r#"
             tcp_inlets:
               ti1:
-                from: '6060'
+                from: 6060
                 at: n
               ti2:
                 from: '6061'
         "#;
-        let parsed: TcpInlets = serde_yaml::from_str(config).unwrap();
+        let parsed: TcpInlets = serde_yaml::from_str(named).unwrap();
         let cmds = parsed.into_commands().unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].alias.as_ref().unwrap(), "ti1");
@@ -53,6 +53,26 @@ mod tests {
         );
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
         assert_eq!(cmds[1].alias.as_ref().unwrap(), "ti2");
+        assert_eq!(
+            cmds[1].from,
+            SocketAddr::from_str("127.0.0.1:6061").unwrap()
+        );
+        assert!(cmds[1].at.is_none());
+
+        let unnamed = r#"
+            tcp_inlets:
+              - from: 6060
+                at: n
+              - from: '6061'
+        "#;
+        let parsed: TcpInlets = serde_yaml::from_str(unnamed).unwrap();
+        let cmds = parsed.into_commands().unwrap();
+        assert_eq!(cmds.len(), 2);
+        assert_eq!(
+            cmds[0].from,
+            SocketAddr::from_str("127.0.0.1:6060").unwrap()
+        );
+        assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
         assert_eq!(
             cmds[1].from,
             SocketAddr::from_str("127.0.0.1:6061").unwrap()

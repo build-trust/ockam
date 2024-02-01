@@ -34,6 +34,11 @@ impl SecureChannels {
         }
     }
 
+    /// Constructor
+    pub fn from_identities(identities: Arc<Identities>) -> Arc<Self> {
+        Arc::new(Self::new(identities, SecureChannelRegistry::default()))
+    }
+
     /// Return the identities services associated to this service
     pub fn identities(&self) -> Arc<Identities> {
         self.identities.clone()
