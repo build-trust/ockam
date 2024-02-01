@@ -72,15 +72,16 @@ impl Identity {
                     return Err(IdentityError::IdentityVerificationFailed)?;
                 }
 
-                if previous_change_details.change_data.created_at
-                    > change_details.change_data.created_at
+                if previous_change_details.change_data.attestations_valid_from
+                    > change_details.change_data.attestations_valid_from
                 {
                     // The older key can't be created after the newer
                     return Err(IdentityError::IdentityVerificationFailed)?;
                 }
 
                 // This is intentionally allowed:
-                // change_details.change_data.created_at > previous_change_details.change_data.expires_at
+                // change_details.change_data.attestations_valid_from
+                //     > previous_change_details.change_data.attestations_valid_until
 
                 if Some(&previous_change_details.change_hash)
                     != change_details.change_data.previous_change.as_ref()

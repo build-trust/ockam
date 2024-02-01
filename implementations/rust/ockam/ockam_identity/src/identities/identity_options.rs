@@ -5,8 +5,8 @@ use ockam_vault::SigningSecretKeyHandle;
 pub struct IdentityOptions {
     pub(super) signing_secret_key_handle: SigningSecretKeyHandle,
     pub(super) revoke_all_purpose_keys: bool,
-    pub(super) created_at: TimestampInSeconds,
-    pub(super) expires_at: TimestampInSeconds,
+    pub(super) attestations_valid_from: TimestampInSeconds,
+    pub(super) attestations_valid_until: TimestampInSeconds,
 }
 
 impl IdentityOptions {
@@ -14,14 +14,14 @@ impl IdentityOptions {
     pub fn new(
         signing_secret_key_handle: SigningSecretKeyHandle,
         revoke_all_purpose_keys: bool,
-        created_at: TimestampInSeconds,
-        expires_at: TimestampInSeconds,
+        attestations_valid_from: TimestampInSeconds,
+        attestations_valid_until: TimestampInSeconds,
     ) -> Self {
         Self {
             signing_secret_key_handle,
             revoke_all_purpose_keys,
-            created_at,
-            expires_at,
+            attestations_valid_from,
+            attestations_valid_until,
         }
     }
 
@@ -36,12 +36,12 @@ impl IdentityOptions {
     }
 
     /// Creation timestamp
-    pub fn created_at(&self) -> TimestampInSeconds {
-        self.created_at
+    pub fn attestations_valid_from(&self) -> TimestampInSeconds {
+        self.attestations_valid_from
     }
 
     /// Expiration timestamp
-    pub fn expires_at(&self) -> TimestampInSeconds {
-        self.expires_at
+    pub fn attestations_valid_until(&self) -> TimestampInSeconds {
+        self.attestations_valid_until
     }
 }
