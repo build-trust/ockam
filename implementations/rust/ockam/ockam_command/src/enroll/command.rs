@@ -8,7 +8,7 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{error, info, warn};
+use tracing::{error, info, instrument, warn};
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
@@ -146,10 +146,14 @@ impl EnrollCommand {
             )));
         }
 
-        let mut attributes = HashMap::default();
-        let user_email = user_info.email.to_string();
-        attributes.insert(USER_NAME, user_info.name.as_str());
-        attributes.insert(USER_EMAIL, user_email.as_str());
+        let mut attributes = HashMap::new();
+        attributes.insert(USER_NAME, user_info.name.clone());
+        attributes.insert(USER_EMAIL, user_info.email.to_string());
+        // this event formally only happens on the host journey
+        // but we add it here for better rendering of the project journey
+        opts.state
+            .add_journey_event(JourneyEvent::ok("enroll".to_string()), attributes.clone())
+            .await?;
         opts.state
             .add_journey_event(JourneyEvent::Enrolled, attributes)
             .await?;
@@ -210,6 +214,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
         .expect("Error setting Ctrl-C handler");
 }
 
+#[instrument(skip_all)]
 async fn retrieve_user_space_and_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,

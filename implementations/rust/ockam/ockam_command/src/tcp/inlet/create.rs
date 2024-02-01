@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use std::time::Duration;
@@ -13,6 +14,10 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::CliState;
+use ockam_api::journeys::{
+    JourneyEvent, NODE_NAME, TCP_INLET_ALIAS, TCP_INLET_AT, TCP_INLET_CONNECTION_STATUS,
+    TCP_INLET_FROM, TCP_INLET_TO,
+};
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -180,6 +185,11 @@ impl CreateCommand {
             progress_bar.as_ref(),
         );
         let (inlet, _) = try_join!(create_inlet, progress_output)?;
+
+        let node_name = node.node_name();
+        cmd.add_inlet_created_event(&opts, &node_name, &inlet)
+            .await?;
+
         opts.terminal
             .stdout()
             .plain(
@@ -205,6 +215,25 @@ impl CreateCommand {
 
     fn to(&self) -> MultiAddr {
         MultiAddr::from_str(&self.to).unwrap()
+    }
+
+    async fn add_inlet_created_event(
+        &self,
+        opts: &CommandGlobalOpts,
+        node_name: &str,
+        inlet: &InletStatus,
+    ) -> miette::Result<()> {
+        let mut attributes = HashMap::new();
+        attributes.insert(TCP_INLET_AT, node_name.to_string());
+        attributes.insert(TCP_INLET_FROM, self.from.to_string());
+        attributes.insert(TCP_INLET_TO, self.to.clone());
+        attributes.insert(TCP_INLET_ALIAS, inlet.alias.clone());
+        attributes.insert(TCP_INLET_CONNECTION_STATUS, inlet.status.to_string());
+        attributes.insert(NODE_NAME, node_name.to_string());
+        Ok(opts
+            .state
+            .add_journey_event(JourneyEvent::TcpInletCreated, attributes)
+            .await?)
     }
 
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {

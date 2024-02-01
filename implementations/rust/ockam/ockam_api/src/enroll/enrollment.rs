@@ -71,6 +71,7 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
 // FiXME: this has duplicate with AuthorityNodeClient
 #[async_trait]
 impl Enrollment for SecureClient {
+    #[instrument(skip_all, fields(token = %token))]
     async fn enroll_with_oidc_token(
         &self,
         ctx: &Context,
@@ -93,6 +94,7 @@ impl Enrollment for SecureClient {
         }
     }
 
+    #[instrument(skip_all, fields(token = token.clone().to_string()))]
     async fn enroll_with_oidc_token_okta(
         &self,
         ctx: &Context,
@@ -107,6 +109,7 @@ impl Enrollment for SecureClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(token = token.clone().to_string()))]
     async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> miette::Result<()> {
         let req = Request::post("/").body(token);
         trace!(target: TARGET, "present a token");
@@ -117,6 +120,7 @@ impl Enrollment for SecureClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all)]
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         let req = Request::post("/");
         trace!(target: TARGET, "getting a credential");

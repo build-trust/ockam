@@ -17,6 +17,7 @@
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
@@ -24,7 +25,7 @@ use std::sync::Arc;
 use clap::{ArgAction, Args, Parser, Subcommand};
 use colorful::Colorful;
 use console::Term;
-use miette::{miette, GraphicalReportHandler};
+use miette::{miette, GraphicalReportHandler, IntoDiagnostic};
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
 use tokio::runtime::Runtime;
@@ -44,6 +45,7 @@ use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
+use ockam_api::journeys::{JourneyEvent, APPLICATION_EVENT_COMMAND};
 use ockam_api::logs::{TracingGuard, OCKAM_TRACER_NAME};
 use ockam_core::env::get_env_with_default;
 use ockam_node::{Executor, OpenTelemetryContext};
@@ -452,41 +454,21 @@ pub fn run() -> miette::Result<()> {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>()
                     .join(" ");
-                let message = format!(
-                    "could not parse the command: {}\n{}",
-                    command,
-                    input.join(" ")
-                );
-                send_error_message(&command, &message);
+                let message = format!("could not parse the command: {}", command);
+                let guard = setup_logging_tracing(false, 0, true, false, None);
+                let cli_state = CliState::with_default_dir()?;
+                add_command_error_event(cli_state, &command, &message, input.join(" "))?;
+                guard.shutdown();
             };
             pager::render_help(help);
         }
-        Ok(command) => command.run()?,
+        Ok(command) => command.run(input)?,
     };
     Ok(())
 }
 
-fn send_error_message(command: &str, message: &str) {
-    let message = message.to_string();
-    let command = command.to_string();
-
-    let guard = setup_logging_tracing(false, 0, true, false, None);
-    let tracer = global::tracer(OCKAM_TRACER_NAME);
-    tracer.in_span(format!("'{}' error", command), |_| {
-        let state = CliState::with_default_dir();
-        Context::current()
-            .span()
-            .set_status(opentelemetry::trace::Status::error(message.clone()));
-        error!("{}", &message);
-        let _ = Executor::execute_future(async move {
-            state.unwrap().add_journey_error(&command, message).await
-        });
-    });
-    guard.shutdown()
-}
-
 impl OckamCommand {
-    pub fn run(self) -> miette::Result<()> {
+    pub fn run(self, arguments: Vec<String>) -> miette::Result<()> {
         // If test_argument_parser is true, command arguments are checked
         // but the command is not executed. This is useful to test arguments
         // without having to execute their logic.
@@ -562,19 +544,28 @@ impl OckamCommand {
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let tracing_guard_clone = tracing_guard.clone();
+        let command_name = self.subcommand.name();
+        add_command_event(options.state.clone(), &command_name, arguments.join(" "))?;
         let result =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
                 let span = tracer
-                    .start_with_context(self.subcommand.name(), &opentelemetry_context.extract());
+                    .start_with_context(command_name.clone(), &opentelemetry_context.extract());
                 let cx = Context::current_with_span(span);
                 let _guard = cx.clone().attach();
-                self.run_command(options, tracing_guard_clone)
+                self.run_command(options.clone(), tracing_guard_clone)
             } else {
                 tracer.in_span(self.subcommand.name(), |_| {
-                    self.run_command(options, tracing_guard_clone)
+                    self.run_command(options.clone(), tracing_guard_clone)
                 })
             };
-
+        if let Err(ref e) = result {
+            add_command_error_event(
+                options.state.clone(),
+                &command_name,
+                &format!("{e}"),
+                arguments.join(" "),
+            )?
+        };
         if let Some(tracing_guard) = tracing_guard {
             tracing_guard.shutdown()
         };
@@ -663,6 +654,57 @@ impl OckamCommand {
         }
         None
     }
+}
+
+/// This function creates a journey event describing the execution of a command
+fn add_command_event(
+    cli_state: CliState,
+    command: &str,
+    command_arguments: String,
+) -> miette::Result<()> {
+    let command_name = command.to_string();
+    let tracer = global::tracer(OCKAM_TRACER_NAME);
+    tracer
+        .in_span(command_name.clone(), |_| {
+            Executor::execute_future(async move {
+                let mut attributes = HashMap::new();
+                attributes.insert(APPLICATION_EVENT_COMMAND, command_arguments);
+                cli_state
+                    .add_journey_event(JourneyEvent::ok(command_name), attributes)
+                    .await
+            })
+        })
+        .into_diagnostic()??;
+    Ok(())
+}
+
+/// This function creates a journey event describing the error resulting from the execution of a command
+fn add_command_error_event(
+    cli_state: CliState,
+    command_name: &str,
+    message: &str,
+    command_arguments: String,
+) -> miette::Result<()> {
+    let message = message.to_string();
+    let command = command_name.to_string();
+    let tracer = global::tracer(OCKAM_TRACER_NAME);
+    tracer
+        .in_span(format!("'{}' error", command), |_| {
+            Context::current()
+                .span()
+                .set_status(opentelemetry::trace::Status::error(message.clone()));
+            error!("{}", &message);
+
+            Executor::execute_future(async move {
+                let mut attributes = HashMap::new();
+                attributes.insert(APPLICATION_EVENT_COMMAND, command_arguments);
+                cli_state
+                    .add_journey_error(&command, message, attributes)
+                    .await
+            })
+        })
+        .into_diagnostic()??;
+    Ok(())
 }
 
 pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {

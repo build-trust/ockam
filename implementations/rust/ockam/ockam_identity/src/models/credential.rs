@@ -1,6 +1,8 @@
 use crate::models::{ChangeHash, Identifier, TimestampInSeconds};
+use core::fmt::{Display, Formatter};
 use minicbor::bytes::ByteVec;
 use minicbor::{Decode, Encode};
+use ockam_core::compat::string::String;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
@@ -61,4 +63,21 @@ pub struct Attributes {
     #[n(0)] pub schema: CredentialSchemaIdentifier,
     /// Set of keys&values
     #[n(1)] pub map: BTreeMap<ByteVec, ByteVec>,
+}
+
+impl Display for Attributes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut attributes = vec![];
+        for (key, value) in self.map.clone() {
+            if let (Ok(k), Ok(v)) = (
+                String::from_utf8(key.to_vec()),
+                String::from_utf8(value.to_vec()),
+            ) {
+                attributes.push(format!("{k}={v}"))
+            }
+        }
+        f.debug_struct("Attributes")
+            .field("attrs", &attributes.join(","))
+            .finish_non_exhaustive()
+    }
 }

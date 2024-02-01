@@ -1,4 +1,5 @@
 use miette::{miette, IntoDiagnostic};
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
@@ -87,6 +88,17 @@ pub struct ProjectUserRole {
     #[n(2)] pub id: u64,
     #[n(3)] pub role: RoleInShare,
     #[n(4)] pub scope: ShareScope,
+}
+
+impl Display for ProjectUserRole {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProjectUserRole")
+            .field("email", &self.email)
+            .field("id", &self.id)
+            .field("role", &self.role)
+            .field("scope", &self.scope)
+            .finish()
+    }
 }
 
 impl Project {
@@ -505,6 +517,7 @@ impl ControllerClient {
 
 #[async_trait]
 impl Operations for InMemoryNode {
+    #[instrument(skip_all, fields(operation_id = operation_id))]
     async fn get_operation(
         &self,
         ctx: &Context,
@@ -516,6 +529,7 @@ impl Operations for InMemoryNode {
             .await
     }
 
+    #[instrument(skip_all, fields(operation_id = operation_id))]
     async fn wait_until_operation_is_complete(
         &self,
         ctx: &Context,

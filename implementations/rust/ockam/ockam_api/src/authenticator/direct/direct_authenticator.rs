@@ -30,11 +30,12 @@ impl DirectAuthenticator {
         Self { members }
     }
 
+    #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier))]
     pub async fn add_member(
         &self,
         enroller: &Identifier,
-        id: &Identifier,
-        attrs: &BTreeMap<String, String>,
+        identifier: &Identifier,
+        attributes: &BTreeMap<String, String>,
     ) -> Result<DirectAuthenticatorResult<()>> {
         let check =
             EnrollerAccessControlChecks::check_identifier(self.members.clone(), enroller).await?;
@@ -42,14 +43,14 @@ impl DirectAuthenticator {
         if !check.is_enroller {
             warn!(
                 "{} is trying to add a member {}, but {} is not an enroller",
-                enroller, id, enroller
+                enroller, identifier, enroller
             );
             return Ok(Either::Right(DirectAuthenticatorError(
                 "Not enroller is trying to add a member".to_string(),
             )));
         }
 
-        let attrs = attrs
+        let attrs = attributes
             .iter()
             .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
             .collect();
@@ -60,7 +61,7 @@ impl DirectAuthenticator {
             if !check.is_pre_trusted {
                 warn!(
                     "Not pre trusted enroller {} is trying to create an enroller {}",
-                    enroller, id
+                    enroller, identifier
                 );
 
                 return Ok(Either::Right(DirectAuthenticatorError(
@@ -69,10 +70,11 @@ impl DirectAuthenticator {
             }
         }
 
-        let member = AuthorityMember::new(id.clone(), attrs, enroller.clone(), now()?, false);
+        let member =
+            AuthorityMember::new(identifier.clone(), attrs, enroller.clone(), now()?, false);
 
         if let Err(err) = self.members.add_member(member).await {
-            warn!("Error adding member {} directly: {}", id, err);
+            warn!("Error adding member {} directly: {}", identifier, err);
             return Ok(Either::Right(DirectAuthenticatorError(
                 "Error adding member".to_string(),
             )));
@@ -81,6 +83,7 @@ impl DirectAuthenticator {
         Ok(Either::Left(()))
     }
 
+    #[instrument(skip_all, fields(enroller = %enroller))]
     pub async fn list_members(
         &self,
         enroller: &Identifier,
@@ -111,6 +114,7 @@ impl DirectAuthenticator {
         Ok(Either::Left(res))
     }
 
+    #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier))]
     pub async fn delete_member(
         &self,
         enroller: &Identifier,

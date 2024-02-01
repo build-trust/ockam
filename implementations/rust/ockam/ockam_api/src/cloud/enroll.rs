@@ -44,6 +44,7 @@ trait Enroll {
 
 #[async_trait]
 impl Enroll for ControllerClient {
+    #[instrument(skip_all, fields(attributes = %attributes))]
     async fn generate_enrollment_token(
         &self,
         ctx: &Context,
@@ -59,6 +60,7 @@ impl Enroll for ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(enrollment_token = %enrollment_token))]
     async fn authenticate_enrollment_token(
         &self,
         ctx: &Context,
@@ -80,6 +82,7 @@ impl Enroll for ControllerClient {
 pub mod auth0 {
     use super::*;
     use crate::cloud::email_address::EmailAddress;
+    use std::fmt::{Display, Formatter};
 
     // Req/Res types
 
@@ -128,6 +131,19 @@ pub mod auth0 {
         pub email_verified: bool,
     }
 
+    impl Display for UserInfo {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("UserInfo")
+                .field("email", &self.sub)
+                .field("nickname", &self.nickname)
+                .field("picture", &self.picture)
+                .field("updated_at", &self.updated_at)
+                .field("email", &self.email)
+                .field("email_verified", &self.email_verified)
+                .finish()
+        }
+    }
+
     #[derive(Encode, Decode, Debug)]
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
@@ -159,6 +175,7 @@ pub mod auth0 {
 
 pub mod enrollment_token {
     use serde::Serialize;
+    use std::fmt::{Display, Formatter};
 
     use ockam::identity::Attributes;
 
@@ -186,6 +203,12 @@ pub mod enrollment_token {
     #[cbor(map)]
     pub struct EnrollmentToken {
         #[n(1)] pub token: Token,
+    }
+
+    impl Display for EnrollmentToken {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self.token.0)
+        }
     }
 
     impl EnrollmentToken {
