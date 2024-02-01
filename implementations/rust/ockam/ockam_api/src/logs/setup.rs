@@ -20,7 +20,7 @@ use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::{self as sdk};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
 use std::fmt::Debug;
-use std::io::stdout;
+use std::io::{empty, stdout};
 use tonic::async_trait;
 use tonic::metadata::*;
 pub use tracing::level_filters::LevelFilter;
@@ -158,7 +158,7 @@ impl LoggingTracing {
             .with(tracing_layer);
 
         if logging_configuration.is_enabled() {
-            let (appender, guard) = match logging_configuration.log_dir() {
+            let (appender, _worker_guard) = match logging_configuration.log_dir() {
                 // If a node dir path is not provided, log to stdout.
                 None => {
                     let (n, guard) = tracing_appender::non_blocking(stdout());
@@ -189,13 +189,22 @@ impl LoggingTracing {
             res.expect("Failed to initialize tracing subscriber");
 
             TracingGuard {
-                _worker_guard: Some(guard),
+                _worker_guard,
                 logger_provider,
                 tracer_provider,
             }
         } else {
+            // even if logging is not enabled, an empty writer is
+            // necessary to make sure that all spans are emitted
+            //
+            let (n, _worker_guard) = tracing_appender::non_blocking(empty());
+            let appender = layer().with_writer(n);
+            subscriber
+                .with(appender)
+                .try_init()
+                .expect("Failed to initialize tracing subscriber");
             TracingGuard {
-                _worker_guard: None,
+                _worker_guard,
                 logger_provider,
                 tracer_provider,
             }
@@ -289,7 +298,7 @@ fn get_otlp_headers() -> MetadataMap {
 
 #[derive(Debug)]
 pub struct TracingGuard {
-    _worker_guard: Option<WorkerGuard>,
+    _worker_guard: WorkerGuard,
     logger_provider: LoggerProvider,
     tracer_provider: opentelemetry_sdk::trace::TracerProvider,
 }
