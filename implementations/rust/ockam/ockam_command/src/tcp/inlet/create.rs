@@ -13,6 +13,10 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::CliState;
+use ockam_api::journeys::{
+    JourneyEvent, NODE_NAME, TCP_INLET_ALIAS, TCP_INLET_AT, TCP_INLET_CONNECTION_STATUS,
+    TCP_INLET_FROM, TCP_INLET_TO,
+};
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -26,7 +30,7 @@ use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{async_cmd, find_available_port, port_is_free_guard, process_nodes_multiaddr};
-use crate::Error;
+use crate::{default_attributes, Error};
 use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -180,6 +184,10 @@ impl CreateCommand {
             progress_bar.as_ref(),
         );
         let (inlet, _) = try_join!(create_inlet, progress_output)?;
+
+        let node_name = node.node_name();
+        cmd.add_inlet_created_event(&opts, &node_name, &inlet).await?;
+
         opts.terminal
             .stdout()
             .plain(
@@ -205,6 +213,22 @@ impl CreateCommand {
 
     fn to(&self) -> MultiAddr {
         MultiAddr::from_str(&self.to).unwrap()
+    }
+
+    async fn add_inlet_created_event(&self, opts: &CommandGlobalOpts, node_name: &str, inlet: &InletStatus) -> miette::Result<()> {
+        let mut attributes = default_attributes();
+        let to = self.to.to_string();
+        let from = self.from.to_string();
+        let status = inlet.status.to_string();
+        attributes.insert(TCP_INLET_AT, &node_name);
+        attributes.insert(TCP_INLET_FROM, &from);
+        attributes.insert(TCP_INLET_TO, to.as_str());
+        attributes.insert(TCP_INLET_ALIAS, inlet.alias.as_str());
+        attributes.insert(TCP_INLET_CONNECTION_STATUS, &status);
+        attributes.insert(NODE_NAME, &node_name);
+        Ok(opts.state
+            .add_journey_event(JourneyEvent::TcpInletCreated, attributes)
+            .await?)
     }
 
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {

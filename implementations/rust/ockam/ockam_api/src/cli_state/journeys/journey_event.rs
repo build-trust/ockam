@@ -8,6 +8,12 @@ pub const TCP_OUTLET_FROM: &Key = &Key::from_static_str("app.tcp_outlet.from");
 pub const TCP_OUTLET_TO: &Key = &Key::from_static_str("app.tcp_outlet.to");
 pub const TCP_OUTLET_ALIAS: &Key = &Key::from_static_str("app.tcp_outlet.alias");
 
+pub const TCP_INLET_AT: &Key = &Key::from_static_str("app.tcp_inlet.at");
+pub const TCP_INLET_FROM: &Key = &Key::from_static_str("app.tcp_inlet.from");
+pub const TCP_INLET_TO: &Key = &Key::from_static_str("app.tcp_inlet.to");
+pub const TCP_INLET_ALIAS: &Key = &Key::from_static_str("app.tcp_inlet.alias");
+pub const TCP_INLET_CONNECTION_STATUS: &Key = &Key::from_static_str("app.tcp_inlet.connection_status");
+
 /// List of all the journey events that we want to track
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JourneyEvent {
