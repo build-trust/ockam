@@ -3,8 +3,9 @@ use crate::logs::{CurrentSpan, OCKAM_TRACER_NAME};
 use crate::{CliState, ProjectJourney};
 use crate::{HostJourney, Result};
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 use ockam_node::OpenTelemetryContext;
-use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, TraceId, Tracer};
+use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
 use opentelemetry::{global, Context, Key};
 use opentelemetry_sdk::trace::{IdGenerator, RandomIdGenerator};
 use std::collections::HashMap;
@@ -150,20 +151,27 @@ impl CliState {
 
     /// Create the initial host journey, with a random trace id
     fn create_host_journey(&self) -> HostJourney {
+        let random_id_generator = RandomIdGenerator::default();
         let (opentelemetry_context, now) = self.create_journey(
             "start host journey",
-            RandomIdGenerator::default().new_trace_id(),
+            random_id_generator.new_trace_id(),
+            random_id_generator.new_span_id(),
         );
         HostJourney::new(opentelemetry_context, now)
     }
 
     /// Create the initial project journey, with a trace id based on the project id
     fn create_project_journey(&self, project_id: &str) -> ProjectJourney {
+        // take the first part of the project id, until '-' as the span id
+        let split = project_id.split('-').collect::<Vec<_>>();
+        let project_id_span_id = split.iter().take(2).join("");
+        let span_id = SpanId::from_hex(&project_id_span_id).unwrap();
+
+        // take the whole project without '-' as the trace id
         let project_id_trace_id = project_id.replace('-', "");
-        let (opentelemetry_context, now) = self.create_journey(
-            "start project journey",
-            TraceId::from_hex(&project_id_trace_id).unwrap(),
-        );
+        let trace_id = TraceId::from_hex(&project_id_trace_id).unwrap();
+        let (opentelemetry_context, now) =
+            self.create_journey("start project journey", trace_id, span_id);
         ProjectJourney::new(project_id, opentelemetry_context, now)
     }
 
@@ -176,6 +184,7 @@ impl CliState {
         &self,
         msg: &str,
         trace_id: TraceId,
+        span_id: SpanId,
     ) -> (OpenTelemetryContext, DateTime<Utc>) {
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let (span, now) = Context::map_current(|cx| {
@@ -185,7 +194,7 @@ impl CliState {
                 .add(Duration::from_millis(100));
             let mut span_builder = SpanBuilder::from_name(msg.to_string());
             span_builder.trace_id = Some(trace_id);
-            span_builder.span_id = Some(RandomIdGenerator::default().new_span_id());
+            span_builder.span_id = Some(span_id);
             span_builder.start_time = Some(SystemTime::from(now));
             span_builder.end_time = Some(SystemTime::from(now).add(Duration::from_millis(1)));
             (
