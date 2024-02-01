@@ -30,7 +30,7 @@ impl PolicySqlxDatabase {
 impl PoliciesRepository for PolicySqlxDatabase {
     async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Policy>> {
         let query = query_as(
-            "SELECT resource, action, expression FROM policy WHERE node=$1 and resource=$2 and action=$3",
+            "SELECT resource, action, expression FROM policy WHERE node_name=$1 and resource=$2 and action=$3",
         )
         .bind(self.database.node_name()?.to_sql())
         .bind(resource.to_sql())
@@ -49,15 +49,15 @@ impl PoliciesRepository for PolicySqlxDatabase {
         policy: &Policy,
     ) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO policy VALUES (?, ?, ?, ?)")
-            .bind(self.database.node_name()?.to_sql())
             .bind(resource.to_sql())
             .bind(action.to_sql())
-            .bind(minicbor::to_vec(policy.expression())?.to_sql());
+            .bind(minicbor::to_vec(policy.expression())?.to_sql())
+            .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete_policy(&self, resource: &Resource, action: &Action) -> Result<()> {
-        let query = query("DELETE FROM policy WHERE node=? and resource=? and action=?")
+        let query = query("DELETE FROM policy WHERE node_name=? and resource=? and action=?")
             .bind(self.database.node_name()?.to_sql())
             .bind(resource.to_sql())
             .bind(action.to_sql());
@@ -66,7 +66,7 @@ impl PoliciesRepository for PolicySqlxDatabase {
 
     async fn get_policies_by_resource(&self, resource: &Resource) -> Result<Vec<(Action, Policy)>> {
         let query = query_as(
-            "SELECT resource, action, expression FROM policy where node=$1 and resource=$2",
+            "SELECT resource, action, expression FROM policy where node_name=$1 and resource=$2",
         )
         .bind(self.database.node_name()?.to_sql())
         .bind(resource.to_sql());

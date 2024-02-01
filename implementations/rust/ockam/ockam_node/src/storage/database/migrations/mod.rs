@@ -7,5 +7,6 @@ pub(super) mod common;
 pub mod migration_20231231100000_node_name_identity_attributes;
 /// This migration moves attributes from identity_attributes to the authority_member table for authority nodes
 pub mod migration_20240111100001_add_authority_tables;
-/// This migration duplicates the existing policies for every known node
-pub mod migration_20240202100000_migrate_policies;
+/// This migration updates policies to not rely on trust_context_id,
+/// also introduces `node_name` and  replicates policy for each existing node
+pub mod migration_20240111100002_delete_trust_context;
