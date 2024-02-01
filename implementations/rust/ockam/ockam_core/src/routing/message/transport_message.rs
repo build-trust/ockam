@@ -1,3 +1,5 @@
+#[cfg(feature = "std")]
+use crate::OpenTelemetryContext;
 use crate::{compat::vec::Vec, Message, Route};
 use core::fmt::{self, Display, Formatter};
 use serde::{Deserialize, Serialize};
@@ -15,7 +17,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// See `ockam_transport_tcp::workers::sender::TcpSendWorker` for a usage example.
 ///
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Message)]
 pub struct TransportMessage {
     /// The transport protocol version.
     pub version: u8,
@@ -28,6 +30,9 @@ pub struct TransportMessage {
     pub return_route: Route,
     /// The message payload.
     pub payload: Vec<u8>,
+    /// An optional tracing context
+    #[cfg(feature = "std")]
+    pub tracing_context: Option<String>,
 }
 
 impl TransportMessage {
@@ -42,6 +47,28 @@ impl TransportMessage {
             onward_route: onward_route.into(),
             return_route: return_route.into(),
             payload,
+            #[cfg(feature = "std")]
+            tracing_context: None,
+        }
+    }
+
+    /// Return a TransportMessage with a new tracing context
+    #[cfg(feature = "std")]
+    pub fn set_tracing_context(self, tracing_context: OpenTelemetryContext) -> Self {
+        Self {
+            tracing_context: Some(tracing_context.to_string()),
+            ..self
+        }
+    }
+
+    /// Return the tracing context
+    #[cfg(feature = "std")]
+    pub fn tracing_context(&self) -> OpenTelemetryContext {
+        match self.tracing_context.as_ref() {
+            Some(tracing_context) => {
+                OpenTelemetryContext::from_remote_context(tracing_context.as_str())
+            }
+            None => OpenTelemetryContext::current(),
         }
     }
 }

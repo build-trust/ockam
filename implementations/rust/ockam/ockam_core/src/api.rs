@@ -34,8 +34,6 @@ pub struct RequestHeader {
     #[n(3)] method: Option<Method>,
     /// Indicator if a request body is expected after this header.
     #[n(4)] has_body: bool,
-    /// Optional tracing context
-    #[n(5)] pub tracing_context: Option<String>,
 }
 
 impl RequestHeader {
@@ -45,7 +43,6 @@ impl RequestHeader {
             method: Some(method),
             path: path.into(),
             has_body,
-            tracing_context: None,
         }
     }
 
@@ -471,11 +468,6 @@ impl<T> Request<T> {
 
     pub fn path<P: Into<String>>(mut self, path: P) -> Self {
         self.header.path = path.into();
-        self
-    }
-
-    pub fn tracing_context<S: Into<String>>(mut self, tracing_context: S) -> Self {
-        self.header.tracing_context = Some(tracing_context.into());
         self
     }
 

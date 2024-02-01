@@ -7,6 +7,8 @@ use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::flow_control::FlowControls;
+#[cfg(feature = "std")]
+use ockam_core::OpenTelemetryContext;
 use ockam_core::{async_trait, Address, Mailboxes, RelayMessage, Result, TransportType};
 
 #[cfg(feature = "std")]
@@ -27,6 +29,8 @@ pub struct Context {
     /// List of transports used to resolve external addresses to local workers in routes
     pub(super) transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
     pub(super) flow_controls: FlowControls,
+    #[cfg(feature = "std")]
+    pub(super) tracing_context: OpenTelemetryContext,
 }
 
 /// This trait can be used to integrate transports into a node
@@ -81,6 +85,18 @@ impl Context {
     /// Shared [`FlowControls`] instance
     pub fn flow_controls(&self) -> &FlowControls {
         &self.flow_controls
+    }
+
+    /// Return the tracing context
+    #[cfg(feature = "std")]
+    pub fn tracing_context(&self) -> OpenTelemetryContext {
+        self.tracing_context.clone()
+    }
+
+    /// Set the current tracing context
+    #[cfg(feature = "std")]
+    pub fn set_tracing_context(&mut self, tracing_context: OpenTelemetryContext) {
+        self.tracing_context = tracing_context
     }
 }
 

@@ -121,13 +121,17 @@ hex = "0.4.3"
 indexmap = "2.2.3"
 itertools = "0.12.1"
 mockall = "0.12"
+multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
+ockam_transport_core = { path = "../ockam_transport_core" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.21.2", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
+pretty_assertions = "1.4.0"
 quickcheck = "1.0.1"
 quickcheck_macros = "1.0.0"
 tempfile = "3.10.0"
 tokio = { version = "1.36.0", features = ["full"] }
 tracing-core = "0.1.32"
+treeline = "0.1.0"
 uuid = "1.7.0"

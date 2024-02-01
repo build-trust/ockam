@@ -17,7 +17,7 @@ use ockam_api::cli_state::CliState;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::CliStateError;
 use ockam_api::ConnectionStatus;
-use ockam_core::DenyAll;
+use ockam_core::{DenyAll, OpenTelemetryContext};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
@@ -54,9 +54,7 @@ where
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     debug!("running {} asynchronously", command_name);
-    let res = embedded_node(opts.clone(), |ctx| {
-        async move { f(ctx).await }.with_current_context()
-    });
+    let res = embedded_node(opts.clone(), |ctx| async move { f(ctx).await });
     local_cmd(res)
 }
 
@@ -71,19 +69,22 @@ where
         .no_logging()
         .with_runtime(opts.rt)
         .build();
-    let res = executor.execute(async move {
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("Detached.embedded_node"),
-                DenyAll,
-                DenyAll,
-            )
-            .await
-            .expect("Embedded node child ctx can't be created");
-        let r = f(child_ctx).await;
-        stop_node(ctx).await;
-        r
-    });
+    let res = executor.execute(
+        async move {
+            let child_ctx = ctx
+                .new_detached(
+                    Address::random_tagged("Detached.embedded_node"),
+                    DenyAll,
+                    DenyAll,
+                )
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let r = f(child_ctx).await;
+            stop_node(ctx).await;
+            r
+        }
+        .with_context(OpenTelemetryContext::current_context()),
+    );
     match res {
         Ok(Err(e)) => Err(e),
         Ok(Ok(t)) => Ok(t),

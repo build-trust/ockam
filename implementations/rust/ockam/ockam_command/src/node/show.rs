@@ -244,7 +244,7 @@ pub async fn is_node_up(
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
         let result = node_client
-            .set_timeout(timeout_duration)
+            .set_timeout_mut(timeout_duration)
             .ask::<(), NodeStatus>(ctx, api::query_status())
             .await;
         if let Ok(node_status) = result {

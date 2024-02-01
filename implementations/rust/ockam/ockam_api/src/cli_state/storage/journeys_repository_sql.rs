@@ -3,11 +3,10 @@ use sqlx::*;
 use std::time::SystemTime;
 
 use crate::storage::journeys_repository::JourneysRepository;
-use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
+use ockam_core::{async_trait, OpenTelemetryContext};
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
-use ockam_node::OpenTelemetryContext;
 
 #[derive(Clone)]
 pub struct JourneysSqlxDatabase {

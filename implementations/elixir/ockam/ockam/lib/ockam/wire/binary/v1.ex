@@ -8,24 +8,19 @@ defmodule Ockam.Wire.Binary.V1 do
 
   @version 1
 
-  # TODO: refactor this.
-  def bare_spec(:address) do
-    {:struct, [type: :uint, value: :data]}
-  end
-
-  def bare_spec(:route) do
-    {:array, bare_spec(:address)}
-  end
-
-  def bare_spec(:message) do
-    {:struct,
-     [
-       version: :uint,
-       onward_route: bare_spec(:route),
-       return_route: bare_spec(:route),
-       payload: :data
-     ]}
-  end
+  @address_spec {:struct, [type: :uint, value: :data]}
+  @route_spec {:array, @address_spec}
+  @message_fields [
+    version: :uint,
+    onward_route: @route_spec,
+    return_route: @route_spec,
+    payload: :data
+  ]
+  @message_spec {:struct, @message_fields}
+  @message_with_tracing_context_spec {
+    :struct,
+    @message_fields ++ [tracing_context: {:optional, :string}]
+  }
 
   @doc """
   Encodes a message into a binary.
@@ -41,17 +36,33 @@ defmodule Ockam.Wire.Binary.V1 do
     return_route = Message.return_route(message)
     payload = Message.payload(message)
 
-    ## TODO: validate data and handle errors?
+    ## TODO: validate data and handle errors
     encoded =
-      :bare.encode(
-        %{
-          version: @version,
-          onward_route: normalize_route(onward_route),
-          return_route: normalize_route(return_route),
-          payload: payload
-        },
-        bare_spec(:message)
-      )
+      Message.tracing_context(message)
+      |> case do
+        nil ->
+          :bare.encode(
+            %{
+              version: @version,
+              onward_route: normalize_route(onward_route),
+              return_route: normalize_route(return_route),
+              payload: payload
+            },
+            @message_spec
+          )
+
+        context ->
+          :bare.encode(
+            %{
+              version: @version,
+              onward_route: normalize_route(onward_route),
+              return_route: normalize_route(return_route),
+              payload: payload,
+              tracing_context: context
+            },
+            @message_with_tracing_context_spec
+          )
+      end
 
     {:ok, encoded}
   end
@@ -64,12 +75,11 @@ defmodule Ockam.Wire.Binary.V1 do
   """
   @spec decode(encoded :: binary()) ::
           {:ok, message :: Message.t()} | {:error, error :: any()}
-
   def decode(encoded) do
     ## Expect first byte to be the version
     case encoded do
       <<@version, _rest::binary>> ->
-        case :bare.decode(encoded, bare_spec(:message)) do
+        case :bare.decode(encoded, @message_spec) do
           {:ok, %{onward_route: onward_route, return_route: return_route} = decoded, ""} ->
             {:ok,
              struct(
@@ -80,8 +90,8 @@ defmodule Ockam.Wire.Binary.V1 do
                })
              )}
 
-          {:ok, _decoded, rest} ->
-            {:error, {:too_much_data, encoded, rest}}
+          {:ok, _decoded, _rest} ->
+            decode_with_tracing_context(encoded)
 
           {:error, reason} ->
             {:error, reason}
@@ -92,12 +102,37 @@ defmodule Ockam.Wire.Binary.V1 do
     end
   end
 
+  def decode_with_tracing_context(encoded) do
+    case :bare.decode(encoded, @message_with_tracing_context_spec) do
+      {:ok,
+       %{onward_route: onward_route, return_route: return_route, tracing_context: context} =
+           decoded, ""} ->
+        decoded = Map.delete(decoded, :tracing_context)
+
+        {:ok,
+         struct(
+           Ockam.Message,
+           Map.merge(decoded, %{
+             onward_route: denormalize_route(onward_route),
+             return_route: denormalize_route(return_route),
+             local_metadata: %{tracing_context: context}
+           })
+         )}
+
+      {:ok, _decoded, rest} ->
+        {:error, {:too_much_data, encoded, rest}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   def encode_route(route) do
-    {:ok, :bare.encode(normalize_route(route), bare_spec(:route))}
+    {:ok, :bare.encode(normalize_route(route), @route_spec)}
   end
 
   def decode_route(encoded_route) do
-    case :bare.decode(encoded_route, bare_spec(:route)) do
+    case :bare.decode(encoded_route, @route_spec) do
       {:ok, route, ""} ->
         {:ok, denormalize_route(route)}
 
@@ -110,11 +145,11 @@ defmodule Ockam.Wire.Binary.V1 do
   end
 
   def encode_address(address) do
-    {:ok, :bare.encode(Address.normalize(address), bare_spec(:address))}
+    {:ok, :bare.encode(Address.normalize(address), @address_spec)}
   end
 
   def decode_address(encoded_address) do
-    case :bare.decode(encoded_address, bare_spec(:address)) do
+    case :bare.decode(encoded_address, @address_spec) do
       {:ok, address, ""} ->
         {:ok, Address.denormalize(address)}
 

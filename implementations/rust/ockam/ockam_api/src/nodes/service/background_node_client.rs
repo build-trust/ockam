@@ -93,9 +93,14 @@ impl BackgroundNodeClient {
     }
 
     /// Use a default timeout for making requests
-    pub fn set_timeout(&mut self, timeout: Duration) -> &Self {
+    pub fn set_timeout_mut(&mut self, timeout: Duration) -> &Self {
         self.timeout = Some(timeout);
         self
+    }
+
+    /// Use a default timeout for making requests
+    pub fn set_timeout(self, timeout: Option<Duration>) -> Self {
+        Self { timeout, ..self }
     }
 
     pub fn cli_state(&self) -> &CliState {

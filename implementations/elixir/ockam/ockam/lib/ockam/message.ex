@@ -65,6 +65,10 @@ defmodule Ockam.Message do
   @doc "Get payload from the message"
   def payload(%Message{payload: payload}), do: payload
 
+  @doc "Get tracing context from the message, if any"
+  def tracing_context(%Message{local_metadata: %{tracing_context: context}}), do: context
+  def tracing_context(%Message{}), do: nil
+
   @doc "Get local metadata from the message"
   def local_metadata(%Message{local_metadata: local_metadata}), do: local_metadata
 

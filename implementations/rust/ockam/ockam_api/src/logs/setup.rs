@@ -29,8 +29,6 @@ use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-pub const OCKAM_TRACER_NAME: &str = "ockam";
-
 pub struct LoggingTracing;
 
 impl LoggingTracing {

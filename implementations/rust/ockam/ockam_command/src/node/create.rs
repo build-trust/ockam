@@ -10,7 +10,7 @@ use tracing::instrument;
 
 use ockam_api::cli_state::random_name;
 use ockam_api::logs::TracingGuard;
-use ockam_core::AsyncTryClone;
+use ockam_core::{opentelemetry_context_parser, AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 
 use crate::node::util::NodeManagerDefaults;
@@ -19,7 +19,6 @@ use crate::util::api::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{async_cmd, local_cmd};
 use crate::{docs, CommandGlobalOpts, Result};
-use ockam_node::{opentelemetry_context_parser, OpenTelemetryContext};
 
 pub mod background;
 pub mod foreground;

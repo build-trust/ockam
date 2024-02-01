@@ -11,6 +11,7 @@ use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, error, info};
+use tracing_attributes::instrument;
 
 use crate::models::Identifier;
 use crate::secure_channel::decryptor::DecryptorHandler;
@@ -96,50 +97,11 @@ impl Worker for HandshakeWorker {
         // Some messages can come from other systems using the remote address
         // and some messages can come from the current node when the decryptor
         // used to support the decryption of Kafka messages for example
-        if let Some(decryptor_handler) = self.decryptor_handler.as_mut() {
-            let msg_addr = message.msg_addr();
-
-            let result = if msg_addr == self.addresses.decryptor_remote {
-                decryptor_handler.handle_decrypt(context, message).await
-            } else if msg_addr == self.addresses.decryptor_api {
-                decryptor_handler.handle_decrypt_api(context, message).await
-            } else {
-                Err(IdentityError::UnknownChannelMsgDestination)?
-            };
-            return result;
-        };
-
-        let payload = message.payload();
-        if let SendMessage(send_message) = self
-            .state_machine
-            .on_event(ReceivedMessage(Vec::<u8>::decode(payload)?))
-            .await?
-        {
-            // set the remote route by taking the most up to date message return route
-            // In the case of the initiator the first return route mentions the secure channel listener
-            // address so we need to wait for the return route corresponding to the remote handshake worker
-            // when it has been spawned
-            self.remote_route = Some(message.return_route());
-
-            context
-                .send_from_address(
-                    self.remote_route()?,
-                    send_message,
-                    self.addresses.decryptor_remote.clone(),
-                )
-                .await?
-        };
-
-        // if we reached the final state we can make a pair of encryptor/decryptor
-        if let Some(final_state) = self.state_machine.get_handshake_results() {
-            // start the encryptor worker and return the decryptor
-            self.decryptor_handler = Some(self.finalize(context, final_state).await?);
-            if let Some(callback_sender) = self.callback_sender.take() {
-                callback_sender.send(())?;
-            }
-        };
-
-        Ok(())
+        if self.decryptor_handler.is_some() {
+            self.handle_decrypt(context, message).await
+        } else {
+            self.handle_handshake(context, message).await
+        }
     }
 
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
@@ -265,6 +227,68 @@ impl HandshakeWorker {
         }
 
         Ok(())
+    }
+
+    /// This function is instrumented as handle_message to make as if there were 2 workers
+    ///   - one for handshakes
+    ///   - one for decryption
+    ///
+    /// See also the handle_decrypt method.
+    #[instrument(skip_all, name = "HandshakeWorker::handle_message")]
+    async fn handle_handshake(
+        &mut self,
+        context: &mut Context,
+        message: Routed<Any>,
+    ) -> Result<()> {
+        let payload = message.payload();
+        if let SendMessage(send_message) = self
+            .state_machine
+            .on_event(ReceivedMessage(Vec::<u8>::decode(payload)?))
+            .await?
+        {
+            // set the remote route by taking the most up to date message return route
+            // In the case of the initiator the first return route mentions the secure channel listener
+            // address so we need to wait for the return route corresponding to the remote handshake worker
+            // when it has been spawned
+            self.remote_route = Some(message.return_route());
+
+            context
+                .send_from_address(
+                    self.remote_route()?,
+                    send_message,
+                    self.addresses.decryptor_remote.clone(),
+                )
+                .await?
+        };
+
+        // if we reached the final state we can make a pair of encryptor/decryptor
+        if let Some(final_state) = self.state_machine.get_handshake_results() {
+            // start the encryptor worker and return the decryptor
+            self.decryptor_handler = Some(self.finalize(context, final_state).await?);
+            if let Some(callback_sender) = self.callback_sender.take() {
+                callback_sender.send(())?;
+            }
+        };
+
+        Ok(())
+    }
+
+    /// This function is instrumented as if there was a DecryptorWorker type for a better
+    /// readability of traces (Because there's a corresponding EncryptorWorker::handle_message)
+    ///
+    /// In reality, there's only one worker, the HandshakeWorker, serves as both a worker for handshakes
+    /// and for decryption.
+    #[instrument(skip_all, name = "DecryptorWorker::handle_message")]
+    async fn handle_decrypt(&mut self, context: &mut Context, message: Routed<Any>) -> Result<()> {
+        let decryptor_handler = self.decryptor_handler.as_mut().unwrap();
+        let msg_addr = message.msg_addr();
+        if msg_addr == self.addresses.decryptor_remote {
+            decryptor_handler.handle_decrypt(context, message).await
+        } else if msg_addr == self.addresses.decryptor_api {
+            decryptor_handler.handle_decrypt_api(context, message).await
+        } else {
+            Err(IdentityError::UnknownChannelMsgDestination)?
+        }
     }
 
     /// Return the route for the other party's handshake worker

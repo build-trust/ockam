@@ -7,9 +7,9 @@ use rand::random;
 
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
+use ockam_core::OpenTelemetryContext;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_node::OpenTelemetryContext;
 
 use crate::node::show::is_node_up;
 use crate::node::CreateCommand;

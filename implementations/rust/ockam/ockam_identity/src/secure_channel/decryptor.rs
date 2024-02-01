@@ -20,6 +20,7 @@ use crate::{
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, warn};
+use tracing_attributes::instrument;
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
@@ -56,6 +57,7 @@ impl DecryptorHandler {
         }
     }
 
+    #[instrument(skip_all)]
     pub(crate) async fn handle_decrypt_api(
         &mut self,
         ctx: &mut Context,
@@ -160,6 +162,7 @@ impl DecryptorHandler {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     pub(crate) async fn handle_decrypt(
         &mut self,
         ctx: &mut Context,

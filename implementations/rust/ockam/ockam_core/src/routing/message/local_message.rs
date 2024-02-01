@@ -1,5 +1,8 @@
+#[cfg(feature = "std")]
+use crate::OpenTelemetryContext;
 use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
 use crate::{LocalInfo, Result};
+use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 
 /// A message type that is routed locally within a single node.
@@ -47,6 +50,9 @@ pub struct LocalMessage {
     /// independently from its payload. For example this can be used to store the identifier that
     /// was used to encrypt the payload
     local_info: Vec<LocalInfo>,
+    /// Local tracing context
+    #[cfg(feature = "std")]
+    tracing_context: OpenTelemetryContext,
 }
 
 impl LocalMessage {
@@ -177,17 +183,42 @@ impl LocalMessage {
         self.local_info.clear()
     }
 
+    /// Get the tracing context associated to this local message
+    #[cfg(feature = "std")]
+    pub fn tracing_context(&self) -> OpenTelemetryContext {
+        self.tracing_context.clone()
+    }
+
     /// Create a [`LocalMessage`] from a decoded [`TransportMessage`]
     pub fn from_transport_message(transport_message: TransportMessage) -> LocalMessage {
-        LocalMessage::new()
-            .with_onward_route(transport_message.onward_route)
-            .with_return_route(transport_message.return_route)
-            .with_payload(transport_message.payload)
+        cfg_if! {
+            if #[cfg(feature = "std")] {
+                LocalMessage::new()
+                    .with_tracing_context(transport_message.tracing_context())
+                    .with_onward_route(transport_message.onward_route)
+                    .with_return_route(transport_message.return_route)
+                    .with_payload(transport_message.payload)
+            } else {
+                LocalMessage::new()
+                    .with_onward_route(transport_message.onward_route)
+                    .with_return_route(transport_message.return_route)
+                    .with_payload(transport_message.payload)
+            }
+        }
     }
 
     /// Create a [`TransportMessage`] from a [`LocalMessage`]
     pub fn into_transport_message(self) -> TransportMessage {
-        TransportMessage::v1(self.onward_route(), self.return_route(), self.payload())
+        let transport_message =
+            TransportMessage::v1(self.onward_route(), self.return_route(), self.payload());
+        cfg_if! {
+            if #[cfg(feature = "std")] {
+                // make sure to pass the latest tracing context
+                transport_message.set_tracing_context(self.tracing_context.update())
+            } else {
+                transport_message
+            }
+        }
     }
 }
 
@@ -210,6 +241,8 @@ impl LocalMessage {
             return_route,
             payload,
             local_info,
+            #[cfg(feature = "std")]
+            tracing_context: OpenTelemetryContext::current(),
         }
     }
 
@@ -243,5 +276,14 @@ impl LocalMessage {
     /// Specify the local information for the message
     pub fn with_local_info(self, local_info: Vec<LocalInfo>) -> Self {
         Self { local_info, ..self }
+    }
+
+    /// Specify the tracing context
+    #[cfg(feature = "std")]
+    pub fn with_tracing_context(self, tracing_context: OpenTelemetryContext) -> Self {
+        Self {
+            tracing_context,
+            ..self
+        }
     }
 }

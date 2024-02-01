@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use tracing::{debug, error, info, warn};
+use tracing_attributes::instrument;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
@@ -79,6 +80,7 @@ impl EncryptorWorker {
         }
     }
 
+    #[instrument(skip_all)]
     async fn handle_encrypt_api(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -122,6 +124,7 @@ impl EncryptorWorker {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     async fn handle_encrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -160,6 +163,7 @@ impl EncryptorWorker {
 
     /// Asks credential retriever for a new credential and presents it to the other side, including
     /// the latest change_history
+    #[instrument(skip_all)]
     async fn handle_refresh_credentials(&mut self, ctx: &<Self as Worker>::Context) -> Result<()> {
         debug!(
             "Started credentials refresh for {}",
@@ -263,6 +267,7 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = %ctx.address()))]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,
@@ -283,6 +288,7 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "EncryptorWorker::shutdown")]
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
         if let Some(credential_retriever) = &self.credential_retriever {
             credential_retriever.unsubscribe(&self.addresses.encryptor_internal)?;

@@ -10,7 +10,7 @@ use ockam_core::{Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::{error, info, trace};
+use tracing::{error, info, instrument, trace};
 
 /// A TCP receiving message processor
 ///
@@ -125,6 +125,7 @@ impl Processor for TcpRecvProcessor {
     ///    Context to avoid spawning a zombie task.
     /// 3. We must also stop the TcpReceive loop when the worker gets
     ///    killed by the user or node.
+    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.address()))]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Run in a loop until TcpWorkerPair::stop() is called
         // First read a message length header...
@@ -143,7 +144,6 @@ impl Processor for TcpRecvProcessor {
                     self.addresses.receiver_internal_address().clone(),
                 )
                 .await?;
-
                 return Ok(false);
             }
         };
@@ -163,26 +163,26 @@ impl Processor for TcpRecvProcessor {
         }
 
         // Deserialize the message now
-        let msg = TransportMessage::decode(&buf).map_err(|_| TransportError::RecvBadMessage)?;
-        let msg = LocalMessage::from_transport_message(msg);
-
-        // Heartbeat message
-        if !msg.has_next_on_onward_route() {
+        let transport_message = TransportMessage::decode(&buf).map_err(|e| {
+            error!("Error decoding message: {:?}", e);
+            TransportError::RecvBadMessage
+        })?;
+        let local_message = LocalMessage::from_transport_message(transport_message);
+        if !local_message.has_next_on_onward_route() {
             trace!("Got heartbeat message from: {}", self.socket_address);
             return Ok(true);
         }
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        let msg = msg.push_front_return_route(self.addresses.sender_address());
+        let local_message = local_message.push_front_return_route(self.addresses.sender_address());
 
-        trace!("Message onward route: {}", msg.onward_route_ref());
-        trace!("Message return route: {}", msg.return_route_ref());
+        trace!("Message onward route: {}", local_message.onward_route_ref());
+        trace!("Message return route: {}", local_message.return_route_ref());
 
         // Forward the message to the next hop in the route
-        ctx.forward_from_address(msg, self.addresses.receiver_address().clone())
+        ctx.forward_from_address(local_message, self.addresses.receiver_address().clone())
             .await?;
-
         Ok(true)
     }
 }

@@ -6,10 +6,9 @@ use tracing::info;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::service::message::{MessageSender, SendMessage};
+use ockam_api::nodes::service::messages::Messages;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::nodes::InMemoryNode;
-use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::project::util::{
@@ -86,8 +85,7 @@ impl SendCommand {
         let response: Vec<u8> = if let Some(node) = &self.from {
             BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
                 .await?
-                .set_timeout(self.timeout)
-                .ask(ctx, req(&to, msg_bytes))
+                .send_message(ctx, &to, msg_bytes, Some(self.timeout))
                 .await?
         } else {
             let identity_name = opts
@@ -122,8 +120,7 @@ impl SendCommand {
             info!("sending to {to}");
             node_manager
                 .send_message(ctx, &to, msg_bytes, Some(self.timeout))
-                .await
-                .into_diagnostic()?
+                .await?
         };
 
         let result = if self.hex {
@@ -137,8 +134,4 @@ impl SendCommand {
         opts.terminal.stdout().plain(result).write_line()?;
         Ok(())
     }
-}
-
-pub(crate) fn req(to: &MultiAddr, message: Vec<u8>) -> Request<SendMessage> {
-    Request::post("v0/message").body(SendMessage::new(to, message))
 }
