@@ -442,21 +442,24 @@ pub fn run() -> miette::Result<()> {
 
     match OckamCommand::try_parse_from(input.clone()) {
         Err(help) => {
-            let command = input
-                .iter()
-                .take_while(|a| !a.starts_with('-'))
-                .collect::<Vec<_>>()
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>()
-                .join(" ");
-            let message = format!(
-                "could not parse the command: {}\n{}",
-                command,
-                input.join(" ")
-            );
-            send_error_message(&command, &message);
-            pager::render_help(help)
+            // the -h or --help flag must not be interpreted as an error
+            if !input.contains(&"-h".to_string()) && !input.contains(&"--help".to_string()) {
+                let command = input
+                    .iter()
+                    .take_while(|a| !a.starts_with('-'))
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ");
+                let message = format!(
+                    "could not parse the command: {}\n{}",
+                    command,
+                    input.join(" ")
+                );
+                send_error_message(&command, &message);
+            };
+            pager::render_help(help);
         }
         Ok(command) => command.run()?,
     };
@@ -467,7 +470,7 @@ fn send_error_message(command: &str, message: &str) {
     let message = message.to_string();
     let command = command.to_string();
 
-    let guard = setup_logging_tracing(false, 1, true, false, None);
+    let guard = setup_logging_tracing(false, 0, true, false, None);
     let tracer = global::tracer(OCKAM_TRACER_NAME);
     tracer.in_span(format!("'{}' error", command), |_| {
         let state = CliState::with_default_dir();
