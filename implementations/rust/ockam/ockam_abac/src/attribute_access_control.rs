@@ -95,65 +95,54 @@ impl AbacAccessControl {
         let mut environment = self.environment.clone();
 
         // Get identity attributes and populate the environment:
-        match self
+        if let Some(attrs) = self
             .identities_attributes
             .get_attributes(&id, &self.authority)
             .await?
         {
-            Some(attrs) => {
-                for (key, value) in attrs.attrs() {
-                    let key = match from_utf8(key) {
-                        Ok(key) => key,
-                        Err(_) => {
-                            log::warn! {
+            for (key, value) in attrs.attrs() {
+                let key = match from_utf8(key) {
+                    Ok(key) => key,
+                    Err(_) => {
+                        log::warn! {
+                            policy = %self.policy,
+                            id     = %id,
+                            "attribute key is not utf-8"
+                        }
+                        continue;
+                    }
+                };
+                if key.find(|c: char| c.is_whitespace()).is_some() {
+                    log::warn! {
+                        policy = %self.policy,
+                        id     = %id,
+                        key    = %key,
+                        "attribute key with whitespace ignored"
+                    }
+                }
+                match str::from_utf8(value) {
+                    Ok(s) => {
+                        if environment.contains(key) {
+                            log::debug! {
                                 policy = %self.policy,
                                 id     = %id,
-                                "attribute key is not utf-8"
+                                key    = %key,
+                                "attribute already present"
                             }
-                            continue;
+                        } else {
+                            environment.put(format!("subject.{key}"), str(s.to_string()));
                         }
-                    };
-                    if key.find(|c: char| c.is_whitespace()).is_some() {
+                    }
+                    Err(e) => {
                         log::warn! {
                             policy = %self.policy,
                             id     = %id,
                             key    = %key,
-                            "attribute key with whitespace ignored"
-                        }
-                    }
-                    match str::from_utf8(value) {
-                        Ok(s) => {
-                            if environment.contains(key) {
-                                log::debug! {
-                                    policy = %self.policy,
-                                    id     = %id,
-                                    key    = %key,
-                                    "attribute already present"
-                                }
-                            } else {
-                                environment.put(format!("subject.{key}"), str(s.to_string()));
-                            }
-                        }
-                        Err(e) => {
-                            log::warn! {
-                                policy = %self.policy,
-                                id     = %id,
-                                key    = %key,
-                                err    = %e,
-                                "failed to interpret attribute as string"
-                            }
+                            err    = %e,
+                            "failed to interpret attribute as string"
                         }
                     }
                 }
-            }
-            None => {
-                log::debug! {
-                    policy        = %self.policy,
-                    id            = %id,
-                    is_authorized = %false,
-                    "policy evaluated to false because subject has no attributes"
-                }
-                return Ok(false);
             }
         }
 
