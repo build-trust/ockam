@@ -28,9 +28,10 @@ impl AppState {
             "ockam_command",
             "ockam_app_lib",
         ];
+
         let guard = LoggingTracing::setup(
             logging_configuration(
-                None,
+                Some(LevelFilter::TRACE),
                 LevelFilter::TRACE,
                 Colored::Off,
                 Some(node_dir),
