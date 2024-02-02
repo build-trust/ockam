@@ -1,6 +1,7 @@
 use core::time::Duration;
 
 use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::time::now;
 use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{
@@ -115,8 +116,38 @@ impl Context {
 
     /// Utility function to sleep tasks from other crates
     #[doc(hidden)]
-    pub async fn sleep(&self, dur: Duration) {
-        tokio::time::sleep(dur).await;
+    pub async fn sleep(&self, duration: Duration) {
+        tokio::time::sleep(duration).await;
+    }
+
+    /// Utility function to sleep tasks for long periods of time (seconds precision)
+    /// Difference between this and `sleep` is that this sleeps in 1 second intervals and recalculates time left,
+    /// which account for the time the device was in sleep state
+    #[doc(hidden)]
+    pub async fn sleep_long_until(&self, deadline_timestamp_seconds: u64) {
+        let n = now().unwrap();
+
+        if deadline_timestamp_seconds <= n {
+            return;
+        }
+
+        let duration = deadline_timestamp_seconds - n;
+
+        if duration < 5 {
+            warn!(
+                "Low precision sleeping for less than 5 seconds. Duration: {:?}",
+                duration
+            );
+            self.sleep(Duration::from_secs(duration)).await;
+            return;
+        }
+
+        loop {
+            self.sleep(Duration::from_secs(1)).await;
+            if now().unwrap() >= deadline_timestamp_seconds {
+                return;
+            }
+        }
     }
 
     /// TODO basically we can just rename `Self::new_detached_impl()`
