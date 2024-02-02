@@ -19,10 +19,24 @@ pub const USER_EMAIL: &Key = &Key::from_static_str("app.user_email");
 pub const APP_NAME: &Key = &Key::from_static_str("app.name");
 pub const NODE_NAME: &Key = &Key::from_static_str("app.node_name");
 
+pub const APPLICATION_EVENT_SPACE_ID: &Key = &Key::from_static_str("app.event.space.id");
+pub const APPLICATION_EVENT_SPACE_NAME: &Key = &Key::from_static_str("app.event.space.name");
+pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project.id");
+pub const APPLICATION_EVENT_PROJECT_NAME: &Key = &Key::from_static_str("app.event.project.name");
+pub const APPLICATION_EVENT_PROJECT_USER_ROLES: &Key =
+    &Key::from_static_str("app.event.project.user_roles");
+pub const APPLICATION_EVENT_PROJECT_ACCESS_ROUTE: &Key =
+    &Key::from_static_str("app.event.project.access_route");
+pub const APPLICATION_EVENT_PROJECT_IDENTITY: &Key =
+    &Key::from_static_str("app.event.project.identity");
+pub const APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE: &Key =
+    &Key::from_static_str("app.event.project.authority_access_route");
+pub const APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY: &Key =
+    &Key::from_static_str("app.event.project.authority_identity");
+
 pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.trace_id");
 pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.span_id");
 pub const APPLICATION_EVENT_TIMESTAMP: &Key = &Key::from_static_str("app.event.timestamp");
-pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project_id");
 pub const APPLICATION_EVENT_ERROR_MESSAGE: &Key = &Key::from_static_str("app.event.error_message");
 pub const APPLICATION_EVENT_COMMAND: &Key = &Key::from_static_str("app.event.command");
 pub const APPLICATION_EVENT_OCKAM_HOME: &Key = &Key::from_static_str("app.event.ockam_home");
@@ -85,7 +99,7 @@ impl CliState {
         let event_span_context = Context::current().span().span_context().clone();
         let event_trace_id = event_span_context.trace_id();
         let event_span_id = event_span_context.span_id();
-        let project_id = self.get_default_project().await.ok().map(|p| p.id);
+        let project = self.get_default_project().await.ok();
 
         // for both the host and the project journey create a span with a fixed duration
         // and add attributes to the span
@@ -119,8 +133,42 @@ impl CliState {
                 event_span_id.to_string().as_ref(),
             );
             CurrentSpan::set_attribute_time(APPLICATION_EVENT_TIMESTAMP);
-            if let Some(project_id) = project_id.as_ref() {
-                CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_ID, project_id);
+            if let Some(project) = project.as_ref() {
+                CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_ID, &project.space_id);
+                CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_NAME, &project.space_name);
+                CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_NAME, &project.name);
+                CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_ID, &project.id);
+                CurrentSpan::set_attribute(
+                    APPLICATION_EVENT_PROJECT_USER_ROLES,
+                    &project
+                        .user_roles
+                        .iter()
+                        .map(|u| u.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                );
+                CurrentSpan::set_attribute(
+                    APPLICATION_EVENT_PROJECT_ACCESS_ROUTE,
+                    &project.access_route,
+                );
+                if let Some(identity) = project.identity.as_ref() {
+                    CurrentSpan::set_attribute(
+                        APPLICATION_EVENT_PROJECT_IDENTITY,
+                        &identity.to_string(),
+                    );
+                }
+                if let Some(route) = project.authority_access_route.as_ref() {
+                    CurrentSpan::set_attribute(
+                        APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE,
+                        &route,
+                    );
+                }
+                if let Some(identity) = project.authority_identity.as_ref() {
+                    CurrentSpan::set_attribute(
+                        APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY,
+                        &identity.to_string(),
+                    );
+                }
             }
         }
         Ok(())

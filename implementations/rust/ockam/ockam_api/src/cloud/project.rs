@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use miette::{miette, IntoDiagnostic};
 use std::str::FromStr;
 
@@ -87,6 +88,17 @@ pub struct ProjectUserRole {
     #[n(2)] pub id: u64,
     #[n(3)] pub role: RoleInShare,
     #[n(4)] pub scope: ShareScope,
+}
+
+impl Display for ProjectUserRole {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProjectUserRole")
+            .field("email", &self.email.to_string())
+            .field("id", &self.id.to_string())
+            .field("role", &self.role.to_string())
+            .field("scope", &self.scope.to_string())
+            .finish()
+    }
 }
 
 impl Project {
