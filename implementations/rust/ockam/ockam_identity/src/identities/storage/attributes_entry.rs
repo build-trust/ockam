@@ -1,5 +1,6 @@
 use crate::models::{Identifier, TimestampInSeconds};
 use crate::utils::now;
+use core::fmt::{Display, Formatter};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::ToOwned;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
@@ -15,6 +16,32 @@ pub struct AttributesEntry {
     #[n(2)] added_at: TimestampInSeconds,
     #[n(3)] expires_at: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
+}
+
+impl Display for AttributesEntry {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut attributes = vec![];
+        for (key, value) in self.attrs.clone() {
+            if let (Ok(k), Ok(v)) = (String::from_utf8(key), String::from_utf8(value)) {
+                attributes.push(format!("{k}={v}"))
+            }
+        }
+        f.debug_struct("AttributesEntry")
+            .field("attrs", &attributes.join(","))
+            .field("added_att", &self.added_at)
+            .field(
+                "expires_at",
+                &self.expires_at.map_or("n/a".to_string(), |e| e.to_string()),
+            )
+            .field(
+                "attested_by",
+                &self
+                    .attested_by
+                    .clone()
+                    .map_or("n/a".to_string(), |e| e.to_string()),
+            )
+            .finish()
+    }
 }
 
 impl AttributesEntry {

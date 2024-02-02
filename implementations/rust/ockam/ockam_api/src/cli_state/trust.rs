@@ -11,6 +11,7 @@ impl CliState {
     ///  1. Either we explicitly know the Authority identity that we trust, and optionally route to its node to request
     ///     a new credential
     ///  2. Or we know the project name (or have default one) that contains identity and route to the Authority node
+    #[instrument(skip_all, fields(project_name = project_name.clone(), authority_identity = authority_identity.clone(), authority_route = authority_route.clone().map_or("n/a".to_string(), |r| r.to_string())))]
     pub async fn retrieve_trust_options(
         &self,
         project_name: &Option<String>,

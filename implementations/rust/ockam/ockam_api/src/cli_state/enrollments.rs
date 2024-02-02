@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 use time::OffsetDateTime;
 
 use crate::authenticator::one_time_code::OneTimeCode;
@@ -12,7 +13,7 @@ use crate::error::ApiError;
 /// The following CliState methods help keeping track of
 ///
 impl CliState {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(name = name.clone()))]
     pub async fn is_identity_enrolled(&self, name: &Option<String>) -> Result<bool> {
         let repository = self.enrollment_repository();
 
@@ -30,7 +31,7 @@ impl CliState {
             .await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(identifier = %identifier))]
     pub async fn set_identifier_as_enrolled(&self, identifier: &Identifier) -> Result<()> {
         Ok(self
             .enrollment_repository()
@@ -42,7 +43,7 @@ impl CliState {
     ///
     ///  - all the currently enrolled entities
     ///  - all the known identities and their corresponding enrollment state
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(enrollment_status = %enrollment_status))]
     pub async fn get_identity_enrollments(
         &self,
         enrollment_status: EnrollmentStatus,
@@ -83,9 +84,19 @@ impl CliState {
     }
 }
 
+#[derive(Debug)]
 pub enum EnrollmentStatus {
     Enrolled,
     Any,
+}
+
+impl Display for EnrollmentStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EnrollmentStatus::Enrolled => f.write_str("enrolled"),
+            EnrollmentStatus::Any => f.write_str("any"),
+        }
+    }
 }
 
 pub struct IdentityEnrollment {

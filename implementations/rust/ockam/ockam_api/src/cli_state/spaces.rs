@@ -7,7 +7,7 @@ use crate::cloud::space::Space;
 use super::Result;
 
 impl CliState {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(space_id = space_id, space_name = space_name))]
     pub async fn store_space(
         &self,
         space_id: &str,
@@ -44,7 +44,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(name = name))]
     pub async fn get_space_by_name(&self, name: &str) -> Result<Space> {
         match self.spaces_repository().get_space_by_name(name).await? {
             Some(space) => Ok(space),
@@ -61,7 +61,7 @@ impl CliState {
         Ok(self.spaces_repository().get_spaces().await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(space_id = space_id))]
     pub async fn delete_space(&self, space_id: &str) -> Result<()> {
         let repository = self.spaces_repository();
         // delete the space
@@ -80,7 +80,7 @@ impl CliState {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(space_id = space_id))]
     pub async fn set_space_as_default(&self, space_id: &str) -> Result<()> {
         Ok(self.spaces_repository().set_default_space(space_id).await?)
     }

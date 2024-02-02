@@ -100,6 +100,7 @@ pub trait Addons {
 
 #[async_trait]
 impl Addons for ControllerClient {
+    #[instrument(skip_all, fields(project_id = project_id))]
     async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
         trace!(target: TARGET, project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
@@ -111,6 +112,7 @@ impl Addons for ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(project_id = project_id))]
     async fn configure_confluent_addon(
         &self,
         ctx: &Context,
@@ -130,6 +132,7 @@ impl Addons for ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(project_id = project_id))]
     async fn configure_okta_addon(
         &self,
         ctx: &Context,
@@ -147,6 +150,7 @@ impl Addons for ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(project_id = project_id))]
     async fn configure_influxdb_addon(
         &self,
         ctx: &Context,
@@ -167,6 +171,7 @@ impl Addons for ControllerClient {
             .into_diagnostic()
     }
 
+    #[instrument(skip_all, fields(project_id = project_id, addon_id = addon_id))]
     async fn disable_addon(
         &self,
         ctx: &Context,

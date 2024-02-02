@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter};
 use miette::{miette, IntoDiagnostic};
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
@@ -93,10 +93,10 @@ pub struct ProjectUserRole {
 impl Display for ProjectUserRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ProjectUserRole")
-            .field("email", &self.email.to_string())
-            .field("id", &self.id.to_string())
-            .field("role", &self.role.to_string())
-            .field("scope", &self.scope.to_string())
+            .field("email", &self.email)
+            .field("id", &self.id)
+            .field("role", &self.role)
+            .field("scope", &self.scope)
             .finish()
     }
 }

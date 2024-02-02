@@ -1,10 +1,23 @@
 use crate::error::{EvalError, MergeError};
 use crate::expr::Expr;
+use core::fmt::{Display, Formatter};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::{String, ToString};
 
 #[derive(Debug, Clone, Default)]
 pub struct Env(BTreeMap<String, Expr>);
+
+impl Display for Env {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut values = vec![];
+        for (key, value) in self.0.clone() {
+            values.push(format!("{key}={value:?}"));
+        }
+        f.debug_struct("Env")
+            .field("values", &values.join(","))
+            .finish()
+    }
+}
 
 impl Env {
     pub fn new() -> Self {

@@ -7,7 +7,7 @@ use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 
 impl CliState {
-    #[instrument(skip(self))]
+    #[instrument(skip_all, fields(user = %user))]
     pub async fn store_user(&self, user: &UserInfo) -> Result<()> {
         let repository = self.users_repository();
         let is_first_user = repository.get_users().await?.is_empty();
@@ -20,13 +20,13 @@ impl CliState {
         Ok(())
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip_all, fields(email = %email))]
     pub async fn set_default_user(&self, email: &EmailAddress) -> Result<()> {
         self.users_repository().set_default_user(email).await?;
         Ok(())
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip_all)]
     pub async fn get_default_user(&self) -> Result<UserInfo> {
         let repository = self.users_repository();
         match repository.get_default_user().await? {

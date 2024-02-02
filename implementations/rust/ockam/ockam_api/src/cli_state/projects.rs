@@ -9,7 +9,7 @@ use crate::cloud::project::Project;
 use super::Result;
 
 impl CliState {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(project_id = project.id))]
     pub async fn store_project(&self, project: Project) -> Result<()> {
         let repository = self.projects_repository();
         repository.store_project(&project).await?;
@@ -22,7 +22,7 @@ impl CliState {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
         let repository = self.projects_repository();
         // delete the project
@@ -39,7 +39,7 @@ impl CliState {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn set_default_project(&self, project_id: &str) -> Result<()> {
         self.projects_repository()
             .set_default_project(project_id)
@@ -59,7 +59,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(name = name))]
     pub async fn get_project_by_name(&self, name: &str) -> Result<Project> {
         match self.projects_repository().get_project_by_name(name).await? {
             Some(project) => Ok(project),
@@ -71,7 +71,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn get_project(&self, project_id: &str) -> Result<Project> {
         match self.projects_repository().get_project(project_id).await? {
             Some(project) => Ok(project),
@@ -83,7 +83,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(project_name = project_name.clone()))]
     pub async fn get_project_by_name_or_default(
         &self,
         project_name: &Option<String>,
