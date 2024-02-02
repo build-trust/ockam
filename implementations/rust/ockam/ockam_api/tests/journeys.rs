@@ -41,15 +41,15 @@ fn test_create_journey_event() {
                     .set_tracing_enabled();
 
                 let mut map = HashMap::new();
-                map.insert(USER_EMAIL, "etorreborre@yahoo.com");
-                map.insert(USER_NAME, "eric");
+                map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
+                map.insert(USER_NAME, "eric".to_string());
                 cli.add_journey_event(JourneyEvent::Enrolled, map.clone())
                     .await
                     .unwrap();
                 cli.add_journey_event(JourneyEvent::PortalCreated, map)
                     .await
                     .unwrap();
-                cli.add_journey_error("command", "sorry".to_string())
+                cli.add_journey_error("command", "sorry".to_string(), HashMap::default())
                     .await
                     .unwrap();
             }

@@ -8,7 +8,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use opentelemetry::trace::FutureExt;
 use tokio::runtime::Runtime;
-use tracing::error;
+use tracing::{debug, error};
 
 use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
@@ -19,7 +19,7 @@ use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::error::Error;
-use crate::{default_attributes, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
 pub mod duration;
@@ -50,23 +50,9 @@ where
     F: FnOnce(Context) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
-    let command_name = command_name.to_string();
-
+    debug!("running {} asynchronously", command_name);
     let res = embedded_node(opts.clone(), |ctx| {
-        async move {
-            let res = f(ctx).await;
-            if let Err(e) = &res {
-                let attributes = default_attributes();
-                opts.state
-                    .add_journey_error(&command_name, e.to_string(), attributes)
-                    .await
-                    .unwrap_or_else(|e1| {
-                        error!("Failed to trace an execution error: {e1:?}");
-                    });
-            };
-            res
-        }
-        .with_current_context()
+        async move { f(ctx).await }.with_current_context()
     });
     local_cmd(res)
 }

@@ -127,9 +127,13 @@ impl EnrollCommand {
         }
 
         let mut attributes = default_attributes();
-        let user_email = user_info.email.to_string();
-        attributes.insert(USER_NAME, user_info.name.as_str());
-        attributes.insert(USER_EMAIL, user_email.as_str());
+        attributes.insert(USER_NAME, user_info.name.clone());
+        attributes.insert(USER_EMAIL, user_info.email.to_string());
+        // this event formally only happens on the host journey
+        // but we add it here for better rendering of the project journey
+        opts.state
+            .add_journey_event(JourneyEvent::ok("enroll".to_string()), attributes.clone())
+            .await?;
         opts.state
             .add_journey_event(JourneyEvent::Enrolled, attributes)
             .await?;

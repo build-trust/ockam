@@ -80,7 +80,7 @@ impl CreateCommand {
         let (_response, _) = try_join!(send_req, progress_output)?;
 
         let mut attributes = default_attributes();
-        attributes.insert(NODE_NAME, node_name.as_str());
+        attributes.insert(NODE_NAME, node_name.clone());
         opts.state
             .add_journey_event(JourneyEvent::NodeCreated, attributes)
             .await?;

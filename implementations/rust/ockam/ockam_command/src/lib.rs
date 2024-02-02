@@ -25,7 +25,7 @@ use std::sync::Arc;
 use clap::{ArgAction, Args, Parser, Subcommand};
 use colorful::Colorful;
 use console::Term;
-use miette::{miette, GraphicalReportHandler};
+use miette::{miette, GraphicalReportHandler, IntoDiagnostic};
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context, Key};
 use tokio::runtime::Runtime;
@@ -46,7 +46,8 @@ use message::MessageCommand;
 use node::NodeCommand;
 use ockam_api::cli_state::CliState;
 use ockam_api::journeys::{
-    APPLICATION_EVENT_OCKAM_GIT_HASH, APPLICATION_EVENT_OCKAM_HOME, APPLICATION_EVENT_OCKAM_VERSION,
+    JourneyEvent, APPLICATION_EVENT_COMMAND, APPLICATION_EVENT_OCKAM_GIT_HASH,
+    APPLICATION_EVENT_OCKAM_HOME, APPLICATION_EVENT_OCKAM_VERSION,
 };
 use ockam_api::logs::{TracingGuard, OCKAM_TRACER_NAME};
 use ockam_core::env::get_env_with_default;
@@ -456,45 +457,20 @@ pub fn run() -> miette::Result<()> {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>()
                     .join(" ");
-                let message = format!(
-                    "could not parse the command: {}\n{}",
-                    command,
-                    input.join(" ")
-                );
-                send_error_message(&command, &message);
+                let message = format!("could not parse the command: {}", command);
+                let guard = setup_logging_tracing(false, 0, true, false, None);
+                send_error_event(&command, &message, input.join(" "))?;
+                guard.shutdown();
             };
             pager::render_help(help);
         }
-        Ok(command) => command.run()?,
+        Ok(command) => command.run(input)?,
     };
     Ok(())
 }
 
-fn send_error_message(command: &str, message: &str) {
-    let message = message.to_string();
-    let command = command.to_string();
-
-    let guard = setup_logging_tracing(false, 0, true, false, None);
-    let tracer = global::tracer(OCKAM_TRACER_NAME);
-    tracer.in_span(format!("'{}' error", command), |_| {
-        let state = CliState::with_default_dir();
-        Context::current()
-            .span()
-            .set_status(opentelemetry::trace::Status::error(message.clone()));
-        error!("{}", &message);
-
-        let _ = Executor::execute_future(async move {
-            state
-                .unwrap()
-                .add_journey_error(&command, message, default_attributes())
-                .await
-        });
-    });
-    guard.shutdown()
-}
-
 impl OckamCommand {
-    pub fn run(self) -> miette::Result<()> {
+    pub fn run(self, arguments: Vec<String>) -> miette::Result<()> {
         // If test_argument_parser is true, command arguments are checked
         // but the command is not executed. This is useful to test arguments
         // without having to execute their logic.
@@ -570,10 +546,12 @@ impl OckamCommand {
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let tracing_guard_clone = tracing_guard.clone();
+        let command_name = self.subcommand.name();
+        send_ok_event(&command_name, arguments.join(" "))?;
         let result =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
                 let span = tracer
-                    .start_with_context(self.subcommand.name(), &opentelemetry_context.extract());
+                    .start_with_context(command_name.clone(), &opentelemetry_context.extract());
                 let cx = Context::current_with_span(span);
                 let _guard = cx.clone().attach();
                 self.run_command(options, tracing_guard_clone)
@@ -582,7 +560,9 @@ impl OckamCommand {
                     self.run_command(options, tracing_guard_clone)
                 })
             };
-
+        if let Err(ref e) = result {
+            send_error_event(&command_name, &format!("{e}"), arguments.join(" "))?
+        };
         if let Some(tracing_guard) = tracing_guard {
             tracing_guard.shutdown()
         };
@@ -673,6 +653,46 @@ impl OckamCommand {
     }
 }
 
+fn send_ok_event(command: &str, command_debug: String) -> miette::Result<()> {
+    let command = command.to_string();
+    let tracer = global::tracer(OCKAM_TRACER_NAME);
+    tracer
+        .in_span(command.clone(), |_| {
+            let state = CliState::with_default_dir()?;
+            Executor::execute_future(async move {
+                let mut attributes = default_attributes();
+                attributes.insert(APPLICATION_EVENT_COMMAND, command_debug);
+                state
+                    .add_journey_event(JourneyEvent::ok(command), attributes)
+                    .await
+            })
+        })
+        .into_diagnostic()??;
+    Ok(())
+}
+
+fn send_error_event(command: &str, message: &str, command_debug: String) -> miette::Result<()> {
+    let message = message.to_string();
+    let command = command.to_string();
+    let tracer = global::tracer(OCKAM_TRACER_NAME);
+    tracer
+        .in_span(format!("'{}' error", command), |_| {
+            let state = CliState::with_default_dir()?;
+            Context::current()
+                .span()
+                .set_status(opentelemetry::trace::Status::error(message.clone()));
+            error!("{}", &message);
+
+            Executor::execute_future(async move {
+                let mut attributes = default_attributes();
+                attributes.insert(APPLICATION_EVENT_COMMAND, command_debug);
+                state.add_journey_error(&command, message, attributes).await
+            })
+        })
+        .into_diagnostic()??;
+    Ok(())
+}
+
 pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     let input_stream = std::io::stdin();
     if s.contains("/-") {
@@ -705,10 +725,17 @@ pub(crate) fn replace_hyphen_with_stdin(s: String) -> String {
     }
 }
 
-pub fn default_attributes<'a>() -> HashMap<&'a Key, &'a str> {
+pub fn default_attributes<'a>() -> HashMap<&'a Key, String> {
     let mut attributes = HashMap::new();
-    attributes.insert(APPLICATION_EVENT_OCKAM_HOME, env!("OCKAM_HOME"));
-    attributes.insert(APPLICATION_EVENT_OCKAM_VERSION, Version::crate_version());
-    attributes.insert(APPLICATION_EVENT_OCKAM_GIT_HASH, Version::git_hash());
+    let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("OCKAM_HOME not set".to_string());
+    attributes.insert(APPLICATION_EVENT_OCKAM_HOME, ockam_home);
+    attributes.insert(
+        APPLICATION_EVENT_OCKAM_VERSION,
+        Version::crate_version().to_string(),
+    );
+    attributes.insert(
+        APPLICATION_EVENT_OCKAM_GIT_HASH,
+        Version::git_hash().to_string(),
+    );
     attributes
 }

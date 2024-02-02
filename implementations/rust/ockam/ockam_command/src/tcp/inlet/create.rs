@@ -186,7 +186,8 @@ impl CreateCommand {
         let (inlet, _) = try_join!(create_inlet, progress_output)?;
 
         let node_name = node.node_name();
-        cmd.add_inlet_created_event(&opts, &node_name, &inlet).await?;
+        cmd.add_inlet_created_event(&opts, &node_name, &inlet)
+            .await?;
 
         opts.terminal
             .stdout()
@@ -215,18 +216,21 @@ impl CreateCommand {
         MultiAddr::from_str(&self.to).unwrap()
     }
 
-    async fn add_inlet_created_event(&self, opts: &CommandGlobalOpts, node_name: &str, inlet: &InletStatus) -> miette::Result<()> {
+    async fn add_inlet_created_event(
+        &self,
+        opts: &CommandGlobalOpts,
+        node_name: &str,
+        inlet: &InletStatus,
+    ) -> miette::Result<()> {
         let mut attributes = default_attributes();
-        let to = self.to.to_string();
-        let from = self.from.to_string();
-        let status = inlet.status.to_string();
-        attributes.insert(TCP_INLET_AT, &node_name);
-        attributes.insert(TCP_INLET_FROM, &from);
-        attributes.insert(TCP_INLET_TO, to.as_str());
-        attributes.insert(TCP_INLET_ALIAS, inlet.alias.as_str());
-        attributes.insert(TCP_INLET_CONNECTION_STATUS, &status);
-        attributes.insert(NODE_NAME, &node_name);
-        Ok(opts.state
+        attributes.insert(TCP_INLET_AT, node_name.to_string());
+        attributes.insert(TCP_INLET_FROM, self.from.to_string());
+        attributes.insert(TCP_INLET_TO, self.to.clone());
+        attributes.insert(TCP_INLET_ALIAS, inlet.alias.clone());
+        attributes.insert(TCP_INLET_CONNECTION_STATUS, inlet.status.to_string());
+        attributes.insert(NODE_NAME, node_name.to_string());
+        Ok(opts
+            .state
             .add_journey_event(JourneyEvent::TcpInletCreated, attributes)
             .await?)
     }
