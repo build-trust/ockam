@@ -3,6 +3,7 @@ use crate::logs::{CurrentSpan, OCKAM_TRACER_NAME};
 use crate::{CliState, ProjectJourney};
 use crate::{HostJourney, Result};
 use chrono::{DateTime, Utc};
+use gethostname::gethostname;
 use itertools::Itertools;
 use ockam_node::OpenTelemetryContext;
 use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
@@ -10,6 +11,7 @@ use opentelemetry::{global, Context, Key};
 use opentelemetry_sdk::trace::{IdGenerator, RandomIdGenerator};
 use std::collections::HashMap;
 use std::ops::Add;
+use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 pub const USER_NAME: &Key = &Key::from_static_str("app.user_name");
@@ -161,7 +163,7 @@ impl CliState {
         let random_id_generator = RandomIdGenerator::default();
         let (opentelemetry_context, now) = self.create_journey(
             "start host journey",
-            random_id_generator.new_trace_id(),
+            make_host_trace_id(),
             random_id_generator.new_span_id(),
         );
         HostJourney::new(opentelemetry_context, now)
@@ -213,5 +215,87 @@ impl CliState {
         let _guard = cx.clone().attach();
         let opentelemetry_context = OpenTelemetryContext::current();
         (opentelemetry_context, now)
+    }
+}
+
+/// Return a host id built from the MAC address and the IP address of the machine
+/// If they can be retrieved from the command line. Otherwise return a random trace id
+fn make_host_trace_id() -> TraceId {
+    let machine = match (get_mac_address(), get_ip_address()) {
+        (Some(mac_address), Some(ip_address)) => format!(
+            "{}{}",
+            mac_address.replace(":", ""),
+            ip_address.replace(".", "")
+        ),
+        _ => gethostname().to_string_lossy().to_string(),
+    };
+    if let Some(truncated) = machine.as_bytes()[0..16].try_into().ok() {
+        TraceId::from_bytes(truncated)
+    } else {
+        let random_id_generator = RandomIdGenerator::default();
+        random_id_generator.new_trace_id()
+    }
+}
+
+/// Return the MAC address for the current machine
+fn get_mac_address() -> Option<String> {
+    let output = Command::new("ifconfig").output().ok()?;
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    let mut result = None;
+    for line in output_str.lines() {
+        // Check if the line contains "ether" which is typically followed by MAC address in ifconfig output
+        if line.find("ether").is_some() {
+            // Extract MAC address substring
+            let split = line.split(" ").collect::<Vec<_>>();
+            let mac_address = split.get(1)?;
+            result = Some(mac_address.to_string());
+            break;
+        }
+    }
+    result
+}
+
+/// Return the IP address for the current machine
+fn get_ip_address() -> Option<String> {
+    let output = Command::new("ifconfig").output().ok()?;
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    let mut result = None;
+    for line in output_str.lines() {
+        // Check if the line contains "inet" which is typically followed by IP address in ifconfig output
+        //  - skip the localhost interface
+        //  - note the space after inet to catch the IPv4 address and not v6
+        if line.find("inet ").is_some() && line.find("127.0.0.1").is_none() {
+            // Extract IP address substring
+            let split = line.split(" ").collect::<Vec<_>>();
+            let ip_address = split.get(1)?;
+            result = Some(ip_address.to_string());
+            break;
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_mac_address() {
+        let result = get_mac_address();
+        println!("{:?}", result);
+    }
+
+    #[test]
+    fn test_get_ip_address() {
+        let result = get_ip_address();
+        println!("{:?}", result);
+    }
+
+    #[test]
+    fn test_make_host_trace_id() {
+        let result = make_host_trace_id();
+        println!("{:?}", result);
     }
 }
