@@ -16,6 +16,7 @@ impl CliState {
         project_name: &Option<String>,
         authority_identity: &Option<String>,
         authority_route: &Option<MultiAddr>,
+        expect_cached_credential: bool,
     ) -> Result<NodeManagerTrustOptions> {
         if project_name.is_some() && (authority_identity.is_some() || authority_route.is_some()) {
             return Err(Error::new(
@@ -30,6 +31,14 @@ impl CliState {
                 Origin::Api,
                 Kind::NotFound,
                 "Authority address was provided but authority identity is unknown",
+            ));
+        }
+
+        if authority_route.is_some() && expect_cached_credential {
+            return Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "Authority address was provided but expect_cached_credential is true",
             ));
         }
 
@@ -74,14 +83,26 @@ impl CliState {
                 );
 
                 trust_options
-            } else {
+            } else if expect_cached_credential {
                 let trust_options = NodeManagerTrustOptions::new(
                     NodeManagerCredentialRetrieverOptions::CacheOnly(authority_identifier.clone()),
                     Some(authority_identifier.clone()),
                 );
 
                 info!(
-                    "TrustOptions configured: Authority: {}. CacheOnly credentials",
+                    "TrustOptions configured: Authority: {}. Expect credentials in cache",
+                    authority_identifier
+                );
+
+                trust_options
+            } else {
+                let trust_options = NodeManagerTrustOptions::new(
+                    NodeManagerCredentialRetrieverOptions::None,
+                    Some(authority_identifier.clone()),
+                );
+
+                info!(
+                    "TrustOptions configured: Authority: {}. Only verifying credentials",
                     authority_identifier
                 );
 

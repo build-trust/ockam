@@ -1,5 +1,6 @@
-use crate::{CredentialRetriever, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
 use minicbor::{Decode, Encode};
+use tracing::error;
 
 use crate::{SecureChannel, SecureChannels};
 use ockam_core::api::Reply::Successful;
@@ -30,7 +31,7 @@ pub struct SecureClient {
     // secure_channels is used to create a secure channel before sending a request
     secure_channels: Arc<SecureChannels>,
     // Credential retriever
-    credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+    credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     // transport to instantiate connections
     transport: Arc<dyn Transport>,
     // destination for the secure channel
@@ -39,31 +40,34 @@ pub struct SecureClient {
     server_identifier: Identifier,
     // identifier of the secure channel initiator
     client_identifier: Identifier,
+    // timeout for creating secure channel
+    secure_channel_timeout: Duration,
     // default timeout to use for receiving a reply
-    timeout: Duration,
+    request_timeout: Duration,
 }
 
 impl SecureClient {
     /// Create a new secure client
-    /// WARNING: The caller is responsible for cleaning all the resources
-    ///          involved in the Route when it's no longer used (like TCP connections or Secure Channels)
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         secure_channels: Arc<SecureChannels>,
-        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+        credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
         transport: Arc<dyn Transport>,
         server_route: Route,
         server_identifier: &Identifier,
         client_identifier: &Identifier,
-        timeout: Duration,
+        secure_channel_timeout: Duration,
+        request_timeout: Duration,
     ) -> SecureClient {
         Self {
             secure_channels,
-            credential_retriever,
+            credential_retriever_creator,
             transport,
             secure_route: server_route,
             server_identifier: server_identifier.clone(),
             client_identifier: client_identifier.clone(),
-            timeout,
+            secure_channel_timeout,
+            request_timeout,
         }
     }
 
@@ -73,8 +77,8 @@ impl SecureClient {
     }
 
     /// CredentialRetriever
-    pub fn credential_retriever(&self) -> Option<Arc<dyn CredentialRetriever>> {
-        self.credential_retriever.clone()
+    pub fn credential_retriever_creator(&self) -> Option<Arc<dyn CredentialRetrieverCreator>> {
+        self.credential_retriever_creator.clone()
     }
 
     /// Transport
@@ -97,9 +101,14 @@ impl SecureClient {
         &self.client_identifier
     }
 
-    /// Timeout
-    pub fn timeout(&self) -> Duration {
-        self.timeout
+    /// Secure Channel cretion timeout
+    pub fn secure_channel_timeout(&self) -> Duration {
+        self.secure_channel_timeout
+    }
+
+    /// Request timeout
+    pub fn request_timeout(&self) -> Duration {
+        self.request_timeout
     }
 }
 
@@ -131,10 +140,16 @@ impl SecureClient {
         T: Encode<()>,
         R: for<'a> Decode<'a, ()>,
     {
-        let bytes: Vec<u8> = self
-            .request_with_timeout(ctx, api_service, req, self.timeout)
-            .await?;
-        Response::parse_response_reply::<R>(bytes.as_slice())
+        match self
+            .request_with_timeout(ctx, api_service, req, self.request_timeout)
+            .await
+        {
+            Ok(bytes) => Response::parse_response_reply::<R>(bytes.as_slice()),
+            Err(err) => {
+                error!("Error during SecureClient::ask to {} {}", api_service, err);
+                Err(err)
+            }
+        }
     }
 
     /// Send a request of type T and don't expect a reply
@@ -150,7 +165,7 @@ impl SecureClient {
     {
         let request_header = req.header().clone();
         let bytes = self
-            .request_with_timeout(ctx, api_service, req, self.timeout)
+            .request_with_timeout(ctx, api_service, req, self.request_timeout)
             .await?;
         let (response, decoder) = Response::parse_response_header(bytes.as_slice())?;
         if !response.is_ok() {
@@ -174,7 +189,7 @@ impl SecureClient {
     where
         T: Encode<()>,
     {
-        self.request_with_timeout(ctx, api_service, req, self.timeout)
+        self.request_with_timeout(ctx, api_service, req, self.request_timeout)
             .await
     }
 
@@ -219,13 +234,14 @@ impl SecureClient {
         .await?;
         let options = SecureChannelOptions::new()
             .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()))
-            .with_timeout(self.timeout);
+            .with_timeout(self.secure_channel_timeout);
 
-        let options = if let Some(credential_retriever) = self.credential_retriever.clone() {
-            options.with_credential_retriever(credential_retriever)?
-        } else {
-            options
-        };
+        let options =
+            if let Some(credential_retriever_creator) = self.credential_retriever_creator.clone() {
+                options.with_credential_retriever_creator(credential_retriever_creator)?
+            } else {
+                options
+            };
 
         let secure_channel = self
             .secure_channels

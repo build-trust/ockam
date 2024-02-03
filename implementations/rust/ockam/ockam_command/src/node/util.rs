@@ -75,6 +75,7 @@ pub async fn spawn_node(
     project_name: Option<String>,
     authority_identity: Option<String>,
     authority_route: Option<MultiAddr>,
+    expect_cached_credential: bool,
     logging_to_file: bool,
     opentelemetry_context: Option<OpenTelemetryContext>,
 ) -> miette::Result<()> {
@@ -90,6 +91,10 @@ pub async fn spawn_node(
         "--foreground".to_string(),
         "--child-process".to_string(),
     ];
+
+    if expect_cached_credential {
+        args.push("--expect-cached-credential".to_string());
+    }
 
     if skip_is_running_check {
         args.push("--skip-is-running-check".to_string());

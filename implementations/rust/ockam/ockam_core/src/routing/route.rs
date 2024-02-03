@@ -130,6 +130,7 @@ impl Route {
     /// # }
     /// ```
     ///
+    #[track_caller]
     pub fn step(&mut self) -> Result<Address> {
         Ok(self.inner.pop_front().ok_or(RouteError::IncompleteRoute)?)
     }
@@ -153,6 +154,7 @@ impl Route {
     /// # }
     /// ```
     ///
+    #[track_caller]
     pub fn next(&self) -> Result<&Address> {
         Ok(self.inner.front().ok_or(RouteError::IncompleteRoute)?)
     }
@@ -175,6 +177,7 @@ impl Route {
     /// #     Ok(())
     /// # }
     /// ```
+    #[track_caller]
     pub fn recipient(&self) -> Result<Address> {
         // `TODO` For consistency we should return a
         // Result<&Address> instead of an Address.clone().

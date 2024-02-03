@@ -136,7 +136,7 @@ impl DecryptorHandler {
         msg: RefreshCredentialsMessage,
     ) -> Result<()> {
         debug!(
-            "Handling credentials refresh request for {}",
+            "Handling credentials refresh for {}",
             self.addresses.decryptor_remote
         );
 
@@ -152,7 +152,7 @@ impl DecryptorHandler {
         .await?;
 
         info!(
-            "Successfully handled credentials refresh request for {}",
+            "Successfully handled credentials refresh for {}",
             self.addresses.decryptor_remote
         );
 

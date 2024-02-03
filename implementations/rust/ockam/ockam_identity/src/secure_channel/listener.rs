@@ -66,15 +66,6 @@ impl Worker for SecureChannelListenerWorker {
             .options
             .create_access_control(ctx.flow_controls(), flow_control_id);
 
-        let credentials = SecureChannels::get_credentials(
-            &self.identifier,
-            &self.options.credential_retriever,
-            ctx,
-        )
-        .await
-        .ok()
-        .unwrap_or(vec![]);
-
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
             .secure_channels
@@ -84,6 +75,17 @@ impl Worker for SecureChannelListenerWorker {
             .get_or_create_secure_channel_purpose_key(&self.identifier)
             .await?;
 
+        let credential_retriever = match &self.options.credential_retriever_creator {
+            Some(credential_retriever_creator) => {
+                // Only create, initialization should not happen here to avoid blocking listener
+                let credential_retriever = credential_retriever_creator
+                    .create(&self.identifier)
+                    .await?;
+                Some(credential_retriever)
+            }
+            None => None,
+        };
+
         HandshakeWorker::create(
             ctx,
             self.secure_channels.clone(),
@@ -92,10 +94,7 @@ impl Worker for SecureChannelListenerWorker {
             purpose_key,
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
-            credentials,
-            self.options.min_credential_refresh_interval,
-            self.options.refresh_credential_time_gap,
-            self.options.credential_retriever.clone(),
+            credential_retriever,
             self.options.authority.clone(),
             None,
             None,

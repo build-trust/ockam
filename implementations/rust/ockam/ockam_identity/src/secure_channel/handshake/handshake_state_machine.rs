@@ -11,7 +11,9 @@ use ockam_vault::{AeadSecretKeyHandle, X25519PublicKey};
 use crate::models::{
     ChangeHistory, CredentialAndPurposeKey, PurposeKeyAttestation, PurposePublicKey,
 };
-use crate::{Identifier, Identities, IdentityError, SecureChannelTrustInfo, TrustPolicy};
+use crate::{
+    CredentialRetriever, Identifier, Identities, IdentityError, SecureChannelTrustInfo, TrustPolicy,
+};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -58,6 +60,7 @@ pub(super) struct HandshakeKeys {
 pub(super) struct HandshakeResults {
     pub(super) handshake_keys: HandshakeKeys,
     pub(super) their_identifier: Identifier,
+    pub(super) presented_credential: Option<CredentialAndPurposeKey>,
 }
 
 /// This struct implements functions common to both initiator and the responder state machines
@@ -65,9 +68,10 @@ pub(crate) struct CommonStateMachine {
     pub(super) identities: Arc<Identities>,
     pub(super) identifier: Identifier,
     pub(super) purpose_key_attestation: PurposeKeyAttestation,
-    pub(super) credentials: Vec<CredentialAndPurposeKey>,
+    pub(super) credential_retriever: Option<Arc<dyn CredentialRetriever>>,
     pub(super) trust_policy: Arc<dyn TrustPolicy>,
     pub(super) authority: Option<Identifier>, // TODO: Replace with ABAC
+    pub(super) presented_credential: Option<CredentialAndPurposeKey>,
     their_identifier: Option<Identifier>,
 }
 
@@ -76,7 +80,7 @@ impl CommonStateMachine {
         identities: Arc<Identities>,
         identifier: Identifier,
         purpose_key_attestation: PurposeKeyAttestation,
-        credentials: Vec<CredentialAndPurposeKey>,
+        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
         trust_policy: Arc<dyn TrustPolicy>,
         authority: Option<Identifier>,
     ) -> Self {
@@ -84,9 +88,10 @@ impl CommonStateMachine {
             identities,
             identifier,
             purpose_key_attestation,
-            credentials,
+            credential_retriever,
             trust_policy,
             authority,
+            presented_credential: None,
             their_identifier: None,
         }
     }
@@ -98,13 +103,21 @@ impl CommonStateMachine {
     ///  - the current Secure Channel Purpose Key Attestation
     ///  - the Identity Credentials and corresponding Credentials Purpose Key Attestations
     ///
-    pub(super) async fn make_identity_payload(&self) -> Result<Vec<u8>> {
+    pub(super) async fn make_identity_payload(&mut self) -> Result<Vec<u8>> {
         // prepare the payload that will be sent either in message 2 or message 3
         let change_history = self.identities.get_change_history(&self.identifier).await?;
+        let credential = match &self.credential_retriever {
+            Some(credential_retriever) => Some(credential_retriever.retrieve().await?),
+            None => None,
+        };
+
+        self.presented_credential = credential.clone();
+        let credentials = credential.map(|c| vec![c]).unwrap_or(vec![]);
+
         let payload = IdentityAndCredentials {
             change_history,
             purpose_key_attestation: self.purpose_key_attestation.clone(),
-            credentials: self.credentials.clone(),
+            credentials,
         };
         Ok(minicbor::to_vec(payload)?)
     }
@@ -144,6 +157,7 @@ impl CommonStateMachine {
             (Some(their_identifier), Some(handshake_keys)) => Some(HandshakeResults {
                 their_identifier,
                 handshake_keys,
+                presented_credential: self.presented_credential.clone(),
             }),
             _ => None,
         }

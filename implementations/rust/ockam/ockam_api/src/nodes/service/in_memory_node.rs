@@ -146,7 +146,7 @@ impl InMemoryNode {
             .into_diagnostic()?;
 
         let trust_options = cli_state
-            .retrieve_trust_options(&project_name, &authority_identity, &authority_route)
+            .retrieve_trust_options(&project_name, &authority_identity, &authority_route, false)
             .await
             .into_diagnostic()?;
 
