@@ -239,10 +239,9 @@ impl HandshakeWorker {
             .start(context)
             .await?;
 
-        let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
-            "Starting SecureChannel {} at remote: {}",
-            role, &decryptor_remote
+            "Starting SecureChannel {} at remote: {}, local: {}",
+            role, addresses.decryptor_remote, addresses.encryptor
         );
 
         // before sending messages make sure that the handshake is finished and

@@ -8,7 +8,7 @@ use crate::{ChangeHistoryRepository, IdentitiesVerification, IdentityError, Time
 
 /// We allow purpose keys to be created in the future related to this machine's time due to
 /// possible time dyssynchronization
-const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
+const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(60);
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]

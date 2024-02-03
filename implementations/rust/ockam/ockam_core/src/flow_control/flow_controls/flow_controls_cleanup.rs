@@ -135,7 +135,7 @@ impl FlowControls {
 
     /// Clean everything that is possible after [`Address`] no longer exists
     pub fn cleanup_address(&self, address: &Address) {
-        debug!("Cleanup FlowControls for {address}");
+        trace!("Cleanup FlowControls for {address}");
 
         self.cleanup_spawner(address);
         self.cleanup_producer(address);
