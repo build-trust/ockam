@@ -1,9 +1,9 @@
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Result};
-use ockam_node::Context;
+use ockam_core::compat::sync::Arc;
+use ockam_core::{async_trait, Address, Result};
 
 use crate::models::CredentialAndPurposeKey;
-use crate::{CredentialRetriever, Identifier};
+use crate::{CredentialRetriever, CredentialRetrieverCreator, Identifier};
 
 /// Credentials retriever that retrieves a credential from memory
 pub struct MemoryCredentialRetriever {
@@ -19,12 +19,40 @@ impl MemoryCredentialRetriever {
 
 #[async_trait]
 impl CredentialRetriever for MemoryCredentialRetriever {
-    /// Retrieve a credential stored in memory
-    async fn retrieve(
-        &self,
-        _ctx: &Context,
-        _for_identity: &Identifier,
-    ) -> Result<Option<CredentialAndPurposeKey>> {
-        Ok(Some(self.credential.clone()))
+    async fn initialize(&self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn retrieve(&self) -> Result<CredentialAndPurposeKey> {
+        Ok(self.credential.clone())
+    }
+
+    fn subscribe(&self, _address: &Address) -> Result<()> {
+        Ok(())
+    }
+
+    fn unsubscribe(&self, _address: &Address) -> Result<()> {
+        Ok(())
+    }
+}
+
+/// Creator for [`MemoryCredentialRetriever`]
+pub struct MemoryCredentialRetrieverCreator {
+    credential: CredentialAndPurposeKey,
+}
+
+impl MemoryCredentialRetrieverCreator {
+    /// Constructor
+    pub fn new(credential: CredentialAndPurposeKey) -> Self {
+        Self { credential }
+    }
+}
+
+#[async_trait]
+impl CredentialRetrieverCreator for MemoryCredentialRetrieverCreator {
+    async fn create(&self, _subject: &Identifier) -> Result<Arc<dyn CredentialRetriever>> {
+        Ok(Arc::new(MemoryCredentialRetriever::new(
+            self.credential.clone(),
+        )))
     }
 }

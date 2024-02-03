@@ -7,6 +7,7 @@ use ockam_core::{Error, Result};
 
 use crate::alloc::string::ToString;
 use crate::models::{Credential, CredentialData, PurposeKeyAttestation};
+use crate::TimestampInSeconds;
 
 /// [`Credential`] and the corresponding [`PurposeKeyAttestation`] that was used to issue that
 /// [`Credential`] and will be used to verify it
@@ -46,6 +47,11 @@ impl CredentialAndPurposeKey {
     /// Return the encoded credential data
     pub fn get_credential_data(&self) -> Result<CredentialData> {
         self.credential.get_credential_data()
+    }
+
+    /// Return the `expires_at` field
+    pub fn get_expires_at(&self) -> Result<TimestampInSeconds> {
+        Ok(self.get_credential_data()?.expires_at)
     }
 }
 

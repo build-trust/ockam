@@ -59,9 +59,15 @@ pub enum IdentityError {
     /// Secret Key doesn't correspond to the Identity
     WrongSecretKey,
     /// CredentialRetriever was already set
-    CredentialRetrieverAlreadySet,
+    CredentialRetrieverCreatorAlreadySet,
     /// Credential is missing in the cache
     CachedCredentialMissing,
+    /// Given address is already a subscriber for that RemoteCredentialRetriever
+    AddressAlreadySubscribedForThatCredentialRetriever,
+    /// Given address hasn't been subscribed for that RemoteCredentialRetriever
+    AddressIsNotSubscribedForThatCredentialRetriever,
+    /// Credential retriever couldn't return a credential
+    NoCredential,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

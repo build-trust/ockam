@@ -699,7 +699,7 @@ pub(crate) async fn make_node_manager(
         .await?;
 
     let trust_options = cli_state
-        .retrieve_trust_options(&None, &None, &None)
+        .retrieve_trust_options(&None, &None, &None, false)
         .await
         .into_diagnostic()?;
 

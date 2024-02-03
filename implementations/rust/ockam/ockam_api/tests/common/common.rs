@@ -135,12 +135,13 @@ pub fn change_client_identifier(
     let client = client.get_secure_client();
     let client = SecureClient::new(
         client.secure_channels(),
-        client.credential_retriever(),
+        client.credential_retriever_creator(),
         client.transport(),
         client.secure_route().clone(),
         client.server_identifier(),
         new_identifier,
-        client.timeout(),
+        client.secure_channel_timeout(),
+        client.request_timeout(),
     );
     AuthorityNodeClient::new(client)
 }

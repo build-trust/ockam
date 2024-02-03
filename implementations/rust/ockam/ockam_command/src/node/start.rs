@@ -174,6 +174,7 @@ async fn run_node(
         None,          // No project information available
         None,          // No Authority Identity
         None,          // No Authority Address
+        false,         // No cache credentials
         true,          // Restarted nodes will log to files
         None,          // No opentelemetry context
     )

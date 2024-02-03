@@ -154,6 +154,10 @@ pub struct TrustOpts {
     /// Address to the Authority node
     #[arg(long)]
     pub authority_route: Option<MultiAddr>,
+
+    /// Expect credential manually saved to the storage
+    #[arg(long)]
+    pub expect_cached_credential: bool,
 }
 
 ////////////// !== validators

@@ -1,11 +1,10 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
 use ockam_node::Context;
 
 use crate::identities::Identities;
-use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::models::Identifier;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
     Addresses, Role, SecureChannelListenerOptions, SecureChannelListenerWorker,
@@ -13,7 +12,7 @@ use crate::secure_channel::{
 };
 #[cfg(feature = "storage")]
 use crate::SecureChannelsBuilder;
-use crate::{CredentialRetriever, SecureChannel, SecureChannelListener, Vault};
+use crate::{SecureChannel, SecureChannelListener, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -89,26 +88,6 @@ impl SecureChannels {
         Ok(SecureChannelListener::new(address, flow_control_id))
     }
 
-    /// If credentials are not provided via list in options
-    /// get them from the credential retriever
-    pub(crate) async fn get_credentials(
-        identifier: &Identifier,
-        credential_retriever: &Option<Arc<dyn CredentialRetriever>>,
-        ctx: &Context,
-    ) -> Result<Vec<CredentialAndPurposeKey>> {
-        let credentials = if let Some(credential_retriever) = credential_retriever {
-            if let Some(credential) = credential_retriever.retrieve(ctx, identifier).await? {
-                vec![credential]
-            } else {
-                vec![]
-            }
-        } else {
-            vec![]
-        };
-
-        Ok(credentials)
-    }
-
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
     pub async fn create_secure_channel(
         &self,
@@ -134,8 +113,14 @@ impl SecureChannels {
             .get_or_create_secure_channel_purpose_key(identifier)
             .await?;
 
-        let credentials =
-            Self::get_credentials(identifier, &options.credential_retriever, ctx).await?;
+        let credential_retriever = match &options.credential_retriever_creator {
+            Some(credential_retriever_creator) => {
+                let credential_retriever = credential_retriever_creator.create(identifier).await?;
+                credential_retriever.initialize().await?;
+                Some(credential_retriever)
+            }
+            None => None,
+        };
 
         HandshakeWorker::create(
             ctx,
@@ -145,10 +130,7 @@ impl SecureChannels {
             purpose_key,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            credentials,
-            options.min_credential_refresh_interval,
-            options.credential_refresh_time_gap,
-            options.credential_retriever,
+            credential_retriever,
             options.authority,
             Some(route),
             Some(options.timeout),

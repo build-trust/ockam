@@ -15,6 +15,18 @@ impl From<u64> for TimestampInSeconds {
     }
 }
 
+impl From<Duration> for TimestampInSeconds {
+    fn from(value: Duration) -> Self {
+        Self(value.as_secs())
+    }
+}
+
+impl From<TimestampInSeconds> for Duration {
+    fn from(value: TimestampInSeconds) -> Self {
+        Self::from_secs(value.0)
+    }
+}
+
 impl core::ops::Add<TimestampInSeconds> for TimestampInSeconds {
     type Output = TimestampInSeconds;
 

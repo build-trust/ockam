@@ -13,8 +13,8 @@ use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::{
-    CachedCredentialRetriever, CredentialRetriever, MemoryCredentialRetriever,
-    RemoteCredentialRetriever, RemoteCredentialRetrieverInfo,
+    CachedCredentialRetrieverCreator, CredentialRetrieverCreator, MemoryCredentialRetrieverCreator,
+    RemoteCredentialRetrieverCreator, RemoteCredentialRetrieverInfo,
 };
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
@@ -25,7 +25,7 @@ use ockam_abac::{Action, Env, Expr, Policy, Resource};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{AllowAll, IncomingAccessControl};
+use ockam_core::{AllowAll, AsyncTryClone, IncomingAccessControl};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::OpenTelemetryContext;
 
@@ -97,7 +97,7 @@ pub struct NodeManager {
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) secure_channels: Arc<SecureChannels>,
-    pub(crate) credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+    pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     authority: Option<Identifier>,
     pub(crate) registry: Registry,
     pub(crate) medic_handle: MedicHandle,
@@ -119,8 +119,8 @@ impl NodeManager {
         }
     }
 
-    pub fn credential_retriever(&self) -> Option<Arc<dyn CredentialRetriever>> {
-        self.credential_retriever.clone()
+    pub fn credential_retriever_creator(&self) -> Option<Arc<dyn CredentialRetrieverCreator>> {
+        self.credential_retriever_creator.clone()
     }
 
     pub fn authority(&self) -> Option<Identifier> {
@@ -374,24 +374,25 @@ impl NodeManager {
             .await?
             .identifier();
 
-        let credential_retriever: Option<Arc<dyn CredentialRetriever>> =
+        let credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>> =
             match trust_options.credential_retriever_options {
                 NodeManagerCredentialRetrieverOptions::None => None,
                 NodeManagerCredentialRetrieverOptions::CacheOnly(issuer) => {
-                    Some(Arc::new(CachedCredentialRetriever::new(
+                    Some(Arc::new(CachedCredentialRetrieverCreator::new(
                         issuer.clone(),
                         secure_channels.identities().cached_credentials_repository(),
                     )))
                 }
                 NodeManagerCredentialRetrieverOptions::Remote(info) => {
-                    Some(Arc::new(RemoteCredentialRetriever::new(
+                    Some(Arc::new(RemoteCredentialRetrieverCreator::new(
+                        ctx.async_try_clone().await?,
                         Arc::new(transport_options.tcp_transport.clone()),
                         secure_channels.clone(),
                         info.clone(),
                     )))
                 }
                 NodeManagerCredentialRetrieverOptions::InMemory(credential) => {
-                    Some(Arc::new(MemoryCredentialRetriever::new(credential)))
+                    Some(Arc::new(MemoryCredentialRetrieverCreator::new(credential)))
                 }
             };
 
@@ -402,7 +403,7 @@ impl NodeManager {
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
             secure_channels,
-            credential_retriever,
+            credential_retriever_creator,
             authority: trust_options.authority,
             registry: Default::default(),
             medic_handle,

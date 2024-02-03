@@ -10,14 +10,12 @@ use ockam_core::{
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
-use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, VersionedData};
+use crate::models::Identifier;
 use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::encryptor_worker::{
-    EncryptorWorker, EncryptorWorkerCredentialsOptions, SecureChannelSharedState,
-};
+use crate::secure_channel::encryptor_worker::{EncryptorWorker, SecureChannelSharedState};
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
@@ -48,7 +46,7 @@ pub(crate) struct HandshakeWorker {
     authority: Option<Identifier>,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
 
-    credential_options: EncryptorWorkerCredentialsOptions,
+    credential_retriever: Option<Arc<dyn CredentialRetriever>>,
 
     shared_state: SecureChannelSharedState,
 }
@@ -61,6 +59,10 @@ impl Worker for HandshakeWorker {
     /// Initialize the state machine with an `Initialize` event
     /// Depending on the state machine role there might be a message to send to the other party
     async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
+        if let Some(credential_retriever) = &self.credential_retriever {
+            credential_retriever.initialize().await?;
+        }
+
         match self.state_machine.on_event(Initialize).await? {
             SendMessage(message) => {
                 debug!(
@@ -167,9 +169,6 @@ impl HandshakeWorker {
         purpose_key: SecureChannelPurposeKey,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        credentials: Vec<CredentialAndPurposeKey>,
-        min_credential_refresh_interval: Duration,
-        refresh_credential_time_gap: Duration,
         credential_retriever: Option<Arc<dyn CredentialRetriever>>,
         authority: Option<Identifier>,
         remote_route: Option<Route>,
@@ -179,16 +178,6 @@ impl HandshakeWorker {
         let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
 
-        let number_of_credentials = credentials.len();
-        let min_credential_expiration = credentials
-            .iter()
-            .filter_map(|credential| {
-                minicbor::decode::<VersionedData>(&credential.credential.data).ok()
-            })
-            .filter_map(|data| CredentialData::get_data(&data).ok())
-            .map(|data| data.expires_at)
-            .min();
-
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
             Box::new(
                 InitiatorStateMachine::new(
@@ -196,7 +185,7 @@ impl HandshakeWorker {
                     identities.clone(),
                     identifier.clone(),
                     purpose_key,
-                    credentials,
+                    credential_retriever.clone(),
                     trust_policy,
                     authority.clone(),
                 )
@@ -209,7 +198,7 @@ impl HandshakeWorker {
                     identities.clone(),
                     identifier.clone(),
                     purpose_key,
-                    credentials,
+                    credential_retriever.clone(),
                     trust_policy,
                     authority.clone(),
                 )
@@ -224,12 +213,6 @@ impl HandshakeWorker {
             (None, None)
         };
 
-        let credential_options = EncryptorWorkerCredentialsOptions {
-            min_credential_expiration,
-            min_credential_refresh_interval,
-            refresh_credential_time_gap,
-            credential_retriever,
-        };
         let shared_state = SecureChannelSharedState {
             should_send_close: Arc::new(AtomicBool::new(true)),
         };
@@ -237,12 +220,12 @@ impl HandshakeWorker {
             secure_channels,
             callback_sender,
             state_machine,
-            identifier,
+            identifier: identifier.clone(),
             role,
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
-            credential_options,
+            credential_retriever,
             authority,
             change_history_repository: identities.change_history_repository(),
             shared_state,
@@ -258,8 +241,8 @@ impl HandshakeWorker {
 
         let decryptor_remote = addresses.decryptor_remote.clone();
         debug!(
-            "Starting SecureChannel {} at remote: {} with {} credentials",
-            role, &decryptor_remote, number_of_credentials
+            "Starting SecureChannel {} at remote: {}",
+            role, &decryptor_remote
         );
 
         // before sending messages make sure that the handshake is finished and
@@ -268,7 +251,16 @@ impl HandshakeWorker {
             if let Some(callback_waiter) = callback_waiter {
                 // wait until the handshake is finished
                 if let Some(timeout) = timeout {
-                    callback_waiter.receive_timeout(timeout).await?;
+                    let res = callback_waiter.receive_timeout(timeout).await;
+
+                    if let Some(err) = res.err() {
+                        error!(
+                            "Timeout {:?} reached when creating secure channel for: {}. Encryptor: {}",
+                            timeout, identifier, addresses.encryptor
+                        );
+
+                        return Err(err);
+                    }
                 } else {
                     callback_waiter.receive().await?;
                 }
@@ -350,7 +342,8 @@ impl HandshakeWorker {
                 ),
                 self.identifier.clone(),
                 self.change_history_repository.clone(),
-                self.credential_options.clone(),
+                self.credential_retriever.clone(),
+                handshake_results.presented_credential,
                 self.shared_state.clone(),
             );
 

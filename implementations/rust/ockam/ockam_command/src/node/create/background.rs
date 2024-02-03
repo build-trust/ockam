@@ -127,6 +127,7 @@ impl CreateCommand {
             self.trust_opts.project_name.clone(),
             self.trust_opts.authority_identity.clone(),
             self.trust_opts.authority_route.clone(),
+            self.trust_opts.expect_cached_credential,
             self.logging_to_file(),
             self.opentelemetry_context.clone(),
         )

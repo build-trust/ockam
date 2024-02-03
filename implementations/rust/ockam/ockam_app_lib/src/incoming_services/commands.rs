@@ -169,6 +169,7 @@ impl AppState {
 
         // Recreate the node using the project name
         debug!(node = %local_node_name, "Creating node to host TCP inlet");
+        // TODO: At least backup logs
         let _ = self.delete_background_node(&local_node_name).await;
         background_node_client
             .nodes()

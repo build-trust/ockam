@@ -10,14 +10,14 @@ use Event::*;
 use Role::*;
 use Status::*;
 
-use crate::models::{CredentialAndPurposeKey, Identifier};
+use crate::models::Identifier;
 use crate::secure_channel::handshake::error::XXError;
 use crate::secure_channel::handshake::handshake::Handshake;
 use crate::secure_channel::handshake::handshake_state_machine::{
     Action, CommonStateMachine, Event, HandshakeKeys, HandshakeResults, IdentityAndCredentials,
     StateMachine, Status,
 };
-use crate::{Identities, Role, SecureChannelPurposeKey, TrustPolicy};
+use crate::{CredentialRetriever, Identities, Role, SecureChannelPurposeKey, TrustPolicy};
 
 /// Implementation of a state machine for the key exchange on the initiator side
 #[async_trait]
@@ -45,9 +45,10 @@ impl StateMachine for InitiatorStateMachine {
                 )
                 .await?;
                 let identity_payload = self
-                    .identity_payload
-                    .take()
-                    .ok_or(XXError::InvalidInternalState)?;
+                    .common
+                    .make_identity_payload()
+                    .await
+                    .map_err(|_e| XXError::InvalidInternalState)?;
                 let message3 = self.encode_message3(&identity_payload).await?;
                 self.set_final_state(Initiator).await?;
                 Ok(SendMessage(message3))
@@ -73,8 +74,6 @@ impl StateMachine for InitiatorStateMachine {
 pub(super) struct InitiatorStateMachine {
     pub(super) common: CommonStateMachine,
     pub(super) handshake: Handshake,
-    /// this serialized payload contains an identity, its credentials and a signature of its static key
-    pub(super) identity_payload: Option<Vec<u8>>,
 }
 
 impl InitiatorStateMachine {
@@ -103,7 +102,7 @@ impl InitiatorStateMachine {
         identities: Arc<Identities>,
         identifier: Identifier,
         purpose_key: SecureChannelPurposeKey,
-        credentials: Vec<CredentialAndPurposeKey>,
+        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
         trust_policy: Arc<dyn TrustPolicy>,
         authority: Option<Identifier>,
     ) -> Result<InitiatorStateMachine> {
@@ -111,16 +110,14 @@ impl InitiatorStateMachine {
             identities,
             identifier,
             purpose_key.attestation().clone(),
-            credentials,
+            credential_retriever,
             trust_policy,
             authority,
         );
-        let identity_payload = common.make_identity_payload().await?;
 
         Ok(InitiatorStateMachine {
             common,
             handshake: Handshake::new(vault, purpose_key.key().clone()).await?,
-            identity_payload: Some(identity_payload),
         })
     }
 }

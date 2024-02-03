@@ -1,30 +1,49 @@
 use crate::models::CredentialAndPurposeKey;
 use crate::utils::now;
-use crate::{CredentialRepository, CredentialRetriever, Identifier, TimestampInSeconds};
+use crate::{
+    CredentialRepository, CredentialRetriever, CredentialRetrieverCreator, Identifier,
+    IdentityError, TimestampInSeconds,
+};
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::Result;
-use ockam_node::Context;
+use ockam_core::{Address, Result};
 use tracing::{debug, error};
+
+/// Credential is considered already expired if it expires in less than this gap to account for a machine with a
+/// wrong time
+pub const DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP: TimestampInSeconds = TimestampInSeconds(60);
 
 /// Credentials retriever for credentials located in a local cache
 pub struct CachedCredentialRetriever {
     issuer: Identifier,
+    subject: Identifier,
     cache: Arc<dyn CredentialRepository>,
+    clock_skew_gap: TimestampInSeconds,
 }
 
 impl CachedCredentialRetriever {
     /// Create a new cache credential retriever
-    pub fn new(issuer: Identifier, cache: Arc<dyn CredentialRepository>) -> Self {
-        Self { issuer, cache }
+    pub fn new(
+        issuer: Identifier,
+        subject: Identifier,
+        cache: Arc<dyn CredentialRepository>,
+    ) -> Self {
+        Self {
+            issuer,
+            subject,
+            cache,
+            clock_skew_gap: DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,
+        }
     }
 
     /// Retrieve a credential from the credentials storage and check its expiration
     pub async fn retrieve_impl(
         issuer: &Identifier,
         for_identity: &Identifier,
+        now: TimestampInSeconds,
         cache: Arc<dyn CredentialRepository>,
+        clock_skew_gap: TimestampInSeconds,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         debug!(
             "Requested credential for: {} from: {}",
@@ -32,10 +51,9 @@ impl CachedCredentialRetriever {
         );
 
         // check if we have a valid cached credential
-        let now = now()?;
         if let Some(cached_credential) = cache.get(for_identity, issuer).await? {
             // add an extra minute to have a bit of leeway for clock skew
-            if cached_credential.get_credential_data()?.expires_at > now + TimestampInSeconds(60) {
+            if cached_credential.get_expires_at()? > now + clock_skew_gap {
                 debug!("Found valid cached credential for: {}", for_identity);
                 Ok(Some(cached_credential))
             } else {
@@ -51,6 +69,7 @@ impl CachedCredentialRetriever {
                         for_identity, issuer, err
                     );
                 }
+
                 Ok(None)
             }
         } else {
@@ -60,13 +79,57 @@ impl CachedCredentialRetriever {
     }
 }
 
+/// Creator for [`CachedCredentialRetriever`]
+pub struct CachedCredentialRetrieverCreator {
+    issuer: Identifier,
+    cache: Arc<dyn CredentialRepository>,
+}
+
+impl CachedCredentialRetrieverCreator {
+    /// Constructor
+    pub fn new(issuer: Identifier, cache: Arc<dyn CredentialRepository>) -> Self {
+        Self { issuer, cache }
+    }
+}
+
+#[async_trait]
+impl CredentialRetrieverCreator for CachedCredentialRetrieverCreator {
+    async fn create(&self, subject: &Identifier) -> Result<Arc<dyn CredentialRetriever>> {
+        Ok(Arc::new(CachedCredentialRetriever::new(
+            self.issuer.clone(),
+            subject.clone(),
+            self.cache.clone(),
+        )))
+    }
+}
+
 #[async_trait]
 impl CredentialRetriever for CachedCredentialRetriever {
-    async fn retrieve(
-        &self,
-        _ctx: &Context,
-        for_identity: &Identifier,
-    ) -> Result<Option<CredentialAndPurposeKey>> {
-        Self::retrieve_impl(&self.issuer, for_identity, self.cache.clone()).await
+    async fn initialize(&self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn retrieve(&self) -> Result<CredentialAndPurposeKey> {
+        let now = now()?;
+        match Self::retrieve_impl(
+            &self.issuer,
+            &self.subject,
+            now,
+            self.cache.clone(),
+            self.clock_skew_gap,
+        )
+        .await?
+        {
+            Some(credential) => Ok(credential),
+            None => Err(IdentityError::NoCredential)?,
+        }
+    }
+
+    fn subscribe(&self, _address: &Address) -> Result<()> {
+        Ok(())
+    }
+
+    fn unsubscribe(&self, _address: &Address) -> Result<()> {
+        Ok(())
     }
 }

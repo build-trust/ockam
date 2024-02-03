@@ -31,7 +31,7 @@ impl AppState {
         let guard = LoggingTracing::setup(
             logging_configuration(
                 None,
-                LevelFilter::TRACE,
+                LevelFilter::DEBUG,
                 Colored::Off,
                 Some(node_dir),
                 &ockam_crates,
