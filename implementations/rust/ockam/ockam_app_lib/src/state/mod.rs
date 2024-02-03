@@ -403,6 +403,10 @@ impl AppState {
         )
     }
 
+    pub async fn backup_logs(&self, node_name: &str) -> Result<()> {
+        Ok(self.state().await.backup_logs(node_name)?)
+    }
+
     pub async fn delete_background_node(&self, node_name: &str) -> Result<()> {
         Ok(self.state().await.delete_node(node_name, true).await?)
     }

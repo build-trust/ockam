@@ -218,7 +218,7 @@ impl CliState {
     /// $OCKAM_HOME/.ockam.
     ///
     /// If $OCKAM_HOME is not defined then $HOME is used instead
-    fn default_dir() -> Result<PathBuf> {
+    pub(super) fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
             home::home_dir()
