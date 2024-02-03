@@ -5,6 +5,7 @@ use nix::errno::Errno;
 use serde::Serialize;
 use sysinfo::{Pid, ProcessStatus, System};
 
+use ockam::identity::utils::now;
 use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
@@ -73,6 +74,30 @@ impl CliState {
         let identity = self.create_identity_with_name(&random_name()).await?;
         self.create_node_with_identifier(node_name, &identity.identifier())
             .await
+    }
+
+    pub fn backup_logs(&self, node_name: &str) -> Result<()> {
+        // Atm node dir only has logs
+        let node_dir = self.node_dir(node_name);
+
+        let now = now()?;
+
+        let backup_dir = Self::backup_default_dir()?.join(format!("{}-{node_name}", now.0));
+        std::fs::create_dir_all(&backup_dir)?;
+
+        info!("Backing up logs for {node_name} from {node_dir:?} to {backup_dir:?}");
+
+        // Move state to backup directory
+        for entry in std::fs::read_dir(node_dir)? {
+            let entry = entry?;
+            let from = entry.path();
+            let to = backup_dir.join(entry.file_name());
+
+            std::fs::copy(from, to)?;
+        }
+
+        info!("Logs for {node_name} were backed up to {backup_dir:?}");
+        Ok(())
     }
 
     /// Delete a node
