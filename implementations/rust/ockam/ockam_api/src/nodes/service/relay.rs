@@ -251,6 +251,7 @@ impl InMemoryNode {
 struct RelaySessionReplacer {
     node_manager: Arc<NodeManager>,
     context: Arc<Context>,
+    relay_address: Option<String>,
 
     // current status
     connection: Option<Connection>,
@@ -258,7 +259,6 @@ struct RelaySessionReplacer {
     addr: MultiAddr,
     at_rust_node: bool,
     authorized: Option<Identifier>,
-    relay_address: Option<String>,
 }
 
 #[async_trait]
@@ -304,30 +304,31 @@ impl SessionReplacer for RelaySessionReplacer {
             RemoteRelay::create(&self.context, route.clone(), options).await
         }?;
 
+        self.relay_worker_address = Some(relay_info.worker_address().clone());
+
         Ok(ReplacerOutcome {
             ping_route: connection.transport_route(),
             kind: ReplacerOutputKind::Relay(relay_info),
         })
     }
 
-    async fn close(&mut self) -> std::result::Result<(), ockam_core::Error> {
+    async fn close(&mut self) {
         if let Some(connection) = self.connection.take() {
-            connection.close(&self.context, &self.node_manager).await?;
+            let result = connection.close(&self.context, &self.node_manager).await;
+            if let Err(err) = result {
+                error!(?err, "Failed to close connection");
+            }
         }
 
         if let Some(relay_address) = self.relay_worker_address.take() {
             match self.context.stop_worker(relay_address.clone()).await {
                 Ok(_) => {
                     debug!(%relay_address, "Successfully stopped relay");
-                    Ok(())
                 }
                 Err(err) => {
-                    error!(%relay_address, ?err, "Failed to delete relay from node registry");
-                    Err(err)
+                    error!(%relay_address, ?err, "Failed to stop relay address {relay_address}");
                 }
             }
-        } else {
-            Ok(())
         }
     }
 }

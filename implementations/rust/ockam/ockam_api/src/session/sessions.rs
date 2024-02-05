@@ -22,7 +22,7 @@ pub const MAX_CONNECT_TIME: Duration = Duration::from_secs(15);
 #[async_trait]
 pub trait SessionReplacer: Send + 'static {
     async fn create(&mut self) -> Result<ReplacerOutcome, Error>;
-    async fn close(&mut self) -> Result<(), Error>;
+    async fn close(&mut self) -> ();
 }
 
 #[derive(Debug, Clone)]
@@ -61,12 +61,12 @@ impl InnerSessionReplacer {
         self.inner.lock().await.create().await
     }
 
-    pub async fn close(&self) -> Result<(), Error> {
+    pub async fn close(&self) {
         self.inner.lock().await.close().await
     }
 
     pub async fn recreate(&self) -> Result<ReplacerOutcome, Error> {
-        self.close().await?;
+        self.close().await;
         self.create().await
     }
 }
@@ -209,7 +209,7 @@ impl Session {
             let inner = self.inner.lock().unwrap();
             inner.replacer.clone()
         };
-        replacer.close().await?;
+        replacer.close().await;
         let mut inner = self.inner.lock().unwrap();
         inner.connection = ConnectionStatus::Down;
         inner.last_outcome = None;
