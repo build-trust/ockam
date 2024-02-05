@@ -1,4 +1,4 @@
-use ockam_abac::{Action, Expr, Policy, Resource};
+use ockam_abac::{Action, Policy, Resource};
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::{async_trait, Result};
 use ockam_node::Context;
@@ -111,9 +111,6 @@ pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
 
 #[async_trait]
 pub trait Policies {
-    async fn add_policy_to_project(&self, ctx: &Context, resource_name: &str)
-        -> miette::Result<()>;
-
     async fn add_policy(
         &self,
         ctx: &Context,
@@ -125,27 +122,6 @@ pub trait Policies {
 
 #[async_trait]
 impl Policies for BackgroundNodeClient {
-    async fn add_policy_to_project(
-        &self,
-        ctx: &Context,
-        resource_name: &str,
-    ) -> miette::Result<()> {
-        let resource = Resource::new(resource_name);
-        let policies: PolicyList = self
-            .ask(ctx, Request::get(format!("/policy/{resource}")))
-            .await?;
-        if !policies.expressions().is_empty() {
-            return Ok(());
-        }
-
-        let policy = Policy::new(Expr::CONST_TRUE);
-        let action = Action::new("handle_message");
-        let request = Request::post(policy_path(&resource, &action)).body(policy);
-        self.tell(ctx, request).await?;
-
-        Ok(())
-    }
-
     async fn add_policy(
         &self,
         ctx: &Context,
@@ -155,7 +131,6 @@ impl Policies for BackgroundNodeClient {
     ) -> miette::Result<()> {
         let request = Request::post(policy_path(resource, action)).body(policy);
         self.tell(ctx, request).await?;
-
         Ok(())
     }
 }

@@ -34,7 +34,7 @@ impl IdentityAttributesSqlxDatabase {
     /// Create a new in-memory database, passing a node name to isolate data between nodes where needed
     pub async fn create_with_node_name(node_name: &str) -> Result<Self> {
         let mut db = SqlxDatabase::in_memory("identity attributes").await?;
-        db.node_name = Some(node_name.to_string());
+        db.set_node_name(node_name);
         Ok(Self::new(db))
     }
 }

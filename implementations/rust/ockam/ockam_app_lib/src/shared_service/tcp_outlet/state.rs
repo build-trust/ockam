@@ -55,9 +55,10 @@ impl AppState {
                     &context,
                     tcp_outlet.socket_addr,
                     tcp_outlet.worker_addr.clone(),
-                    Some(tcp_outlet.alias.clone()),
+                    tcp_outlet.alias.clone(),
                     true,
                     Some(access_control),
+                    None,
                 )
                 .await
                 .map_err(|e| {

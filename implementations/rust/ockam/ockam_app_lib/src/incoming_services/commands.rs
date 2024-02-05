@@ -4,16 +4,13 @@ use std::time::Duration;
 
 use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
-use ockam::abac::{Policy, Resource};
 use tracing::{debug, error, info, warn};
 
 use ockam_api::address::get_free_address;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
-use ockam_api::nodes::service::actions;
 use ockam_api::nodes::service::portals::Inlets;
-use ockam_api::nodes::Policies;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_multiaddr::MultiAddr;
@@ -208,17 +205,10 @@ impl AppState {
         // Add a policy to check that the outlet node identity
         // is the enroller of its project and not any enrolled
         // identity.
-        inlet_node
-            .add_policy(
-                &self.context(),
-                &Resource::new(&inlet_alias),
-                &actions::HANDLE_MESSAGE,
-                &Policy::new(eq([
-                    ident(format!("subject.{}", OCKAM_ROLE_ATTRIBUTE_KEY)),
-                    str(OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE),
-                ])),
-            )
-            .await?;
+        let expr = eq([
+            ident(format!("subject.{}", OCKAM_ROLE_ATTRIBUTE_KEY)),
+            str(OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE),
+        ]);
 
         inlet_node
             .create_inlet(
@@ -226,8 +216,9 @@ impl AppState {
                 &bind_address.to_string(),
                 &MultiAddr::from_str(&service.service_route(Some(project_name.as_str())))
                     .into_diagnostic()?,
-                &Some(inlet_alias),
+                &inlet_alias,
                 &None,
+                &Some(expr),
                 Duration::from_secs(5),
             )
             .await

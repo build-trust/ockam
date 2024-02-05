@@ -46,13 +46,13 @@ mod tests {
         let parsed: TcpInlets = serde_yaml::from_str(named).unwrap();
         let cmds = parsed.into_commands().unwrap();
         assert_eq!(cmds.len(), 2);
-        assert_eq!(cmds[0].alias.as_ref().unwrap(), "ti1");
+        assert_eq!(cmds[0].alias, "ti1");
         assert_eq!(
             cmds[0].from,
             SocketAddr::from_str("127.0.0.1:6060").unwrap()
         );
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
-        assert_eq!(cmds[1].alias.as_ref().unwrap(), "ti2");
+        assert_eq!(cmds[1].alias, "ti2");
         assert_eq!(
             cmds[1].from,
             SocketAddr::from_str("127.0.0.1:6061").unwrap()

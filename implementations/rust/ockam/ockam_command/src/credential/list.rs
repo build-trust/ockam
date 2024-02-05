@@ -42,7 +42,7 @@ impl ListCommand {
             None => opts.state.get_default_node().await?.name(),
         };
         let mut opts = opts.clone();
-        opts.state.set_node_name(node_name.clone());
+        opts.state.set_node_name(&node_name);
 
         let database = opts.state.database();
         let storage = CredentialSqlxDatabase::new(database);

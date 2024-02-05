@@ -6,7 +6,7 @@ use tokio::time::timeout;
 
 use ockam::identity::Identifier;
 use ockam::{Address, Result};
-use ockam_abac::Resource;
+use ockam_abac::{Expr, Resource};
 use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, AsyncTryClone, IncomingAccessControl, Route};
@@ -21,9 +21,9 @@ use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
+use crate::nodes::service::actions;
 use crate::nodes::service::default_address::DefaultAddress;
-use crate::nodes::service::{actions, random_alias, resources};
-use crate::nodes::{BackgroundNodeClient, InMemoryNode, Policies};
+use crate::nodes::{BackgroundNodeClient, InMemoryNode};
 use crate::session::sessions::{
     ConnectionStatus, Replacer, Session, MAX_CONNECT_TIME, MAX_RECOVERY_TIME,
 };
@@ -50,6 +50,7 @@ impl NodeManagerWorker {
             prefix_route,
             suffix_route,
             wait_for_outlet_duration,
+            policy_expression,
         } = create_inlet;
         match self
             .node_manager
@@ -62,6 +63,7 @@ impl NodeManagerWorker {
                 outlet_addr,
                 wait_for_outlet_duration,
                 authorized,
+                policy_expression,
             )
             .await
         {
@@ -105,7 +107,7 @@ impl NodeManagerWorker {
             worker_addr,
             alias,
             reachable_from_default_secure_channel,
-            ..
+            policy_expression,
         } = create_outlet;
 
         match self
@@ -117,6 +119,7 @@ impl NodeManagerWorker {
                 alias,
                 reachable_from_default_secure_channel,
                 None,
+                policy_expression,
             )
             .await
         {
@@ -167,27 +170,23 @@ impl NodeManagerWorker {
 /// OUTLETS
 impl NodeManager {
     #[instrument(skip(self, ctx))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_outlet(
         &self,
         ctx: &Context,
         socket_addr: SocketAddr,
         worker_addr: Address,
-        alias: Option<String>,
+        alias: String,
         reachable_from_default_secure_channel: bool,
         access_control: Option<Arc<dyn IncomingAccessControl>>,
+        policy_expression: Option<Expr>,
     ) -> Result<OutletStatus> {
         info!(
             "Handling request to create outlet portal at {:?} with worker {:?}",
             socket_addr, worker_addr
         );
-        let resource = alias
-            .as_deref()
-            .map(Resource::new)
-            .unwrap_or(resources::OUTLET);
 
-        let alias = alias.unwrap_or_else(random_alias);
-
-        // Check that there is no entry in the registry with the same alias
+        // Check registry for duplicated alias
         if self.registry.outlets.contains_key(&alias).await {
             let message = format!("A TCP outlet with alias '{alias}' already exists");
             return Err(ockam_core::Error::new(
@@ -201,33 +200,34 @@ impl NodeManager {
             access_control
         } else {
             self.access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                self.authority.clone(),
-                None,
+                Resource::new(&alias),
+                actions::HANDLE_MESSAGE,
+                self.authority(),
+                policy_expression,
             )
             .await?
         };
 
-        let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
-        let options = if self.authority().is_none() {
-            options.as_consumer(&self.api_transport_flow_control_id)
-        } else {
-            options
-        };
-
-        let options = if reachable_from_default_secure_channel {
-            // Accept messages from the default secure channel listener
-            if let Some(flow_control_id) = ctx
-                .flow_controls()
-                .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-            {
-                options.as_consumer(&flow_control_id)
+        let options = {
+            let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
+            let options = if self.authority().is_none() {
+                options.as_consumer(&self.api_transport_flow_control_id)
+            } else {
+                options
+            };
+            if reachable_from_default_secure_channel {
+                // Accept messages from the default secure channel listener
+                if let Some(flow_control_id) = ctx
+                    .flow_controls()
+                    .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+                {
+                    options.as_consumer(&flow_control_id)
+                } else {
+                    options
+                }
             } else {
                 options
             }
-        } else {
-            options
         };
 
         let res = self
@@ -298,18 +298,18 @@ impl NodeManager {
 
 /// INLETS
 impl NodeManager {
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_inlet(
         &self,
         connection: Connection,
         listen_addr: String,
-        requested_alias: Option<String>,
+        alias: String,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
+        policy_expression: Option<Expr>,
     ) -> Result<(InletStatus, Arc<dyn IncomingAccessControl>)> {
         info!("Handling request to create inlet portal");
-
-        let alias = requested_alias.clone().unwrap_or_else(random_alias);
         debug! {
             listen_addr = %listen_addr,
             prefix = %prefix_route,
@@ -319,6 +319,7 @@ impl NodeManager {
             "Creating inlet portal"
         }
 
+        // Check registry for duplicated alias or bind address
         {
             let registry = &self.registry.inlets;
 
@@ -352,11 +353,10 @@ impl NodeManager {
         let outlet_route = connection.route(self.tcp_transport()).await?;
         let outlet_route = route![prefix_route.clone(), outlet_route, suffix_route.clone()];
 
-        let projects = self.cli_state.get_projects_grouped_by_name().await?;
-
         let authority = {
             if let Some(p) = outlet_addr.first() {
                 if let Some(p) = p.cast::<Project>() {
+                    let projects = self.cli_state.get_projects_grouped_by_name().await?;
                     if let Some(p) = projects.get(&*p) {
                         Some(p.authority_identifier().await?)
                     } else {
@@ -368,14 +368,16 @@ impl NodeManager {
             } else {
                 None
             }
-        };
-        let authority = authority.or(self.authority());
+        }
+        .or(self.authority());
 
-        let resource = requested_alias
-            .map(|a| Resource::new(a.as_str()))
-            .unwrap_or(resources::INLET);
         let access_control = self
-            .access_control(&resource, &actions::HANDLE_MESSAGE, authority, None)
+            .access_control(
+                Resource::new(&alias),
+                actions::HANDLE_MESSAGE,
+                authority,
+                policy_expression,
+            )
             .await?;
 
         let options = TcpInletOptions::new().with_incoming_access_control(access_control.clone());
@@ -519,12 +521,13 @@ impl InMemoryNode {
         &self,
         ctx: &Context,
         listen_addr: String,
-        requested_alias: Option<String>,
+        alias: String,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
+        policy_expression: Option<Expr>,
     ) -> Result<InletStatus> {
         // The addressing scheme is very flexible. Typically the node connects to
         // the cloud via secure channel and the with another secure channel via
@@ -548,10 +551,11 @@ impl InMemoryNode {
             .create_inlet(
                 connection.clone(),
                 listen_addr.clone(),
-                requested_alias,
+                alias,
                 prefix_route.clone(),
                 suffix_route.clone(),
                 outlet_addr.clone(),
+                policy_expression,
             )
             .await?;
         if !connection.route(self.tcp_transport()).await?.is_empty() {
@@ -699,13 +703,15 @@ impl InMemoryNode {
 
 #[async_trait]
 pub trait Inlets {
+    #[allow(clippy::too_many_arguments)]
     async fn create_inlet(
         &self,
         ctx: &Context,
         listen_addr: &str,
         outlet_addr: &MultiAddr,
-        alias: &Option<String>,
+        alias: &str,
         authorized_identifier: &Option<Identifier>,
+        policy_expression: &Option<Expr>,
         wait_for_outlet_timeout: Duration,
     ) -> miette::Result<Reply<InletStatus>>;
 
@@ -725,17 +731,18 @@ impl Inlets for BackgroundNodeClient {
         ctx: &Context,
         listen_addr: &str,
         outlet_addr: &MultiAddr,
-        alias: &Option<String>,
+        alias: &str,
         authorized_identifier: &Option<Identifier>,
+        policy_expression: &Option<Expr>,
         wait_for_outlet_timeout: Duration,
     ) -> miette::Result<Reply<InletStatus>> {
-        self.add_policy_to_project(ctx, "tcp-inlet").await?;
         let request = {
             let via_project = outlet_addr.matches(0, &[Project::CODE.into()]);
             let mut payload = if via_project {
                 CreateInlet::via_project(
                     listen_addr.to_string(),
                     outlet_addr.clone(),
+                    alias,
                     route![],
                     route![],
                 )
@@ -743,13 +750,14 @@ impl Inlets for BackgroundNodeClient {
                 CreateInlet::to_node(
                     listen_addr.to_string(),
                     outlet_addr.clone(),
+                    alias,
                     route![],
                     route![],
                     authorized_identifier.clone(),
                 )
             };
-            if let Some(a) = alias {
-                payload.set_alias(a.to_string())
+            if let Some(e) = policy_expression.as_ref() {
+                payload.set_policy_expression(e.clone())
             }
             payload.set_wait_ms(wait_for_outlet_timeout.as_millis() as u64);
             Request::post("/node/inlet").body(payload)

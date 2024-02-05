@@ -30,8 +30,9 @@ impl PolicySqlxDatabase {
 impl PoliciesRepository for PolicySqlxDatabase {
     async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Policy>> {
         let query = query_as(
-            "SELECT resource, action, expression FROM policy WHERE resource=$1 and action=$2",
+            "SELECT resource, action, expression FROM policy WHERE node=$1 and resource=$2 and action=$3",
         )
+        .bind(self.database.node_name()?.to_sql())
         .bind(resource.to_sql())
         .bind(action.to_sql());
         let row: Option<PolicyRow> = query
@@ -47,7 +48,8 @@ impl PoliciesRepository for PolicySqlxDatabase {
         action: &Action,
         policy: &Policy,
     ) -> Result<()> {
-        let query = query("INSERT OR REPLACE INTO policy VALUES (?, ?, ?)")
+        let query = query("INSERT OR REPLACE INTO policy VALUES (?, ?, ?, ?)")
+            .bind(self.database.node_name()?.to_sql())
             .bind(resource.to_sql())
             .bind(action.to_sql())
             .bind(minicbor::to_vec(policy.expression())?.to_sql());
@@ -55,15 +57,19 @@ impl PoliciesRepository for PolicySqlxDatabase {
     }
 
     async fn delete_policy(&self, resource: &Resource, action: &Action) -> Result<()> {
-        let query = query("DELETE FROM policy WHERE resource = ? and action = ?")
+        let query = query("DELETE FROM policy WHERE node=? and resource=? and action=?")
+            .bind(self.database.node_name()?.to_sql())
             .bind(resource.to_sql())
             .bind(action.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_policies_by_resource(&self, resource: &Resource) -> Result<Vec<(Action, Policy)>> {
-        let query = query_as("SELECT resource, action, expression FROM policy where resource = $1")
-            .bind(resource.to_sql());
+        let query = query_as(
+            "SELECT resource, action, expression FROM policy where node=$1 and resource=$2",
+        )
+        .bind(self.database.node_name()?.to_sql())
+        .bind(resource.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.policy().map(|e| (r.action(), e)))
@@ -114,10 +120,8 @@ impl PolicyRow {
 
 #[cfg(test)]
 mod test {
-    use crate::expr::*;
-
     use super::*;
-
+    use crate::expr::*;
     use ockam_core::compat::sync::Arc;
 
     #[tokio::test]

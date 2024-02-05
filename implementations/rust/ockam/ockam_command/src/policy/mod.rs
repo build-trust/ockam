@@ -1,16 +1,12 @@
 use clap::{Args, Subcommand};
 
-use ockam::Context;
-use ockam_abac::{Action, Expr, Policy, Resource};
-use ockam_api::nodes::models::policy::PolicyList;
-use ockam_api::nodes::BackgroundNodeClient;
-use ockam_core::api::Request;
+use ockam_abac::{Action, Resource};
 
 pub use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::show::ShowCommand;
-use crate::{CommandGlobalOpts, Result};
+use crate::CommandGlobalOpts;
 
 mod create;
 mod delete;
@@ -60,31 +56,4 @@ impl PolicyCommand {
 
 pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
     format!("/policy/{r}/{a}")
-}
-
-pub(crate) async fn has_policy(
-    node_name: &str,
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    resource: &Resource,
-) -> Result<bool> {
-    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
-    let req = Request::get(format!("/policy/{resource}"));
-    let policies: PolicyList = node.ask(ctx, req).await?;
-    Ok(!policies.expressions().is_empty())
-}
-
-pub(crate) async fn add_default_project_policy(
-    node_name: &str,
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    resource: &Resource,
-) -> miette::Result<()> {
-    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
-
-    let bdy = Policy::new(Expr::CONST_TRUE);
-    let req = Request::post(policy_path(resource, &Action::new("handle_message"))).body(bdy);
-
-    node.tell(ctx, req).await?;
-    Ok(())
 }

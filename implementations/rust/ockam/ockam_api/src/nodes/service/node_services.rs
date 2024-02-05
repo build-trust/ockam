@@ -196,12 +196,7 @@ impl NodeManager {
 
         let resource = Resource::assert_inline(addr.address());
         let ac = self
-            .access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                self.authority.clone(),
-                None,
-            )
+            .access_control(resource, actions::HANDLE_MESSAGE, self.authority(), None)
             .await?;
 
         WorkerBuilder::new(Echoer)

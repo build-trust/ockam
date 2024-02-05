@@ -2,13 +2,13 @@ use std::net::IpAddr;
 
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::Policy;
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::net::SocketAddr;
+use ockam_core::compat::rand::random_string;
 use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
 
-use super::{actions, resources, NodeManagerWorker};
+use super::NodeManagerWorker;
 use crate::error::ApiError;
 use crate::kafka::{
     ConsumerNodeAddr, KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
@@ -24,6 +24,7 @@ use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::InMemoryNode;
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
+use crate::random_name;
 
 impl NodeManagerWorker {
     pub(super) async fn start_kafka_outlet_service(
@@ -198,8 +199,9 @@ impl InMemoryNode {
             context,
             bootstrap_server_addr,
             KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
-            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
+            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
             false,
+            None,
             None,
         )
         .await?;
@@ -213,7 +215,7 @@ impl InMemoryNode {
         );
 
         let inlet_controller = KafkaInletController::new(
-            "/secure/api".parse().unwrap(),
+            "/secure/api".parse()?,
             route![local_interceptor_address.clone()],
             route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
             bind_ip,
@@ -226,13 +228,14 @@ impl InMemoryNode {
         self.create_inlet(
             context,
             SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-            None,
+            random_name(),
             route![local_interceptor_address.clone()],
             route![
                 KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS
             ],
-            "/secure/api".parse().unwrap(),
+            "/secure/api".parse()?,
+            None,
             None,
             None,
         )
@@ -280,27 +283,6 @@ impl InMemoryNode {
             .clone()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
         let secure_channels = self.secure_channels.clone();
-
-        {
-            if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
-                value
-                    .cast::<ockam_multiaddr::proto::Project>()
-                    .map(|p| p.to_string())
-            }) {
-                let (_, project_identifier) = self.resolve_project(&project).await?;
-                // if we are using the project we need to allow safe communication based on the
-                // project identifier
-                self.cli_state
-                    .set_policy(
-                        &resources::INLET,
-                        &actions::HANDLE_MESSAGE,
-                        &Policy::new(eq([ident("subject.identifier"), str(project_identifier)])),
-                    )
-                    .await
-                    .map_err(ockam_core::Error::from)?
-            }
-        }
-
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(outlet_node_multiaddr.clone()),
@@ -316,12 +298,36 @@ impl InMemoryNode {
                 .map_err(|_| ApiError::core("invalid port range"))?,
         );
 
+        let inlet_policy_expression = {
+            if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
+                value
+                    .cast::<ockam_multiaddr::proto::Project>()
+                    .map(|p| p.to_string())
+            }) {
+                let (_, project_identifier) = self.resolve_project(&project).await?;
+                // if we are using the project we need to allow safe communication based on the
+                // project identifier
+                Some(eq([ident("subject.identifier"), str(project_identifier)]))
+            } else {
+                None
+            }
+        };
+        // tldr: the alias for the inlet must be unique and we want to keep it readable.
+        // This function will create an inlet for either a producer or a consumer.
+        // Since the policy is hardcoded (see the expression above) and it's the same
+        // for both type of services, we could just share the policy. However, since the
+        // alias must be unique amongst all the registered inlets, it must be unique to
+        // allow the user to use multiple producers or consumers within the same node.
+        // For that reason, we add a prefix based on the service kind to have better
+        // readability and a random component at the end to keep it unique.
+        let inlet_alias = format!("kafka-{}-{}", kind, random_string());
+
         // since we cannot call APIs of node manager via message due to the read/write lock
         // we need to call it directly
         self.create_inlet(
             context,
             SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-            None,
+            inlet_alias,
             route![local_interceptor_address.clone()],
             route![
                 KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
@@ -330,6 +336,7 @@ impl InMemoryNode {
             outlet_node_multiaddr,
             None,
             None,
+            inlet_policy_expression,
         )
         .await?;
 
@@ -392,8 +399,9 @@ impl NodeManager {
                 context,
                 bootstrap_server_addr,
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
-                Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string()),
+                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
                 false,
+                None,
                 None,
             )
             .await

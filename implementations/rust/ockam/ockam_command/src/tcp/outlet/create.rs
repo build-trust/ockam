@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_abac::Resource;
+use ockam_abac::Expr;
 use ockam_api::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_ALIAS, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
 };
@@ -22,11 +22,7 @@ use crate::node::util::initialize_default_node;
 use crate::tcp::util::alias_parser;
 use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
-use crate::{
-    fmt_info,
-    policy::{add_default_project_policy, has_policy},
-};
+use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -63,6 +59,9 @@ pub struct CreateCommand {
     /// node will be used
     #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
+
+    #[arg(hide = true, long = "policy", display_order = 904, id = "EXPRESSION")]
+    pub policy_expression: Option<Expr>,
 }
 
 impl CreateCommand {
@@ -79,19 +78,16 @@ impl CreateCommand {
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
-        let node_name = opts.state.get_node_or_default(&self.at).await?.name();
-        let project = opts.state.get_node_project(&node_name).await.ok();
-        let resource = Resource::new("tcp-outlet");
-        if project.is_some() && !has_policy(&node_name, ctx, &opts, &resource).await? {
-            add_default_project_policy(&node_name, ctx, &opts, &resource).await?;
-        }
-
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node_name = node.node_name();
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {
-            let payload = CreateOutlet::new(self.to, self.from.clone().into(), self.alias, true);
-            let node =
-                BackgroundNodeClient::create(ctx, &opts.state, &node_name.clone().into()).await?;
+            let mut payload =
+                CreateOutlet::new(self.to, self.from.clone().into(), self.alias, true);
+            if let Some(policy_expression) = self.policy_expression {
+                payload.set_policy_expression(policy_expression);
+            }
             let req = Request::post("/node/outlet").body(payload);
             let res: OutletStatus = node.ask(ctx, req).await?;
             *is_finished.lock().await = true;

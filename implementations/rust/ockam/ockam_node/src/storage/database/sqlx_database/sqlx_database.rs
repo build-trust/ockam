@@ -159,6 +159,11 @@ impl SqlxDatabase {
         Ok(pool)
     }
 
+    /// Set the node name
+    pub fn set_node_name(&mut self, node_name: &str) {
+        self.node_name = Some(node_name.to_string());
+    }
+
     /// Return the node name
     pub fn node_name(&self) -> Result<String> {
         self.node_name.clone().ok_or_else(|| {
