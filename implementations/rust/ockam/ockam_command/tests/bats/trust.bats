@@ -44,10 +44,10 @@ teardown() {
   authority_identifier=$($OCKAM identity show authority)
   authority_identity=$($OCKAM identity show authority --full --encoding hex)
 
-  # Create a node for alice that trustt authority as a credential authority
+  # Create a node for alice that trusts authority as a credential authority
   run_success "$OCKAM" node create alice --tcp-listener-address "127.0.0.1:$port" --identity alice --authority-identity $authority_identity --expect-cached-credential
 
-  # Create a node for bob that trustt authority as a credential authority
+  # Create a node for bob that trusts authority as a credential authority
   run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --expect-cached-credential
 
   # issue and store credentials for alice
