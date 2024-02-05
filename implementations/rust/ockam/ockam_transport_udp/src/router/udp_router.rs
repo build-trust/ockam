@@ -96,7 +96,7 @@ impl UdpRouter {
     /// Handle the routing of 'client' messages
     async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
         // Forward message to sender for 'client' messages
-        ctx.send_local_message(msg.push_front_onward_route(&self.client_sender))
+        ctx.forward(msg.push_front_onward_route(&self.client_sender))
             .await
     }
 

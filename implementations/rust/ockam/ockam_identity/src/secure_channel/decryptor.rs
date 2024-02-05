@@ -101,10 +101,14 @@ impl DecryptorHandler {
         let local_info =
             IdentitySecureChannelLocalInfo::mark(vec![], self.their_identity_id.clone())?;
 
-        let msg = LocalMessage::new(msg.onward_route, msg.return_route, msg.payload, local_info);
+        let msg = LocalMessage::new()
+            .with_onward_route(msg.onward_route)
+            .with_return_route(msg.return_route)
+            .with_payload(msg.payload)
+            .with_local_info(local_info);
 
         match ctx
-            .send_local_message_from(msg, self.addresses.decryptor_internal.clone())
+            .forward_from_address(msg, self.addresses.decryptor_internal.clone())
             .await
         {
             Ok(_) => Ok(()),

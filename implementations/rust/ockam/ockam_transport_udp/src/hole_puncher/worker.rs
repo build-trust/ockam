@@ -237,10 +237,12 @@ impl UdpHolePunchWorker {
 
                 // Update routing & payload
                 let mut local_message = msg.into_local_message();
-                local_message = local_message.forward(&self.local_addr)?.set_payload(data);
+                local_message = local_message
+                    .step_forward(&self.local_addr)?
+                    .set_payload(data);
 
                 // Forward
-                ctx.send_local_message(local_message).await?;
+                ctx.forward(local_message).await?;
             }
             _ => return Err(PunchError::Internal)?,
         }
@@ -314,7 +316,7 @@ impl UdpHolePunchWorker {
 
             // Forward
             debug!("Puncher => Peer: {:?}", local_message);
-            ctx.send_local_message(local_message).await
+            ctx.forward(local_message).await
         } else {
             Err(PunchError::HoleNotOpen)?
         }

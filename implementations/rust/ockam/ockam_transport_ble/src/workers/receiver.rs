@@ -110,7 +110,7 @@ where
                 // Forward the message to the final destination worker,
                 // which consumes the TransportMessage and yields the
                 // final message type
-                ctx.send_local_message(msg).await?;
+                ctx.forward(msg).await?;
 
                 // reset packet buffer
                 self.packet_buffer.reset();

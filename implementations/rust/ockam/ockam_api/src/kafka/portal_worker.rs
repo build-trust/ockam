@@ -151,7 +151,7 @@ impl Worker for KafkaPortalWorker {
                         let mut local_message = routed_message.local_message().clone();
                         local_message = local_message
                             .set_onward_route(route![self.other_worker_address.clone()]);
-                        context.send_local_message(local_message).await?;
+                        context.forward(local_message).await?;
 
                         self.forward(context, routed_message).await?
                     }
@@ -209,7 +209,7 @@ impl KafkaPortalWorker {
             local_message.onward_route_ref(),
             local_message.return_route_ref(),
         );
-        context.send_local_message(local_message).await
+        context.forward(local_message).await
     }
 
     async fn split_and_send(
@@ -240,14 +240,13 @@ impl KafkaPortalWorker {
         };
 
         for chunk in buffer.chunks(MAX_PAYLOAD_SIZE) {
-            let message = LocalMessage::new(
-                onward_route.clone(),
-                return_route.clone(),
-                PortalMessage::Payload(chunk.to_vec()).encode()?,
-                local_info.to_vec(),
-            );
+            let message = LocalMessage::new()
+                .with_onward_route(onward_route.clone())
+                .with_return_route(return_route.clone())
+                .with_payload(PortalMessage::Payload(chunk.to_vec()).encode()?)
+                .with_local_info(local_info.to_vec());
 
-            context.send_local_message(message).await?;
+            context.forward(message).await?;
         }
         Ok(())
     }

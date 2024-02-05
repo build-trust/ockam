@@ -180,7 +180,7 @@ impl Processor for TcpRecvProcessor {
         trace!("Message return route: {}", msg.return_route_ref());
 
         // Forward the message to the next hop in the route
-        ctx.send_local_message_from(msg, self.addresses.receiver_address().clone())
+        ctx.forward_from_address(msg, self.addresses.receiver_address().clone())
             .await?;
 
         Ok(true)

@@ -1,4 +1,4 @@
-use crate::{compat::vec::Vec, Address, Message, Route, TransportMessage};
+use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
 use crate::{LocalInfo, Result};
 use serde::{Deserialize, Serialize};
 
@@ -130,7 +130,7 @@ impl LocalMessage {
     }
 
     /// Remove the first address on the onward route and push another address on the return route
-    pub fn forward(self, address: &Address) -> Result<Self> {
+    pub fn step_forward(self, address: &Address) -> Result<Self> {
         Ok(self
             .pop_front_onward_route()?
             .push_front_return_route(address))
@@ -179,12 +179,10 @@ impl LocalMessage {
 
     /// Create a [`LocalMessage`] from a decoded [`TransportMessage`]
     pub fn from_transport_message(transport_message: TransportMessage) -> LocalMessage {
-        LocalMessage::new(
-            transport_message.onward_route,
-            transport_message.return_route,
-            transport_message.payload,
-            vec![],
-        )
+        LocalMessage::new()
+            .with_onward_route(transport_message.onward_route)
+            .with_return_route(transport_message.return_route)
+            .with_payload(transport_message.payload)
     }
 
     /// Create a [`TransportMessage`] from a [`LocalMessage`]
@@ -193,9 +191,15 @@ impl LocalMessage {
     }
 }
 
+impl Default for LocalMessage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LocalMessage {
     /// Create a new `LocalMessage` from the provided transport message and local information.
-    pub fn new(
+    fn make(
         onward_route: Route,
         return_route: Route,
         payload: Vec<u8>,
@@ -207,5 +211,37 @@ impl LocalMessage {
             payload,
             local_info,
         }
+    }
+
+    /// Create a `LocalMessage` with default values, in order to build it with
+    /// the withXXX methods
+    pub fn new() -> Self {
+        LocalMessage::make(route![], route![], vec![], vec![])
+    }
+
+    /// Specify the onward route for the message
+    pub fn with_onward_route(self, onward_route: Route) -> Self {
+        Self {
+            onward_route,
+            ..self
+        }
+    }
+
+    /// Specify the return route for the message
+    pub fn with_return_route(self, return_route: Route) -> Self {
+        Self {
+            return_route,
+            ..self
+        }
+    }
+
+    /// Specify the payload for the message
+    pub fn with_payload(self, payload: Vec<u8>) -> Self {
+        Self { payload, ..self }
+    }
+
+    /// Specify the local information for the message
+    pub fn with_local_info(self, local_info: Vec<LocalInfo>) -> Self {
+        Self { local_info, ..self }
     }
 }

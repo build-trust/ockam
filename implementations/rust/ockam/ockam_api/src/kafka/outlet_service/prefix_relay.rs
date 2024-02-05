@@ -86,7 +86,7 @@ impl Worker for PrefixRelayService {
         let mut message = msg.into_local_message();
         message = message.pop_front_onward_route()?.set_payload(new_payload);
 
-        ctx.send_local_message(message).await?;
+        ctx.forward(message).await?;
 
         // The new relay needs to be reachable by the default secure channel listener
         ctx.flow_controls().add_consumer(
