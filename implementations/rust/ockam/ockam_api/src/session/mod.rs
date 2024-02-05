@@ -354,9 +354,7 @@ mod tests {
             })
         }
 
-        async fn close(&mut self) -> std::result::Result<(), Error> {
-            Ok(())
-        }
+        async fn close(&mut self) {}
     }
 
     #[ockam::test]

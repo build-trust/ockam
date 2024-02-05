@@ -585,7 +585,7 @@ impl SessionReplacer for InletSessionReplacer {
         // possible that there is just a single secure channel used to go directly
         // to another node.
 
-        self.close().await?;
+        self.close().await;
         debug!(%self.addr, "creating new tcp inlet");
 
         // create the access_control
@@ -677,30 +677,26 @@ impl SessionReplacer for InletSessionReplacer {
             Ok(Ok(route)) => Ok(route),
         }
     }
-    async fn close(&mut self) -> std::result::Result<(), ockam_core::Error> {
+    async fn close(&mut self) {
         if let Some(connection) = self.connection.take() {
-            connection.close(&self.context, &self.node_manager).await?;
+            let result = connection.close(&self.context, &self.node_manager).await;
+            if let Err(err) = result {
+                error!(?err, "Failed to close connection");
+            }
         }
 
         if let Some(inlet_address) = self.inlet_address.take() {
             // The previous inlet worker needs to be stopped:
-            self.node_manager
+            let result = self
+                .node_manager
                 .tcp_transport
                 .stop_inlet(inlet_address.clone())
-                .await
-                .map_err(|err| {
-                    ockam_core::Error::new(
-                        Origin::Node,
-                        Kind::Internal,
-                        format!(
-                            "Failed to remove inlet with address {alias}. {err}",
-                            alias = inlet_address.address()
-                        ),
-                    )
-                })?;
-        }
+                .await;
 
-        Ok(())
+            if let Err(err) = result {
+                error!(?err, "Failed to remove inlet with address {inlet_address}");
+            }
+        }
     }
 }
 
