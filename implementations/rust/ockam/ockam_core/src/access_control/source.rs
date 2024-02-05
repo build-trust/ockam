@@ -60,22 +60,16 @@ mod tests {
 
         let ac = AllowSourceAddress(source_address.clone());
 
-        let msg = LocalMessage::new(
-            route![onward_address.clone()],
-            route![return_address.clone()],
-            vec![],
-            vec![],
-        );
+        let msg = LocalMessage::new()
+            .with_onward_route(route![onward_address.clone()])
+            .with_return_route(route![return_address.clone()]);
         let msg = RelayMessage::new(source_address.clone(), onward_address.clone(), msg);
 
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
-        let msg = LocalMessage::new(
-            route![onward_address.clone()],
-            route![source_address],
-            vec![],
-            vec![],
-        );
+        let msg = LocalMessage::new()
+            .with_onward_route(route![onward_address.clone()])
+            .with_return_route(route![source_address]);
         let msg = RelayMessage::new(return_address, onward_address, msg);
 
         assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
@@ -93,32 +87,25 @@ mod tests {
 
         let ac = AllowSourceAddresses(vec![source_address1.clone(), source_address2.clone()]);
 
-        let msg = LocalMessage::new(
-            route![onward_address.clone()],
-            route![return_address.clone()],
-            vec![],
-            vec![],
-        );
+        let msg = LocalMessage::new()
+            .with_onward_route(route![onward_address.clone()])
+            .with_return_route(route![return_address.clone()]);
         let msg = RelayMessage::new(source_address1.clone(), onward_address.clone(), msg);
 
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
-        let msg = LocalMessage::new(
-            route![onward_address.clone()],
-            route![return_address.clone()],
-            vec![],
-            vec![],
-        );
+        let msg = LocalMessage::new()
+            .with_onward_route(route![onward_address.clone()])
+            .with_return_route(route![return_address.clone()]);
+
         let msg = RelayMessage::new(source_address2, onward_address.clone(), msg);
 
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
-        let msg = LocalMessage::new(
-            route![onward_address.clone()],
-            route![source_address1],
-            vec![],
-            vec![],
-        );
+        let msg = LocalMessage::new()
+            .with_onward_route(route![onward_address.clone()])
+            .with_return_route(route![source_address1]);
+
         let msg = RelayMessage::new(return_address, onward_address, msg);
 
         assert!(!poll_once(async { ac.is_authorized(&msg).await })?);

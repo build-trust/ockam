@@ -63,7 +63,7 @@ impl Worker for KafkaPortalListener {
             worker_address
         );
 
-        context.send_local_message(message).await?;
+        context.forward(message).await?;
 
         Ok(())
     }

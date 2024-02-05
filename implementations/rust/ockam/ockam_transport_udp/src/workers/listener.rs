@@ -80,7 +80,7 @@ impl Processor for UdpListenProcessor {
         debug!(onward_route = %msg.onward_route_ref(),
             return_route = %msg.return_route_ref(),
             "Forwarding UDP message");
-        ctx.send_local_message(msg).await?;
+        ctx.forward(msg).await?;
 
         Ok(true)
     }

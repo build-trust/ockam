@@ -12,6 +12,7 @@ impl Worker for Hop {
     /// it to the next hop in it's onward route
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         // Send the message on its onward_route
-        ctx.forward(msg.into_local_message()).await
+        ctx.forward(msg.into_local_message().step_forward(&ctx.address())?)
+            .await
     }
 }

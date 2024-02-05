@@ -121,7 +121,7 @@ impl Worker for OutletManagerService {
             worker_address
         );
 
-        context.send_local_message(message).await?;
+        context.forward(message).await?;
         Ok(())
     }
 }

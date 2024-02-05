@@ -29,6 +29,6 @@ impl Worker for Relay {
         }
 
         // Send the message on its onward_route
-        ctx.send_local_message(local_message).await
+        ctx.forward(local_message).await
     }
 }

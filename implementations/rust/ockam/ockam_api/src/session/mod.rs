@@ -114,16 +114,14 @@ impl Medic {
                                 ctx.flow_controls()
                                     .add_consumer(Collector::address(), &flow_control_id);
                             }
-                            LocalMessage::new(
-                                echo_route,
-                                route![Collector::address()],
-                                v,
-                                Vec::new(),
-                            )
+                            LocalMessage::new()
+                                .with_onward_route(echo_route)
+                                .with_return_route(route![Collector::address()])
+                                .with_payload(v)
                         };
                         let sender = ctx.clone();
                         self.pings
-                            .spawn(async move { (key, sender.send_local_message(l).await) });
+                            .spawn(async move { (key, sender.forward(l).await) });
                     } else {
                         match session.status() {
                             ConnectionStatus::Up | ConnectionStatus::Down => {

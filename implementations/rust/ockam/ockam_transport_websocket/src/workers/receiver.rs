@@ -96,7 +96,7 @@ where
         trace!("Message return route: {}", msg.return_route_ref());
 
         // Forward the message to the next hop in the route
-        ctx.send_local_message(msg).await?;
+        ctx.forward(msg).await?;
 
         Ok(true)
     }

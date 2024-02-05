@@ -105,11 +105,8 @@ impl Worker for RemoteRelay {
                     debug!("RemoteRelay received payload message");
 
                     // Send the message on its onward_route
-                    ctx.send_local_message_from(
-                        local_message,
-                        self.addresses.main_internal.clone(),
-                    )
-                    .await?;
+                    ctx.forward_from_address(local_message, self.addresses.main_internal.clone())
+                        .await?;
 
                     // We received message from the other node, our registration is still alive, let's reset
                     // heartbeat timer

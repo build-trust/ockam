@@ -254,8 +254,11 @@ impl Context {
         let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
 
         // Pack transport message into a LocalMessage wrapper
-        let local_msg =
-            LocalMessage::new(route, route![sending_address.clone()], payload, local_info);
+        let local_msg = LocalMessage::new()
+            .with_onward_route(route)
+            .with_return_route(route![sending_address.clone()])
+            .with_payload(payload)
+            .with_local_info(local_info);
 
         // Pack local message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
@@ -281,11 +284,19 @@ impl Context {
     }
 
     /// Forward a transport message to its next routing destination
-    /// This removes the message first onward address (considered as processed)
-    /// and appends the current Context address to the message return route
+    ///
+    /// Similar to [`Context::send`], but taking a
+    /// [`LocalMessage`], which contains the full destination
+    /// route, and calculated return route for this hop.
+    ///
+    /// **Note:** you most likely want to use
+    /// [`Context::send`] instead, unless you are writing an
+    /// external router implementation for ockam node.
+    ///
+    /// [`Context::send`]: crate::Context::send
+    /// [`LocalMessage`]: ockam_core::LocalMessage
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
-        self.send_local_message(local_msg.forward(&self.address())?)
-            .await
+        self.forward_from_address(local_msg, self.address()).await
     }
 
     /// Forward a transport message to its next routing destination
@@ -300,24 +311,7 @@ impl Context {
     ///
     /// [`Context::send`]: crate::Context::send
     /// [`LocalMessage`]: ockam_core::LocalMessage
-    pub async fn send_local_message(&self, local_msg: LocalMessage) -> Result<()> {
-        self.send_local_message_from(local_msg, self.address())
-            .await
-    }
-
-    /// Forward a transport message to its next routing destination
-    ///
-    /// Similar to [`Context::send`], but taking a
-    /// [`LocalMessage`], which contains the full destination
-    /// route, and calculated return route for this hop.
-    ///
-    /// **Note:** you most likely want to use
-    /// [`Context::send`] instead, unless you are writing an
-    /// external router implementation for ockam node.
-    ///
-    /// [`Context::send`]: crate::Context::send
-    /// [`LocalMessage`]: ockam_core::LocalMessage
-    pub async fn send_local_message_from(
+    pub async fn forward_from_address(
         &self,
         local_msg: LocalMessage,
         sending_address: Address,

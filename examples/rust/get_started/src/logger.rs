@@ -20,6 +20,6 @@ impl Worker for Logger {
             println!("Address: {}, Received binary: {}", ctx.address(), hex::encode(payload));
         }
 
-        ctx.forward(local_msg).await
+        ctx.forward(local_msg.step_forward(&ctx.address())?).await
     }
 }

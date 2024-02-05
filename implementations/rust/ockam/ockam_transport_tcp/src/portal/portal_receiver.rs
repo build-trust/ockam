@@ -81,12 +81,12 @@ impl Processor for TcpPortalRecvProcessor {
                 );
             }
 
-            ctx.send_local_message(LocalMessage::new(
-                self.onward_route.clone(),
-                route![self.sender_address.clone()],
-                PortalMessage::Disconnect.encode()?,
-                vec![],
-            ))
+            ctx.forward(
+                LocalMessage::new()
+                    .with_onward_route(self.onward_route.clone())
+                    .with_return_route(route![self.sender_address.clone()])
+                    .with_payload(PortalMessage::Disconnect.encode()?),
+            )
             .await?;
 
             return Ok(false);
@@ -94,12 +94,12 @@ impl Processor for TcpPortalRecvProcessor {
 
         // Loop just in case buf was extended (should not happen though)
         for chunk in self.buf.chunks(MAX_PAYLOAD_SIZE) {
-            ctx.send_local_message(LocalMessage::new(
-                self.onward_route.clone(),
-                route![self.sender_address.clone()],
-                PortalMessage::Payload(chunk.to_vec()).encode()?,
-                vec![],
-            ))
+            ctx.forward(
+                LocalMessage::new()
+                    .with_onward_route(self.onward_route.clone())
+                    .with_return_route(route![self.sender_address.clone()])
+                    .with_payload(PortalMessage::Payload(chunk.to_vec()).encode()?),
+            )
             .await?;
         }
 

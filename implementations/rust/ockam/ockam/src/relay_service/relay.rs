@@ -62,12 +62,12 @@ impl Worker for Relay {
             .take()
             .expect("payload must be available on init");
 
-        ctx.send_local_message(LocalMessage::new(
-            self.forward_route.clone(),
-            route![ctx.address()],
-            payload,
-            vec![],
-        ))
+        ctx.forward(
+            LocalMessage::new()
+                .with_onward_route(self.forward_route.clone())
+                .with_return_route(route![ctx.address()])
+                .with_payload(payload),
+        )
         .await?;
 
         // Remove the last hop so that just route to the node itself is left
@@ -106,6 +106,6 @@ impl Worker for Relay {
                 .add_consumer(next_hop.clone(), info.flow_control_id());
         }
 
-        ctx.send_local_message(local_message).await
+        ctx.forward(local_message).await
     }
 }
