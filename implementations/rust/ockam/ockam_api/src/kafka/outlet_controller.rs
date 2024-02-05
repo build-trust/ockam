@@ -1,6 +1,7 @@
 use crate::kafka::kafka_outlet_address;
 use crate::nodes::models::portal::{CreateOutlet, OutletStatus};
 use crate::nodes::NODEMANAGER_ADDR;
+use crate::random_name;
 use minicbor::Decoder;
 use ockam::compat::tokio::sync::Mutex;
 use ockam_core::api::{Request, ResponseHeader, Status};
@@ -71,7 +72,7 @@ impl KafkaOutletController {
                     .body(CreateOutlet::new(
                         socket_address,
                         worker_address,
-                        None,
+                        random_name(),
                         false,
                     ))
                     .to_vec()?,

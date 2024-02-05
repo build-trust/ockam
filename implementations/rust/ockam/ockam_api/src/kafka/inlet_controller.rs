@@ -17,6 +17,7 @@ use crate::kafka::kafka_outlet_address;
 use crate::nodes::models::portal::{CreateInlet, InletStatus};
 use crate::nodes::NODEMANAGER_ADDR;
 use crate::port_range::PortRange;
+use crate::random_name;
 
 type BrokerId = i32;
 
@@ -121,6 +122,7 @@ impl KafkaInletController {
                     .body(CreateInlet::to_node(
                         socket_address.to_string(),
                         to,
+                        random_name(),
                         prefix,
                         suffix,
                         None,

@@ -11,11 +11,13 @@ use tracing::trace;
 
 use ockam::identity::Identifier;
 use ockam::Context;
+use ockam_abac::Expr;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::random_name;
 use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
@@ -52,8 +54,11 @@ pub struct CreateCommand {
     pub authorized: Option<Identifier>,
 
     /// Assign a name to this inlet.
-    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
-    pub alias: Option<String>,
+    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser, default_value_t = random_name(), hide_default_value = true)]
+    pub alias: String,
+
+    #[arg(hide = true, long = "policy", display_order = 900, id = "EXPRESSION")]
+    pub policy_expression: Option<Expr>,
 
     /// Time to wait for the outlet to be available.
     #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]
@@ -119,6 +124,7 @@ impl CreateCommand {
                         &cmd.to(),
                         &cmd.alias,
                         &cmd.authorized,
+                        &cmd.policy_expression,
                         cmd.connection_wait,
                     )
                     .await?;

@@ -57,7 +57,6 @@ pub(crate) mod policy;
 pub mod portals;
 mod projects;
 pub mod relay;
-pub mod resources;
 mod secure_channel;
 mod transport;
 pub mod workers;
@@ -221,39 +220,38 @@ pub struct IdentityOverride {
 impl NodeManager {
     async fn access_control(
         &self,
-        resource: &Resource,
-        action: &Action,
+        resource: Resource,
+        action: Action,
         authority: Option<Identifier>,
-        custom_default: Option<&Expr>,
+        expression: Option<Expr>,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
         if let Some(authority) = authority {
             // Populate environment with known attributes:
             let mut env = Env::new();
-
             env.put("resource.id", str(resource.as_str()));
             env.put("action.id", str(action.as_str()));
 
-            // Check if a policy exists for (resource, action) and if not, then
-            // create or use a default entry:
-            if self.cli_state.get_policy(resource, action).await?.is_none() {
-                let fallback = match custom_default {
-                    Some(e) => e.clone(),
-                    None => Expr::CONST_TRUE,
-                };
+            // Check if a policy exists for this (node, resource, action) and if not,
+            // create a policy with the given expression or the default one.
+            if self
+                .cli_state
+                .get_policy(&resource, &action)
+                .await?
+                .is_none()
+            {
+                let expression = expression.unwrap_or(Expr::CONST_TRUE);
+                let policy = Policy::new(expression);
                 self.cli_state
-                    .set_policy(resource, action, &Policy::new(fallback))
+                    .set_policy(&resource, &action, &policy)
                     .await?;
             }
             let policy_access_control = self
                 .cli_state
-                .make_policy_access_control(resource, action, env, authority)
+                .make_policy_access_control(&resource, &action, env, authority)
                 .await?;
             Ok(Arc::new(policy_access_control))
         } else {
-            warn!(
-                "no policy access control set for resource '{}' and action: '{}'",
-                &resource, &action
-            );
+            warn!("no policy access control set for resource '{resource}' and action: '{action}'");
             Ok(Arc::new(AllowAll))
         }
     }
@@ -357,7 +355,6 @@ impl NodeManager {
             transport_options.api_transport_flow_control_id.clone(),
         );
 
-        debug!("create the identity repository");
         let mut cli_state = general_options.cli_state;
         cli_state.set_node_name(general_options.node_name.clone());
 

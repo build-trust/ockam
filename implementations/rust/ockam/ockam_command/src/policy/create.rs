@@ -2,11 +2,9 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_abac::{Action, Expr, Policy, Resource};
-use ockam_api::nodes::BackgroundNodeClient;
-use ockam_core::api::Request;
+use ockam_api::nodes::{BackgroundNodeClient, Policies};
 
 use crate::node::util::initialize_default_node;
-use crate::policy::policy_path;
 use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 
@@ -39,9 +37,13 @@ impl CreateCommand {
     pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
-        let bdy = Policy::new(self.expression.clone());
-        let req = Request::post(policy_path(&self.resource, &self.action)).body(bdy);
-        node.tell(ctx, req).await?;
+        node.add_policy(
+            ctx,
+            &self.resource,
+            &self.action,
+            &Policy::new(self.expression.clone()),
+        )
+        .await?;
         Ok(())
     }
 }

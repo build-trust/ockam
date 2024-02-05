@@ -12,16 +12,17 @@ use ockam_core::Result;
 #[async_trait]
 pub trait PoliciesRepository: Send + Sync + 'static {
     /// Return the policy associated to a given resource and action
-    async fn get_policy(&self, r: &Resource, a: &Action) -> Result<Option<Policy>>;
+    async fn get_policy(&self, resource: &Resource, action: &Action) -> Result<Option<Policy>>;
 
     /// Set a policy for a given resource and action
-    async fn set_policy(&self, r: &Resource, a: &Action, c: &Policy) -> Result<()>;
+    async fn set_policy(&self, resource: &Resource, action: &Action, policy: &Policy)
+        -> Result<()>;
 
     /// Delete the policy associated to a given resource and action
-    async fn delete_policy(&self, r: &Resource, a: &Action) -> Result<()>;
+    async fn delete_policy(&self, resource: &Resource, action: &Action) -> Result<()>;
 
     /// Return the list of all the policies associated to a given resource
-    async fn get_policies_by_resource(&self, r: &Resource) -> Result<Vec<(Action, Policy)>>;
+    async fn get_policies_by_resource(&self, resource: &Resource) -> Result<Vec<(Action, Policy)>>;
 }
 
 #[derive(Debug, Decode, Encode, PartialEq, Eq)]

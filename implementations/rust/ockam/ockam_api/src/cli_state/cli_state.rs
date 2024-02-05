@@ -69,8 +69,8 @@ impl CliState {
         Self::make_application_database_path(&self.dir)
     }
 
-    pub fn set_node_name(&mut self, node_name: String) {
-        self.database.node_name = Some(node_name)
+    pub fn set_node_name(&mut self, node_name: impl AsRef<str>) {
+        self.database.set_node_name(node_name.as_ref());
     }
 }
 

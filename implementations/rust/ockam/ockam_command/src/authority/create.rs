@@ -248,7 +248,7 @@ impl CreateCommand {
         }
 
         let mut state = opts.state.clone();
-        state.set_node_name(self.node_name.to_string());
+        state.set_node_name(&self.node_name);
 
         // Create the authority identity if it has not been created before
         // If no name is specified on the command line, use "authority"

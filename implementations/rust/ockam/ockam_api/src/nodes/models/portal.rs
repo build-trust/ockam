@@ -6,6 +6,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
+use ockam_abac::Expr;
 use ockam_core::{Address, Route};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
@@ -26,7 +27,7 @@ pub struct CreateInlet {
     /// created outlet, or a forwarding mechanism via ockam cloud.
     #[n(2)] pub(crate) outlet_addr: MultiAddr,
     /// A human-friendly alias for this portal endpoint
-    #[b(3)] pub(crate) alias: Option<String>,
+    #[b(3)] pub(crate) alias: String,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
@@ -39,29 +40,34 @@ pub struct CreateInlet {
     #[n(6)] pub(crate) suffix_route: Route,
     /// The maximum duration to wait for an outlet to be available
     #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
+    /// The expression for the access control policy
+    #[n(8)] pub(crate) policy_expression: Option<Expr>,
 }
 
 impl CreateInlet {
     pub fn via_project(
         listen: String,
         to: MultiAddr,
+        alias: impl Into<String>,
         prefix_route: Route,
         suffix_route: Route,
     ) -> Self {
         Self {
             listen_addr: listen,
             outlet_addr: to,
-            alias: None,
+            alias: alias.into(),
             authorized: None,
             prefix_route,
             suffix_route,
             wait_for_outlet_duration: None,
+            policy_expression: None,
         }
     }
 
     pub fn to_node(
         listen: String,
         to: MultiAddr,
+        alias: impl Into<String>,
         prefix_route: Route,
         suffix_route: Route,
         auth: Option<Identifier>,
@@ -69,20 +75,21 @@ impl CreateInlet {
         Self {
             listen_addr: listen,
             outlet_addr: to,
-            alias: None,
+            alias: alias.into(),
             authorized: auth,
             prefix_route,
             suffix_route,
             wait_for_outlet_duration: None,
+            policy_expression: None,
         }
-    }
-
-    pub fn set_alias(&mut self, a: impl Into<String>) {
-        self.alias = Some(a.into())
     }
 
     pub fn set_wait_ms(&mut self, ms: u64) {
         self.wait_for_outlet_duration = Some(Duration::from_millis(ms))
+    }
+
+    pub fn set_policy_expression(&mut self, expression: Expr) {
+        self.policy_expression = Some(expression);
     }
 
     pub fn listen_addr(&self) -> String {
@@ -97,8 +104,8 @@ impl CreateInlet {
         self.authorized.clone()
     }
 
-    pub fn alias(&self) -> Option<&str> {
-        self.alias.as_deref()
+    pub fn alias(&self) -> String {
+        self.alias.clone()
     }
 
     pub fn prefix_route(&self) -> &Route {
@@ -124,17 +131,19 @@ pub struct CreateOutlet {
     /// The address the portal should connect or bind to
     #[n(2)] pub worker_addr: Address,
     /// A human-friendly alias for this portal endpoint
-    #[n(3)] pub alias: Option<String>,
+    #[n(3)] pub alias: String,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
     /// tighten the flow control
     #[n(4)] pub reachable_from_default_secure_channel: bool,
+    /// The expression for the access control policy
+    #[n(5)] pub policy_expression: Option<Expr>,
 }
 
 impl CreateOutlet {
     pub fn new(
         socket_addr: SocketAddr,
         worker_addr: Address,
-        alias: impl Into<Option<String>>,
+        alias: impl Into<String>,
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
@@ -142,7 +151,12 @@ impl CreateOutlet {
             worker_addr,
             alias: alias.into(),
             reachable_from_default_secure_channel,
+            policy_expression: None,
         }
+    }
+
+    pub fn set_policy_expression(&mut self, expression: Expr) {
+        self.policy_expression = Some(expression);
     }
 }
 
