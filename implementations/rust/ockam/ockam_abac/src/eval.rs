@@ -292,3 +292,36 @@ where
     args.push(Expr::Bool(b));
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::attribute_access_control::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
+    use crate::{eval, Env, Expr};
+
+    #[test]
+    fn test() {
+        let mut environment = Env::new();
+
+        let check_credential_expression =
+            Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY));
+
+        let res = eval(&check_credential_expression, &environment);
+
+        assert!(res.is_err());
+
+        environment.put(
+            format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+            Expr::CONST_FALSE,
+        );
+        let res = eval(&check_credential_expression, &environment).unwrap();
+        matches!(res, Expr::Bool(false));
+
+        environment.put(
+            format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+            Expr::CONST_TRUE,
+        );
+
+        let res = eval(&check_credential_expression, &environment).unwrap();
+        matches!(res, Expr::Bool(true));
+    }
+}

@@ -16,7 +16,16 @@ use crate::{eval, Env, Expr, Policy};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_identity::{Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo};
-use tracing as log;
+use tracing::{debug, warn};
+
+/// Prefix we use to check for subject attributes
+pub const SUBJECT_KEY: &str = "subject";
+
+/// Key we use to indicate a subject has valid credential
+pub const ABAC_HAS_CREDENTIAL_KEY: &str = "has_credential";
+
+/// Key we use to check Identifier
+pub const ABAC_IDENTIFIER_KEY: &str = "identifier";
 
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
@@ -94,6 +103,13 @@ impl AbacAccessControl {
     pub async fn is_identity_authorized(&self, id: Identifier) -> Result<bool> {
         let mut environment = self.environment.clone();
 
+        // add the identifier itself as a subject parameter
+        // it's important to do it before we put other attributes, so it can't be overwritten
+        environment.put(
+            format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY),
+            str(id.to_string()),
+        );
+
         // Get identity attributes and populate the environment:
         match self
             .identities_attributes
@@ -101,11 +117,16 @@ impl AbacAccessControl {
             .await?
         {
             Some(attrs) => {
+                environment.put(
+                    format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+                    Expr::CONST_TRUE,
+                );
+
                 for (key, value) in attrs.attrs() {
                     let key = match from_utf8(key) {
                         Ok(key) => key,
                         Err(_) => {
-                            log::warn! {
+                            warn! {
                                 policy = %self.policy,
                                 id     = %id,
                                 "attribute key is not utf-8"
@@ -114,7 +135,7 @@ impl AbacAccessControl {
                         }
                     };
                     if key.find(|c: char| c.is_whitespace()).is_some() {
-                        log::warn! {
+                        warn! {
                             policy = %self.policy,
                             id     = %id,
                             key    = %key,
@@ -124,7 +145,7 @@ impl AbacAccessControl {
                     match str::from_utf8(value) {
                         Ok(s) => {
                             if environment.contains(key) {
-                                log::debug! {
+                                warn! {
                                     policy = %self.policy,
                                     id     = %id,
                                     key    = %key,
@@ -135,7 +156,7 @@ impl AbacAccessControl {
                             }
                         }
                         Err(e) => {
-                            log::warn! {
+                            warn! {
                                 policy = %self.policy,
                                 id     = %id,
                                 key    = %key,
@@ -147,23 +168,17 @@ impl AbacAccessControl {
                 }
             }
             None => {
-                log::debug! {
-                    policy        = %self.policy,
-                    id            = %id,
-                    is_authorized = %false,
-                    "policy evaluated to false because subject has no attributes"
-                }
-                return Ok(false);
+                environment.put(
+                    format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+                    Expr::CONST_FALSE,
+                );
             }
         }
-
-        // add the identifier itself as a subject parameter
-        environment.put("subject.identifier", str(id.to_string()));
 
         // Finally, evaluate the expression and return the result:
         match eval(self.policy.expression(), &environment) {
             Ok(Expr::Bool(b)) => {
-                log::debug! {
+                debug! {
                     policy        = %self.policy,
                     id            = %id,
                     is_authorized = %b,
@@ -172,7 +187,7 @@ impl AbacAccessControl {
                 Ok(b)
             }
             Ok(x) => {
-                log::warn! {
+                warn! {
                     policy = %self.policy,
                     id     = %id,
                     expr   = %x,
@@ -181,7 +196,7 @@ impl AbacAccessControl {
                 Ok(false)
             }
             Err(e) => {
-                log::warn! {
+                warn! {
                     policy = %self.policy,
                     id     = %id,
                     err    = %e,
@@ -201,7 +216,7 @@ impl IncomingAccessControl for AbacAccessControl {
         let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(msg.local_message()) {
             info.their_identity_id()
         } else {
-            log::debug! {
+            debug! {
                 policy = %self.policy,
                 "identity identifier not found; access denied"
             }

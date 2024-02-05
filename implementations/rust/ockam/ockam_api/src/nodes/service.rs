@@ -20,6 +20,7 @@ use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
+use ockam_abac::attribute_access_control::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
 use ockam_abac::expr::str;
 use ockam_abac::{Action, Env, Expr, Policy, Resource};
 use ockam_core::api::{Method, RequestHeader, Response};
@@ -239,7 +240,9 @@ impl NodeManager {
                 .await?
                 .is_none()
             {
-                let expression = expression.unwrap_or(Expr::CONST_TRUE);
+                let check_credential_expression =
+                    Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY));
+                let expression = expression.unwrap_or(check_credential_expression);
                 let policy = Policy::new(expression);
                 self.cli_state
                     .set_policy(&resource, &action, &policy)
