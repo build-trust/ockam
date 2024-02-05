@@ -17,12 +17,12 @@ use ockam_api::{is_local_node, CliState};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::node::util::initialize_default_node;
 use crate::output::Output;
 use crate::terminal::OckamColor;
 use crate::util::{async_cmd, process_nodes_multiaddr};
 use crate::{docs, fmt_log, Error, Result};
 use crate::{fmt_ok, CommandGlobalOpts};
+use crate::{node::util::initialize_default_node, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -109,18 +109,11 @@ impl CreateCommand {
         let (relay, _) = try_join!(get_relay_info, progress_output)?;
 
         let plain = {
-            let from = format!(
-                "{}{}",
-                &at,
-                &relay.worker_address_ma().into_diagnostic()?.to_string()
-            )
-            .color(OckamColor::PrimaryResource.color());
-            let to = format!(
-                "/node/{}{}",
-                &node.node_name(),
-                &relay.remote_address_ma().into_diagnostic()?.to_string()
-            )
-            .color(OckamColor::PrimaryResource.color());
+            // `remote_address` in the project is relaying to worker at address `worker_address` on that node.
+            let remote_address = relay.remote_address_ma().into_diagnostic()?;
+            let worker_address = relay.worker_address_ma().into_diagnostic()?;
+            let from = color_primary(format!("{}{}", &at, remote_address));
+            let to = color_primary(format!("/node/{}{}", &node.node_name(), worker_address));
             fmt_ok!("Now relaying messages from {from} → {to}")
         };
         let machine = relay.remote_address_ma().into_diagnostic()?;
