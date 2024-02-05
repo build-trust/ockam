@@ -1,9 +1,9 @@
+use crate::authenticator::{AuthorityMember, AuthorityMembersRepository};
 use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::IdentitiesAttributes;
-use ockam::identity::{AttributesEntry, Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::{self, Result, Routed, Worker};
 use ockam_node::Context;
@@ -13,7 +13,7 @@ use std::sync::Arc;
 use tracing::trace;
 
 pub struct Server {
-    identities_attributes: Arc<IdentitiesAttributes>,
+    member_attributes_repository: Arc<dyn AuthorityMembersRepository>,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
     attributes: Vec<String>,
@@ -39,7 +39,7 @@ impl Worker for Server {
 
 impl Server {
     pub fn new(
-        identities_attributes: Arc<IdentitiesAttributes>,
+        member_attributes_repository: Arc<dyn AuthorityMembersRepository>,
         tenant_base_url: &str,
         certificate: &str,
         attributes: &[String],
@@ -47,7 +47,7 @@ impl Server {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::core(err.to_string()))?;
         Ok(Server {
-            identities_attributes,
+            member_attributes_repository,
             tenant_base_url: tenant_base_url.to_string(),
             certificate,
             attributes: attributes.iter().map(|s| s.to_string()).collect(),
@@ -81,18 +81,14 @@ impl Server {
                         //     was added by the okta addon.
                         //     But for that we would need to give a separate identity to this
                         //     addon, and made it an "enroller" (calling the enroll endpoint)
-                        let entry = AttributesEntry::new(
-                            attrs
-                                .into_iter()
-                                .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-                                .collect(),
-                            now().unwrap(),
-                            None,
-                            None,
-                        );
-                        self.identities_attributes
-                            .put_attributes(from, entry)
-                            .await?;
+                        let attrs = attrs
+                            .into_iter()
+                            .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
+                            .collect();
+
+                        let member =
+                            AuthorityMember::new(from.clone(), attrs, from.clone(), now()?, false);
+                        self.member_attributes_repository.add_member(member).await?;
                         Response::ok().with_headers(&req).to_vec()?
                     } else {
                         Response::forbidden(&req, "Forbidden").to_vec()?
