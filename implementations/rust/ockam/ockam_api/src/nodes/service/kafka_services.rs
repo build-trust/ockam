@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use ockam::{Address, Context, Result};
+use ockam_abac::attribute_access_control::{ABAC_IDENTIFIER_KEY, SUBJECT_KEY};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::net::SocketAddr;
@@ -307,7 +308,10 @@ impl InMemoryNode {
                 let (_, project_identifier) = self.resolve_project(&project).await?;
                 // if we are using the project we need to allow safe communication based on the
                 // project identifier
-                Some(eq([ident("subject.identifier"), str(project_identifier)]))
+                Some(eq([
+                    ident(format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY)),
+                    str(project_identifier),
+                ]))
             } else {
                 None
             }
