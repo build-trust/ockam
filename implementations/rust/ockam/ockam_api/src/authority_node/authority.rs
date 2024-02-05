@@ -12,8 +12,7 @@ use crate::authenticator::{
     AuthorityMembersRepository, AuthorityMembersSqlxDatabase,
 };
 use ockam::identity::{
-    Identifier, Identities, IdentitiesAttributes, SecureChannelListenerOptions, SecureChannels,
-    TrustEveryonePolicy,
+    Identifier, Identities, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
@@ -224,7 +223,7 @@ impl Authority {
     ) -> Result<()> {
         if let Some(okta) = &configuration.okta {
             let okta_worker = crate::okta::Server::new(
-                self.identities_attributes(),
+                self.members.clone(),
                 okta.tenant_base_url(),
                 okta.certificate(),
                 okta.attributes().as_slice(),
@@ -255,16 +254,6 @@ impl Authority {
 
 /// Private Authority functions
 impl Authority {
-    /// Return the identities storage used by the authority
-    fn identities(&self) -> Arc<Identities> {
-        self.secure_channels.identities()
-    }
-
-    /// Return the service managing identities attributes used by the Authority
-    fn identities_attributes(&self) -> Arc<IdentitiesAttributes> {
-        self.identities().identities_attributes()
-    }
-
     /// Create a directory to save storage files if they haven't been  created before
     fn create_ockam_directory_if_necessary(path: &Path) -> Result<()> {
         let parent = path.parent().unwrap();
