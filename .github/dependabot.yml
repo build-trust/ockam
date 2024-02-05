@@ -24,6 +24,17 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Rust"
 
+  # Maintain dependencies of rust ockly crate
+  - package-ecosystem: "cargo"
+    directory: "/implementations/elixir/ockam/ockly/native/ockly"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Rust"
+
   # Maintain dependencies of typescript packages
   - package-ecosystem: "npm"
     directory: "/implementations/typescript"
