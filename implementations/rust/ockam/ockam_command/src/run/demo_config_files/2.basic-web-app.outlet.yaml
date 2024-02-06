@@ -1,9 +1,5 @@
 # https://docs.ockam.io/guides/examples/basic-web-app
-version: 1
-
-projects:
-  enroll:
-    ticket: db.ticket
+ticket: db.ticket
 
 nodes: db
 

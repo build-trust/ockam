@@ -29,24 +29,9 @@ impl ConfigRunner {
             identity.async_run(opts.clone()).await?;
         }
 
-        let projects = config.projects.into_commands()?;
-        for project_create in projects.create {
-            if opts
-                .state
-                .get_project_by_name(&project_create.project_name)
-                .await
-                .is_ok()
-            {
-                opts.terminal.write_line(&fmt_info!(
-                    "Project {} is already created",
-                    color!(project_create.project_name, OckamColor::PrimaryResource)
-                ))?;
-                continue;
-            }
-            project_create.async_run(ctx, opts.clone()).await?;
-        }
-        for project_enrollment in projects.enroll {
-            let identity_name = &project_enrollment.cloud_opts.identity;
+        let projects_enrollment_tickets = config.projects.into_commands()?;
+        for enrollment_ticket in projects_enrollment_tickets {
+            let identity_name = &enrollment_ticket.cloud_opts.identity;
             let identity = opts
                 .state
                 .get_named_identity_or_default(identity_name)
@@ -60,7 +45,7 @@ impl ConfigRunner {
                     continue;
                 }
             }
-            project_enrollment.async_run(ctx, opts.clone()).await?;
+            enrollment_ticket.async_run(ctx, opts.clone()).await?;
         }
 
         let nodes = config.nodes.into_commands()?;

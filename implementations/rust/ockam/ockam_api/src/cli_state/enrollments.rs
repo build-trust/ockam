@@ -145,7 +145,7 @@ impl IdentityEnrollment {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EnrollmentTicket {
     pub one_time_code: OneTimeCode,
     pub project: Option<Project>,

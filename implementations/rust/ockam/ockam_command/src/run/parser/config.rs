@@ -56,8 +56,6 @@ mod tests {
     #[test]
     fn can_parse_base_config() {
         let config = r#"
-            version: 1
-
             vaults:
               - v1
               - v2
@@ -66,6 +64,8 @@ mod tests {
               - i1
               - i2:
                   vault: v2
+
+            ticket: ./path/to/ticket
 
             nodes:
               - n1
@@ -126,7 +126,9 @@ mod tests {
                     }),
                 ])),
             },
-            projects: Projects { projects: None },
+            projects: Projects {
+                ticket: Some("./path/to/ticket".to_string()),
+            },
             nodes: Nodes {
                 nodes: Some(ResourcesContainer::List(vec![
                     ResourceNameOrMap::Name("n1".to_string()),
