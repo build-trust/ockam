@@ -58,14 +58,12 @@ pub enum IdentityError {
     ConsistencyError,
     /// Secret Key doesn't correspond to the Identity
     WrongSecretKey,
-    /// CredentialRetriever was already set
-    CredentialRetrieverCreatorAlreadySet,
     /// Credential is missing in the cache
     CachedCredentialMissing,
     /// Given address is already a subscriber for that RemoteCredentialRetriever
-    AddressAlreadySubscribedForThatCredentialRetriever,
+    AddressAlreadySubscribedForThatCredentialRefresher,
     /// Given address hasn't been subscribed for that RemoteCredentialRetriever
-    AddressIsNotSubscribedForThatCredentialRetriever,
+    AddressIsNotSubscribedForThatCredentialRefresher,
     /// Credential retriever couldn't return a credential
     NoCredential,
 }

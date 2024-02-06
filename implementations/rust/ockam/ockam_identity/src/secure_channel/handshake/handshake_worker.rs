@@ -4,8 +4,8 @@ use core::time::Duration;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
-    Routed,
+    AllowAll, Any, AsyncTryClone, Decodable, DenyAll, Error, Mailbox, Mailboxes,
+    OutgoingAccessControl, Route, Routed,
 };
 use ockam_core::{AllowOnwardAddress, Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -28,8 +28,10 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    ChangeHistoryRepository, CredentialRetriever, IdentityError, SecureChannelPurposeKey,
-    SecureChannelRegistryEntry, SecureChannels, TrustPolicy,
+    CachedCredentialRetriever, ChangeHistoryRepository, CredentialRefresher, CredentialRetriever,
+    CredentialRetrieverOptions, CredentialsCache, IdentityError, MemoryCredentialRetriever,
+    RemoteCredentialRetriever, SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannels,
+    TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -47,7 +49,7 @@ pub(crate) struct HandshakeWorker {
     authority: Option<Identifier>,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
 
-    credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+    credential_refresher: Option<Arc<CredentialRefresher>>,
 
     shared_state: SecureChannelSharedState,
 }
@@ -60,8 +62,8 @@ impl Worker for HandshakeWorker {
     /// Initialize the state machine with an `Initialize` event
     /// Depending on the state machine role there might be a message to send to the other party
     async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
-        if let Some(credential_retriever) = &self.credential_retriever {
-            credential_retriever.initialize().await?;
+        if let Some(remote_credential_refresher) = &self.credential_refresher {
+            remote_credential_refresher.initialize().await?;
         }
 
         match self.state_machine.on_event(Initialize).await? {
@@ -129,14 +131,21 @@ impl HandshakeWorker {
         purpose_key: SecureChannelPurposeKey,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+        credential_retriever_options: CredentialRetrieverOptions,
         authority: Option<Identifier>,
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
     ) -> Result<()> {
-        let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
+        let vault = identities.vault().secure_channel_vault;
+        let (credential_retriever, credential_refresher) = make_credential_retriever(
+            context,
+            credential_retriever_options,
+            secure_channels.clone(),
+            &identifier,
+        )
+        .await?;
 
         let state_machine: Box<dyn StateMachine> = if role.is_initiator() {
             Box::new(
@@ -176,6 +185,7 @@ impl HandshakeWorker {
         let shared_state = SecureChannelSharedState {
             should_send_close: Arc::new(AtomicBool::new(true)),
         };
+
         let worker = Self {
             secure_channels,
             callback_sender,
@@ -185,7 +195,7 @@ impl HandshakeWorker {
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
-            credential_retriever,
+            credential_refresher,
             authority,
             change_history_repository: identities.change_history_repository(),
             shared_state,
@@ -363,7 +373,7 @@ impl HandshakeWorker {
                 ),
                 self.identifier.clone(),
                 self.change_history_repository.clone(),
-                self.credential_retriever.clone(),
+                self.credential_refresher.clone(),
                 handshake_results.presented_credential,
                 self.shared_state.clone(),
             );
@@ -424,5 +434,48 @@ impl HandshakeWorker {
             .register_channel(info)?;
 
         Ok(decryptor)
+    }
+}
+
+async fn make_credential_retriever(
+    context: &Context,
+    options: CredentialRetrieverOptions,
+    secure_channels: Arc<SecureChannels>,
+    identifier: &Identifier,
+) -> Result<(
+    Option<Arc<dyn CredentialRetriever>>,
+    Option<Arc<CredentialRefresher>>,
+)> {
+    match options {
+        CredentialRetrieverOptions::None => Ok((None, None)),
+        CredentialRetrieverOptions::CacheOnly(issuer) => {
+            let credential_retriever = Arc::new(CachedCredentialRetriever::new(
+                &issuer,
+                Arc::new(CredentialsCache::new(
+                    secure_channels.identities().cached_credentials_repository(),
+                )),
+            ));
+            Ok((Some(credential_retriever), None))
+        }
+
+        CredentialRetrieverOptions::InMemory(credential) => Ok((
+            Some(Arc::new(MemoryCredentialRetriever::new(credential))),
+            None,
+        )),
+        CredentialRetrieverOptions::Remote {
+            retriever_info,
+            retriever_timing_options,
+            refresher_timing_options,
+        } => {
+            let credential_retriever = Arc::new(RemoteCredentialRetriever::new(
+                Arc::new(context.async_try_clone().await?),
+                secure_channels.clone(),
+                retriever_info.clone(),
+                retriever_timing_options,
+                refresher_timing_options,
+            ));
+            let credential_refresher = credential_retriever.make_refresher(identifier).await?;
+            Ok((Some(credential_retriever), Some(credential_refresher)))
+        }
     }
 }

@@ -53,7 +53,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
             route!["listener"],
             SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.clone()))
-                .with_credential(credential)?,
+                .with_credential(credential),
         )
         .await?;
 
@@ -102,7 +102,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             "listener",
             SecureChannelListenerOptions::new()
                 .with_authority(authority.clone())
-                .with_credential(credential)?,
+                .with_credential(credential),
         )
         .await?;
 
@@ -125,7 +125,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             route!["listener"],
             SecureChannelOptions::new()
                 .with_authority(authority.clone())
-                .with_credential(credential)?,
+                .with_credential(credential),
         )
         .await?;
 
@@ -195,7 +195,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
             route!["listener"],
             SecureChannelOptions::new()
                 .with_trust_policy(TrustIdentifierPolicy::new(server.clone()))
-                .with_credential(credential1)?,
+                .with_credential(credential1),
         )
         .await?;
     let channel2 = secure_channels

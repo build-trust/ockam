@@ -49,6 +49,7 @@ mod util;
 pub use cli_state::*;
 pub use influxdb_token_lease::*;
 pub use nodes::service::default_address::*;
+pub use nodes::service::*;
 pub use session::sessions::ConnectionStatus;
 pub use util::*;
 pub use version::*;

@@ -11,7 +11,11 @@ impl Worker for Hop {
 
     /// This handle function takes any incoming message and forwards
     /// it to the next hop in it's onward route
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+
+    async fn handle_message(&self,
+                            ctx: &mut Context,
+                            msg: Routed<Any>) -> Result<()> {
+
         info!("Address: {}, Received: {}", ctx.address(), msg);
 
         // Send the message on its onward_route

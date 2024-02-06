@@ -207,12 +207,8 @@ impl NodeManager {
             None => options,
         };
 
-        let options = match self.credential_retriever_creator.as_ref() {
-            None => options,
-            Some(credential_retriever_creator) => {
-                options.with_credential_retriever_creator(credential_retriever_creator.clone())?
-            }
-        };
+        let options =
+            options.with_credential_retriever_options(self.credential_retriever_options().clone());
 
         let options = match authorized_identifiers.clone() {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
@@ -315,12 +311,8 @@ impl NodeManager {
             None => options,
         };
 
-        let options = match self.credential_retriever_creator.as_ref() {
-            None => options,
-            Some(credential_retriever_creator) => {
-                options.with_credential_retriever_creator(credential_retriever_creator.clone())?
-            }
-        };
+        let options =
+            options.with_credential_retriever_options(self.credential_retriever_options());
 
         let listener = secure_channels
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)

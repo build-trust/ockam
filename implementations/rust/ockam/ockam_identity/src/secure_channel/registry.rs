@@ -1,10 +1,9 @@
+use crate::models::Identifier;
+use crate::{CredentialRequest, IdentityError};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Result};
-
-use crate::models::Identifier;
-use crate::IdentityError;
 
 /// Known information about particular SecureChannel
 #[derive(Clone, Debug)]
@@ -89,14 +88,20 @@ impl SecureChannelRegistryEntry {
 #[derive(Clone, Default)]
 pub struct SecureChannelRegistry {
     // Encryptor address is used as a key
-    registry: Arc<RwLock<BTreeMap<Address, SecureChannelRegistryEntry>>>,
+    secure_channel_endpoints: Arc<RwLock<BTreeMap<Address, SecureChannelRegistryEntry>>>,
+    // Map of credential requests by issuer / subject pair, so that there can only be one active
+    // request at the time for a given issuer / subject pair
+    credential_requests: Arc<RwLock<BTreeMap<IssuerAndSubject, Arc<CredentialRequest>>>>,
 }
+
+type IssuerAndSubject = (Identifier, Identifier);
 
 impl SecureChannelRegistry {
     /// Create an empty registry
     pub fn new() -> Self {
         Self {
-            registry: Default::default(),
+            secure_channel_endpoints: Default::default(),
+            credential_requests: Default::default(),
         }
     }
 }
@@ -105,7 +110,7 @@ impl SecureChannelRegistry {
     /// Register new SecureChannel in that registry
     pub fn register_channel(&self, info: SecureChannelRegistryEntry) -> Result<()> {
         let res = self
-            .registry
+            .secure_channel_endpoints
             .write()
             .unwrap()
             .insert(info.encryptor_messaging_address.clone(), info);
@@ -122,12 +127,20 @@ impl SecureChannelRegistry {
         &self,
         encryptor_address: &Address,
     ) -> Option<SecureChannelRegistryEntry> {
-        self.registry.write().unwrap().remove(encryptor_address)
+        self.secure_channel_endpoints
+            .write()
+            .unwrap()
+            .remove(encryptor_address)
     }
 
     /// Get list of all known SecureChannels
     pub fn get_channel_list(&self) -> Vec<SecureChannelRegistryEntry> {
-        self.registry.read().unwrap().values().cloned().collect()
+        self.secure_channel_endpoints
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect()
     }
 
     /// Get SecureChannel with given encryptor messaging address
@@ -135,7 +148,7 @@ impl SecureChannelRegistry {
         &self,
         encryptor_address: &Address,
     ) -> Option<SecureChannelRegistryEntry> {
-        self.registry
+        self.secure_channel_endpoints
             .read()
             .unwrap()
             .get(encryptor_address)
@@ -147,11 +160,38 @@ impl SecureChannelRegistry {
         &self,
         decryptor_address: &Address,
     ) -> Option<SecureChannelRegistryEntry> {
-        self.registry
+        self.secure_channel_endpoints
             .read()
             .unwrap()
             .iter()
             .find(|(_, entry)| entry.decryptor_messaging_address == *decryptor_address)
             .map(|(_, entry)| entry.clone())
+    }
+
+    /// Store or retrieve a credential request that is specific to a pair issuer/subject
+    pub async fn get_credential_request_or(
+        &self,
+        request_if_missing: Arc<CredentialRequest>,
+    ) -> Result<Arc<CredentialRequest>> {
+        let key = (request_if_missing.issuer(), request_if_missing.subject());
+        let request = {
+            let mut requests = self.credential_requests.write().unwrap();
+            match requests.get(&key) {
+                Some(retriever) => retriever.clone(),
+                None => {
+                    requests.insert(key, request_if_missing.clone());
+                    request_if_missing
+                }
+            }
+        };
+        Ok(request)
+    }
+
+    /// Unregister a credential request that is specific to a pair issuer/subject
+    pub fn remove_credential_request(&self, issuer: &Identifier, subject: &Identifier) {
+        self.credential_requests
+            .write()
+            .unwrap()
+            .remove(&(issuer.clone(), subject.clone()));
     }
 }

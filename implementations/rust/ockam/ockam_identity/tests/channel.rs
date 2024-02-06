@@ -125,7 +125,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
             "bob_listener",
             SecureChannelListenerOptions::new()
                 .with_authority(authority.clone())
-                .with_credential(bob_credential_2)?,
+                .with_credential(bob_credential_2),
         )
         .await?;
 
@@ -164,7 +164,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
             route!["bob_listener"],
             SecureChannelOptions::new()
                 .with_authority(authority.clone())
-                .with_credential(alice_credential_2)?,
+                .with_credential(alice_credential_2),
         )
         .await?;
 

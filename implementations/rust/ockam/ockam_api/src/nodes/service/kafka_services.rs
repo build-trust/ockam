@@ -172,8 +172,7 @@ impl InMemoryNode {
             })?;
 
         let authority_identifier = self
-            .authority
-            .clone()
+            .authority()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
 
         let default_policy_expression = kafka_default_policy_expression();
@@ -288,8 +287,7 @@ impl InMemoryNode {
         );
 
         let authority_identifier = self
-            .authority
-            .clone()
+            .authority()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
 
         let secure_channels = self.secure_channels.clone();
@@ -388,8 +386,7 @@ impl NodeManager {
         .await?;
 
         let authority_id = self
-            .authority
-            .clone()
+            .authority()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
         let outlet_policy_expression = None;
 

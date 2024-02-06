@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::{
-    RemoteCredentialRetrieverCreator, RemoteCredentialRetrieverInfo, SecureChannelListenerOptions,
-    SecureChannelOptions, TrustMultiIdentifiersPolicy,
+    CredentialRetrieverOptions, RemoteCredentialRetrieverInfo, SecureChannelListenerOptions, SecureChannelOptions,
+    TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::RemoteRelayOptions;
 use ockam::{node, Context, Result, TcpOutletOptions, TcpTransportExtension};
@@ -12,8 +10,8 @@ use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;
 use ockam_api::{multiaddr_to_route, multiaddr_to_transport_route, DefaultAddress};
-use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::Transport;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -75,16 +73,12 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let project_authority_route = multiaddr_to_transport_route(&project.authority_route()).unwrap(); // FIXME: Handle error
 
     // Create a credential retriever that will be used to obtain credentials
-    let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
-        node.context().async_try_clone().await?,
-        Arc::new(tcp.clone()),
-        node.secure_channels(),
-        RemoteCredentialRetrieverInfo::new(
-            project.authority_identifier(),
-            project_authority_route,
-            DefaultAddress::CREDENTIAL_ISSUER.into(),
-        ),
-    ));
+    let credential_retriever_info = RemoteCredentialRetrieverInfo::new(
+        project.authority_identifier(),
+        project_authority_route,
+        DefaultAddress::CREDENTIAL_ISSUER.into(),
+        tcp.transport_type(),
+    );
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
     let access_control = AbacAccessControl::create(
@@ -106,7 +100,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
     let project_options = SecureChannelOptions::new()
-        .with_credential_retriever_creator(credential_retriever)?
+        .with_credential_retriever_options(CredentialRetrieverOptions::remote_default(credential_retriever_info))
         .with_authority(project.authority_identifier())
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
 

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use ockam::identity::{
-    CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient, DEFAULT_TIMEOUT,
+    CredentialRetrieverOptions, Identifier, SecureChannels, SecureClient, DEFAULT_TIMEOUT,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
@@ -85,15 +85,15 @@ impl NodeManager {
         caller_identifier: &Identifier,
         credentials_enabled: CredentialsEnabled,
     ) -> Result<ProjectNodeClient> {
-        let credential_retriever_creator = match credentials_enabled {
-            CredentialsEnabled::On => self.credential_retriever_creator.clone(),
-            CredentialsEnabled::Off => None,
+        let credential_retriever_options = match credentials_enabled {
+            CredentialsEnabled::On => self.credential_retriever_options(),
+            CredentialsEnabled::Off => CredentialRetrieverOptions::None,
         };
 
         NodeManager::project_node_client(
             &self.tcp_transport,
             self.secure_channels.clone(),
-            credential_retriever_creator,
+            credential_retriever_options,
             project_identifier,
             project_multiaddr,
             caller_identifier,
@@ -131,7 +131,7 @@ impl NodeManager {
         Ok(ControllerClient {
             secure_client: SecureClient::new(
                 secure_channels,
-                None,
+                CredentialRetrieverOptions::None,
                 Arc::new(tcp_transport.clone()),
                 controller_route,
                 &controller_identifier,
@@ -159,7 +159,7 @@ impl NodeManager {
         Ok(AuthorityNodeClient {
             secure_client: SecureClient::new(
                 secure_channels,
-                None,
+                CredentialRetrieverOptions::None,
                 Arc::new(tcp_transport.clone()),
                 authority_route,
                 authority_identifier,
@@ -174,7 +174,7 @@ impl NodeManager {
     pub async fn project_node_client(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
-        credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
+        credential_retriever_options: CredentialRetrieverOptions,
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
@@ -188,7 +188,7 @@ impl NodeManager {
         Ok(ProjectNodeClient {
             secure_client: SecureClient::new(
                 secure_channels,
-                credential_retriever_creator,
+                credential_retriever_options,
                 Arc::new(tcp_transport.clone()),
                 project_route,
                 project_identifier,
@@ -215,7 +215,7 @@ impl NodeManager {
         Ok(GenericSecureClient {
             secure_client: SecureClient::new(
                 secure_channels,
-                None,
+                CredentialRetrieverOptions::None,
                 Arc::new(tcp_transport.clone()),
                 route,
                 identifier,

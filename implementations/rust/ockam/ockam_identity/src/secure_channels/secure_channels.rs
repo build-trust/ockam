@@ -113,15 +113,6 @@ impl SecureChannels {
             .get_or_create_secure_channel_purpose_key(identifier)
             .await?;
 
-        let credential_retriever = match &options.credential_retriever_creator {
-            Some(credential_retriever_creator) => {
-                let credential_retriever = credential_retriever_creator.create(identifier).await?;
-                credential_retriever.initialize().await?;
-                Some(credential_retriever)
-            }
-            None => None,
-        };
-
         HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
@@ -130,7 +121,7 @@ impl SecureChannels {
             purpose_key,
             options.trust_policy,
             access_control.decryptor_outgoing_access_control,
-            credential_retriever,
+            options.credential_retriever_options.clone(),
             options.authority,
             Some(route),
             Some(options.timeout),

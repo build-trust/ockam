@@ -45,6 +45,7 @@ std = [
   "serde_bare/std",
   "minicbor/std",
   "storage",
+  "tokio",
 ]
 
 debugger = ["ockam_core/debugger"]
@@ -71,14 +72,17 @@ alloc = [
 storage = ["ockam_vault/storage", "sqlx", "tokio-retry"]
 
 [dependencies]
+async-recursion = "1.0.5"
 async-trait = "0.1.77"
 cfg-if = "1.0.0"
 chrono = { version = "0.4.34", default-features = false }
 delegate = "0.12.0"
+either = { version = "1.10.0", default-features = false }
 group = { version = "0.13.0", default-features = false }
 hex = { version = "0.4", default-features = false }
 minicbor = { version = "0.21.0", features = ["alloc", "derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.102.0", default-features = false }
+ockam_executor = { path = "../ockam_executor", version = "^0.71.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.109.0", default-features = false }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.75.0", default_features = false }
@@ -90,6 +94,7 @@ serde_json = { version = "1.0", optional = true }
 sha2 = { version = "0.10", default-features = false }
 sqlx = { version = "0.7.3", optional = true }
 subtle = { version = "2.4.1", default-features = false }
+tokio = { version = "1.36.0", features = ["default"], optional = true }
 tokio-retry = { version = "0.3.0", default-features = false, optional = true }
 tracing = { version = "0.1", default_features = false }
 tracing-attributes = { version = "0.1", default_features = false }

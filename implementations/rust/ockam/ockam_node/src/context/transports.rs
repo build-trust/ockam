@@ -7,10 +7,26 @@ use ockam_transport_core::Transport;
 use crate::Context;
 
 impl Context {
-    /// Return the list of supported transports
+    /// Register a new transport
     pub fn register_transport(&self, transport: Arc<dyn Transport>) {
         let mut transports = self.transports.write().unwrap();
         transports.insert(transport.transport_type(), transport);
+    }
+
+    /// Get a registered transport given its transport type
+    pub fn get_registered_transport(
+        &self,
+        transport_type: TransportType,
+    ) -> Result<Arc<dyn Transport>> {
+        let transports = self.transports.read().unwrap();
+        match transports.get(&transport_type) {
+            Some(transport) => Ok(transport.clone()),
+            None => Err(Error::new(
+                Origin::Core,
+                Kind::NotFound,
+                format!("transport {transport_type} not found"),
+            )),
+        }
     }
 
     /// Return true if a given transport has already been registered

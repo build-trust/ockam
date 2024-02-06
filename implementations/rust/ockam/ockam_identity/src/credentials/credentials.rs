@@ -4,7 +4,7 @@ use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
 use crate::models::{CredentialData, PurposeKeyAttestationData};
 use crate::{
     CredentialsCreation, CredentialsVerification, IdentitiesCreation, IdentityAttributesRepository,
-    PurposeKeys,
+    PurposeKeys, TimestampInSeconds,
 };
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
@@ -15,6 +15,13 @@ pub struct CredentialAndPurposeKeyData {
     pub credential_data: CredentialData,
     /// [`PurposeKeyAttestationData`]
     pub purpose_key_data: PurposeKeyAttestationData,
+}
+
+impl CredentialAndPurposeKeyData {
+    /// Return the expires_at timestamp
+    pub fn expires_at(&self) -> TimestampInSeconds {
+        self.credential_data.expires_at
+    }
 }
 
 /// Service for managing [`Credential`]s
