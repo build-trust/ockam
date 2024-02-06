@@ -60,7 +60,7 @@ impl Enroll for ControllerClient {
             .into_diagnostic()
     }
 
-    #[instrument(skip_all, fields(enrollment_token = %enrollment_token))]
+    #[instrument(skip_all)]
     async fn authenticate_enrollment_token(
         &self,
         ctx: &Context,
