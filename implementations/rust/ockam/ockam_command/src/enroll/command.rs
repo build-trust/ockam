@@ -8,7 +8,7 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
@@ -117,14 +117,33 @@ impl EnrollCommand {
             .wrap_err("Unable to set your local Identity as enrolled")?;
         info!("Enrolled your local Identity with the identifier {identifier}");
 
-        if let Err(e) =
-            retrieve_user_space_and_project(&opts, ctx, &node, self.user_account_only).await
-        {
-            warn!(
-            "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
-            create them manually using the `ockam space` and `ockam project` commands."
-        );
-            warn!("{e}");
+        let result_retrieve_space_and_project: Result<Project> =
+            retrieve_user_space_and_project(&opts, ctx, &node, self.user_account_only).await;
+        if let Err(ref error) = result_retrieve_space_and_project {
+            // Display output to user.
+            opts.terminal
+                .write_line("")?
+                .write_line(&fmt_warn!(
+                    "There was a problem retrieving your space and project: {}",
+                    color_primary(error.to_string())
+                ))?
+                .write_line(&fmt_log!(
+                    "If this problem persists, please report this issue, with a copy of your logs, to {}\n",
+                    color_uri("https://github.com/build-trust/ockam/issues")
+                ))?;
+
+            // Log output to operator.
+            error!(
+                "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
+                create them manually using the `ockam space` and `ockam project` commands."
+            );
+            error!("{error}");
+
+            // Exit the command with an error.
+            return Err(miette!(format!(
+                "There was a problem, please try to enroll again using {}.",
+                color_primary("`ockam enroll`")
+            )));
         }
 
         let mut attributes = HashMap::default();
