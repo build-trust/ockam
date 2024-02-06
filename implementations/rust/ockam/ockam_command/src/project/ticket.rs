@@ -7,7 +7,9 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::Members;
+use ockam_api::authenticator::direct::{
+    Members, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
+};
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cli_state::CliState;
@@ -23,6 +25,7 @@ use crate::{
     util::api::{CloudOpts, TrustOpts},
 };
 use crate::{terminal::color_primary, util::duration::duration_parser};
+use tracing::debug;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");
@@ -76,8 +79,12 @@ pub struct TicketCommand {
     usage_count: Option<u64>,
 
     /// Name of the relay that the identity using the ticket will be allowed to create. This name is transformed into attributes to prevent collisions when creating relay names. For example: `--relay foo` is shorthand for `--attribute ockam-relay=foo`
-    #[arg(long = "relay", value_name = "ENROLEE_ALLOWED_RELAY_NAME")]
+    #[arg(long = "relay", value_name = "ENROLLEE_ALLOWED_RELAY_NAME")]
     allowed_relay_name: Option<String>,
+
+    /// Add the enroller role to your ticket. If you specify it, this flag is transformed into the attributes `--attribute ockam-role=enroller`. This role allows the identity using the ticket to enroll other identities into the project, typically something that only admins can do
+    #[arg(long = "enroller")]
+    enroller: bool,
 }
 
 impl TicketCommand {
@@ -101,6 +108,12 @@ impl TicketCommand {
         }
         if let Some(relay_name) = self.allowed_relay_name.clone() {
             attributes.insert(OCKAM_RELAY_ATTRIBUTE.to_string(), relay_name);
+        }
+        if self.enroller {
+            attributes.insert(
+                OCKAM_ROLE_ATTRIBUTE_KEY.to_string(),
+                OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE.to_string(),
+            );
         }
         Ok(attributes)
     }
@@ -138,16 +151,19 @@ impl TicketCommand {
             return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
         };
 
+        let attributes = self.attributes()?;
+        debug!(attributes = ?attributes, "Attributes passed");
+
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a
         // credential.
         if let Some(id) = &self.member {
             authority_node_client
-                .add_member(ctx, id.clone(), self.attributes()?)
+                .add_member(ctx, id.clone(), attributes)
                 .await?
         } else {
             let token = authority_node_client
-                .create_token(ctx, self.attributes()?, self.expires_in, self.usage_count)
+                .create_token(ctx, attributes, self.expires_in, self.usage_count)
                 .await?;
 
             let ticket = EnrollmentTicket::new(token, project);
