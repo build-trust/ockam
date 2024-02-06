@@ -76,7 +76,6 @@ pub async fn spawn_node(
     authority_identity: Option<String>,
     authority_route: Option<MultiAddr>,
     expect_cached_credential: bool,
-    logging_to_file: bool,
     opentelemetry_context: Option<OpenTelemetryContext>,
 ) -> miette::Result<()> {
     let mut args = vec![
@@ -100,7 +99,7 @@ pub async fn spawn_node(
         args.push("--skip-is-running-check".to_string());
     }
 
-    if logging_to_file || !opts.terminal.is_tty() {
+    if !opts.terminal.is_tty() {
         args.push("--no-color".to_string());
     }
 

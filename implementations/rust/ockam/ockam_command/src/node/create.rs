@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{path::PathBuf, str::FromStr};
 
 use clap::Args;
@@ -9,7 +8,6 @@ use opentelemetry::KeyValue;
 use tracing::instrument;
 
 use ockam_api::cli_state::random_name;
-use ockam_api::logs::TracingGuard;
 use ockam_core::{opentelemetry_context_parser, AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 
@@ -104,11 +102,7 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     #[instrument(skip_all)]
-    pub fn run(
-        self,
-        opts: CommandGlobalOpts,
-        tracing_guard: Option<Arc<TracingGuard>>,
-    ) -> miette::Result<()> {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.foreground {
             if self.child_process {
                 opentelemetry::Context::current()
@@ -117,7 +111,7 @@ impl CreateCommand {
             }
             local_cmd(embedded_node_that_is_not_stopped(
                 opts.rt.clone(),
-                |ctx| async move { self.foreground_mode(&ctx, opts, tracing_guard).await },
+                |ctx| async move { self.foreground_mode(&ctx, opts).await },
             ))
         } else {
             async_cmd(&self.name(), opts.clone(), |ctx| async move {
@@ -133,37 +127,14 @@ impl CreateCommand {
         }
     }
 
-    pub async fn async_run(
-        self,
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        tracing_guard: Option<TracingGuard>,
-    ) -> miette::Result<()> {
+    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.foreground {
-            self.foreground_mode(&ctx, opts, tracing_guard.map(Arc::new))
-                .await
+            self.foreground_mode(&ctx, opts).await
         } else {
             self.background_mode(&ctx, opts).await
         }
     }
-
-    fn logging_to_file(&self) -> bool {
-        // Background nodes will spawn a foreground node in a child process.
-        // In that case, the child process will log to files.
-        if self.child_process {
-            true
-        }
-        // The main process will log to stdout only if it's a foreground node.
-        else {
-            !self.foreground
-        }
-    }
-
-    pub fn logging_to_stdout(&self) -> bool {
-        !self.logging_to_file()
-    }
-
     pub async fn guard_node_is_not_already_running(
         &self,
         opts: &CommandGlobalOpts,

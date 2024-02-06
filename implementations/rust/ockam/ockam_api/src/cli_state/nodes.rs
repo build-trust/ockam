@@ -392,6 +392,14 @@ impl CliState {
         Ok(path)
     }
 
+    /// Return the default directory used by a node
+    pub fn default_node_dir(node_name: &str) -> Result<PathBuf> {
+        Ok(Self::make_node_dir_path(
+            &CliState::default_dir()?,
+            node_name,
+        ))
+    }
+
     /// Return the directory used by a node
     pub fn node_dir(&self, node_name: &str) -> PathBuf {
         Self::make_node_dir_path(&self.dir(), node_name)

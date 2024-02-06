@@ -46,10 +46,10 @@ impl TerminalWriter for TerminalStream<Term> {
 
 #[cfg(test)]
 mod tests {
+    use crate::output::OutputFormat;
     use colorful::Colorful;
 
     use crate::terminal::Terminal;
-    use crate::OutputFormat;
 
     use super::*;
 

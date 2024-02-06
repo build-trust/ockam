@@ -10,12 +10,10 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
-use crate::docs;
+use crate::output::OutputFormat;
 use crate::util::async_cmd;
-use crate::{
-    util::{api, exitcode},
-    CommandGlobalOpts, OutputFormat,
-};
+use crate::util::{api, exitcode};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");

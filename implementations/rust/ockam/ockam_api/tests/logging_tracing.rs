@@ -1,4 +1,4 @@
-use ockam_api::logs::{LoggingConfiguration, LoggingTracing};
+use ockam_api::logs::{LoggingConfiguration, LoggingTracing, TracingConfiguration};
 use ockam_api::random_name;
 
 use opentelemetry::global;
@@ -17,7 +17,6 @@ use tracing::{error, info};
 /// These tests need to be integration tests
 /// They need to run in isolation because
 /// they set up some global spans / logs exporters that might interact with other tests
-
 #[test]
 fn test_log_and_traces() {
     let temp_file = NamedTempFile::new().unwrap();
@@ -28,8 +27,10 @@ fn test_log_and_traces() {
     let guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         logs_exporter.clone(),
-        None,
-        LoggingConfiguration::default().set_log_directory(log_directory.into()),
+        &LoggingConfiguration::foreground()
+            .unwrap()
+            .set_log_directory(log_directory.into()),
+        &TracingConfiguration::foreground(false).unwrap(),
         "test",
     );
 

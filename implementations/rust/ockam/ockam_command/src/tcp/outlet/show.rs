@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use clap::Args;
+use console::Term;
 use core::fmt::Write;
 use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
@@ -21,7 +22,7 @@ use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
 use crate::util::async_cmd;
 use crate::Result;
-use crate::{docs, CommandGlobalOpts, Term, Terminal, TerminalStream};
+use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");

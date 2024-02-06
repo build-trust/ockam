@@ -1,5 +1,5 @@
 use crate::common::test_spans::Trace;
-use ockam_api::logs::{LoggingConfiguration, LoggingTracing};
+use ockam_api::logs::{LoggingConfiguration, LoggingTracing, TracingConfiguration};
 use ockam_core::AsyncTryClone;
 use ockam_node::{Context, NodeBuilder};
 use opentelemetry::global;
@@ -22,8 +22,8 @@ where
     let guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         InMemoryLogsExporter::default(),
-        None,
-        LoggingConfiguration::off(),
+        &LoggingConfiguration::off(),
+        &TracingConfiguration::foreground(true).unwrap(),
         "test",
     );
 

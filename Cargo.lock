@@ -4250,6 +4250,7 @@ dependencies = [
  "opentelemetry_sdk",
  "petname",
  "pretty_assertions",
+ "proptest",
  "quickcheck",
  "quickcheck_macros",
  "rand",

@@ -7,7 +7,6 @@ use tracing::{debug, instrument};
 
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
-use ockam_api::logs::TracingGuard;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
@@ -27,7 +26,6 @@ impl CreateCommand {
         &self,
         ctx: &Context,
         opts: CommandGlobalOpts,
-        tracing_guard: Option<Arc<TracingGuard>>,
     ) -> miette::Result<()> {
         self.guard_node_is_not_already_running(&opts).await?;
 
@@ -121,10 +119,8 @@ impl CreateCommand {
                 return Err(miette!("Failed to start services"));
             }
         }
-
-        if let Some(tracing_guard) = tracing_guard {
-            tracing_guard.force_flush();
-        };
+        // flush the current trace
+        opts.force_flush();
 
         // Create a channel for communicating back to the main thread
         let (tx, mut rx) = tokio::sync::mpsc::channel(2);
@@ -137,9 +133,12 @@ impl CreateCommand {
         )
         .await?;
 
+        opts.force_flush();
+
         // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
         opts.state.stop_node(&node_name, true).await?;
         ctx.stop().await.into_diagnostic()?;
+
         opts.terminal
             .write_line(fmt_ok!("Node stopped successfully"))
             .unwrap();

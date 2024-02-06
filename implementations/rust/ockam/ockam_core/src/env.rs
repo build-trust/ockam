@@ -18,6 +18,12 @@ pub fn get_env<T: FromString>(var_name: &str) -> Result<Option<T>> {
     get_env_impl::<Option<T>>(var_name, None)
 }
 
+/// Return true if `var_name` is set and has a valid value
+#[cfg(feature = "std")]
+pub fn is_set<T: FromString>(var_name: &str) -> Result<bool> {
+    get_env_impl::<Option<T>>(var_name, None).map(|v| v.is_some())
+}
+
 /// Get environmental value `var_name`. If value is not found returns `default_value`
 #[cfg(feature = "std")]
 pub fn get_env_with_default<T: FromString>(var_name: &str, default_value: T) -> Result<T> {

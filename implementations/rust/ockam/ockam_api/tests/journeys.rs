@@ -2,7 +2,7 @@ use chrono::Utc;
 use ockam_api::journeys::{
     JourneyEvent, APPLICATION_EVENT_TIMESTAMP, EVENT_DURATION, USER_EMAIL, USER_NAME,
 };
-use ockam_api::logs::{LoggingConfiguration, LoggingTracing};
+use ockam_api::logs::{LoggingConfiguration, LoggingTracing, TracingConfiguration};
 use ockam_api::{random_name, CliState};
 use ockam_node::Executor;
 use opentelemetry::global;
@@ -25,8 +25,8 @@ fn test_create_journey_event() {
     let tracing_guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         logs_exporter.clone(),
-        None,
-        LoggingConfiguration::off().set_crates(&["ockam_api"]),
+        &LoggingConfiguration::off().set_crates(&["ockam_api"]),
+        &TracingConfiguration::foreground(false).unwrap(),
         "test",
     );
     let tracer = global::tracer("ockam-test");
@@ -40,7 +40,7 @@ fn test_create_journey_event() {
                 let cli = CliState::create(cli_state_directory)
                     .await
                     .unwrap()
-                    .set_tracing_enabled();
+                    .set_tracing_enabled(true);
 
                 let mut map = HashMap::new();
                 map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
