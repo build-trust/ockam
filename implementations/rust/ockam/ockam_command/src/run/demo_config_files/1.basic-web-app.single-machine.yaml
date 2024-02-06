@@ -1,6 +1,4 @@
 # https://docs.ockam.io/guides/examples/basic-web-app
-version: 1
-
 relays: default
 
 tcp-outlets:

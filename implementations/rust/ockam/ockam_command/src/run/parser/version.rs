@@ -15,13 +15,23 @@ pub enum VersionValue {
 
 impl VersionValue {
     pub fn latest() -> Self {
-        VersionValue::Int(1)
+        Self::Int(Self::latest_value())
+    }
+
+    fn latest_value() -> u8 {
+        1
     }
 
     pub fn value(&self) -> u8 {
-        match self {
-            VersionValue::String(s) => s.parse().unwrap_or(Self::latest().value()),
-            VersionValue::Int(i) => *i,
+        let latest = Self::latest_value();
+        let v = match self {
+            Self::String(s) => s.parse().unwrap_or(latest),
+            Self::Int(i) => *i,
+        };
+        if v < 1 || v > latest {
+            latest
+        } else {
+            v
         }
     }
 }
@@ -37,7 +47,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_config() {
+    fn value_as_string_or_int() {
         let config = "version: '1'";
         let parsed: Version = serde_yaml::from_str(config).unwrap();
         assert_eq!(parsed.version, VersionValue::Int(1));
@@ -45,5 +55,24 @@ mod tests {
         let config = "version: 1";
         let parsed: Version = serde_yaml::from_str(config).unwrap();
         assert_eq!(parsed.version, VersionValue::Int(1));
+    }
+
+    #[test]
+    fn empty_defaults_to_latest() {
+        let config = "";
+        let parsed: Version = serde_yaml::from_str(config).unwrap();
+        assert_eq!(parsed.version, VersionValue::latest());
+    }
+
+    #[test]
+    fn invalid_defaults_to_latest() {
+        let config = "version: 0";
+        let parsed: Version = serde_yaml::from_str(config).unwrap();
+        assert_eq!(parsed.version, VersionValue::latest());
+
+        let latest = VersionValue::latest_value();
+        let config = &format!("version: {}", latest + 1);
+        let parsed: Version = serde_yaml::from_str(config).unwrap();
+        assert_eq!(parsed.version, VersionValue::latest());
     }
 }
