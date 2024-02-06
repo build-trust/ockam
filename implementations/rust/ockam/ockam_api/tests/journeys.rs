@@ -67,23 +67,26 @@ fn test_create_journey_event() {
     spans.sort_by_key(|s| s.start_time);
     assert_eq!(spans.len(), 11);
 
-    let span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
-    assert_eq!(
-        span_names,
-        vec![
-            "user event",
-            "get_default_project",
-            "✅ enrolled",
-            "get_default_project",
-            "get_default_project",
-            "✅ portal created",
-            "get_default_project",
-            "get_default_project",
-            "❌ command error",
-            "get_default_project",
-            "start host journey"
-        ]
-    );
+    let mut span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
+    let mut expected = vec![
+        "user event",
+        "get_default_project",
+        "✅ enrolled",
+        "get_default_project",
+        "get_default_project",
+        "✅ portal created",
+        "get_default_project",
+        "get_default_project",
+        "❌ command error",
+        "get_default_project",
+        "start host journey",
+    ];
+
+    // spans are not necessarily retrieved in a deterministic order
+    span_names.sort();
+    expected.sort();
+    assert_eq!(span_names, expected);
+
     // collect only the user events spans
     spans.retain(|s| {
         s.attributes
