@@ -10,7 +10,7 @@ use ockam_node::Executor;
 
 use crate::cli_state;
 use crate::cli_state::CliStateError;
-use crate::logs::{tracing_enabled, TracingEnabled};
+use crate::logs::TracingEnabled;
 
 /// The CliState struct manages all the data persisted locally.
 ///
@@ -172,7 +172,11 @@ impl CliState {
             dir,
             database,
             application_database,
-            tracing_enabled: tracing_enabled(),
+            // We initialize the CliState with no tracing.
+            // Once the logging/tracing options have been determined, then
+            // the function set_tracing_enabled can be used to enable tracing, which
+            // is eventually used to trace user journeys.
+            tracing_enabled: TracingEnabled::Off,
         };
         Ok(state)
     }
@@ -181,9 +185,13 @@ impl CliState {
         self.tracing_enabled == TracingEnabled::On
     }
 
-    pub fn set_tracing_enabled(self) -> CliState {
+    pub fn set_tracing_enabled(self, enabled: bool) -> CliState {
         CliState {
-            tracing_enabled: TracingEnabled::On,
+            tracing_enabled: if enabled {
+                TracingEnabled::On
+            } else {
+                TracingEnabled::Off
+            },
             ..self
         }
     }

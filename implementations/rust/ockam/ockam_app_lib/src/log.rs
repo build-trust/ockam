@@ -1,6 +1,6 @@
 use crate::state::{AppState, NODE_NAME};
-use ockam_api::logs::{logging_configuration, tracing_configuration, Colored, LoggingTracing};
-use tracing_core::LevelFilter;
+use ockam_api::logs::{logging_configuration, Colored, LoggingTracing, TracingConfiguration};
+use tracing_core::Level;
 
 impl AppState {
     /// Setup logging and tracing for the Portals application
@@ -29,19 +29,19 @@ impl AppState {
             "ockam_app_lib",
         ];
 
-        let guard = LoggingTracing::setup(
-            logging_configuration(
-                Some(LevelFilter::DEBUG),
-                LevelFilter::DEBUG,
+        let tracing_guard = LoggingTracing::setup(
+            &logging_configuration(
+                Some(Level::DEBUG),
                 Colored::Off,
                 Some(node_dir),
                 &ockam_crates,
-            ),
-            tracing_configuration(),
+            )
+            .unwrap(),
+            &TracingConfiguration::foreground(true).unwrap(),
             "portals",
         );
         self.tracing_guard
-            .set(guard)
+            .set(tracing_guard)
             .expect("Failed to initialize logs");
     }
 }

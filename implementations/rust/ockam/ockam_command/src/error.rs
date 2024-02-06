@@ -1,9 +1,11 @@
+use crate::fmt_log;
+use crate::util::exitcode;
+use crate::util::exitcode::ExitCode;
+use crate::version::Version;
 use colorful::Colorful;
 use miette::miette;
 use miette::Diagnostic;
 use std::fmt::Debug;
-
-use crate::{exitcode, fmt_log, ExitCode, Version};
 
 pub type Result<T> = miette::Result<T, Error>;
 

@@ -1,6 +1,5 @@
 use clap::{Args, Subcommand};
 use ockam_api::address::extract_address_value;
-use std::sync::Arc;
 
 pub use create::CreateCommand;
 pub use create::*;
@@ -8,7 +7,6 @@ use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
-use ockam_api::logs::TracingGuard;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -84,13 +82,9 @@ impl NodeSubcommand {
 }
 
 impl NodeCommand {
-    pub fn run(
-        self,
-        opts: CommandGlobalOpts,
-        tracing_guard: Option<Arc<TracingGuard>>,
-    ) -> miette::Result<()> {
+    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            NodeSubcommand::Create(c) => c.run(opts, tracing_guard),
+            NodeSubcommand::Create(c) => c.run(opts),
             NodeSubcommand::Delete(c) => c.run(opts),
             NodeSubcommand::List(c) => c.run(opts),
             NodeSubcommand::Show(c) => c.run(opts),

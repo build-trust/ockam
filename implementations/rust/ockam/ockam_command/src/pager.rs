@@ -1,13 +1,15 @@
-use crate::util::exitcode;
-use crate::Term;
+use console::Term;
 use miette::IntoDiagnostic;
-use ockam_core::env::get_env_with_default;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 use std::process::Stdio;
 
-pub(crate) fn render_help(help: clap::Error) {
+use ockam_core::env::get_env_with_default;
+
+use crate::util::exitcode;
+
+pub fn render_help(help: clap::Error) {
     let pager = get_env_with_default("PAGER", "less".to_string()).expect("Invalid PAGER value");
     match which::which(pager) {
         Ok(pager_binary_path) => {

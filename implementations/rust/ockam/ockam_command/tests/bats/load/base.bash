@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Unset OCKAM_LOG so it doesn't interfere in the CLI input/output
-unset OCKAM_LOG
+# Disable logging and tracing so it doesn't interfere in the CLI input/output
+export OCKAM_LOGGING=false
+export OCKAM_TRACING=false
 
 # Set QUIET to 1 to suppress user-facing logging written at stderr
 export QUIET=1

@@ -39,7 +39,7 @@ pub struct CreateCommand {
 
     /// Run the node in foreground.
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
-    foreground: bool,
+    pub foreground: bool,
 
     /// Skip the check if such node is already running.
     /// Useful for kubernetes when the pid is the same on each run.
@@ -95,12 +95,6 @@ pub struct CreateCommand {
     /// Okta: name of the attributes which can be retrieved from Okta
     #[arg(long, value_name = "ATTRIBUTE_NAMES", default_value = None)]
     attributes: Option<Vec<String>>,
-}
-
-impl CreateCommand {
-    pub fn logging_to_stdout(&self) -> bool {
-        !self.logging_to_file()
-    }
 }
 
 impl CreateCommand {

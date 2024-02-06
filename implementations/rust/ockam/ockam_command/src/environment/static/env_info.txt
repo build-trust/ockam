@@ -3,24 +3,34 @@ System
   If it's not set it has no effect in the Ockam CLI.
 
 CLI Behavior
+- OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
+- OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
 - QUIET: a `boolean` that, if set, the CLI won't print any log messages. Defaults to `false`.
 - NO_COLOR: a `boolean` that, if set, the colors will be stripped out from output messages.
   Otherwise, let the terminal decide.
 - NO_INPUT: a `boolean` that, if set, the CLI won't ask the user for input.
   Otherwise, let the terminal decide based the terminal features (tty).
 - PAGER: a `string` that defines the pager to use for long help/usage messages. Defaults to `less`.
-- OCKAM_DISABLE_UPGRADE_CHECK: a `boolean` that, if set, the CLI won't check for ockam upgrades.
-- OCKAM_HOME: a `string` that sets the home directory. Defaults to `~/.ockam`.
-- OCKAM_LOG (deprecated, use OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
-- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
+
+Logging
+- OCKAM_LOG (deprecated, use OCKAM_LOGGING and OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
 - OCKAM_LOGGING: set this variable to any value in order to enable logging.
-- OCKAM_TRACING: set this variable to any value in order to enable tracing.
-- OCKAM_TRACING: set this variable to any value in order to enable tracing.
-- OTEL_EXPORTER_OTLP_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
-- OTEL_EXPORTER_OTLP_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly
-- OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs. It can be `json` or `pretty`.
-- OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB.
-- OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node.
+- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `trace`.
+- OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs: `default`, `json`, or `pretty`. Default value: `default`.
+- OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB. Default value `100`.
+- OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node. Default value `60`.
+
+Tracing
+- OCKAM_TRACING: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
+- OCKAM_OTEL_EXPORTER_OTLP_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
+- OCKAM_OTEL_EXPORTER_OTLP_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly.
+- OCKAM_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
+- OCKAM_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
+- OCKAM_TRACE_EXPORT_TIMEOUT: Timeout for trying to export spans. Default value: `5s`.
+- OCKAM_LOG_EXPORT_TIMEOUT: Timeout for trying to export log records. Default value: `5s`.
+- OCKAM_TRACE_FOREGROUND_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `1000s` (this value is high to avoid a deadlock in the tracing library).
+- OCKAM_TRACE_BACKGROUND_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `5s`.
+- OCKAM_TRACE_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.

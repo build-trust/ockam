@@ -18,8 +18,8 @@ use ockam_core::errcode::Kind;
 use r3bl_rs_utils_core::*;
 use r3bl_tuify::*;
 
-use crate::{fmt_info, fmt_list, fmt_log, fmt_warn, GlobalArgs, OutputFormat, Result};
-
+use crate::output::OutputFormat;
+use crate::{fmt_info, fmt_list, fmt_log, fmt_warn, GlobalArgs, Result};
 pub mod colors;
 pub mod fmt;
 pub mod term;
