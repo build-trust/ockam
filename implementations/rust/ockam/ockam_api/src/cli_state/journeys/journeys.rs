@@ -9,7 +9,6 @@ use itertools::Itertools;
 use ockam_node::OpenTelemetryContext;
 use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
 use opentelemetry::{global, Context, Key};
-use opentelemetry_sdk::trace::{IdGenerator, RandomIdGenerator};
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
@@ -230,12 +229,10 @@ impl CliState {
 
     /// Create the initial host journey, with a random trace id
     fn create_host_journey(&self) -> HostJourney {
-        let random_id_generator = RandomIdGenerator::default();
-        let (opentelemetry_context, now) = self.create_journey(
-            "start host journey",
-            make_host_trace_id(),
-            random_id_generator.new_span_id(),
-        );
+        let trace_id = make_host_trace_id();
+        let span_id = SpanId::from_hex(&trace_id.to_string()[..16]).unwrap();
+        let (opentelemetry_context, now) =
+            self.create_journey("start host journey", trace_id, span_id);
         HostJourney::new(opentelemetry_context, now)
     }
 
