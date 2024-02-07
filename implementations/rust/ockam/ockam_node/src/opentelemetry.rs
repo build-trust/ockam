@@ -5,6 +5,11 @@ use opentelemetry::global;
 use opentelemetry::propagation::{Extractor, Injector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tracing_opentelemetry::OtelData;
+use tracing_subscriber::registry::LookupSpan;
+use tracing_subscriber::Registry;
+
+const TRACE_CONTEXT_PROPAGATION_SPAN: &str = "trace context propagation";
 
 /// Serializable data type to hold the opentelemetry propagation context.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -27,11 +32,49 @@ impl OpenTelemetryContext {
 
     /// Return the current OpenTelemetryContext
     pub fn current() -> OpenTelemetryContext {
-        OpenTelemetryContext::inject(&opentelemetry::Context::current())
+        // In order to get the current OpenTelemetry context that is connected to the
+        // current span, as instrumented with the #[instrument] attribute, we need to:
+        //
+        //   1. Create a temporary span.
+        //   2. Get its data, given its id, from the global registry.
+        //   3. In the span extensions we can find the OpenTelemetry context that is used to attribute span ids.
+        //      That context contains the span id of the latest span created with OpenTelemetry.
+        //      That span is not the dummy span created below but the latest span created with #[instrument] in the
+        //      current call stack.
+        //      Note that opentelemetry::Context::current() would return a Context which only contains the latest context
+        //      created with `tracer::in_span(...)` which is at the root of this trace. This is why we have to dig deep
+        //      in order to retrieve the correct span id.
+        //   4. Remove the OtelData extension so that our dummy "trace context propagation span" doesn't get emitted.
+        let span = tracing::trace_span!(TRACE_CONTEXT_PROPAGATION_SPAN);
+        let mut result = None;
+        tracing::dispatcher::get_default(|dispatcher| {
+            if let Some(registry) = dispatcher.downcast_ref::<Registry>() {
+                if let Some(id) = span.id() {
+                    if let Some(span) = registry.span(&id) {
+                        let mut extensions = span.extensions_mut();
+                        if let Some(OtelData {
+                            builder: _,
+                            parent_cx,
+                        }) = extensions.remove::<OtelData>()
+                        {
+                            result = Some(OpenTelemetryContext::inject(&parent_cx))
+                        }
+                    }
+                }
+            };
+        });
+        // If, for some reason, we cannot retrieve the proper tracing context, we use the latest known
+        // OpenTelemetry context
+        result.unwrap_or_else(|| OpenTelemetryContext::inject(&opentelemetry::Context::current()))
     }
 
     fn empty() -> Self {
         Self(HashMap::new())
+    }
+
+    /// Return the keys and values for testing
+    pub fn as_map(&self) -> HashMap<String, String> {
+        self.0.clone()
     }
 }
 
