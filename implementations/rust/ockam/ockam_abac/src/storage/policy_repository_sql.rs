@@ -51,7 +51,7 @@ impl PoliciesRepository for PolicySqlxDatabase {
         let query = query("INSERT OR REPLACE INTO policy VALUES (?, ?, ?, ?)")
             .bind(resource.to_sql())
             .bind(action.to_sql())
-            .bind(minicbor::to_vec(policy.expression())?.to_sql())
+            .bind(policy.expression().to_string().to_sql())
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -96,7 +96,7 @@ impl ToSqlxType for Action {
 pub(crate) struct PolicyRow {
     resource: String,
     action: String,
-    expression: Vec<u8>,
+    expression: String,
 }
 
 impl PolicyRow {
@@ -110,7 +110,7 @@ impl PolicyRow {
     }
 
     pub(crate) fn expression(&self) -> Result<Expr> {
-        Ok(minicbor::decode(self.expression.as_slice())?)
+        Ok(Expr::try_from(self.expression.as_str())?)
     }
 
     pub(crate) fn policy(&self) -> Result<Policy> {
