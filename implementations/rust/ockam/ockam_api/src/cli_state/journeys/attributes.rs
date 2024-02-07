@@ -38,7 +38,8 @@ pub(crate) fn make_host_trace_id() -> TraceId {
     };
 
     // take exactly 16 bytes from the machine name
-    let mut machine = machine.as_bytes().to_vec();
+    // the digit 1 is added at the beginning as a version indicator, in case we need to evolve the format
+    let mut machine = format!("1{machine}").as_bytes().to_vec();
     // make sure that there are at least 16 bytes
     if machine.len() < 16 {
         machine.extend(std::iter::repeat(1).take(16 - machine.len()));
