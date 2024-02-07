@@ -27,7 +27,7 @@ defmodule Ockam.Identity do
   end
 
   @spec create(secret_signing_key :: binary()) ::
-          {:ok, identity :: t(), identitfier :: Identifier.t()} | {:error, reason :: any()}
+          {:ok, identity :: t()} | {:error, reason :: any()}
   def create(secret) do
     key_id = Ockly.Native.import_signing_secret(secret)
 
@@ -70,7 +70,7 @@ defmodule Ockam.Identity do
   end
 
   # TODO: rename to attest_secure_channel_key
-  @spec attest_purpose_key(contact :: t(), secret_key :: %{private: binary(), public: binary()}) ::
+  @spec attest_purpose_key(contact :: t(), secret_key :: Ockam.SecureChannel.Crypto.keypair()) ::
           {:ok, proof()} | {:error, any()}
   def attest_purpose_key(%Identity{identifier: identifier}, %{private: secret_key, public: _}) do
     case Ockly.Native.attest_secure_channel_key(Identifier.to_str(identifier), secret_key) do

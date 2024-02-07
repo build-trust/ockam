@@ -5,6 +5,8 @@ defmodule Ockam.Identity.Identifier do
 
   defstruct [:id]
 
+  @type t :: %Identifier{id: binary()}
+
   def from_cbor_term(%CBOR.Tag{tag: :bytes, value: id}), do: {:ok, %Identifier{id: id}}
   def to_cbor_term(%Identifier{id: id}), do: {:ok, %CBOR.Tag{tag: :bytes, value: id}}
 
