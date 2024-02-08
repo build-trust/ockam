@@ -27,10 +27,10 @@ impl InletInterceptorImpl {
         context: &mut Context,
         mut original: BytesMut,
     ) -> Result<BytesMut, InterceptError> {
-        //let's clone the view of the buffer without cloning the content
+        // let's clone the view of the buffer without cloning the content
         let mut buffer = original.peek_bytes(0..original.len());
 
-        //we can/need to decode only mapped requests
+        // we can/need to decode only mapped requests
         let correlation_id = buffer
             .peek_bytes(0..4)
             .try_get_i32()
@@ -53,7 +53,7 @@ impl InletInterceptorImpl {
             let header = match result {
                 Ok(header) => header,
                 Err(_) => {
-                    //the error doesn't contain any useful information
+                    // the error doesn't contain any useful information
                     warn!("cannot decode response kafka header");
                     return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
                 }
@@ -110,7 +110,7 @@ impl InletInterceptorImpl {
         Ok(original)
     }
 
-    //for metadata we want to replace broker address and port
+    // for metadata we want to replace broker address and port
     // to dedicated tcp inlet ports
     async fn handle_metadata_response(
         &self,
@@ -122,8 +122,8 @@ impl InletInterceptorImpl {
     ) -> Result<BytesMut, InterceptError> {
         let mut response: MetadataResponse = decode_body(buffer, request_info.request_api_version)?;
 
-        //we need to keep a map of topic uuid to topic name since fetch
-        //operations only use uuid
+        // we need to keep a map of topic uuid to topic name since fetch
+        // operations only use uuid
         if request_info.request_api_version >= 10 {
             for (topic_name, topic) in &response.topics {
                 let topic_id = topic.topic_id.to_string();
@@ -176,9 +176,9 @@ impl InletInterceptorImpl {
         let mut response: FindCoordinatorResponse =
             decode_body(buffer, request_info.request_api_version)?;
 
-        //similarly to metadata, we want to expressed the coordinator using
-        //local sidecar ip address
-        //the format changed to array since version 4
+        // similarly to metadata, we want to expressed the coordinator using
+        // local sidecar ip address
+        // the format changed to array since version 4
         if request_info.request_api_version >= 4 {
             for coordinator in response.coordinators.iter_mut() {
                 let inlet_address: SocketAddr = inlet_map
@@ -218,9 +218,9 @@ impl InletInterceptorImpl {
     ) -> Result<BytesMut, InterceptError> {
         let mut response: FetchResponse = decode_body(buffer, request_info.request_api_version)?;
 
-        //in every response we want to decrypt the message content
-        //we take every record batch content, unwrap and decode it
-        //using the relative secure channel
+        // in every response we want to decrypt the message content
+        // we take every record batch content, unwrap and decode it
+        // using the relative secure channel
         for response in response.responses.iter_mut() {
             for partition in response.partitions.iter_mut() {
                 if let Some(content) = partition.records.take() {

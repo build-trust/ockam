@@ -8,7 +8,7 @@ use crate::kafka::portal_worker::KafkaPortalWorker;
 use crate::kafka::protocol_aware::TopicUuidMap;
 use crate::kafka::secure_channel_map::KafkaSecureChannelController;
 
-///First point of ingress of kafka connections, at the first message it spawns new stateful workers
+/// First point of ingress of kafka connections, at the first message it spawns new stateful workers
 /// to take care of the connection.
 pub(crate) struct KafkaPortalListener {
     inlet_controller: KafkaInletController,

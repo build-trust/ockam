@@ -1,11 +1,12 @@
 use crate::kafka::kafka_outlet_address;
 use crate::nodes::models::portal::{CreateOutlet, OutletStatus};
 use crate::nodes::NODEMANAGER_ADDR;
-use crate::random_name;
 use minicbor::Decoder;
 use ockam::compat::tokio::sync::Mutex;
+use ockam_abac::Expr;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
@@ -21,6 +22,7 @@ type BrokerId = i32;
 #[derive(Debug, Clone)]
 pub(crate) struct KafkaOutletController {
     inner: Arc<Mutex<KafkaOutletMapInner>>,
+    policy_expression: Option<Expr>,
 }
 
 #[derive(Debug)]
@@ -29,17 +31,18 @@ struct KafkaOutletMapInner {
 }
 
 impl KafkaOutletController {
-    pub(crate) fn new() -> KafkaOutletController {
+    pub(crate) fn new(policy_expression: Option<Expr>) -> KafkaOutletController {
         Self {
             inner: Arc::new(Mutex::new(KafkaOutletMapInner {
                 broker_map: HashMap::new(),
             })),
+            policy_expression,
         }
     }
 
-    /// Asserts the presence of an outlet for a specific broker
-    /// on first time it'll create the inlet and return the relative address
-    /// on the second one it'll just return the address
+    /// Asserts the presence of an outlet for a specific broker.
+    /// The first time it'll create the inlet and return the relative address.
+    /// After that, it'll just return the address
     pub(crate) async fn assert_outlet_for_broker(
         &self,
         context: &Context,
@@ -53,6 +56,7 @@ impl KafkaOutletController {
                 context,
                 socket_addr,
                 kafka_outlet_address(broker_id),
+                self.policy_expression.clone(),
             )
             .await?;
             inner.broker_map.insert(broker_id, socket_address);
@@ -64,18 +68,21 @@ impl KafkaOutletController {
         context: &Context,
         socket_address: SocketAddr,
         worker_address: Address,
+        policy_expression: Option<Expr>,
     ) -> Result<SocketAddr> {
+        let mut payload = CreateOutlet::new(
+            socket_address,
+            worker_address,
+            format!("kafka-outlet-{}", random_string()),
+            false,
+        );
+        if let Some(expr) = policy_expression {
+            payload.set_policy_expression(expr);
+        }
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
-                Request::post("/node/outlet")
-                    .body(CreateOutlet::new(
-                        socket_address,
-                        worker_address,
-                        random_name(),
-                        false,
-                    ))
-                    .to_vec()?,
+                Request::post("/node/outlet").body(payload).to_vec()?,
             )
             .await?;
 

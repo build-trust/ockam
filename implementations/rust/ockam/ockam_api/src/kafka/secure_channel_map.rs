@@ -145,7 +145,7 @@ pub(crate) struct KafkaSecureChannelControllerImpl<F: RelayCreator> {
     inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
 }
 
-//had to manually implement since #[derive(Clone)] doesn't work well in this situation
+// had to manually implement since #[derive(Clone)] doesn't work well in this situation
 impl<F: RelayCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     fn clone(&self) -> Self {
         Self {
@@ -155,11 +155,12 @@ impl<F: RelayCreator> Clone for KafkaSecureChannelControllerImpl<F> {
 }
 
 /// Describe to reach the consumer node:
-/// either directly or through a relay with a relay
+/// either directly or through a relay
 #[derive(Clone)]
 pub(crate) enum ConsumerNodeAddr {
-    Direct(Option<MultiAddr>),
+    Direct(MultiAddr),
     Relay(MultiAddr),
+    None,
 }
 
 type TopicPartition = (String, i32);
@@ -183,7 +184,7 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         let relay_creator = match consumer_node_multiaddr.clone() {
-            ConsumerNodeAddr::Direct(_) => None,
+            ConsumerNodeAddr::Direct(_) | ConsumerNodeAddr::None => None,
             ConsumerNodeAddr::Relay(mut orchestrator_multiaddr) => {
                 orchestrator_multiaddr
                     .push_back(Service::new(KAFKA_OUTLET_CONSUMERS))
@@ -305,7 +306,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         }
     }
 
-    ///returns encryptor api address
+    /// returns encryptor api address
     async fn get_or_create_secure_channel_for(
         &self,
         context: &mut Context,
@@ -320,7 +321,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         // when we are using direct mode, there is only one consumer, and use the same secure
         // channel for all topics
         let topic_partition_key = match &inner.consumer_node_multiaddr {
-            ConsumerNodeAddr::Direct(_) => ("".to_string(), 0i32),
+            ConsumerNodeAddr::Direct(_) | ConsumerNodeAddr::None => ("".to_string(), 0i32),
             ConsumerNodeAddr::Relay(_) => (topic_name.to_string(), partition),
         };
 
@@ -329,23 +330,14 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
                 encryptor_address.clone()
             } else {
                 let destination = match inner.consumer_node_multiaddr.clone() {
-                    ConsumerNodeAddr::Direct(destination) => {
-                        if let Some(mut destination) = destination {
-                            debug!("creating new direct secure channel to consumer");
-                            destination
-                                .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
-                            destination
-                        } else {
-                            return Err(Error::new(
-                                Origin::Transport,
-                                Kind::Invalid,
-                                "cannot encrypt messages when consumer is not specified",
-                            ));
-                        }
+                    ConsumerNodeAddr::Direct(mut destination) => {
+                        debug!("creating new direct secure channel to consumer");
+                        destination
+                            .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
+                        destination
                     }
-
                     ConsumerNodeAddr::Relay(mut destination) => {
-                        //consumer__ prefix is added by the orchestrator
+                        // consumer__ prefix is added by the orchestrator
                         let topic_partition_address = format!("consumer__{topic_name}_{partition}");
 
                         debug!(
@@ -356,6 +348,13 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
                         destination
                             .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
                         destination
+                    }
+                    ConsumerNodeAddr::None => {
+                        return Err(Error::new(
+                            Origin::Transport,
+                            Kind::Invalid,
+                            "cannot encrypt messages when consumer is not specified",
+                        ));
                     }
                 };
 
@@ -430,7 +429,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         }
     }
 
-    ///return decryptor api address
+    /// return decryptor api address
     async fn get_secure_channel_for(
         &self,
         consumer_decryptor_address: &Address,

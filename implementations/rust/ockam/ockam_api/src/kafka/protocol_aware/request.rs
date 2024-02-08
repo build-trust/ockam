@@ -19,14 +19,14 @@ use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
 use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
 
 impl InletInterceptorImpl {
-    ///Parse request and map request <=> response
-    /// fails if anything in the parsing fails to avoid leaking clear text payloads
+    /// Parse request and map request <=> response.
+    /// Returns an error if the parsing fails to avoid leaking clear text payloads
     pub(crate) async fn intercept_request_impl(
         &self,
         context: &mut Context,
         mut original: BytesMut,
     ) -> Result<BytesMut, InterceptError> {
-        //let's clone the view of the buffer without cloning the content
+        // let's clone the view of the buffer without cloning the content
         let mut buffer = original.peek_bytes(0..original.len());
 
         let api_key_num = buffer
@@ -48,7 +48,7 @@ impl InletInterceptorImpl {
         let header = match result {
             Ok(header) => header,
             Err(_) => {
-                //the error doesn't contain any useful information
+                // the error doesn't contain any useful information
                 warn!("cannot decode request kafka header");
                 return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
             }
@@ -81,10 +81,10 @@ impl InletInterceptorImpl {
                     },
                 );
             }
-            //we cannot allow to pass modified hosts with wrong security settings
-            //we could somehow map them, but these operations are administrative
-            //and should not impact consumer/producer flow
-            //this is valid for both LeaderAndIsrKey and UpdateMetadataKey
+            // we cannot allow passing modified hosts with wrong security settings
+            // we could somehow map them, but these operations are administrative
+            // and should not impact consumer/producer flow
+            // this is valid for both LeaderAndIsrKey and UpdateMetadataKey
             ApiKey::LeaderAndIsrKey => {
                 warn!("leader and isr key not supported! closing connection");
                 return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
@@ -107,15 +107,15 @@ impl InletInterceptorImpl {
     ) -> Result<(), InterceptError> {
         let request: FetchRequest = decode_body(buffer, header.request_api_version)?;
 
-        //we intercept every partition interested by the kafka client
-        //and create a relay for each
+        // we intercept every partition interested in the kafka client
+        // and create a relay for each
         for topic in &request.topics {
             let topic_id = if header.request_api_version <= 12 {
                 topic.topic.0.to_string()
             } else {
-                //fetch operation using version >= 13 don't use topic name
-                //anymore but uses uuid instead, we built a map using
-                //previous Metadata requests
+                // fetch operation using version >= 13 don't use topic name
+                // anymore but uses uuid instead, we built a map using
+                // previous Metadata requests
                 let topic_id = topic.topic_id.to_string();
                 self.uuid_to_name
                     .lock()
@@ -158,9 +158,9 @@ impl InletInterceptorImpl {
     ) -> Result<BytesMut, InterceptError> {
         let mut request: ProduceRequest = decode_body(buffer, header.request_api_version)?;
 
-        //the content can be set in multiple topics and partitions in a single message
-        //for each we wrap the content and add the secure channel identifier of
-        //the encrypted content
+        // the content can be set in multiple topics and partitions in a single message
+        // for each we wrap the content and add the secure channel identifier of
+        // the encrypted content
         for (topic_name, topic) in request.topic_data.iter_mut() {
             for data in &mut topic.partition_data {
                 if let Some(content) = data.records.take() {
@@ -181,8 +181,8 @@ impl InletInterceptorImpl {
                                 .await
                                 .map_err(InterceptError::Ockam)?;
 
-                            //TODO: to target multiple consumers we could duplicate
-                            // the content with a dedicated encryption for each consumer
+                            // TODO: to target multiple consumers we could duplicate
+                            //  the content with a dedicated encryption for each consumer
                             let wrapper = MessageWrapper {
                                 consumer_decryptor_address: encrypted_content
                                     .consumer_decryptor_address,

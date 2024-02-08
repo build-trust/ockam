@@ -28,7 +28,7 @@ struct RequestInfo {
 
 type CorrelationId = i32;
 
-/// map shared across all kafka workers, since the client might request it
+/// Map shared across all kafka workers, since the client might request it
 /// only from one connection
 pub(super) type TopicUuidMap = Arc<Mutex<HashMap<String, String>>>;
 
@@ -77,7 +77,7 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-///Wraps the content within every record batch
+/// Wraps the content within every record batch
 struct MessageWrapper {
     #[n(1)] consumer_decryptor_address: Address,
     #[n(2)] content: Vec<u8>

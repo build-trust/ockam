@@ -18,7 +18,7 @@ use crate::kafka::protocol_aware::{InletInterceptorImpl, KafkaMessageInterceptor
 use crate::kafka::secure_channel_map::KafkaSecureChannelController;
 use crate::kafka::KAFKA_OUTLET_BOOTSTRAP_ADDRESS;
 
-///by default kafka supports up to 1MB messages, 16MB is the maximum suggested
+/// By default, kafka supports up to 1MB messages. 16MB is the maximum suggested
 pub(crate) const MAX_KAFKA_MESSAGE_SIZE: u32 = 16 * 1024 * 1024;
 
 enum Receiving {
@@ -29,9 +29,9 @@ enum Receiving {
 /// Acts like a relay for messages between tcp inlet and outlet for both directions.
 /// It's meant to be created by the portal listener.
 ///
-/// This implementation manage both streams inlet and outlet in two different workers, one dedicated
+/// This implementation manages both streams inlet and outlet in two different workers, one dedicated
 /// to the requests (inlet=>outlet) the other for the responses (outlet=>inlet).
-/// Since every kafka message is length-delimited every message is read and written
+/// Since every kafka message is length-delimited, every message is read and written
 /// through a framed encoder/decoder.
 ///
 /// ```text
@@ -163,7 +163,7 @@ impl Worker for KafkaPortalWorker {
     }
 }
 
-//internal error to return both io and ockam errors
+// internal error to return both io and ockam errors
 #[derive(Debug)]
 pub(crate) enum InterceptError {
     Io(ockam_core::compat::io::Error),
@@ -251,7 +251,7 @@ impl KafkaPortalWorker {
         Ok(())
     }
 
-    ///Takes in buffer and returns a buffer made of one or more complete kafka message
+    /// Takes in buffer and returns a buffer made of one or more complete kafka message
     async fn intercept_and_transform_messages(
         &mut self,
         context: &mut Context,
@@ -280,7 +280,7 @@ impl KafkaPortalWorker {
                 }
             }?;
 
-            //avoid copying the first message
+            // avoid copying the first message
             if let Some(encoded_buffer) = encoded_buffer.as_mut() {
                 encoded_buffer.extend_from_slice(
                     length_encode(transformed_message)
@@ -298,7 +298,7 @@ impl KafkaPortalWorker {
 }
 
 impl KafkaPortalWorker {
-    /// Creates the two specular kafka workers for the outlet use case
+    /// Creates the two specular kafka workers for the outlet use case.
     /// Returns the address of the worker which handles the Requests
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_outlet_side_kafka_portal(
@@ -467,7 +467,7 @@ mod test {
     const TEST_MAX_KAFKA_MESSAGE_SIZE: u32 = 128 * 1024;
     const TEST_KAFKA_API_VERSION: i16 = 13;
 
-    //a simple worker that keep receiving buffer
+    // a simple worker that keep receiving buffer
     #[derive(Clone)]
     struct TcpPayloadReceiver {
         buffer: Arc<Mutex<Vec<u8>>>,
@@ -540,7 +540,7 @@ mod test {
         let first_piece_of_payload = &request_buffer[0..request_buffer.len() - 1];
         let second_piece_of_payload = &request_buffer[request_buffer.len() - 1..];
 
-        //send 2 distinct pieces and see if the kafka message is re-assembled back
+        // send 2 distinct pieces and see if the kafka message is re-assembled back
         context
             .send(
                 route![portal_inlet_address.clone(), context.address()],
@@ -609,14 +609,14 @@ mod test {
     ) -> ockam::Result<()> {
         let portal_inlet_address = setup_only_worker(context).await;
 
-        //with the message container it goes well over the max allowed message kafka size
+        // with the message container it goes well over the max allowed message kafka size
         let mut zero_buffer: Vec<u8> = Vec::new();
         for _n in 0..TEST_MAX_KAFKA_MESSAGE_SIZE + 1 {
             zero_buffer.push(0);
         }
 
-        //you don't want to create a produce request since it would trigger
-        //a lot of side effects and we just want to validate the transport
+        // you don't want to create a produce request since it would trigger
+        // a lot of side effects and we just want to validate the transport
         let mut insanely_huge_tag = BTreeMap::new();
         insanely_huge_tag.insert(0, zero_buffer);
 
@@ -661,14 +661,14 @@ mod test {
     ) -> ockam::Result<()> {
         let portal_inlet_address = setup_only_worker(context).await;
 
-        //let's build the message to 90% of max. size
+        // let's build the message to 90% of max. size
         let mut zero_buffer: Vec<u8> = Vec::new();
         for _n in 0..(TEST_MAX_KAFKA_MESSAGE_SIZE as f64 * 0.9) as usize {
             zero_buffer.push(0);
         }
 
-        //you don't want to create a produce request since it would trigger
-        //a lot of side effects and we just want to validate the transport
+        // you don't want to create a produce request since it would trigger
+        // a lot of side effects and we just want to validate the transport
         let mut insanely_huge_tag = BTreeMap::new();
         insanely_huge_tag.insert(0, zero_buffer);
 
@@ -709,7 +709,7 @@ mod test {
                 .await?;
         }
 
-        //make sure every packet was received
+        // make sure every packet was received
         loop {
             if receiver.buffer.lock().unwrap().len() >= huge_outgoing_request.len() {
                 break;
@@ -734,6 +734,7 @@ mod test {
             route![],
             [255, 255, 255, 255].into(),
             PortRange::new(0, 0).unwrap(),
+            None,
         );
 
         // Random Identifier, doesn't affect the test
@@ -812,6 +813,7 @@ mod test {
             route![],
             [127, 0, 0, 1].into(),
             PortRange::new(0, 0).unwrap(),
+            None,
         );
         let portal_inlet_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
@@ -825,7 +827,7 @@ mod test {
         .await?;
 
         let mut request_buffer = BytesMut::new();
-        //let's create a real kafka request and pass it through the portal
+        // let's create a real kafka request and pass it through the portal
         encode(
             &mut request_buffer,
             create_request_header(ApiKey::MetadataKey),
