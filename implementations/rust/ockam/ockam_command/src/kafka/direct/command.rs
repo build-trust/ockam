@@ -28,7 +28,11 @@ pub struct ArgOpts {
     pub bootstrap_server: SocketAddr,
 }
 
-pub async fn start(ctx: &Context, opts: CommandGlobalOpts, args: ArgOpts) -> miette::Result<()> {
+pub async fn async_run(
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+    args: ArgOpts,
+) -> miette::Result<()> {
     initialize_default_node(ctx, &opts).await?;
     let ArgOpts {
         endpoint,

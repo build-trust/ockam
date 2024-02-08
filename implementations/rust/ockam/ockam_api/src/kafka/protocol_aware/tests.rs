@@ -64,6 +64,7 @@ mod test {
             route![],
             [127, 0, 0, 1].into(),
             PortRange::new(0, 0).unwrap(),
+            None,
         );
 
         let interceptor = InletInterceptorImpl::new(

@@ -72,7 +72,7 @@ impl AbacAccessControl {
     ) -> AbacAccessControl {
         let expression = List(vec![
             Ident("=".into()),
-            Ident(format!("subject.{attribute_name}")),
+            Ident(format!("{SUBJECT_KEY}.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
         AbacAccessControl::new(

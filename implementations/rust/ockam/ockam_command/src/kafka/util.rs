@@ -4,7 +4,7 @@ use colorful::Colorful;
 use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
-use ockam_api::nodes::models::services::{StartKafkaProducerRequest, StartServiceRequest};
+use ockam_api::nodes::models::services::{StartKafkaRequest, StartServiceRequest};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::port_range::PortRange;
 use ockam_core::api::Request;
@@ -59,7 +59,7 @@ pub async fn async_run(
     let send_req = async {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &node_opts.at_node).await?;
 
-        let payload = StartKafkaProducerRequest::new(
+        let payload = StartKafkaRequest::new(
             bootstrap_server.to_owned(),
             brokers_port_range,
             project_route,

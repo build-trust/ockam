@@ -48,7 +48,7 @@ mod test {
     };
     use crate::test_utils::NodeManagerHandle;
 
-    //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
+    // TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
 
     struct HopRelayCreator {}
@@ -57,7 +57,7 @@ mod test {
     impl RelayCreator for HopRelayCreator {
         async fn create_relay(&self, context: &Context, alias: String) -> ockam::Result<()> {
             trace!("creating mock relay for: {alias}");
-            //replicating the same logic of the orchestrator by adding consumer__
+            // replicating the same logic of the orchestrator by adding consumer__
             context
                 .start_worker(Address::from_string(format!("consumer__{alias}")), Hop)
                 .await?;
@@ -88,6 +88,7 @@ mod test {
             route![],
             "127.0.0.1".parse().unwrap(),
             (0, 0).try_into().unwrap(),
+            None,
         );
 
         let (socket_address, _) = handler
@@ -133,7 +134,7 @@ mod test {
         )
         .await?;
 
-        //before produce a new key, the consumer has to issue a Fetch request
+        // before produce a new key, the consumer has to issue a Fetch request
         // so the sidecar can react by creating the relay for the partition 1 of 'my-topic'
         {
             let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
@@ -152,7 +153,7 @@ mod test {
             )
             .await;
             drop(consumer_mock_kafka);
-            //drop the outlet and re-create it when we need it later
+            // drop the outlet and re-create it when we need it later
             context.stop_worker("kafka_consumer_outlet").await?;
         }
 
@@ -316,8 +317,8 @@ mod test {
         send_kafka_request(stream, header, request, ApiKey::ProduceKey).await;
     }
 
-    //this is needed in order to make the consumer create the relays to the secure
-    //channel
+    // this is needed in order to make the consumer create the relays to the secure
+    // channel
     async fn simulate_first_kafka_consumer_empty_reply_and_ignore_result(
         consumer_bootstrap_port: u16,
         mock_kafka_connection: &mut TcpServerSimulator,
@@ -327,7 +328,7 @@ mod test {
                 .await
                 .unwrap();
         send_kafka_fetch_request(&mut kafka_client_connection).await;
-        //we don't want the answer, but we need to be sure the
+        // we don't want the answer, but we need to be sure the
         // message passed through and the relay had been created
         mock_kafka_connection
             .stream
@@ -336,7 +337,7 @@ mod test {
             .unwrap();
     }
 
-    //we use the encrypted producer request to generate the encrypted fetch response
+    // we use the encrypted producer request to generate the encrypted fetch response
     async fn simulate_kafka_consumer_and_read_response(
         consumer_bootstrap_port: u16,
         mock_kafka_connection: &mut TcpServerSimulator,
@@ -575,11 +576,11 @@ mod test {
         /// moving on the next test
         pub async fn destroy_and_wait(self) {
             self.is_stopping.store(true, Ordering::SeqCst);
-            //we want to close the channel _before_ joining current handles to interrupt them
+            // we want to close the channel _before_ joining current handles to interrupt them
             drop(self.stream);
             let mut guard = self.join_handles.lock().await;
             for handle in guard.iter_mut() {
-                //we don't care about failures
+                // we don't care about failures
                 let _ = handle.await;
             }
         }
@@ -602,8 +603,8 @@ mod test {
                 tokio::spawn(async move {
                     let socket;
                     loop {
-                        //tokio would block on the listener forever, we need to poll a little in
-                        //order to interrupt it
+                        // tokio would block on the listener forever, we need to poll a little in
+                        // order to interrupt it
                         let timeout_future =
                             tokio::time::timeout(Duration::from_millis(200), listener.accept());
                         if let Ok(result) = timeout_future.await {

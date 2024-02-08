@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use crate::kafka::direct::command::{start, ArgOpts};
+use crate::kafka::direct::command::{async_run, ArgOpts};
 use crate::kafka::util::make_brokers_port_range;
 use crate::util::async_cmd;
 use crate::{
@@ -27,7 +27,7 @@ pub struct CreateCommand {
     /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
     #[arg(long, default_value_t = kafka_default_consumer_server(), value_parser = socket_addr_parser)]
     bind_address: SocketAddr,
-    /// The address of the kafka bootstrap broke
+    /// The address of the kafka bootstrap broker
     #[arg(long, default_value_t = kafka_default_outlet_server())]
     bootstrap_server: SocketAddr,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
@@ -55,7 +55,7 @@ impl CreateCommand {
             bootstrap_server: self.bootstrap_server,
         };
         async_cmd(&cmd_name, opts.clone(), |ctx| async move {
-            start(&ctx, opts, args_opts).await
+            async_run(&ctx, opts, args_opts).await
         })
     }
 

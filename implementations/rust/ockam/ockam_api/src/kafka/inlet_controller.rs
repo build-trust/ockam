@@ -3,9 +3,11 @@ use minicbor::Decoder;
 use ockam_core::compat::net::IpAddr;
 
 use ockam::compat::tokio::sync::Mutex;
+use ockam_abac::Expr;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::net::SocketAddr;
+use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
@@ -17,7 +19,6 @@ use crate::kafka::kafka_outlet_address;
 use crate::nodes::models::portal::{CreateInlet, InletStatus};
 use crate::nodes::NODEMANAGER_ADDR;
 use crate::port_range::PortRange;
-use crate::random_name;
 
 type BrokerId = i32;
 
@@ -27,6 +28,7 @@ type BrokerId = i32;
 #[derive(Debug, Clone)]
 pub(crate) struct KafkaInletController {
     inner: Arc<Mutex<KafkaInletMapInner>>,
+    policy_expression: Option<Expr>,
 }
 
 #[derive(Debug)]
@@ -47,6 +49,7 @@ impl KafkaInletController {
         remote_interceptor_route: Route,
         bind_ip: IpAddr,
         port_range: PortRange,
+        policy_expression: Option<Expr>,
     ) -> KafkaInletController {
         Self {
             inner: Arc::new(Mutex::new(KafkaInletMapInner {
@@ -58,6 +61,7 @@ impl KafkaInletController {
                 local_interceptor_route,
                 remote_interceptor_route,
             })),
+            policy_expression,
         }
     }
 
@@ -67,9 +71,9 @@ impl KafkaInletController {
         inner.broker_map.get(&broker_id).copied()
     }
 
-    /// Asserts the presence of an inlet for a broker
-    /// on first time it'll create the inlet and return the relative address
-    /// on the second one it'll just return the address
+    /// Asserts the presence of an inlet for a broker.
+    /// The first time it'll create the inlet and return the relative address.
+    /// After that, it'll just return the address
     pub(crate) async fn assert_inlet_for_broker(
         &self,
         context: &Context,
@@ -80,7 +84,7 @@ impl KafkaInletController {
             Ok(*address)
         } else {
             if inner.current_port > inner.port_range.end() {
-                //we don't have any port left for the broker!
+                // we don't have any port left for the broker!
                 return Err(Error::new(
                     Origin::Transport,
                     Kind::ResourceExhausted,
@@ -98,6 +102,7 @@ impl KafkaInletController {
                     inner.remote_interceptor_route.clone(),
                     kafka_outlet_address(broker_id)
                 ],
+                self.policy_expression.clone(),
             )
             .await?;
 
@@ -114,21 +119,24 @@ impl KafkaInletController {
         to: MultiAddr,
         prefix: Route,
         suffix: Route,
+        policy_expression: Option<Expr>,
     ) -> Result<SocketAddr> {
+        let mut payload = CreateInlet::to_node(
+            socket_address.to_string(),
+            to,
+            format!("kafka-inlet-{}", random_string()),
+            prefix,
+            suffix,
+            None,
+            false,
+        );
+        if let Some(expr) = policy_expression {
+            payload.set_policy_expression(expr);
+        }
         let buffer: Vec<u8> = context
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
-                Request::post("/node/inlet")
-                    .body(CreateInlet::to_node(
-                        socket_address.to_string(),
-                        to,
-                        random_name(),
-                        prefix,
-                        suffix,
-                        None,
-                        false,
-                    ))
-                    .to_vec()?,
+                Request::post("/node/inlet").body(payload).to_vec()?,
             )
             .await?;
 

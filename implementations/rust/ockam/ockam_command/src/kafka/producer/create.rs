@@ -21,7 +21,6 @@ use crate::{
 pub struct CreateCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
-
     /// The local address of the service
     #[arg(long, default_value_t = kafka_producer_default_addr())]
     addr: String,

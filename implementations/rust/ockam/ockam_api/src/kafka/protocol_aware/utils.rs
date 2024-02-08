@@ -55,6 +55,6 @@ pub(crate) fn encode_response<H: Encodable, T: Encodable>(
 }
 
 pub(super) fn string_to_str_bytes(ip_address: String) -> StrBytes {
-    //TryFrom is broken, ugly but effective
+    // TryFrom is broken, ugly but effective
     unsafe { StrBytes::from_utf8_unchecked(bytes::Bytes::from(ip_address)) }
 }

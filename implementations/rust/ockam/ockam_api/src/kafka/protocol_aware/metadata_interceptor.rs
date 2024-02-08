@@ -75,7 +75,7 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
         let header = match result {
             Ok(header) => header,
             Err(_) => {
-                //the error doesn't contain any useful information
+                // the error doesn't contain any useful information
                 warn!("cannot decode request kafka header");
                 return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
             }
@@ -114,7 +114,7 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
     ) -> Result<BytesMut, InterceptError> {
         let mut buffer = original.peek_bytes(0..original.len());
 
-        //we can/need to decode only mapped requests
+        // we can/need to decode only mapped requests
         let correlation_id = buffer
             .peek_bytes(0..4)
             .try_get_i32()
@@ -138,7 +138,7 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
             let _header = match result {
                 Ok(header) => header,
                 Err(_) => {
-                    //the error doesn't contain any useful information
+                    // the error doesn't contain any useful information
                     warn!("cannot decode response kafka header");
                     return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
                 }

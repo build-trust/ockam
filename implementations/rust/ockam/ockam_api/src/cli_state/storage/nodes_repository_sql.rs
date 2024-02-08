@@ -105,8 +105,27 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn delete_node(&self, node_name: &str) -> Result<()> {
+        let mut transaction = self.database.begin().await.into_core()?;
+
         let query = query("DELETE FROM node WHERE name=?").bind(node_name.to_sql());
-        query.execute(&*self.database.pool).await.void()
+        query.execute(&mut *transaction).await.void()?;
+
+        let query =
+            sqlx::query("DELETE FROM credential WHERE node_name=?").bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
+        let query = sqlx::query("DELETE FROM policy WHERE node_name=?").bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
+        let query = sqlx::query("DELETE FROM identity_attributes WHERE node_name=?")
+            .bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
+        let query =
+            sqlx::query("DELETE FROM node_project WHERE node_name=?").bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
+        transaction.commit().await.void()
     }
 
     async fn set_tcp_listener_address(
