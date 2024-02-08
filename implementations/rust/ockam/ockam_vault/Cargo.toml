@@ -53,7 +53,6 @@ no_std = [
   "ockam_node/no_std",
   "rand_pcg",
   "aes-gcm/heapless",
-  "aes-gcm/force-soft",
   "aes-gcm/stream",
   "serde/derive",
 ]
@@ -72,7 +71,7 @@ alloc = [
 storage = ["ockam_node/storage", "sqlx"]
 
 [dependencies]
-aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
+aes-gcm = { version = "0.10", default-features = false, features = ["aes"] }
 arrayref = "0.3"
 cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }
