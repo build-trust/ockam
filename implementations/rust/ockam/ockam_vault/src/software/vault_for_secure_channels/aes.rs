@@ -4,9 +4,8 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 use aes_gcm::aead::consts::{U0, U12, U16};
-use aes_gcm::aead::NewAead;
 use aes_gcm::aead::{Aead, Nonce, Payload, Tag};
-use aes_gcm::{AeadCore, AeadInPlace, AesGcm};
+use aes_gcm::{AeadCore, AeadInPlace, AesGcm, KeyInit};
 use cfg_if::cfg_if;
 
 impl AesGen {
