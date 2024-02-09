@@ -1,0 +1,32 @@
+version: "3.8"
+
+# Create a dedicated and isolated virtual network for analysis_corp.
+networks:
+  analysis_corp:
+    driver: bridge
+
+services:
+  # Start an ockam node.
+  #
+  # Read ../ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    build:
+      context: .
+      dockerfile: ../ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    networks:
+      - analysis_corp
+
+  # Start the app.
+  #
+  # Read app.dockerfile and app.js to understand what
+  # the app is doing.
+  app:
+    depends_on: [ockam]
+    build:
+      context: .
+      dockerfile: app.dockerfile
+    networks:
+      - analysis_corp

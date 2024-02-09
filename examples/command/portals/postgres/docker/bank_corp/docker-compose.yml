@@ -1,0 +1,31 @@
+version: "3.8"
+
+# Create a dedicated and isolated virtual network for bank_corp.
+networks:
+  bank_corp:
+    driver: bridge
+
+services:
+  # Start postgres.
+  postgres:
+    image: cgr.dev/chainguard/postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test
+    networks:
+      - bank_corp
+
+  # Start an ockam node.
+  #
+  # Read ../ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    depends_on: [postgres]
+    build:
+      context: .
+      dockerfile: ../ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    networks:
+      - bank_corp
