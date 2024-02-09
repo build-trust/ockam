@@ -7,6 +7,10 @@ function skip_if_docs_tests_not_enabled() {
 }
 
 start_python_server() {
+  if [[ "$BATS_TEST_NAME" != *"basic-web-app"* ]]; then
+    return
+  fi
+
   pushd $OCKAM_HOME
 
   cat >main.py <<-EOM
@@ -40,12 +44,20 @@ EOM
 }
 
 kill_flask_server() {
+  if [[ "$BATS_TEST_NAME" != *"basic-web-app"* ]]; then
+    return
+  fi
+
   pid=$(cat "${OCKAM_HOME}/flask.pid")
   kill -9 "$pid" || true
   wait "$pid" 2>/dev/null || true
 }
 
 kill_kafka_contents() {
+  if [[ "$BATS_TEST_NAME" != *"kafka"* ]]; then
+    return
+  fi
+
   kafka-topics.sh --bootstrap-server localhost:4000 --command-config "$KAFKA_CONFIG" --delete --topic $DEMO_TOPIC || true
 
   pid=$(cat "$ADMIN_HOME/kafka.pid") || return
@@ -54,6 +66,10 @@ kill_kafka_contents() {
 }
 
 start_telegraf_instance() {
+  if [[ "$BATS_TEST_NAME" != *"Telegraf + InfluxDB"* ]]; then
+    return
+  fi
+
   telegraf_conf="$(mktemp)/telegraf.conf"
 
   cat >$telegraf_conf <<EOF
@@ -73,6 +89,10 @@ EOF
 }
 
 kill_telegraf_instance() {
+  if [[ "$BATS_TEST_NAME" != *"Telegraf + InfluxDB"* ]]; then
+    return
+  fi
+
   pid=$(cat "${ADMIN_HOME}/telegraf.pid") || return
   kill -9 "$pid"
   wait "$pid" 2>/dev/null || true
