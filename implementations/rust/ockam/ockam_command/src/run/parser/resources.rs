@@ -4,6 +4,7 @@ use miette::{IntoDiagnostic, Result};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 static BINARY_PATH: Lazy<String> = Lazy::new(|| {
     std::env::args()
@@ -161,6 +162,17 @@ impl From<&str> for ArgValue {
             return ArgValue::Bool(v);
         }
         ArgValue::String(s.to_string())
+    }
+}
+
+impl Display for ArgValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            ArgValue::String(v) => v.to_string(),
+            ArgValue::Int(v) => v.to_string(),
+            ArgValue::Bool(v) => v.to_string(),
+        };
+        write!(f, "{}", str)
     }
 }
 
