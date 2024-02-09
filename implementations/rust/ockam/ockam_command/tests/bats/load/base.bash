@@ -79,7 +79,7 @@ mkdir -p "$HOME/.bats-tests"
 teardown_home_dir() {
   IFS=';' read -ra DIRS <<<"$HOME_DIRS"
   for dir in "${DIRS[@]}"; do
-    OCKAM_HOME="$dir"
+    export OCKAM_HOME="$dir"
     # If BATS_TEST_COMPLETED is not set, the test failed.
     # If BATS_TEST_SKIPPED is not set, then the test was not skipped
     if [[ -z "$BATS_TEST_COMPLETED" && -z "$BATS_TEST_SKIPPED" ]]; then

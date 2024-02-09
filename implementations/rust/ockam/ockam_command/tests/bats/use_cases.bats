@@ -86,9 +86,9 @@ teardown() {
   run_success $OCKAM identity create control_identity
   run_success $OCKAM project enroll "$ADMIN_HOME/control.ticket" --identity control_identity
   run_success $OCKAM node create control_plane1 --identity control_identity
-  run_success $OCKAM policy create --at control_plane1 --resource tcp-outlet --expression '(= subject.component "edge")'
-  run_success $OCKAM tcp-outlet create --at /node/control_plane1 --to 127.0.0.1:5000
-  run_success "$OCKAM" relay create "$fwd" --at /project/default --to /node/control_plane1
+  run_success $OCKAM tcp-outlet create --at /node/control_plane1 \
+    --to 127.0.0.1:5000 --policy '(= subject.component "edge")'
+  run_success $OCKAM relay create "$fwd" --at /project/default --to /node/control_plane1
 
   # Edge plane
   setup_home_dir
@@ -97,16 +97,16 @@ teardown() {
   $OCKAM identity create edge_identity
   $OCKAM project enroll "$ADMIN_HOME/edge.ticket" --identity edge_identity
   $OCKAM node create edge_plane1 --identity edge_identity
-  $OCKAM policy create --at edge_plane1 --resource tcp-inlet --expression '(= subject.component "control")'
-  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" --to "$fwd"
+  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" \
+    --to "$fwd" --policy '(= subject.component "control")'
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port_1"
 
   ## The following is denied
   $OCKAM identity create x_identity
   $OCKAM project enroll "$ADMIN_HOME/x.ticket" --identity x_identity
   $OCKAM node create x --identity x_identity
-  $OCKAM policy create --at x --resource tcp-inlet --expression '(= subject.component "control")'
-  $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" --to "$fwd"
+  $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" \
+    --to "$fwd" --policy '(= subject.component "control")'
   run curl --fail --head --max-time 10 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
 }
@@ -152,8 +152,7 @@ teardown() {
   run_success $OCKAM identity create db
   run_success $OCKAM project enroll "${MACHINE_A}/db.ticket" --identity db
   run_success $OCKAM node create db --identity db
-  run_success $OCKAM policy create --at db --resource tcp-outlet --expression '(= subject.component "web")'
-  run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT"
+  run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT" --policy '(= subject.component "web")'
   run_success $OCKAM relay create db
 
   # Machine C
@@ -161,8 +160,7 @@ teardown() {
   run_success $OCKAM identity create web
   run_success $OCKAM project enroll ${MACHINE_A}/webapp.ticket --identity web
   run_success $OCKAM node create web --identity web
-  run_success $OCKAM policy create --at web --resource tcp-inlet --expression '(= subject.component "db")'
-  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --to db
+  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --to db --policy '(= subject.component "db")'
 
   export APP_PG_PORT="$OCKAM_PG_PORT_MACHINE_C"
   run_success start_python_server
@@ -216,9 +214,8 @@ teardown() {
   run_success "$OCKAM" identity create m1
   run_success "$OCKAM" project enroll m1.ticket --identity m1
   run_success "$OCKAM" node create m1 --identity m1
-  run_success "$OCKAM" policy create --at m1 --resource tcp-outlet \
-    --expression '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "San Francisco")))'
-  run_success "$OCKAM" tcp-outlet create --at /node/m1 --from /service/outlet --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/m1 --from /service/outlet --to 127.0.0.1:5000 \
+    --policy '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "San Francisco")))'
   run_success "$OCKAM" relay create m1 --at /project/default --to /node/m1
 
   # Machine 2
@@ -226,9 +223,8 @@ teardown() {
   run_success "$OCKAM" identity create m2
   run_success "$OCKAM" project enroll m2.ticket --identity m2
   run_success "$OCKAM" node create m2 --identity m2
-  run_success "$OCKAM" policy create --at m2 --resource tcp-outlet \
-    --expression '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "New York")))'
-  run_success "$OCKAM" tcp-outlet create --at /node/m2 --from /service/outlet --to 127.0.0.1:6000
+  run_success "$OCKAM" tcp-outlet create --at /node/m2 --from /service/outlet --to 127.0.0.1:6000 \
+    --policy '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "New York")))'
   run_success "$OCKAM" relay create m2 --at /project/default --to /node/m2
 
   # Alice
@@ -236,14 +232,14 @@ teardown() {
   run_success "$OCKAM" project import --project-file project.json
   run_success "$OCKAM" project enroll --okta
   run_success "$OCKAM" node create alice
-  run_success "$OCKAM" policy create --at alice --resource tcp-inlet --expression '(= subject.application "Smart Factory")'
+  run_success "$OCKAM" policy create --at alice --resource tcp-inlet
 
   # Alice request to access Machine 1 in San Francisco is allowed
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --to m1
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --to m1 --policy '(= subject.application "Smart Factory")'
   run_success curl --head 127.0.0.1:8000
 
   # Alice request to access Machine 2 in New York is denied
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --to m2
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --to m2 --policy '(= subject.application "Smart Factory")'
   run_failure curl --head 127.0.0.1:9000
 }
 
@@ -343,8 +339,8 @@ EOF
   run_success "$OCKAM" identity create influxdb
   ockam project enroll "${ADMIN_HOME}/influxdb.ticket" --identity influxdb
   run_success "$OCKAM" node create influxdb --identity influxdb
-  run_success "$OCKAM" policy create --at influxdb --resource tcp-outlet --expression '(= subject.component "telegraf")'
-  run_success "$OCKAM" tcp-outlet create --at /node/influxdb --from /service/outlet --to "127.0.0.1:${INFLUX_PORT}"
+  run_success "$OCKAM" tcp-outlet create --at /node/influxdb --from /service/outlet \
+    --to "127.0.0.1:${INFLUX_PORT}" --policy '(= subject.component "telegraf")'
   run_success "$OCKAM" relay create influxdb --at /project/default --to /node/influxdb
 
   # Telegraf instance
@@ -354,8 +350,8 @@ EOF
   run_success "$OCKAM" identity create telegraf
   run_success "$OCKAM" project enroll "${ADMIN_HOME}/telegraf.ticket" --identity telegraf
   run_success "$OCKAM" node create telegraf --identity telegraf
-  run_success "$OCKAM" policy create --at telegraf --resource tcp-inlet --expression '(= subject.component "influxdb")'
-  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "127.0.0.1:${INFLUX_PORT}" --to influxdb
+  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "127.0.0.1:${INFLUX_PORT}" \
+    --to influxdb --policy '(= subject.component "influxdb")'
 
   run_success kill_telegraf_instance
   run_success start_telegraf_instance

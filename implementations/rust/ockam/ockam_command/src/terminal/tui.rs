@@ -2,7 +2,7 @@ use crate::terminal::PluralTerm;
 use crate::{color, fmt_info, fmt_warn, OckamColor, Terminal, TerminalStream};
 use colorful::Colorful;
 use console::Term;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 
 use super::color_primary;
 
@@ -31,6 +31,7 @@ pub trait ShowCommandTui {
                     Self::ITEM_NAME.plural(),
                     get_opt_node_name_message(self.node_name())
                 ))
+                .json(serde_json::to_string(&items_names).into_diagnostic()?)
                 .write_line()?;
             return Ok(());
         }
@@ -146,6 +147,7 @@ pub trait DeleteCommandTui {
                     "There are no {} to delete",
                     Self::ITEM_NAME.plural()
                 ))
+                .json(serde_json::to_string(&items_names).into_diagnostic()?)
                 .write_line()?;
             return Ok(());
         }

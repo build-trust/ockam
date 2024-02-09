@@ -81,10 +81,10 @@ teardown() {
   run_success "$OCKAM" node create blue --identity blue
 
   # Green isn't enrolled as project member
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
+  export OCKAM_HOME=$ENROLLED_OCKAM_HOME
   run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
 
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
+  export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
@@ -114,10 +114,10 @@ teardown() {
   run_success "$OCKAM" node create blue --identity blue
 
   # Green isn't enrolled as project member
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
+  export OCKAM_HOME=$ENROLLED_OCKAM_HOME
   run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
 
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
+  export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
@@ -146,12 +146,12 @@ teardown() {
   run_success "$OCKAM" node create blue --identity blue
 
   # Add identities as members of the project
-  OCKAM_HOME=$ENROLLED_OCKAM_HOME
+  export OCKAM_HOME=$ENROLLED_OCKAM_HOME
   run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
   run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
 
   # Use project from the now enrolled identities
-  OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
+  export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
 
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
@@ -180,18 +180,18 @@ teardown() {
 
   run_success "$OCKAM" project enroll $green_token --identity green
   run_success "$OCKAM" node create green --identity green
-  run_success "$OCKAM" policy create --at green --resource tcp-inlet --expression '(= subject.app "app1")'
 
   run_success "$OCKAM" project enroll $blue_token --identity blue
   run_success "$OCKAM" node create blue --identity blue
-  run_success "$OCKAM" policy create --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
 
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/blue \
+    --to 127.0.0.1:5000 --policy '(= subject.app "app1")'
 
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
+  run_success "$OCKAM" tcp-inlet create --at /node/green \
+    --from "127.0.0.1:$port" --to "$fwd" --policy '(= subject.app "app1")'
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
@@ -205,7 +205,8 @@ teardown() {
 
   run_success "$OCKAM" relay create --to /node/blue
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "/project/default/service/forward_to_default/secure/api/service/outlet"
+  run_success "$OCKAM" tcp-inlet create --at /node/green \
+    --from "127.0.0.1:$port" --to "/project/default/service/forward_to_default/secure/api/service/outlet"
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   $OCKAM node delete blue --yes
