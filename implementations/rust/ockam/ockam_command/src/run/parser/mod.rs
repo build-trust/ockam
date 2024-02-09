@@ -7,6 +7,7 @@ mod relays;
 mod resources;
 mod tcp_inlets;
 mod tcp_outlets;
+mod variables;
 mod vaults;
 mod version;
 

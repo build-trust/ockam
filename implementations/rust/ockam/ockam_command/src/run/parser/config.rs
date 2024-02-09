@@ -5,6 +5,7 @@ use crate::run::parser::projects::Projects;
 use crate::run::parser::relays::Relays;
 use crate::run::parser::tcp_inlets::TcpInlets;
 use crate::run::parser::tcp_outlets::TcpOutlets;
+use crate::run::parser::variables::Variables;
 use crate::run::parser::vaults::Vaults;
 use crate::run::parser::version::Version;
 use miette::IntoDiagnostic;
@@ -42,7 +43,13 @@ pub struct Config {
 
 impl Config {
     pub fn parse(contents: &str) -> miette::Result<Self> {
-        serde_yaml::from_str(contents).into_diagnostic()
+        // Resolve environment variables
+        let resolved = shellexpand::env(&contents).into_diagnostic()?.to_string();
+        // Parse variables section and resolve them
+        let variables: Variables = serde_yaml::from_str(&resolved).into_diagnostic()?;
+        let resolved = variables.resolve(&resolved)?;
+        // Parse the configuration
+        serde_yaml::from_str(&resolved).into_diagnostic()
     }
 }
 
@@ -97,7 +104,7 @@ mod tests {
               - r1
               - r2
         "#;
-        let parsed: Config = serde_yaml::from_str(config).unwrap();
+        let parsed = Config::parse(config).unwrap();
 
         let expected = Config {
             version: Version {
@@ -223,6 +230,44 @@ mod tests {
                     ResourceNameOrMap::Name("r2".to_string()),
                 ])),
             },
+        };
+        assert_eq!(expected, parsed);
+    }
+
+    #[test]
+    fn resolve_variables() {
+        std::env::set_var("SUFFIX", "node");
+        let config = r#"
+            variables:
+              prefix: ockam
+              ticket_path: ./path/to/ticket
+              
+            ticket: #{ticket_path}
+            
+            nodes:
+              - #{prefix}_n1_${SUFFIX}
+              - #{prefix}_n2_${SUFFIX}
+        "#;
+        let parsed = Config::parse(config).unwrap();
+        let expected = Config {
+            version: Version {
+                version: VersionValue::latest(),
+            },
+            vaults: Vaults { vaults: None },
+            identities: Identities { identities: None },
+            projects: Projects {
+                ticket: Some("./path/to/ticket".to_string()),
+            },
+            nodes: Nodes {
+                nodes: Some(ResourcesContainer::List(vec![
+                    ResourceNameOrMap::Name("ockam_n1_node".to_string()),
+                    ResourceNameOrMap::Name("ockam_n2_node".to_string()),
+                ])),
+            },
+            policies: Policies { policies: None },
+            tcp_outlets: TcpOutlets { tcp_outlets: None },
+            tcp_inlets: TcpInlets { tcp_inlets: None },
+            relays: Relays { relays: None },
         };
         assert_eq!(expected, parsed);
     }
