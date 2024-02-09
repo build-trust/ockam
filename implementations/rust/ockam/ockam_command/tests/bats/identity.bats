@@ -71,7 +71,7 @@ teardown() {
 
   # Delete on empty list
   run_success "$OCKAM" identity delete
-  assert_output --regexp "There are no identities to delete"
+  assert_output --partial "[]"
 }
 
 @test "identity - set default" {

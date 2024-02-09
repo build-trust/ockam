@@ -99,8 +99,13 @@ impl Projects for InMemoryNode {
 
     #[instrument(skip_all)]
     async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
-        let user = self.cli_state.get_default_user().await?;
-        // try to refresh the list of projects with the controller
+        // If there is no user in the database, the identity used an enrollment ticket
+        // but it didn't enroll to the Orchestrator. Therefore, it won't have any admin projects.
+        let user = match self.cli_state.get_default_user().await {
+            Ok(user) => user,
+            Err(_) => return Ok(vec![]),
+        };
+        // Try to refresh the list of projects with the controller
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(projects) => {
                 for project in &projects {
@@ -118,7 +123,7 @@ impl Projects for InMemoryNode {
             Err(e) => warn!("could not get the list of projects from the controller {e:?}"),
         }
 
-        // return the admin projects
+        // Return the admin projects
         Ok(self
             .cli_state
             .get_projects()
