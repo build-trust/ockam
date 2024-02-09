@@ -60,6 +60,7 @@ defmodule Ockam.SecureChannel.Channel do
           | {:idle_timeout, non_neg_integer() | :infinity}
           | {:authorities, [Identity.t()]}
           | {:credentials, [binary()]}
+          | {:require_peer_credential, boolean()}
 
   # Note: we could split each of these into their own file as proper modules and delegate
   # the handling of messages to them.  We can do that after the 3-packet handshake that
@@ -91,6 +92,7 @@ defmodule Ockam.SecureChannel.Channel do
     field(:channel_state, Handshaking.t() | Established.t())
 
     field(:authorities, [Identity.t()])
+    field(:require_peer_credential, boolean())
   end
 
   @handshake_timeout 30_000
@@ -386,6 +388,7 @@ defmodule Ockam.SecureChannel.Channel do
       Keyword.take(encryption_options, [:static_keypair, :static_key_attestation])
 
     credentials = Keyword.get(options, :credentials, [])
+    require_peer_credential = Keyword.get(options, :require_peer_credential, false)
 
     with {:ok, role} <- Keyword.fetch(options, :role),
          {:ok, identity} <- identity_from_opts(options),
@@ -406,7 +409,8 @@ defmodule Ockam.SecureChannel.Channel do
         identity: identity,
         trust_policies: trust_policies,
         additional_metadata: additional_metadata,
-        authorities: authorities
+        authorities: authorities,
+        require_peer_credential: require_peer_credential
       }
 
       complete_inner_setup(state, options, key_exchange_state, tref)
@@ -465,7 +469,8 @@ defmodule Ockam.SecureChannel.Channel do
            process_credentials(
              identity_proof.credentials,
              peer_identity_id,
-             state.authorities
+             state.authorities,
+             state.require_peer_credential
            ) do
       {encrypt_st, decrypt_st} = split(k1, k2, state.role)
 
@@ -491,9 +496,12 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  defp process_credentials([], _peer_identity_id, _authorities), do: :ok
+  defp process_credentials([], _peer_identity_id, _authorities, false), do: :ok
 
-  defp process_credentials([cred], peer_identity_id, authorities) do
+  defp process_credentials([], _peer_identity_id, _authorities, true),
+    do: {:error, :expected_peer_credential}
+
+  defp process_credentials([cred], peer_identity_id, authorities, _) do
     case Identity.verify_credential(peer_identity_id, authorities, cred) do
       {:ok, attribute_set} ->
         AttributeStorage.put_attribute_set(peer_identity_id, attribute_set)
@@ -503,7 +511,7 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  defp process_credentials(_creds, _peer_identity_id, _authorities),
+  defp process_credentials(_creds, _peer_identity_id, _authorities, _),
     do: {:error, :multiple_credentials}
 
   defp split(k1, k2, :initiator),
@@ -559,7 +567,13 @@ defmodule Ockam.SecureChannel.Channel do
         {:ok, %Messages.RefreshCredentials{contact: contact, credentials: credentials}} ->
           with {:ok, peer_identity, peer_identity_id} <- Identity.validate_contact_data(contact),
                true <- peer_identity_id == channel_state.peer_identity_id,
-               :ok <- process_credentials(credentials, peer_identity_id, state.authorities) do
+               :ok <-
+                 process_credentials(
+                   credentials,
+                   peer_identity_id,
+                   state.authorities,
+                   state.require_peer_credential
+                 ) do
             {:ok,
              %Channel{
                state
