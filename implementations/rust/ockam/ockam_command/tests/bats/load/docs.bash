@@ -1,4 +1,10 @@
 #!/bin/bash
+function skip_if_docs_tests_not_enabled() {
+  # shellcheck disable=SC2031
+  if [ -z "${DOCS_TESTS}" ]; then
+    skip "DOCS_TEST are not enabled"
+  fi
+}
 
 start_python_server() {
   pushd $OCKAM_HOME
@@ -26,7 +32,7 @@ def hello_world():
   return "I've been visited {} times".format(id), 201
 EOM
 
-  flask --app main run -p "$FLASK_PORT" &>>$OCKAM_HOME/file.log &
+  flask --app main run -p "$FLASK_PORT" &>$OCKAM_HOME/file.log &
   pid="$!"
   echo "$pid" >"flask.pid"
   sleep 5
@@ -36,7 +42,7 @@ EOM
 kill_flask_server() {
   pid=$(cat "${OCKAM_HOME}/flask.pid")
   kill -9 "$pid" || true
-  wait "$pid" 2>>/dev/null || true
+  wait "$pid" 2>/dev/null || true
 }
 
 kill_kafka_contents() {
@@ -44,7 +50,7 @@ kill_kafka_contents() {
 
   pid=$(cat "$ADMIN_HOME/kafka.pid") || return
   kill -9 "$pid"
-  wait "$pid" 2>>/dev/null || true
+  wait "$pid" 2>/dev/null || true
 }
 
 start_telegraf_instance() {
@@ -69,5 +75,5 @@ EOF
 kill_telegraf_instance() {
   pid=$(cat "${ADMIN_HOME}/telegraf.pid") || return
   kill -9 "$pid"
-  wait "$pid" 2>>/dev/null || true
+  wait "$pid" 2>/dev/null || true
 }
