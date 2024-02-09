@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 /// Defines the high-level structure of the configuration file.
 ///
-/// The fields of this struct represents a section of the configuration file. Each section
+/// The fields of this struct represent a section of the configuration file. Each section
 /// is a list of resources, which, in turn, can be defined in different ways, depending
 /// on the nature of the underlying commands.
 ///
@@ -43,11 +43,8 @@ pub struct Config {
 
 impl Config {
     pub fn parse(contents: &str) -> miette::Result<Self> {
-        // Resolve environment variables
-        let resolved = shellexpand::env(&contents).into_diagnostic()?.to_string();
         // Parse variables section and resolve them
-        let variables: Variables = serde_yaml::from_str(&resolved).into_diagnostic()?;
-        let resolved = variables.resolve(&resolved)?;
+        let resolved = Variables::resolve(contents)?;
         // Parse the configuration
         serde_yaml::from_str(&resolved).into_diagnostic()
     }
@@ -241,12 +238,12 @@ mod tests {
             variables:
               prefix: ockam
               ticket_path: ./path/to/ticket
-              
-            ticket: #{ticket_path}
-            
+
+            ticket: ${ticket_path}
+
             nodes:
-              - #{prefix}_n1_${SUFFIX}
-              - #{prefix}_n2_${SUFFIX}
+              - ${prefix}_n1_${SUFFIX}
+              - ${prefix}_n2_${SUFFIX}
         "#;
         let parsed = Config::parse(config).unwrap();
         let expected = Config {

@@ -189,7 +189,7 @@ pub fn as_command_arg(k: ArgKey, v: ArgValue) -> Vec<String> {
                 vec![]
             }
         }
-        v => vec![as_keyword_arg(&k), resolve(&v)],
+        v => vec![as_keyword_arg(&k), v.to_string()],
     }
 }
 
@@ -202,22 +202,6 @@ pub fn as_keyword_arg(k: &ArgKey) -> String {
     // Otherwise, it's the long version of the argument.
     else {
         format!("--{k}")
-    }
-}
-
-/// Resolve environment variables if applicable
-pub fn resolve(v: &ArgValue) -> String {
-    match v {
-        ArgValue::String(v) => {
-            if v.contains('$') {
-                return shellexpand::env(v)
-                    .expect("Failed to resolve environment variables")
-                    .to_string();
-            }
-            v.to_string()
-        }
-        ArgValue::Int(v) => v.to_string(),
-        ArgValue::Bool(v) => v.to_string(),
     }
 }
 
@@ -236,23 +220,4 @@ pub fn parse_cmd_from_args(cmd: &str, args: &[String]) -> Result<OckamSubcommand
 
 pub trait ArgsToCommands<T> {
     fn into_commands(self) -> Result<Vec<T>>;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn resolve_env_vars() {
-        // Set a random env var
-        std::env::set_var("MY_ENV_VAR", "my_env_var_value");
-
-        // Simple case: the arg value is the name of an environment variable
-        let v = resolve(&ArgValue::String("$MY_ENV_VAR".into()));
-        assert_eq!(&v, "my_env_var_value");
-
-        // Complex case: the arg value contains the name of an environment variable
-        let v = resolve(&ArgValue::String("foo $MY_ENV_VAR bar".into()));
-        assert_eq!(&v, "foo my_env_var_value bar");
-    }
 }
