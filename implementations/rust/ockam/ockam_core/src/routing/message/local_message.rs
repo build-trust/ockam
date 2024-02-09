@@ -143,8 +143,8 @@ impl LocalMessage {
     }
 
     /// Return the message payload
-    pub fn payload(&self) -> Vec<u8> {
-        self.payload.clone()
+    pub fn into_payload(self) -> Vec<u8> {
+        self.payload
     }
 
     /// Return a reference to the message payload
@@ -157,7 +157,7 @@ impl LocalMessage {
         &mut self.payload
     }
 
-    /// Prepend an address to the return route
+    /// Set the message payload
     pub fn set_payload(mut self, payload: Vec<u8>) -> Self {
         self.payload = payload;
         self
@@ -210,7 +210,8 @@ impl LocalMessage {
     /// Create a [`TransportMessage`] from a [`LocalMessage`]
     pub fn into_transport_message(self) -> TransportMessage {
         let transport_message =
-            TransportMessage::v1(self.onward_route(), self.return_route(), self.payload());
+            TransportMessage::v1(self.onward_route, self.return_route, self.payload);
+
         cfg_if! {
             if #[cfg(feature = "std")] {
                 // make sure to pass the latest tracing context

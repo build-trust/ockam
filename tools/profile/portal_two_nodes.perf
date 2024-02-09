@@ -1,0 +1,45 @@
+#!/bin/bash
+
+if ! [ -x "$(command -v iperf3)" ]; then
+  echo 'Error: iperf3 is not installed.' >&2
+  exit 1
+fi
+
+if ! [ -x "$(command -v perf)" ]; then
+  echo 'Error: perf is not installed. perf is linux-specific, see dtrace for macos.' >&2
+  exit 1
+fi
+
+set -e
+
+cargo build --profile profiling -p ockam_command
+
+OCKAM=target/profiling/ockam
+export OCKAM_LOG_LEVEL=info
+perf record --call-graph dwarf -F 99 --output /tmp/ockam.inlet.perf -- "${OCKAM}" node create inlet -f &
+perf record --call-graph dwarf -F 99 --output /tmp/ockam.outlet.perf -- "${OCKAM}" node create outlet -f &
+
+sleep 1
+"${OCKAM}" tcp-outlet create --to 5000 --at outlet
+"${OCKAM}" tcp-inlet create --from 8000 --to /node/outlet/secure/api/service/outlet --at inlet
+
+iperf3 --server --port 5000 --one-off &
+iperf3_server_pid=$!
+
+sleep 0.3 # wait for server to start
+iperf3 --zerocopy --client 127.0.0.1 --port 8000 --time 60
+
+kill ${iperf3_server_pid}
+"${OCKAM}" node delete inlet -y
+"${OCKAM}" node delete outlet -y
+
+echo "Waiting for perf to finish writing /tmp/ockam.inlet.perf and /tmp/ockam.outlet.perf..."
+wait
+
+echo "Converting perf file to firefox profiler format, could take up to few minutes..."
+perf script -F +pid --input /tmp/ockam.inlet.perf > /tmp/ockam.inlet.perf.firefox &
+perf script -F +pid --input /tmp/ockam.outlet.perf > /tmp/ockam.outlet.perf.firefox &
+wait
+
+echo "You can use firefox web profiler to open /tmp/ockam.perf.firefox file."
+echo "https://profiler.firefox.com/"

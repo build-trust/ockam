@@ -13,28 +13,28 @@ use ockam_core::{Address, Result, TransportType};
 /// address.
 pub(super) async fn resolve(
     router: &mut Router,
-    addr: &Address,
+    addr: Address,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     let base = format!("Resolving worker address '{}'...", addr);
 
-    let primary_address = if let Some(p) = router.map.get_primary_address(addr) {
-        p.clone()
+    let address_record = if let Some(primary_address) = router.map.get_primary_address(&addr) {
+        router.map.get_address_record(primary_address)
     } else {
         trace!("{} FAILED; no such worker", base);
         reply
-            .send(RouterReply::no_such_address(addr.clone()))
+            .send(RouterReply::no_such_address(addr))
             .await
             .map_err(NodeError::from_send_err)?;
 
         return Ok(());
     };
 
-    match router.map.get_address_record(&primary_address) {
+    match address_record {
         Some(record) if record.check() => {
             trace!("{} OK", base);
             record.increment_msg_count();
-            reply.send(RouterReply::sender(addr.clone(), record.sender()))
+            reply.send(RouterReply::sender(addr, record.sender()))
         }
         Some(_) => {
             trace!("{} REJECTED; worker shutting down", base);
@@ -42,7 +42,7 @@ pub(super) async fn resolve(
         }
         None => {
             trace!("{} FAILED; no such worker", base);
-            reply.send(RouterReply::no_such_address(addr.clone()))
+            reply.send(RouterReply::no_such_address(addr))
         }
     }
     .await

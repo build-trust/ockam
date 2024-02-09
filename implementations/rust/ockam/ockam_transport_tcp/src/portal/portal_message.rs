@@ -124,19 +124,19 @@ mod test {
     fn older_message_can_be_decoded() {
         let payload = "hello".as_bytes().to_vec();
 
-        let encoded = PortalMessageV1::encode(&PortalMessageV1::Ping).unwrap();
+        let encoded = PortalMessageV1::encode(PortalMessageV1::Ping).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Ping));
 
-        let encoded = PortalMessageV1::encode(&PortalMessageV1::Pong).unwrap();
+        let encoded = PortalMessageV1::encode(PortalMessageV1::Pong).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Pong));
 
-        let encoded = PortalMessageV1::encode(&PortalMessageV1::Disconnect).unwrap();
+        let encoded = PortalMessageV1::encode(PortalMessageV1::Disconnect).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Disconnect));
 
-        let encoded = PortalMessageV1::encode(&PortalMessageV1::Payload(payload.clone())).unwrap();
+        let encoded = PortalMessageV1::encode(PortalMessageV1::Payload(payload.clone())).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         if let PortalMessage::Payload(decoded_payload, _) = decoded {
             assert_eq!(decoded_payload, payload);
@@ -149,20 +149,20 @@ mod test {
     fn newer_message_can_be_decoded() {
         let payload = "hello".as_bytes().to_vec();
 
-        let encoded = PortalMessage::encode(&PortalMessage::Ping).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Ping).unwrap();
         let decoded = PortalMessageV1::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessageV1::Ping));
 
-        let encoded = PortalMessage::encode(&PortalMessage::Pong).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Pong).unwrap();
         let decoded = PortalMessageV1::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessageV1::Pong));
 
-        let encoded = PortalMessage::encode(&PortalMessage::Disconnect).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Disconnect).unwrap();
         let decoded = PortalMessageV1::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessageV1::Disconnect));
 
         let encoded =
-            PortalMessage::encode(&PortalMessage::Payload(payload.clone(), Some(123))).unwrap();
+            PortalMessage::encode(PortalMessage::Payload(payload.clone(), Some(123))).unwrap();
         let decoded = PortalMessageV1::decode(&encoded).unwrap();
         if let PortalMessageV1::Payload(decoded_payload) = decoded {
             assert_eq!(decoded_payload, payload);
@@ -176,20 +176,19 @@ mod test {
     fn newer_message_can_be_encoded() {
         let payload = "hello".as_bytes().to_vec();
 
-        let encoded = PortalMessage::encode(&PortalMessage::Ping).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Ping).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Ping));
 
-        let encoded = PortalMessage::encode(&PortalMessage::Pong).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Pong).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Pong));
 
-        let encoded = PortalMessage::encode(&PortalMessage::Disconnect).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Disconnect).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Disconnect));
 
-        let encoded =
-            PortalMessage::encode(&PortalMessage::Payload(payload.clone(), None)).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Payload(payload.clone(), None)).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         if let PortalMessage::Payload(decoded_payload, packet_counter) = decoded {
             assert_eq!(decoded_payload, payload);
@@ -199,7 +198,7 @@ mod test {
         }
 
         let encoded =
-            PortalMessage::encode(&PortalMessage::Payload(payload.clone(), Some(123))).unwrap();
+            PortalMessage::encode(PortalMessage::Payload(payload.clone(), Some(123))).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         if let PortalMessage::Payload(decoded_payload, packet_counter) = decoded {
             assert_eq!(decoded_payload, payload);

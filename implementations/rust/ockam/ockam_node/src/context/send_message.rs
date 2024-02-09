@@ -234,8 +234,8 @@ impl Context {
 
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
-        let next = match route.next() {
-            Ok(next) => next,
+        let addr = match route.next() {
+            Ok(next) => next.clone(),
             Err(err) => {
                 // TODO: communicate bad routes to calling function
                 error!("Invalid route for message sent from {}", sending_address);
@@ -243,7 +243,7 @@ impl Context {
             }
         };
 
-        let req = NodeMessage::SenderReq(next.clone(), reply_tx);
+        let req = NodeMessage::SenderReq(addr, reply_tx);
         self.sender
             .send(req)
             .await
@@ -339,8 +339,8 @@ impl Context {
 
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
-        let next = match local_msg.onward_route_ref().next() {
-            Ok(next) => next,
+        let addr = match local_msg.onward_route_ref().next() {
+            Ok(next) => next.clone(),
             Err(err) => {
                 // TODO: communicate bad routes to calling function
                 error!(
@@ -350,7 +350,7 @@ impl Context {
                 return Err(err);
             }
         };
-        let req = NodeMessage::SenderReq(next.clone(), reply_tx);
+        let req = NodeMessage::SenderReq(addr, reply_tx);
         self.sender
             .send(req)
             .await
