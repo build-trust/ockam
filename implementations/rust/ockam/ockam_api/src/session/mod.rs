@@ -93,9 +93,10 @@ impl Medic {
                         && session.connection_status() == ConnectionStatus::Up
                     {
                         let message = Message::new(session.key().to_string());
-                        session.add_ping(message.ping);
+                        let ping = message.ping;
+                        session.add_ping(ping);
                         let encoded_message =
-                            Encodable::encode(&message).expect("message can be encoded");
+                            Encodable::encode(message).expect("message can be encoded");
 
                         // if the session is up, send a ping
                         if let Some(ping_route) = session.ping_route().clone() {
@@ -104,7 +105,7 @@ impl Medic {
                             log::trace! {
                                 key  = %key,
                                 addr = %ping_route,
-                                ping = %message.ping,
+                                ping = %ping,
                                 "send ping"
                             }
 
@@ -244,7 +245,7 @@ impl Message {
 }
 
 impl Encodable for Message {
-    fn encode(&self) -> Result<Vec<u8>, Error> {
+    fn encode(self) -> Result<Vec<u8>, Error> {
         minicbor::to_vec(self).map_err(Error::from)
     }
 }

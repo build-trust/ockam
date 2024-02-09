@@ -283,8 +283,9 @@ impl AddressRecord {
         }
     }
 
+    #[inline]
     pub fn increment_msg_count(&self) {
-        self.msg_count.fetch_add(1, Ordering::Acquire);
+        self.msg_count.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Signal this worker to stop -- it will no longer be able to receive messages
@@ -302,6 +303,7 @@ impl AddressRecord {
     }
 
     /// Check the integrity of this record
+    #[inline]
     pub fn check(&self) -> bool {
         self.state == AddressState::Running && self.sender.is_some()
     }

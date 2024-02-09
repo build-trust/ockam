@@ -121,11 +121,13 @@ where
 }
 
 /// Produces Ok(false) to avoid an ambiguous reading from using the unadorned value in auth code.
+#[inline]
 pub fn deny() -> Result<bool> {
     Ok(false)
 }
 
 /// Produces Ok(true) to avoid an ambiguous reading from using the unadorned value in auth code.
+#[inline]
 pub fn allow() -> Result<bool> {
     Ok(true)
 }

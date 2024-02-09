@@ -11,6 +11,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_bare::ser::{Serializer, VecWrite};
 
 /// Alias of the type used for encoded data.
 pub type Encoded = Vec<u8>;
@@ -59,7 +60,7 @@ impl Display for ProtocolId {
 /// Encode the type into an [`Encoded`] type.
 pub trait Encodable {
     /// Encode the type into an [`Encoded`] type.
-    fn encode(&self) -> Result<Encoded>;
+    fn encode(self) -> Result<Encoded>;
 }
 
 /// Decode a slice.
@@ -81,8 +82,13 @@ impl<T> Encodable for T
 where
     T: Serialize,
 {
-    fn encode(&self) -> Result<Encoded> {
-        Ok(serde_bare::to_vec(self)?)
+    fn encode(self) -> Result<Encoded> {
+        // Serializing directly to allow better serialization
+        // inlining for a mesurable performance improvement.
+        let mut vec = Vec::new();
+        let mut serializer = Serializer::new(VecWrite::new(&mut vec));
+        self.serialize(&mut serializer)?;
+        Ok(vec)
     }
 }
 
@@ -100,6 +106,13 @@ where
 #[derive(Debug, Clone)]
 pub struct NeutralMessage(Vec<u8>);
 
+impl NeutralMessage {
+    /// Returns the inner Vec<u8> of the NeutralMessage
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0
+    }
+}
+
 impl From<Vec<u8>> for NeutralMessage {
     fn from(v: Vec<u8>) -> Self {
         Self(v)
@@ -113,9 +126,8 @@ impl From<NeutralMessage> for Vec<u8> {
 }
 
 impl Encodable for NeutralMessage {
-    fn encode(&self) -> Result<Encoded> {
-        // TODO: Avoid the copy, consider using `Bytes` as `Encoded`.
-        Ok(self.0.to_vec())
+    fn encode(self) -> Result<Encoded> {
+        Ok(self.0)
     }
 }
 
@@ -268,7 +280,7 @@ impl<M: Message> Routed<M> {
     /// Consume the message wrapper and return the underlying transport message's binary payload.
     #[inline]
     pub fn take_payload(self) -> Vec<u8> {
-        self.local_msg.payload()
+        self.local_msg.into_payload()
     }
 }
 
@@ -365,7 +377,7 @@ impl Display for Any {
 }
 
 impl Encodable for Any {
-    fn encode(&self) -> Result<Encoded> {
+    fn encode(self) -> Result<Encoded> {
         Ok(vec![])
     }
 }

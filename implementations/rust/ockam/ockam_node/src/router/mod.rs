@@ -283,12 +283,12 @@ impl Router {
             }
 
             // Handle route/ sender requests
-            SenderReq(ref addr, ref reply) => match determine_type(addr) {
+            SenderReq(addr, ref reply) => match determine_type(&addr) {
                 RouteType::Internal => utils::resolve(self, addr, reply).await?,
                 // TODO: Remove after other transport implementations are moved to new architecture
                 RouteType::External(tt) => {
                     let addr = utils::router_addr(self, tt)?;
-                    utils::resolve(self, &addr, reply).await?
+                    utils::resolve(self, addr, reply).await?
                 }
             },
         }

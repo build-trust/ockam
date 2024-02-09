@@ -144,7 +144,7 @@ impl EncryptorWorker {
         let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,
-            payload: msg.payload().to_vec(),
+            payload: msg.into_local_message().into_payload(),
         };
         let msg = SecureChannelMessage::Payload(msg);
 

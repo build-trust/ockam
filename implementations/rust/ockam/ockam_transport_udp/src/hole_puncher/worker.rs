@@ -309,7 +309,8 @@ impl UdpHolePunchWorker {
                 local_message
             };
             // Wrap payload
-            let wrapped_payload = PunchMessage::Payload(local_message.payload()).encode()?;
+            let wrapped_payload =
+                PunchMessage::Payload(local_message.payload_ref().to_vec()).encode()?;
             local_message = local_message
                 .push_front_return_route(&self.main_addr)
                 .set_payload(wrapped_payload);
