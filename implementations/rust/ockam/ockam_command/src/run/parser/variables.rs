@@ -1,7 +1,10 @@
+use crate::fmt_warn;
 use crate::run::parser::resources::{ArgKey, ArgValue};
-use miette::{miette, Result};
+use colorful::Colorful;
+use miette::{IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use tracing::warn;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Variables {
@@ -9,59 +12,26 @@ pub struct Variables {
 }
 
 impl Variables {
-    const VAR_SIGN: char = '#';
-    const VAR_START: char = '{';
-    const VAR_END: char = '}';
-
-    pub fn resolve(&self, contents: &str) -> Result<String> {
-        let env = self.load()?;
-        let mut resolved = contents.to_string();
-        for (k, v) in env.iter() {
-            let from = format!(
-                "{}{}{}{}",
-                Variables::VAR_SIGN,
-                Variables::VAR_START,
-                k,
-                Variables::VAR_END
-            );
-            resolved = resolved.replace(&from, v);
-        }
-        Ok(resolved)
+    pub fn resolve(contents: &str) -> Result<String> {
+        let self_ = serde_yaml::from_str::<Variables>(contents).into_diagnostic()?;
+        self_.load()?;
+        shellexpand::env(&contents)
+            .into_diagnostic()
+            .map(|c| c.to_string())
     }
 
-    fn load(&self) -> Result<BTreeMap<String, String>> {
-        let mut env = BTreeMap::new();
+    /// Loads the variables into the environment, giving preference to variables set externally.
+    /// That is, if one of the variables already exists, it will use the existing value.
+    fn load(&self) -> Result<()> {
         if let Some(vars) = &self.variables {
             for (k, v) in vars {
-                let v = v.to_string();
-                self.validate(k, &v)?;
-                env.insert(k.clone(), v);
-            }
-        }
-        Ok(env)
-    }
-
-    fn validate(&self, k: &ArgKey, v: &str) -> Result<()> {
-        // Check variable name
-        if k.contains([
-            Variables::VAR_SIGN,
-            Variables::VAR_START,
-            Variables::VAR_END,
-        ]) {
-            return Err(miette!("The variable name '{k}' is not valid"));
-        }
-        // Check variable value
-        if let Some(sign_pos) = v.find(Variables::VAR_SIGN) {
-            // if the next character is Variables::VAR_START and
-            // contains a Variables::VAR_END after that, then it's a variable
-            if v.chars().nth(sign_pos + 1) == Some(Variables::VAR_START) {
-                if let Some(end_pos) = v.find(Variables::VAR_END) {
-                    if end_pos > sign_pos {
-                        return Err(miette!(
-                            "The value '{v}' of the variable '{k}' can't contain another variable"
-                        ));
-                    }
+                if std::env::var(k).is_ok() {
+                    warn!("Loading variable '{k}' from environment");
+                    eprintln!("{}", fmt_warn!("Loading variable '{k}' from environment"));
+                    continue;
                 }
+                let v = v.to_string();
+                std::env::set_var(k, v);
             }
         }
         Ok(())
@@ -74,52 +44,64 @@ mod tests {
 
     #[test]
     fn resolve_variables() {
-        std::env::set_var("VALUE", "my_env_value");
-        let yaml = r#"
+        std::env::set_var("MY_ENV_VAR", "my_env_value");
+        let input = r#"
             variables:
-              var_s: $VALUE
+              var_s: $MY_ENV_VAR
               var_b: true
               var_i: 1
+
+            nodes:
+              - $MY_ENV_VAR
+              - is_${var_b}
+              - num_${var_i}
         "#;
-        let vars = serde_yaml::from_str::<Variables>(yaml).unwrap();
-        let template = "#{var_s} is_#{var_b} num_#{var_i}";
-        let resolved = vars.resolve(template).unwrap();
-        assert_eq!(resolved, "$VALUE is_true num_1");
+        let expected = r#"
+            variables:
+              var_s: my_env_value
+              var_b: true
+              var_i: 1
+
+            nodes:
+              - my_env_value
+              - is_true
+              - num_1
+        "#;
+        let resolved = Variables::resolve(input).unwrap();
+        assert_eq!(resolved, expected);
     }
 
     #[test]
-    fn leave_unknown_variables_unresolved() {
-        let yaml = r#"
+    fn give_preference_to_external_variables() {
+        std::env::set_var("my_var", "external");
+        let input = r#"
             variables:
-              var_s: value
+              my_var: local
+
+            nodes:
+              - ${my_var}
         "#;
-        let vars = serde_yaml::from_str::<Variables>(yaml).unwrap();
-        let template = "my_#{var_s} is_#{var_b} num_#{var_i}";
-        let resolved = vars.resolve(template).unwrap();
-        assert_eq!(resolved, "my_value is_#{var_b} num_#{var_i}");
+        let expected = r#"
+            variables:
+              my_var: local
+
+            nodes:
+              - external
+        "#;
+        let resolved = Variables::resolve(input).unwrap();
+        assert_eq!(resolved, expected);
     }
 
     #[test]
-    fn fail_if_invalid_variable_name() {
-        let yaml = r#"
+    fn fail_if_unknown_variable() {
+        let input = r#"
             variables:
-              var{}_s: value
-        "#;
-        let vars = serde_yaml::from_str::<Variables>(yaml).unwrap();
-        let template = "";
-        let result = vars.resolve(template);
-        assert!(result.is_err());
-    }
+              my_var: local
 
-    #[test]
-    fn fail_if_invalid_variable_value() {
-        let yaml = r#"
-            variables:
-              var_s: '#{var_s}'
+            nodes:
+              - is_${other_var}
         "#;
-        let vars = serde_yaml::from_str::<Variables>(yaml).unwrap();
-        let template = "";
-        let result = vars.resolve(template);
-        assert!(result.is_err());
+        let resolved = Variables::resolve(input);
+        assert!(resolved.is_err());
     }
 }

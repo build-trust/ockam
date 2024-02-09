@@ -1,6 +1,6 @@
 use crate::project::EnrollCommand;
 
-use crate::run::parser::resources::{parse_cmd_from_args, resolve, ArgValue};
+use crate::run::parser::resources::parse_cmd_from_args;
 use crate::run::parser::ArgsToCommands;
 use crate::OckamSubcommand;
 use miette::{miette, Result};
@@ -22,9 +22,7 @@ impl ArgsToCommands<EnrollCommand> for Projects {
             Err(miette!("Failed to parse command"))
         };
         match self.ticket {
-            Some(path_or_contents) => {
-                get_subcommand(&[resolve(&ArgValue::String(path_or_contents))]).map(|c| vec![c])
-            }
+            Some(path_or_contents) => get_subcommand(&[path_or_contents]).map(|c| vec![c]),
             None => Ok(vec![]),
         }
     }
@@ -45,9 +43,8 @@ mod tests {
         let enrollment_ticket_hex = enrollment_ticket.hex_encoded().unwrap();
 
         // As contents
-        std::env::set_var("ENROLLMENT_TICKET", &enrollment_ticket_hex);
-        let config = "ticket: $ENROLLMENT_TICKET";
-        let parsed: Projects = serde_yaml::from_str(config).unwrap();
+        let config = format!("ticket: {enrollment_ticket_hex}");
+        let parsed: Projects = serde_yaml::from_str(&config).unwrap();
         let cmds = parsed.into_commands().unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].enroll_ticket.as_ref().unwrap(), &enrollment_ticket);
