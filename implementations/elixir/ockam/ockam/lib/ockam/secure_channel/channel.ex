@@ -501,7 +501,7 @@ defmodule Ockam.SecureChannel.Channel do
   defp process_credentials([], _peer_identity_id, _authorities, true),
     do: {:error, :expected_peer_credential}
 
-  defp process_credentials([cred], peer_identity_id, authorities, _) do
+  defp process_credentials([cred], peer_identity_id, authorities, _require_peer_credential) do
     case Identity.verify_credential(peer_identity_id, authorities, cred) do
       {:ok, attribute_set} ->
         AttributeStorage.put_attribute_set(peer_identity_id, attribute_set)
@@ -511,7 +511,7 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  defp process_credentials(_creds, _peer_identity_id, _authorities, _),
+  defp process_credentials(_creds, _peer_identity_id, _authorities, _require_peer_credential),
     do: {:error, :multiple_credentials}
 
   defp split(k1, k2, :initiator),
