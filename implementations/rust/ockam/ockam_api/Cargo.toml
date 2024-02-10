@@ -75,7 +75,7 @@ url = "2.4.1"
 
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.45.0", features = ["cbor", "serde"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.106.0" }
-tonic = "0.9.2"
+tonic = "0.11.0"
 
 [dependencies.ockam_core]
 version = "0.101.0"
