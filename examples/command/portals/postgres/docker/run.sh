@@ -3,11 +3,10 @@ set -e
 
 # This script, `./run.sh ...` is invoked on a developer’s work machine.
 #
-# In this hands-on example we use Ockam to create an encrypted portal to postgres.
-# We connect a nodejs app in one virtual private network with a postgres database
-# in another virtual private network.
+# This hands-on example uses Ockam to create an end-to-end encrypted portal to postgres. We connect a
+# nodejs app in one virtual private network with a postgres database in another virtual private network.
 #
-# We use docker and docker compose to create these virtual networks.
+# The example uses docker and docker compose to create these virtual networks.
 #
 # You can read a detailed walkthough of this example at:
 # https://docs.ockam.io/portals/databases/postgres/docker
@@ -36,18 +35,8 @@ run() {
     # specified attributes - postgres-outlet=true.
     #
     # The identity will also allowed to create a relay in the project at the address `postgres`.
-    ticket=$(ockam project ticket --usage-count 1 --expires-in 10m \
+    bank_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m \
         --attribute "postgres-outlet=true" --relay postgres)
-
-    # Invoke `docker-compose up` in the directory that has bank_corp's configuration.
-    # Pass the above enrollment ticket as an environment variable.
-    #
-    # Read bank_corp/docker-compose.yml to understand the parts that are provisioned
-    # in bank_corp's virtual private network.
-    echo; pushd bank_corp; ENROLLMENT_TICKET="$ticket" docker-compose up -d; popd
-
-    # Wait 30 seconds, to give the outlet and relay some time to be ready.
-    sleep 30
 
     # Create an enrollment ticket to enroll the identity used by an ockam node that will run
     # adjacent to the postgres client app in analysis_corp's network.
@@ -55,15 +44,25 @@ run() {
     # The identity that enrolls with the generated ticket will be given a project membership
     # credential in which the project membership authority will cryptographically attest to the
     # specified attributes - postgres-inlet=true.
-    ticket=$(ockam project ticket --usage-count 1 --expires-in 10m \
+    anaysis_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m \
         --attribute "postgres-inlet=true")
+
+    # Invoke `docker-compose up` in the directory that has bank_corp's configuration.
+    # Pass the above enrollment ticket as an environment variable.
+    #
+    # Read bank_corp/docker-compose.yml to understand the parts that are provisioned
+    # in bank_corp's virtual private network.
+    echo; pushd bank_corp; ENROLLMENT_TICKET="$bank_corp_ticket" docker-compose up -d; popd
+
+    # Wait 30 seconds, to give the outlet and relay some time to be ready.
+    sleep 30
 
     # Invoke `docker-compose up` in the directory that has analysis_corp's configuration.
     # Pass the above enrollment ticket as an environment variable.
     #
     # Read analysis_corp/docker-compose.yml to understand the parts that are provisioned
     # in analysis_corp's virtual private network.
-    echo; pushd analysis_corp; ENROLLMENT_TICKET="$ticket" docker-compose up; popd
+    echo; pushd analysis_corp; ENROLLMENT_TICKET="$anaysis_corp_ticket" docker-compose up; popd
 }
 
 # Cleanup after the example - `./run.sh cleanup`
