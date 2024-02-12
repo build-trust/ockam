@@ -34,7 +34,7 @@ aws-config = { version = "1.1.5", default-features = false, features = ["rustls"
 base64-url = "2.0.2"
 bytes = { version = "1.5.0", default-features = false, features = ["serde"] }
 chrono = { version = "0.4" }
-either = { version = "1.9.0", default-features = false }
+either = { version = "1.10.0", default-features = false }
 fs2 = { version = "0.4.3" }
 futures = { version = "0.3.30", features = [] }
 gethostname = "0.4.3"
