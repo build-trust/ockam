@@ -44,7 +44,7 @@ run() {
     # The identity that enrolls with the generated ticket will be given a project membership
     # credential in which the project membership authority will cryptographically attest to the
     # specified attributes - postgres-inlet=true.
-    anaysis_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m \
+    analysis_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m \
         --attribute "postgres-inlet=true")
 
     # Invoke `docker-compose up` in the directory that has bank_corp's configuration.
@@ -54,35 +54,31 @@ run() {
     # in bank_corp's virtual private network.
     echo; pushd bank_corp; ENROLLMENT_TICKET="$bank_corp_ticket" docker-compose up -d; popd
 
-    # Wait 30 seconds, to give the outlet and relay some time to be ready.
-    sleep 30
-
     # Invoke `docker-compose up` in the directory that has analysis_corp's configuration.
     # Pass the above enrollment ticket as an environment variable.
     #
     # Read analysis_corp/docker-compose.yml to understand the parts that are provisioned
     # in analysis_corp's virtual private network.
-    echo; pushd analysis_corp; ENROLLMENT_TICKET="$anaysis_corp_ticket" docker-compose up; popd
+    echo; pushd analysis_corp; ENROLLMENT_TICKET="$analysis_corp_ticket" docker-compose up; popd
 }
 
 # Cleanup after the example - `./run.sh cleanup`
 # Remove all containers and images pulled or created by docker compose.
 cleanup() {
-    for d in bank_corp analysis_corp; do
-        pushd "$d"; docker-compose down --rmi all --remove-orphans; popd
-    done
+    pushd bank_corp; docker-compose down --rmi all --remove-orphans; popd
+    pushd analysis_corp; docker-compose down --rmi all --remove-orphans; popd
 }
 
 # Check if Ockam Command is already installed and available in path.
 # If it's not, then install it.
-type ockam >/dev/null 2>&1 || curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
+type ockam &>/dev/null || curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
 source "$HOME/.ockam/env"
 
 # Check that tools we we need installed.
 for c in docker docker-compose curl; do
-    command -v "$c" >/dev/null 2>&1 || { echo "ERROR: $c is not installed." && exit 1; }
+    command -v "$c" &>/dev/null || { echo "ERROR: Please install: $c" && exit 1; }
 done
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.
-[[ "$1" == "cleanup" ]] && cleanup || run
+if [[ "$1" == "cleanup" ]]; then cleanup; else run; fi

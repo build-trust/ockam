@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # This script is used as an entrypoint to a docker container built using ../ockam.dockerfile.
 
@@ -24,10 +24,10 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # attribute postgres-outlet="true" to connect to TCP Portal Inlets on this node.
 #
 # Create a TCP Portal Inlet to postgres.
-# This makes the remote postgres available on localhost IPs at - 0.0.0.0:15432
+# This makes the remote postgres available on all localhost IPs at - 0.0.0.0:15432
 ockam node create
 ockam policy create --resource tcp-inlet --expression '(= subject.postgres-outlet "true")'
-ockam tcp-inlet create --from 0.0.0.0:15432 --to postgres
+until ockam tcp-inlet create --from 0.0.0.0:15432 --to postgres; do sleep 10; done
 
 # Run the container forever.
 tail -f /dev/null

@@ -9,8 +9,8 @@ const clientConfig = { host: "ockam", port: 15432, user: "postgres", password: "
 // Attempt to connect to the database in a loop.
 //
 // Since all the containers may take a few seconds to start up.
-// We'll attempt to connect in a loop once every five seconds by default.
-async function connect(attempts = 20, waitTimeBetweenAttempts = 5000) {
+// We'll attempt to connect in a loop once every 10 seconds by default.
+async function connect(attempts = 100, waitTimeBetweenAttempts = 10000) {
   while (attempts--) {
     const client = new Client(clientConfig);
     try {
@@ -53,7 +53,7 @@ async function run() {
 
     console.log(
       "\nThe example run was successful 🥳.\n" +
-        "\nWe connected with the database through an encrypted portal." +
+        "\nThe app connected with the database through an encrypted portal." +
         "\nCreated a table, inserted some data, and querried it back.\n",
     );
   } catch (err) {

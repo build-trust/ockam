@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # This script is used as an entrypoint to a docker container built using ../ockam.dockerfile.
 
