@@ -118,7 +118,7 @@ default-features = false
 cddl-cat = "0.6.1"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
-indexmap = "2.2.2"
+indexmap = "2.2.3"
 itertools = "0.12.1"
 mockall = "0.12"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
