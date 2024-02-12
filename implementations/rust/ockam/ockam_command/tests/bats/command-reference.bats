@@ -118,7 +118,7 @@ teardown() {
   run_success "$OCKAM" message send hello --from "$n1" --to "/worker/${n1_id}/service/forward_to_$n3/service/uppercase"
   assert_output "HELLO"
 
-  run_success "$OCKAM" tcp-outlet create --at "$n3" --from /service/outlet --to "127.0.0.1:5000"
+  run_success "$OCKAM" tcp-outlet create --at "$n3" --to "127.0.0.1:$PYTHON_SERVER_PORT"
   run_success "$OCKAM" tcp-inlet create --at "$n1" --from "127.0.0.1:$inlet_port" --to "/worker/${n1_id}/service/forward_to_$n3/service/hop/service/outlet"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$inlet_port"

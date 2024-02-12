@@ -51,8 +51,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
         // re-insert the new state
         for tcp_outlet_status in &model_state.tcp_outlets {
-            let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
-                .bind(tcp_outlet_status.alias.to_sql())
+            let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?)")
                 .bind(tcp_outlet_status.socket_addr.to_sql())
                 .bind(tcp_outlet_status.worker_addr.to_sql())
                 .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
@@ -79,8 +78,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
     }
 
     async fn load(&self) -> Result<ModelState> {
-        let query1 =
-            query_as("SELECT alias, socket_addr, worker_addr, payload FROM tcp_outlet_status");
+        let query1 = query_as("SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status");
         let result: Vec<TcpOutletStatusRow> =
             query1.fetch_all(&*self.database.pool).await.into_core()?;
         let tcp_outlets = result
@@ -104,7 +102,6 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 /// Low-level representation of a row in the tcp_outlet_status table
 #[derive(sqlx::FromRow)]
 struct TcpOutletStatusRow {
-    alias: String,
     socket_addr: String,
     worker_addr: String,
     payload: Option<String>,
@@ -116,7 +113,6 @@ impl TcpOutletStatusRow {
             .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            alias: self.alias.clone(),
             socket_addr,
             worker_addr,
             payload: self.payload.clone(),
@@ -164,7 +160,6 @@ mod tests {
         state.add_tcp_outlet(OutletStatus::new(
             "127.0.0.1:1001".parse()?,
             Address::from_string("s1"),
-            "s1",
             None,
         ));
         // Add an incoming service
@@ -184,7 +179,6 @@ mod tests {
             state.add_tcp_outlet(OutletStatus::new(
                 format!("127.0.0.1:100{i}").parse().unwrap(),
                 Address::from_string(format!("s{i}")),
-                &format!("s{i}"),
                 None,
             ));
             repository.store(&state).await.unwrap();

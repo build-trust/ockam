@@ -225,11 +225,10 @@ impl Output for OutletStatus {
     fn output(&self) -> Result<String> {
         let output = format!(
             r#"
-Outlet {}:
+Outlet:
     TCP Address:    {}
     Worker Address: {}
 "#,
-            self.alias,
             self.socket_addr,
             self.worker_address()?
         );
@@ -239,9 +238,7 @@ Outlet {}:
 
     fn list_output(&self) -> Result<String> {
         let output = format!(
-            r#"Outlet alias {}
-From address {} to TCP server {}"#,
-            color_primary(&self.alias),
+            r#"From address {} to TCP server {}"#,
             color_primary(self.worker_address()?.to_string()),
             color_primary(self.socket_addr.to_string()),
         );

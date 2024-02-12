@@ -108,7 +108,6 @@ impl SecureRelayOutlet {
                 expression: '(= subject.component "{service_name}")'
             tcp-outlets:
               {service_name}:
-                from: '/service/outlet_{service_name}'
                 to: {to}
             relays:
               - {service_name}

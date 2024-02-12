@@ -18,9 +18,8 @@ use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
-use ockam_abac::attribute_access_control::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
 use ockam_abac::expr::str;
-use ockam_abac::{Action, Env, Expr, Policy, Resource};
+use ockam_abac::{Action, Env, Expr, Resource};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::flow_control::FlowControlId;
@@ -33,6 +32,7 @@ use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
 };
+use crate::nodes::models::policies::SetPolicyRequest;
 use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::registry::KafkaServiceKind;
@@ -42,7 +42,6 @@ use crate::session::MedicHandle;
 
 use super::registry::Registry;
 
-pub mod actions;
 pub(crate) mod background_node_client;
 pub mod default_address;
 mod flow_controls;
@@ -59,8 +58,6 @@ mod transport;
 pub mod workers;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
-
-pub(crate) type Alias = String;
 
 /// Generate a new alias for some user created extension
 #[inline]
@@ -138,8 +135,8 @@ impl NodeManager {
                 .entries()
                 .await
                 .iter()
-                .map(|(alias, info)| {
-                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), alias, None)
+                .map(|(_, info)| {
+                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), None)
                 })
                 .collect(),
         )
@@ -217,40 +214,47 @@ pub struct IdentityOverride {
 impl NodeManager {
     async fn access_control(
         &self,
+        authority: Option<Identifier>,
         resource: Resource,
         action: Action,
-        authority: Option<Identifier>,
         expression: Option<Expr>,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
+        let resource_name_str = resource.resource_name.as_str();
+        let resource_type_str = resource.resource_type.to_string();
+        let action_str = action.as_ref();
         if let Some(authority) = authority {
             // Populate environment with known attributes:
             let mut env = Env::new();
-            env.put("resource.id", str(resource.as_str()));
-            env.put("action.id", str(action.as_str()));
+            env.put("resource.id", str(resource_name_str));
+            env.put("action.id", str(action_str));
 
-            // Check if a policy exists for this (node, resource, action) and if not,
-            // create a policy with the given expression or the default one.
-            if self
-                .cli_state
-                .get_policy(&resource, &action)
-                .await?
-                .is_none()
-            {
-                let check_credential_expression =
-                    Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY));
-                let expression = expression.unwrap_or(check_credential_expression);
-                let policy = Policy::new(expression);
-                self.cli_state
-                    .set_policy(&resource, &action, &policy)
+            // Store policy for the given resource and action
+            let policies = self.cli_state.policies();
+            if let Some(expression) = expression {
+                policies
+                    .store_policy_for_resource_name(&resource.resource_name, &action, &expression)
                     .await?;
             }
-            let policy_access_control = self
-                .cli_state
-                .make_policy_access_control(&resource, &action, env, authority)
+            self.cli_state.store_resource(&resource).await?;
+
+            // Create the policy access control
+            let policy_access_control = policies
+                .make_policy_access_control(
+                    self.cli_state.identities_attributes(),
+                    resource,
+                    action,
+                    env,
+                    authority,
+                )
                 .await?;
             Ok(Arc::new(policy_access_control))
         } else {
-            warn!("no policy access control set for resource '{resource}' and action: '{action}'");
+            warn! {
+                resource_name = resource_name_str,
+                resource_type = resource_type_str,
+                action = action_str,
+                "no policy access control set"
+            }
             Ok(Arc::new(AllowAll))
         }
     }
@@ -370,6 +374,12 @@ impl NodeManager {
             .get_node(&general_options.node_name)
             .await?
             .identifier();
+
+        debug!("create default resource type policies");
+        cli_state
+            .policies()
+            .store_default_resource_type_policies()
+            .await?;
 
         let credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>> =
             match trust_options.credential_retriever_options {
@@ -672,8 +682,9 @@ impl NodeManagerWorker {
             (Get, ["node", "inlet"]) => encode_response(req, self.get_inlets().await)?,
             (Get, ["node", "inlet", alias]) => encode_response(req, self.show_inlet(alias).await)?,
             (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
-            (Get, ["node", "outlet", alias]) => {
-                encode_response(req, self.show_outlet(alias).await)?
+            (Get, ["node", "outlet", addr]) => {
+                let addr: Address = addr.to_string().into();
+                encode_response(req, self.show_outlet(&addr).await)?
             }
             (Post, ["node", "inlet"]) => {
                 encode_response(req, self.create_inlet(ctx, dec.decode()?).await)?
@@ -681,8 +692,9 @@ impl NodeManagerWorker {
             (Post, ["node", "outlet"]) => {
                 encode_response(req, self.create_outlet(ctx, dec.decode()?).await)?
             }
-            (Delete, ["node", "outlet", alias]) => {
-                encode_response(req, self.delete_outlet(alias).await)?
+            (Delete, ["node", "outlet", addr]) => {
+                let addr: Address = addr.to_string().into();
+                encode_response(req, self.delete_outlet(&addr).await)?
             }
             (Delete, ["node", "inlet", alias]) => {
                 encode_response(req, self.delete_inlet(alias).await)?
@@ -698,17 +710,20 @@ impl NodeManagerWorker {
             (Get, ["node", "workers"]) => encode_response(req, self.list_workers(ctx).await)?,
 
             // ==*== Policies ==*==
-            (Post, ["policy", resource, action]) => {
-                encode_response(req, self.add_policy(resource, action, dec.decode()?).await)?
+            (Post, ["policy", action]) => {
+                let payload: SetPolicyRequest = dec.decode()?;
+                encode_response(
+                    req,
+                    self.add_policy(action, payload.resource, payload.expression)
+                        .await,
+                )?
             }
-            (Get, ["policy", resource, action]) => {
-                encode_response(req, self.get_policy(resource, action).await)?
+            (Get, ["policy", action]) => {
+                encode_response(req, self.get_policy(action, dec.decode()?).await)?
             }
-            (Get, ["policy", resource]) => {
-                encode_response(req, self.list_policies(resource).await)?
-            }
-            (Delete, ["policy", resource, action]) => {
-                encode_response(req, self.delete_policy(resource, action).await)?
+            (Get, ["policy"]) => encode_response(req, self.list_policies(dec.decode()?).await)?,
+            (Delete, ["policy", action]) => {
+                encode_response(req, self.delete_policy(action, dec.decode()?).await)?
             }
 
             // ==*== Messages ==*==

@@ -1,6 +1,6 @@
 use crate::nodes::models::relay::RelayInfo;
-use crate::nodes::service::Alias;
 use crate::session::sessions::{ReplacerOutputKind, Session};
+use crate::{random_name, DefaultAddress};
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam_core::compat::collections::BTreeMap;
@@ -222,8 +222,8 @@ pub(crate) struct Registry {
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
     pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
-    pub(crate) inlets: RegistryOf<Alias, InletInfo>,
-    pub(crate) outlets: RegistryOf<Alias, OutletInfo>,
+    pub(crate) inlets: RegistryOf<String, InletInfo>,
+    pub(crate) outlets: RegistryOf<Address, OutletInfo>,
 }
 
 pub(crate) struct RegistryOf<K, V> {
@@ -287,5 +287,105 @@ impl<K: Clone, V: Clone> RegistryOf<K, V> {
     {
         let map = self.map.read().await;
         map.contains_key(key)
+    }
+}
+
+impl RegistryOf<Address, OutletInfo> {
+    pub async fn generate_worker_addr(&self, worker_addr: Option<Address>) -> Address {
+        match worker_addr {
+            Some(addr) => addr,
+            None => {
+                // If no worker address is passed, return the default address if it's not in use
+                let default: Address = DefaultAddress::OUTLET_SERVICE.into();
+                if self.contains_key(&default).await {
+                    random_name().into()
+                } else {
+                    default
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn outlet_registry_generate_worker_address_start_with_none() {
+        let registry = Registry::default();
+
+        // No worker address passed, should return the default address because it's not in use
+        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        assert_eq!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
+        registry
+            .outlets
+            .insert(worker_addr.clone(), outlet_info(worker_addr))
+            .await;
+        assert_eq!(registry.outlets.entries().await.len(), 1);
+
+        // No worker address passed, should return a random address because the default it's in use
+        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        assert_ne!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
+        registry
+            .outlets
+            .insert(worker_addr.clone(), outlet_info(worker_addr))
+            .await;
+        assert_eq!(registry.outlets.entries().await.len(), 2);
+
+        // Worker address passed, should return the same address
+        let passed_addr = Address::from_string("my_outlet");
+        let worker_addr = registry
+            .outlets
+            .generate_worker_addr(Some(passed_addr.clone()))
+            .await;
+        assert_eq!(worker_addr, passed_addr.clone());
+        registry
+            .outlets
+            .insert(worker_addr.clone(), outlet_info(worker_addr))
+            .await;
+        assert_eq!(registry.outlets.entries().await.len(), 3);
+
+        // Same worker address passed, should return the same address and not a random one
+        let worker_addr = registry
+            .outlets
+            .generate_worker_addr(Some(passed_addr.clone()))
+            .await;
+        assert_eq!(worker_addr, passed_addr.clone());
+    }
+
+    #[tokio::test]
+    async fn outlet_registry_generate_worker_address_start_with_some() {
+        let registry = Registry::default();
+
+        // Worker address passed, should return the same address
+        let passed_addr = Address::from_string("my_outlet");
+        let worker_addr = registry
+            .outlets
+            .generate_worker_addr(Some(passed_addr.clone()))
+            .await;
+        assert_eq!(worker_addr, passed_addr);
+        registry
+            .outlets
+            .insert(worker_addr.clone(), outlet_info(worker_addr))
+            .await;
+        assert_eq!(registry.outlets.entries().await.len(), 1);
+
+        // No worker address passed, should return the default address because it's not in use
+        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        assert_eq!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
+        registry
+            .outlets
+            .insert(worker_addr.clone(), outlet_info(worker_addr))
+            .await;
+        assert_eq!(registry.outlets.entries().await.len(), 2);
+
+        // No worker address passed, should return a random address because the default it's in use
+        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        assert_ne!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
+    }
+
+    fn outlet_info(worker_addr: Address) -> OutletInfo {
+        OutletInfo::new(&SocketAddr::from(([127, 0, 0, 1], 0)), Some(&worker_addr))
     }
 }

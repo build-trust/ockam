@@ -1,7 +1,7 @@
 use either::Either;
 
 use ockam::{Address, Context, Result};
-use ockam_abac::Resource;
+use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
 use ockam_node::WorkerBuilder;
 
@@ -18,7 +18,7 @@ use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
 
-use super::{actions, NodeManagerWorker};
+use super::NodeManagerWorker;
 
 impl NodeManagerWorker {
     pub(super) async fn start_uppercase_service(
@@ -194,9 +194,13 @@ impl NodeManager {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
 
-        let resource = Resource::assert_inline(addr.address());
         let ac = self
-            .access_control(resource, actions::HANDLE_MESSAGE, self.authority(), None)
+            .access_control(
+                self.authority(),
+                Resource::new(addr.address(), ResourceType::Echoer),
+                Action::HandleMessage,
+                None,
+            )
             .await?;
 
         WorkerBuilder::new(Echoer)

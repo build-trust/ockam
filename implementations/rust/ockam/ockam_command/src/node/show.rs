@@ -84,8 +84,8 @@ impl ShowTui {
 impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Node;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.node_name.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.node_name.clone()
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {

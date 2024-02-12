@@ -1,9 +1,10 @@
-use ockam_abac::{Action, Policy, Resource};
+use ockam_abac::{Action, Expr};
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::{async_trait, Result};
 use ockam_node::Context;
+use std::str::FromStr;
 
-use crate::nodes::models::policy::{Expression, PolicyList};
+use crate::nodes::models::policies::{PoliciesList, Policy, ResourceTypeOrName, SetPolicyRequest};
 use crate::nodes::{BackgroundNodeClient, NodeManagerWorker};
 
 use super::NodeManager;
@@ -11,14 +12,12 @@ use super::NodeManager;
 impl NodeManagerWorker {
     pub(super) async fn add_policy(
         &self,
-        resource: &str,
         action: &str,
-        policy: Policy,
+        resource: ResourceTypeOrName,
+        expression: Expr,
     ) -> Result<Response<()>, Response<Error>> {
-        let resource = Resource::new(resource);
-        let action = Action::new(action);
         self.node_manager
-            .set_policy(resource, action, policy)
+            .set_policy(resource, action, expression)
             .await
             .map(|_| Response::ok())
             .map_err(|e| Response::internal_error_no_request(&e.to_string()))
@@ -26,19 +25,13 @@ impl NodeManagerWorker {
 
     pub(super) async fn get_policy(
         &self,
-        resource: &str,
         action: &str,
+        resource: ResourceTypeOrName,
     ) -> Result<Response<Policy>, Response<Error>> {
-        let resource = Resource::new(resource);
-        let action = Action::new(action);
-        match self
-            .node_manager
-            .get_policy(resource.clone(), action.clone())
-            .await
-        {
+        match self.node_manager.get_policy(resource.clone(), action).await {
             Ok(Some(policy)) => Ok(Response::ok().body(policy)),
             Ok(None) => Err(Response::not_found_no_request(&format!(
-                "no policy found for {resource}/{action}"
+                "No policy found for resource '{resource}' and action '{action}'"
             ))),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
@@ -46,27 +39,19 @@ impl NodeManagerWorker {
 
     pub(super) async fn list_policies(
         &self,
-        resource: &str,
-    ) -> Result<Response<PolicyList>, Response<Error>> {
-        let resource = Resource::new(resource);
-        match self.node_manager.get_policies_by_resource(&resource).await {
-            Ok(policies) => Ok(Response::ok().body(PolicyList::new(
-                policies
-                    .into_iter()
-                    .map(|(a, p)| Expression::new(a, p.expression().clone()))
-                    .collect(),
-            ))),
+        resource: Option<ResourceTypeOrName>,
+    ) -> Result<Response<PoliciesList>, Response<Error>> {
+        match self.node_manager.get_policies(resource).await {
+            Ok(policies) => Ok(Response::ok().body(policies)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
     pub(super) async fn delete_policy(
         &self,
-        resource: &str,
         action: &str,
+        resource: ResourceTypeOrName,
     ) -> Result<Response<()>, Response<Error>> {
-        let resource = Resource::new(resource);
-        let action = Action::new(action);
         match self.node_manager.delete_policy(resource, action).await {
             Ok(_) => Ok(Response::ok()),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
@@ -78,35 +63,99 @@ impl NodeManager {
     /// Set a policy on a resource accessed with a specific action
     pub async fn set_policy(
         &self,
-        resource: Resource,
-        action: Action,
-        policy: Policy,
+        resource: ResourceTypeOrName,
+        action: &str,
+        expression: Expr,
     ) -> Result<()> {
-        Ok(self
-            .cli_state
-            .set_policy(&resource, &action, &policy)
-            .await?)
+        let action = Action::from_str(action)?;
+        match resource {
+            ResourceTypeOrName::Type(resource_type) => {
+                self.cli_state
+                    .policies()
+                    .store_policy_for_resource_type(&resource_type, &action, &expression)
+                    .await
+            }
+            ResourceTypeOrName::Name(resource_name) => {
+                self.cli_state
+                    .policies()
+                    .store_policy_for_resource_name(&resource_name, &action, &expression)
+                    .await
+            }
+        }
     }
 
     /// Return the policy set on a resource for a given action, if there is one
-    pub async fn get_policy(&self, resource: Resource, action: Action) -> Result<Option<Policy>> {
-        Ok(self.cli_state.get_policy(&resource, &action).await?)
-    }
-
-    pub async fn get_policies_by_resource(
+    pub async fn get_policy(
         &self,
-        resource: &Resource,
-    ) -> Result<Vec<(Action, Policy)>> {
-        Ok(self.cli_state.get_policies_by_resource(resource).await?)
+        resource: ResourceTypeOrName,
+        action: &str,
+    ) -> Result<Option<Policy>> {
+        let action = Action::from_str(action)?;
+        Ok(match resource {
+            ResourceTypeOrName::Type(resource_type) => self
+                .cli_state
+                .policies()
+                .get_policy_for_resource_type(&resource_type, &action)
+                .await?
+                .map(|p| p.into()),
+            ResourceTypeOrName::Name(resource_name) => self
+                .cli_state
+                .policies()
+                .get_policy_for_resource_name(&resource_name, &action)
+                .await?
+                .map(|p| p.into()),
+        })
     }
 
-    pub async fn delete_policy(&self, resource: Resource, action: Action) -> Result<()> {
-        Ok(self.cli_state.delete_policy(&resource, &action).await?)
+    pub async fn get_policies(&self, resource: Option<ResourceTypeOrName>) -> Result<PoliciesList> {
+        match resource {
+            Some(resource) => match resource {
+                ResourceTypeOrName::Type(resource_type) => {
+                    let resource_type_policies = self
+                        .cli_state
+                        .policies()
+                        .get_policies_for_resource_type(&resource_type)
+                        .await?;
+                    Ok(PoliciesList::new(vec![], resource_type_policies))
+                }
+                ResourceTypeOrName::Name(resource_name) => {
+                    let resource_policies = self
+                        .cli_state
+                        .policies()
+                        .get_policies_for_resource_name(&resource_name)
+                        .await?;
+                    Ok(PoliciesList::new(resource_policies, vec![]))
+                }
+            },
+            None => {
+                let (resource_policies, resource_type_policies) =
+                    self.cli_state.policies().get_policies().await?;
+                Ok(PoliciesList::new(resource_policies, resource_type_policies))
+            }
+        }
+    }
+
+    pub async fn delete_policy(&self, resource: ResourceTypeOrName, action: &str) -> Result<()> {
+        let action = Action::from_str(action)?;
+        match resource {
+            ResourceTypeOrName::Type(resource_type) => {
+                self.cli_state
+                    .policies()
+                    .delete_policy_for_resource_type(&resource_type, &action)
+                    .await
+            }
+            ResourceTypeOrName::Name(resource_name) => {
+                self.cli_state
+                    .policies()
+                    .delete_policy_for_resource_name(&resource_name, &action)
+                    .await
+            }
+        }
     }
 }
 
-pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
-    format!("/policy/{r}/{a}")
+pub fn policy_path(a: &Action) -> String {
+    format!("/policy/{a}")
 }
 
 #[async_trait]
@@ -114,9 +163,29 @@ pub trait Policies {
     async fn add_policy(
         &self,
         ctx: &Context,
-        resource_name: &Resource,
+        resource: &ResourceTypeOrName,
         action: &Action,
-        policy: &Policy,
+        expression: &Expr,
+    ) -> miette::Result<()>;
+
+    async fn show_policy(
+        &self,
+        ctx: &Context,
+        resource: &ResourceTypeOrName,
+        action: &Action,
+    ) -> miette::Result<Policy>;
+
+    async fn list_policies(
+        &self,
+        ctx: &Context,
+        resource: Option<&ResourceTypeOrName>,
+    ) -> miette::Result<PoliciesList>;
+
+    async fn delete_policy(
+        &self,
+        ctx: &Context,
+        resource: &ResourceTypeOrName,
+        action: &Action,
     ) -> miette::Result<()>;
 }
 
@@ -125,11 +194,42 @@ impl Policies for BackgroundNodeClient {
     async fn add_policy(
         &self,
         ctx: &Context,
-        resource: &Resource,
+        resource: &ResourceTypeOrName,
         action: &Action,
-        policy: &Policy,
+        expression: &Expr,
     ) -> miette::Result<()> {
-        let request = Request::post(policy_path(resource, action)).body(policy);
+        let payload = SetPolicyRequest::new(resource.clone(), expression.clone());
+        let request = Request::post(policy_path(action)).body(payload);
+        self.tell(ctx, request).await?;
+        Ok(())
+    }
+
+    async fn show_policy(
+        &self,
+        ctx: &Context,
+        resource: &ResourceTypeOrName,
+        action: &Action,
+    ) -> miette::Result<Policy> {
+        let request = Request::get(policy_path(action)).body(resource);
+        self.ask(ctx, request).await
+    }
+
+    async fn list_policies(
+        &self,
+        ctx: &Context,
+        resource: Option<&ResourceTypeOrName>,
+    ) -> miette::Result<PoliciesList> {
+        let request = Request::get("/policy").body(resource);
+        self.ask(ctx, request).await
+    }
+
+    async fn delete_policy(
+        &self,
+        ctx: &Context,
+        resource: &ResourceTypeOrName,
+        action: &Action,
+    ) -> miette::Result<()> {
+        let request = Request::delete(policy_path(action)).body(resource);
         self.tell(ctx, request).await?;
         Ok(())
     }

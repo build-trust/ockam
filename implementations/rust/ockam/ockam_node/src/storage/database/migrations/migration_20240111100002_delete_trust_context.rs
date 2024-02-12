@@ -49,12 +49,10 @@ impl PolicyTrustContextId {
             .into_core()?;
 
         for row in rows {
-            let expression = row.expression;
-
-            let expression: Expr = minicbor::decode(&expression)?;
-
-            let expression = Self::update_expression(&expression);
-
+            let expression = {
+                let expression: Expr = minicbor::decode(&row.expression)?;
+                Self::update_expression(&expression)
+            };
             for node_name in &node_names {
                 let insert = query("INSERT INTO policy (resource, action, expression, node_name) VALUES (?, ?, ?, ?)")
                     .bind(row.resource.to_sql())
@@ -187,8 +185,6 @@ struct PolicyRow {
 
 #[cfg(test)]
 mod test {
-    use crate::database::migration_20231231100000_node_name_identity_attributes::NodeNameIdentityAttributes;
-    use crate::database::migration_20240111100001_add_authority_tables::AuthorityAttributes;
     use crate::database::migrations::sqlx_migration::NodesMigration;
     use crate::database::SqlxDatabase;
     use sqlx::query::Query;
@@ -245,9 +241,9 @@ mod test {
         let db_file = NamedTempFile::new().unwrap();
 
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
-        NodesMigration.migrate_schema(&pool).await?;
-        NodeNameIdentityAttributes::migrate_attributes_node_name(&pool).await?;
-        AuthorityAttributes::migrate_authority_attributes_to_members(&pool).await?;
+        NodesMigration
+            .migrate_schema_before(&pool, 20240111100002)
+            .await?;
 
         let insert_node1 = insert_node("n1".to_string());
         let insert_node2 = insert_node("n2".to_string());
@@ -270,6 +266,10 @@ mod test {
         insert2.execute(&pool).await.void()?;
         insert3.execute(&pool).await.void()?;
 
+        // apply migrations
+        NodesMigration
+            .migrate_schema_range(&pool, 20240111100002, 20240212100000)
+            .await?;
         let migrated = PolicyTrustContextId::migrate_update_policies(&pool).await?;
         assert!(migrated);
 
@@ -312,7 +312,7 @@ mod test {
         action: String,
         expression: Vec<u8>,
     ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
-        query("INSERT INTO policy_old (resource, action, expression) VALUES (?, ?, ?)")
+        query("INSERT INTO policy (resource, action, expression) VALUES (?, ?, ?)")
             .bind(resource.to_sql())
             .bind(action.to_sql())
             .bind(expression.to_sql())

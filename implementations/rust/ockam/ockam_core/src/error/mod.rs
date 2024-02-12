@@ -145,6 +145,19 @@ impl ErrorTrait for Error {
     }
 }
 
+impl From<strum::ParseError> for Error {
+    #[cfg(feature = "std")]
+    #[track_caller]
+    fn from(e: strum::ParseError) -> Self {
+        Error::new(code::Origin::Application, code::Kind::Invalid, e)
+    }
+    #[cfg(not(feature = "std"))]
+    #[track_caller]
+    fn from(_: strum::ParseError) -> Self {
+        Error::new_without_cause(code::Origin::Application, code::Kind::Invalid)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,12 +166,12 @@ mod tests {
     #[test]
     fn test_error_display() {
         let e = Error::new(Origin::Node, Kind::NotFound, "address not found");
-        assert_eq!(e.to_string(), "address not found (origin: Node, kind: NotFound, source location: implementations/rust/ockam/ockam_core/src/error/mod.rs:155:17)")
+        assert!(e.to_string().contains("address not found (origin: Node, kind: NotFound, source location: implementations/rust/ockam/ockam_core/src/error/mod.rs"))
     }
 
     #[test]
     fn test_error_without_cause_display() {
         let e = Error::new_without_cause(Origin::Node, Kind::NotFound);
-        assert_eq!(e.to_string(), "origin: Node, kind: NotFound, source location: implementations/rust/ockam/ockam_core/src/error/mod.rs:161:17")
+        assert!(e.to_string().contains("origin: Node, kind: NotFound, source location: implementations/rust/ockam/ockam_core/src/error/mod.rs"))
     }
 }

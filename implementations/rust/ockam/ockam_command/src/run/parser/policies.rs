@@ -42,7 +42,7 @@ mod tests {
         let cmds = parsed.into_commands().unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
-        assert_eq!(&cmds[0].resource.to_string(), "r1");
+        assert_eq!(cmds[0].resource.as_ref().unwrap().as_str(), "r1");
         assert_eq!(
             &cmds[0].expression.to_string(),
             "(= subject.component \"c1\")"
@@ -57,23 +57,41 @@ mod tests {
                 resource: r1
                 expression: (= subject.component "c1")
               - at: n2
-                resource: r2
+                resource: tcp-outlet
                 expression: (= subject.component "c2")
+              - at: n3
+                resource-type: tcp-inlet
+                expression: (= subject.component "c3")
         "#;
         let parsed: Policies = serde_yaml::from_str(config).unwrap();
         let cmds = parsed.into_commands().unwrap();
-        assert_eq!(cmds.len(), 2);
+        assert_eq!(cmds.len(), 3);
+
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
-        assert_eq!(&cmds[0].resource.to_string(), "r1");
+        assert_eq!(cmds[0].resource.as_ref().unwrap().as_str(), "r1");
         assert_eq!(
             &cmds[0].expression.to_string(),
             "(= subject.component \"c1\")"
         );
+
         assert_eq!(cmds[1].at.as_ref().unwrap(), "n2");
-        assert_eq!(&cmds[1].resource.to_string(), "r2");
+        assert_eq!(
+            &cmds[1].resource.as_ref().unwrap().to_string(),
+            "tcp-outlet"
+        );
         assert_eq!(
             &cmds[1].expression.to_string(),
             "(= subject.component \"c2\")"
+        );
+
+        assert_eq!(cmds[2].at.as_ref().unwrap(), "n3");
+        assert_eq!(
+            &cmds[2].resource_type.as_ref().unwrap().to_string(),
+            "tcp-inlet"
+        );
+        assert_eq!(
+            &cmds[2].expression.to_string(),
+            "(= subject.component \"c3\")"
         );
     }
 }

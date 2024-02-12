@@ -97,7 +97,9 @@ mod test {
     async fn test_migration() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
-        NodesMigration.migrate_schema(&pool).await?;
+        NodesMigration
+            .migrate_schema_before(&pool, 20240111100001)
+            .await?;
         NodeNameIdentityAttributes::migrate_attributes_node_name(&pool).await?;
 
         let authority_node_name = "authority".to_string();
@@ -128,12 +130,17 @@ mod test {
         );
         insert.execute(&pool).await.void()?;
 
-        // now create a database and apply the migrations
-        let db = SqlxDatabase::create(db_file.path()).await?;
+        // apply migrations
+        NodesMigration
+            .migrate_schema_single(&pool, 20240111100001)
+            .await?;
+        AuthorityAttributes::migrate_authority_attributes_to_members(&pool).await?;
+
+        // check data
         let rows1: Vec<IdentityAttributesRow> =
             query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind(regular_node_name.to_sql())
-                .fetch_all(&*db.pool)
+                .fetch_all(&pool)
                 .await
                 .into_core()?;
         assert_eq!(rows1.len(), 1);
@@ -142,14 +149,14 @@ mod test {
         let rows2: Vec<IdentityAttributesRow> =
             query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind(authority_node_name.to_sql())
-                .fetch_all(&*db.pool)
+                .fetch_all(&pool)
                 .await
                 .into_core()?;
         assert_eq!(rows2.len(), 0);
 
         let rows3: Vec<MemberRow> =
             query_as("SELECT identifier, attributes, added_by, added_at, is_pre_trusted FROM authority_member")
-                .fetch_all(&*db.pool)
+                .fetch_all(&pool)
                 .await
                 .into_core()?;
         let member = &rows3[0];

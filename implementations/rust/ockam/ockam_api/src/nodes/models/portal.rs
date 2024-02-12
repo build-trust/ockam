@@ -1,13 +1,14 @@
 //! Inlets and outlet request/response types
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
 use ockam_abac::Expr;
-use ockam_core::{Address, Route};
+use ockam_core::{Address, IncomingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +51,7 @@ impl CreateInlet {
     pub fn via_project(
         listen: String,
         to: MultiAddr,
-        alias: impl Into<String>,
+        alias: String,
         prefix_route: Route,
         suffix_route: Route,
         wait_connection: bool,
@@ -58,7 +59,7 @@ impl CreateInlet {
         Self {
             listen_addr: listen,
             outlet_addr: to,
-            alias: alias.into(),
+            alias,
             authorized: None,
             prefix_route,
             suffix_route,
@@ -71,7 +72,7 @@ impl CreateInlet {
     pub fn to_node(
         listen: String,
         to: MultiAddr,
-        alias: impl Into<String>,
+        alias: String,
         prefix_route: Route,
         suffix_route: Route,
         auth: Option<Identifier>,
@@ -80,7 +81,7 @@ impl CreateInlet {
         Self {
             listen_addr: listen,
             outlet_addr: to,
-            alias: alias.into(),
+            alias,
             authorized: auth,
             prefix_route,
             suffix_route,
@@ -134,28 +135,24 @@ impl CreateInlet {
 pub struct CreateOutlet {
     /// The address the portal should connect or bind to
     #[n(1)] pub socket_addr: SocketAddr,
-    /// The address the portal should connect or bind to
-    #[n(2)] pub worker_addr: Address,
-    /// A human-friendly alias for this portal endpoint
-    #[n(3)] pub alias: String,
+    /// The address the portal should listen to
+    #[n(2)] pub worker_addr: Option<Address>,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
     /// tighten the flow control
-    #[n(4)] pub reachable_from_default_secure_channel: bool,
+    #[n(3)] pub reachable_from_default_secure_channel: bool,
     /// The expression for the access control policy
-    #[n(5)] pub policy_expression: Option<Expr>,
+    #[n(4)] pub policy_expression: Option<Expr>,
 }
 
 impl CreateOutlet {
     pub fn new(
         socket_addr: SocketAddr,
-        worker_addr: Address,
-        alias: impl Into<String>,
+        worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
             socket_addr,
             worker_addr,
-            alias: alias.into(),
             reachable_from_default_secure_channel,
             policy_expression: None,
         }
@@ -211,22 +208,19 @@ impl InletStatus {
 pub struct OutletStatus {
     #[n(1)] pub socket_addr: SocketAddr,
     #[n(2)] pub worker_addr: Address,
-    #[n(3)] pub alias: String,
     /// An optional status payload
-    #[n(4)] pub payload: Option<String>,
+    #[n(3)] pub payload: Option<String>,
 }
 
 impl OutletStatus {
     pub fn new(
         socket_addr: SocketAddr,
         worker_addr: Address,
-        alias: impl Into<String>,
         payload: impl Into<Option<String>>,
     ) -> Self {
         Self {
             socket_addr,
             worker_addr,
-            alias: alias.into(),
             payload: payload.into(),
         }
     }
@@ -271,4 +265,10 @@ impl OutletList {
     pub fn new(list: Vec<OutletStatus>) -> Self {
         Self { list }
     }
+}
+
+#[derive(Debug)]
+pub enum OutletAccessControl {
+    IncomingAccessControl(Arc<dyn IncomingAccessControl>),
+    PolicyExpression(Option<Expr>),
 }

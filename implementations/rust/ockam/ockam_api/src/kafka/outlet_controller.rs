@@ -6,7 +6,6 @@ use ockam::compat::tokio::sync::Mutex;
 use ockam_abac::Expr;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
@@ -70,12 +69,7 @@ impl KafkaOutletController {
         worker_address: Address,
         policy_expression: Option<Expr>,
     ) -> Result<SocketAddr> {
-        let mut payload = CreateOutlet::new(
-            socket_address,
-            worker_address,
-            format!("kafka-outlet-{}", random_string()),
-            false,
-        );
+        let mut payload = CreateOutlet::new(socket_address, Some(worker_address), false);
         if let Some(expr) = policy_expression {
             payload.set_policy_expression(expr);
         }

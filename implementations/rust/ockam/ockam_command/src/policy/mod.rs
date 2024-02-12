@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
-
-use ockam_abac::{Action, Resource};
+use miette::miette;
+use ockam_abac::ResourceType;
+use std::str::FromStr;
 
 pub use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
@@ -54,6 +55,9 @@ impl PolicyCommand {
     }
 }
 
-pub(crate) fn policy_path(r: &Resource, a: &Action) -> String {
-    format!("/policy/{r}/{a}")
+pub(crate) fn resource_type_parser(input: &str) -> miette::Result<ResourceType> {
+    ResourceType::from_str(input).map_err(|_| {
+        let valid_values = ResourceType::join_enum_values_as_string();
+        miette!(format!("Valid values are: {valid_values}"))
+    })
 }

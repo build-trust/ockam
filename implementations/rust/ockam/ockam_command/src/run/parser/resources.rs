@@ -65,12 +65,31 @@ impl NamedResources {
         self.items
             .into_iter()
             .map(|(n, a)| {
-                let mut args = match name_arg_key {
+                // Add the name of the resource as the first argument
+                let mut parsed_args = match name_arg_key {
                     None => vec![n],
-                    Some(arg) => vec![as_keyword_arg(&arg.to_string()), n],
+                    Some(arg) => {
+                        // Use the given argument key as the name of the resource
+                        let name = a
+                            .args
+                            .get(arg)
+                            .cloned()
+                            .unwrap_or(ArgValue::String(n.to_string()));
+                        vec![as_keyword_arg(&arg.to_string()), name.to_string()]
+                    }
                 };
-                args.extend(a.args.into_iter().flat_map(|(k, v)| as_command_arg(k, v)));
-                get_subcommand(&args)
+                // Remove the name of the resource from the arguments
+                let args = if let Some(arg) = name_arg_key {
+                    a.args
+                        .into_iter()
+                        .filter(|(k, _)| k != arg)
+                        .collect::<BTreeMap<_, _>>()
+                } else {
+                    a.args
+                };
+                // Add the rest of the arguments
+                parsed_args.extend(args.into_iter().flat_map(|(k, v)| as_command_arg(k, v)));
+                get_subcommand(&parsed_args)
             })
             .collect::<Result<Vec<_>>>()
     }
@@ -145,7 +164,7 @@ pub struct Args {
 
 pub type ArgKey = String;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ArgValue {
     String(String),

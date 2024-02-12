@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::nodes::models::portal::OutletList;
@@ -94,8 +94,8 @@ impl DeleteCommand {
 impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Outlet;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.cmd.alias.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.alias.clone()
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
@@ -110,16 +110,16 @@ impl DeleteCommandTui for DeleteTui {
         self.opts.terminal.clone()
     }
 
-    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        self.cmd.alias.clone().ok_or(miette!("No alias provided"))
-    }
-
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         let res: OutletList = self
             .node
             .ask(&self.ctx, Request::get("/node/outlet"))
             .await?;
-        let items_names: Vec<String> = res.list.iter().map(|outlet| outlet.alias.clone()).collect();
+        let items_names: Vec<String> = res
+            .list
+            .iter()
+            .map(|outlet| outlet.worker_addr.address().to_string())
+            .collect();
         Ok(items_names)
     }
 

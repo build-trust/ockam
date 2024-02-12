@@ -85,8 +85,8 @@ impl DeleteTui {
 impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.cmd.space_name.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.space_name.clone()
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
@@ -99,14 +99,6 @@ impl DeleteCommandTui for DeleteTui {
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {
         self.opts.terminal.clone()
-    }
-
-    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        let space_name = match &self.cmd.space_name {
-            None => self.opts.state.get_default_space().await?.space_name(),
-            Some(n) => n.to_string(),
-        };
-        Ok(space_name)
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {

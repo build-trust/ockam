@@ -16,6 +16,7 @@ use crate::kafka::{
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
 use crate::kafka::{OutletManagerService, PrefixRelayService};
+use crate::nodes::models::portal::OutletAccessControl;
 use crate::nodes::models::services::{
     DeleteServiceRequest, StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaRequest,
     StartServiceRequest,
@@ -202,11 +203,9 @@ impl InMemoryNode {
         self.create_outlet(
             context,
             bootstrap_server_addr,
-            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
-            KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
             false,
-            None,
-            outlet_policy_expression.clone(),
+            OutletAccessControl::PolicyExpression(outlet_policy_expression.clone()),
         )
         .await?;
 
@@ -237,13 +236,13 @@ impl InMemoryNode {
         self.create_inlet(
             context,
             SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-            random_name(),
             route![local_interceptor_address.clone()],
             route![
                 KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS
             ],
             "/secure/api".parse()?,
+            random_name(),
             outlet_policy_expression,
             None,
             None,
@@ -335,13 +334,13 @@ impl InMemoryNode {
         self.create_inlet(
             context,
             SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-            inlet_alias,
             route![local_interceptor_address.clone()],
             route![
                 KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                 KAFKA_OUTLET_BOOTSTRAP_ADDRESS
             ],
             outlet_node_multiaddr,
+            inlet_alias,
             inlet_policy_expression,
             None,
             None,
@@ -407,11 +406,9 @@ impl NodeManager {
             .create_outlet(
                 context,
                 bootstrap_server_addr,
-                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
-                KAFKA_OUTLET_BOOTSTRAP_ADDRESS.to_string(),
+                Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,
-                None,
-                outlet_policy_expression,
+                OutletAccessControl::PolicyExpression(outlet_policy_expression),
             )
             .await
         {

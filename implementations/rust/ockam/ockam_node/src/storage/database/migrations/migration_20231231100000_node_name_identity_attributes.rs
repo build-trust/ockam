@@ -91,7 +91,9 @@ mod test {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
-        NodesMigration.migrate_schema(&pool).await?;
+        NodesMigration
+            .migrate_schema_before(&pool, 20231231100000)
+            .await?;
 
         // insert attribute rows in the previous table
         let attributes = create_attributes("identifier1")?;
@@ -104,18 +106,23 @@ mod test {
         let insert_node2 = insert_node("node2".to_string());
         insert_node2.execute(&pool).await.void()?;
 
-        // now create a database and apply the migrations
-        let db = SqlxDatabase::create(db_file.path()).await?;
+        // apply migrations
+        NodesMigration
+            .migrate_schema_single(&pool, 20231231100000)
+            .await?;
+        NodeNameIdentityAttributes::migrate_attributes_node_name(&pool).await?;
+
+        // check data
         let rows1: Vec<IdentityAttributesRow> =
             query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind("node1".to_string().to_sql())
-                .fetch_all(&*db.pool)
+                .fetch_all(&pool)
                 .await
                 .into_core()?;
         let rows2: Vec<IdentityAttributesRow> =
             query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind("node2".to_string().to_sql())
-                .fetch_all(&*db.pool)
+                .fetch_all(&pool)
                 .await
                 .into_core()?;
         assert_eq!(rows1.len(), 1);
@@ -147,7 +154,7 @@ mod test {
     }
 
     fn insert_query(identifier: &str, attributes: Vec<u8>) -> Query<Sqlite, SqliteArguments> {
-        query("INSERT INTO identity_attributes_old VALUES (?, ?, ?, ?, ?)")
+        query("INSERT INTO identity_attributes VALUES (?, ?, ?, ?, ?)")
             .bind(identifier.to_sql())
             .bind(attributes.to_sql())
             .bind(1.to_sql())

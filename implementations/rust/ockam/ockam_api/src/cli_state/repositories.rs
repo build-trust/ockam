@@ -1,6 +1,6 @@
 use ockam::identity::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
 use ockam::identity::{ChangeHistoryRepository, ChangeHistorySqlxDatabase};
-use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
+use ockam_abac::{ResourcesRepository, ResourcesSqlxDatabase};
 use ockam_core::compat::sync::Arc;
 use ockam_vault::storage::{SecretsRepository, SecretsSqlxDatabase};
 
@@ -42,12 +42,12 @@ impl CliState {
         Arc::new(NodesSqlxDatabase::new(self.database()))
     }
 
-    pub(super) fn policies_repository(&self) -> Arc<dyn PoliciesRepository> {
-        Arc::new(PolicySqlxDatabase::new(self.database()))
-    }
-
     pub(super) fn projects_repository(&self) -> Arc<dyn ProjectsRepository> {
         Arc::new(ProjectsSqlxDatabase::new(self.database()))
+    }
+
+    pub(super) fn resources_repository(&self) -> Arc<dyn ResourcesRepository> {
+        Arc::new(ResourcesSqlxDatabase::new(self.database()))
     }
 
     pub(super) fn spaces_repository(&self) -> Arc<dyn SpacesRepository> {

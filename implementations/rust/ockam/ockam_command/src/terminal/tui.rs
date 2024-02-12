@@ -10,7 +10,7 @@ use super::color_primary;
 pub trait ShowCommandTui {
     const ITEM_NAME: PluralTerm;
 
-    fn cmd_arg_item_name(&self) -> Option<&str>;
+    fn cmd_arg_item_name(&self) -> Option<String>;
     fn node_name(&self) -> Option<&str> {
         None
     }
@@ -112,12 +112,11 @@ pub fn get_opt_node_name_message(node_name: Option<&str>) -> String {
 pub trait DeleteCommandTui {
     const ITEM_NAME: PluralTerm;
 
-    fn cmd_arg_item_name(&self) -> Option<&str>;
+    fn cmd_arg_item_name(&self) -> Option<String>;
     fn cmd_arg_delete_all(&self) -> bool;
     fn cmd_arg_confirm_deletion(&self) -> bool;
     fn terminal(&self) -> Terminal<TerminalStream<Term>>;
 
-    async fn get_arg_item_name_or_default(&self) -> miette::Result<String>;
     async fn list_items_names(&self) -> miette::Result<Vec<String>>;
     async fn delete_single(&self, item_name: &str) -> miette::Result<()>;
     async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
@@ -175,14 +174,14 @@ pub trait DeleteCommandTui {
                     return Err(miette!(
                         "The {} {} was not found",
                         Self::ITEM_NAME.singular(),
-                        color_primary(item_name)
+                        color_primary(&item_name)
                     ));
                 }
                 if terminal.confirmed_with_flag_or_prompt(
                     self.cmd_arg_confirm_deletion(),
                     "Are you sure you want to proceed?",
                 )? {
-                    self.delete_single(item_name).await?;
+                    self.delete_single(&item_name).await?;
                 }
             }
             return Ok(());

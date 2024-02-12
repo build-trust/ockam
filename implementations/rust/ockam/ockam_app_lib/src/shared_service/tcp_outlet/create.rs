@@ -2,6 +2,8 @@ use crate::state::AppState;
 use crate::Error;
 use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models::portal::OutletAccessControl;
+use ockam_core::Address;
 use ockam_transport_tcp::resolve_peer;
 use tracing::{debug, info};
 
@@ -10,27 +12,29 @@ const DEFAULT_HOST: &str = "localhost";
 
 impl AppState {
     /// Create a TCP outlet within the default node.
-    pub async fn tcp_outlet_create(&self, service: String, address: String) -> crate::Result<()> {
-        debug!(%service, %address, "Creating an outlet");
-        let addr = if let Some((host, port)) = address.split_once(':') {
+    pub async fn tcp_outlet_create(&self, from: String, to: String) -> crate::Result<()> {
+        debug!(%from, %to, "Creating an outlet");
+        let addr = if let Some((host, port)) = to.split_once(':') {
             format!("{host}:{port}")
         } else {
-            format!("{DEFAULT_HOST}:{address}")
+            format!("{DEFAULT_HOST}:{to}")
         };
         let socket_addr = resolve_peer(addr).into_diagnostic().wrap_err(
             "Invalid address. The expected formats are 'host:port', 'ip:port' or 'port'",
         )?;
-        let worker_addr = extract_address_value(&service).wrap_err("Invalid service address")?;
+        let worker_addr: Address = extract_address_value(&from)
+            .wrap_err("Invalid service address")?
+            .into();
         let node_manager = self.node_manager().await;
         match node_manager
             .create_outlet(
                 &self.context(),
                 socket_addr,
-                worker_addr.clone().into(),
-                worker_addr.clone(),
+                Some(worker_addr.clone()),
                 true,
-                Some(self.create_invitations_access_control(worker_addr).await?),
-                None,
+                OutletAccessControl::IncomingAccessControl(
+                    self.create_invitations_access_control(worker_addr).await?,
+                ),
             )
             .await
         {
