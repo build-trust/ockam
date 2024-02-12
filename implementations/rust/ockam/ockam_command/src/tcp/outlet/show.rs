@@ -5,9 +5,8 @@ use core::fmt::Write;
 use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
-use ockam::{route, Context};
+use ockam::Context;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::route_to_multiaddr;
 use ockam_api::{
     address::extract_address_value,
     nodes::models::portal::{OutletList, OutletStatus},
@@ -68,8 +67,7 @@ impl ShowCommand {
 #[derive(Debug, Serialize)]
 struct OutletInformation {
     node_name: String,
-    alias: String,
-    addr: MultiAddr,
+    worker_addr: MultiAddr,
     socket_addr: SocketAddr,
 }
 
@@ -78,9 +76,8 @@ impl Output for OutletInformation {
         let mut w = String::new();
         write!(w, "Outlet")?;
         write!(w, "\n  On Node: {}", self.node_name)?;
-        write!(w, "\n  Alias: {}", self.alias)?;
-        write!(w, "\n  From Outlet: {}", self.addr)?;
-        write!(w, "\n  To TCP: {}", self.socket_addr)?;
+        write!(w, "\n  From address: {}", self.worker_addr)?;
+        write!(w, "\n  To TCP server: {}", self.socket_addr)?;
         Ok(w)
     }
 }
@@ -116,8 +113,8 @@ impl ShowTui {
 impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Outlet;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.cmd.alias.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.alias.clone()
     }
 
     fn node_name(&self) -> Option<&str> {
@@ -140,12 +137,12 @@ impl ShowCommandTui for ShowTui {
             .node
             .ask(&self.ctx, Request::get("/node/outlet"))
             .await?;
-        let aliases: Vec<String> = outlets
+        let items_names: Vec<String> = outlets
             .list
             .into_iter()
-            .map(|outlet| outlet.alias)
+            .map(|outlet| outlet.worker_addr.address().to_string())
             .collect();
-        Ok(aliases)
+        Ok(items_names)
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
@@ -155,9 +152,7 @@ impl ShowCommandTui for ShowTui {
             .await?;
         let info = OutletInformation {
             node_name: self.node.node_name().to_string(),
-            alias: outlet_status.alias,
-            addr: route_to_multiaddr(&route![outlet_status.worker_addr.to_string()])
-                .ok_or_else(|| miette!("Invalid Outlet Address"))?,
+            worker_addr: outlet_status.worker_address().into_diagnostic()?,
             socket_addr: outlet_status.socket_addr,
         };
         self.terminal()

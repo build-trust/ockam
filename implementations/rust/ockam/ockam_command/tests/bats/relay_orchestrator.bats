@@ -21,7 +21,7 @@ teardown() {
   port="$(random_port)"
 
   run_success "$OCKAM" node create blue
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
   fwd="$(random_str)"
   run_success "$OCKAM" relay create $fwd

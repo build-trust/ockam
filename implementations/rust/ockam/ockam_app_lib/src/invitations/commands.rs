@@ -6,6 +6,7 @@ use ockam_api::cloud::email_address::EmailAddress;
 use tracing::{debug, info, trace, warn};
 
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
+use ockam_core::Address;
 
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
@@ -189,7 +190,7 @@ impl AppState {
     pub async fn create_service_invitation_by_alias(
         &self,
         recipient_email: EmailAddress,
-        alias: &str,
+        outlet_worker_addr: &Address,
     ) -> Result<(), String> {
         let node_manager = self.node_manager().await;
         let outlets = node_manager.list_outlets().await;
@@ -197,14 +198,14 @@ impl AppState {
         let outlet_socket_addr = outlets
             .list
             .iter()
-            .find(|o| o.alias == alias)
+            .find(|o| &o.worker_addr == outlet_worker_addr)
             .map(|o| o.socket_addr.to_string());
 
         if let Some(outlet_socket_addr) = outlet_socket_addr {
             self.create_service_invitation_by_socket_addr(recipient_email, outlet_socket_addr)
                 .await
         } else {
-            Err(format!("Cannot find service '{}'", alias))
+            Err(format!("Cannot find service '{}'", outlet_worker_addr))
         }
     }
 

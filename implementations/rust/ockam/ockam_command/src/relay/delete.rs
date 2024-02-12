@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
@@ -83,8 +83,8 @@ impl DeleteTui {
 impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Relay;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.cmd.relay_name.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.relay_name.clone()
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
@@ -97,13 +97,6 @@ impl DeleteCommandTui for DeleteTui {
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {
         self.opts.terminal.clone()
-    }
-
-    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
-        self.cmd
-            .relay_name
-            .clone()
-            .ok_or(miette!("No relay name provided"))
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {

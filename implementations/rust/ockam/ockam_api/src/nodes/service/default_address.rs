@@ -1,6 +1,7 @@
 pub struct DefaultAddress;
 
 impl DefaultAddress {
+    pub const OUTLET_SERVICE: &'static str = "outlet";
     pub const RELAY_SERVICE: &'static str = "forwarding_service";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
@@ -17,7 +18,8 @@ impl DefaultAddress {
     pub const KAFKA_DIRECT: &'static str = "kafka_direct";
 
     pub fn is_valid(name: &str) -> bool {
-        matches!(name, |Self::RELAY_SERVICE| Self::UPPERCASE_SERVICE
+        matches!(name, |Self::OUTLET_SERVICE| Self::RELAY_SERVICE
+            | Self::UPPERCASE_SERVICE
             | Self::ECHO_SERVICE
             | Self::HOP_SERVICE
             | Self::SECURE_CHANNEL_LISTENER
@@ -34,6 +36,7 @@ impl DefaultAddress {
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
         [
+            Self::OUTLET_SERVICE,
             Self::RELAY_SERVICE,
             Self::UPPERCASE_SERVICE,
             Self::ECHO_SERVICE,
@@ -61,6 +64,7 @@ mod test {
     #[test]
     fn test_default_address_is_valid() {
         assert!(!DefaultAddress::is_valid("foo"));
+        assert!(DefaultAddress::is_valid(DefaultAddress::OUTLET_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::RELAY_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::UPPERCASE_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::ECHO_SERVICE));

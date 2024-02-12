@@ -83,8 +83,8 @@ impl ShowTui {
 impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.space_name.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.space_name.clone()
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {

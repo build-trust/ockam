@@ -508,8 +508,10 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         output_messages: &[String],
         is_finished: &Mutex<bool>,
     ) -> Result<()> {
+        if output_messages.is_empty() {
+            return Ok(());
+        }
         let spinner = self.progress_spinner();
-
         self.progress_output_with_progress_bar(output_messages, is_finished, spinner.as_ref())
             .await
     }
@@ -520,7 +522,6 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         is_finished: &Mutex<bool>,
         progress_bar: Option<&ProgressBar>,
     ) -> Result<()> {
-        let mut i = 0;
         let progress_bar = match progress_bar {
             Some(pb) => pb,
             None => return Ok(()),
@@ -532,15 +533,14 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
                 break;
             }
 
-            progress_bar.set_message(output_messages[i].clone());
-
-            if i >= output_messages.len() - 1 {
-                i = 0;
-            } else {
-                i += 1;
+            for message in output_messages {
+                progress_bar.set_message(message.clone());
+                sleep(Duration::from_millis(500)).await;
+                if *is_finished.lock().await {
+                    progress_bar.finish_and_clear();
+                    break;
+                }
             }
-
-            sleep(Duration::from_millis(500)).await;
         }
 
         Ok(())
@@ -556,6 +556,7 @@ pub enum PluralTerm {
     Project,
     Inlet,
     Outlet,
+    Policy,
 }
 
 impl PluralTerm {
@@ -569,6 +570,7 @@ impl PluralTerm {
             PluralTerm::Project => "project",
             PluralTerm::Inlet => "inlet",
             PluralTerm::Outlet => "outlet",
+            PluralTerm::Policy => "policy",
         }
     }
 
@@ -582,6 +584,7 @@ impl PluralTerm {
             PluralTerm::Project => "projects",
             PluralTerm::Inlet => "inlets",
             PluralTerm::Outlet => "outlets",
+            PluralTerm::Policy => "policies",
         }
     }
 }

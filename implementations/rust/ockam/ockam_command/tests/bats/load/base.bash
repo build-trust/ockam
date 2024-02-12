@@ -33,6 +33,8 @@ load_bats_ext() {
   load "$BATS_LIB/bats-assert/load.bash"
 }
 
+export PYTHON_SERVER_PORT=5000
+
 setup_python_server() {
   p=$(python_pid_file_path)
   if [[ ! -f "$p" ]]; then
@@ -41,7 +43,7 @@ setup_python_server() {
     touch "$p"
 
     # Log server data to OCKAM_HOME_BASE
-    python3 -m http.server --bind 127.0.0.1 5000 &>python_server.log &
+    python3 -m http.server --bind 127.0.0.1 $PYTHON_SERVER_PORT &>python_server.log &
     pid="$!"
     echo "$pid" >"$p"
     popd || {

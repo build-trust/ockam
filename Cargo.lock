@@ -4199,6 +4199,7 @@ dependencies = [
  "rustyline-derive",
  "sqlx",
  "str-buf",
+ "strum 0.26.1",
  "tempfile",
  "tokio",
  "tracing",
@@ -4397,6 +4398,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "spin 0.9.8",
+ "strum 0.26.1",
  "tinyvec",
  "tokio",
  "tracing",
@@ -5454,7 +5456,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "strum",
+ "strum 0.25.0",
  "strum_macros 0.25.3",
  "syntect",
  "tokio",
@@ -5577,7 +5579,7 @@ dependencies = [
  "nu-ansi-term 0.49.0",
  "serde",
  "strip-ansi-escapes",
- "strum",
+ "strum 0.25.0",
  "strum_macros 0.25.3",
  "thiserror",
  "unicode-segmentation",
@@ -6772,6 +6774,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
 
 [[package]]
+name = "strum"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "723b93e8addf9aa965ebe2d11da6d7540fa2283fcea14b3371ff055f7ba13f5f"
+dependencies = [
+ "strum_macros 0.26.1",
+]
+
+[[package]]
 name = "strum_macros"
 version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6789,6 +6800,19 @@ name = "strum_macros"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.50",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a3417fc93d76740d974a01654a09777cb500428cc874ca9f45edfe0c4d4cd18"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",

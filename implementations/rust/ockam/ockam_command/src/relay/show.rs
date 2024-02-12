@@ -88,8 +88,8 @@ impl ShowTui {
 impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Relay;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.cmd.relay_name.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.relay_name.clone()
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {

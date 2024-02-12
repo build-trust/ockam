@@ -17,6 +17,7 @@ use crate::cli::check_ockam_executable;
 use crate::state::AppState;
 use ockam_api::cli_state::CliState;
 use ockam_api::cloud::email_address::EmailAddress;
+use ockam_core::Address;
 use std::ffi::c_char;
 use std::pin::Pin;
 use tracing::{error, info};
@@ -143,7 +144,8 @@ extern "C" fn shutdown_application() {
 /// Emails are separated by ';'.
 #[no_mangle]
 extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) -> *const c_char {
-    let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
+    let worker_addr = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
+    let worker_addr: Address = worker_addr.into();
     let emails: Vec<String> = unsafe {
         std::ffi::CStr::from_ptr(emails)
             .to_str()
@@ -162,7 +164,7 @@ extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) ->
             match EmailAddress::parse(&email) {
                 Ok(email_address) => {
                     result = app_state
-                        .create_service_invitation_by_alias(email_address, &name)
+                        .create_service_invitation_by_alias(email_address, &worker_addr)
                         .await;
                 }
                 Err(e) => {
@@ -222,11 +224,16 @@ extern "C" fn disable_accepted_service(invitation_id: *const c_char) {
 
 /// Removes a local service with the provided name.
 #[no_mangle]
-extern "C" fn delete_local_service(name: *const c_char) {
-    let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
+extern "C" fn delete_local_service(worker_addr: *const c_char) {
+    let worker_addr = unsafe {
+        std::ffi::CStr::from_ptr(worker_addr)
+            .to_str()
+            .unwrap()
+            .to_string()
+    };
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     app_state.context().runtime().spawn(async {
-        let result = app_state.tcp_outlet_delete(name).await;
+        let result = app_state.tcp_outlet_delete(worker_addr.into()).await;
         if let Err(err) = result {
             error!(?err, "Couldn't delete the local service");
         }
@@ -236,9 +243,17 @@ extern "C" fn delete_local_service(name: *const c_char) {
 /// Creates a local service with the provided name and address.
 /// Returns null if successful, otherwise returns an error message.
 #[no_mangle]
-extern "C" fn create_local_service(name: *const c_char, address: *const c_char) -> *const c_char {
-    let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap().to_string() };
-    let address = unsafe {
+extern "C" fn create_local_service(
+    worker_addr: *const c_char,
+    address: *const c_char,
+) -> *const c_char {
+    let worker_addr = unsafe {
+        std::ffi::CStr::from_ptr(worker_addr)
+            .to_str()
+            .unwrap()
+            .to_string()
+    };
+    let socket_addr = unsafe {
         std::ffi::CStr::from_ptr(address)
             .to_str()
             .unwrap()
@@ -247,7 +262,7 @@ extern "C" fn create_local_service(name: *const c_char, address: *const c_char) 
 
     let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
     let result = app_state.context().runtime().block_on(async {
-        let result = app_state.tcp_outlet_create(name, address).await;
+        let result = app_state.tcp_outlet_create(worker_addr, socket_addr).await;
         app_state.publish_state().await;
         result
     });

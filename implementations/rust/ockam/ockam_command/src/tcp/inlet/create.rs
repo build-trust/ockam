@@ -61,7 +61,7 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser, default_value_t = random_name(), hide_default_value = true)]
     pub alias: String,
 
-    #[arg(hide = true, long = "policy", display_order = 900, id = "EXPRESSION")]
+    #[arg(hide = true, long = "allow", display_order = 900, id = "EXPRESSION")]
     pub policy_expression: Option<Expr>,
 
     /// Time to wait for the outlet to be available.

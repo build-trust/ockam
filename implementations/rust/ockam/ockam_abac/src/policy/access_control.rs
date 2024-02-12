@@ -1,33 +1,31 @@
-use crate::types::{Action, Resource};
-use crate::Env;
-use crate::{AbacAccessControl, PoliciesRepository};
+use crate::{AbacAccessControl, Action, Env, Policies, Resource};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, RelayMessage};
-use ockam_core::{IncomingAccessControl, Result};
+use ockam_core::{async_trait, IncomingAccessControl, RelayMessage};
 use ockam_identity::{Identifier, IdentitiesAttributes};
-use tracing as log;
+use tracing::debug;
 
 /// Evaluates a policy expression against an environment of attributes.
 ///
 /// Attributes come from a pre-populated environment and are augmented
 /// by subject attributes from credential data.
 pub struct PolicyAccessControl {
-    resource: Resource,
-    action: Action,
-    policies: Arc<dyn PoliciesRepository>,
+    policies: Policies,
     identities_attributes: Arc<IdentitiesAttributes>,
     authority: Identifier,
     environment: Env,
+    resource: Resource,
+    action: Action,
 }
 
 /// Debug implementation writing out the resource, action and initial environment
 impl Debug for PolicyAccessControl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("PolicyAccessControl")
-            .field("resource", &self.resource)
+            .field("resource_name", &self.resource.resource_name)
+            .field("resource_type", &self.resource.resource_type)
             .field("action", &self.action)
             .field("environment", &self.environment)
             .finish()
@@ -41,37 +39,37 @@ impl PolicyAccessControl {
     /// the given authenticated storage, adding them the given environment,
     /// which may already contain other resource, action or subject attributes.
     pub fn new(
-        policies: Arc<dyn PoliciesRepository>,
+        policies: Policies,
         identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
+        env: Env,
         resource: Resource,
         action: Action,
-        env: Env,
     ) -> Self {
         Self {
-            resource,
-            action,
             policies,
             identities_attributes,
             authority,
             environment: env,
+            resource,
+            action,
         }
     }
 }
 
 #[async_trait]
 impl IncomingAccessControl for PolicyAccessControl {
-    async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
+    async fn is_authorized(&self, msg: &RelayMessage) -> ockam_core::Result<bool> {
         // Load the policy expression for resource and action:
-        let policy = if let Some(policy) = self
+        let expression = if let Some(expr) = self
             .policies
-            .get_policy(&self.resource, &self.action)
+            .get_expression_for_resource(&self.resource, &self.action)
             .await?
         {
-            policy
+            expr
         } else {
-            // If no policy exists for this resource and action access is denied:
-            log::debug! {
+            // If no expression exists for this resource and action, access is denied:
+            debug! {
                 resource = %self.resource,
                 action   = %self.action,
                 "no policy found; access denied"
@@ -82,7 +80,7 @@ impl IncomingAccessControl for PolicyAccessControl {
         AbacAccessControl::new(
             self.identities_attributes.clone(),
             self.authority.clone(),
-            policy,
+            expression,
             self.environment.clone(),
         )
         .is_authorized(msg)

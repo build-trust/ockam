@@ -59,7 +59,7 @@ impl ConfigRunner {
         }
 
         let policies = config.policies.into_commands()?;
-        for policy in policies {
+        for mut policy in policies {
             policy.async_run(ctx, opts.clone()).await?;
         }
 

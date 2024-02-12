@@ -399,7 +399,7 @@ mod tests {
         registry
             .inlets
             .insert(
-                "inlet-1".to_string(),
+                "inlet-1".into(),
                 crate::nodes::registry::InletInfo {
                     bind_addr: "127.0.0.1:10000".to_string(),
                     outlet_addr: MultiAddr::default(),

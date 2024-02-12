@@ -8,10 +8,10 @@ use tokio::time::timeout;
 use crate::address::get_free_address_for;
 use ockam::identity::Identifier;
 use ockam::{Address, Result};
-use ockam_abac::{Expr, Resource};
+use ockam_abac::{Action, Expr, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, route, AsyncTryClone, IncomingAccessControl, Route};
+use ockam_core::{async_trait, route, AsyncTryClone, Route};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
@@ -20,10 +20,10 @@ use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
+    CreateInlet, CreateOutlet, InletList, InletStatus, OutletAccessControl, OutletList,
+    OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
-use crate::nodes::service::actions;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{BackgroundNodeClient, InMemoryNode};
 use crate::session::sessions::{
@@ -62,10 +62,10 @@ impl NodeManagerWorker {
             .create_inlet(
                 ctx,
                 listen_addr,
-                alias,
                 prefix_route,
                 suffix_route,
                 outlet_addr,
+                alias,
                 policy_expression,
                 wait_for_outlet_duration,
                 authorized,
@@ -111,7 +111,6 @@ impl NodeManagerWorker {
         let CreateOutlet {
             socket_addr,
             worker_addr,
-            alias,
             reachable_from_default_secure_channel,
             policy_expression,
         } = create_outlet;
@@ -122,10 +121,8 @@ impl NodeManagerWorker {
                 ctx,
                 socket_addr,
                 worker_addr,
-                alias,
                 reachable_from_default_secure_channel,
-                None,
-                policy_expression,
+                OutletAccessControl::PolicyExpression(policy_expression),
             )
             .await
         {
@@ -136,18 +133,17 @@ impl NodeManagerWorker {
 
     pub(super) async fn delete_outlet(
         &self,
-        alias: &str,
+        worker_addr: &Address,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        match self.node_manager.delete_outlet(alias).await {
+        match self.node_manager.delete_outlet(worker_addr).await {
             Ok(res) => match res {
                 Some(outlet_info) => Ok(Response::ok().body(OutletStatus::new(
                     outlet_info.socket_addr,
                     outlet_info.worker_addr.clone(),
-                    alias,
                     None,
                 ))),
                 None => Err(Response::bad_request_no_request(&format!(
-                    "Outlet with alias {alias} not found"
+                    "Outlet with address {worker_addr} not found"
                 ))),
             },
             Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
@@ -156,12 +152,12 @@ impl NodeManagerWorker {
 
     pub(super) async fn show_outlet(
         &self,
-        alias: &str,
+        worker_addr: &Address,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        match self.node_manager.show_outlet(alias).await {
+        match self.node_manager.show_outlet(worker_addr).await {
             Some(outlet) => Ok(Response::ok().body(outlet)),
             None => Err(Response::not_found_no_request(&format!(
-                "Outlet with alias {alias} not found"
+                "Outlet with address {worker_addr} not found"
             ))),
         }
     }
@@ -181,20 +177,24 @@ impl NodeManager {
         &self,
         ctx: &Context,
         socket_addr: SocketAddr,
-        worker_addr: Address,
-        alias: String,
+        worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
-        access_control: Option<Arc<dyn IncomingAccessControl>>,
-        policy_expression: Option<Expr>,
+        access_control: OutletAccessControl,
     ) -> Result<OutletStatus> {
+        let worker_addr = self
+            .registry
+            .outlets
+            .generate_worker_addr(worker_addr)
+            .await;
+
         info!(
             "Handling request to create outlet portal at {:?} with worker {:?}",
             socket_addr, worker_addr
         );
 
-        // Check registry for duplicated alias
-        if self.registry.outlets.contains_key(&alias).await {
-            let message = format!("A TCP outlet with alias '{alias}' already exists");
+        // Check registry for a duplicated key
+        if self.registry.outlets.contains_key(&worker_addr).await {
+            let message = format!("A TCP outlet with address '{worker_addr}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
                 Kind::AlreadyExists,
@@ -202,16 +202,17 @@ impl NodeManager {
             ));
         }
 
-        let access_control = if let Some(access_control) = access_control {
-            access_control
-        } else {
-            self.access_control(
-                Resource::new(&alias),
-                actions::HANDLE_MESSAGE,
-                self.authority(),
-                policy_expression,
-            )
-            .await?
+        let access_control = match access_control {
+            OutletAccessControl::IncomingAccessControl(iac) => iac,
+            OutletAccessControl::PolicyExpression(expression) => {
+                self.access_control(
+                    self.authority(),
+                    Resource::new(worker_addr.address(), ResourceType::TcpOutlet),
+                    Action::HandleMessage,
+                    expression,
+                )
+                .await?
+            }
         };
 
         let options = {
@@ -247,12 +248,12 @@ impl NodeManager {
                 self.registry
                     .outlets
                     .insert(
-                        alias.clone(),
+                        worker_addr.clone(),
                         OutletInfo::new(&socket_addr, Some(&worker_addr)),
                     )
                     .await;
 
-                OutletStatus::new(socket_addr, worker_addr, alias, None)
+                OutletStatus::new(socket_addr, worker_addr, None)
             }
             Err(e) => {
                 warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
@@ -266,37 +267,41 @@ impl NodeManager {
         })
     }
 
-    pub async fn delete_outlet(&self, alias: &str) -> Result<Option<OutletInfo>> {
-        info!(%alias, "Handling request to delete outlet portal");
-        if let Some(deleted_outlet) = self.registry.outlets.remove(alias).await {
-            debug!(%alias, "Successfully removed outlet from node registry");
+    pub async fn delete_outlet(&self, worker_addr: &Address) -> Result<Option<OutletInfo>> {
+        info!(%worker_addr, "Handling request to delete outlet portal");
+        if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr).await {
+            debug!(%worker_addr, "Successfully removed outlet from node registry");
+
+            self.cli_state
+                .delete_resource(&worker_addr.address().into())
+                .await?;
+
             if let Err(e) = self
                 .tcp_transport
                 .stop_outlet(deleted_outlet.worker_addr.clone())
                 .await
             {
-                warn!(%alias, %e, "Failed to stop outlet worker");
+                warn!(%worker_addr, %e, "Failed to stop outlet worker");
             }
-            trace!(%alias, "Successfully stopped outlet");
+            trace!(%worker_addr, "Successfully stopped outlet");
             Ok(Some(deleted_outlet))
         } else {
-            warn!(%alias, "Outlet not found in the node registry");
+            warn!(%worker_addr, "Outlet not found in the node registry");
             Ok(None)
         }
     }
 
-    pub(super) async fn show_outlet(&self, alias: &str) -> Option<OutletStatus> {
-        info!(%alias, "Handling request to show outlet portal");
-        if let Some(outlet_to_show) = self.registry.outlets.get(alias).await {
-            debug!(%alias, "Outlet not found in node registry");
+    pub(super) async fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
+        info!(%worker_addr, "Handling request to show outlet portal");
+        if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr).await {
+            debug!(%worker_addr, "Outlet not found in node registry");
             Some(OutletStatus::new(
                 outlet_to_show.socket_addr,
                 outlet_to_show.worker_addr.clone(),
-                alias,
                 None,
             ))
         } else {
-            error!(%alias, "Outlet not found in the node registry");
+            error!(%worker_addr, "Outlet not found in the node registry");
             None
         }
     }
@@ -309,10 +314,10 @@ impl NodeManager {
         self: &Arc<Self>,
         ctx: &Context,
         listen_addr: String,
-        alias: String,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
+        alias: String,
         policy_expression: Option<Expr>,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
@@ -375,12 +380,12 @@ impl NodeManager {
             node_manager: self.clone(),
             context: Arc::new(ctx.async_try_clone().await?),
             listen_addr: listen_addr.clone(),
-            addr: outlet_addr.clone(),
+            outlet_addr: outlet_addr.clone(),
             prefix_route,
             suffix_route,
             authorized,
-            resource: Resource::new(&alias),
             wait_for_outlet_duration: wait_for_outlet_duration.unwrap_or(MAX_CONNECT_TIME),
+            resource: Resource::new(alias.clone(), ResourceType::TcpInlet),
             policy_expression,
             connection: None,
             inlet_address: None,
@@ -436,6 +441,7 @@ impl NodeManager {
         if let Some(inlet_to_delete) = self.registry.inlets.remove(alias).await {
             debug!(%alias, "Successfully removed inlet from node registry");
             inlet_to_delete.session.close().await?;
+            self.cli_state.delete_resource(&alias.into()).await?;
             Ok(InletStatus::new(
                 inlet_to_delete.bind_addr,
                 None,
@@ -536,10 +542,10 @@ impl InMemoryNode {
         &self,
         ctx: &Context,
         listen_addr: String,
-        alias: String,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
+        alias: String,
         policy_expression: Option<Expr>,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
@@ -549,10 +555,10 @@ impl InMemoryNode {
             .create_inlet(
                 ctx,
                 listen_addr.clone(),
-                alias,
                 prefix_route.clone(),
                 suffix_route.clone(),
                 outlet_addr.clone(),
+                alias,
                 policy_expression,
                 wait_for_outlet_duration,
                 authorized,
@@ -566,12 +572,12 @@ struct InletSessionReplacer {
     node_manager: Arc<NodeManager>,
     context: Arc<Context>,
     listen_addr: String,
-    addr: MultiAddr,
+    outlet_addr: MultiAddr,
     prefix_route: Route,
     suffix_route: Route,
     authorized: Option<Identifier>,
-    resource: Resource,
     wait_for_outlet_duration: Duration,
+    resource: Resource,
     policy_expression: Option<Expr>,
 
     // current status
@@ -589,12 +595,12 @@ impl SessionReplacer for InletSessionReplacer {
         // to another node.
 
         self.close().await;
-        debug!(%self.addr, "creating new tcp inlet");
+        debug!(%self.outlet_addr, "creating new tcp inlet");
 
         // create the access_control
         let access_control = {
             let authority = {
-                if let Some(p) = self.addr.first() {
+                if let Some(p) = self.outlet_addr.first() {
                     if let Some(p) = p.cast::<Project>() {
                         let projects = self
                             .node_manager
@@ -617,9 +623,9 @@ impl SessionReplacer for InletSessionReplacer {
 
             self.node_manager
                 .access_control(
-                    self.resource.clone(),
-                    actions::HANDLE_MESSAGE,
                     authority,
+                    self.resource.clone(),
+                    Action::HandleMessage,
                     self.policy_expression.clone(),
                 )
                 .await?
@@ -631,7 +637,7 @@ impl SessionReplacer for InletSessionReplacer {
                 .node_manager
                 .make_connection(
                     self.context.clone(),
-                    &self.addr,
+                    &self.outlet_addr,
                     self.node_manager.identifier(),
                     self.authorized.clone(),
                     Some(self.wait_for_outlet_duration),
@@ -670,11 +676,11 @@ impl SessionReplacer for InletSessionReplacer {
         // The above future is given some limited time to succeed.
         match timeout(MAX_RECOVERY_TIME, future).await {
             Err(_) => {
-                warn!(%self.addr, "timeout creating new tcp inlet");
+                warn!(%self.outlet_addr, "timeout creating new tcp inlet");
                 Err(ApiError::core("timeout"))
             }
             Ok(Err(e)) => {
-                warn!(%self.addr, err = %e, "error creating new tcp inlet");
+                warn!(%self.outlet_addr, err = %e, "error creating new tcp inlet");
                 Err(e)
             }
             Ok(Ok(route)) => Ok(route),
@@ -718,11 +724,7 @@ pub trait Inlets {
         validate: bool,
     ) -> miette::Result<Reply<InletStatus>>;
 
-    async fn show_inlet(
-        &self,
-        ctx: &Context,
-        inlet_alias: &str,
-    ) -> miette::Result<Reply<InletStatus>>;
+    async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;
 
     async fn delete_inlet(&self, ctx: &Context, inlet_alias: &str) -> miette::Result<Reply<()>>;
 }
@@ -744,18 +746,18 @@ impl Inlets for BackgroundNodeClient {
             let via_project = outlet_addr.matches(0, &[Project::CODE.into()]);
             let mut payload = if via_project {
                 CreateInlet::via_project(
-                    listen_addr.to_string(),
+                    listen_addr.into(),
                     outlet_addr.clone(),
-                    alias,
+                    alias.into(),
                     route![],
                     route![],
                     wait_connection,
                 )
             } else {
                 CreateInlet::to_node(
-                    listen_addr.to_string(),
+                    listen_addr.into(),
                     outlet_addr.clone(),
-                    alias,
+                    alias.into(),
                     route![],
                     route![],
                     authorized_identifier.clone(),
@@ -771,12 +773,8 @@ impl Inlets for BackgroundNodeClient {
         self.ask_and_get_reply(ctx, request).await
     }
 
-    async fn show_inlet(
-        &self,
-        ctx: &Context,
-        inlet_alias: &str,
-    ) -> miette::Result<Reply<InletStatus>> {
-        let request = Request::get(format!("/node/inlet/{inlet_alias}"));
+    async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>> {
+        let request = Request::get(format!("/node/inlet/{alias}"));
         self.ask_and_get_reply(ctx, request).await
     }
 
@@ -792,24 +790,22 @@ pub trait Outlets {
         &self,
         ctx: &Context,
         to: &SocketAddr,
-        from: &Address,
-        alias: String,
+        from: Option<&Address>,
         policy_expression: Option<Expr>,
     ) -> miette::Result<OutletStatus>;
 }
 
 #[async_trait]
 impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = %to, from = from.to_string(), alias = alias))]
+    #[instrument(skip_all, fields(to = %to, from = ?from))]
     async fn create_outlet(
         &self,
         ctx: &Context,
         to: &SocketAddr,
-        from: &Address,
-        alias: String,
+        from: Option<&Address>,
         policy_expression: Option<Expr>,
     ) -> miette::Result<OutletStatus> {
-        let mut payload = CreateOutlet::new(*to, from.clone(), alias, true);
+        let mut payload = CreateOutlet::new(*to, from.cloned(), true);
         if let Some(policy_expression) = policy_expression {
             payload.set_policy_expression(policy_expression);
         }

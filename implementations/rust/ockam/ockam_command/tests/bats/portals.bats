@@ -18,8 +18,24 @@ teardown() {
   run_success "$OCKAM" node delete --all -y
 
   outlet_port="$(random_port)"
-  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port" --alias "test-outlet"
+  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port"
   assert_output --partial "/service/outlet"
+}
+
+@test "portals - create tcp outlet" {
+  run_success "$OCKAM" node delete --all -y
+
+  outlet_port="$(random_port)"
+  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port" --from "test-outlet"
+  assert_output --partial "/service/test-outlet"
+
+  # The first outlet that is created without `--from` flag should be named `outlet`
+  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port"
+  assert_output --partial "/service/outlet"
+
+  # After that, the next outlet should be randomly named
+  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port"
+  refute_output --partial "/service/outlet"
 }
 
 @test "portals - tcp inlet CRUD" {
@@ -31,7 +47,7 @@ teardown() {
   run_success "$OCKAM" node create n2
 
   # Create inlet/outlet pair
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$outlet_port" --alias "test-outlet"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$outlet_port"
   assert_output --partial "/service/outlet"
 
   run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet --alias "test-inlet"
@@ -58,20 +74,19 @@ teardown() {
   only_port="$(random_port)"
   run_success "$OCKAM" node create n2
 
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port"
   assert_output --partial "/service/outlet"
 
   run_success $OCKAM tcp-outlet create --at /node/n2 --to $only_port
 
-  run_success $OCKAM tcp-outlet show test-outlet --at /node/n1
-  assert_output --partial "\"alias\":\"test-outlet\""
-  assert_output --partial "\"addr\":\"/service/outlet\""
+  run_success $OCKAM tcp-outlet show outlet --at /node/n1
+  assert_output --partial "\"worker_addr\":\"/service/outlet\""
   assert_output --partial "\"socket_addr\":\"127.0.0.1:$port\""
 
-  run_success $OCKAM tcp-outlet delete "test-outlet" --yes
+  run_success $OCKAM tcp-outlet delete "outlet" --yes
 
   # Test deletion of a previously deleted TCP outlet
-  run_success $OCKAM tcp-outlet delete "test-outlet" --yes
+  run_success $OCKAM tcp-outlet delete "outlet" --yes
   assert_output --partial "[]"
 }
 
@@ -92,11 +107,10 @@ teardown() {
   port="$(random_port)"
   run_success "$OCKAM" node create n1
 
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port"
   assert_output --partial "/service/outlet"
 
   run_success $OCKAM tcp-outlet list --at /node/n1
-  assert_output --partial "test-outlet"
   assert_output --partial "/service/outlet"
   assert_output --partial "127.0.0.1:$port"
 }
@@ -120,10 +134,10 @@ teardown() {
   port="$(random_port)"
   run_success "$OCKAM" node create n1
 
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port" --alias "test-outlet"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port"
   assert_output --partial "/service/outlet"
 
-  run_success $OCKAM tcp-outlet show "test-outlet"
+  run_success $OCKAM tcp-outlet show "outlet"
 
   # Test if non-existing TCP outlet returns NotFound
   run_failure $OCKAM tcp-outlet show "non-existing-outlet"
@@ -135,7 +149,7 @@ teardown() {
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
@@ -146,7 +160,7 @@ teardown() {
   run_success "$OCKAM" node create relay
   run_success "$OCKAM" node create blue
 
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" relay create blue --at /node/relay --to /node/blue
 
   run_success "$OCKAM" node create green
@@ -159,35 +173,24 @@ teardown() {
   assert_output --partial "/service"
 }
 
-@test "portals - fail to create two TCP outlets with the same alias" {
+@test "portals - fail to create two TCP outlets with the same address" {
   n="$(random_str)"
   run_success "$OCKAM" node create "$n"
 
   o="$(random_str)"
   port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port" --from "$o"
 
   port="$(random_port)"
-  run_failure "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
-}
-
-@test "portals - fail to create two TCP outlets at the same address" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
-
-  port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port"
-
-  run_failure "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port"
+  run_failure "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port" --from "$o"
 }
 
 @test "portals - fail to create two TCP inlets with the same alias" {
   n="$(random_str)"
   run_success "$OCKAM" node create "$n"
 
-  o="$(random_str)"
   port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port"
 
   i="$(random_str)"
   port="$(random_port)"
@@ -203,7 +206,7 @@ teardown() {
 
   o="$(random_str)"
   port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --from /service/outlet --to "127.0.0.1:$port" --alias "$o"
+  run_success "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port" --from "$o"
 
   port="$(random_port)"
   run_success "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet"
@@ -216,7 +219,7 @@ teardown() {
   node_port="$(random_port)"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /node/blue/secure/api/service/outlet
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
@@ -225,7 +228,7 @@ teardown() {
   run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success curl --head --retry-connrefused --retry 2 --max-time 10 "127.0.0.1:$port"
 }
 

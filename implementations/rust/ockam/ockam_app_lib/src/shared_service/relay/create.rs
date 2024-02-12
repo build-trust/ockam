@@ -82,15 +82,15 @@ impl AppState {
                     debug!(project = %project.name(), "Creating relay at project");
                     let project_route = format!("/project/{}", project.name());
                     let project_address = MultiAddr::from_str(&project_route).into_diagnostic()?;
-                    let relay_name_and_alias = bare_relay_name(cli_state).await?;
+                    let relay_alias = relay_alias(cli_state).await?;
                     let relay = node_manager
                         .create_relay(
                             context,
                             &project_address,
-                            relay_name_and_alias.clone(),
+                            relay_alias.clone(),
                             false,
                             None,
-                            Some(relay_name_and_alias),
+                            Some(relay_alias),
                         )
                         .await
                         .into_diagnostic()?;
@@ -109,28 +109,28 @@ impl AppState {
 }
 
 async fn delete_relay(node_manager: &InMemoryNode, cli_state: &CliState) -> ockam_core::Result<()> {
-    let relay_name = relay_name(cli_state).await?;
-    node_manager.delete_relay(&relay_name).await
+    let remote_address = relay_remote_address(cli_state).await?;
+    node_manager.delete_relay(&remote_address).await
 }
 
 async fn get_relay(
     node_manager: &InMemoryNode,
     cli_state: &CliState,
 ) -> ockam::Result<Option<RelayInfo>> {
-    let relay_name = relay_name(cli_state).await?;
+    let relay_alias = relay_alias(cli_state).await?;
     Ok(node_manager
         .get_relays()
         .await
         .into_iter()
-        .find(|r| r.alias() == relay_name))
+        .find(|r| r.alias() == relay_alias))
 }
 
-async fn relay_name(cli_state: &CliState) -> ockam::Result<String> {
-    let bare_relay_name = bare_relay_name(cli_state).await?;
+async fn relay_remote_address(cli_state: &CliState) -> ockam::Result<String> {
+    let bare_relay_name = relay_alias(cli_state).await?;
     Ok(format!("forward_to_{bare_relay_name}"))
 }
 
-async fn bare_relay_name(cli_state: &CliState) -> ockam::Result<String> {
+async fn relay_alias(cli_state: &CliState) -> ockam::Result<String> {
     Ok(cli_state
         .get_or_create_default_named_identity()
         .await?

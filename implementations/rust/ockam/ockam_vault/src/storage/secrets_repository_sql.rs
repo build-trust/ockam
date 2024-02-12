@@ -21,13 +21,13 @@ pub struct SecretsSqlxDatabase {
 }
 
 impl SecretsSqlxDatabase {
-    /// Create a new database for policies keys
+    /// Create a new database for secrets
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for secrets");
         Self { database }
     }
 
-    /// Create a new in-memory database for policies
+    /// Create a new in-memory database for secrets
     pub async fn create() -> Result<Self> {
         Ok(Self::new(SqlxDatabase::in_memory("secrets").await?))
     }

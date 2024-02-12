@@ -50,19 +50,19 @@ macro_rules! color {
     };
 }
 
-pub fn color_primary(input: impl Into<String>) -> CString {
-    input.into().color(OckamColor::PrimaryResource.color())
+pub fn color_primary(input: impl AsRef<str>) -> CString {
+    input.as_ref().color(OckamColor::PrimaryResource.color())
 }
 
 #[allow(dead_code)]
-pub fn color_primary_alt(input: impl Into<String>) -> String {
-    ColorWheel::lolcat_into_string(&input.into())
+pub fn color_primary_alt(input: impl AsRef<str>) -> String {
+    ColorWheel::lolcat_into_string(input.as_ref())
 }
 
-pub fn color_email(input: impl Into<String>) -> CString {
-    input.into().color(OckamColor::PrimaryResource.color())
+pub fn color_email(input: impl AsRef<str>) -> CString {
+    input.as_ref().color(OckamColor::PrimaryResource.color())
 }
 
-pub fn color_uri(input: &str) -> String {
-    ColorWheel::lolcat_into_string(input)
+pub fn color_uri(input: impl AsRef<str>) -> String {
+    ColorWheel::lolcat_into_string(input.as_ref())
 }

@@ -17,6 +17,7 @@ pub mod nodes;
 pub mod policies;
 pub mod projects;
 pub mod repositories;
+mod resources;
 pub mod secure_channels;
 pub mod spaces;
 pub mod storage;

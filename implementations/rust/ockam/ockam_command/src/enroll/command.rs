@@ -163,7 +163,7 @@ impl EnrollCommand {
         opts.terminal.write_line(fmt_log!(
             "{} {}:",
             "Take a look at this tutorial to learn how to securely connect your apps using",
-            color_primary("Ockam".to_string())
+            color_primary("Ockam")
         ))?;
         opts.terminal.write_line(fmt_log!(
             "{}\n",
@@ -277,7 +277,7 @@ async fn retrieve_user_space_and_project(
     .await
     .wrap_err(format!(
         "Unable to retrieve and set a Project as default with Space {}",
-        color_primary(space.name.to_string())
+        color_primary(&space.name)
     ))?
     .ok_or(miette!("No Project was found"))?;
     info!("Retrieved your default Project {project:#?}");
@@ -352,7 +352,7 @@ async fn get_user_space(
                 ))?
                 .write_line(&fmt_log!(
                     "Interested in deploying Ockam Orchestrator in production? Contact us at: {}.\n",
-                    color_email("hello@ockam.io".to_string())
+                    color_email("hello@ockam.io")
                 ))?;
 
             let is_finished = Mutex::new(false);
@@ -397,7 +397,7 @@ async fn get_user_project(
     // Get available project for the given space
     opts.terminal.write_line(&fmt_heading!(
         "Getting available Projects in the Space {}.",
-        color_primary(space.name.to_string())
+        color_primary(&space.name)
     ))?;
 
     let is_finished = Mutex::new(false);
@@ -418,14 +418,14 @@ async fn get_user_project(
             if skip_orchestrator_resources_creation {
                 opts.terminal.write_line(&fmt_log!(
                     "No Projects are defined in the Space {}.",
-                    color_primary(space.name.to_string())
+                    color_primary(&space.name)
                 ))?;
                 return Ok(None);
             }
 
             opts.terminal.write_line(&fmt_log!(
                 "No Projects are defined in the Space {}. Creating a new one.\n",
-                color_primary(space.name.to_string())
+                color_primary(&space.name)
             ))?;
 
             let is_finished = Mutex::new(false);
@@ -440,14 +440,14 @@ async fn get_user_project(
 
             let message = vec![format!(
                 "Creating a new Project {}...",
-                color_primary(project_name.to_string())
+                color_primary(&project_name)
             )];
             let progress_output = opts.terminal.progress_output(&message, &is_finished);
             let (project, _) = try_join!(get_project, progress_output)?;
 
             opts.terminal.write_line(&fmt_ok!(
                 "Created Project {}.",
-                color_primary(project_name.to_string())
+                color_primary(&project_name)
             ))?;
 
             check_for_project_completion(opts, ctx, node, project).await?

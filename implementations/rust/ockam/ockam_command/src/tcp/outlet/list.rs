@@ -81,7 +81,6 @@ impl ListCommand {
             .iter()
             .map(|outlet| {
                 Ok(serde_json::json!({
-                    "alias": outlet.alias,
                     "from": outlet.worker_address()?,
                     "to": outlet.socket_addr,
                 }))

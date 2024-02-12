@@ -4,6 +4,7 @@ use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::{String, ToString};
 use str_buf::StrBuf;
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 macro_rules! define {
     ($t:ident) => {
@@ -81,5 +82,12 @@ macro_rules! define {
 }
 
 define!(Subject);
-define!(Resource);
-define!(Action);
+define!(ResourceName);
+
+#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq, EnumString, Display, EnumIter, AsRefStr)]
+#[cbor(index_only)]
+pub enum Action {
+    #[n(1)]
+    #[strum(serialize = "handle_message")]
+    HandleMessage,
+}

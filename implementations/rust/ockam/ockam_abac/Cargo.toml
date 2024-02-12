@@ -29,6 +29,7 @@ std = [
   "regex",
   "tokio",
   "wast",
+  "strum/std",
 ]
 
 [dependencies]
@@ -38,6 +39,7 @@ ockam_core = { version = "0.102.0", path = "../ockam_core", default-features = f
 ockam_identity = { version = "0.104.0", path = "../ockam_identity", default-features = false }
 ockam_node = { version = "0.109.0", path = "../ockam_node", default-features = false }
 once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
+strum = { version = "0.26.1", default-features = false, features = ["derive"] }
 
 # optional:
 ockam_executor = { version = "0.71.0", path = "../ockam_executor", default-features = false, optional = true }
@@ -48,7 +50,7 @@ rustyline-derive = { version = "0.10.0", optional = true }
 sqlx = { version = "0.7.3", optional = true }
 str-buf = "3.0.3"
 tokio = { version = "1.36", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 wast = { version = "200.0.0", default-features = false, optional = true }
 
 [dev-dependencies]

@@ -176,12 +176,12 @@ void disable_accepted_service(const char *invitation_id);
 /**
  * Removes a local service with the provided name.
  */
-void delete_local_service(const char *name);
+void delete_local_service(const char *worker_addr);
 
 /**
  * Creates a local service with the provided name and address.
  */
-const char *create_local_service(const char *name, const char *address);
+const char *create_local_service(const char *worker_addr, const char *address);
 
 /**
  * Synchronously resets the application state to a fresh installation.

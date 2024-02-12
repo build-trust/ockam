@@ -2,7 +2,7 @@ use crate::invitations::state::InvitationState;
 use crate::state::AppState;
 use ockam::identity::{Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo};
 use ockam_core::errcode::Origin;
-use ockam_core::{async_trait, IncomingAccessControl, RelayMessage};
+use ockam_core::{async_trait, Address, IncomingAccessControl, RelayMessage};
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -10,7 +10,7 @@ use tracing::warn;
 
 #[derive(Clone)]
 pub(super) struct InvitationAccessControl {
-    portal_name: String,
+    outlet_worker_addr: Address,
     identities_attributes: Arc<IdentitiesAttributes>,
     invitations: Arc<RwLock<InvitationState>>,
     local_identity: Identifier,
@@ -20,7 +20,7 @@ pub(super) struct InvitationAccessControl {
 impl Debug for InvitationAccessControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("InvitationAccessControl")
-            .field("portal_name", &self.portal_name)
+            .field("outlet_worker_addr", &self.outlet_worker_addr)
             .field("local_identity", &self.local_identity)
             .field("authority_identifier", &self.authority_identifier)
             .finish()
@@ -29,14 +29,14 @@ impl Debug for InvitationAccessControl {
 
 impl InvitationAccessControl {
     fn new(
-        portal_name: String,
+        outlet_worker_addr: Address,
         identities_attributes: Arc<IdentitiesAttributes>,
         invitations: Arc<RwLock<InvitationState>>,
         local_identity: Identifier,
         authority_identifier: Identifier,
     ) -> Self {
         Self {
-            portal_name,
+            outlet_worker_addr,
             identities_attributes,
             invitations,
             local_identity,
@@ -48,7 +48,7 @@ impl InvitationAccessControl {
 impl AppState {
     pub(super) async fn create_invitations_access_control(
         &self,
-        portal_name: String,
+        outlet_worker_addr: Address,
     ) -> ockam_core::Result<Arc<InvitationAccessControl>> {
         let node_manager = self.node_manager().await;
         let identities_attributes = node_manager
@@ -71,7 +71,7 @@ impl AppState {
             ))?;
 
         Ok(Arc::new(InvitationAccessControl::new(
-            portal_name,
+            outlet_worker_addr,
             identities_attributes,
             invitations,
             local_identity,
@@ -129,7 +129,8 @@ impl IncomingAccessControl for InvitationAccessControl {
                 .filter_map(|sent_invitations| sent_invitations.access_details.as_ref())
                 .filter(|access_details| access_details.shared_node_identity == self.local_identity)
                 .any(|access_details| {
-                    access_details.service_name().as_deref().unwrap_or("") == self.portal_name
+                    access_details.service_name().as_deref().unwrap_or("")
+                        == self.outlet_worker_addr.address()
                 })
             {
                 return Ok(true);

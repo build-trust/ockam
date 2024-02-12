@@ -18,16 +18,16 @@ mod parser;
 
 pub mod attribute_access_control;
 pub mod expr;
-mod storage;
+pub mod resource;
 
 pub use attribute_access_control::AbacAccessControl;
 pub use env::Env;
 pub use error::{EvalError, ParseError};
 pub use eval::eval;
 pub use expr::Expr;
-pub use policy::PolicyAccessControl;
-pub use storage::*;
-pub use types::{Action, Resource, Subject};
+pub use policy::{storage::*, Policies, PolicyAccessControl, ResourcePolicy, ResourceTypePolicy};
+pub use resource::{Resource, ResourceType};
+pub use types::{Action, ResourceName, Subject};
 
 #[cfg(feature = "std")]
 pub use parser::parse;

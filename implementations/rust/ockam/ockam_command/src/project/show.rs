@@ -86,8 +86,8 @@ impl ShowTui {
 impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Project;
 
-    fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.project_name.as_deref()
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.project_name.clone()
     }
     fn terminal(&self) -> crate::Terminal<crate::TerminalStream<console::Term>> {
         self.opts.terminal.clone()

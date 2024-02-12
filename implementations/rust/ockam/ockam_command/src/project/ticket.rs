@@ -172,7 +172,7 @@ impl TicketCommand {
             opts.terminal.write_line(&fmt_ok!(
                 "{}: {}",
                 "Created enrollment ticket. You can use it to enroll another machine using",
-                color_primary("ockam project enroll".to_string())
+                color_primary("ockam project enroll")
             ))?;
 
             opts.terminal

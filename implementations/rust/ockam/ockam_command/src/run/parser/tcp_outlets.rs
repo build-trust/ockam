@@ -22,7 +22,7 @@ impl ArgsToCommands<CreateCommand> for TcpOutlets {
             Err(miette!("Failed to parse command"))
         };
         match self.tcp_outlets {
-            Some(c) => c.into_commands(get_subcommand, Some("alias")),
+            Some(c) => c.into_commands(get_subcommand, Some("from")),
             None => Ok(vec![]),
         }
     }
@@ -39,18 +39,19 @@ mod tests {
         let config = r#"
             tcp_outlets:
               to1:
-                to: '6060'
+                to: 6060
                 at: n
               to2:
-                to: '6061'
+                to: 6061
+                from: my_outlet
         "#;
         let parsed: TcpOutlets = serde_yaml::from_str(config).unwrap();
         let cmds = parsed.into_commands().unwrap();
         assert_eq!(cmds.len(), 2);
-        assert_eq!(cmds[0].alias, "to1");
+        assert_eq!(cmds[0].from.clone().unwrap(), "to1");
         assert_eq!(cmds[0].to, SocketAddr::from_str("127.0.0.1:6060").unwrap());
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
-        assert_eq!(cmds[1].alias, "to2");
+        assert_eq!(cmds[1].from.clone().unwrap(), "my_outlet");
         assert_eq!(cmds[1].to, SocketAddr::from_str("127.0.0.1:6061").unwrap());
         assert!(cmds[1].at.is_none());
     }

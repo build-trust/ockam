@@ -1,0 +1,206 @@
+use core::str::FromStr;
+use sqlx::*;
+use tracing::debug;
+
+use ockam_core::async_trait;
+use ockam_core::compat::vec::Vec;
+use ockam_core::Result;
+use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+
+use crate::{Action, Expr, ResourceName, ResourcePoliciesRepository, ResourcePolicy};
+
+#[derive(Clone)]
+pub struct ResourcePolicySqlxDatabase {
+    database: SqlxDatabase,
+}
+
+impl ResourcePolicySqlxDatabase {
+    /// Create a new database for resource policies
+    pub fn new(database: SqlxDatabase) -> Self {
+        debug!("create a repository for resource policies");
+        Self { database }
+    }
+
+    /// Create a new in-memory database for policies
+    pub async fn create() -> Result<Self> {
+        Ok(Self::new(
+            SqlxDatabase::in_memory("resource_policies").await?,
+        ))
+    }
+}
+
+#[async_trait]
+impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
+    async fn store_policy(
+        &self,
+        resource_name: &ResourceName,
+        action: &Action,
+        expression: &Expr,
+    ) -> Result<()> {
+        let query = query(
+            r#"INSERT OR REPLACE INTO resource_policy
+            VALUES (?, ?, ?, ?)"#,
+        )
+        .bind(resource_name.to_sql())
+        .bind(action.to_sql())
+        .bind(expression.to_string().to_sql())
+        .bind(self.database.node_name()?.to_sql());
+        query.execute(&*self.database.pool).await.void()
+    }
+
+    async fn get_policy(
+        &self,
+        resource_name: &ResourceName,
+        action: &Action,
+    ) -> Result<Option<ResourcePolicy>> {
+        let query = query_as(
+            r#"SELECT resource_name, action, expression
+            FROM resource_policy
+            WHERE node_name=$1 and resource_name=$2 and action=$3"#,
+        )
+        .bind(self.database.node_name()?.to_sql())
+        .bind(resource_name.to_sql())
+        .bind(action.to_sql());
+        let row: Option<PolicyRow> = query
+            .fetch_optional(&*self.database.pool)
+            .await
+            .into_core()?;
+        Ok(row.map(|r| r.try_into()).transpose()?)
+    }
+
+    async fn get_policies(&self) -> Result<Vec<ResourcePolicy>> {
+        let query = query_as(
+            r#"SELECT resource_name, action, expression
+            FROM resource_policy
+            WHERE node_name=$1"#,
+        )
+        .bind(self.database.node_name()?.to_sql());
+        let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
+        row.into_iter()
+            .map(|r| r.try_into())
+            .collect::<Result<Vec<ResourcePolicy>>>()
+    }
+
+    async fn get_policies_by_resource_name(
+        &self,
+        resource_name: &ResourceName,
+    ) -> Result<Vec<ResourcePolicy>> {
+        let query = query_as(
+            r#"SELECT resource_name, action, expression
+            FROM resource_policy
+            WHERE node_name=$1 and resource_name=$2"#,
+        )
+        .bind(self.database.node_name()?.to_sql())
+        .bind(resource_name.to_sql());
+        let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
+        row.into_iter()
+            .map(|r| r.try_into())
+            .collect::<Result<Vec<ResourcePolicy>>>()
+    }
+
+    async fn delete_policy(&self, resource_name: &ResourceName, action: &Action) -> Result<()> {
+        let query = query(
+            r#"DELETE FROM resource_policy
+            WHERE node_name=? and resource_name=? and action=?"#,
+        )
+        .bind(self.database.node_name()?.to_sql())
+        .bind(resource_name.to_sql())
+        .bind(action.to_sql());
+        query.execute(&*self.database.pool).await.void()
+    }
+}
+
+// Database serialization / deserialization
+
+impl ToSqlxType for ResourceName {
+    fn to_sql(&self) -> SqlxType {
+        SqlxType::Text(self.as_str().to_string())
+    }
+}
+
+impl ToSqlxType for Action {
+    fn to_sql(&self) -> SqlxType {
+        SqlxType::Text(self.to_string())
+    }
+}
+
+/// Low-level representation of a row in the resource_policy table
+#[derive(FromRow)]
+struct PolicyRow {
+    resource_name: String,
+    action: String,
+    expression: String,
+}
+
+impl PolicyRow {
+    #[allow(dead_code)]
+    fn resource_name(&self) -> ResourceName {
+        ResourceName::from(self.resource_name.clone())
+    }
+
+    fn action(&self) -> Result<Action> {
+        Ok(Action::from_str(&self.action)?)
+    }
+
+    fn expression(&self) -> Result<Expr> {
+        Ok(Expr::try_from(self.expression.as_str())?)
+    }
+}
+
+impl TryFrom<PolicyRow> for ResourcePolicy {
+    type Error = ockam_core::Error;
+
+    fn try_from(row: PolicyRow) -> Result<Self, Self::Error> {
+        Ok(ResourcePolicy::new(
+            row.resource_name(),
+            row.action()?,
+            row.expression()?,
+        ))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::expr::*;
+    use ockam_core::compat::sync::Arc;
+
+    #[tokio::test]
+    async fn test_repository() -> Result<()> {
+        let repo = resource_policy_repository().await?;
+
+        // a policy can be associated to a resource and an action
+        let a = Action::HandleMessage;
+        let rn = ResourceName::from("outlet1");
+        let e = eq([ident("name"), str("me")]);
+        repo.store_policy(&rn, &a, &e).await?;
+        let expected = ResourcePolicy::new(rn.clone(), a.clone(), e.clone());
+        assert_eq!(repo.get_policy(&rn, &a).await?.unwrap(), expected);
+
+        // we can retrieve the policies associated to a given resource
+        let policies = repo.get_policies_by_resource_name(&rn).await?;
+        assert_eq!(policies.len(), 1);
+
+        let rn = ResourceName::from("outlet2");
+        repo.store_policy(&rn, &a, &e).await?;
+        let policies = repo.get_policies_by_resource_name(&rn).await?;
+        assert_eq!(policies.len(), 1);
+
+        // we can retrieve all the policies
+        let policies = repo.get_policies().await?;
+        assert_eq!(policies.len(), 2);
+
+        // we can delete a given policy
+        // here we delete the policy for outlet/handle_message
+        repo.delete_policy(&rn, &a).await?;
+        let policies = repo.get_policies_by_resource_name(&rn).await?;
+        assert_eq!(policies.len(), 0);
+
+        Ok(())
+    }
+
+    /// HELPERS
+    async fn resource_policy_repository() -> Result<Arc<dyn ResourcePoliciesRepository>> {
+        Ok(Arc::new(ResourcePolicySqlxDatabase::create().await?))
+    }
+}

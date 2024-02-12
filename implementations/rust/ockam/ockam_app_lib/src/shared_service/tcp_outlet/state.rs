@@ -3,15 +3,16 @@ use tracing::{debug, error};
 #[cfg(test)]
 use crate::incoming_services::PersistentIncomingService;
 use crate::state::{AppState, ModelState};
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::{OutletAccessControl, OutletStatus};
+use ockam_core::Address;
 
 impl ModelState {
     pub fn add_tcp_outlet(&mut self, status: OutletStatus) {
         self.tcp_outlets.push(status);
     }
 
-    pub fn delete_tcp_outlet(&mut self, alias: &str) {
-        self.tcp_outlets.retain(|x| x.alias != alias);
+    pub fn delete_tcp_outlet(&mut self, worker_addr: &Address) {
+        self.tcp_outlets.retain(|x| &x.worker_addr != worker_addr);
     }
 
     pub fn get_tcp_outlets(&self) -> &[OutletStatus] {
@@ -35,7 +36,7 @@ impl AppState {
         let context = self.context();
         for tcp_outlet in self.model(|m| m.get_tcp_outlets().to_vec()).await {
             let access_control = match self
-                .create_invitations_access_control(tcp_outlet.worker_addr.address().to_string())
+                .create_invitations_access_control(tcp_outlet.worker_addr.clone())
                 .await
             {
                 Ok(a) => a,
@@ -54,11 +55,9 @@ impl AppState {
                 .create_outlet(
                     &context,
                     tcp_outlet.socket_addr,
-                    tcp_outlet.worker_addr.clone(),
-                    tcp_outlet.alias.clone(),
+                    Some(tcp_outlet.worker_addr.clone()),
                     true,
-                    Some(access_control),
-                    None,
+                    OutletAccessControl::IncomingAccessControl(access_control),
                 )
                 .await
                 .map_err(|e| {
