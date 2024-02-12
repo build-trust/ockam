@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres-ockam-pod
+  labels:
+    app: postgres-ockam
+spec:
+  containers:
+    # Start postgres.
+    - name: postgres
+      image: cgr.dev/chainguard/postgres
+      env:
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_DB
+          value: "test"
+
+    # Start an ockam node.
+    #
+    # Read ../ockam.dockerfile and run_ockam.sh to understand
+    # how the node is set up.
+    - name: ockam
+      image: ockam_node_bank_corp:v1
+      volumeMounts:
+        - name: ockam-node-enrollment-ticket-volume
+          mountPath: /etc/ockam/enrollment
+          readOnly: true
+
+  # Turn the enrollment ticket secret into a volume.
+  volumes:
+    - name: ockam-node-enrollment-ticket-volume
+      secret:
+        secretName: ockam-node-enrollment-ticket
