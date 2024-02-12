@@ -89,7 +89,7 @@ serde = { version = "1", default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }
 sqlx = { version = "0.7.3", optional = true }
 static_assertions = "1.1.0"
-thiserror = { version = "1.0.56", optional = true }
+thiserror = { version = "1.0.57", optional = true }
 tracing = { version = "0.1", default-features = false }
 x25519-dalek = { version = "2.0.1", default_features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }
 zeroize = { version = "1.7.0", features = ["zeroize_derive"] }
