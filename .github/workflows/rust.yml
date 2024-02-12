@@ -314,16 +314,56 @@ jobs:
   test_orchestrator_ockam_command:
     name: Rust - test_orchestrator_ockam_command
     runs-on: ubuntu-20.04
-    container: ghcr.io/build-trust/artifacts-helper@sha256:78e0bcfb0b0976cd173a1bdaf0ceeb81bb0ce934ae1915ed236be9b864912252
+    container: ghcr.io/build-trust/artifacts-helper@sha256:56600c919997f08603e4a7d2982c90149b104743449680563c28c06fc3c1e495
     environment: ${{ github.event_name == 'merge_group' && 'merge_queue' || '' }}
     permissions:
       contents: read
       packages: read
 
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
+      - name: Start InfluxDB Instance
+        shell: nix shell nixpkgs/nixos-23.11#influxdb2-cli --command bash {0}
+        run: |
+          influxd &> file.log &
+          sleep 5
+          cat file.log
+          influx setup --username username --password password --token token --org org --bucket bucket --force
+          cat file.log
+
+          nix-store --delete
+
       - name: Run Ockam Bats Test On Development Cluster
         if: github.event_name == 'merge_group'
         uses: build-trust/.github/actions/run_bats_test@custom-actions
+        env:
+          # end-to-end-encrypted-kafka
+          CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS: ${{ secrets.CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS }}
+          CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY: ${{ secrets.CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY }}
+          CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET }}
+          # InfluxDB Cloud token lease management
+          INFLUXDB_ADMIN_TOKEN: ${{ secrets.INFLUXDB_ADMIN_TOKEN }}
+          INFLUXDB_ORG_ID: ${{ secrets.INFLUXDB_ORG_ID }}
+          INFLUXDB_ENDPOINT_URL: ${{ secrets.INFLUXDB_ENDPOINT_URL }}
+          # Telegraf + InfluxDB
+          INFLUX_PORT: 8086
+          INFLUX_TOKEN: token
+          INFLUX_ORG: org
+          INFLUX_BUCKET: bucket
+          DOCS_TESTS: 1
+          PG_HOST: postgres
         with:
           perform_ockam_enroll: 'true'
           script_path: "/artifacts-scripts"
