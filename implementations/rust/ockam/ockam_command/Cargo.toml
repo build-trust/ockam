@@ -67,7 +67,7 @@ dialoguer = "0.11.0"
 duct = "0.13"
 flate2 = "1.0.28"
 hex = "0.4"
-indicatif = "0.17.7"
+indicatif = "0.17.8"
 indoc = "2.0.4"
 miette = { version = "7.0.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.20.0", features = ["derive", "alloc", "half"] }
