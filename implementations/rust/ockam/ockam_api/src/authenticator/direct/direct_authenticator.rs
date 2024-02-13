@@ -42,11 +42,11 @@ impl DirectAuthenticator {
 
         if !check.is_enroller {
             warn!(
-                "{} is trying to add a member {}, but {} is not an enroller",
+                "{} is trying to add member {}, but {} is not an enroller",
                 enroller, identifier, enroller
             );
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Not enroller is trying to add a member".to_string(),
+                "Non-enroller is trying to add a member".to_string(),
             )));
         }
 
@@ -80,6 +80,11 @@ impl DirectAuthenticator {
             )));
         }
 
+        info!(
+            "Successfully added a member {} by {}. Attributes: {:?}",
+            identifier, enroller, attributes
+        );
+
         Ok(Either::Left(()))
     }
 
@@ -92,9 +97,9 @@ impl DirectAuthenticator {
             EnrollerAccessControlChecks::check_identifier(self.members.clone(), enroller).await?;
 
         if !check.is_enroller {
-            warn!("Not enroller {} is trying to list members", enroller);
+            warn!("Non-enroller {} is trying to list members", enroller);
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Not enroller is trying to list members".to_string(),
+                "Non-enroller is trying to list members".to_string(),
             )));
         }
 
@@ -125,11 +130,11 @@ impl DirectAuthenticator {
 
         if !check_enroller.is_enroller {
             warn!(
-                "Not enroller {} is trying to delete member {}",
+                "Non-enroller {} is trying to delete member {}",
                 enroller, identifier
             );
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Not enroller is trying to delete member".to_string(),
+                "Non-enroller is trying to delete a member".to_string(),
             )));
         }
 
@@ -142,7 +147,7 @@ impl DirectAuthenticator {
                 enroller, identifier
             );
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Enroller is trying to delete pre trusted enroller}".to_string(),
+                "Enroller is trying to delete a pre trusted enroller".to_string(),
             )));
         }
 
@@ -152,11 +157,13 @@ impl DirectAuthenticator {
                 enroller, identifier
             );
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Not pre trusted enroller is trying to delete enroller".to_string(),
+                "Not pre trusted enroller is trying to delete an enroller".to_string(),
             )));
         }
 
         self.members.delete_member(identifier).await?;
+
+        info!("Successfully deleted member {}", identifier);
 
         Ok(Either::Left(()))
     }
