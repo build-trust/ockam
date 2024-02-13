@@ -7,11 +7,11 @@ function skip_if_docs_tests_not_enabled() {
 }
 
 start_python_server() {
-  if [[ "$BATS_TEST_NAME" != *"basic-web-app"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"basic-web-app"* ]]; then
     return
   fi
 
-  pushd $OCKAM_HOME
+  pushd $OCKAM_HOME_BASE
 
   cat >main.py <<-EOM
 import os
@@ -36,7 +36,7 @@ def hello_world():
   return "I've been visited {} times".format(id), 201
 EOM
 
-  flask --app main run -p "$FLASK_PORT" &>$OCKAM_HOME/file.log &
+  flask --app main run -p "$FLASK_PORT" &>file.log &
   pid="$!"
   echo "$pid" >"flask.pid"
   sleep 5
@@ -44,17 +44,17 @@ EOM
 }
 
 kill_flask_server() {
-  if [[ "$BATS_TEST_NAME" != *"basic-web-app"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"basic-web-app"* ]]; then
     return
   fi
 
-  pid=$(cat "${OCKAM_HOME}/flask.pid")
+  pid=$(cat "${OCKAM_HOME_BASE}/flask.pid")
   kill -9 "$pid" || true
   wait "$pid" 2>/dev/null || true
 }
 
 kill_kafka_contents() {
-  if [[ "$BATS_TEST_NAME" != *"kafka"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"end-to-end-encrypted-kafka"* ]]; then
     return
   fi
 
@@ -66,7 +66,7 @@ kill_kafka_contents() {
 }
 
 start_telegraf_instance() {
-  if [[ "$BATS_TEST_NAME" != *"Telegraf + InfluxDB"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"Telegraf + InfluxDB"* ]]; then
     return
   fi
 
@@ -89,7 +89,7 @@ EOF
 }
 
 kill_telegraf_instance() {
-  if [[ "$BATS_TEST_NAME" != *"Telegraf + InfluxDB"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"Telegraf + InfluxDB"* ]]; then
     return
   fi
 
