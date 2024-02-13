@@ -192,8 +192,8 @@ impl Medic {
                 r = self.replacements.join_next(), if !self.replacements.is_empty() => match r {
                     None                  => log::debug!("no replacements"),
                     Some(Err(e))          => log::error!("task failed: {e:?}"),
-                    Some(Ok((key, Err(e)))) => {
-                        log::warn!(key = %key, err = %e, "replacing session failed");
+                    Some(Ok((key, Err(err)))) => {
+                        log::warn!(key = %key, err = %err, "replacing session failed");
                         if let Some(session) = self.session(&key).await {
                            session.down();
                         }

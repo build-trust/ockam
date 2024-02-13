@@ -22,7 +22,7 @@ use ockam_api::journeys::{
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::random_name;
+use ockam_api::{random_name, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
@@ -33,8 +33,7 @@ use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{async_cmd, find_available_port, port_is_free_guard, process_nodes_multiaddr};
-use crate::Error;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, Error};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -77,9 +76,9 @@ pub struct CreateCommand {
     #[arg(long, value_parser = duration_parser)]
     pub timeout: Option<Duration>,
 
-    /// Avoid synchronosly validation of the outlet node connection
-    #[arg(long, id = "NO_VALIDATION", default_value = "false")]
-    no_validation: bool,
+    /// Create the inlet without waiting for the outlet to connect
+    #[arg(long, default_value = "false")]
+    no_connection_wait: bool,
 }
 
 pub(crate) fn default_from_addr() -> SocketAddr {
@@ -135,7 +134,7 @@ impl CreateCommand {
                         &cmd.authorized,
                         &cmd.policy_expression,
                         cmd.connection_wait,
-                        !cmd.no_validation,
+                        !cmd.no_connection_wait,
                     )
                     .await?;
 
@@ -203,9 +202,20 @@ impl CreateCommand {
 
         opts.terminal
             .stdout()
-            .plain(
+            .plain(if cmd.no_connection_wait {
                 fmt_ok!(
-                    "TCP Inlet {} on node {} is now sending traffic\n",
+                    "The inlet {} on node {} will automatically connect when the outlet at {} is available\n",
+                    &cmd.from
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color()),
+                    &node.node_name().color(OckamColor::PrimaryResource.color()),
+                    &cmd.to
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                )
+            } else if inlet.status == ConnectionStatus::Up {
+                fmt_ok!(
+                    "TCP inlet {} on node {} is now sending traffic\n",
                     &cmd.from
                         .to_string()
                         .color(OckamColor::PrimaryResource.color()),
@@ -215,8 +225,19 @@ impl CreateCommand {
                     &cmd.to
                         .to_string()
                         .color(OckamColor::PrimaryResource.color())
-                ),
-            )
+                )
+            } else {
+                fmt_warn!(
+                    "TCP inlet {} on node {} failed to connect to the outlet at {}\n",
+                    &cmd.from
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color()),
+                    &node.node_name().color(OckamColor::PrimaryResource.color()),
+                    &cmd.to
+                        .to_string()
+                        .color(OckamColor::PrimaryResource.color())
+                ) + &fmt_info!("TCP inlet will retry to connect automatically")
+            })
             .machine(inlet.bind_addr.to_string())
             .json(serde_json::json!(&inlet))
             .write_line()?;
@@ -283,8 +304,7 @@ impl CreateCommand {
                 }
                 let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
                 MultiAddr::from_str(&format!(
-                    "/project/{}/service/forward_to_{to}/secure/api/service/outlet",
-                    project_name
+                    "/project/{project_name}/service/forward_to_{to}/secure/api/service/outlet"
                 ))
                 .into_diagnostic()
                 .map_err(|e| Error::arg_validation("to", to, Some(&e.to_string())))?

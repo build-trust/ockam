@@ -55,7 +55,7 @@ impl NodeManagerWorker {
             suffix_route,
             wait_for_outlet_duration,
             policy_expression,
-            validate,
+            wait_connection,
         } = create_inlet;
         match self
             .node_manager
@@ -69,7 +69,7 @@ impl NodeManagerWorker {
                 policy_expression,
                 wait_for_outlet_duration,
                 authorized,
-                validate,
+                wait_connection,
             )
             .await
         {
@@ -316,7 +316,7 @@ impl NodeManager {
         policy_expression: Option<Expr>,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
-        validate: bool,
+        wait_connection: bool,
     ) -> Result<InletStatus> {
         info!("Handling request to create inlet portal");
         debug! {
@@ -387,15 +387,24 @@ impl NodeManager {
         };
 
         let mut session = Session::new(replacer);
-        let outcome = if validate {
-            MedicHandle::connect(&mut session)
-                .await
-                .map(|outcome| match outcome.kind {
-                    ReplacerOutputKind::Inlet(status) => Some(status),
-                    _ => {
-                        panic!("Unexpected outcome: {:?}", outcome)
-                    }
-                })?
+        let outcome = if wait_connection {
+            let result =
+                MedicHandle::connect(&mut session)
+                    .await
+                    .map(|outcome| match outcome.kind {
+                        ReplacerOutputKind::Inlet(status) => status,
+                        _ => {
+                            panic!("Unexpected outcome: {:?}", outcome)
+                        }
+                    });
+
+            match result {
+                Ok(status) => Some(status),
+                Err(err) => {
+                    warn!("Failed to create inlet: {err}");
+                    None
+                }
+            }
         } else {
             None
         };
@@ -410,16 +419,10 @@ impl NodeManager {
 
         Ok(InletStatus::new(
             listen_addr.clone(),
-            outcome
-                .as_ref()
-                .map(|s| s.worker.address().to_string())
-                .unwrap_or_default(),
+            outcome.as_ref().map(|s| s.worker.address().to_string()),
             alias.clone(),
             None,
-            outcome
-                .as_ref()
-                .map(|s| s.route.to_string())
-                .unwrap_or_default(),
+            outcome.as_ref().map(|s| s.route.to_string()),
             outcome
                 .as_ref()
                 .map(|s| s.connection_status)
@@ -540,7 +543,7 @@ impl InMemoryNode {
         policy_expression: Option<Expr>,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
-        validate: bool,
+        wait_connection: bool,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -553,7 +556,7 @@ impl InMemoryNode {
                 policy_expression,
                 wait_for_outlet_duration,
                 authorized,
-                validate,
+                wait_connection,
             )
             .await
     }
@@ -735,7 +738,7 @@ impl Inlets for BackgroundNodeClient {
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<Expr>,
         wait_for_outlet_timeout: Duration,
-        validate: bool,
+        wait_connection: bool,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let via_project = outlet_addr.matches(0, &[Project::CODE.into()]);
@@ -746,7 +749,7 @@ impl Inlets for BackgroundNodeClient {
                     alias,
                     route![],
                     route![],
-                    validate,
+                    wait_connection,
                 )
             } else {
                 CreateInlet::to_node(
@@ -756,7 +759,7 @@ impl Inlets for BackgroundNodeClient {
                     route![],
                     route![],
                     authorized_identifier.clone(),
-                    validate,
+                    wait_connection,
                 )
             };
             if let Some(e) = policy_expression.as_ref() {

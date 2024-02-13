@@ -79,6 +79,7 @@ pub struct RelayInfo {
     #[n(6)] destination_address: MultiAddr,
     #[n(7)] alias: String,
     #[n(8)] at_rust_node: bool,
+    #[n(9)] last_failure: Option<String>,
 }
 
 impl RelayInfo {
@@ -97,6 +98,7 @@ impl RelayInfo {
             worker_address: None,
             flow_control_id: None,
             connection_status,
+            last_failure: None,
         }
     }
 
@@ -110,6 +112,21 @@ impl RelayInfo {
             destination_address: self.destination_address,
             alias: self.alias,
             at_rust_node: self.at_rust_node,
+            last_failure: self.last_failure,
+        }
+    }
+
+    pub fn with_last_failure(self, last_failure: String) -> Self {
+        Self {
+            forwarding_route: self.forwarding_route,
+            remote_address: self.remote_address,
+            worker_address: self.worker_address,
+            flow_control_id: self.flow_control_id,
+            connection_status: self.connection_status,
+            destination_address: self.destination_address,
+            alias: self.alias,
+            at_rust_node: self.at_rust_node,
+            last_failure: Some(last_failure),
         }
     }
 
