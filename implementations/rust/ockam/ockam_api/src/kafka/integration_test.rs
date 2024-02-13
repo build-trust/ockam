@@ -205,7 +205,7 @@ mod test {
             .await?;
 
         // give the secure channel between producer and consumer to finish initialization
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
 
         let plain_fetch_response = simulate_kafka_consumer_and_read_response(
             consumer_bootstrap_port,
