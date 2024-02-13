@@ -160,6 +160,35 @@ mod tests {
 
     use ockam_core::compat::sync::Arc;
 
+    fn orchestrator_identity() -> (Identifier, ChangeHistory) {
+        let identifier = Identifier::from_str(
+            "I84502ce0d9a0a91bae29026b84e19be69fb4203a6bdd1424c85a43c812772a00",
+        )
+        .unwrap();
+        let change_history = ChangeHistory::import_from_string("81825858830101585385f6820181584104ebf9d78281a04f180029c12a74e994386c7c9fee24903f3bfe351497a9952758ee5f4b57d7ed6236ab5082ed85e1ae8c07d5600e0587f652d36727904b3e310df41a656a365d1a7836395d820181584050bf79071ecaf08a966228c712295a17da53994dc781a22103602afe656276ef83ba83a1004845b1e979e0944abff3cd8c7ceef834a8f5eeeca0e8f720fa38f4").unwrap();
+
+        (identifier, change_history)
+    }
+
+    #[tokio::test]
+    async fn test_identities_repository_has_orchestrator_history() -> Result<()> {
+        // Clean repository should already have the orchestartor change history
+        let repository = create_repository().await?;
+
+        let (orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
+
+        // the change history can be retrieved
+        let result = repository
+            .get_change_history(&orchestrator_identifier)
+            .await?;
+        assert_eq!(result.as_ref(), Some(&orchestrator_change_history));
+
+        let result = repository.get_change_histories().await?;
+        assert_eq!(result, vec![orchestrator_change_history]);
+
+        Ok(())
+    }
+
     #[tokio::test]
     async fn test_identities_repository() -> Result<()> {
         let identity1 = create_identity().await?;
@@ -184,6 +213,7 @@ mod tests {
         assert_eq!(result, None);
 
         // the repository can return the list of all change histories
+        let (_orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
         repository
             .store_change_history(identity2.identifier(), identity2.change_history().clone())
             .await?;
@@ -191,6 +221,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
+                orchestrator_change_history,
                 identity1.change_history().clone(),
                 identity2.change_history().clone(),
             ]
