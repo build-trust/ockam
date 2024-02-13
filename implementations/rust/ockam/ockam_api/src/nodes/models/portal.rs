@@ -42,8 +42,8 @@ pub struct CreateInlet {
     #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
     /// The expression for the access control policy
     #[n(8)] pub(crate) policy_expression: Option<Expr>,
-    /// Whether to synchronosly validate the connection with the outlet
-    #[n(9)] pub(crate) validate: bool,
+    /// Create the inlet and wait for the outlet to connect
+    #[n(9)] pub(crate) wait_connection: bool,
 }
 
 impl CreateInlet {
@@ -53,7 +53,7 @@ impl CreateInlet {
         alias: impl Into<String>,
         prefix_route: Route,
         suffix_route: Route,
-        validate: bool,
+        wait_connection: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -64,7 +64,7 @@ impl CreateInlet {
             suffix_route,
             wait_for_outlet_duration: None,
             policy_expression: None,
-            validate,
+            wait_connection,
         }
     }
 
@@ -75,7 +75,7 @@ impl CreateInlet {
         prefix_route: Route,
         suffix_route: Route,
         auth: Option<Identifier>,
-        validate: bool,
+        wait_connection: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -86,7 +86,7 @@ impl CreateInlet {
             suffix_route,
             wait_for_outlet_duration: None,
             policy_expression: None,
-            validate,
+            wait_connection,
         }
     }
 
@@ -182,6 +182,7 @@ pub struct InletStatus {
 }
 
 impl InletStatus {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         bind_addr: impl Into<String>,
         worker_addr: impl Into<Option<String>>,

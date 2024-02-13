@@ -228,3 +228,18 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:5000
   run_success curl --head --retry-connrefused --retry 2 --max-time 10 "127.0.0.1:$port"
 }
+
+@test "portals - local inlet and outlet in reverse order" {
+  inlet_port="$(random_port)"
+  node_port="$(random_port)"
+
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" tcp-inlet create --at /node/n1 --from "127.0.0.1:${inlet_port}" --to "/ip4/127.0.0.1/tcp/${node_port}/service/outlet"
+
+  run_success "$OCKAM" node create n2 --tcp-listener-address "127.0.0.1:${node_port}"
+  run_success "$OCKAM" tcp-outlet create --at /node/n2 --to 127.0.0.1:5000
+
+  sleep 30
+
+  run_success curl --fail --head --retry 2 --max-time 10 "127.0.0.1:${inlet_port}"
+}

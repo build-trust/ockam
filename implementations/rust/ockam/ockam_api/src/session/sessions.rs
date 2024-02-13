@@ -198,6 +198,7 @@ impl Session {
         inner.connection = ConnectionStatus::Up;
         inner.last_outcome = Some(replacer_outcome);
     }
+
     pub fn down(&self) {
         let mut inner = self.inner.lock().unwrap();
         inner.connection = ConnectionStatus::Down;
