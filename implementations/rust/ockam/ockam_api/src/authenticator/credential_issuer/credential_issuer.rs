@@ -84,6 +84,8 @@ impl CredentialIssuer {
             )
             .await?;
 
+        info!("Successfully issued a credential for {}", subject);
+
         Ok(Some(credential))
     }
 }

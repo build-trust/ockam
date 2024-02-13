@@ -46,14 +46,24 @@ impl EnrollmentTokenAcceptor {
 
         let token = match self.tokens.use_token(otc, now()?).await {
             Ok(Some(token)) => token,
-            Ok(None) | Err(_) => {
-                warn!("Unknown token received from {}", from);
+            Ok(None) => {
+                warn!("Unknown enrollment token received from {}", from);
                 return Ok(Either::Right(EnrollmentTokenAcceptorError(
-                    "Unknown token received from {}".to_string(),
+                    "Unknown enrollment token".to_string(),
+                )));
+            }
+            Err(err) => {
+                warn!(
+                    "Error using an enrollment token received from {}. Error: {}",
+                    from, err
+                );
+                return Ok(Either::Right(EnrollmentTokenAcceptorError(
+                    "Error using the enrollment token".to_string(),
                 )));
             }
         };
 
+        let reference = token.reference();
         let attrs = token
             .attrs
             .iter()
@@ -63,11 +73,19 @@ impl EnrollmentTokenAcceptor {
         let member = AuthorityMember::new(from.clone(), attrs, token.issued_by, now()?, false);
 
         if let Err(err) = self.members.add_member(member).await {
-            warn!("Error adding member {} using token: {}", from, err);
+            warn!(
+                "Error adding member {} using enrollment token: {}",
+                from, err
+            );
             return Ok(Either::Right(EnrollmentTokenAcceptorError(
-                "Error adding member using token".to_string(),
+                "Error adding member using enrollment token".to_string(),
             )));
         }
+
+        info!(
+            "Successfully accepted an enrollment token from {}. Reference: {}",
+            from, reference
+        );
 
         Ok(Either::Left(()))
     }

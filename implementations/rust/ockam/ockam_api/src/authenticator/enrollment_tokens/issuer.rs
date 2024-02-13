@@ -1,4 +1,6 @@
 use either::Either;
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use std::collections::BTreeMap;
 
 use ockam::identity::utils::now;
@@ -45,11 +47,11 @@ impl EnrollmentTokenIssuer {
 
         if !check.is_enroller {
             warn!(
-                "Not enroller {} is trying to issue an enrollment token",
+                "Non-enroller {} is trying to issue an enrollment token",
                 enroller
             );
             return Ok(Either::Right(EnrollmentTokenIssuerError(
-                "Not enroller is trying to issue an enrollment token".to_string(),
+                "Non-enroller is trying to issue an enrollment token".to_string(),
             )));
         }
 
@@ -59,24 +61,36 @@ impl EnrollmentTokenIssuer {
             if !check.is_pre_trusted {
                 warn!("Not pre trusted enroller {} is trying to issue an enrollment token for an enroller", enroller);
                 return Ok(Either::Right(EnrollmentTokenIssuerError(
-                    "Not pre trusted enroller {} is trying to issue an enrollment token for an enroller".to_string(),
+                    "Not pre trusted enroller is trying to issue an enrollment token for an enroller".to_string(),
                 )));
             }
         }
 
         let one_time_code = OneTimeCode::new();
+        let reference: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect();
         let max_token_duration = token_duration.unwrap_or(MAX_TOKEN_DURATION);
         let ttl_count = ttl_count.unwrap_or(1);
         let now = now()?;
+        let expires_at = now + max_token_duration.as_secs();
         let tkn = EnrollmentToken {
             one_time_code: one_time_code.clone(),
+            reference: Some(reference.clone()),
             issued_by: enroller.clone(),
             created_at: now,
-            expires_at: now + max_token_duration.as_secs(),
+            expires_at,
             ttl_count,
             attrs,
         };
         self.tokens.store_new_token(tkn).await?;
+
+        info!(
+            "Successfully issued an enrollment token. TTL count: {}, expires_at: {}, reference: {}",
+            ttl_count, expires_at.0, reference
+        );
 
         Ok(Either::Left(one_time_code))
     }
