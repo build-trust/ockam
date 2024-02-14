@@ -71,14 +71,16 @@ cleanup() {
 
 # Check if Ockam Command is already installed and available in path.
 # If it's not, then install it.
-type ockam &>/dev/null || curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
-source "$HOME/.ockam/env"
+if ! type ockam &>/dev/null; then
+    curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
+    source "$HOME/.ockam/env"
+fi
 
 # Check that tools we we need installed.
 for c in docker docker-compose curl; do
-    command -v "$c" &>/dev/null || { echo "ERROR: Please install: $c" && exit 1; }
+    if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.
-if [[ "$1" == "cleanup" ]]; then cleanup; else run; fi
+if [ "$1" = "cleanup" ]; then cleanup; else run; fi
