@@ -3,14 +3,14 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 
 use ockam_api::cli_state;
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::{Project, ProjectName, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 
 use crate::api::notification::rust::{Kind, Notification};
 use crate::api::state::OrchestratorStatus;
-use crate::state::{AppState, NODE_NAME, PROJECT_NAME};
+use crate::state::{AppState, DEFAULT_PROJECT_NAME, NODE_NAME};
 use crate::Result;
 
 enum EnrollmentOutcome {
@@ -177,7 +177,9 @@ impl AppState {
         info!("retrieving the user project");
         let node_manager = self.node_manager().await;
         let projects = node_manager.get_admin_projects(&self.context()).await?;
-        let main_project = projects.iter().find(|p| p.name == *PROJECT_NAME);
+        let main_project = projects
+            .iter()
+            .find(|p| p.name == ProjectName::from(DEFAULT_PROJECT_NAME));
 
         let project = match main_project {
             Some(project) => project.clone(),
@@ -192,13 +194,18 @@ impl AppState {
                 });
                 let ctx = &self.context();
                 let project = node_manager
-                    .create_project(ctx, &space.name, PROJECT_NAME, vec![])
+                    .create_project(
+                        ctx,
+                        &space.name,
+                        &ProjectName::from(DEFAULT_PROJECT_NAME),
+                        vec![],
+                    )
                     .await?;
                 let project = node_manager
                     .wait_until_project_creation_operation_is_complete(ctx, project)
                     .await?;
                 node_manager
-                    .wait_until_project_is_ready(ctx, project)
+                    .wait_until_project_is_ready(ctx, &project)
                     .await?
             }
         };

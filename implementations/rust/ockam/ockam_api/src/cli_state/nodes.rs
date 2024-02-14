@@ -14,7 +14,7 @@ use ockam_transport_tcp::TcpListener;
 
 use crate::cli_state::{random_name, Result};
 use crate::cli_state::{CliState, CliStateError};
-use crate::cloud::project::Project;
+use crate::cloud::project::{Project, ProjectId, ProjectName};
 use crate::config::lookup::InternetAddress;
 use crate::NamedVault;
 
@@ -22,16 +22,16 @@ use crate::NamedVault;
 ///
 impl CliState {
     /// Create a node, with some optional associated values, and start it
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = ?project_name))]
     pub async fn start_node_with_optional_values(
         &self,
         node_name: &str,
         identity_name: &Option<String>,
-        project_name: &Option<String>,
+        project_id: &Option<ProjectId>,
         tcp_listener: Option<&TcpListener>,
     ) -> Result<NodeInfo> {
         let mut node = self
-            .create_node_with_optional_values(node_name, identity_name, project_name)
+            .create_node_with_optional_values(node_name, identity_name, project_id)
             .await?;
         let pid = process::id();
         self.set_node_pid(node_name, pid).await?;
@@ -51,12 +51,12 @@ impl CliState {
     ///
     ///  - an identity name. That identity is used by the `NodeManager` to create secure channels
     ///  - a project name. It is used to create policies on resources provisioned on a node (like a TCP outlet for example)
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = ?project_name))]
     pub async fn create_node_with_optional_values(
         &self,
         node_name: &str,
         identity_name: &Option<String>,
-        project_name: &Option<String>,
+        project_id: &Option<ProjectId>,
     ) -> Result<NodeInfo> {
         let identity = match identity_name {
             Some(name) => self.get_named_identity(name).await?,
@@ -65,7 +65,7 @@ impl CliState {
         let node = self
             .create_node_with_identifier(node_name, &identity.identifier())
             .await?;
-        self.set_node_project(node_name, project_name).await?;
+        self.set_node_project(node_name, project_id).await?;
         Ok(node)
     }
 
@@ -124,20 +124,20 @@ impl CliState {
 
     /// This method can be used to start a local node first
     /// then create a project, and associate it to the node
-    #[instrument(skip_all, fields(node_name = node_name, project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, project_name = ?project_name))]
     pub async fn set_node_project(
         &self,
         node_name: &str,
-        project_name: &Option<String>,
+        project_id: &Option<ProjectId>,
     ) -> Result<()> {
-        let project = match project_name {
-            Some(name) => Some(self.get_project_by_name(name).await?),
+        let project = match project_id {
+            Some(project_id) => Some(self.get_project_by_id(project_id).await?),
             None => self.get_default_project().await.ok(),
         };
 
         if let Some(project) = project {
             self.nodes_repository()
-                .set_node_project_name(node_name, &project.name())
+                .set_node_project_id(node_name, project.name())
                 .await?
         };
         Ok(())
@@ -532,6 +532,7 @@ impl NodeInfo {
 
 #[cfg(test)]
 mod tests {
+    use crate::cloud::project::{ProjectId, ProjectName};
     use crate::config::lookup::InternetAddress;
     use std::net::SocketAddr;
     use std::str::FromStr;
@@ -651,8 +652,8 @@ mod tests {
 
         // a node can be created with a name, an existing identity and an existing project
         let project = Project {
-            id: "project_id".to_string(),
-            name: "project_name".to_string(),
+            id: ProjectId::from("project_id".to_string()),
+            name: ProjectName::from("project_name".to_string()),
             space_name: "1".to_string(),
             access_route: "".to_string(),
             users: vec![],
@@ -673,11 +674,11 @@ mod tests {
             .create_node_with_optional_values(
                 "node-4",
                 &Some(identity.name()),
-                &Some(project.project_name()),
+                &Some(project.name()),
             )
             .await?;
         let result = cli.get_node_project(&node.name()).await?;
-        assert_eq!(result.project_name(), project.project_name());
+        assert_eq!(result.name(), project.name());
 
         Ok(())
     }

@@ -130,7 +130,7 @@ impl EnrollCommand {
         // Display success message to stderr.
         opts.terminal.write_line(&fmt_ok!(
             "Successfully enrolled identity to the {} project.",
-            color_primary(project_name)
+            color_primary(project_name.to_string())
         ))?;
         opts.terminal.write_line(&fmt_log!(
             "{}.",

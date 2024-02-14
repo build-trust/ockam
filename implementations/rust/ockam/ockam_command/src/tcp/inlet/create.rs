@@ -15,6 +15,7 @@ use ockam::Context;
 use ockam_abac::Expr;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::CliState;
+use ockam_api::cloud::project::ProjectName;
 use ockam_api::journeys::{
     JourneyEvent, NODE_NAME, TCP_INLET_ALIAS, TCP_INLET_AT, TCP_INLET_CONNECTION_STATUS,
     TCP_INLET_FROM, TCP_INLET_TO,
@@ -255,14 +256,14 @@ impl CreateCommand {
             .ok()
             .map(|p| p.name());
 
-        self.to = Self::parse_arg_to(&opts.state, self.to, default_project_name.as_deref()).await?;
+        self.to = Self::parse_arg_to(&opts.state, self.to, default_project_name.as_ref()).await?;
         Ok(self)
     }
 
     async fn parse_arg_to(
         state: &CliState,
         to: impl Into<String>,
-        default_project_name: Option<&str>,
+        default_project_name: Option<&ProjectName>,
     ) -> miette::Result<String> {
         let mut to = to.into();
         // Replace the placeholders in the default arg value
@@ -303,20 +304,21 @@ mod tests {
     #[tokio::test]
     async fn test_parse_arg_to() -> Result<()> {
         let state = CliState::test().await?;
-        let default_project_name = Some("p1");
+        let default_project_name = Some(ProjectName::from("p1"));
 
         // Invalid values
-        CreateCommand::parse_arg_to(&state, "/alice/service", default_project_name)
+        CreateCommand::parse_arg_to(&state, "/alice/service", default_project_name.as_ref())
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_to(&state, "alice/relay", default_project_name)
+        CreateCommand::parse_arg_to(&state, "alice/relay", default_project_name.as_ref())
             .await
             .expect_err("Invalid protocol");
 
         // The placeholders are replaced when using the arg's default value
-        let res = CreateCommand::parse_arg_to(&state, default_to_addr(), default_project_name)
-            .await
-            .unwrap();
+        let res =
+            CreateCommand::parse_arg_to(&state, default_to_addr(), default_project_name.as_ref())
+                .await
+                .unwrap();
         assert_eq!(
             res,
             "/project/p1/service/forward_to_default/secure/api/service/outlet"
@@ -324,13 +326,13 @@ mod tests {
 
         // The user provides a full project route
         let addr = "/project/p1/service/forward_to_n1/secure/api/service/outlet";
-        let res = CreateCommand::parse_arg_to(&state, addr, default_project_name)
+        let res = CreateCommand::parse_arg_to(&state, addr, default_project_name.as_ref())
             .await
             .unwrap();
         assert_eq!(res, addr);
 
         // The user provides the name of the relay
-        let res = CreateCommand::parse_arg_to(&state, "alice", default_project_name)
+        let res = CreateCommand::parse_arg_to(&state, "alice", default_project_name.as_ref())
             .await
             .unwrap();
         assert_eq!(

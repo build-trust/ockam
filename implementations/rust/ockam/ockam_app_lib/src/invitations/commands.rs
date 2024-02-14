@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use miette::IntoDiagnostic;
 use ockam_api::cloud::email_address::EmailAddress;
+use ockam_api::cloud::project::ProjectName;
 use tracing::{debug, info, trace, warn};
 
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
@@ -10,7 +11,7 @@ use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invit
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
 use crate::invitations::state::ReceivedInvitationStatus;
-use crate::state::{AppState, StateKind, PROJECT_NAME};
+use crate::state::{AppState, StateKind, DEFAULT_PROJECT_NAME};
 
 impl AppState {
     /// Fetch received, accept and sent invitations from the orchestrator
@@ -225,7 +226,7 @@ impl AppState {
             let projects_guard = projects.read().await;
             projects_guard
                 .iter()
-                .find(|p| p.name == *PROJECT_NAME)
+                .find(|p| p.name == ProjectName::from(DEFAULT_PROJECT_NAME))
                 .map(|p| p.id.to_owned())
                 .ok_or_else(|| "could not find default project".to_string())
         }?;

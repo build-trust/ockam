@@ -1,5 +1,8 @@
 use miette::{miette, IntoDiagnostic};
+use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
@@ -29,14 +32,102 @@ use super::share::RoleInShare;
 
 const TARGET: &str = "ockam_api::cloud::project";
 
+#[derive(Clone, Debug, Default, Encode, Decode, Serialize, Deserialize, Eq, PartialEq)]
+#[cbor(transparent)]
+#[serde(transparent)]
+pub struct ProjectName(#[n(0)] String);
+
+impl AsRef<str> for ProjectName {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<&str> for ProjectName {
+    #[inline]
+    fn from(value: &str) -> Self {
+        Self::from(value.to_string())
+    }
+}
+
+impl From<String> for ProjectName {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl Hash for ProjectName {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
+
+impl Deref for ProjectName {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for ProjectName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Clone, Debug, Default, Encode, Decode, Serialize, Deserialize, Eq, PartialEq)]
+#[cbor(transparent)]
+#[serde(transparent)]
+pub struct ProjectId(#[n(0)] String);
+
+impl AsRef<str> for ProjectId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<&str> for ProjectId {
+    fn from(value: &str) -> Self {
+        Self::from(value.to_string())
+    }
+}
+
+impl From<String> for ProjectId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl Hash for ProjectId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
+
+impl Display for ProjectId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Deref for ProjectId {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
 pub struct Project {
     #[cbor(n(1))]
-    pub id: String,
+    pub id: ProjectId,
 
     #[cbor(n(2))]
-    pub name: String,
+    pub name: ProjectName,
 
     #[cbor(n(3))]
     pub space_name: String,
@@ -102,11 +193,11 @@ impl Display for ProjectUserRole {
 }
 
 impl Project {
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> ProjectName {
         self.name.clone()
     }
 
-    pub fn id(&self) -> String {
+    pub fn id(&self) -> ProjectId {
         self.id.clone()
     }
 
@@ -119,10 +210,6 @@ impl Project {
                 format!("no identity has been created for the project {}", self.name),
             )),
         }
-    }
-
-    pub fn project_name(&self) -> String {
-        self.name.clone()
     }
 
     pub fn access_route(&self) -> Result<MultiAddr> {
@@ -344,36 +431,36 @@ pub trait Projects {
         &self,
         ctx: &Context,
         space_id: &str,
-        name: &str,
+        name: &ProjectName,
         users: Vec<String>,
     ) -> miette::Result<Project>;
 
-    async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project>;
+    async fn get_project(&self, ctx: &Context, project_id: &ProjectId) -> miette::Result<Project>;
 
     async fn get_project_by_name(
         &self,
         ctx: &Context,
-        project_name: &str,
+        project_name: &ProjectName,
     ) -> miette::Result<Project>;
 
     async fn get_project_by_name_or_default(
         &self,
         ctx: &Context,
-        project_name: &Option<String>,
+        project_name: &Option<ProjectName>,
     ) -> miette::Result<Project>;
 
     async fn delete_project(
         &self,
         ctx: &Context,
         space_id: &str,
-        project_id: &str,
+        project_id: &ProjectId,
     ) -> miette::Result<()>;
 
     async fn delete_project_by_name(
         &self,
         ctx: &Context,
         space_name: &str,
-        project_name: &str,
+        project_name: &ProjectName,
     ) -> miette::Result<()>;
 
     async fn get_orchestrator_version_info(
@@ -392,7 +479,7 @@ pub trait Projects {
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
-        project: Project,
+        project: &Project,
     ) -> miette::Result<Project>;
 }
 
@@ -401,12 +488,12 @@ impl ControllerClient {
         &self,
         ctx: &Context,
         space_id: &str,
-        name: &str,
+        name: &ProjectName,
         users: Vec<String>,
     ) -> miette::Result<Project> {
-        trace!(target: TARGET, %space_id, project_name = name, "creating project");
+        trace!(target: TARGET, %space_id, project_name = %name, "creating project");
         let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
-            .body(CreateProject::new(name.to_string(), users));
+            .body(CreateProject::new(name.0.clone(), users));
         self.get_secure_client()
             .ask(ctx, "projects", req)
             .await
@@ -415,7 +502,11 @@ impl ControllerClient {
             .into_diagnostic()
     }
 
-    pub async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
+    pub async fn get_project(
+        &self,
+        ctx: &Context,
+        project_id: &ProjectId,
+    ) -> miette::Result<Project> {
         trace!(target: TARGET, %project_id, "getting project");
         let req = Request::get(format!("/v0/{project_id}"));
         self.get_secure_client()
@@ -430,7 +521,7 @@ impl ControllerClient {
         &self,
         ctx: &Context,
         space_id: &str,
-        project_id: &str,
+        project_id: &ProjectId,
     ) -> miette::Result<()> {
         trace!(target: TARGET, %space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
@@ -489,7 +580,7 @@ impl ControllerClient {
     pub async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
-        project: Project,
+        project: &Project,
     ) -> miette::Result<Project> {
         let retry_strategy = FixedInterval::from_millis(5000)
             .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
@@ -645,8 +736,8 @@ mod tests {
             identifier.map(|_| <u8>::arbitrary(g));
 
             Project {
-                id: String::arbitrary(g),
-                name: String::arbitrary(g),
+                id: ProjectId(String::arbitrary(g)),
+                name: ProjectName(String::arbitrary(g)),
                 space_name: String::arbitrary(g),
                 access_route: String::arbitrary(g),
                 users: vec![EmailAddress::arbitrary(g), EmailAddress::arbitrary(g)],

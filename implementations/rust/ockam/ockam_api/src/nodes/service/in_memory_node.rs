@@ -13,6 +13,7 @@ use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
+use crate::cloud::project::ProjectName;
 use crate::cloud::ControllerClient;
 use crate::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::logs::CurrentSpan;
@@ -76,7 +77,7 @@ impl InMemoryNode {
     pub async fn start_with_project_name(
         ctx: &Context,
         cli_state: &CliState,
-        project_name: Option<String>,
+        project_name: Option<ProjectName>,
     ) -> miette::Result<Self> {
         let default_identity_name = cli_state
             .get_or_create_default_named_identity()
@@ -98,7 +99,7 @@ impl InMemoryNode {
         ctx: &Context,
         cli_state: &CliState,
         identity: Option<String>,
-        project_name: Option<String>,
+        project_name: Option<ProjectName>,
     ) -> miette::Result<Self> {
         let identity = cli_state.get_identity_name_or_default(&identity).await?;
         Self::start_node(ctx, cli_state, &identity, project_name, None, None).await
@@ -119,7 +120,7 @@ impl InMemoryNode {
         ctx: &Context,
         cli_state: &CliState,
         identity_name: &str,
-        project_name: Option<String>,
+        project_name: Option<ProjectName>,
         authority_identity: Option<String>,
         authority_route: Option<MultiAddr>,
     ) -> miette::Result<InMemoryNode> {

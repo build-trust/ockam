@@ -3,7 +3,7 @@ use core::fmt::Write;
 use clap::{Args, Subcommand};
 
 use ockam_api::cloud::addon::Addon;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::{ProjectId, Projects};
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
@@ -121,7 +121,7 @@ async fn check_configuration_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-    project_id: &str,
+    project_id: &ProjectId,
     operation_id: &str,
 ) -> Result<()> {
     check_for_operation_completion(opts, ctx, node, operation_id, "the addon configuration")

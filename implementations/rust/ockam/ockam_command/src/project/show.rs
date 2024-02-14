@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 use crate::terminal::tui::ShowCommandTui;
 
 use ockam::Context;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::{ProjectName, Projects};
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -52,7 +52,7 @@ impl ShowCommand {
         ShowTui::run(
             ctx.async_try_clone().await.into_diagnostic()?,
             opts,
-            self.name.clone(),
+            self.name.clone().map(ProjectName::from),
         )
         .await
     }
@@ -61,7 +61,7 @@ impl ShowCommand {
 pub struct ShowTui {
     ctx: Context,
     opts: CommandGlobalOpts,
-    project_name: Option<String>,
+    project_name: Option<ProjectName>,
     node: InMemoryNode,
 }
 
@@ -69,7 +69,7 @@ impl ShowTui {
     pub async fn run(
         ctx: Context,
         opts: CommandGlobalOpts,
-        project_name: Option<String>,
+        project_name: Option<ProjectName>,
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(&ctx, &opts.state).await?;
         let tui = Self {
@@ -87,7 +87,7 @@ impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Project;
 
     fn cmd_arg_item_name(&self) -> Option<&str> {
-        self.project_name.as_deref()
+        self.project_name.as_ref().map(AsRef::as_ref)
     }
     fn terminal(&self) -> crate::Terminal<crate::TerminalStream<console::Term>> {
         self.opts.terminal.clone()
@@ -98,21 +98,30 @@ impl ShowCommandTui for ShowTui {
             .get_admin_projects(&self.ctx)
             .await?
             .iter()
-            .map(|p| p.name())
+            .map(|p| p.name().to_string())
             .collect())
     }
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
         let project = match self.cmd_arg_item_name() {
             Some(command) => command.to_owned(),
-            None => self.opts.state.get_default_project().await?.name(),
+            None => self
+                .opts
+                .state
+                .get_default_project()
+                .await?
+                .name()
+                .to_string(),
         };
         Ok(project)
     }
 
     #[instrument(skip_all)]
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let project = self.node.get_project_by_name(&self.ctx, item_name).await?;
+        let project = self
+            .node
+            .get_project_by_name(&self.ctx, &ProjectName::from(item_name))
+            .await?;
         let project_output = ProjectConfigCompact(project);
 
         self.terminal()

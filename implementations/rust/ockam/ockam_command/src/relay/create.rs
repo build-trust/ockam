@@ -10,6 +10,7 @@ use tracing::info;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
+use ockam_api::cloud::project::ProjectName;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::service::relay::Relays;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -166,7 +167,7 @@ impl CreateCommand {
             .await
             .ok()
             .map(|p| p.name());
-        let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_deref()).await?;
+        let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_ref()).await?;
         let relay_name = Self::parse_arg_relay_name(self.relay_name, &at)?;
         self.at = at.to_string();
         self.relay_name = relay_name;
@@ -176,7 +177,7 @@ impl CreateCommand {
     async fn parse_arg_at(
         state: &CliState,
         at: impl Into<String>,
-        default_project_name: Option<&str>,
+        default_project_name: Option<&ProjectName>,
     ) -> Result<MultiAddr> {
         let mut at = at.into();
         // The address is a node name
@@ -239,29 +240,30 @@ mod tests {
     #[ockam_macros::test(crate = "ockam")]
     async fn test_parse_arg_at(ctx: &mut Context) -> ockam::Result<()> {
         let state = CliState::test().await?;
-        let default_project_name = Some("p1");
+        let default_project_name = Some(ProjectName::from("p1"));
 
         // Invalid values
-        CreateCommand::parse_arg_at(&state, "/alice/service", default_project_name)
+        CreateCommand::parse_arg_at(&state, "/alice/service", default_project_name.as_ref())
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_at(&state, "my/project", default_project_name)
+        CreateCommand::parse_arg_at(&state, "my/project", default_project_name.as_ref())
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_at(&state, "alice", default_project_name)
+        CreateCommand::parse_arg_at(&state, "alice", default_project_name.as_ref())
             .await
             .expect_err("Node doesn't exist");
 
         // The placeholder is replaced when using the arg's default value
-        let res = CreateCommand::parse_arg_at(&state, default_at_addr(), default_project_name)
-            .await
-            .unwrap()
-            .to_string();
+        let res =
+            CreateCommand::parse_arg_at(&state, default_at_addr(), default_project_name.as_ref())
+                .await
+                .unwrap()
+                .to_string();
         assert_eq!(res, "/project/p1");
 
         // The user provides a full project route
         let addr = "/project/p1";
-        let res = CreateCommand::parse_arg_at(&state, addr, default_project_name)
+        let res = CreateCommand::parse_arg_at(&state, addr, default_project_name.as_ref())
             .await
             .unwrap()
             .to_string();
@@ -269,10 +271,11 @@ mod tests {
 
         // The user provides the name of a node
         let node = InMemoryNode::start(ctx, &state).await.unwrap();
-        let res = CreateCommand::parse_arg_at(&state, &node.node_name(), default_project_name)
-            .await
-            .unwrap()
-            .to_string();
+        let res =
+            CreateCommand::parse_arg_at(&state, &node.node_name(), default_project_name.as_ref())
+                .await
+                .unwrap()
+                .to_string();
         assert!(res.contains("/ip4/127.0.0.1/tcp/"));
 
         ctx.stop().await.unwrap();

@@ -12,7 +12,7 @@ use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, To
 
 use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::{OktaConfig, Project, ProjectUserRole};
+use crate::cloud::project::{OktaConfig, Project, ProjectId, ProjectName, ProjectUserRole};
 use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::minicbor_url::Url;
 
@@ -306,8 +306,8 @@ impl ProjectRow {
             .map(|i| Identifier::from_string(i))
             .transpose()?;
         Ok(Project {
-            id: self.project_id.clone(),
-            name: self.project_name.clone(),
+            id: ProjectId::from(self.project_id.clone()),
+            name: ProjectName::from(self.project_name.clone()),
             space_id: self.space_id.clone(),
             space_name: self.space_name.clone(),
             identity: identifier,
@@ -504,8 +504,8 @@ mod test {
         user_roles: Vec<ProjectUserRole>,
     ) -> Project {
         Project {
-            id: id.into(),
-            name: name.into(),
+            id: ProjectId::from(id),
+            name: ProjectName::from(name),
             space_id: "space-id".into(),
             space_name: "space-name".into(),
             access_route: "route".into(),

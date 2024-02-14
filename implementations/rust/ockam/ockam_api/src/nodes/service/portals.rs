@@ -6,6 +6,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 use crate::address::get_free_address_for;
+use crate::cloud::project::ProjectName;
 use ockam::identity::Identifier;
 use ockam::{Address, Result};
 use ockam_abac::{Expr, Resource};
@@ -598,7 +599,8 @@ impl SessionReplacer for InletSessionReplacer {
                             .cli_state
                             .get_projects_grouped_by_name()
                             .await?;
-                        if let Some(p) = projects.get(&*p) {
+                        let project_name = ProjectName::from(p.to_string());
+                        if let Some(p) = projects.get(&project_name) {
                             Some(p.authority_identifier().await?)
                         } else {
                             None

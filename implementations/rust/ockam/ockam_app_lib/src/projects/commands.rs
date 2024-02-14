@@ -6,7 +6,7 @@ use tracing::{debug, info, trace};
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::{ProjectId, Projects};
 
 use crate::projects::error::Error::ListingFailed;
 use crate::state::{AppState, StateKind};
@@ -17,7 +17,7 @@ use super::error::{Error, Result};
 impl AppState {
     pub(crate) async fn create_enrollment_ticket(
         &self,
-        project_id: &str,
+        project_id: &ProjectId,
         invitation_email: &EmailAddress,
     ) -> Result<EnrollmentTicket> {
         debug!(?project_id, "Creating enrollment ticket");
@@ -25,8 +25,8 @@ impl AppState {
         let projects_guard = projects.read().await;
         let project = projects_guard
             .iter()
-            .find(|p| p.id == project_id)
-            .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?
+            .find(|p| &p.id == project_id)
+            .ok_or_else(|| Error::ProjectNotFound(project_id.to_string()))?
             .clone();
         let authority_node = self
             .authority_node(
