@@ -93,12 +93,17 @@ run() {
     until kubectl logs --follow app-ockam-pod -c app --context kind-analysis-corp 2> /dev/null; do sleep 2; done
 }
 
-# Build a docker image and load it into a kubernetes cluster.
+# Build a docker image and load it into a kind kubernetes cluster.
 build_and_load_docker_image() {
     tag="$1"; dockerfile="$2"; context="$3"; cluster="$4"
 
-    docker buildx ls &> /dev/null && load="--load"
-    docker build "$load" --file "$dockerfile" --tag "$tag" "$context"
+    # Use --load option only if docker buildx is available.
+    if docker buildx ls &>/dev/null; then
+        docker build --load --file "$dockerfile" --tag "$tag" "$context"
+    else
+        docker build --file "$dockerfile" --tag "$tag" "$context"
+    fi
+
     kind load docker-image "$tag" --name "$cluster"
 }
 
@@ -112,12 +117,14 @@ cleanup() {
 
 # Check if Ockam Command is already installed and available in path.
 # If it's not, then install it.
-type ockam &>/dev/null || curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
-source "$HOME/.ockam/env"
+if ! type ockam &>/dev/null; then
+    curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
+    source "$HOME/.ockam/env"
+fi
 
 # Check that tools we we need installed.
 for c in docker kind kubectl curl; do
-    command -v "$c" &>/dev/null || { echo "ERROR: Please install: $c" && exit 1; }
+    if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
 
 # Check if the first argument is "cleanup"
