@@ -77,7 +77,6 @@ impl CreateCommand {
 
     pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let node_name = node.node_name();
         let is_finished: Mutex<bool> = Mutex::new(false);

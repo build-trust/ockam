@@ -22,14 +22,12 @@ use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::fmt_heading;
 use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
 use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, Result};
-use crate::{fmt_warn, node::util::initialize_default_node};
+use crate::{docs, fmt_heading, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -49,9 +47,20 @@ pub struct EnrollCommand {
     #[arg(long)]
     pub authorization_code_flow: bool,
 
-    /// Skip creation of default Space and default Project
+    /// Run the user enrollment process.
+    ///
+    /// By default, the command will check the Identity status and skip the
+    /// enrollment process if it is already enrolled. Use this flag to force
+    /// the execution of the Identity enrollment process.
     #[arg(long)]
-    pub user_account_only: bool,
+    pub force: bool,
+
+    /// Skip the creation of the Orchestrator resources.
+    ///
+    /// When this flag is used, the command will only check whether the Orchestrator
+    /// resources are created. If they are not, it will continue without creating them.
+    #[arg(hide = true, long = "skip-resource-creation", conflicts_with = "force")]
+    pub skip_orchestrator_resources_creation: bool,
 }
 
 impl EnrollCommand {
@@ -73,54 +82,31 @@ impl EnrollCommand {
         ));
         }
         self.run_impl(ctx, opts.clone()).await?;
-        initialize_default_node(ctx, &opts).await?;
         Ok(())
     }
 
     async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        opts.terminal.write_line(&fmt_log!(
-            "{}{}{}",
-            "Enrolling your Ockam Identity",
-            " on this machine ".dim(),
-            "with Ockam Orchestrator."
-        ))?;
-
         ctrlc_handler(opts.clone());
 
-        let oidc_service = OidcService::default();
-        let token = if self.authorization_code_flow {
-            oidc_service.get_token_with_pkce().await.into_diagnostic()?
-        } else {
-            oidc_service.get_token_interactively(&opts).await?
-        };
-
-        let user_info = oidc_service
-            .wait_for_email_verification(&token, Some(&opts.terminal))
-            .await?;
-        opts.state.store_user(&user_info).await?;
-
-        let identity_name = opts
+        let identity = opts
             .state
             .get_named_identity_or_default(&self.identity)
-            .await?
-            .name();
+            .await?;
+        let identity_name = identity.name();
+        let identifier = identity.identifier();
         let node = InMemoryNode::start_node_with_identity(ctx, &opts.state, &identity_name).await?;
-        let controller = node.create_controller().await?;
 
-        enroll_with_node(&controller, ctx, token)
-            .await
-            .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
-        let identifier = node.identifier();
-        opts.state
-            .set_identifier_as_enrolled(&identifier)
-            .await
-            .wrap_err("Unable to set your local Identity as enrolled")?;
-        info!("Enrolled your local Identity with the identifier {identifier}");
+        let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 
-        let result_retrieve_space_and_project: Result<Project> =
-            retrieve_user_space_and_project(&opts, ctx, &node, self.user_account_only).await;
-        if let Err(ref error) = result_retrieve_space_and_project {
-            // Display output to user.
+        if let Err(ref error) = retrieve_user_space_and_project(
+            &opts,
+            ctx,
+            &node,
+            self.skip_orchestrator_resources_creation,
+        )
+        .await
+        {
+            // Display output to user
             opts.terminal
                 .write_line("")?
                 .write_line(&fmt_warn!(
@@ -132,20 +118,21 @@ impl EnrollCommand {
                     color_uri("https://github.com/build-trust/ockam/issues")
                 ))?;
 
-            // Log output to operator.
+            // Log output to operator
             error!(
                 "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
                 create them manually using the `ockam space` and `ockam project` commands."
             );
             error!("{error}");
 
-            // Exit the command with an error.
+            // Exit the command with an error
             return Err(miette!(format!(
                 "There was a problem, please try to enroll again using {}.",
-                color_primary("`ockam enroll`")
+                color_primary("ockam enroll")
             )));
         }
 
+        // Tracing
         let mut attributes = HashMap::new();
         attributes.insert(USER_NAME, user_info.name.clone());
         attributes.insert(USER_EMAIL, user_info.email.to_string());
@@ -158,26 +145,20 @@ impl EnrollCommand {
             .add_journey_event(JourneyEvent::Enrolled, attributes)
             .await?;
 
-        // Print final message.
+        // Output
         opts.terminal.write_line(&fmt_ok!(
             "Enrolled the following as one of the Identities of your Orchestrator account ({}):",
             color_email(user_info.email.to_string())
         ))?;
-        // Print the identity name if it exists.
-        if let Ok(named_identity) = opts
-            .state
-            .get_named_identity_by_identifier(&identifier)
-            .await
-        {
-            opts.terminal
-                .write_line(&fmt_log!("name: {}", color_primary(named_identity.name())))?;
-        }
+        // Print the identity name
+        opts.terminal
+            .write_line(&fmt_log!("name: {}", color_primary(identity_name)))?;
         // Print the identity identifier.
         opts.terminal.write_line(&fmt_log!(
             "identifier: {}\n",
             color_primary(identifier.to_string())
         ))?;
-        // Final line.
+        // Final line
         opts.terminal.write_line(fmt_log!(
             "{} {}:",
             "Take a look at this tutorial to learn how to securely connect your apps using",
@@ -189,6 +170,58 @@ impl EnrollCommand {
         ))?;
 
         Ok(())
+    }
+
+    async fn enroll_identity(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        node: &InMemoryNode,
+    ) -> miette::Result<UserInfo> {
+        if !opts
+            .state
+            .identity_should_enroll(&self.identity, self.force)
+            .await?
+        {
+            if let Ok(user_info) = opts.state.get_default_user().await {
+                return Ok(user_info);
+            }
+        }
+
+        opts.terminal.write_line(&fmt_log!(
+            "{}{}{}",
+            "Enrolling your local Identity",
+            " on this machine ".dim(),
+            "with Ockam Orchestrator."
+        ))?;
+
+        // Run OIDC service
+        let oidc_service = OidcService::default();
+        let token = if self.authorization_code_flow {
+            oidc_service.get_token_with_pkce().await.into_diagnostic()?
+        } else {
+            oidc_service.get_token_interactively(opts).await?
+        };
+
+        // Store user info retrieved from OIDC service
+        let user_info = oidc_service
+            .wait_for_email_verification(&token, Some(&opts.terminal))
+            .await?;
+        opts.state.store_user(&user_info).await?;
+
+        // Enroll the identity with the Orchestrator
+        let controller = node.create_controller().await?;
+        enroll_with_node(&controller, ctx, token)
+            .await
+            .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
+        let identifier = node.identifier();
+        opts.state
+            .set_identifier_as_enrolled(&identifier)
+            .await
+            .wrap_err("Unable to set your local Identity as enrolled")?;
+        info!("Enrolled your local Identity with the identifier {identifier}");
+
+        Ok(user_info)
     }
 }
 
@@ -219,14 +252,9 @@ async fn retrieve_user_space_and_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-    user_account_only: bool,
+    skip_orchestrator_resources_creation: bool,
 ) -> Result<Project> {
-    // return the default project if there is one already stored locally
-    if let Ok(project) = opts.state.get_default_project().await {
-        return Ok(project);
-    };
-
-    let space = get_user_space(opts, ctx, node, user_account_only)
+    let space = get_user_space(opts, ctx, node, skip_orchestrator_resources_creation)
         .await
         .map_err(|e| {
             miette!(
@@ -238,13 +266,19 @@ async fn retrieve_user_space_and_project(
 
     info!("Retrieved your default Space {space:#?}");
 
-    let project = get_user_project(opts, ctx, node, user_account_only, &space)
-        .await
-        .wrap_err(format!(
-            "Unable to retrieve and set a Project as default with Space {}",
-            color_primary(space.name.to_string())
-        ))?
-        .ok_or(miette!("No Project was found"))?;
+    let project = get_user_project(
+        opts,
+        ctx,
+        node,
+        skip_orchestrator_resources_creation,
+        &space,
+    )
+    .await
+    .wrap_err(format!(
+        "Unable to retrieve and set a Project as default with Space {}",
+        color_primary(space.name.to_string())
+    ))?
+    .ok_or(miette!("No Project was found"))?;
     info!("Retrieved your default Project {project:#?}");
     Ok(project)
 }
@@ -269,14 +303,9 @@ async fn get_user_space(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-    user_account_only: bool,
+    skip_orchestrator_resources_creation: bool,
 ) -> Result<Option<Space>> {
-    // return the default space if there is one already stored locally
-    if let Ok(space) = opts.state.get_default_space().await {
-        return Ok(Some(space));
-    };
-
-    // Otherwise get the available spaces for node's identity
+    // Get the available spaces for node's identity
     // Those spaces might have been created previously and all the local state reset
     opts.terminal
         .write_line(&fmt_heading!("Getting available Spaces in your account."))?;
@@ -287,7 +316,7 @@ async fn get_user_space(
         Ok(spaces)
     };
 
-    let message = vec![format!("Checking for any existing Spaces...")];
+    let message = vec!["Checking for any existing Spaces...".to_string()];
     let progress_output = opts.terminal.progress_output(&message, &is_finished);
 
     let (spaces, _) = try_join!(get_spaces, progress_output)?;
@@ -295,7 +324,7 @@ async fn get_user_space(
     // If the identity has no spaces, create one
     let space = match spaces.first() {
         None => {
-            if user_account_only {
+            if skip_orchestrator_resources_creation {
                 opts.terminal
                     .write_line(&fmt_log!("No Spaces are defined in your account.\n"))?;
                 return Ok(None);
@@ -350,7 +379,7 @@ async fn get_user_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &InMemoryNode,
-    user_account_only: bool,
+    skip_orchestrator_resources_creation: bool,
     space: &Space,
 ) -> Result<Option<Project>> {
     // Get available project for the given space
@@ -366,7 +395,7 @@ async fn get_user_project(
         Ok(projects)
     };
 
-    let message = vec![format!("Checking for existing Projects...")];
+    let message = vec!["Checking for existing Projects...".to_string()];
     let progress_output = opts.terminal.progress_output(&message, &is_finished);
 
     let (projects, _) = try_join!(get_projects, progress_output)?;
@@ -374,7 +403,7 @@ async fn get_user_project(
     // If the space has no projects, create one
     let project = match projects.first() {
         None => {
-            if user_account_only {
+            if skip_orchestrator_resources_creation {
                 opts.terminal.write_line(&fmt_log!(
                     "No Projects are defined in the Space {}.",
                     color_primary(space.name.to_string())

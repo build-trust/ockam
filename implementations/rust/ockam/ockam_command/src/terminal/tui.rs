@@ -195,7 +195,10 @@ pub trait DeleteCommandTui {
             1 => {
                 if terminal.confirmed_with_flag_or_prompt(
                     self.cmd_arg_confirm_deletion(),
-                    "You are about to delete your only Outlet. Are you sure you want to proceed?",
+                    format!(
+                        "You are about to delete your only {}. Are you sure you want to proceed?",
+                        Self::ITEM_NAME.singular()
+                    ),
                 )? {
                     let item_name = items_names[0].as_str();
                     self.delete_single(item_name).await?;
