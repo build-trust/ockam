@@ -31,6 +31,21 @@ impl CliState {
             .await?)
     }
 
+    #[instrument(skip_all)]
+    pub async fn identity_should_enroll(&self, name: &Option<String>, force: bool) -> Result<bool> {
+        if force {
+            return Ok(true);
+        }
+
+        // Force enrollment if there are no spaces or projects in the database
+        if self.get_spaces().await?.is_empty() || self.get_projects().await?.is_empty() {
+            return Ok(true);
+        }
+
+        // Force enrollment if the identity is not enrolled
+        Ok(!self.is_identity_enrolled(name).await?)
+    }
+
     #[instrument(skip_all, fields(identifier = %identifier))]
     pub async fn set_identifier_as_enrolled(&self, identifier: &Identifier) -> Result<()> {
         Ok(self
@@ -165,3 +180,6 @@ impl EnrollmentTicket {
         Ok(hex::encode(serialized))
     }
 }
+
+#[cfg(test)]
+mod tests {}

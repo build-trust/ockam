@@ -6,6 +6,7 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
+use crate::cloud::project::{Project, Projects};
 use crate::cloud::{ControllerClient, HasSecureClient};
 use crate::nodes::InMemoryNode;
 
@@ -112,6 +113,18 @@ impl Spaces for InMemoryNode {
 
     #[instrument(skip_all, fields(space_id = space_id))]
     async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()> {
+        let space_projects = self
+            .cli_state
+            .get_projects()
+            .await?
+            .into_iter()
+            .filter(|p| p.space_id == space_id)
+            .collect::<Vec<Project>>();
+        for project in space_projects {
+            self.delete_project(ctx, &project.space_id, &project.id)
+                .await?;
+        }
+
         let controller = self.create_controller().await?;
         controller.delete_space(ctx, space_id).await?;
         self.cli_state.delete_space(space_id).await?;

@@ -9,6 +9,7 @@ use ockam_multiaddr::proto::{DnsAddr, Tcp};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
+use crate::node::util::initialize_default_node;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use crate::{fmt_log, fmt_ok};
@@ -39,6 +40,7 @@ impl CreateCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let transport_status: TransportStatus = node
             .ask(

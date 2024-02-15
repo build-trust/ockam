@@ -10,6 +10,7 @@ use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
+use crate::node::util::initialize_default_node;
 use crate::output::OutputFormat;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
@@ -95,6 +96,7 @@ impl CreateCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.from).await?;
         let payload = models::transport::CreateTcpConnection::new(self.address.clone());
         let request = Request::post("/node/tcp/connection").body(payload);
