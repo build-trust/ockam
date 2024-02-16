@@ -123,8 +123,9 @@ teardown() {
   run_success "$OCKAM" relay create "$fwd" --to /node/blue
   assert_output --partial "forward_to_$fwd"
 
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
   # Green can't establish secure channel with blue, because it isn't a member
-  run_failure "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
+  run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
 
 @test "portals - inlet/outlet example with credential" {
