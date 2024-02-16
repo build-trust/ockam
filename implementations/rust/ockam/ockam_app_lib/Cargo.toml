@@ -31,7 +31,7 @@ path = "src/lib.rs"
 duct = "0.13.7"
 futures = { version = "0.3.30", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
-miette = { version = "7.0.0", features = ["fancy-no-backtrace"] }
+miette = { version = "7.1.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
 ockam = { path = "../ockam", version = "^0.116.0", features = ["software_vault"] }
 ockam_api = { path = "../ockam_api", version = "0.59.0", features = ["std"] }
