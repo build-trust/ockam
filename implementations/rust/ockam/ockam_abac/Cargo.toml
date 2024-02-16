@@ -49,7 +49,7 @@ sqlx = { version = "0.7.3", optional = true }
 str-buf = "3.0.3"
 tokio = { version = "1.36", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false }
-wast = { version = "71.0.1", default-features = false, optional = true }
+wast = { version = "200.0.0", default-features = false, optional = true }
 
 [dev-dependencies]
 quickcheck = "1.0.3"
