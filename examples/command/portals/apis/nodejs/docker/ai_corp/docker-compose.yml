@@ -1,0 +1,32 @@
+version: "3.8"
+
+# Create a dedicated and isolated virtual network for ai_corp.
+networks:
+  ai_corp:
+    driver: bridge
+
+services:
+  # Start the AI Inference API app.
+  #
+  # Read ai.dockerfile and ai.js to understand what
+  # the app is doing.
+  ai:
+    build:
+      context: .
+      dockerfile: ai.dockerfile
+    networks:
+      - ai_corp
+
+  # Start an ockam node.
+  #
+  # Read ../ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    depends_on: [ai]
+    build:
+      context: .
+      dockerfile: ../ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    networks:
+      - ai_corp
