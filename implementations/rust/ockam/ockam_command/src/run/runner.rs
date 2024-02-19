@@ -16,7 +16,11 @@ use ockam_node::Context;
 pub struct ConfigRunner;
 
 impl ConfigRunner {
-    pub async fn run_config(ctx: &Context, opts: CommandGlobalOpts, contents: &str) -> Result<()> {
+    pub async fn run_config(
+        ctx: &Context,
+        mut opts: CommandGlobalOpts,
+        contents: &str,
+    ) -> Result<()> {
         let config = Config::parse(contents)?;
 
         let vaults = config.vaults.into_commands()?;

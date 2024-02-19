@@ -31,12 +31,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// Use Okta instead of an enrollment ticket. Refer to this article for more info: https://docs.ockam.io/guides/examples/okta
-    #[arg(long = "okta", group = "authentication_method")]
-    pub okta: bool,
-
     /// Path to an enrollment ticket file, or hex encoded enrollment ticket
-    #[arg(group = "authentication_method", value_name = "ENROLLMENT TICKET PATH | ENROLLMENT TICKET", value_parser = parse_enroll_ticket)]
+    #[arg(display_order = 800, group = "authentication_method", value_name = "ENROLLMENT TICKET PATH | ENROLLMENT TICKET", value_parser = parse_enroll_ticket)]
     pub enroll_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]
@@ -45,6 +41,10 @@ pub struct EnrollCommand {
     /// Trust options, defaults to the default project
     #[command(flatten)]
     pub trust_opts: TrustOpts,
+
+    /// Use Okta instead of an enrollment ticket
+    #[arg(display_order = 900, long = "okta", group = "authentication_method")]
+    pub okta: bool,
 }
 
 pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentTicket> {
@@ -72,7 +72,7 @@ impl EnrollCommand {
         "enroll".into()
     }
 
-    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn async_run(self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.global_args.output_format == OutputFormat::Json {
             return Err(miette::miette!(
                 "This command does not support JSON output. Please try running it again without '--output json'."

@@ -8,8 +8,11 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 
-use crate::cli_state::{random_name, CliState, Result};
 use crate::CliStateError;
+use crate::{
+    cli_state::{random_name, CliState, Result},
+    color_primary,
+};
 
 /// The methods below support the creation and update of local vaults
 ///
@@ -138,9 +141,35 @@ impl CliState {
     #[instrument(skip_all, fields(vault_name = vault_name))]
     pub async fn get_or_create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
         let vaults_repository = self.vaults_repository();
+
         if let Ok(Some(existing_vault)) = vaults_repository.get_named_vault(vault_name).await {
+            let message = if vault_name == "default" {
+                format!(
+                    "Using the default Vault named {}...",
+                    color_primary(vault_name)
+                )
+            } else {
+                format!("Using the Vault named {}...", color_primary(vault_name))
+            };
+            self.send_over_channel(message.clone());
+            info!(message);
             return Ok(existing_vault);
         }
+
+        let message = if vault_name == "default" {
+            format!(
+                "Creating a new default Vault named {}...",
+                color_primary(vault_name)
+            )
+        } else {
+            format!(
+                "Creating a new Vault named {}...",
+                color_primary(vault_name)
+            )
+        };
+        self.send_over_channel(message.clone());
+        info!(message);
+
         self.create_a_vault(&Some(vault_name.to_string()), &None, false)
             .await
     }
@@ -158,7 +187,7 @@ impl CliState {
                 Origin::Api,
                 Kind::Invalid,
                 format!(
-                    "there are {} vaults, please specify which vault should be used",
+                    "There are {} vaults, please specify which vault should be used",
                     vaults.len()
                 ),
             ))?,

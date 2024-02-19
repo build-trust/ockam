@@ -4236,6 +4236,7 @@ dependencies = [
  "bytes 1.5.0",
  "cddl-cat",
  "chrono",
+ "colorful",
  "either",
  "fake",
  "fs2",

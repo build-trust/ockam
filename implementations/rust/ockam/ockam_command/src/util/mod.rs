@@ -40,9 +40,10 @@ pub async fn stop_node(ctx: Context) {
 }
 
 pub fn local_cmd(res: miette::Result<()>) -> miette::Result<()> {
-    if let Err(e) = &res {
-        error!(%e, "Failed to run command");
-        eprintln!("{:?}", e);
+    if let Err(error) = &res {
+        // Note: error! is also called in command_event.rs::add_command_error_event()
+        error!(%error, "Failed to run command");
+        eprintln!("{:?}", error);
     }
     res
 }

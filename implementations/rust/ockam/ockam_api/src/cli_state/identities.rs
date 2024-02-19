@@ -4,7 +4,10 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
-use crate::cli_state::{random_name, CliState, Result};
+use crate::{
+    cli_state::{random_name, CliState, Result},
+    color_primary,
+};
 
 /// The methods below allow the creation named identities.
 /// A NamedIdentity is an identity that is associated to a name in order to be more easily
@@ -114,24 +117,61 @@ impl CliState {
     pub async fn get_named_identity(&self, name: &str) -> Result<NamedIdentity> {
         let repository = self.identities_repository();
         match repository.get_named_identity(name).await? {
+            // Able to get named identity.
             Some(identity) => Ok(identity),
-            None => Err(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("No identity found with name {}. To get a list of identities on your machine, run 'ockam identity list'", name),
-            ))?,
+            // Unable to get named identity.
+            None => {
+                let error_message = format!(
+                    "{} {}\n{} {}\n",
+                    "Could not find an Identity with name",
+                    color_primary(name),
+                    "To get a list of Identities on your machine, please run",
+                    color_primary("ockam identity list")
+                );
+                Err(Error::new(Origin::Api, Kind::NotFound, error_message))?
+            }
         }
     }
 
     /// Return a named identity given its name or the default named identity
     #[instrument(skip_all, fields(name = name.clone()))]
     pub async fn get_named_identity_or_default(
-        &self,
+        &mut self,
         name: &Option<String>,
     ) -> Result<NamedIdentity> {
         match name {
-            Some(name) => self.get_named_identity(name).await,
-            None => self.get_or_create_default_named_identity().await,
+            // Identity specified.
+            Some(name) => {
+                let message = format!(
+                    "Enrolling the Identity named {} with Ockam Orchestrator...",
+                    color_primary(name)
+                );
+                self.send_over_channel(message.clone());
+                info!(message);
+
+                let it = self.get_named_identity(name).await;
+
+                if let Ok(named_identity) = &it {
+                    let message = format!(
+                        "{} has Identifier {}",
+                        color_primary(name),
+                        color_primary(named_identity.identifier().to_string().as_ref())
+                    );
+                    self.send_over_channel(message.clone());
+                    info!(message);
+                }
+
+                it
+            }
+            // No identity specified.
+            None => {
+                let message =
+                    "Enrolling the default Identity with Ockam Orchestrator...".to_string();
+                self.send_over_channel(message.clone());
+                info!(message);
+
+                self.get_or_create_default_named_identity().await
+            }
         }
     }
 
@@ -230,8 +270,52 @@ impl CliState {
             .get_default_named_identity()
             .await?
         {
-            Some(named_identity) => Ok(named_identity),
-            None => self.create_identity_with_name(&random_name()).await,
+            // Has default identity.
+            Some(named_identity) => {
+                let message_1 = format!(
+                    "Enrolling the existing default Identity named {} with Ockam Orchestrator...",
+                    color_primary(named_identity.name().as_ref())
+                );
+                let message_2 = format!(
+                    "{} has Identifier {}",
+                    color_primary(named_identity.name().as_ref()),
+                    color_primary(named_identity.identifier().to_string().as_ref())
+                );
+                self.send_over_channel(message_1.clone());
+                self.send_over_channel(message_2.clone());
+                info!(message_1);
+                info!(message_2);
+
+                Ok(named_identity)
+            }
+            // Create a new default identity.
+            None => {
+                let named_identity = self.create_identity_with_name(&random_name()).await;
+
+                if let Ok(named_identity) = &named_identity {
+                    let message_a = format!(
+                        "Creating a new default Identity named {}...",
+                        color_primary(named_identity.name().as_ref())
+                    );
+                    let message_b = format!(
+                        "Enrolling the newly created default Identity named {} with Ockam Orchestrator...",
+                        color_primary(named_identity.name().as_ref())
+                    );
+                    let message_c = format!(
+                        "{} has Identifier {}",
+                        color_primary(named_identity.name().as_ref()),
+                        color_primary(named_identity.identifier().to_string().as_ref())
+                    );
+                    self.send_over_channel(message_a.clone());
+                    self.send_over_channel(message_b.clone());
+                    self.send_over_channel(message_c.clone());
+                    info!(message_a);
+                    info!(message_b);
+                    info!(message_c);
+                }
+
+                named_identity
+            }
         }
     }
 

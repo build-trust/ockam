@@ -60,6 +60,8 @@ impl CreateCommand {
         ))?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
+        // This variable is used so that the output message does not clobber the spinner output.
+        let is_default_vault_created: Mutex<Option<String>> = Mutex::new(None);
 
         let send_req = async {
             let existing_vaults = opts.state.get_named_vaults().await?.len();
@@ -72,10 +74,7 @@ impl CreateCommand {
 
             // If a new vault has been created display a message
             if updated_vaults > existing_vaults {
-                opts.terminal.write_line(&fmt_log!(
-                    "Default vault created: {}\n",
-                    vault.name().color(OckamColor::PrimaryResource.color())
-                ))?;
+                *is_default_vault_created.lock().await = Some(vault.name());
             };
 
             let identity = match &self.key_id {
@@ -102,6 +101,13 @@ impl CreateCommand {
             .progress_output(&output_messages, &is_finished);
 
         let (identifier, _) = try_join!(send_req, progress_output)?;
+
+        if let Some(vault_name) = is_default_vault_created.lock().await.clone() {
+            opts.terminal.write_line(&fmt_log!(
+                "Default vault created named {}\n",
+                vault_name.color(OckamColor::PrimaryResource.color())
+            ))?;
+        }
 
         opts.terminal
             .stdout()

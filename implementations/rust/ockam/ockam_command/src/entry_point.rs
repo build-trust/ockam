@@ -3,7 +3,8 @@ use miette::IntoDiagnostic;
 use tracing_core::Level;
 
 use crate::{
-    add_command_error_event, has_help_flag, pager, replace_hyphen_with_stdin, OckamCommand,
+    add_command_error_event, has_help_flag, pager, replace_hyphen_with_stdin, ErrorReportHandler,
+    OckamCommand,
 };
 use ockam_api::cli_state::CliState;
 use ockam_api::logs::{
@@ -19,6 +20,8 @@ pub fn run() -> miette::Result<()> {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
+
+    let _ = miette::set_hook(Box::new(|_e| Box::new(ErrorReportHandler::new())));
 
     match OckamCommand::try_parse_from(input.clone()) {
         Err(help) => {
