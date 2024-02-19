@@ -13,13 +13,13 @@ pub struct GlobalArgs {
     long,
     short,
     help("Print help information (-h compact, --help extensive)"),
-    long_help("Print help information (-h displays compact help summary, --help displays extensive help summary"),
+    long_help("Print help information (-h displays compact help summary, --help displays extensive help summary)"),
     help_heading("Global Options"),
     action = ArgAction::Help
     )]
     help: Option<bool>,
 
-    /// Do not print any log messages
+    /// Do not print any log messages and disable confirmation prompts. This is useful for scripting and automation, where you don't want the process to block on stdin
     #[arg(global = true, long, short, default_value_t = quiet_default_value())]
     pub quiet: bool,
 

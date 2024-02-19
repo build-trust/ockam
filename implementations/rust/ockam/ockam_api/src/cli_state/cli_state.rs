@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use colorful::{Colorful, RGB};
 use rand::random;
 
 use cli_state::error::Result;
@@ -7,10 +8,11 @@ use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
 use ockam_node::database::application_migration::ApplicationMigration;
 use ockam_node::Executor;
+use tokio::sync::broadcast::{channel, Sender};
 
-use crate::cli_state;
-use crate::cli_state::CliStateError;
+use crate::cli_state::{self, CliStateError};
 use crate::logs::TracingEnabled;
+use crate::{ReportingChannelMessageType, REPORTING_CHANNEL_CAPACITY};
 
 /// The CliState struct manages all the data persisted locally.
 ///
@@ -41,6 +43,14 @@ pub struct CliState {
     database: SqlxDatabase,
     application_database: SqlxDatabase,
     tracing_enabled: TracingEnabled,
+    pub(crate) progress_bar_reporting_channel_sender: Sender<ReportingChannelMessageType>,
+}
+
+pub fn color_primary(text: &str) -> String {
+    // This is a copy of `OckamColor::PrimaryResource` which is the `ockam_command` crate.
+    // #4FDAB8 is rgb(79,218,184).
+    let color = RGB::new(79, 218, 184);
+    text.color(color).to_string()
 }
 
 impl CliState {
@@ -168,6 +178,8 @@ impl CliState {
             "Opened the application database with options {:?}",
             application_database
         );
+        let (progress_bar_reporting_channel_sender, _) =
+            channel::<ReportingChannelMessageType>(REPORTING_CHANNEL_CAPACITY);
         let state = Self {
             dir,
             database,
@@ -177,6 +189,7 @@ impl CliState {
             // the function set_tracing_enabled can be used to enable tracing, which
             // is eventually used to trace user journeys.
             tracing_enabled: TracingEnabled::Off,
+            progress_bar_reporting_channel_sender,
         };
         Ok(state)
     }

@@ -27,7 +27,7 @@ impl OckamColor {
             OckamColor::FmtOKBackground => "#A8C97D",
             OckamColor::FmtINFOBackground => "#0DCAF0",
             OckamColor::FmtWARNBackground => "#ff9a00",
-            OckamColor::FmtERRORBackground => "#ff0000",
+            OckamColor::FmtERRORBackground => "#FF0000",
             OckamColor::FmtLISTBackground => "#0DCAF0",
         }
     }

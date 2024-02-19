@@ -69,7 +69,6 @@ macro_rules! fmt_heading {
         "       ",
         "─".repeat(85).dim().dark_gray(),
         "      "
-            .color($crate::terminal::OckamColor::FmtINFOBackground.color())
             .bold(),
         format!($input))
     };
@@ -78,7 +77,6 @@ macro_rules! fmt_heading {
         "       ",
         "─".repeat(85).dim().dark_gray(),
         "      "
-            .color($crate::terminal::OckamColor::FmtINFOBackground.color())
             .bold(),
         format!($input, $($args),+))
     };

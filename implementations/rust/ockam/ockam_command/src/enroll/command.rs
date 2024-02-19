@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use clap::Args;
 use colorful::Colorful;
+use indicatif::ProgressBar;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -13,13 +14,17 @@ use tracing::{error, info, instrument, warn};
 use ockam::Context;
 use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
-use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
+use ockam_api::cloud::project::Project;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::ControllerClient;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::ReportingChannelMessageType;
+use ockam_api::REPORTING_CHANNEL_MESSAGE_DISPLAY_DELAY;
+use ockam_api::REPORTING_CHANNEL_POLL_DELAY;
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
@@ -40,26 +45,30 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// The name of an existing Ockam Identity that you wish to enroll
+    /// The name of an existing Ockam Identity that you wish to enroll. You can use `ockam
+    /// identity list` to get a list of existing identities. To create a new identity, use
+    /// `ockam identity create`. If you don't specify an identity, we will create a
+    /// default identity for you and save it locally in a vault
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,
 
-    /// Use PKCE authorization flow
+    /// This option allows you to bypass pasting the one-time code and confirming device
+    /// activation, and PKCE (Proof Key for Code Exchange) authorization flow. Please be
+    /// careful with this option since it will open your default system browser. This
+    /// option might be useful if you have already enrolled and want to re-enroll using
+    /// the same account information
     #[arg(long)]
     pub authorization_code_flow: bool,
 
-    /// Run the user enrollment process.
-    ///
-    /// By default, the command will check the Identity status and skip the
-    /// enrollment process if it is already enrolled. Use this flag to force
-    /// the execution of the Identity enrollment process.
+    /// By default we skip the enrollment process if the Identity is already enrolled, by
+    /// checking its status. Use this flag to force the execution of the Identity
+    /// enrollment process.
     #[arg(long)]
     pub force: bool,
 
-    /// Skip the creation of the Orchestrator resources.
-    ///
-    /// When this flag is used, the command will only check whether the Orchestrator
-    /// resources are created. If they are not, it will continue without creating them.
+    /// Use this flag to skip creating Orchestrator resources. When you use this flag, we
+    /// only check whether the Orchestrator resources are created. And if they are not, we
+    /// will continue without creating them.
     #[arg(hide = true, long = "skip-resource-creation", conflicts_with = "force")]
     pub skip_orchestrator_resources_creation: bool,
 }
@@ -86,13 +95,111 @@ impl EnrollCommand {
         Ok(())
     }
 
-    async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    // Creates one span in the trace
+    #[instrument(
+        skip_all, // Drop all args that passed in, as Context doesn't play nice
+        fields(
+            enroller = ?self.identity, // https://docs.rs/tracing/latest/tracing/
+            authorization_code_flow = %self.authorization_code_flow,
+            force = %self.force,
+            skip_orchestrator_resources_creation = %self.skip_orchestrator_resources_creation,
+        )
+    )]
+    async fn run_impl(&self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
-        let identity = opts
-            .state
-            .get_named_identity_or_default(&self.identity)
-            .await?;
+        let sender = opts.state.open_channel();
+
+        // Disable displaying spinner here. To enable use
+        // `opts.terminal.progress_spinner();`. When the spinner is set to `None`, then
+        // the mechanism below will display the messages as soon as they come in from the
+        // channel. Otherwise, w/ the spinner enabled, the spinner will display them as
+        // they come in & at the end of it's lifecycle, it will display all of them at
+        // once (using `message_collector`).
+        let spinner: Option<ProgressBar> = None;
+
+        if let Some(bar) = spinner.as_ref() {
+            bar.set_message("Resolving your Identity....")
+        }
+
+        let identity_task_has_ended = Mutex::new(false);
+        let mut message_collector: Vec<ReportingChannelMessageType> = vec![];
+
+        let spinner_task = async {
+            let mut receiver = sender.subscribe();
+
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep(REPORTING_CHANNEL_POLL_DELAY) => {
+                        if *identity_task_has_ended.lock().await {
+                            if let Some(bar) = spinner.as_ref() { bar.finish_and_clear() }
+                            break;
+                        }
+                    }
+                    message = receiver.recv() => {
+                        match message {
+                            // Message is available in channel.
+                            Ok(msg) => {
+                                // If spinner is available, set the message and save it to
+                                // the message_collector for later display.
+                                if let Some(bar) = spinner.as_ref() {
+                                    message_collector.push(msg.clone());
+                                    bar.set_message(msg);
+                                }
+                                // If spinner is not available, just display the message.
+                                else {
+                                    let _ = opts.terminal.write_line(fmt_log!("{}", msg));
+                                }
+
+                                // Fabricate a delay for a better UX, so the user has a chance to read the message.
+                                if spinner.is_some() {
+                                    let _ = tokio::time::sleep(REPORTING_CHANNEL_MESSAGE_DISPLAY_DELAY)
+                                        .await;
+                                }
+                            }
+                            // Unknown problem with channel.
+                            _ => {
+                                if let Some(bar) = spinner.as_ref() { bar.finish_and_clear() }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            let it: Result<()> = Ok(());
+            it
+        };
+
+        let identity_task = async {
+            let it = opts
+                .state
+                .get_named_identity_or_default(&self.identity)
+                .await;
+            *identity_task_has_ended.lock().await = true;
+            Ok(it)
+        };
+
+        // Note: the ordering of the following tasks matters. The spinner_task must be
+        // started first as it sets up the mechanism to listen to messages from the
+        // channel. The identity_task must be started second as it sends messages to the
+        // channel.
+        let (_, identity) = try_join!(spinner_task, identity_task)?;
+
+        // If a named or default identity can't be found, then we can't proceed, so, return error.
+        let identity = identity?;
+
+        // If spinner is Some, then recombine the messages received in the tasks (through
+        // the channel), if any, into a single message & display to user.
+        if !message_collector.is_empty() && spinner.is_some() {
+            message_collector.iter().for_each(|msg| {
+                let _ = opts.terminal.write_line(fmt_log!("{}", msg));
+            });
+            info!("Messages about vault and identity provisioning:",);
+            message_collector.iter().for_each(|msg| {
+                info!("Vault and identity provisioning: {:?}", msg);
+            });
+        }
+
         let identity_name = identity.name();
         let identifier = identity.identifier();
         let node = InMemoryNode::start_node_with_identity(ctx, &opts.state, &identity_name).await?;
@@ -162,13 +269,11 @@ impl EnrollCommand {
         // Final line
         opts.terminal.write_line(fmt_log!(
             "{} {}:",
-            "Take a look at this tutorial to learn how to securely connect your apps using",
+            "Take a look at our docs site to learn how to securely connect your apps using",
             color_primary("Ockam")
         ))?;
-        opts.terminal.write_line(fmt_log!(
-            "{}\n",
-            color_uri("https://docs.ockam.io/guides/examples/basic-web-app")
-        ))?;
+        opts.terminal
+            .write_line(fmt_log!("{}\n", color_uri("https://docs.ockam.io/")))?;
 
         Ok(())
     }
@@ -188,13 +293,6 @@ impl EnrollCommand {
                 return Ok(user_info);
             }
         }
-
-        opts.terminal.write_line(&fmt_log!(
-            "{}{}{}",
-            "Enrolling your local Identity",
-            " on this machine ".dim(),
-            "with Ockam Orchestrator."
-        ))?;
 
         // Run OIDC service
         let oidc_service = OidcService::default();

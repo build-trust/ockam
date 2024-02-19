@@ -1,5 +1,7 @@
-When you run this command it provisions a Space for you in Ockam Orchestrator. Orchestrator is a SaaS product that allows remote relays, add-ons integration like Confluent, Okta, etc. This is where we host your Projects. A default Project is created for you within your Space in Orchestrator.
+The `enroll` command enrolls your Ockam Identity with Ockam Orchestrator.
 
-This command generates an Ockam Identity for you. Ockam Identities are unique, cryptographically verifiable digital identities. These identities authenticate by proving possession of secret keys. Ockam Vaults safely store these secret keys.
+It involves multiple steps. In the first step, if you specify an Identity using the `--identity` argument, the command uses it. If you do not specify an Identity, it checks if you have a default Identity. If you have one, the command uses this default Identity. If you do not have a default Identity, the command generates a new Identity in your default Vault. If you do not have a default Vault, the command creates a new one on your file system, makes it the default Vault, and uses it to store the private keys of your new Identity.
 
-Membership credentials are issued, for this Identity, that will be used to manage the resources in your Project. Optionally, you can pass an existing Identity.
+Ockam Identities are unique, cryptographically verifiable digital identities. These identities authenticate by proving possession of secret keys. Ockam Vaults safely store these secret keys.
+
+The command then provisions a Space for you in Ockam Orchestrator. Orchestrator is a SaaS product that allows remote relays, add-ons integration like Confluent, Okta, etc. This is where we host your Projects. A default Project is created for you within your Space in Orchestrator. Membership credentials are issued, for this Identity, that will be used to manage the resources in your Project.

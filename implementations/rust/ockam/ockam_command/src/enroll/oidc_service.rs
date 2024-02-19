@@ -91,7 +91,7 @@ impl OidcServiceExt for OidcService {
                 );
 
             opts.terminal
-                .write_line(&fmt_log!(
+                .write_line(&fmt_heading!(
                     "Let's associate your Ockam Identity with an Orchestrator account."
                 ))?
                 .write_line(&otc_string)?

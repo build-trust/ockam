@@ -1,7 +1,6 @@
-use crate::fmt_log;
-use crate::util::exitcode;
-use crate::util::exitcode::ExitCode;
+use crate::util::exitcode::{self, ExitCode};
 use crate::version::Version;
+use crate::{fmt_heading, fmt_log};
 use colorful::Colorful;
 use miette::miette;
 use miette::Diagnostic;
@@ -139,21 +138,20 @@ impl Default for ErrorReportHandler {
 impl miette::ReportHandler for ErrorReportHandler {
     fn debug(&self, error: &dyn Diagnostic, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            return core::fmt::Debug::fmt(error, f);
+            return Debug::fmt(error, f);
         }
-        let code_as_str = match error.code() {
-            Some(code) => code.to_string(),
-            None => "OCK500".to_string(),
-        };
 
-        writeln!(
-            f,
-            "{} {}\n",
-            code_as_str
-                .color(crate::terminal::OckamColor::FmtERRORBackground.color())
-                .bold(),
-            error
-        )?;
+        writeln!(f, "\n{}\n", fmt_heading!("{}", "Error:".red()))?;
+
+        // Try to extract the source message from the error, and disregard the rest. If
+        // possible replace the new lines w/ fmt_log! outputs.
+        let error_message = match error.source() {
+            Some(err) => format!("{}", err),
+            None => format!("{}", error),
+        };
+        error_message.lines().for_each(|line| {
+            let _ = writeln!(f, "{}", fmt_log!("{}", line));
+        });
 
         if let Some(help) = error.help() {
             writeln!(f, "{}", fmt_log!("{}", help))?;
@@ -164,11 +162,34 @@ impl miette::ReportHandler for ErrorReportHandler {
         //     writeln!(f, "{}", fmt_log!("{}", url))?;
         // }
 
+        // Output the error code and version code.
+        let code_as_str = match error.code() {
+            Some(code) => code.to_string(),
+            None => "OCK500".to_string(),
+        };
+        let code_message = format!("Error code: {}", code_as_str).dark_gray();
+        let version_message = Version::short().to_string().dark_gray();
         writeln!(
             f,
-            "{}",
-            fmt_log!("{}", Version::short().to_string().light_gray())
+            "\n{}\n{}",
+            fmt_log!("{}", code_message),
+            fmt_log!("{}", version_message)
         )?;
+
+        writeln!(
+            f,
+            "\n{}\n{}",
+            fmt_log!(
+                "{}",
+                "If you need help, please create an issue on our github: ".dark_gray()
+            ),
+            fmt_log!(
+                "{}",
+                "https://github.com/build-trust/ockam/issues/new/choose".dark_gray()
+            )
+        )?;
+
+        write!(f, "\n{}", fmt_heading!("{}", ""))?;
 
         Ok(())
     }
