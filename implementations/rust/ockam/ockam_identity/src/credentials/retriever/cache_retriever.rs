@@ -19,7 +19,6 @@ pub struct CachedCredentialRetriever {
     issuer: Identifier,
     subject: Identifier,
     cache: Arc<dyn CredentialRepository>,
-    clock_skew_gap: TimestampInSeconds,
 }
 
 impl CachedCredentialRetriever {
@@ -33,7 +32,6 @@ impl CachedCredentialRetriever {
             issuer,
             subject,
             cache,
-            clock_skew_gap: DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,
         }
     }
 
@@ -116,7 +114,9 @@ impl CredentialRetriever for CachedCredentialRetriever {
             &self.subject,
             now,
             self.cache.clone(),
-            self.clock_skew_gap,
+            // We can't refresh the credential, so let's still present it even if it's
+            // potentially expired
+            0.into(),
         )
         .await?
         {
