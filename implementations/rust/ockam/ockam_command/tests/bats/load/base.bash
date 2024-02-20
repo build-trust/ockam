@@ -40,6 +40,10 @@ setup_python_server() {
     pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || {
       exit 1
     }
+
+    # Write a random file that client can download for testing
+    dd if=/dev/urandom of=./file.bin bs=1M count=25
+
     python3 -m http.server --bind 127.0.0.1 5000 &
     pid="$!"
     echo "$pid" >"$p"

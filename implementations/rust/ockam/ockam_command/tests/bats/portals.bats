@@ -243,3 +243,100 @@ teardown() {
 
   run_success curl --fail --head --retry 2 --max-time 10 "127.0.0.1:${inlet_port}"
 }
+
+@test "portals - local portal, inlet credential expires" {
+  inlet_port="$(random_port)"
+  node_port="$(random_port)"
+
+  run_success "$OCKAM" identity create alice
+  alice_identifier=$($OCKAM identity show alice)
+
+  run_success "$OCKAM" identity create bob
+  bob_identifier=$($OCKAM identity show bob)
+
+  # Create an identity that both alice and bob will trust
+  run_success "$OCKAM" identity create authority
+  authority_identifier=$($OCKAM identity show authority)
+  authority_identity=$($OCKAM identity show authority --full --encoding hex)
+
+  # Create a node for alice that trusts authority as a credential authority
+  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --expect-cached-credential
+
+  # Create a node for bob that trusts authority as a credential authority
+  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --expect-cached-credential
+
+  # issue and store a short-lived credential for alice
+  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 2s --encoding hex)
+  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential
+
+  # issue and store credential for bob
+  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --encoding hex)
+  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential
+
+  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+
+  start=$(date +%s)
+
+  # Downloading a file will create a long-lived TCP connection, which should be dropped by the portal
+  # when the credential expires
+  # Should be run_failure after we add outgoing access control
+  run_success curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
+  rm ./file.bin
+
+  end=$(date +%s)
+  runtime=$((end - start))
+
+  # Make sure the call was long enough for credential to expire
+  assert [ $runtime -gt 5 ]
+
+  run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
+}
+
+@test "portals - local portal, outlet credential expires" {
+  inlet_port="$(random_port)"
+  node_port="$(random_port)"
+
+  run_success "$OCKAM" identity create alice
+  alice_identifier=$($OCKAM identity show alice)
+
+  run_success "$OCKAM" identity create bob
+  bob_identifier=$($OCKAM identity show bob)
+
+  # Create an identity that both alice and bob will trust
+  run_success "$OCKAM" identity create authority
+  authority_identifier=$($OCKAM identity show authority)
+  authority_identity=$($OCKAM identity show authority --full --encoding hex)
+
+  # Create a node for alice that trusts authority as a credential authority
+  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --expect-cached-credential
+
+  # Create a node for bob that trusts authority as a credential authority
+  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --expect-cached-credential
+
+  # issue and store a short-lived credential for alice
+  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --encoding hex)
+  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential
+
+  # issue and store credential for bob
+  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 2s --encoding hex)
+  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential
+
+  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+
+  start=$(date +%s)
+
+  # Downloading a file will create a long-lived TCP connection, which should be dropped by the portal
+  # when the credential expires
+  run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
+  rm ./file.bin
+
+  end=$(date +%s)
+  runtime=$((end - start))
+
+  # Make sure the call was long enough for credential to expire
+  assert [ $runtime -gt 5 ]
+
+  run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
+}
