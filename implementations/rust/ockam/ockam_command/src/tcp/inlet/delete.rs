@@ -34,6 +34,10 @@ pub struct DeleteCommand {
     /// Confirm the deletion without prompting
     #[arg(display_order = 901, long, short)]
     yes: bool,
+
+    /// Delete all the TCP Inlet
+    #[arg(long, short, group = "tcp-inlets")]
+    all: bool,
 }
 
 impl DeleteCommand {
@@ -90,7 +94,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
-        false
+        self.cmd.all
     }
 
     fn cmd_arg_confirm_deletion(&self) -> bool {
