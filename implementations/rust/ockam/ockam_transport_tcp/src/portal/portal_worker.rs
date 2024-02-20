@@ -287,14 +287,6 @@ impl TcpPortalWorker {
     }
 
     async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
-        // Respond to Inlet
-        ctx.send_from_address(
-            pong_route.clone(),
-            PortalMessage::Pong,
-            self.addresses.remote.clone(),
-        )
-        .await?;
-
         if self.write_half.is_none() {
             let stream = TcpStream::connect(self.peer)
                 .await
@@ -310,6 +302,14 @@ impl TcpPortalWorker {
                 self.addresses.internal
             );
         }
+
+        // Respond to Inlet
+        ctx.send_from_address(
+            pong_route.clone(),
+            PortalMessage::Pong,
+            self.addresses.remote.clone(),
+        )
+        .await?;
 
         debug!("Outlet at: {} sent pong", self.addresses.internal);
 
