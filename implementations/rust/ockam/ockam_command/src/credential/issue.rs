@@ -3,13 +3,12 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
-use ockam_api::authenticator::credential_issuer::{
-    DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA,
-};
+use ockam_api::authenticator::credential_issuer::PROJECT_MEMBER_SCHEMA;
 use ockam_core::compat::collections::HashMap;
 
 use crate::output::{CredentialAndPurposeKeyDisplay, EncodeFormat};
 use crate::util::async_cmd;
+use crate::util::duration::duration_parser;
 use crate::{util::parsers::identity_identifier_parser, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -32,6 +31,9 @@ pub struct IssueCommand {
     /// Encoding Format
     #[arg(long = "encoding", value_enum, default_value = "plain")]
     encode_format: EncodeFormat,
+
+    #[arg(long, value_name = "TTL", default_value = "30m", value_parser = duration_parser)]
+    ttl: std::time::Duration,
 }
 
 impl IssueCommand {
@@ -83,7 +85,7 @@ impl IssueCommand {
                 &authority,
                 &self.identity_identifier,
                 attributes_builder.build(),
-                DEFAULT_CREDENTIAL_VALIDITY,
+                self.ttl,
             )
             .await
             .into_diagnostic()?;
