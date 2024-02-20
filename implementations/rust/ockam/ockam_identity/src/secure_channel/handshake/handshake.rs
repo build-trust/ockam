@@ -433,23 +433,29 @@ impl Handshake {
 
     /// Read the first 'length' bytes of the message
     fn read_start<const N: usize>(message: &[u8]) -> Result<&[u8; N]> {
-        Ok(message[..N]
-            .try_into()
-            .map_err(|_| XXError::MessageLenMismatch)?)
+        if message.len() < N {
+            return Err(XXError::MessageLenMismatch)?;
+        }
+
+        Ok(message[..N].try_into().unwrap())
     }
 
     /// Read the bytes of the message after the first 'drop_length' bytes
     fn read_end<const N: usize>(message: &[u8]) -> Result<&[u8]> {
-        Ok(message[N..]
-            .try_into()
-            .map_err(|_| XXError::MessageLenMismatch)?)
+        if message.len() < N {
+            return Err(XXError::MessageLenMismatch)?;
+        }
+
+        Ok(message[N..].try_into().unwrap())
     }
 
     /// Read 'length' bytes of the message after the first 'drop_length' bytes
     fn read_middle<const N: usize, const L: usize>(message: &[u8]) -> Result<&[u8]> {
-        Ok(message[N..(N + L)]
-            .try_into()
-            .map_err(|_| XXError::MessageLenMismatch)?)
+        if message.len() < N + L {
+            return Err(XXError::MessageLenMismatch)?;
+        }
+
+        Ok(message[N..(N + L)].try_into().unwrap())
     }
 
     /// Read the bytes of a key at the beginning of a message
