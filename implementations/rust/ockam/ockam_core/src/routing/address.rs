@@ -284,38 +284,79 @@ impl Distribution<Address> for Standard {
     }
 }
 
-#[test]
-fn parse_addr_simple() {
-    let addr = Address::from_string("local_friend");
-    assert_eq!(
-        addr,
-        Address {
-            tt: LOCAL,
-            inner: "local_friend".as_bytes().to_vec()
+impl Address {
+    pub(crate) fn manual_encode(&self, buffer: &mut Vec<u8>) {
+        buffer.push(self.tt.into());
+        crate::bare::write_slice(buffer, &self.inner);
+    }
+
+    pub(crate) fn encoded_size(&self) -> usize {
+        1 + crate::bare::size_of_slice(&self.inner)
+    }
+    pub(crate) fn manually_decode(slice: &[u8], index: &mut usize) -> Option<Address> {
+        if slice.len() - *index < 2 {
+            return None;
         }
-    );
+        let tt = slice[*index];
+        *index += 1;
+
+        let inner = crate::bare::read_slice(slice, index)?;
+        Some(Address {
+            tt: TransportType::new(tt),
+            inner: inner.to_vec(),
+        })
+    }
 }
 
-#[test]
-fn parse_addr_with_type() {
-    let addr = Address::from_string("1#remote_friend");
-    assert_eq!(
-        addr,
-        Address {
-            tt: TransportType::new(1),
-            inner: "remote_friend".as_bytes().to_vec()
-        }
-    );
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Encodable;
 
-#[test]
-#[should_panic(expected = "Failed to parse address type:")]
-fn parse_addr_invalid() {
-    Address::from_string("#,my_friend");
-}
+    #[test]
+    fn encode_and_manually_decode_address() {
+        let super_long_string = "a".repeat(250);
+        let address = Address::from_string("42#".to_string() + &super_long_string);
+        assert_eq!(address.address(), super_long_string.as_str());
 
-#[test]
-#[should_panic(expected = "Invalid address string:")]
-fn parse_addr_invalid_multiple_separators() {
-    let _ = Address::from_string("1#invalid#");
+        let encoded = address.clone().encode().unwrap();
+        let decoded = Address::manually_decode(&encoded, &mut 0).unwrap();
+        assert_eq!(address, decoded);
+    }
+
+    #[test]
+    fn parse_addr_simple() {
+        let addr = Address::from_string("local_friend");
+        assert_eq!(
+            addr,
+            Address {
+                tt: LOCAL,
+                inner: "local_friend".as_bytes().to_vec(),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_addr_with_type() {
+        let addr = Address::from_string("1#remote_friend");
+        assert_eq!(
+            addr,
+            Address {
+                tt: TransportType::new(1),
+                inner: "remote_friend".as_bytes().to_vec(),
+            }
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to parse address type:")]
+    fn parse_addr_invalid() {
+        Address::from_string("#,my_friend");
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid address string:")]
+    fn parse_addr_invalid_multiple_separators() {
+        let _ = Address::from_string("1#invalid#");
+    }
 }

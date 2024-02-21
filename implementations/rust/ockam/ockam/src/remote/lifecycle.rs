@@ -131,7 +131,7 @@ impl RemoteRelay {
             .start(ctx)
             .await?;
 
-        let resp = child_ctx.receive::<RemoteRelayInfo>().await?.body();
+        let resp = child_ctx.receive::<RemoteRelayInfo>().await?.into_body()?;
 
         Ok(resp)
     }
@@ -178,7 +178,10 @@ impl RemoteRelay {
             .start(ctx)
             .await?;
 
-        let resp = callback_ctx.receive::<RemoteRelayInfo>().await?.body();
+        let resp = callback_ctx
+            .receive::<RemoteRelayInfo>()
+            .await?
+            .into_body()?;
 
         Ok(resp)
     }
@@ -229,7 +232,10 @@ impl RemoteRelay {
             .start(ctx)
             .await?;
 
-        let resp = callback_ctx.receive::<RemoteRelayInfo>().await?.body();
+        let resp = callback_ctx
+            .receive::<RemoteRelayInfo>()
+            .await?
+            .into_body()?;
 
         Ok(resp)
     }

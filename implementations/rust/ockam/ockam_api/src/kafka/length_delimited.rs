@@ -18,7 +18,7 @@ impl KafkaMessageDecoder {
     }
 
     /// Accepts length encoded messages, returns complete messages
-    pub(super) fn decode_messages(
+    pub(super) fn extract_complete_messages(
         &mut self,
         mut incoming: BytesMut,
         max_message_size: u32,

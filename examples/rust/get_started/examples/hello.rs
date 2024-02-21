@@ -33,7 +33,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Wait to receive a message for the "app" worker and print it.
     let message = node.receive::<String>().await?;
-    println!("App Received: {}", message); // should print "Hello Ockam!"
+    println!("App Received: {}", message.into_body()?); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
     node.stop().await

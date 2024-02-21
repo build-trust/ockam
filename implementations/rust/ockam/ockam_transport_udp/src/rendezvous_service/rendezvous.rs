@@ -121,12 +121,12 @@ impl Worker for RendezvousWorker {
             Self::parse_route(&msg.return_route())
         );
         let return_route = msg.return_route();
-        match msg.as_body() {
+        match msg.into_body()? {
             RendezvousRequest::Update { puncher_name } => {
-                self.handle_update(puncher_name, &return_route);
+                self.handle_update(&puncher_name, &return_route);
             }
             RendezvousRequest::Query { puncher_name } => {
-                let res = self.handle_query(puncher_name);
+                let res = self.handle_query(&puncher_name);
                 ctx.send(return_route, RendezvousResponse::Query(res))
                     .await?;
             }

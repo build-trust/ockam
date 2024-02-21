@@ -137,7 +137,7 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
                 MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
             )
             .await?
-            .body();
+            .into_body()?;
         assert_eq!(reply, msg, "Should receive the same message");
     }
 
@@ -179,7 +179,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
                 )
                 .await?
-                .body();
+                .into_body()?;
 
             assert_eq!(reply, msg, "Should receive the same message");
         }
@@ -237,6 +237,6 @@ impl Worker for Echoer {
         }
 
         debug!("Replying back to {}", &msg.return_route());
-        ctx.send(msg.return_route(), msg.body()).await
+        ctx.send(msg.return_route(), msg.into_body()?).await
     }
 }

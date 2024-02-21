@@ -61,7 +61,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     assert_eq!(local_info.their_identity_id(), alice);
 
     let return_route = msg.return_route();
-    assert_eq!("Hello, Bob!", msg.body());
+    assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
         .add_consumer("child", alice_channel.flow_control_id());
@@ -75,7 +75,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
     assert_eq!(local_info.their_identity_id(), bob);
 
-    assert_eq!("Hello, Alice!", msg.body());
+    assert_eq!("Hello, Alice!", msg.into_body()?);
 
     Ok(())
 }
@@ -312,18 +312,17 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
             .await?;
 
         let message = child_ctx.receive::<String>().await?;
-        assert_eq!(&payload, message.as_body());
+        let return_route = message.return_route();
+        assert_eq!(payload, message.into_body()?);
 
         child_ctx
             .flow_controls()
             .add_consumer(child_ctx.address(), &sc_flow_control_id);
         let payload = format!("Hello, Alice! {}", n);
-        child_ctx
-            .send(message.return_route(), payload.clone())
-            .await?;
+        child_ctx.send(return_route, payload.clone()).await?;
 
         let message = child_ctx.receive::<String>().await?;
-        assert_eq!(&payload, message.as_body());
+        assert_eq!(payload, message.into_body()?);
     }
     Ok(())
 }
@@ -383,7 +382,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let msg = bob_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
 
-    assert_eq!("Hello, Alice!", msg.body());
+    assert_eq!("Hello, Alice!", msg.into_body()?);
 
     let bob_channel = return_route.next().unwrap().clone();
 
@@ -445,7 +444,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let msg = bob_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
 
-    assert_eq!("Hello, Alice!", msg.body());
+    assert_eq!("Hello, Alice!", msg.into_body()?);
 
     let bob_channel = return_route.next().unwrap().clone();
 
@@ -571,7 +570,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         .await?;
     let msg = child_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
-    assert_eq!("Hello, Bob!", msg.body());
+    assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
         .add_consumer("child", alice_another_channel.flow_control_id());
@@ -579,7 +578,10 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
-    assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
+    assert_eq!(
+        "Hello, Alice!",
+        child_ctx.receive::<String>().await?.into_body()?
+    );
 
     Ok(())
 }
@@ -662,7 +664,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .await?;
     let msg = child_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
-    assert_eq!("Hello, Bob!", msg.body());
+    assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
         .add_consumer("child", alice_yet_another_channel.flow_control_id());
@@ -670,7 +672,10 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
-    assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
+    assert_eq!(
+        "Hello, Alice!",
+        child_ctx.receive::<String>().await?.into_body()?
+    );
 
     Ok(())
 }
@@ -735,7 +740,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         .await?;
     let msg = child_ctx.receive::<String>().await?;
     let return_route = msg.return_route();
-    assert_eq!("Hello, Bob!", msg.body());
+    assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
         .add_consumer("child", &sc_flow_control_id.unwrap());
@@ -743,7 +748,10 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
-    assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
+    assert_eq!(
+        "Hello, Alice!",
+        child_ctx.receive::<String>().await?.into_body()?
+    );
     Ok(())
 }
 

@@ -115,8 +115,7 @@ impl Processor for TcpPortalRecvProcessor {
                 .with_onward_route(self.onward_route.clone())
                 .with_return_route(route![self.sender_address.clone()])
                 .with_payload(
-                    PortalMessage::Payload(chunk.to_vec(), Some(self.payload_packet_counter))
-                        .encode()?,
+                    PortalMessage::Payload(chunk, Some(self.payload_packet_counter)).encode()?,
                 );
 
             self.payload_packet_counter += 1;

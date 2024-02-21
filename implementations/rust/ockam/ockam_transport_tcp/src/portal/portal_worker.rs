@@ -202,7 +202,7 @@ impl TcpPortalWorker {
         if let Some(remote_route) = self.remote_route.take() {
             ctx.send_from_address(
                 remote_route,
-                PortalMessage::Disconnect,
+                PortalMessage::Disconnect.to_neutral_message()?,
                 self.addresses.remote.clone(),
             )
             .await?;
@@ -286,7 +286,7 @@ impl TcpPortalWorker {
         // Force creation of Outlet on the other side
         ctx.send_from_address(
             ping_route,
-            PortalMessage::Ping,
+            PortalMessage::Ping.to_neutral_message()?,
             self.addresses.remote.clone(),
         )
         .await?;
@@ -311,7 +311,7 @@ impl TcpPortalWorker {
             // to avoid a payload being sent before the pong
             ctx.send_from_address(
                 pong_route.clone(),
-                PortalMessage::Pong,
+                PortalMessage::Pong.to_neutral_message()?,
                 self.addresses.remote.clone(),
             )
             .await?;
@@ -325,7 +325,7 @@ impl TcpPortalWorker {
         } else {
             ctx.send_from_address(
                 pong_route.clone(),
-                PortalMessage::Pong,
+                PortalMessage::Pong.to_neutral_message()?,
                 self.addresses.remote.clone(),
             )
             .await?;
@@ -355,7 +355,7 @@ impl Worker for TcpPortalWorker {
                 self.state = self.handle_send_pong(ctx, pong_route.clone()).await?;
             }
             State::ReceivePong | State::Initialized { .. } => {
-                return Err(TransportError::PortalInvalidState)?
+                return Err(TransportError::PortalInvalidState)?;
             }
         }
 
@@ -389,13 +389,14 @@ impl Worker for TcpPortalWorker {
         }
         let return_route = msg.return_route();
         let remote_packet = recipient != self.addresses.internal;
+        let payload = msg.into_payload();
 
         match state {
             State::ReceivePong => {
                 if !remote_packet {
                     return Err(TransportError::PortalInvalidState)?;
                 };
-                if PortalMessage::decode(msg.payload())? != PortalMessage::Pong {
+                if PortalMessage::decode(&payload)? != PortalMessage::Pong {
                     return Err(TransportError::Protocol)?;
                 };
                 self.handle_receive_pong(ctx, return_route).await
@@ -409,7 +410,7 @@ impl Worker for TcpPortalWorker {
                 );
 
                 if remote_packet {
-                    let msg = PortalMessage::decode(msg.payload())?;
+                    let msg = PortalMessage::decode(&payload)?;
                     // Send to Tcp stream
                     match msg {
                         PortalMessage::Payload(payload, packet_counter) => {
@@ -424,7 +425,7 @@ impl Worker for TcpPortalWorker {
                         }
                     }
                 } else {
-                    let msg = PortalInternalMessage::decode(msg.payload())?;
+                    let msg = PortalInternalMessage::decode(&payload)?;
                     if msg != PortalInternalMessage::Disconnect {
                         return Err(TransportError::Protocol)?;
                     };
@@ -463,13 +464,13 @@ impl TcpPortalWorker {
     async fn handle_payload(
         &mut self,
         ctx: &Context,
-        payload: Vec<u8>,
+        payload: &[u8],
         packet_counter: Option<u16>,
     ) -> Result<()> {
         // detects both missing or out of order packets
         self.check_packet_counter(ctx, packet_counter).await?;
         if let Some(tx) = &mut self.write_half {
-            match tx.write_all(&payload).await {
+            match tx.write_all(payload).await {
                 Ok(()) => {}
                 Err(err) => {
                     warn!(

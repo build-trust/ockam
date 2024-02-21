@@ -276,12 +276,10 @@ impl Worker for MessageSender {
         ctx: &mut Context,
         msg: Routed<String>,
     ) -> ockam_core::Result<()> {
+        let return_route = msg.return_route();
         let received = ctx
-            .send_and_receive::<String>(
-                route![self.sender_to.clone(), "echoer"],
-                msg.as_body().clone(),
-            )
+            .send_and_receive::<String>(route![self.sender_to.clone(), "echoer"], msg.into_body()?)
             .await?;
-        ctx.send(msg.return_route(), received).await
+        ctx.send(return_route, received).await
     }
 }

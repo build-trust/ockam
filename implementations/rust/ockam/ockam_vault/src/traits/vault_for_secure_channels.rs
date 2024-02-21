@@ -42,11 +42,12 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
     /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions
     async fn aead_encrypt(
         &self,
+        destination: &mut Vec<u8>,
         secret_key_handle: &AeadSecretKeyHandle,
         plain_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>>;
+    ) -> Result<()>;
 
     /// Perform AEAD decryption.
     /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions

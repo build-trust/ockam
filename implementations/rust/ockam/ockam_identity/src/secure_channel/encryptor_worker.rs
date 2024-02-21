@@ -7,14 +7,14 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Decodable, Encodable, Error, LocalMessage, Route};
+use ockam_core::{async_trait, Decodable, Error, LocalMessage, Route};
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
-use crate::secure_channel::encryptor::Encryptor;
+use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError,
     PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
@@ -66,9 +66,24 @@ impl EncryptorWorker {
     }
 
     /// Encrypt the message
-    async fn encrypt(&mut self, ctx: &Context, msg: SecureChannelMessage) -> Result<Vec<u8>> {
-        match self.encryptor.encrypt(&minicbor::to_vec(&msg)?).await {
-            Ok(encrypted_payload) => Ok(encrypted_payload),
+    async fn encrypt(&mut self, ctx: &Context, msg: SecureChannelMessage<'_>) -> Result<Vec<u8>> {
+        let payload = minicbor::to_vec(&msg)?;
+        let mut buffer = Vec::new();
+        self.encrypt_to(ctx, &mut buffer, &payload).await?;
+        Ok(buffer)
+    }
+
+    async fn encrypt_to(
+        &mut self,
+        ctx: &Context,
+        destination: &mut Vec<u8>,
+        payload: &[u8],
+    ) -> Result<()> {
+        // by reserving the capacity beforehand, we can avoid copying memory later
+        destination.reserve(SIZE_OF_ENCRYPT_OVERHEAD + payload.len());
+
+        match self.encryptor.encrypt(destination, payload).await {
+            Ok(()) => Ok(()),
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
@@ -97,10 +112,15 @@ impl EncryptorWorker {
         let request = EncryptionRequest::decode(msg.payload())?;
 
         let mut should_stop = false;
+        let mut encrypted_payload = Vec::new();
 
         // Encrypt the message
-        let response = match self.encryptor.encrypt(&request.0).await {
-            Ok(encrypted_payload) => EncryptionResponse::Ok(encrypted_payload),
+        let response = match self
+            .encryptor
+            .encrypt(&mut encrypted_payload, &request.0)
+            .await
+        {
+            Ok(()) => EncryptionResponse::Ok(encrypted_payload),
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
@@ -141,16 +161,46 @@ impl EncryptorWorker {
         // Remove our address
         let _ = onward_route.step();
 
+        let payload = msg.into_payload();
         let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,
-            payload: msg.into_local_message().into_payload(),
+            payload: &payload,
         };
         let msg = SecureChannelMessage::Payload(msg);
 
-        let msg = self.encrypt(ctx, msg).await?;
+        let payload = {
+            // This is a workaround to keep backcompatibility with an extra
+            // bare encoding of the raw message (Vec<u8>).
+            // In bare, a variable length array is simply represented by a
+            // variable length integer followed by the raw bytes.
+            // The idea is first to calculate the size of the encrypted payload,
+            // so we can calculate the size of the variable length integer.
+            // The goal is to prepend the variable length integer to the buffer
+            // before it's actually written, so we can write the whole encrypted
+            // payload without any extra copies.
 
-        let payload = msg.encode()?;
+            let encoded_payload = minicbor::to_vec(&msg)?;
+            // we assume this calculation is exact
+            let encrypted_payload_size = SIZE_OF_ENCRYPT_OVERHEAD + encoded_payload.len();
+            let variable_length_integer =
+                ockam_core::bare::size_of_variable_length(encrypted_payload_size as u64);
+            let mut buffer = Vec::with_capacity(encrypted_payload_size + variable_length_integer);
+
+            ockam_core::bare::write_variable_length_integer(
+                &mut buffer,
+                encrypted_payload_size as u64,
+            );
+
+            self.encrypt_to(ctx, &mut buffer, &encoded_payload).await?;
+            assert_eq!(
+                buffer.len() - variable_length_integer,
+                encrypted_payload_size
+            );
+
+            buffer
+        };
+
         // Decryptor doesn't need the return_route since it has `self.remote_route` as well
         let msg = LocalMessage::new()
             .with_payload(payload)
@@ -269,7 +319,7 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = %ctx.address()))]
+    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = % ctx.address()))]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,

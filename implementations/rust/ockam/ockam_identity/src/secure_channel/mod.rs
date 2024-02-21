@@ -45,13 +45,9 @@ mod tests {
 
         for n in 0..100 {
             let msg = vec![n];
-            assert_eq!(
-                msg,
-                decryptor
-                    .decrypt(&encryptor.encrypt(&msg).await.unwrap())
-                    .await
-                    .unwrap()
-            );
+            let mut ciphertext = Vec::new();
+            encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
+            assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
         }
     }
 
@@ -61,7 +57,8 @@ mod tests {
 
         for n in 0..100 {
             let msg = vec![n];
-            let ciphertext = encryptor.encrypt(&msg).await.unwrap();
+            let mut ciphertext = Vec::new();
+            encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
             if n % 3 == 0 {
                 // Two out of three packets are lost, but the ones that do reach the decryptor are
                 // decrypted ok.
@@ -80,7 +77,8 @@ mod tests {
             let mut batch: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
             for m in 0..30 {
                 let msg = vec![n, m];
-                let ciphertext = encryptor.encrypt(&msg).await.unwrap();
+                let mut ciphertext = Vec::new();
+                encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
                 batch.push((msg, ciphertext));
             }
             batch.shuffle(&mut thread_rng());
@@ -97,15 +95,10 @@ mod tests {
             assert!(decryptor.decrypt(ciphertext).await.is_err());
         }
         let msg = vec![1, 1];
-
+        let mut ciphertext = Vec::new();
+        encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
         // Good messages continue to be decrypted ok
-        assert_eq!(
-            msg,
-            decryptor
-                .decrypt(&encryptor.encrypt(&msg).await.unwrap())
-                .await
-                .unwrap()
-        );
+        assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
     }
 
     #[tokio::test]
@@ -113,7 +106,8 @@ mod tests {
         let (mut encryptor, mut decryptor) = create_encryptor_decryptor().await.unwrap();
         for n in 0..100 {
             let msg = vec![n];
-            let ciphertext = encryptor.encrypt(&msg).await.unwrap();
+            let mut ciphertext = Vec::new();
+            encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
             let mut trash_packet = ciphertext.clone();
             // toggle a bit, to make the packet invalid.  The nonce is not affected
             // as it at the beginning of the packet

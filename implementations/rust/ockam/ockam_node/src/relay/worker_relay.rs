@@ -1,7 +1,7 @@
 use crate::channel_types::SmallReceiver;
 use crate::relay::CtrlSignal;
 use crate::tokio::runtime::Handle;
-use crate::{parser, Context};
+use crate::Context;
 use cfg_if::cfg_if;
 use ockam_core::{Message, RelayMessage, Result, Routed, Worker};
 #[cfg(feature = "std")]
@@ -44,19 +44,12 @@ where
     /// 2. Introduce a Clone bound on the Message trait that allows us
     ///    to perform a cheaper clone on the message.
     ///
-    fn wrap_direct_message(relay_msg: RelayMessage) -> Result<Routed<M>> {
-        let payload = relay_msg.payload();
-        let msg = parser::message::<M>(payload).map_err(|e| {
-            error!("Failed to decode message payload for worker" /* FIXME */);
-            e
-        })?;
-        let routed = Routed::new(
-            msg,
+    fn wrap_direct_message(relay_msg: RelayMessage) -> Routed<M> {
+        Routed::new(
             relay_msg.destination().clone(),
             relay_msg.source().clone(),
             relay_msg.into_local_message(),
-        );
-        Ok(routed)
+        )
     }
 
     /// Receive and handle a single message
@@ -83,13 +76,13 @@ where
                 self.ctx.set_tracing_context(tracing_context.clone());
 
                 self.worker
-                    .handle_message(&mut self.ctx, Self::wrap_direct_message(relay_msg)?)
+                    .handle_message(&mut self.ctx, Self::wrap_direct_message(relay_msg))
                     // make sure we are using the latest tracing context to handle the message
                     // the handle_message future
                     .with_context(tracing_context.update().extract())
                     .await?;
             } else {
-                let routed = Self::wrap_direct_message(relay_msg)?;
+                let routed = Self::wrap_direct_message(relay_msg);
                 self.worker
                     .handle_message(&mut self.ctx, routed)
                     .await?;

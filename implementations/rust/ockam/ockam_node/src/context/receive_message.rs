@@ -4,8 +4,8 @@ use core::time::Duration;
 use ockam_core::{Message, RelayMessage, Result, Routed};
 
 use crate::debugger;
+use crate::error::*;
 use crate::tokio::time::timeout;
-use crate::{error::*, parser};
 use crate::{Context, DEFAULT_TIMEOUT};
 
 pub(super) enum MessageWait {
@@ -91,26 +91,15 @@ impl Context {
 
     /// A convenience function to get a Routed message from the Mailbox
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<Routed<M>> {
-        loop {
-            let msg = self
-                .receiver_next()
-                .await?
-                .ok_or_else(|| NodeError::Data.not_found())?;
-            let destination_addr = msg.destination().clone();
-            let src_addr = msg.source().clone();
-            let local_msg = msg.into_local_message();
+        let msg = self
+            .receiver_next()
+            .await?
+            .ok_or_else(|| NodeError::Data.not_found())?;
+        let destination_addr = msg.destination().clone();
+        let src_addr = msg.source().clone();
+        let local_msg = msg.into_local_message();
 
-            // FIXME: make message parsing idempotent to avoid cloning
-            match parser::message(local_msg.payload_ref()) {
-                Ok(msg) => {
-                    let routed_msg = Routed::new(msg, destination_addr, src_addr, local_msg);
-                    break Ok(routed_msg);
-                }
-                Err(_err) => {
-                    error!(destination_addr = %destination_addr, "Encountered unparsable message")
-                }
-            }
-        }
+        Ok(Routed::new(destination_addr, src_addr, local_msg))
     }
 
     /// Block the current worker to wait for a typed message

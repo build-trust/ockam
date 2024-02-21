@@ -46,7 +46,9 @@ impl Worker for DirectAuthenticatorWorker {
         };
 
         let from = secure_channel_info.their_identity_id();
-        let mut dec = Decoder::new(m.as_body());
+        let return_route = m.return_route();
+        let body = m.into_body()?;
+        let mut dec = Decoder::new(&body);
         let req: RequestHeader = dec.decode()?;
         trace! {
             target: "direct_authenticator",
@@ -103,7 +105,7 @@ impl Worker for DirectAuthenticatorWorker {
             _ => Response::unknown_path(&req).to_vec()?,
         };
 
-        c.send(m.return_route(), res).await?;
+        c.send(return_route, res).await?;
 
         Ok(())
     }

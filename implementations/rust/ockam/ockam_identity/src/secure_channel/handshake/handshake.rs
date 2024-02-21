@@ -358,14 +358,14 @@ impl Handshake {
         let mut nonce = [0u8; 12];
         nonce[4..].copy_from_slice(&state.n.to_be_bytes());
 
-        let result = self
-            .vault
-            .aead_encrypt(state.k()?, p, nonce.as_ref(), &state.h)
-            .await?
-            .to_vec();
-        state.mix_hash(result.as_slice());
+        let mut destination = Vec::with_capacity(p.len());
+        self.vault
+            .aead_encrypt(&mut destination, state.k()?, p, nonce.as_ref(), &state.h)
+            .await?;
+
+        state.mix_hash(destination.as_slice());
         state.n += 1;
-        Ok(result)
+        Ok(destination)
     }
 
     async fn delete_ephemeral_keys(&mut self) -> Result<()> {

@@ -17,6 +17,9 @@ pub(crate) struct Encryptor {
 // window we accept with the message period used to rekey.
 // This means we only need to keep the current key and the previous one.
 pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 32;
+pub(crate) const SIZE_OF_NONCE: usize = 8;
+pub(crate) const SIZE_OF_TAG: usize = 16;
+pub(crate) const SIZE_OF_ENCRYPT_OVERHEAD: usize = SIZE_OF_NONCE + SIZE_OF_TAG;
 
 impl Encryptor {
     /// We use u64 nonce since it's convenient to work with it (e.g. increment)
@@ -39,7 +42,10 @@ impl Encryptor {
         let nonce_buffer = Self::convert_nonce_from_u64(u64::MAX).1;
         let zeroes = [0u8; 32];
 
-        let new_key_buffer = vault.aead_encrypt(key, &zeroes, &nonce_buffer, &[]).await?;
+        let mut new_key_buffer = Vec::with_capacity(zeroes.len());
+        vault
+            .aead_encrypt(&mut new_key_buffer, key, &zeroes, &nonce_buffer, &[])
+            .await?;
 
         let buffer = vault
             .import_secret_buffer(new_key_buffer[0..32].to_vec())
@@ -49,7 +55,7 @@ impl Encryptor {
     }
 
     #[instrument(skip_all)]
-    pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
+    pub async fn encrypt(&mut self, destination: &mut Vec<u8>, payload: &[u8]) -> Result<()> {
         let current_nonce = self.nonce;
         if current_nonce == u64::MAX {
             return Err(IdentityError::NonceOverflow)?;
@@ -64,17 +70,13 @@ impl Encryptor {
         }
 
         let (small_nonce, nonce) = Self::convert_nonce_from_u64(current_nonce);
+        destination.extend_from_slice(&small_nonce);
 
-        let mut cipher_text = self
-            .vault
-            .aead_encrypt(&self.key, payload, &nonce, &[])
+        self.vault
+            .aead_encrypt(destination, &self.key, payload, &nonce, &[])
             .await?;
 
-        let mut res = Vec::new();
-        res.extend_from_slice(&small_nonce);
-        res.append(&mut cipher_text);
-
-        Ok(res)
+        Ok(())
     }
 
     pub fn new(

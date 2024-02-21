@@ -49,7 +49,7 @@ async fn main(ctx: Context) -> Result<()> {
 
         // Wait to receive an echo and print it.
         let reply = node.receive::<String>().await?;
-        println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
+        println!("Alice received an echo: {}\n", reply.into_body()?); // should print "Hello Ockam!"
     }
 
     // This program will keep running until you stop it with Ctrl-C

@@ -1,6 +1,6 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
-use ockam_core::{async_trait, Address, DenyAll, Result, Routed, Worker};
+use ockam_core::{async_trait, Address, DenyAll, NeutralMessage, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
@@ -54,7 +54,7 @@ impl TcpOutletListenWorker {
 #[async_trait]
 impl Worker for TcpOutletListenWorker {
     type Context = Context;
-    type Message = PortalMessage;
+    type Message = NeutralMessage;
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
@@ -78,9 +78,10 @@ impl Worker for TcpOutletListenWorker {
     ) -> Result<()> {
         let return_route = msg.return_route();
         let src_addr = msg.src_addr();
+        let body = msg.into_body()?.into_vec();
+        let msg = PortalMessage::decode(&body)?;
 
-        if let PortalMessage::Ping = msg.body() {
-        } else {
+        if !matches!(msg, PortalMessage::Ping) {
             return Err(TransportError::Protocol)?;
         }
 

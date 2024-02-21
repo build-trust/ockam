@@ -103,7 +103,7 @@ impl UdpHolePunchWorker {
                 MessageSendReceiveOptions::new().with_timeout(QUICK_TIMEOUT),
             )
             .await?
-            .body();
+            .into_body()?;
 
         match res {
             RendezvousResponse::Query(r) => r,
@@ -112,7 +112,10 @@ impl UdpHolePunchWorker {
     }
 
     /// Test to see if we can reach the Rendezvous service
-    pub(crate) async fn rendezvous_reachable(ctx: &mut Context, rendezvous_route: &Route) -> bool {
+    pub(crate) async fn rendezvous_reachable(
+        ctx: &mut Context,
+        rendezvous_route: &Route,
+    ) -> Result<bool> {
         for _ in 0..PING_TRIES {
             trace!("Start attempt to check Rendezvous service reachability");
             let res: Result<Routed<RendezvousResponse>> = ctx
@@ -125,14 +128,14 @@ impl UdpHolePunchWorker {
 
             // Check response. Ignore all but success.
             if let Ok(msg) = res {
-                if let RendezvousResponse::Pong = msg.body() {
+                if let RendezvousResponse::Pong = msg.into_body()? {
                     trace!("Success reaching Rendezvous service");
-                    return true;
+                    return Ok(true);
                 };
             }
         }
         trace!("Failed to reach Rendezvous service");
-        false
+        Ok(false)
     }
 
     pub(crate) async fn create(

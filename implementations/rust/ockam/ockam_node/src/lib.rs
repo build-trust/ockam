@@ -56,7 +56,6 @@ mod error;
 mod executor;
 mod messages;
 mod node;
-mod parser;
 mod processor_builder;
 mod relay;
 mod router;

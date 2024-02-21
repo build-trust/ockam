@@ -484,9 +484,46 @@ impl Drop for RouteBuilder<'_> {
     }
 }
 
+impl Route {
+    pub(crate) fn manual_encode(&self, buffer: &mut Vec<u8>) {
+        crate::bare::write_variable_length_integer(buffer, self.inner.len() as u64);
+        for addr in &self.inner {
+            addr.manual_encode(buffer);
+        }
+    }
+
+    pub(crate) fn encoded_size(&self) -> usize {
+        let mut size = crate::bare::size_of_variable_length(self.inner.len() as u64);
+        for addr in &self.inner {
+            size += addr.encoded_size();
+        }
+        size
+    }
+
+    pub(crate) fn manual_decode(slice: &[u8], index: &mut usize) -> Option<Route> {
+        let number_of_addresses = crate::bare::read_variable_length_integer(slice, index)?;
+        let mut addresses = VecDeque::with_capacity(number_of_addresses as usize);
+
+        for _ in 0..number_of_addresses {
+            let addr = Address::manually_decode(slice, index)?;
+            addresses.push_back(addr);
+        }
+
+        Some(Route { inner: addresses })
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{route, Address, Error, Route};
+    use crate::{route, Address, Encodable, Error, Route};
+
+    #[test]
+    fn encode_and_maually_decode_route() {
+        let route = route!["alice", "bob"];
+        let encoded = route.clone().encode().unwrap();
+        let decoded = Route::manual_decode(&encoded, &mut 0).unwrap();
+        assert_eq!(route, decoded);
+    }
 
     fn validate_error(_err: Error) {
         // assert_eq!(err.domain(), RouteError::DOMAIN_NAME);

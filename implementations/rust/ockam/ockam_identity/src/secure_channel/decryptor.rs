@@ -18,6 +18,7 @@ use crate::{
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, trace, warn};
 use tracing_attributes::instrument;
@@ -92,7 +93,7 @@ impl DecryptorHandler {
     async fn handle_payload(
         &mut self,
         ctx: &mut Context,
-        mut msg: PlaintextPayloadMessage,
+        mut msg: PlaintextPayloadMessage<'_>,
     ) -> Result<()> {
         // Add encryptor hop in the return_route (instead of our address)
         msg.return_route
@@ -107,7 +108,7 @@ impl DecryptorHandler {
         let msg = LocalMessage::new()
             .with_onward_route(msg.onward_route)
             .with_return_route(msg.return_route)
-            .with_payload(msg.payload)
+            .with_payload(msg.payload.to_vec())
             .with_local_info(local_info);
 
         match ctx
@@ -176,14 +177,15 @@ impl DecryptorHandler {
         );
 
         // Decode raw payload binary
-        let payload = msg.payload();
-        let payload = Vec::<u8>::decode(payload)?;
+        let payload = msg.into_payload();
+        let payload =
+            ockam_core::bare::read_slice(payload.as_slice(), &mut 0).ok_or_else(|| {
+                ockam_core::Error::new(Origin::Transport, Kind::Protocol, "Invalid message")
+            })?;
 
         // Decrypt the binary
-        let decrypted_payload = self.decryptor.decrypt(&payload).await?;
-
+        let decrypted_payload = self.decryptor.decrypt(payload).await?;
         let msg: SecureChannelMessage = minicbor::decode(&decrypted_payload)?;
-
         match msg {
             SecureChannelMessage::Payload(msg) => self.handle_payload(ctx, msg).await?,
             SecureChannelMessage::RefreshCredentials(msg) => {
