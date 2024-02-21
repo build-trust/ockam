@@ -42,7 +42,9 @@ setup_python_server() {
     }
 
     # Write a random file that client can download for testing
-    dd if=/dev/urandom of=./file.bin bs=1M count=25
+    if [[ "$BATS_TEST_DESCRIPTION" == *"credential expires"* ]]; then
+      dd if=/dev/urandom of=./file.bin bs=1M count=25
+    fi
 
     python3 -m http.server --bind 127.0.0.1 5000 &
     pid="$!"
