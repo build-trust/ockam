@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.50.0 - 2024-02-21
+
+### Added
+
+- Delete `TrustContext`
+- Instrument more functions for enrollement
+- Introduce `subject.has_credential`
+- Updated dependencies
+
+### Changed
+
+- Move the handling of attributes expiration date to a layer above the repository
+- Optimize debug implementation for `PolicyAccessControl`
+
+### Fixed
+
+- Fix identity attributes expiration
+- Use the correct policies in inlets/outlets created by kafka services
+
 ## 0.49.0 - 2024-01-09
 
 ### Added

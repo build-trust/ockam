@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.60.0 - 2024-02-21
+
+### Added
+
+- Delete `TrustContext`
+- Add application errors
+- Address review comments
+- Instrument more functions for enrollement
+- Unify creation and retry connection for portal and relay
+- Updated dependencies
+
+### Changed
+
+- Move the handling of attributes expiration date to a layer above the repository
+- Separate transport messages from local messages
+
+### Fixed
+
+- Close the context automatically on each test macro execution
+- Execute logging / tracing tests as integration tests
+- Make the journeys test more robust
+- Set the proper span id on the propagated tracing context
+
 ## 0.59.0 - 2024-01-09
 
 ### Added
