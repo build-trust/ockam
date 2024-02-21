@@ -247,6 +247,8 @@ teardown() {
 @test "portals - local portal, inlet credential expires" {
   inlet_port="$(random_port)"
   node_port="$(random_port)"
+  # Write a random file that client can download for testing
+  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of=./file.bin bs=1M count=25 && popd
 
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
@@ -296,6 +298,8 @@ teardown() {
 @test "portals - local portal, outlet credential expires" {
   inlet_port="$(random_port)"
   node_port="$(random_port)"
+  # Write a random file that client can download for testing
+  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of=./file.bin bs=1M count=25 && popd
 
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
