@@ -15,7 +15,6 @@ cmake_install.cmake
 .adr-dir
 target
 vendor
-.cargo
 # nix build
 /result*
 .home

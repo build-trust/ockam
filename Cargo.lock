@@ -4539,6 +4539,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_rust_elixir_nifs"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "lazy_static",
+ "minicbor",
+ "ockam_identity",
+ "ockam_vault",
+ "ockam_vault_aws",
+ "rustler",
+ "time",
+ "tokio",
+]
+
+[[package]]
 name = "ockam_transport_ble"
 version = "0.71.0"
 dependencies = [
@@ -5830,6 +5845,39 @@ dependencies = [
  "libc",
  "linux-raw-sys 0.4.13",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rustler"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a75d458f38f550976d0e4b347ca57241c192019777e46af7af73b27783287088"
+dependencies = [
+ "lazy_static",
+ "rustler_codegen",
+ "rustler_sys",
+]
+
+[[package]]
+name = "rustler_codegen"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbd46408f51c0ca6a68dc36aa4f90e3554960bd1b7cc513e6ff2ccad7dd92aff"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.50",
+]
+
+[[package]]
+name = "rustler_sys"
+version = "2.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff76ba8524729d7c9db2b3e80f2269d1fdef39b5a60624c33fd794797e69b558"
+dependencies = [
+ "regex",
+ "unreachable",
 ]
 
 [[package]]
@@ -7540,6 +7588,15 @@ checksum = "fc1de2c688dc15305988b563c3854064043356019f97a4b46276fe734c4f07ea"
 dependencies = [
  "crypto-common",
  "subtle",
+]
+
+[[package]]
+name = "unreachable"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
+dependencies = [
+ "void",
 ]
 
 [[package]]
