@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.104.0 - 2024-02-21
+
+### Added
+
+- Delete `TrustContext`
+- Improve credentials management
+- Updated dependencies
+
+### Changed
+
+- Move the handling of attributes expiration date to a layer above the repository
+
+### Fixed
+
+- Close the context automatically on each test macro execution
+- Increase credential duration for tests
+- Fix identity attributes expiration
+- Increase secure channel sleep in tests
+
 ## 0.103.0 - 2024-01-09
 
 ### Added

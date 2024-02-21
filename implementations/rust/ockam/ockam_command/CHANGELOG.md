@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.117.0 - 2024-02-21
+
+### Added
+
+- Improve ockam enroll command ux output, help, logs, errors
+- Add opentelemetry tracing and logging support
+- Use github api to check if command is outdated
+- Allow running `reset` command even if the database is in an invalid state
+- Improve ockam project ticket, ockam project enroll ux output, help, logs, errors
+- Add retry to cli upgrade test
+- Delete `TrustContext`
+- Add application errors
+- Instrument more functions for enrollement
+- Add `--force` flag to `enroll` command and switch default behavior
+- Updated dependencies
+
+### Fixed
+
+- Fix sqlx migration
+- Exit early when only testing arguments
+- When checking cli upgrade, add json header to request
+- Don't display log messages when showing the help
+
+### Removed
+
+- Remove an unused function
+- Remove an unwrap
+
 ## 0.116.0 - 2024-01-09
 
 ### Added
