@@ -36,17 +36,12 @@ load_bats_ext() {
 setup_python_server() {
   p=$(python_pid_file_path)
   if [[ ! -f "$p" ]]; then
-    mkdir -p "${p%/*}" && touch "$p"
-    pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || {
-      exit 1
-    }
+    # Create python server in the OCKAM_HOME_BASE directory
+    pushd $OCKAM_HOME_BASE
+    touch "$p"
 
-    # Write a random file that client can download for testing
-    if [[ "$BATS_TEST_DESCRIPTION" == *"credential expires"* ]]; then
-      dd if=/dev/urandom of=./file.bin bs=1M count=25
-    fi
-
-    python3 -m http.server --bind 127.0.0.1 5000 &
+    # Log server data to OCKAM_HOME_BASE
+    python3 -m http.server --bind 127.0.0.1 5000 &>python_server.log &
     pid="$!"
     echo "$pid" >"$p"
     popd || {
