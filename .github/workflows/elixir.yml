@@ -55,6 +55,9 @@ defaults:
   run:
     shell: nix develop ../../tools/nix#elixir --command bash {0}
 
+env:
+  CI_TEST: true
+
 jobs:
   test:
     name: Elixir - test

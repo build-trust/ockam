@@ -25,7 +25,9 @@ defmodule Ockly.MixProject do
       {:rustler,
        git: "https://github.com/polvorin/rustler.git",
        branch: "fix_local_crate",
-       sparse: "rustler_mix"},
+       sparse: "rustler_mix",
+       override: true},
+      {:rustler_precompiled, "~> 0.7"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:hkdf_erlang, "~> 1.0.0"}
     ]

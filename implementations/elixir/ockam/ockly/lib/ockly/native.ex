@@ -1,10 +1,16 @@
 defmodule Ockly.Native do
   @moduledoc false
 
-  use Rustler,
+  version = Mix.Project.config()[:version]
+
+  use RustlerPrecompiled,
     otp_app: :ockly,
-    crate: "ockly",
-    load_from: {:ockly, "priv/native/libockly"}
+    crate: "ockam_rust_elixir_nifs",
+    path: "../../../rust/ockam/ockam_rust_elixir_nifs",
+    force_build: System.get_env("CI_TEST") in ["1", "true"],
+    version: version,
+    # This is a fake link, I'll update after deploying a released nif
+    base_url: "https://github.com/build-trust/ockam/releases/download/ockam_v#{version}/ockam.nif"
 
   def create_identity, do: create_identity(nil)
   def create_identity(_), do: error()
