@@ -280,14 +280,15 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
     #[instrument(skip_all)]
     async fn aead_encrypt(
         &self,
+        destination: &mut Vec<u8>,
         secret_key_handle: &AeadSecretKeyHandle,
         plain_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>> {
+    ) -> Result<()> {
         let secret = self.get_aead_secret(secret_key_handle).await?;
         let aes = make_aes(&secret);
-        aes.encrypt_message(plain_text, nonce, aad)
+        aes.encrypt_message(destination, plain_text, nonce, aad)
     }
 
     #[instrument(skip_all)]

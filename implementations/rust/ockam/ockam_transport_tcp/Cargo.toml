@@ -41,6 +41,3 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = { version = "0.5.6", features = ["all"] }
 tokio = { version = "1.36", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tracing = { version = "0.1", default-features = false }
-
-[dev-dependencies]
-trybuild = { version = "1.0", features = ["diff"] }

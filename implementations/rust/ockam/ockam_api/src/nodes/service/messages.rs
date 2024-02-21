@@ -55,7 +55,8 @@ impl Messages for NodeManager {
             .send_and_receive_extended::<Vec<u8>>(route, message, options)
             .await
             .into_diagnostic()?
-            .body())
+            .into_body()
+            .into_diagnostic()?)
     }
 }
 

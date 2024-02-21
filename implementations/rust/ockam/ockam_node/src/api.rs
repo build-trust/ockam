@@ -145,7 +145,7 @@ impl Client {
             .send_and_receive_extended::<Vec<u8>>(self.route.clone(), buf, options)
             .await?;
         let local_info = resp.local_message().local_info().to_vec();
-        let body = resp.body();
+        let body = resp.into_body()?;
 
         Ok((body, local_info))
     }

@@ -19,6 +19,6 @@ impl Worker for Echoer {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         debug!("Replying back to {}", &msg.return_route());
-        ctx.send(msg.return_route(), msg.body()).await
+        ctx.send(msg.return_route(), msg.into_body()?).await
     }
 }

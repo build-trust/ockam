@@ -71,7 +71,7 @@ impl UdpHolePuncher {
         // Check if we can reach the rendezvous service
         let rendezvous_route = rendezvous_route.into();
 
-        if !UdpHolePunchWorker::rendezvous_reachable(ctx, &rendezvous_route).await {
+        if !UdpHolePunchWorker::rendezvous_reachable(ctx, &rendezvous_route).await? {
             return Err(PunchError::RendezvousServiceNotFound)?;
         }
 

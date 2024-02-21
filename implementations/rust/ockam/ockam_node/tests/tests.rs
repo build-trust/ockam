@@ -50,7 +50,7 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
                         .send(route!["child2"], "Hello".to_string())
                         .await?;
 
-                    let m = child_ctx2.receive::<String>().await?.body();
+                    let m = child_ctx2.receive::<String>().await?.into_body()?;
 
                     assert_eq!(m, "Hello");
                     Result::<()>::Ok(())
@@ -96,7 +96,7 @@ impl Worker for SimpleWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        ctx.send(msg.return_route(), msg.body()).await
+        ctx.send(msg.return_route(), msg.into_body()?).await
     }
 }
 
@@ -300,7 +300,7 @@ impl Processor for MessagingProcessor {
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let msg = ctx.receive::<String>().await.unwrap();
         let route = msg.return_route();
-        let body = msg.body();
+        let body = msg.into_body()?;
 
         match body.as_str() {
             "Keep working" => {
@@ -547,7 +547,7 @@ impl Worker for DummyWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        ctx.send(msg.return_route(), msg.body()).await
+        ctx.send(msg.return_route(), msg.into_body()?).await
     }
 }
 

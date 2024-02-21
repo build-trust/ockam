@@ -24,7 +24,7 @@ impl Worker for FileReception {
     type Message = FileData;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Self::Message>) -> Result<()> {
-        match msg.as_body() {
+        match msg.into_body()? {
             FileData::Description(desc) => {
                 self.name = desc.name.clone();
                 self.size = desc.size;
@@ -52,7 +52,7 @@ impl Worker for FileReception {
                     ));
                 }
                 if let Some(file) = &mut self.file {
-                    match file.write(data).await {
+                    match file.write(&data).await {
                         Ok(n) => {
                             self.written_size += n;
                             if self.written_size == self.size {

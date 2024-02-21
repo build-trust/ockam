@@ -5,18 +5,37 @@ use ockam_core::Result;
 
 use aes_gcm::aead::consts::{U0, U12, U16};
 use aes_gcm::aead::{Aead, Nonce, Payload, Tag};
+use aes_gcm::aes::cipher::Unsigned;
 use aes_gcm::{AeadCore, AeadInPlace, AesGcm, KeyInit};
 use cfg_if::cfg_if;
 
 impl AesGen {
-    pub fn encrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
+    pub fn encrypt_message(
+        &self,
+        destination: &mut Vec<u8>,
+        msg: &[u8],
+        nonce: &[u8],
+        aad: &[u8],
+    ) -> Result<()> {
         if nonce.len() != AES_NONCE_LENGTH {
             return Err(VaultError::AeadAesGcmEncrypt)?;
         }
 
-        Ok(self
-            .encrypt(nonce.into(), Payload { aad, msg })
-            .map_err(|_| VaultError::AeadAesGcmEncrypt)?)
+        destination.reserve(msg.len() + <AesGen as AeadCore>::TagSize::to_usize());
+        let encrypted_payload_start = destination.len();
+        destination.extend_from_slice(msg);
+
+        let tag = self
+            .encrypt_in_place_detached(
+                nonce.into(),
+                aad,
+                &mut destination[encrypted_payload_start..],
+            )
+            .map_err(|_| VaultError::AeadAesGcmEncrypt)?;
+
+        destination.extend_from_slice(tag.as_slice());
+
+        Ok(())
     }
     pub fn decrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
         if nonce.len() != AES_NONCE_LENGTH {

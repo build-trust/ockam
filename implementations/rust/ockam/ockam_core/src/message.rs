@@ -6,10 +6,8 @@ use crate::{
     errcode::{Kind, Origin},
     Address, Error, LocalMessage, Result, Route,
 };
-use core::{
-    fmt::{self, Debug, Display, Formatter},
-    ops::{Deref, DerefMut},
-};
+use core::fmt::{self, Debug, Display, Formatter};
+use core::marker::PhantomData;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_bare::ser::{Serializer, VecWrite};
 
@@ -74,7 +72,9 @@ pub trait Decodable: Sized {
 pub trait Message: Encodable + Decodable + Send + 'static {}
 
 impl Message for () {}
+
 impl Message for Vec<u8> {}
+
 impl Message for String {}
 
 // Auto-implement message trait for types that _can_ be messages.
@@ -188,8 +188,8 @@ impl<E: Display> From<minicbor::encode::Error<E>> for Error {
 /// See `ockam_node::WorkerRelay` for a usage example.
 ///
 pub struct Routed<M: Message> {
-    /// The wrapped message.
-    inner: M,
+    /// Phantom field to keep track of the message type.
+    phantom: PhantomData<M>,
     /// The address of the wrapped message.
     msg_addr: Address,
     /// True sender of the message (guaranteed by the implementation)
@@ -203,19 +203,13 @@ impl<M: Message> Routed<M> {
     /// Create a new `Routed` message wrapper from the given message,
     /// message address and a local message that contains routing
     /// information.
-    pub fn new(inner: M, msg_addr: Address, src_addr: Address, local_msg: LocalMessage) -> Self {
+    pub fn new(msg_addr: Address, src_addr: Address, local_msg: LocalMessage) -> Self {
         Self {
-            inner,
+            phantom: PhantomData,
             msg_addr,
             src_addr,
             local_msg,
         }
-    }
-
-    #[doc(hidden)]
-    /// Return a copy of the wrapped message address and the local message.
-    pub fn dissolve(&self) -> (Address, LocalMessage) {
-        (self.msg_addr.clone(), self.local_msg.clone())
     }
 
     /// Return a copy of the message address.
@@ -249,14 +243,8 @@ impl<M: Message> Routed<M> {
 
     /// Consume the message wrapper and return the original message.
     #[inline]
-    pub fn body(self) -> M {
-        self.inner
-    }
-
-    /// Return a reference to the wrapped message.
-    #[inline]
-    pub fn as_body(&self) -> &M {
-        &self.inner
+    pub fn into_body(self) -> Result<M> {
+        M::decode(&self.into_payload())
     }
 
     /// Consume the message wrapper and return the underlying local message.
@@ -279,53 +267,19 @@ impl<M: Message> Routed<M> {
 
     /// Consume the message wrapper and return the underlying transport message's binary payload.
     #[inline]
-    pub fn take_payload(self) -> Vec<u8> {
+    pub fn into_payload(self) -> Vec<u8> {
         self.local_msg.into_payload()
-    }
-}
-
-impl Routed<Any> {
-    /// Try to cast an `Any` message into another valid message type
-    pub fn cast<M: Message>(self) -> Result<Routed<M>> {
-        let inner = M::decode(self.local_msg.payload_ref())?;
-        Ok(Routed {
-            inner,
-            msg_addr: self.msg_addr,
-            local_msg: self.local_msg,
-            src_addr: self.src_addr,
-        })
-    }
-}
-
-impl<M: Message> Deref for Routed<M> {
-    type Target = M;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<M: Message> DerefMut for Routed<M> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
-impl<M: Message + PartialEq> PartialEq<M> for Routed<M> {
-    fn eq(&self, o: &M) -> bool {
-        &self.inner == o
     }
 }
 
 impl<M: Message + Debug> Debug for Routed<M> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.inner.fmt(f)
-    }
-}
-
-impl<M: Message + Display> Display for Routed<M> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.inner.fmt(f)
+        f.debug_struct("Routed")
+            .field("msg_addr", &self.msg_addr)
+            .field("src_addr", &self.src_addr)
+            .field("type", &core::any::type_name::<M>())
+            .field("local_msg", &self.local_msg)
+            .finish()
     }
 }
 

@@ -112,19 +112,17 @@ where
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
-        mut msg: Routed<TransportMessage>,
+        msg: Routed<TransportMessage>,
     ) -> Result<()> {
         trace!("BleSendWorker::handle_message -> {:?}", msg);
+        let mut msg = msg.into_body()?;
 
         // Remove our own address from the route so the other end
         // knows what to do with the incoming message
         msg.onward_route.step()?;
 
         // encode message
-        let msg = msg
-            .body()
-            .encode()
-            .map_err(|_| TransportError::SendBadMessage)?;
+        let msg = msg.encode().map_err(|_| TransportError::SendBadMessage)?;
 
         // create packet buffer
         debug!("creating packet buffer");

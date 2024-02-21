@@ -755,7 +755,9 @@ impl Worker for NodeManagerWorker {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
-        let mut dec = Decoder::new(msg.as_body());
+        let return_route = msg.return_route();
+        let body = msg.into_body()?;
+        let mut dec = Decoder::new(&body);
         let req: RequestHeader = match dec.decode() {
             Ok(r) => r,
             Err(e) => {
@@ -787,6 +789,6 @@ impl Worker for NodeManagerWorker {
             path   = %req.path(),
             "responding"
         }
-        ctx.send(msg.return_route(), r).await
+        ctx.send(return_route, r).await
     }
 }

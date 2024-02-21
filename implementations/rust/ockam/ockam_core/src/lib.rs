@@ -56,6 +56,7 @@ pub use async_trait::async_trait as worker;
 pub use async_trait::async_trait as processor;
 
 extern crate ockam_macros;
+
 pub use ockam_macros::{AsyncTryClone, Message};
 
 extern crate futures_util;
@@ -76,6 +77,7 @@ pub mod hex_encoding;
 #[cfg(feature = "std")]
 pub mod env;
 
+pub mod bare;
 mod cbor;
 mod error;
 mod message;

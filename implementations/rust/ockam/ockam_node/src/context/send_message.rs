@@ -59,10 +59,9 @@ impl Context {
     where
         M: Message,
     {
-        Ok(self
-            .send_and_receive_extended::<M>(route, msg, MessageSendReceiveOptions::new())
+        self.send_and_receive_extended::<M>(route, msg, MessageSendReceiveOptions::new())
             .await?
-            .body())
+            .into_body()
     }
 
     /// Using a temporary new context, send a message and then receive a message

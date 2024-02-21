@@ -1,10 +1,11 @@
-use ockam_core::Message;
-use serde::de::{EnumAccess, VariantAccess};
-use serde::{Deserialize, Deserializer, Serialize};
+use ockam_core::bare::{read_slice, write_slice};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Encodable, Encoded, Message, NeutralMessage};
+use serde::{Deserialize, Serialize};
 
 /// A command message type for a Portal
-#[derive(Serialize, Message, Debug, PartialEq, Eq)]
-pub enum PortalMessage {
+#[derive(Debug, PartialEq, Eq)]
+pub enum PortalMessage<'de> {
     /// First message that Inlet sends to the Outlet
     Ping,
     /// First message that Outlet sends to the Inlet
@@ -13,85 +14,85 @@ pub enum PortalMessage {
     /// or from the target to the Inlet was dropped
     Disconnect,
     /// Message with binary payload and packet counter
-    Payload(Vec<u8>, #[serde(skip)] Option<u16>),
+    Payload(&'de [u8], Option<u16>),
 }
 
-// Manually implement deserialization for PortalMessage
-// to support deserializing older message types
-impl<'de> Deserialize<'de> for PortalMessage {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct PayloadVisitor;
+impl<'de> PortalMessage<'de> {
+    /// Decode a slice into a PortalMessage without making a copy
+    pub fn decode(slice: &'de [u8]) -> ockam_core::Result<PortalMessage<'de>> {
+        Self::internal_decode(slice).ok_or_else(|| {
+            ockam_core::Error::new(Origin::Transport, Kind::Protocol, "Invalid message")
+        })
+    }
 
-        impl<'de> serde::de::Visitor<'de> for PayloadVisitor {
-            type Value = (Vec<u8>, Option<u16>);
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a valid Payload")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let payload = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-
-                // If the message is using V1 it won't contain the u8 to mark for counter presence
-                // hence we return None and ignore reading errors.
-                // However, if the field is present we can be confident that the rest of the message
-                // must be present.
-                let counter = if let Some(counter_set) = seq.next_element::<u8>().ok().flatten() {
-                    if counter_set != 0 {
-                        seq.next_element()?
+    fn internal_decode(slice: &'de [u8]) -> Option<PortalMessage<'de>> {
+        #[allow(clippy::get_first)]
+        let enum_variant = slice.get(0)?;
+        let mut index = 1;
+        match enum_variant {
+            0 => Some(PortalMessage::Ping),
+            1 => Some(PortalMessage::Pong),
+            2 => Some(PortalMessage::Disconnect),
+            3 => {
+                if let Some(payload) = read_slice(slice, &mut index) {
+                    let counter = if slice.len() - index >= 3 {
+                        let has_counter = slice[index];
+                        index += 1;
+                        if has_counter == 1 {
+                            Some(u16::from_le_bytes(
+                                slice[index..index + 2].try_into().unwrap(),
+                            ))
+                        } else {
+                            None
+                        }
                     } else {
                         None
-                    }
+                    };
+                    Some(PortalMessage::Payload(payload, counter))
                 } else {
                     None
-                };
-                Ok((payload, counter))
-            }
-        }
-
-        struct PortalMessageVisitor;
-
-        impl<'de> serde::de::Visitor<'de> for PortalMessageVisitor {
-            type Value = PortalMessage;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a valid PortalMessage")
-            }
-
-            fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
-            where
-                A: EnumAccess<'de>,
-            {
-                let (variant_index, variant): (u8, _) = data.variant()?;
-                match variant_index {
-                    0 => Ok(PortalMessage::Ping),
-                    1 => Ok(PortalMessage::Pong),
-                    2 => Ok(PortalMessage::Disconnect),
-                    3 => {
-                        // we expect 3 elements: the first is the payload, the second is the u8
-                        // to mark for counter presence, and the third is the counter itself
-                        let (payload, counter): (Vec<u8>, Option<u16>) =
-                            variant.tuple_variant(3, PayloadVisitor)?;
-                        Ok(PortalMessage::Payload(payload, counter))
-                    }
-                    _ => Err(serde::de::Error::invalid_value(
-                        serde::de::Unexpected::Unsigned(variant_index as u64),
-                        &self,
-                    )),
                 }
             }
+            _ => None,
         }
+    }
 
-        const VARIANTS: &[&str] = &["Ping", "Pong", "Disconnect", "Payload"];
-        deserializer.deserialize_enum("PortalMessage", VARIANTS, PortalMessageVisitor)
+    /// Shortcut to encode a PortalMessage into a NeutralMessage
+    pub fn to_neutral_message(self) -> ockam_core::Result<NeutralMessage> {
+        Ok(NeutralMessage::from(self.encode()?))
+    }
+}
+
+impl Encodable for PortalMessage<'_> {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        self.internal_encode()
+            .map_err(|e| ockam_core::Error::new(Origin::Transport, Kind::Protocol, e.to_string()))
+    }
+}
+
+impl PortalMessage<'_> {
+    fn internal_encode(self) -> std::io::Result<Encoded> {
+        match self {
+            PortalMessage::Ping => Ok(vec![0]),
+            PortalMessage::Pong => Ok(vec![1]),
+            PortalMessage::Disconnect => Ok(vec![2]),
+            PortalMessage::Payload(payload, counter) => {
+                // to avoid an extra allocation, it's worth doing some math
+                let capacity = 1 + payload.len() + if counter.is_some() { 3 } else { 1 } + {
+                    ockam_core::bare::size_of_variable_length(payload.len() as u64)
+                };
+                let mut vec = Vec::with_capacity(capacity);
+                vec.push(3);
+                write_slice(&mut vec, payload);
+                if let Some(counter) = counter {
+                    vec.push(1); // has counter
+                    vec.extend_from_slice(&counter.to_le_bytes())
+                } else {
+                    vec.push(0);
+                }
+                Ok(vec)
+            }
+        }
     }
 }
 
@@ -161,8 +162,7 @@ mod test {
         let decoded = PortalMessageV1::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessageV1::Disconnect));
 
-        let encoded =
-            PortalMessage::encode(PortalMessage::Payload(payload.clone(), Some(123))).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Payload(&payload, Some(123))).unwrap();
         let decoded = PortalMessageV1::decode(&encoded).unwrap();
         if let PortalMessageV1::Payload(decoded_payload) = decoded {
             assert_eq!(decoded_payload, payload);
@@ -188,7 +188,7 @@ mod test {
         let decoded = PortalMessage::decode(&encoded).unwrap();
         assert!(matches!(decoded, PortalMessage::Disconnect));
 
-        let encoded = PortalMessage::encode(PortalMessage::Payload(payload.clone(), None)).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Payload(&payload, None)).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         if let PortalMessage::Payload(decoded_payload, packet_counter) = decoded {
             assert_eq!(decoded_payload, payload);
@@ -197,8 +197,7 @@ mod test {
             panic!("Decoded message is not a Payload");
         }
 
-        let encoded =
-            PortalMessage::encode(PortalMessage::Payload(payload.clone(), Some(123))).unwrap();
+        let encoded = PortalMessage::encode(PortalMessage::Payload(&payload, Some(123))).unwrap();
         let decoded = PortalMessage::decode(&encoded).unwrap();
         if let PortalMessage::Payload(decoded_payload, packet_counter) = decoded {
             assert_eq!(decoded_payload, payload);

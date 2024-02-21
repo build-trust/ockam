@@ -11,7 +11,7 @@ impl Worker for Echoer {
     type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        ctx.send(msg.return_route(), msg.body()).await
+        ctx.send(msg.return_route(), msg.into_body()?).await
     }
 }
 

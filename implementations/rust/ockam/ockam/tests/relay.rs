@@ -128,7 +128,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    assert_eq!(res.body(), "Hello");
+    assert_eq!(res.into_body()?, "Hello");
     Ok(())
 }
 

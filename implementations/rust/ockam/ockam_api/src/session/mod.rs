@@ -280,7 +280,7 @@ impl Worker for Collector {
         _: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<(), Error> {
-        if self.0.send(msg.body()).await.is_err() {
+        if self.0.send(msg.into_body()?).await.is_err() {
             log::debug!("collector could not send message to medic")
         }
         Ok(())
