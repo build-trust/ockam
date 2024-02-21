@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_uds"
-version = "0.35.0"
+version = "0.36.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -27,10 +27,10 @@ std = ["ockam_macros/std"]
 alloc = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.101.0" }
-ockam_macros = { path = "../ockam_macros", version = "^0.33.0" }
-ockam_node = { path = "../ockam_node", version = "^0.108.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.74.0" }
+ockam_core = { path = "../ockam_core", version = "^0.102.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
+ockam_node = { path = "../ockam_node", version = "^0.109.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.75.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = "0.5.5"
 tokio = { version = "1.36", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }

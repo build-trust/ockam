@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.117.0 - 2024-02-21
+
+### Added
+
+- Delete `TrustContext`
+- Updated dependencies
+
+### Changed
+
+- Move the handling of attributes expiration date to a layer above the repository
+
+### Fixed
+
+- Close the context automatically on each test macro execution
+
+### Removed
+
+- Remove the channel folder in the ockam crate
+- Remove the pipe2 folder in the ockam crate
+- Remove the pipe folder in the ockam crate
+- Remove the system folder in the ockam crate
+- Remove metadata and move stream structs in the stream folder
+- Remove the stream folder from the ockam crate
+
 ## 0.116.0 - 2024-01-09
 
 ### Added
