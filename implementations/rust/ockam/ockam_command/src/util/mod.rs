@@ -21,7 +21,6 @@ use ockam_core::{DenyAll, OpenTelemetryContext};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
-use crate::error::Error;
 use crate::{CommandGlobalOpts, OckamColor, Result};
 
 pub mod api;
@@ -187,10 +186,7 @@ pub async fn clean_nodes_multiaddr(
                 let node_info = cli_state.get_node(&alias).await?;
                 let addr = node_info
                     .tcp_listener_address()
-                    .ok_or(Error::new_internal_error(
-                        "No transport API has been set on the node",
-                        "",
-                    ))?;
+                    .ok_or(miette!("No transport API has been set on the node"))?;
                 match &addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
                     InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,

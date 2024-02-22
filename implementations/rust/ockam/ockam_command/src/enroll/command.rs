@@ -22,6 +22,7 @@ use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
+use crate::error::Error;
 use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::project::util::check_project_readiness;
@@ -291,12 +292,23 @@ pub async fn enroll_with_node(
 ) -> miette::Result<()> {
     let reply = controller.enroll_with_oidc_token(ctx, token).await?;
     match reply {
-        EnrollStatus::EnrolledSuccessfully => info!("Enrolled successfully"),
-        EnrollStatus::AlreadyEnrolled => info!("Already enrolled"),
-        EnrollStatus::UnexpectedStatus(e, s) => warn!("Unexpected status while enrolling: {s}. The error is: {e}."),
-        EnrollStatus::FailedNoStatus(e) => warn!("A status was expected in the response to an enrollment request, but got none. The error is: {e}."),
-    };
-    Ok(())
+        EnrollStatus::EnrolledSuccessfully => {
+            info!("Enrolled successfully");
+            Ok(())
+        }
+        EnrollStatus::AlreadyEnrolled => {
+            info!("Already enrolled");
+            Ok(())
+        }
+        EnrollStatus::UnexpectedStatus(error, status) => {
+            warn!(%error, %status, "Unexpected status while enrolling");
+            Err(Error::new_internal_error(&error).into())
+        }
+        EnrollStatus::FailedNoStatus(error) => {
+            warn!(%error, "A status was expected in the response to an enrollment request, but got none");
+            Err(Error::new_internal_error(&error).into())
+        }
+    }
 }
 
 async fn get_user_space(
