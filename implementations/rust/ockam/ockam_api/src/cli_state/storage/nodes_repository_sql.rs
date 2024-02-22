@@ -10,6 +10,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 
 use crate::cli_state::NodesRepository;
+use crate::cloud::project::ProjectName;
 use crate::config::lookup::InternetAddress;
 use crate::NodeInfo;
 
@@ -165,14 +166,18 @@ impl NodesRepository for NodesSqlxDatabase {
         query.execute(&*self.database.pool).await.void()
     }
 
-    async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()> {
+    async fn set_node_project_name(
+        &self,
+        node_name: &str,
+        project_name: ProjectName,
+    ) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO node_project VALUES (?1, ?2)")
             .bind(node_name.to_sql())
-            .bind(project_name.to_sql());
+            .bind(project_name.to_string().to_sql());
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
-    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>> {
+    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<ProjectName>> {
         let query = query("SELECT project_name FROM node_project WHERE node_name = ?")
             .bind(node_name.to_sql());
         let row: Option<SqliteRow> = query
@@ -180,6 +185,7 @@ impl NodesRepository for NodesSqlxDatabase {
             .await
             .into_core()?;
         let project_name: Option<String> = row.map(|r| r.get(0));
+        let project_name = project_name.map(ProjectName::from);
         Ok(project_name)
     }
 }
@@ -314,10 +320,10 @@ mod test {
 
         // a node can be associated to a project name
         repository
-            .set_node_project_name("node_name", "project1")
+            .set_node_project_name("node_name", ProjectName::from("project1"))
             .await?;
         let result = repository.get_node_project_name("node_name").await?;
-        assert_eq!(result, Some("project1".into()));
+        assert_eq!(result, Some(ProjectName::from("project1")));
 
         Ok(())
     }

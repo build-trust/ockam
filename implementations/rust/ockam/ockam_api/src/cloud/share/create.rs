@@ -5,6 +5,7 @@ use ockam_core::Result;
 
 use crate::cli_state::{CliState, EnrollmentTicket};
 use crate::cloud::email_address::EmailAddress;
+use crate::cloud::project::ProjectName;
 use crate::error::ApiError;
 use ockam::identity::Identifier;
 
@@ -41,13 +42,13 @@ pub struct CreateServiceInvitation {
 }
 
 impl CreateServiceInvitation {
-    pub async fn new<S: AsRef<str>>(
+    pub async fn new(
         cli_state: &CliState,
         expires_at: Option<String>,
-        project_name: S,
+        project_name: ProjectName,
         recipient_email: EmailAddress,
-        node_name: S,
-        service_route: S,
+        node_name: impl AsRef<str>,
+        service_route: impl AsRef<str>,
         enrollment_ticket: EnrollmentTicket,
     ) -> Result<Self> {
         let node_identifier = cli_state.get_node(node_name.as_ref()).await?.identifier();
@@ -62,7 +63,7 @@ impl CreateServiceInvitation {
         Ok(CreateServiceInvitation {
             enrollment_ticket,
             expires_at,
-            project_id: project.id(),
+            project_id: project.id().to_string(),
             recipient_email: recipient_email.clone(),
             project_identity: project.identifier()?,
             project_route: project.access_route()?.to_string(),

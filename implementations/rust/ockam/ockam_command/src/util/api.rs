@@ -6,6 +6,7 @@ use minicbor::Decoder;
 use regex::Regex;
 
 use ockam::identity::Identifier;
+use ockam_api::cloud::project::ProjectName;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::StartHopServiceRequest;
 use ockam_api::nodes::service::default_address::DefaultAddress;
@@ -145,7 +146,7 @@ pub struct CloudOpts {
 pub struct TrustOpts {
     /// Project name to use for the command
     #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
-    pub project_name: Option<String>,
+    pub project_name: Option<ProjectName>, // FIXME
 
     /// Hex encoded Identity
     #[arg(long, value_name = "IDENTITY")]

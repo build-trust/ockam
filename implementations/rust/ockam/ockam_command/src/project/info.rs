@@ -2,7 +2,7 @@ use clap::Args;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::{ProjectName, Projects};
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -15,7 +15,7 @@ use crate::CommandGlobalOpts;
 pub struct InfoCommand {
     /// Name of the project.
     #[arg(default_value = "default")]
-    pub name: String,
+    pub name: ProjectName,
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,

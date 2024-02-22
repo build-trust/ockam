@@ -3,6 +3,7 @@ use ockam_core::async_trait;
 use ockam_core::Result;
 
 use crate::cli_state::NodeInfo;
+use crate::cloud::project::ProjectName;
 use crate::config::lookup::InternetAddress;
 
 /// This trait supports the storage of node data:
@@ -61,8 +62,9 @@ pub trait NodesRepository: Send + Sync + 'static {
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()>;
 
     /// Associate a node to a project
-    async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()>;
+    async fn set_node_project_name(&self, node_name: &str, project_name: ProjectName)
+        -> Result<()>;
 
     /// Return the name of the project associated to a node
-    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>>;
+    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<ProjectName>>;
 }

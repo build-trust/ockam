@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 
 use miette::IntoDiagnostic;
 use miette::{miette, Context as _};
+use ockam_api::cloud::project::ProjectName;
 use rand::random;
 
 use ockam_api::nodes::BackgroundNodeClient;
@@ -72,7 +73,7 @@ pub async fn spawn_node(
     identity_name: &Option<String>,
     address: &str,
     launch_config: Option<String>,
-    project_name: Option<String>,
+    project_name: Option<ProjectName>, // FIXME
     authority_identity: Option<String>,
     authority_route: Option<MultiAddr>,
     expect_cached_credential: bool,
@@ -116,7 +117,7 @@ pub async fn spawn_node(
 
     if let Some(project_name) = project_name {
         args.push("--project".to_string());
-        args.push(project_name);
+        args.push(project_name.to_string()); // FIXME
     }
 
     if let Some(authority_identity) = authority_identity {

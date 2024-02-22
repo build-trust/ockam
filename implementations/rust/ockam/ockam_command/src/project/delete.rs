@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::{ProjectName, Projects};
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -26,7 +26,7 @@ pub struct DeleteCommand {
 
     /// Name of the project
     #[arg(display_order = 1002)]
-    pub project_name: String,
+    pub project_name: ProjectName,
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,

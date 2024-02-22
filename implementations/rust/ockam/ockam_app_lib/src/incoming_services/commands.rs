@@ -10,6 +10,7 @@ use ockam_api::address::get_free_address;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
+use ockam_api::cloud::project::ProjectName;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
@@ -238,7 +239,7 @@ impl AppState {
     async fn match_owned_projects(
         &self,
         service: &IncomingService,
-    ) -> crate::Result<Option<String>> {
+    ) -> crate::Result<Option<ProjectName>> {
         let ticket_project = service
             .enrollment_ticket()
             .project

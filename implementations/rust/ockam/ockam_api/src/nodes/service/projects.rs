@@ -1,17 +1,17 @@
 use ockam_core::async_trait;
 use ockam_node::Context;
 
-use crate::cloud::project::{OrchestratorVersionInfo, Project, Projects};
+use crate::cloud::project::{OrchestratorVersionInfo, Project, ProjectId, ProjectName, Projects};
 use crate::nodes::InMemoryNode;
 
 #[async_trait]
 impl Projects for InMemoryNode {
-    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
+    #[instrument(skip_all, fields(project_name = %project_name, space_name = space_name))]
     async fn create_project(
         &self,
         ctx: &Context,
         space_name: &str,
-        project_name: &str,
+        project_name: &ProjectName,
         users: Vec<String>,
     ) -> miette::Result<Project> {
         let space = self.cli_state.get_space_by_name(space_name).await?;
@@ -23,8 +23,8 @@ impl Projects for InMemoryNode {
         Ok(project)
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
-    async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
+    #[instrument(skip_all, fields(project_id = %project_id))]
+    async fn get_project(&self, ctx: &Context, project_id: &ProjectId) -> miette::Result<Project> {
         let controller = self.create_controller().await?;
 
         // try to refresh the project from the controller
@@ -35,11 +35,11 @@ impl Projects for InMemoryNode {
         Ok(self.cli_state.get_project(project_id).await?)
     }
 
-    #[instrument(skip_all, fields(project_name = project_name))]
+    #[instrument(skip_all, fields(project_name = ?project_name))]
     async fn get_project_by_name_or_default(
         &self,
         ctx: &Context,
-        project_name: &Option<String>,
+        project_name: &Option<ProjectName>,
     ) -> miette::Result<Project> {
         let project_id = self
             .cli_state
@@ -49,22 +49,22 @@ impl Projects for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
-    #[instrument(skip_all, fields(project_name = project_name))]
+    #[instrument(skip_all, fields(project_name = %project_name))]
     async fn get_project_by_name(
         &self,
         ctx: &Context,
-        project_name: &str,
+        project_name: &ProjectName,
     ) -> miette::Result<Project> {
         let project_id = self.cli_state.get_project_by_name(project_name).await?.id();
         self.get_project(ctx, &project_id).await
     }
 
-    #[instrument(skip_all, fields(project_id = project_id, space_id = space_id))]
+    #[instrument(skip_all, fields(project_id = %project_id, space_id = space_id))]
     async fn delete_project(
         &self,
         ctx: &Context,
         space_id: &str,
-        project_id: &str,
+        project_id: &ProjectId,
     ) -> miette::Result<()> {
         let controller = self.create_controller().await?;
         controller.delete_project(ctx, space_id, project_id).await?;
@@ -72,12 +72,12 @@ impl Projects for InMemoryNode {
         Ok(self.cli_state.delete_project(project_id).await?)
     }
 
-    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
+    #[instrument(skip_all, fields(project_name = %project_name, space_name = space_name))]
     async fn delete_project_by_name(
         &self,
         ctx: &Context,
         space_name: &str,
-        project_name: &str,
+        project_name: &ProjectName,
     ) -> miette::Result<()> {
         let space = self.cli_state.get_space_by_name(space_name).await?;
         let project = self.cli_state.get_project_by_name(project_name).await?;
@@ -115,7 +115,8 @@ impl Projects for InMemoryNode {
                     // to avoid collisions with other projects with the same name that
                     // belong to other spaces.
                     if !project.is_admin(&user) {
-                        project.name = project.id.clone();
+                        // FIXME
+                        project.name = ProjectName::from(project.id.to_string());
                     }
                     self.cli_state.store_project(project).await?
                 }
@@ -135,7 +136,7 @@ impl Projects for InMemoryNode {
 
     /// Wait until the operation associated with the project creation is complete
     /// At this stage the project node must be up and running
-    #[instrument(skip_all, fields(project_id = project.id))]
+    #[instrument(skip_all, fields(project_id = ?project.id))]
     async fn wait_until_project_creation_operation_is_complete(
         &self,
         ctx: &Context,
@@ -152,11 +153,11 @@ impl Projects for InMemoryNode {
 
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
-    #[instrument(skip_all, fields(project_id = project.id))]
+    #[instrument(skip_all, fields(project_id = ?project.id))]
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
-        project: Project,
+        project: &Project,
     ) -> miette::Result<Project> {
         let project = self
             .create_controller()

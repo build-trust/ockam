@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::{ProjectName, Projects};
 use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_project_completion;
@@ -54,7 +54,12 @@ impl CreateCommand {
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let project = node
-            .create_project(ctx, &self.space_name, &self.project_name, vec![])
+            .create_project(
+                ctx,
+                &self.space_name,
+                &ProjectName::from(self.project_name.clone()),
+                vec![],
+            )
             .await?;
         let project = check_for_project_completion(&opts, ctx, &node, project).await?;
         let project = check_project_readiness(&opts, ctx, &node, project).await?;

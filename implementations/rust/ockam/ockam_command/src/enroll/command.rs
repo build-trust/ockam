@@ -13,7 +13,7 @@ use tracing::{error, info, instrument, warn};
 use ockam::Context;
 use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::{Project, ProjectName, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::ControllerClient;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
@@ -417,7 +417,7 @@ async fn get_user_project(
             ))?;
 
             let is_finished = Mutex::new(false);
-            let project_name = "default".to_string();
+            let project_name = ProjectName::from("default");
             let get_project = async {
                 let project = node
                     .create_project(ctx, &space.name, &project_name, vec![])
@@ -443,7 +443,7 @@ async fn get_user_project(
         Some(project) => {
             opts.terminal.write_line(&fmt_log!(
                 "Found Project {}.\n",
-                color_primary(project.project_name())
+                color_primary(project.name().to_string())
             ))?;
             project.clone()
         }
@@ -457,7 +457,7 @@ async fn get_user_project(
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked {} as your default Project, {}.\n",
-        color_primary(project.project_name()),
+        color_primary(project.name().to_string()),
         "on this machine".dim()
     ))?;
     Ok(Some(project))

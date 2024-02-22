@@ -4,12 +4,12 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
 use crate::cli_state::CliState;
-use crate::cloud::project::Project;
+use crate::cloud::project::{Project, ProjectName};
 
 use super::Result;
 
 impl CliState {
-    #[instrument(skip_all, fields(project_id = project.id))]
+    #[instrument(skip_all, fields(project_id = ?project.id))]
     pub async fn store_project(&self, project: Project) -> Result<()> {
         let repository = self.projects_repository();
         repository.store_project(&project).await?;
@@ -83,10 +83,10 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all, fields(project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(project_name = ?project_name))]
     pub async fn get_project_by_name_or_default(
         &self,
-        project_name: &Option<String>,
+        project_name: &Option<ProjectName>,
     ) -> Result<Project> {
         match project_name {
             Some(project_name) => self.get_project_by_name(project_name.as_str()).await,
@@ -100,7 +100,7 @@ impl CliState {
     }
 
     #[instrument(skip_all)]
-    pub async fn get_projects_grouped_by_name(&self) -> Result<HashMap<String, Project>> {
+    pub async fn get_projects_grouped_by_name(&self) -> Result<HashMap<ProjectName, Project>> {
         let mut projects = HashMap::new();
         for project in self.get_projects().await? {
             projects.insert(project.name.clone(), project);
