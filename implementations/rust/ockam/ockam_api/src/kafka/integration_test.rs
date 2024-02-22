@@ -134,8 +134,9 @@ mod test {
         )
         .await?;
 
-        // before produce a new key, the consumer has to issue a Fetch request
-        // so the sidecar can react by creating the relay for the partition 1 of 'my-topic'
+        // for the consumer to become available to the producer, the consumer has to issue a Fetch
+        // request first, so the sidecar can react by creating the relay for partition
+        // 1 of 'my-topic'
         {
             let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
             handle
@@ -189,6 +190,7 @@ mod test {
         let mut encrypted_body = BytesMut::from(encrypted_body.as_ref());
         let records = RecordBatchDecoder::decode(&mut encrypted_body).unwrap();
 
+        // verify the message has been encrypted
         assert_ne!(
             records.first().unwrap().value.as_ref().unwrap(),
             "hello world!".as_bytes()
@@ -624,26 +626,34 @@ mod test {
                     }
 
                     let (socket_read_half, socket_write_half) = socket.into_split();
-                    let handle: JoinHandle<()> = tokio::spawn(async move {
-                        Self::relay_traffic(
-                            "socket_read_half",
-                            socket_read_half,
-                            "simulator_write_half",
-                            simulator_write_half,
-                        )
-                        .await
-                    });
+                    let handle: JoinHandle<()> = {
+                        let is_stopping = is_stopping.clone();
+                        tokio::spawn(async move {
+                            Self::relay_traffic(
+                                is_stopping,
+                                "socket_read_half",
+                                socket_read_half,
+                                "simulator_write_half",
+                                simulator_write_half,
+                            )
+                            .await
+                        })
+                    };
                     join_handles.lock().await.push(handle);
 
-                    let handle: JoinHandle<()> = tokio::spawn(async move {
-                        Self::relay_traffic(
-                            "simulator_read_half",
-                            simulator_read_half,
-                            "socket_write_half",
-                            socket_write_half,
-                        )
-                        .await
-                    });
+                    let handle: JoinHandle<()> = {
+                        let is_stopping = is_stopping.clone();
+                        tokio::spawn(async move {
+                            Self::relay_traffic(
+                                is_stopping,
+                                "simulator_read_half",
+                                simulator_read_half,
+                                "socket_write_half",
+                                socket_write_half,
+                            )
+                            .await
+                        })
+                    };
                     join_handles.lock().await.push(handle);
                 })
             };
@@ -658,14 +668,24 @@ mod test {
         }
 
         async fn relay_traffic<W: AsyncWriteExt + Unpin, R: AsyncReadExt + Unpin>(
+            is_stopping: Arc<AtomicBool>,
             read_half_name: &'static str,
             mut read_half: R,
             write_half_name: &'static str,
             mut write_half: W,
         ) {
             let mut buffer = [0; 1024];
-            loop {
-                let read = match read_half.read(&mut buffer).await {
+            while !is_stopping.load(Ordering::Relaxed) {
+                let timeout_future =
+                    tokio::time::timeout(Duration::from_secs(1), read_half.read(&mut buffer));
+
+                let result = match timeout_future.await {
+                    Err(_) => {
+                        continue;
+                    }
+                    Ok(result) => result,
+                };
+                let read = match result {
                     Ok(read) => read,
                     Err(err) => {
                         warn!("{write_half_name} error: closing channel: {:?}", err);

@@ -520,7 +520,7 @@ mod test {
             panic!("invalid message type")
         }
 
-        context.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -561,8 +561,7 @@ mod test {
         } else {
             panic!("invalid message")
         }
-
-        context.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -598,8 +597,7 @@ mod test {
         } else {
             panic!("invalid message")
         }
-
-        context.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -651,7 +649,7 @@ mod test {
             .await;
 
         assert!(message.is_err(), "expected timeout!");
-        context.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -724,7 +722,8 @@ mod test {
             incoming_rebuilt_buffer.as_slice(),
             huge_outgoing_request.as_ref()
         );
-        context.stop().await
+
+        Ok(())
     }
 
     async fn setup_only_worker(context: &mut Context) -> Address {
@@ -928,7 +927,6 @@ mod test {
         } else {
             panic!("invalid message type")
         }
-
-        context.stop().await
+        Ok(())
     }
 }
