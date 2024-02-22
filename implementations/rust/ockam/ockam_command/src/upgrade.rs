@@ -61,14 +61,18 @@ pub fn check_if_an_upgrade_is_available(options: &CommandGlobalOpts) -> Result<(
     }
 
     let latest_release = get_release_data()?;
-    if crate_version!() != latest_release.version {
+    let current_version =
+        semver::Version::parse(crate_version!()).map_err(|_| miette!("Invalid version"))?;
+    let latest_version =
+        semver::Version::parse(&latest_release.version).map_err(|_| miette!("Invalid version"))?;
+    if current_version < latest_version {
         warn!(
-            "A new version of the Ockam Command is available: {}",
+            "A new version of the Ockam Command is now available: {}",
             latest_release.version
         );
         options.terminal.write_line(fmt_warn!(
-            "A new version is now available: {}",
-            color_primary(format!("v{}", crate_version!()))
+            "A new version of the Ockam Command is now available: {}",
+            color_primary(format!("v{}", latest_release.version))
         ))?;
         options.terminal.write_line(fmt_log!(
             "You can download it at: {}",
