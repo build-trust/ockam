@@ -97,9 +97,8 @@ impl Error {
     }
 
     #[track_caller]
-    pub fn new_internal_error(human_err: &str, inner_err_msg: &str) -> Self {
-        let msg = format!("{}\n{}", human_err, fmt_log!("{}", inner_err_msg));
-        Self::new(exitcode::SOFTWARE, miette!(msg))
+    pub fn new_internal_error(msg: &str) -> Self {
+        Self::new(exitcode::SOFTWARE, miette!(msg.to_string()))
     }
 
     pub fn code(&self) -> ExitCode {

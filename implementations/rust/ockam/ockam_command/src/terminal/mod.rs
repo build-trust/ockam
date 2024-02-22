@@ -18,8 +18,7 @@ use ockam_core::errcode::Kind;
 use r3bl_rs_utils_core::*;
 use r3bl_tuify::*;
 
-use crate::{error::Error, fmt_info};
-use crate::{fmt_list, fmt_log, fmt_warn, GlobalArgs, OutputFormat, Result};
+use crate::{fmt_info, fmt_list, fmt_log, fmt_warn, GlobalArgs, OutputFormat, Result};
 
 pub mod colors;
 pub mod fmt;
@@ -349,7 +348,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
 
         self.stderr
             .write_line(msg)
-            .map_err(|e| Error::new_internal_error("Unable to write to stderr.", &e.to_string()))?;
+            .map_err(|e| miette!("Unable to write to stderr, {e}"))?;
         Ok(self)
     }
 
