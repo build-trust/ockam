@@ -1,7 +1,5 @@
 use colorful::Colorful;
 use miette::miette;
-use opentelemetry::trace::TraceContextExt;
-use opentelemetry::KeyValue;
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -9,6 +7,7 @@ use tracing::{debug, info, instrument};
 
 use ockam::Context;
 use ockam_api::journeys::{JourneyEvent, NODE_NAME};
+use ockam_api::logs::CurrentSpan;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::OpenTelemetryContext;
 
@@ -32,9 +31,7 @@ impl CreateCommand {
         }
 
         let node_name = self.node_name.clone();
-        opentelemetry::Context::current()
-            .span()
-            .set_attribute(KeyValue::new("node_name", node_name.clone()));
+        CurrentSpan::set_attribute(NODE_NAME, node_name.as_str());
         debug!("create node in background mode");
 
         opts.terminal.write_line(&fmt_log!(
