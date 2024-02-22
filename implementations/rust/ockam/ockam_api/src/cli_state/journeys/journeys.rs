@@ -1,14 +1,15 @@
 use crate::cloud::project::Project;
-use crate::journeys::attributes::{default_attributes, make_host_trace_id};
-use crate::journeys::JourneyEvent;
+use crate::journeys::attributes::{
+    default_attributes, make_host, make_host_trace_id, make_journey_span_id, make_project_trace_id,
+};
+use crate::journeys::{Journey, JourneyEvent, ProjectJourney};
 use crate::logs::CurrentSpan;
-use crate::{CliState, ProjectJourney};
-use crate::{HostJourney, Result};
+use crate::{CliState, Result};
 use chrono::{DateTime, Utc};
-use itertools::Itertools;
+use either::Either;
 use ockam_core::{OpenTelemetryContext, OCKAM_TRACER_NAME};
 use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
-use opentelemetry::{global, Context, Key};
+use opentelemetry::{global, Context, Key, KeyValue};
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
@@ -18,6 +19,7 @@ pub const USER_EMAIL: &Key = &Key::from_static_str("app.user_email");
 pub const APP_NAME: &Key = &Key::from_static_str("app.name");
 pub const NODE_NAME: &Key = &Key::from_static_str("app.node_name");
 
+pub const APPLICATION_EVENT_HOST: &Key = &Key::from_static_str("app.event.host");
 pub const APPLICATION_EVENT_SPACE_ID: &Key = &Key::from_static_str("app.event.space.id");
 pub const APPLICATION_EVENT_SPACE_NAME: &Key = &Key::from_static_str("app.event.space.name");
 pub const APPLICATION_EVENT_PROJECT_ID: &Key = &Key::from_static_str("app.event.project.id");
@@ -45,6 +47,9 @@ pub const APPLICATION_EVENT_OCKAM_GIT_HASH: &Key =
 
 /// Journey events have a fixed duration
 pub const EVENT_DURATION: Duration = Duration::from_secs(100);
+
+/// Maximum duration for a Journey: 5 days
+const DEFAULT_JOURNEY_MAX_DURATION: Duration = Duration::from_secs(5 * 86400);
 
 /// The CliState can register events for major actions happening during the application execution:
 ///
@@ -195,92 +200,181 @@ impl CliState {
     }
 
     /// Return a list of journeys for which we want to add spans
-    async fn get_journeys(&self) -> Result<Vec<HostJourney>> {
-        let repository = self.user_journey_repository();
+    async fn get_journeys(&self) -> Result<Vec<Journey>> {
+        let now = *Context::current()
+            .get::<DateTime<Utc>>()
+            .unwrap_or(&Utc::now());
+
         let mut result = vec![];
-        if let Some(host_journey) = repository.get_host_journey().await? {
-            result.push(host_journey)
-        } else {
-            let host_journey = self.create_host_journey();
-            repository.store_host_journey(host_journey.clone()).await?;
-            result.push(host_journey)
-        }
+
+        let max_duration = DEFAULT_JOURNEY_MAX_DURATION;
+        let journey = match self.get_host_journey(now, max_duration).await? {
+            Some(Either::Right(journey)) => journey,
+            Some(Either::Left(journey)) => {
+                self.create_host_journey(Some(journey.opentelemetry_context()), now)
+                    .await?
+            }
+            None => self.create_host_journey(None, now).await?,
+        };
+        result.push(journey);
 
         if let Ok(project) = self.get_default_project().await {
-            if let Some(user_journey) = repository.get_project_journey(&project.id).await? {
-                result.push(user_journey.to_host_journey())
-            } else {
-                let user_journey = self.create_project_journey(&project.id);
-                repository
-                    .store_project_journey(user_journey.clone())
-                    .await?;
-                result.push(user_journey.to_host_journey())
-            }
+            let journey = match self
+                .get_project_journey(&project.id, now, max_duration)
+                .await?
+            {
+                Some(Either::Right(journey)) => journey,
+                Some(Either::Left(journey)) => {
+                    self.create_project_journey(
+                        &project.id,
+                        Some(journey.opentelemetry_context()),
+                        now,
+                    )
+                    .await?
+                }
+                None => self.create_project_journey(&project.id, None, now).await?,
+            };
+            result.push(journey.to_journey());
         };
 
         Ok(result)
     }
 
-    /// When a project is deleted the project journey needs to be restarted
+    /// When a project is deleted the project journeys need to be restarted
     pub async fn reset_project_journey(&self, project_id: &str) -> Result<()> {
         let repository = self.user_journey_repository();
-        Ok(repository.delete_project_journey(project_id).await?)
+        Ok(repository.delete_project_journeys(project_id).await?)
     }
 
-    /// Create the initial host journey, with a random trace id
-    fn create_host_journey(&self) -> HostJourney {
-        let trace_id = make_host_trace_id();
-        let span_id = SpanId::from_hex(&trace_id.to_string()[..16]).unwrap();
-        let (opentelemetry_context, now) =
-            self.create_journey("start host journey", trace_id, span_id);
-        HostJourney::new(opentelemetry_context, now)
+    /// Return the latest host journey unless it has expired
+    async fn get_host_journey(
+        &self,
+        now: DateTime<Utc>,
+        max_duration: Duration,
+    ) -> Result<Option<Either<Journey, Journey>>> {
+        if let Some(journey) = self.user_journey_repository().get_host_journey(now).await? {
+            if journey.start().add(max_duration) >= now {
+                Ok(Some(Either::Right(journey)))
+            } else {
+                Ok(Some(Either::Left(journey)))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Return the latest project journey unless it has expired
+    async fn get_project_journey(
+        &self,
+        project_id: &str,
+        now: DateTime<Utc>,
+        max_duration: Duration,
+    ) -> Result<Option<Either<ProjectJourney, ProjectJourney>>> {
+        if let Some(journey) = self
+            .user_journey_repository()
+            .get_project_journey(project_id, now)
+            .await?
+        {
+            if journey.start().add(max_duration) >= now {
+                Ok(Some(Either::Right(journey)))
+            } else {
+                Ok(Some(Either::Left(journey)))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Create the initial host journey, with a trace id based on the current time
+    async fn create_host_journey(
+        &self,
+        previous_opentelemetry_context: Option<OpenTelemetryContext>,
+        now: DateTime<Utc>,
+    ) -> Result<Journey> {
+        let trace_id = make_host_trace_id(now);
+        let span_id = make_journey_span_id(trace_id);
+        let host = make_host();
+        let opentelemetry_context = self.create_open_telemetry_context(
+            "start host journey",
+            trace_id,
+            span_id,
+            &[(APPLICATION_EVENT_HOST, host)],
+            previous_opentelemetry_context.clone(),
+            now,
+        );
+        let journey = Journey::new(opentelemetry_context, previous_opentelemetry_context, now);
+        self.user_journey_repository()
+            .store_host_journey(journey.clone())
+            .await?;
+        Ok(journey)
     }
 
     /// Create the initial project journey, with a trace id based on the project id
-    fn create_project_journey(&self, project_id: &str) -> ProjectJourney {
-        // take the first part of the project id, until '-' as the span id
-        let split = project_id.split('-').collect::<Vec<_>>();
-        let project_id_span_id = split.iter().take(2).join("");
-        let span_id = SpanId::from_hex(&project_id_span_id).unwrap();
+    async fn create_project_journey(
+        &self,
+        project_id: &str,
+        previous_opentelemetry_context: Option<OpenTelemetryContext>,
+        now: DateTime<Utc>,
+    ) -> Result<ProjectJourney> {
+        let trace_id = make_project_trace_id(project_id, now);
+        let span_id = make_journey_span_id(trace_id);
 
-        // take the whole project without '-' as the trace id
-        let project_id_trace_id = project_id.replace('-', "");
-        let trace_id = TraceId::from_hex(&project_id_trace_id).unwrap();
-        let (opentelemetry_context, now) =
-            self.create_journey("start project journey", trace_id, span_id);
-        ProjectJourney::new(project_id, opentelemetry_context, now)
+        let opentelemetry_context = self.create_open_telemetry_context(
+            "start project journey",
+            trace_id,
+            span_id,
+            &[(APPLICATION_EVENT_PROJECT_ID, project_id.to_string())],
+            previous_opentelemetry_context.clone(),
+            now,
+        );
+        let journey = ProjectJourney::new(
+            project_id,
+            opentelemetry_context,
+            previous_opentelemetry_context,
+            now,
+        );
+        self.user_journey_repository()
+            .store_project_journey(journey.clone())
+            .await?;
+        Ok(journey)
     }
 
-    /// Create the elements required for a journey:
-    ///  - An OpenTelemetryContext, containing a trace id and a root span id.
-    ///  - A start date. The start date is used when adding spans to the trace so that we add spans starting at the same
-    ///    time. This will display aligned spans in the trace and we can recover the actual timestamp of the event with
-    ///    an attribute
-    fn create_journey(
+    /// Create an OpenTelemetryContext, containing a trace id and a root span id.
+    fn create_open_telemetry_context(
         &self,
         msg: &str,
         trace_id: TraceId,
         span_id: SpanId,
-    ) -> (OpenTelemetryContext, DateTime<Utc>) {
+        attributes: &[(&Key, String)],
+        previous_opentelemetry_context: Option<OpenTelemetryContext>,
+        now: DateTime<Utc>,
+    ) -> OpenTelemetryContext {
         let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let (span, now) = Context::map_current(|cx| {
-            let now = cx
-                .get::<DateTime<Utc>>()
-                .unwrap_or(&Utc::now())
-                .add(Duration::from_millis(100));
-            let mut span_builder = SpanBuilder::from_name(msg.to_string());
-            span_builder.trace_id = Some(trace_id);
-            span_builder.span_id = Some(span_id);
-            span_builder.start_time = Some(SystemTime::from(now));
-            span_builder.end_time = Some(SystemTime::from(now).add(Duration::from_millis(1)));
-            (
-                tracer.build_with_context(span_builder, &Context::default()),
-                now,
+        let now = now.add(Duration::from_millis(100));
+        let mut span_builder = SpanBuilder::from_name(msg.to_string())
+            .with_trace_id(trace_id)
+            .with_span_id(span_id)
+            .with_attributes(
+                attributes
+                    .iter()
+                    .map(|(k, v)| KeyValue::new((*k).clone(), v.clone())),
             )
-        });
+            .with_start_time(SystemTime::from(now))
+            .with_end_time(SystemTime::from(now).add(Duration::from_millis(1)));
+        if let Some(previous_opentelemetry_context) = previous_opentelemetry_context {
+            span_builder = span_builder.with_links(vec![Link::new(
+                previous_opentelemetry_context
+                    .extract()
+                    .span()
+                    .span_context()
+                    .clone(),
+                vec![],
+            )])
+        };
+        let span = tracer.build_with_context(span_builder, &Context::default());
+
         let cx = Context::current_with_span(span);
         let _guard = cx.clone().attach();
-        let opentelemetry_context = OpenTelemetryContext::current();
-        (opentelemetry_context, now)
+        OpenTelemetryContext::current()
     }
 }

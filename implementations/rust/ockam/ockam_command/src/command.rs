@@ -107,17 +107,16 @@ impl OckamCommand {
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let command_name = self.subcommand.name();
-        add_command_event(options.state.clone(), &command_name, arguments.join(" "))?;
         let result =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
                 let span = tracer
                     .start_with_context(command_name.clone(), &opentelemetry_context.extract());
                 let cx = Context::current_with_span(span);
                 let _guard = cx.clone().attach();
-                self.run_command(options.clone())
+                self.run_command(options.clone(), &command_name, &arguments)
             } else {
                 tracer.in_span(self.subcommand.name(), |_| {
-                    self.run_command(options.clone())
+                    self.run_command(options.clone(), &command_name, &arguments)
                 })
             };
         if let Err(ref e) = result {
@@ -132,7 +131,13 @@ impl OckamCommand {
     }
 
     #[instrument(skip_all, fields(command = self.subcommand.name()))]
-    fn run_command(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    fn run_command(
+        self,
+        opts: CommandGlobalOpts,
+        command_name: &str,
+        arguments: &[String],
+    ) -> miette::Result<()> {
+        add_command_event(opts.state.clone(), command_name, arguments.join(" "))?;
         self.subcommand.run(opts)
     }
 }
