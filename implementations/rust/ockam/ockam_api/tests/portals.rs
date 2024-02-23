@@ -130,15 +130,16 @@ fn portal_node_goes_down_reconnect() {
     //  - verify the portal is restored
 
     let runtime = Arc::new(Runtime::new().unwrap());
+    let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = runtime_cloned.block_on(async move {
+    let result: ockam::Result<()> = handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
-            let first_node = TestNode::create(runtime.clone(), None).await;
-            let second_node = TestNode::create(runtime.clone(), None).await;
+            let first_node = TestNode::create(runtime_cloned.clone(), None).await;
+            let second_node = TestNode::create(runtime_cloned.clone(), None).await;
 
             let _outlet_status = second_node
                 .node_manager
@@ -198,8 +199,11 @@ fn portal_node_goes_down_reconnect() {
             }
 
             // create third node using the same address as the second one
-            let third_node =
-                TestNode::create(runtime, Some(&second_node_listen_address.to_string())).await;
+            let third_node = TestNode::create(
+                runtime_cloned,
+                Some(&second_node_listen_address.to_string()),
+            )
+            .await;
 
             let _outlet_status = third_node
                 .node_manager
@@ -244,10 +248,6 @@ fn portal_node_goes_down_reconnect() {
     });
 
     result.unwrap();
-
-    // to avoid tokio panic when dropping the runtime
-    // shouldn't be necessary since this should be the default rust behavior
-    drop(runtime_cloned);
 }
 
 #[test]
@@ -266,15 +266,16 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
     //                └───────────┘
 
     let runtime = Arc::new(Runtime::new().unwrap());
+    let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = runtime_cloned.block_on(async move {
+    let result: ockam::Result<()> = handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
-            let first_node = TestNode::create(runtime.clone(), None).await;
-            let second_node = TestNode::create(runtime, None).await;
+            let first_node = TestNode::create(runtime_cloned.clone(), None).await;
+            let second_node = TestNode::create(runtime_cloned, None).await;
 
             let _outlet_status = second_node
                 .node_manager
@@ -373,24 +374,21 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
     });
 
     result.unwrap();
-
-    // to avoid tokio panic when dropping the runtime
-    // shouldn't be necessary since this should be the default rust behavior
-    drop(runtime_cloned);
 }
 
 #[test]
 fn portal_heavy_load_exchanged() {
     let runtime = Arc::new(Runtime::new().unwrap());
+    let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = runtime_cloned.block_on(async move {
+    let result: ockam::Result<()> = handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
-            let first_node = TestNode::create(runtime.clone(), None).await;
-            let second_node = TestNode::create(runtime, None).await;
+            let first_node = TestNode::create(runtime_cloned.clone(), None).await;
+            let second_node = TestNode::create(runtime_cloned, None).await;
 
             let _outlet_status = second_node
                 .node_manager
@@ -479,10 +477,6 @@ fn portal_heavy_load_exchanged() {
     });
 
     result.unwrap();
-
-    // to avoid tokio panic when dropping the runtime
-    // shouldn't be necessary since this should be the default rust behavior
-    drop(runtime_cloned);
 }
 
 #[test]
@@ -521,15 +515,16 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
     //                └───────────┘
 
     let runtime = Arc::new(Runtime::new().unwrap());
+    let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<_> = runtime_cloned.block_on(async move {
+    let result: ockam::Result<_> = handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
-            let first_node = TestNode::create(runtime.clone(), None).await;
-            let second_node = TestNode::create(runtime, None).await;
+            let first_node = TestNode::create(runtime_cloned.clone(), None).await;
+            let second_node = TestNode::create(runtime_cloned, None).await;
 
             let _outlet_status = second_node
                 .node_manager
@@ -624,8 +619,4 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
     });
 
     result.unwrap();
-
-    // to avoid tokio panic when dropping the runtime
-    // shouldn't be necessary since this should be the default rust behavior
-    drop(runtime_cloned);
 }
