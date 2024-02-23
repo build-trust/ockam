@@ -60,6 +60,11 @@ ignore = [
   # CDDL schema conformance in tests.
   "RUSTSEC-2021-0127",
 
+  # `safemem` is unmaintained and archived
+  # (https://rustsec.org/advisories/RUSTSEC-2023-0081)
+  #
+  # Pulled-in by `syntect` which is used for syntax and code highlighting.
+  "RUSTSEC-2023-0081",
 
   # cbindgen (used to generate C header at build time)
   # may dereference unaligned pointer access on windows
