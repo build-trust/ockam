@@ -97,7 +97,7 @@ where
 }
 
 /// A message type that is not subject to any encoding or decoding.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NeutralMessage(Vec<u8>);
 
 impl From<Vec<u8>> for NeutralMessage {

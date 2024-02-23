@@ -1,15 +1,14 @@
-use crate::utils::{start_passthrough_server, start_tcp_echo_server, Disruption};
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::models::portal::OutletAccessControl;
-use ockam_api::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
-use ockam_api::test_utils::{start_manager_for_tests, NodeManagerHandle};
+use ockam_api::test_utils::{
+    start_manager_for_tests, start_passthrough_server, start_tcp_echo_server, Disruption, TestNode,
+};
 use ockam_api::ConnectionStatus;
 use ockam_core::compat::rand::RngCore;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Address, AllowAll, Error};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, NodeBuilder};
-use std::ops::Deref;
+use ockam_node::Context;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,8 +18,6 @@ use tokio::runtime::Runtime;
 use tokio::spawn;
 use tokio::time::timeout;
 use tracing::info;
-
-mod utils;
 
 #[ockam_macros::test]
 async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<()> {
@@ -72,52 +69,6 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
     assert_eq!(&buf, b"hello");
 
     Ok(())
-}
-
-struct TestNode {
-    pub context: Context,
-    pub node_manager_handle: NodeManagerHandle,
-}
-
-impl TestNode {
-    pub async fn create(runtime: Arc<Runtime>, listen_addr: Option<&str>) -> Self {
-        let (mut context, mut executor) = NodeBuilder::new().with_runtime(runtime.clone()).build();
-        runtime.spawn(async move {
-            executor.start_router().await.expect("cannot start router");
-        });
-        let node_manager_handle = start_manager_for_tests(
-            &mut context,
-            listen_addr,
-            Some(NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::None,
-                None,
-            )),
-        )
-        .await
-        .expect("cannot start node manager");
-
-        Self {
-            context,
-            node_manager_handle,
-        }
-    }
-
-    pub async fn listen_address(&self) -> InternetAddress {
-        self.cli_state
-            .get_node(&self.node_manager.node_name())
-            .await
-            .unwrap()
-            .tcp_listener_address()
-            .unwrap()
-    }
-}
-
-impl Deref for TestNode {
-    type Target = NodeManagerHandle;
-
-    fn deref(&self) -> &Self::Target {
-        &self.node_manager_handle
-    }
 }
 
 #[test]

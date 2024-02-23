@@ -1,12 +1,129 @@
+#![allow(dead_code)]
+use crate::config::lookup::InternetAddress;
+use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
+use ockam_node::{Context, NodeBuilder};
 use sqlx::__rt::timeout;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::runtime::Runtime;
 use tracing::{error, info};
+
+use ockam::identity::utils::AttributesBuilder;
+use ockam::identity::SecureChannels;
+use ockam::Result;
+use ockam_core::AsyncTryClone;
+use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
+
+use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
+use crate::cli_state::{random_name, CliState};
+use crate::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
+use crate::nodes::InMemoryNode;
+use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
+
+/// This struct is used by tests, it has two responsibilities:
+/// - guard to delete the cli state at the end of the test, the cli state
+///   is comprised by some files within the file system, created in a
+///   temporary directory, and possibly of sub-processes.
+/// - useful access to the NodeManager
+pub struct NodeManagerHandle {
+    pub cli_state: CliState,
+    pub node_manager: Arc<InMemoryNode>,
+    pub tcp: TcpTransport,
+    pub secure_channels: Arc<SecureChannels>,
+}
+
+impl Drop for NodeManagerHandle {
+    fn drop(&mut self) {
+        self.cli_state.delete().expect("cannot delete cli state");
+    }
+}
+
+/// Starts a local node manager and returns a handle to it.
+///
+/// Be careful: if you drop the returned handle before the end of the test
+/// things *will* break.
+pub async fn start_manager_for_tests(
+    context: &mut Context,
+    bind_addr: Option<&str>,
+    trust_options: Option<NodeManagerTrustOptions>,
+) -> Result<NodeManagerHandle> {
+    let tcp = TcpTransport::create(context).await?;
+    let tcp_listener = tcp
+        .listen(
+            bind_addr.unwrap_or("127.0.0.1:0"),
+            TcpListenerOptions::new(),
+        )
+        .await?;
+
+    let cli_state = CliState::test().await?;
+
+    let node_name = random_name();
+    cli_state
+        .start_node_with_optional_values(&node_name, &None, &None, Some(&tcp_listener))
+        .await
+        .unwrap();
+
+    // Premise: we need an identity and a credential before the node manager starts.
+    let identifier = cli_state.get_node(&node_name).await?.identifier();
+    let vault = cli_state
+        .get_or_create_default_named_vault()
+        .await?
+        .vault()
+        .await?;
+    let identities = cli_state.make_identities(vault).await?;
+
+    let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build();
+    let credential = identities
+        .credentials()
+        .credentials_creation()
+        .issue_credential(
+            &identifier,
+            &identifier,
+            attributes,
+            DEFAULT_CREDENTIAL_VALIDITY,
+        )
+        .await
+        .unwrap();
+
+    let node_manager = InMemoryNode::new(
+        context,
+        NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, false),
+        NodeManagerTransportOptions::new(
+            tcp_listener.flow_control_id().clone(),
+            tcp.async_try_clone().await?,
+        ),
+        trust_options.unwrap_or_else(|| {
+            NodeManagerTrustOptions::new(
+                NodeManagerCredentialRetrieverOptions::InMemory(credential),
+                Some(identifier),
+            )
+        }),
+    )
+    .await?;
+
+    let node_manager = Arc::new(node_manager);
+    let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
+
+    context
+        .start_worker(NODEMANAGER_ADDR, node_manager_worker)
+        .await?;
+
+    let secure_channels = node_manager.secure_channels();
+    let handle = NodeManagerHandle {
+        cli_state,
+        node_manager,
+        tcp: tcp.async_try_clone().await?,
+        secure_channels,
+    };
+
+    Ok(handle)
+}
 
 pub struct EchoServerHandle {
     pub chosen_addr: SocketAddr,
@@ -44,6 +161,8 @@ pub async fn start_tcp_echo_server() -> EchoServerHandle {
                 };
 
                 let (mut socket, _) = result.expect("Failed to accept connection");
+                socket.set_nodelay(true).unwrap();
+
                 tokio::spawn(async move {
                     let mut buf = vec![0; 1024];
                     loop {
@@ -71,6 +190,52 @@ pub async fn start_tcp_echo_server() -> EchoServerHandle {
     EchoServerHandle { chosen_addr, close }
 }
 
+pub struct TestNode {
+    pub context: Context,
+    pub node_manager_handle: NodeManagerHandle,
+}
+
+impl TestNode {
+    pub async fn create(runtime: Arc<Runtime>, listen_addr: Option<&str>) -> Self {
+        let (mut context, mut executor) = NodeBuilder::new().with_runtime(runtime.clone()).build();
+        runtime.spawn(async move {
+            executor.start_router().await.expect("cannot start router");
+        });
+        let node_manager_handle = start_manager_for_tests(
+            &mut context,
+            listen_addr,
+            Some(NodeManagerTrustOptions::new(
+                NodeManagerCredentialRetrieverOptions::None,
+                None,
+            )),
+        )
+        .await
+        .expect("cannot start node manager");
+
+        Self {
+            context,
+            node_manager_handle,
+        }
+    }
+
+    pub async fn listen_address(&self) -> InternetAddress {
+        self.cli_state
+            .get_node(&self.node_manager.node_name())
+            .await
+            .unwrap()
+            .tcp_listener_address()
+            .unwrap()
+    }
+}
+
+impl Deref for TestNode {
+    type Target = NodeManagerHandle;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node_manager_handle
+    }
+}
+
 pub struct PassthroughServerHandle {
     pub chosen_addr: SocketAddr,
     pub destination: SocketAddr,
@@ -83,7 +248,6 @@ impl Drop for PassthroughServerHandle {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Copy)]
 pub enum Disruption {
     None,
@@ -211,6 +375,7 @@ async fn relay_stream_limit_bandwidth(
     }
 }
 
+#[allow(unused)]
 async fn relay_stream_drop_packets(
     mut read_half: OwnedReadHalf,
     mut write_half: OwnedWriteHalf,
