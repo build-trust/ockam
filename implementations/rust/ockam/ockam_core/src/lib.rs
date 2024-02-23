@@ -73,6 +73,7 @@ pub mod flow_control;
 pub mod hex_encoding;
 
 /// Environmental variables
+#[cfg(feature = "std")]
 pub mod env;
 
 mod cbor;

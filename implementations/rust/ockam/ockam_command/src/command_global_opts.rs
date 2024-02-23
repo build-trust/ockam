@@ -13,7 +13,7 @@ use ockam_api::logs::{
 };
 use ockam_api::CliState;
 
-use crate::ockam_subcommand::OckamSubcommand;
+use crate::subcommand::OckamSubcommand;
 use crate::terminal::color_primary;
 use crate::util::exitcode;
 use crate::version::Version;

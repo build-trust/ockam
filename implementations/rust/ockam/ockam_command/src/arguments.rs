@@ -1,6 +1,6 @@
 /// Return true if the list of arguments contains a help flag
 pub fn has_help_flag(input: &[String]) -> bool {
-    !input.contains(&"-h".to_string()) && !input.contains(&"--help".to_string())
+    input.contains(&"-h".to_string()) || input.contains(&"--help".to_string())
 }
 
 /// Replaces the '-' placeholder character with a string value coming from stdin

@@ -1,4 +1,4 @@
-use crate::config::{BooleanVar, LevelVar};
+use crate::config::LevelVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
 use ockam_core::env::{get_env, get_env_with_default, is_set};
@@ -272,8 +272,8 @@ fn log_format() -> ockam_core::Result<LogFormat> {
 
 /// Return a value setting the logging on or off, taken from an environment variable
 pub fn logging_enabled() -> ockam_core::Result<LoggingEnabled> {
-    match get_env::<BooleanVar>(OCKAM_LOGGING)? {
-        Some(v) => Ok(if v.is_true() {
+    match get_env::<bool>(OCKAM_LOGGING)? {
+        Some(v) => Ok(if v {
             LoggingEnabled::On
         } else {
             LoggingEnabled::Off

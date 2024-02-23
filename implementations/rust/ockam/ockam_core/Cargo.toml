@@ -36,6 +36,7 @@ std = [
   "ockam_macros/std",
   "once_cell/std",
   "opentelemetry",
+  "regex",
   "serde_json",
   "tinyvec/std",
   "tracing-error",
@@ -81,6 +82,7 @@ once_cell = { version = "1", optional = true, default-features = false }
 opentelemetry = { version = "0.21.0", features = ["logs", "metrics", "trace"], optional = true }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
+regex = { version = "1.10.3", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
 serde_json = { version = "1", optional = true }
@@ -95,6 +97,7 @@ utcnow = { version = "0.2.4", default-features = false, features = ["fallback"],
 
 [dev-dependencies]
 cddl-cat = { version = "0.6.1" }
+proptest = "1.4.0"
 quickcheck = "1.0.1"
 serde_cbor = { version = "0.11.2" }
 tokio = { version = "1.36.0", features = ["full"] }

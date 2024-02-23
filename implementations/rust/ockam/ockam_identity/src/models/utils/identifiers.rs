@@ -4,6 +4,7 @@ use core::str::FromStr;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use ockam_core::compat::{string::String, vec::Vec};
+#[cfg(feature = "std")]
 use ockam_core::env::FromString;
 use ockam_core::{Error, Result};
 
@@ -105,6 +106,7 @@ impl FromStr for Identifier {
     }
 }
 
+#[cfg(feature = "std")]
 impl FromString for Identifier {
     fn from_string(s: &str) -> Result<Self> {
         s.try_into()
@@ -180,12 +182,6 @@ impl FromStr for ChangeHash {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.try_into()
-    }
-}
-
-impl FromString for ChangeHash {
-    fn from_string(s: &str) -> Result<Self> {
         s.try_into()
     }
 }

@@ -20,7 +20,7 @@ pub fn run() -> miette::Result<()> {
     match OckamCommand::try_parse_from(input.clone()) {
         Err(help) => {
             // the -h or --help flag must not be interpreted as an error
-            if has_help_flag(&input) {
+            if !has_help_flag(&input) {
                 let command = input
                     .iter()
                     .take_while(|a| !a.starts_with('-'))
