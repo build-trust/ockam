@@ -42,6 +42,8 @@ mod influxdb_token_lease;
 pub mod logs;
 mod schema;
 mod session;
+
+pub mod test_utils;
 mod util;
 
 pub use cli_state::*;
