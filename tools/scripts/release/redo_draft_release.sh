@@ -11,9 +11,14 @@ if [[ -z $GIT_TAG_WE_WILL_BE_UPDATING ]]; then
   exit 1
 fi
 
+if [[ -z $OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION ]]; then
+  echo "Version of bumped transitive dependencies set to minor"
+  OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION="minor"
+fi
+
 function get_crates_to_update() {
-  unset updated_crates_from_non_released_tag
-  unset updated_crates_from_released_tag
+  unset crates_updated_after_last_draft
+  unset crates_updated_on_last_draft
 
   for crate in implementations/rust/ockam/*; do
     if [[ -f $crate ]]; then
@@ -34,40 +39,45 @@ function get_crates_to_update() {
     fi
 
     if git diff "$LAST_RELEASED_TAG..$GIT_TAG_WE_WILL_BE_UPDATING" --quiet --name-status -- "$crate"/src; then
-      git diff "$LAST_RELEASED_TAG..$GIT_TAG_WE_WILL_BE_UPDATING" --quiet --name-status -- "$crate"/Cargo.toml || updated_crates_from_released_tag="$updated_crates_from_released_tag $crate "
+      git diff "$LAST_RELEASED_TAG..$GIT_TAG_WE_WILL_BE_UPDATING" --quiet --name-status -- "$crate"/Cargo.toml || crates_updated_on_last_draft="$crates_updated_on_last_draft $crate "
     else
-      updated_crates_from_released_tag="$updated_crates_from_released_tag $crate "
+      crates_updated_on_last_draft="$crates_updated_on_last_draft $crate "
     fi
 
     if git diff "$GIT_TAG_WE_WILL_BE_UPDATING" --quiet --name-status -- "$crate"/src; then
-      git diff "$GIT_TAG_WE_WILL_BE_UPDATING" --quiet --name-status -- "$crate"/Cargo.toml || updated_crates_from_non_released_tag="$updated_crates_from_non_released_tag $crate "
+      git diff "$GIT_TAG_WE_WILL_BE_UPDATING" --quiet --name-status -- "$crate"/Cargo.toml || crates_updated_after_last_draft="$crates_updated_after_last_draft $crate "
     else
-      updated_crates_from_non_released_tag="$updated_crates_from_non_released_tag $crate "
+      crates_updated_after_last_draft="$crates_updated_after_last_draft $crate "
     fi
   done
 }
 
-
-# - For cargo.toml bump, perform a no-version bump if a crate is updated in from the last published and unpublished release
-# - For changelog, delete the old changelog and generate a new one
+source tools/scripts/release/changelog.sh
 get_crates_to_update
-initial_updated_crates_from_non_released_tag=""
+initial_crates_updated_after_last_draft=""
 
-while [[ "$initial_updated_crates_from_non_released_tag" != "$updated_crates_from_non_released_tag" ]]; do
-  initial_updated_crates_from_non_released_tag="$updated_crates_from_non_released_tag"
-  IFS=" " read -r -a updated_crates_from_non_released_tag <<<"${updated_crates_from_non_released_tag[*]}"
+while [[ "$initial_crates_updated_after_last_draft" != "$crates_updated_after_last_draft" ]]; do
+  initial_crates_updated_after_last_draft="$crates_updated_after_last_draft"
+  IFS=" " read -r -a crates_updated_after_last_draft <<<"${crates_updated_after_last_draft[*]}"
 
-  for crate in "${updated_crates_from_non_released_tag[@]}"; do
-    if [[ "$updated_crates_from_released_tag" == *"$crate"* ]]; then
-      # Perform a release version only bump crates that uses $crate
-      echo y | cargo release release --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$crate" --execute
+  for crate in "${crates_updated_after_last_draft[@]}"; do
+    crate_name=$(eval "tomlq package.name -f $crate/Cargo.toml")
+    if [[ "$crates_updated_on_last_draft" == *"$crate"* ]]; then
+      
+      # Perform a release version which only bump crates that uses $crate
+      echo y | cargo release release --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$crate_name" --execute
     elif
       # Perform a minor release
+      echo y | cargo release "$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION" --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$crate_name" --execute
     fi
 
-    ## Delete old changelog and create a new changelog
+    ## Delete old changelog if it was created during last draft release
+    if [[ "$crates_updated_on_last_draft" == *"$crate"* ]]; then
+      CHANGELOG_FILE_PATH="$crate/CHANGELOG.md" tools/scripts/release/delete_last_changelog.py
+    fi
 
-
+    generate_changelog "$crate" "$LAST_RELEASED_TAG"
   done
+
   get_crates_to_update
 done

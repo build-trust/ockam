@@ -14,4 +14,5 @@ def delete_first_match(filename):
         with open(filename, 'w') as file:
             file.write(pruned_content)
 
-delete_first_match("CHANGELOG.md")
+file_path = os.environ['CHANGELOG_FILE_PATH']
+delete_first_match(file_path)
