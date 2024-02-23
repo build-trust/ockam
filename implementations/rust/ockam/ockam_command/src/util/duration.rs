@@ -1,5 +1,5 @@
 use clap::error::{Error, ErrorKind};
-use ockam_api::config::parse_duration;
+use ockam_core::env::parse_duration;
 use std::time::Duration;
 
 pub(crate) fn duration_parser(arg: &str) -> Result<Duration, clap::Error> {

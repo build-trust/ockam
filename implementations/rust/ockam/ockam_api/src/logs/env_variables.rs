@@ -5,7 +5,7 @@
 /// DEPRECATED! Accepted values, see LogLevel. For example: trace, debug, info
 pub(crate) const OCKAM_LOG: &str = "OCKAM_LOG";
 
-/// Decides if logs should be created. Accepted values, see BooleanVar. For example; true, false, 1, 0
+/// Decides if logs should be created. Accepted values, see FromString<bool>. For example; true, false, 1, 0
 pub(crate) const OCKAM_LOGGING: &str = "OCKAM_LOGGING";
 
 /// Required log level. Accepted values, see LevelVar. For example: trace, debug, info, warn, error

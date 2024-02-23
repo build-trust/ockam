@@ -1,4 +1,4 @@
-use crate::config::{BooleanVar, DurationVar, UrlVar};
+use crate::config::UrlVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
 use crate::logs::TracingEnabled;
@@ -120,7 +120,7 @@ impl Display for TracingConfiguration {
 /// TODO: set it to true after enough testing!
 ///
 pub fn is_tracing_set() -> ockam_core::Result<bool> {
-    Ok(get_env_with_default(OCKAM_TRACING, BooleanVar("false".to_string()))?.is_true())
+    get_env_with_default(OCKAM_TRACING, false)
 }
 
 /// Return TracingEnabled::On if:
@@ -180,72 +180,58 @@ fn tracing_endpoint() -> ockam_core::Result<Url> {
 
 /// Return the export timeout for spans, defined by an environment variable
 pub fn trace_export_timeout() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
-        OCKAM_TRACE_EXPORT_TIMEOUT,
-        DurationVar::new(DEFAULT_EXPORT_TIMEOUT),
-    )?
-    .duration)
+    get_env_with_default(OCKAM_TRACE_EXPORT_TIMEOUT, DEFAULT_EXPORT_TIMEOUT)
 }
 
 /// Return the endpoint connection timeout, for a background node, defined by an environment variable
 fn tracing_endpoint_background_connection_timeout() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
+    get_env_with_default(
         OCKAM_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
-        DurationVar::new(DEFAULT_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT),
-    )?
-    .duration)
+        DEFAULT_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
+    )
 }
 
 /// Return the endpoint connection timeout, for a foreground command, defined by an environment variable
 fn tracing_endpoint_foreground_connection_timeout() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
+    get_env_with_default(
         OCKAM_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
-        DurationVar::new(DEFAULT_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT),
-    )?
-    .duration)
+        DEFAULT_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
+    )
 }
 
 /// Return the delay between the export of 2 spans batches, for a foreground command, defined by an environment variable
 fn trace_foreground_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
+    get_env_with_default(
         OCKAM_TRACE_FOREGROUND_EXPORT_SCHEDULED_DELAY,
-        DurationVar::new(DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY),
-    )?
-    .duration)
+        DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
+    )
 }
 
 /// Return the delay between the export of 2 spans batches, for a background node, defined by an environment variable
 fn trace_background_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
+    get_env_with_default(
         OCKAM_TRACE_BACKGROUND_EXPORT_SCHEDULED_DELAY,
-        DurationVar::new(DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY),
-    )?
-    .duration)
+        DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
+    )
 }
 
 /// Return the export timeout for log records, defined by an environment variable
 pub fn log_export_timeout() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
-        OCKAM_LOG_EXPORT_TIMEOUT,
-        DurationVar::new(DEFAULT_EXPORT_TIMEOUT),
-    )?
-    .duration)
+    get_env_with_default(OCKAM_LOG_EXPORT_TIMEOUT, DEFAULT_EXPORT_TIMEOUT)
 }
 
 /// Return the delay between the export of 2 logs batches, for a foreground command, defined by an environment variable
 pub fn log_foreground_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
+    get_env_with_default(
         OCKAM_LOG_FOREGROUND_EXPORT_SCHEDULED_DELAY,
-        DurationVar::new(DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY),
-    )?
-    .duration)
+        DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
+    )
 }
 
 /// Return the delay between the export of 2 logs batches, for a background node, defined by an environment variable
 pub fn log_background_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    Ok(get_env_with_default(
+    get_env_with_default(
         OCKAM_LOG_BACKGROUND_EXPORT_SCHEDULED_DELAY,
-        DurationVar::new(DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY),
-    )?
-    .duration)
+        DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
+    )
 }

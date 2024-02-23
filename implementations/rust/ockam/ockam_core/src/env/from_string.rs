@@ -1,45 +1,10 @@
-use crate::alloc::borrow::ToOwned;
-use crate::alloc::string::ToString;
-use crate::compat::string::String;
-use crate::compat::vec::Vec;
+use crate::env::error;
 use crate::errcode::{Kind, Origin};
 use crate::{Error, Result};
-use core::time::Duration;
-#[cfg(feature = "std")]
-use std::env;
-#[cfg(feature = "std")]
-use std::env::VarError;
-#[cfg(feature = "std")]
+use once_cell::sync::OnceCell;
+use regex::Regex;
 use std::path::PathBuf;
-
-/// Get environmental value `var_name`. If value is not found returns Ok(None)
-#[cfg(feature = "std")]
-pub fn get_env<T: FromString>(var_name: &str) -> Result<Option<T>> {
-    get_env_impl::<Option<T>>(var_name, None)
-}
-
-/// Return true if `var_name` is set and has a valid value
-#[cfg(feature = "std")]
-pub fn is_set<T: FromString>(var_name: &str) -> Result<bool> {
-    get_env_impl::<Option<T>>(var_name, None).map(|v| v.is_some())
-}
-
-/// Get environmental value `var_name`. If value is not found returns `default_value`
-#[cfg(feature = "std")]
-pub fn get_env_with_default<T: FromString>(var_name: &str, default_value: T) -> Result<T> {
-    get_env_impl::<T>(var_name, default_value)
-}
-
-#[cfg(feature = "std")]
-fn get_env_impl<T: FromString>(var_name: &str, default_value: T) -> Result<T> {
-    match env::var(var_name) {
-        Ok(val) => Ok(T::from_string(&val)?),
-        Err(e) => match e {
-            VarError::NotPresent => Ok(default_value),
-            VarError::NotUnicode(_) => Err(error("get_env error: not unicode".to_owned())),
-        },
-    }
-}
+use std::time::Duration;
 
 /// For-internal-use trait for types that can be parsed from string
 pub trait FromString: Sized {
@@ -47,6 +12,8 @@ pub trait FromString: Sized {
     /// of parsing error.
     fn from_string(s: &str) -> Result<Self>;
 }
+
+/// Instances
 
 impl<T: FromString> FromString for Option<T> {
     fn from_string(s: &str) -> Result<Self> {
@@ -97,12 +64,7 @@ impl FromString for u8 {
             .map_err(|_| error("u8 parsing error".to_string()))
     }
 }
-impl FromString for Duration {
-    fn from_string(s: &str) -> Result<Self> {
-        let secs = u64::from_string(s)?;
-        Ok(Duration::from_secs(secs))
-    }
-}
+
 impl FromString for u16 {
     fn from_string(s: &str) -> Result<Self> {
         s.parse::<u16>()
@@ -131,13 +93,59 @@ impl FromString for PathBuf {
     }
 }
 
-fn error(msg: String) -> Error {
-    Error::new(Origin::Core, Kind::Internal, msg)
+/// Regex for durations: (?P<numeric_duration>[0-9]+)(?P<length_sigil>d|h|m|s|ms)?$
+/// It accepts a number and a unit:
+///
+///  - h: hour
+///  - m: minute
+///  - s: second
+///  - ms: millisecond
+///
+/// For example: 1ms, 2s, 10m
+static DURATION_REGEX: OnceCell<Regex> = OnceCell::new();
+
+impl FromString for Duration {
+    fn from_string(s: &str) -> Result<Self> {
+        parse_duration(s)
+    }
+}
+
+/// Parse a duration using a regular expression. This function can be reused to parse arguments
+pub fn parse_duration(arg: &str) -> Result<Duration> {
+    let needles = DURATION_REGEX
+        .get_or_init(|| {
+            Regex::new(r"(?P<numeric_duration>[0-9]+)(?P<length_sigil>d|h|m|s|ms)?$").unwrap()
+        })
+        .captures(arg)
+        .ok_or(Error::new(
+            Origin::Api,
+            Kind::Serialization,
+            "Invalid duration.",
+        ))?;
+    let time = needles["numeric_duration"]
+        .parse::<u64>()
+        .map_err(|_| Error::new(Origin::Api, Kind::Serialization, "Invalid duration."))?;
+
+    match needles.name("length_sigil") {
+        Some(n) => match n.as_str() {
+            "ms" => Ok(Duration::from_millis(time)),
+            "s" => Ok(Duration::from_secs(time)),
+            "m" => Ok(Duration::from_secs(60 * time)),
+            "h" => Ok(Duration::from_secs(60 * 60 * time)),
+            "d" => Ok(Duration::from_secs(60 * 60 * 24 * time)),
+            _ => unreachable!("Alternatives excluded by regex."),
+        },
+        None => Ok(Duration::from_secs(time)),
+    }
 }
 
 #[cfg(test)]
 mod tests_from_string_trait {
     use super::*;
+    use proptest::prelude::*;
+    use std::time::Duration;
+
+    const ONE_YEAR_MILLIS: u64 = 31_536_000_000;
 
     #[test]
     fn test_bool_ok() {
@@ -204,5 +212,34 @@ mod tests_from_string_trait {
     fn test_option_ok() {
         let result = Option::<u8>::from_string("1");
         assert_eq!(result.unwrap(), Some(1));
+    }
+
+    proptest! {
+        #[test]
+        fn test_reverse_duration(arg in 0..ONE_YEAR_MILLIS) {
+            let millis = Duration::from_millis(arg);
+            let milli_str = format!("{}ms", millis.as_millis());
+            prop_assert_eq!(parse_duration(milli_str.as_str()).unwrap(), millis);
+
+            // We need to truncate the value before calculating seconds,
+            // so pass it through Duration
+            let secs = Duration::from_secs(millis.as_secs());
+            let secs_str_s = format!("{}s", secs.as_secs());
+            let secs_str = format!("{}", secs.as_secs());
+            prop_assert_eq!(parse_duration(secs_str_s.as_str()).unwrap(), secs);
+            prop_assert_eq!(parse_duration(secs_str.as_str()).unwrap(), secs);
+
+            let mins = Duration::from_secs(secs.as_secs() / 60 * 60);
+            let mins_str = format!("{}m", mins.as_secs() / 60);
+            prop_assert_eq!(parse_duration(mins_str.as_str()).unwrap(), mins);
+
+            let hrs = Duration::from_secs(secs.as_secs() / 60 * 60 * 60);
+            let hrs_str = format!("{}h", hrs.as_secs() / 60 / 60);
+            prop_assert_eq!(parse_duration(hrs_str.as_str()).unwrap(), hrs);
+
+            let days = Duration::from_secs(secs.as_secs() / 60 * 60 * 60 * 24);
+            let days_str = format!("{}d", days.as_secs() / 60 / 60 / 24);
+            prop_assert_eq!(parse_duration(days_str.as_str()).unwrap(), days)
+        }
     }
 }

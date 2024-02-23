@@ -2,7 +2,7 @@ use crate::command_events::{add_command_error_event, add_command_event};
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::docs;
 use crate::global_args::GlobalArgs;
-use crate::ockam_subcommand::OckamSubcommand;
+use crate::subcommand::OckamSubcommand;
 use crate::upgrade::check_if_an_upgrade_is_available;
 use crate::version::Version;
 use crate::{fmt_warn, OckamColor};

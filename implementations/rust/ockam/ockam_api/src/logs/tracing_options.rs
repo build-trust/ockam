@@ -18,7 +18,13 @@ impl Display for TracingEnabled {
 }
 
 impl FromString for TracingEnabled {
-    fn from_string(_s: &str) -> ockam_core::Result<Self> {
-        Ok(TracingEnabled::On)
+    fn from_string(s: &str) -> ockam_core::Result<Self> {
+        FromString::from_string(s).map(|v| {
+            if v {
+                TracingEnabled::On
+            } else {
+                TracingEnabled::Off
+            }
+        })
     }
 }

@@ -18,8 +18,14 @@ impl Display for LoggingEnabled {
 }
 
 impl FromString for LoggingEnabled {
-    fn from_string(_s: &str) -> ockam_core::Result<Self> {
-        Ok(LoggingEnabled::On)
+    fn from_string(s: &str) -> ockam_core::Result<Self> {
+        FromString::from_string(s).map(|v| {
+            if v {
+                LoggingEnabled::On
+            } else {
+                LoggingEnabled::Off
+            }
+        })
     }
 }
 
