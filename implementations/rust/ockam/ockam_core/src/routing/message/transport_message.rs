@@ -1,6 +1,8 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
 use crate::{compat::vec::Vec, Message, Route};
+#[cfg(feature = "std")]
+use cfg_if::cfg_if;
 use core::fmt::{self, Display, Formatter};
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +33,7 @@ pub struct TransportMessage {
     /// The message payload.
     pub payload: Vec<u8>,
     /// An optional tracing context
-    #[cfg(feature = "std")]
+    #[cfg(feature = "tracing_context")]
     pub tracing_context: Option<String>,
 }
 
@@ -47,28 +49,40 @@ impl TransportMessage {
             onward_route: onward_route.into(),
             return_route: return_route.into(),
             payload,
-            #[cfg(feature = "std")]
+            #[cfg(feature = "tracing_context")]
             tracing_context: None,
         }
     }
 
     /// Return a TransportMessage with a new tracing context
     #[cfg(feature = "std")]
-    pub fn set_tracing_context(self, tracing_context: OpenTelemetryContext) -> Self {
-        Self {
-            tracing_context: Some(tracing_context.to_string()),
-            ..self
+    pub fn set_tracing_context(self, _tracing_context: OpenTelemetryContext) -> Self {
+        cfg_if! {
+            if #[cfg(feature = "tracing_context")] {
+                Self {
+                    tracing_context: Some(_tracing_context.to_string()),
+                    ..self
+                }
+            } else {
+                self
+            }
         }
     }
 
     /// Return the tracing context
     #[cfg(feature = "std")]
     pub fn tracing_context(&self) -> OpenTelemetryContext {
-        match self.tracing_context.as_ref() {
-            Some(tracing_context) => {
-                OpenTelemetryContext::from_remote_context(tracing_context.as_str())
+        cfg_if! {
+            if #[cfg(feature = "tracing_context")] {
+                match self.tracing_context.as_ref() {
+                    Some(tracing_context) => {
+                        OpenTelemetryContext::from_remote_context(tracing_context.as_str())
+                    }
+                    None => OpenTelemetryContext::current(),
+                }
+            } else {
+                OpenTelemetryContext::current()
             }
-            None => OpenTelemetryContext::current(),
         }
     }
 }
