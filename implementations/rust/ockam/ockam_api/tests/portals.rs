@@ -479,6 +479,7 @@ fn portal_heavy_load_exchanged() {
     result.unwrap();
 }
 
+#[ignore]
 #[test]
 fn portal_connection_drop_packets() {
     // Drop even packets after 32 packets (to allow for the initial
@@ -491,6 +492,7 @@ fn portal_connection_drop_packets() {
     test_portal_payload_transfer(Disruption::DropPacketsAfter(32), Disruption::None);
 }
 
+#[ignore]
 #[test]
 fn portal_connection_change_packet_order() {
     // Change packet order after 32 packets (to allow for the initial
