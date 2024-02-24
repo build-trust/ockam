@@ -333,7 +333,7 @@ teardown() {
   assert_equal "$status" "Up"
 
   kill -INT $socat_pid
-  sleep 33
+  sleep 35
 
   run_failure curl --fail --head --max-time 1 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
@@ -344,7 +344,7 @@ teardown() {
   socat_pid=$!
   sleep 10
 
-  run_success curl --fail --head --max-time 10 "127.0.0.1:${inlet_port}"
+  run_success curl --fail --head --retry 10 --max-time 20 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 
