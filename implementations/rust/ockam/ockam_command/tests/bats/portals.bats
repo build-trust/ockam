@@ -290,6 +290,7 @@ teardown() {
   # Should be run_failure after we add outgoing access control
   run_success curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
   rm ./file.bin
+  sleep 5
 
   end=$(date +%s)
   runtime=$((end - start))
@@ -340,6 +341,7 @@ teardown() {
   # when the credential expires
   run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
   rm ./file.bin
+  sleep 5
 
   end=$(date +%s)
   runtime=$((end - start))
