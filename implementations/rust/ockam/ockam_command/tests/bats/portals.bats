@@ -252,8 +252,6 @@ teardown() {
 @test "portals - local portal, inlet credential expires" {
   inlet_port="$(random_port)"
   node_port="$(random_port)"
-  # Write a random file that client can download for testing
-  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of=./file.bin bs=1M count=25 && popd
 
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
@@ -273,7 +271,7 @@ teardown() {
   run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --expect-cached-credential
 
   # issue and store a short-lived credential for alice
-  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 2s --encoding hex)
+  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 5s --encoding hex)
   run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential
 
   # issue and store credential for bob
@@ -283,29 +281,22 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
 
-  start=$(date +%s)
-
   # Downloading a file will create a long-lived TCP connection, which should be dropped by the portal
   # when the credential expires
-  # Should be run_failure after we add outgoing access control
-  run_success curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
-  rm ./file.bin
-  sleep 5
+  file_name="$(random_str)".bin
+  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./$file_name" bs=1M count=50 && popd
+  # TODO: should be run_failure after we add outgoing access control
+  run_success curl --max-time 30 --limit-rate 5M -S -O "http://127.0.0.1:$inlet_port/$file_name" >/dev/null
 
-  end=$(date +%s)
-  runtime=$((end - start))
+  # Consequent attempt fails
+  run_failure curl --max-time 30 -O "http://127.0.0.1:$inlet_port/$file_name"
 
-  # Make sure the call was long enough for credential to expire
-  assert [ $runtime -gt 5 ]
-
-  run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
+  rm "$OCKAM_HOME_BASE/$file_name"
 }
 
 @test "portals - local portal, outlet credential expires" {
   inlet_port="$(random_port)"
   node_port="$(random_port)"
-  # Write a random file that client can download for testing
-  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of=./file.bin bs=1M count=25 && popd
 
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
@@ -329,25 +320,20 @@ teardown() {
   run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential
 
   # issue and store credential for bob
-  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 2s --encoding hex)
+  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 5s --encoding hex)
   run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential
 
   run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
 
-  start=$(date +%s)
-
   # Downloading a file will create a long-lived TCP connection, which should be dropped by the portal
   # when the credential expires
-  run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
-  rm ./file.bin
-  sleep 5
+  file_name="$(random_str)".bin
+  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./$file_name" bs=1M count=50 && popd
+  run_failure curl --max-time 30 --limit-rate 5M -S -O "http://127.0.0.1:$inlet_port/$file_name" >/dev/null
 
-  end=$(date +%s)
-  runtime=$((end - start))
+  # Consequent attempt fails
+  run_failure curl --max-time 30 -O "http://127.0.0.1:$inlet_port/$file_name"
 
-  # Make sure the call was long enough for credential to expire
-  assert [ $runtime -gt 5 ]
-
-  run_failure curl --max-time 20 -O "http://127.0.0.1:$inlet_port/file.bin"
+  rm "$OCKAM_HOME_BASE/$file_name"
 }
