@@ -58,10 +58,13 @@ impl EnrollmentTokenIssuer {
         // Check if we're trying to create an enroller
         if EnrollerAccessControlChecks::check_str_attributes_is_enroller(&attrs) {
             // Only pre-trusted identities will be able to add enrollers
-            if !check.is_pre_trusted {
-                warn!("Not pre trusted enroller {} is trying to issue an enrollment token for an enroller", enroller);
+            if !check.is_admin {
+                warn!(
+                    "Not admin {} is trying to issue an enrollment token for an enroller",
+                    enroller
+                );
                 return Ok(Either::Right(EnrollmentTokenIssuerError(
-                    "Not pre trusted enroller is trying to issue an enrollment token for an enroller".to_string(),
+                    "Not admin is trying to issue an enrollment token for an enroller".to_string(),
                 )));
             }
         }

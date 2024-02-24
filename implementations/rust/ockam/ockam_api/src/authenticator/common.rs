@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub(crate) struct EnrollerCheckResult {
     pub(crate) is_member: bool,
     pub(crate) is_enroller: bool,
+    pub(crate) is_admin: bool,
     pub(crate) is_pre_trusted: bool,
 }
 
@@ -41,14 +42,19 @@ impl EnrollerAccessControlChecks {
         identifier: &Identifier,
     ) -> Result<EnrollerCheckResult> {
         match members.get_member(identifier).await? {
-            Some(member) => Ok(EnrollerCheckResult {
-                is_member: true,
-                is_enroller: Self::check_bin_attributes_is_enroller(member.attributes()),
-                is_pre_trusted: member.is_pre_trusted(),
-            }),
+            Some(member) => {
+                let is_enroller = Self::check_bin_attributes_is_enroller(member.attributes());
+                Ok(EnrollerCheckResult {
+                    is_member: true,
+                    is_enroller,
+                    is_admin: is_enroller, //TODO: use project admin credentials
+                    is_pre_trusted: member.is_pre_trusted(),
+                })
+            }
             None => Ok(EnrollerCheckResult {
                 is_member: false,
                 is_enroller: false,
+                is_admin: false,
                 is_pre_trusted: false,
             }),
         }
