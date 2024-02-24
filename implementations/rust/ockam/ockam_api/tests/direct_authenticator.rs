@@ -449,6 +449,7 @@ async fn enroller_cant_delete_admin(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
+#[ignore] // TODO with admin credentials.  For now, all enrollers have rights to add/remove enrollers
 async fn enroller_cant_add_enroller(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 
@@ -493,6 +494,7 @@ async fn enroller_cant_add_enroller(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
+#[ignore] // TODO with admin credentials.  For now, all enrollers have rights to add/remove enrollers
 async fn enroller_cant_delete_enroller(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 

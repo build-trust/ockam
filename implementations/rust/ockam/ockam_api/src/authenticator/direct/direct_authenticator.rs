@@ -58,7 +58,7 @@ impl DirectAuthenticator {
         // Check if we're trying to create an enroller
         if EnrollerAccessControlChecks::check_bin_attributes_is_enroller(&attrs) {
             // Only pre-trusted identities will be able to add enrollers
-            if !check.is_pre_trusted {
+            if !check.is_admin {
                 warn!(
                     "Not pre trusted enroller {} is trying to create an enroller {}",
                     enroller, identifier
@@ -143,21 +143,21 @@ impl DirectAuthenticator {
 
         if check_member.is_pre_trusted {
             warn!(
-                "Enroller {} is trying to delete pre trusted enroller {}",
+                "Enroller {} is trying to delete a pre trusted identity {}",
                 enroller, identifier
             );
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Enroller is trying to delete a pre trusted enroller".to_string(),
+                "Enroller is trying to delete a pre trusted identity".to_string(),
             )));
         }
 
-        if check_member.is_enroller && !check_enroller.is_pre_trusted {
+        if check_member.is_enroller && !check_enroller.is_admin {
             warn!(
-                "Not pre trusted enroller {} is trying to delete enroller {}",
+                "Not admin {} is trying to delete enroller {}",
                 enroller, identifier
             );
             return Ok(Either::Right(DirectAuthenticatorError(
-                "Not pre trusted enroller is trying to delete an enroller".to_string(),
+                "Not admin is trying to delete an enroller".to_string(),
             )));
         }
 
