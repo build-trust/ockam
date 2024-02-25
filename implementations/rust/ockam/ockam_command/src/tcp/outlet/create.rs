@@ -50,6 +50,10 @@ pub struct CreateCommand {
     #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
+    /// Policy expression that will be used for access control to the TCP Outlet.
+    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
     #[arg(hide = true, long = "allow", display_order = 904, id = "EXPRESSION")]
     pub policy_expression: Option<Expr>,
 }

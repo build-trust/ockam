@@ -17,6 +17,7 @@ use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
 use r3bl_rs_utils_core::*;
 use r3bl_tuify::*;
+use tracing::warn;
 
 use crate::output::OutputFormat;
 use crate::{fmt_info, fmt_list, fmt_log, fmt_warn, GlobalArgs, Result};
@@ -454,16 +455,17 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
 
         let msg = match self.output_format {
             OutputFormat::Plain => {
+                // If interactive, use the following priority: Plain -> Machine -> JSON
                 if self.stdout.is_tty() {
-                    // If not set, fallback with the following priority: Machine -> JSON
                     match (plain, machine, json) {
                         (Some(plain), _, _) => plain,
                         (None, Some(machine), _) => machine,
                         (None, None, Some(json)) => json,
                         _ => unreachable!(),
                     }
-                } else {
-                    // If not set, fallback with the following priority: JSON -> Plain
+                }
+                // If not interactive, use the following priority: Machine -> JSON -> Plain
+                else {
                     match (machine, json, plain) {
                         (Some(machine), _, _) => machine,
                         (None, Some(json), _) => json,
@@ -472,10 +474,14 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
                     }
                 }
             }
-            // If not set, no fallback is provided and returns an error
-            OutputFormat::Json => {
-                json.ok_or(miette!("JSON output is not defined for this command"))?
-            }
+            OutputFormat::Json => match json {
+                Some(json) => json,
+                // If not set, no fallback is provided
+                None => {
+                    warn!("JSON output is not defined for this command");
+                    return Ok(());
+                }
+            },
         };
         self.stdout.write_line(msg)
     }

@@ -3,7 +3,8 @@ use core::fmt::{Display, Formatter};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::vec::Vec;
-use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use serde::{Serialize, Serializer};
+use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 
 #[derive(Clone, Debug, Encode, Decode, PartialEq)]
 #[rustfmt::skip]
@@ -32,7 +33,7 @@ impl Display for Resource {
     }
 }
 
-#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq, EnumString, Display, EnumIter)]
+#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq, EnumString, Display, EnumIter, AsRefStr)]
 #[cbor(index_only)]
 pub enum ResourceType {
     #[n(1)]
@@ -53,5 +54,14 @@ impl ResourceType {
             .map(|v| v.to_string())
             .collect::<Vec<String>>()
             .join(", ")
+    }
+}
+
+impl Serialize for ResourceType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_ref())
     }
 }

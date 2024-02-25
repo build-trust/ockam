@@ -2,7 +2,9 @@ use minicbor::{Decode, Encode};
 use ockam_abac::{Action, Expr, ResourceName, ResourcePolicy, ResourceType, ResourceTypePolicy};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
@@ -47,11 +49,19 @@ impl PoliciesList {
     pub fn resource_type_policies(&self) -> &[ResourceTypePolicy] {
         &self.resource_type_policies
     }
+
+    pub fn all(&self) -> Vec<Policy> {
+        self.resource_policies
+            .iter()
+            .map(|p| p.clone().into())
+            .chain(self.resource_type_policies.iter().map(|p| p.clone().into()))
+            .collect()
+    }
 }
 
 /// A view for the specific policy types returned by policies repositories. This is used
 /// to simplify the type returned by the NodeManager in the api requests.
-#[derive(Debug, Decode, Encode, PartialEq, Eq)]
+#[derive(Debug, Decode, Encode, Serialize, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Policy {
@@ -99,7 +109,8 @@ impl From<ResourcePolicy> for Policy {
 /// user-defined and can be anything.
 ///
 /// This type is used at the top level of the NodeManager to reduce the number of endpoints.
-#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq)]
+#[derive(Clone, Debug, Decode, Encode, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
 #[rustfmt::skip]
 pub enum ResourceTypeOrName {
     #[n(1)] Type(#[n(1)] ResourceType),
@@ -132,5 +143,17 @@ impl Display for ResourceTypeOrName {
             Self::Name(s) => s.to_string(),
         };
         write!(f, "{}", as_str)
+    }
+}
+
+impl FromStr for ResourceTypeOrName {
+    type Err = Error;
+
+    fn from_str(s: &str) -> ockam_core::Result<Self> {
+        if let Ok(resource_type) = ResourceType::from_str(s) {
+            Ok(Self::Type(resource_type))
+        } else {
+            Ok(Self::Name(s.into()))
+        }
     }
 }

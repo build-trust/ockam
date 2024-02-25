@@ -4184,6 +4184,7 @@ dependencies = [
 name = "ockam_abac"
 version = "0.50.0"
 dependencies = [
+ "cfg-if",
  "either",
  "minicbor",
  "ockam_core",
@@ -4197,6 +4198,7 @@ dependencies = [
  "rusqlite",
  "rustyline",
  "rustyline-derive",
+ "serde",
  "sqlx",
  "str-buf",
  "strum 0.26.1",

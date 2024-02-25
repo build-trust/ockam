@@ -41,7 +41,9 @@ pub struct CreateInlet {
     #[n(6)] pub(crate) suffix_route: Route,
     /// The maximum duration to wait for an outlet to be available
     #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
-    /// The expression for the access control policy
+    /// The expression for the access control policy for this inlet.
+    /// If not set, the policy set for the [TCP inlet resource type](ockam_abac::ResourceType::TcpInlet)
+    /// will be used.
     #[n(8)] pub(crate) policy_expression: Option<Expr>,
     /// Create the inlet and wait for the outlet to connect
     #[n(9)] pub(crate) wait_connection: bool,
@@ -140,7 +142,9 @@ pub struct CreateOutlet {
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
     /// tighten the flow control
     #[n(3)] pub reachable_from_default_secure_channel: bool,
-    /// The expression for the access control policy
+    /// The expression for the access control policy for this outlet.
+    /// If not set, the policy set for the [TCP outlet resource type](ockam_abac::ResourceType::TcpOutlet)
+    /// will be used.
     #[n(4)] pub policy_expression: Option<Expr>,
 }
 

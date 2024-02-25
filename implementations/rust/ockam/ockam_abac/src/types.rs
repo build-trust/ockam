@@ -3,6 +3,7 @@ use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::{String, ToString};
+use serde::{Serialize, Serializer};
 use str_buf::StrBuf;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -78,6 +79,15 @@ macro_rules! define {
                 Ok($t::new(s))
             }
         }
+
+        impl Serialize for $t {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.serialize_str(self.as_str())
+            }
+        }
     };
 }
 
@@ -90,4 +100,13 @@ pub enum Action {
     #[n(1)]
     #[strum(serialize = "handle_message")]
     HandleMessage,
+}
+
+impl Serialize for Action {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_ref())
+    }
 }

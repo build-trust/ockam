@@ -61,6 +61,10 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser, default_value_t = random_name(), hide_default_value = true)]
     pub alias: String,
 
+    /// Policy expression that will be used for access control to the TCP Inlet.
+    /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
     #[arg(hide = true, long = "allow", display_order = 900, id = "EXPRESSION")]
     pub policy_expression: Option<Expr>,
 

@@ -1,6 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use std::str::FromStr;
 
 use ockam::Context;
 use ockam_abac::{Action, Expr, ResourceName, ResourceType};
@@ -19,7 +20,7 @@ pub struct CreateCommand {
     pub at: Option<String>,
 
     #[arg(
-        long = "resource-type",
+        long,
         conflicts_with = "resource",
         value_parser = resource_type_parser
     )]
@@ -51,25 +52,15 @@ impl CreateCommand {
         initialize_default_node(ctx, &opts).await?;
 
         // Backwards compatibility
-        if let Some(resource) = self.resource.take() {
-            match resource.as_str() {
-                "tcp-inlet" => {
-                    opts.terminal.write_line(fmt_warn!(
-                        "{} is deprecated. Please use {} instead",
-                        color_primary("--resource tcp-inlet"),
-                        color_primary("--resource-type tcp-inlet")
-                    ))?;
-                    self.resource_type = Some(ResourceType::TcpInlet);
-                }
-                "tcp-outlet" => {
-                    opts.terminal.write_line(fmt_warn!(
-                        "{} is deprecated. Please use {} instead",
-                        color_primary("--resource tcp-outlet"),
-                        color_primary("--resource-type tcp-outlet")
-                    ))?;
-                    self.resource_type = Some(ResourceType::TcpOutlet);
-                }
-                _ => self.resource = Some(resource),
+        if let Some(resource) = self.resource.as_ref() {
+            if let Ok(resource_type) = ResourceType::from_str(resource.as_str()) {
+                let resource_type_str = resource_type.to_string();
+                opts.terminal.write_line(fmt_warn!(
+                    "{} is deprecated. Please use {} instead",
+                    color_primary(format!("--resource {}", resource_type_str)),
+                    color_primary(format!("--resource-type {}", resource_type_str))
+                ))?;
+                self.resource_type = Some(resource_type);
             }
         }
 
