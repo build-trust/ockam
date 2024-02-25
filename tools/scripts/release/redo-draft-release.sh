@@ -52,9 +52,11 @@ function get_crates_to_update() {
   done
 }
 
+echo "Bumping updated crates"
 source tools/scripts/release/changelog.sh
 get_crates_to_update
 initial_crates_updated_after_last_draft=""
+declare -A bumped_crates
 
 while [[ "$initial_crates_updated_after_last_draft" != "$crates_updated_after_last_draft" ]]; do
   initial_crates_updated_after_last_draft="$crates_updated_after_last_draft"
@@ -62,21 +64,30 @@ while [[ "$initial_crates_updated_after_last_draft" != "$crates_updated_after_la
 
   for crate in "${crates_updated_after_last_draft[@]}"; do
     crate_name=$(eval "tomlq package.name -f $crate/Cargo.toml")
+
+    if [[ -n "${bumped_crates[$crate_name]}" ]]; then
+      echo "===> $crate_name has been bumped recently, ignoring"
+      continue
+    fi
+
+    bumped_crates[$crate_name]=true
+
     if [[ "$crates_updated_on_last_draft" == *"$crate"* ]]; then
-      
       # Perform a release version which only bump crates that uses $crate
       echo y | cargo release release --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$crate_name" --execute
-    elif
+    else
       # Perform a minor release
       echo y | cargo release "$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION" --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$crate_name" --execute
     fi
 
     ## Delete old changelog if it was created during last draft release
     if [[ "$crates_updated_on_last_draft" == *"$crate"* ]]; then
-      CHANGELOG_FILE_PATH="$crate/CHANGELOG.md" tools/scripts/release/delete_last_changelog.py
+      CHANGELOG_FILE_PATH="$crate/CHANGELOG.md" python3 tools/scripts/release/delete_last_changelog.py
     fi
 
     generate_changelog "$crate" "$LAST_RELEASED_TAG"
+    git add --all
+    git commit -m "ci: update changelog for $crate_name"
   done
 
   get_crates_to_update

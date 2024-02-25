@@ -13,7 +13,7 @@ function generate_changelog() {
   # the below message.
   echo "Generating changelog for $crate with tag $last_git_tag"
   with_commit_msg="feat: updated dependencies"
-  git-cliff "$from_released_git_tag".. --config tools/cliff/cliff.toml --with-commit "$with_commit_msg" --include-path "$crate"/**/*.rs --prepend "$crate"/CHANGELOG.md
+  git-cliff "$from_released_git_tag.." --config tools/cliff/cliff.toml --with-commit "$with_commit_msg" --include-path "$crate/**/*.rs" --prepend "$crate/CHANGELOG.md"
   # Replace ## unreleased text to bumped version
   version=$(eval "tomlq package.version -f $crate/Cargo.toml")
 
