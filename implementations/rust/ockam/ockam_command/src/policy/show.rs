@@ -5,12 +5,11 @@ use miette::IntoDiagnostic;
 use std::str::FromStr;
 
 use ockam::Context;
-use ockam_abac::{Action, ResourceName, ResourceType};
+use ockam_abac::{Action, ResourceType};
 use ockam_api::nodes::models::policies::ResourceTypeOrName;
 use ockam_api::nodes::{BackgroundNodeClient, Policies};
 use ockam_core::AsyncTryClone;
 
-use super::resource_type_parser;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::{color_primary, PluralTerm};
 use crate::util::async_cmd;
@@ -18,14 +17,10 @@ use crate::{fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
+    resource: Option<ResourceTypeOrName>,
+
     #[arg(long, display_order = 900, id = "NODE_NAME")]
     at: Option<String>,
-
-    #[arg(long = "resource-type", conflicts_with = "resource", value_parser = resource_type_parser)]
-    resource_type: Option<ResourceType>,
-
-    #[arg(long)]
-    resource: Option<ResourceName>,
 }
 
 impl ShowCommand {
@@ -58,19 +53,11 @@ impl ShowTui {
         cmd: ShowCommand,
     ) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
-        let resource = if cmd.resource_type.is_none() && cmd.resource.is_none() {
-            None
-        } else {
-            Some(
-                ResourceTypeOrName::new(cmd.resource_type.as_ref(), cmd.resource.as_ref())
-                    .into_diagnostic()?,
-            )
-        };
         let tui = Self {
             ctx: ctx.async_try_clone().await.into_diagnostic()?,
             opts,
             node,
-            resource,
+            resource: cmd.resource,
         };
         tui.show().await
     }
@@ -126,13 +113,18 @@ impl ShowCommandTui for ShowTui {
             .node
             .show_policy(&self.ctx, &resource, &Action::HandleMessage)
             .await?;
+        let resource_kind = match resource {
+            ResourceTypeOrName::Type(_) => "resource type",
+            ResourceTypeOrName::Name(_) => "resource",
+        };
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "Policy for resource {} is {}",
+                "Policy for {resource_kind} {} is {}",
                 color_primary(policy.resource().to_string()),
                 color_primary(policy.expression().to_string())
             ))
+            .json(serde_json::to_string(&policy).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }

@@ -1,14 +1,12 @@
 use crate::EvalError;
-#[cfg(feature = "std")]
-use crate::ParseError;
-#[cfg(feature = "std")]
-use core::str::FromStr;
 
+use cfg_if::cfg_if;
 use core::cmp::Ordering;
 use core::fmt;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::{vec, Vec};
+use serde::Serialize;
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
@@ -29,6 +27,15 @@ impl PartialEq for Expr {
 }
 
 impl Eq for Expr {}
+
+impl Serialize for Expr {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
@@ -309,34 +316,38 @@ impl fmt::Display for Expr {
     }
 }
 
-#[cfg(feature = "std")]
-impl TryFrom<&str> for Expr {
-    type Error = ParseError;
+cfg_if! {
+    if #[cfg(feature = "std")] {
+        use crate::ParseError;
+        use ockam_core::compat::str::FromStr;
 
-    fn try_from(input: &str) -> Result<Self, Self::Error> {
-        if let Some(x) = crate::parse(input)? {
-            Ok(x)
-        } else {
-            Err(ParseError::message("empty expression value"))
+        impl TryFrom<&str> for Expr {
+            type Error = ParseError;
+
+            fn try_from(input: &str) -> Result<Self, Self::Error> {
+                if let Some(x) = crate::parse(input)? {
+                    Ok(x)
+                } else {
+                    Err(ParseError::message("empty expression value"))
+                }
+            }
         }
-    }
-}
 
-#[cfg(feature = "std")]
-impl TryFrom<String> for Expr {
-    type Error = ParseError;
+        impl FromStr for Expr {
+            type Err = ParseError;
 
-    fn try_from(input: String) -> Result<Self, Self::Error> {
-        Self::try_from(input.as_str())
-    }
-}
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
 
-#[cfg(feature = "std")]
-impl FromStr for Expr {
-    type Err = ParseError;
+        impl TryFrom<String> for Expr {
+            type Error = ParseError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s)
+            fn try_from(input: String) -> Result<Self, Self::Error> {
+                Self::try_from(input.as_str())
+            }
+        }
     }
 }
 

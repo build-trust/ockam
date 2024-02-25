@@ -1,7 +1,7 @@
 use crate::{Action, Expr, ResourceType};
 use minicbor::{Decode, Encode};
 
-#[derive(Debug, Decode, Encode, PartialEq, Eq)]
+#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ResourceTypePolicy {

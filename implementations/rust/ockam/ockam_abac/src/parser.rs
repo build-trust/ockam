@@ -1,15 +1,13 @@
 use crate::expr::Expr;
 use crate::{error::ParseError, EvalError};
-use core::str;
-use core::str::FromStr;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::format;
+use ockam_core::compat::str::{from_utf8, FromStr};
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::vec::Vec;
 use once_cell::race::OnceBox;
 use regex::Regex;
 
-#[cfg(feature = "std")]
 use wast::lexer::Lexer;
 use wast::lexer::{FloatKind, TokenKind};
 
@@ -21,7 +19,6 @@ fn ident_pattern() -> &'static Regex {
     })
 }
 
-#[cfg(feature = "std")]
 #[rustfmt::skip]
 pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
     /// A stack operation.
@@ -79,7 +76,7 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
                             ctrl.push(Op::Next)
                         }
                         TokenKind::String => {
-                            ctrl.push(Op::Value(Expr::Str(str::from_utf8(&token.string(s))?.to_string())));
+                            ctrl.push(Op::Value(Expr::Str(from_utf8(&token.string(s))?.to_string())));
                             ctrl.push(Op::Next)
                         }
                         TokenKind::LParen => {
