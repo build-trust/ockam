@@ -310,8 +310,8 @@ teardown() {
   inlet_port="$(random_port)"
   socat_port="$(random_port)"
 
-  project_address=$(ockam project show default --output json | jq .access_route -r | sed 's#/dnsaddr/\([^/]*\)/.*#\1#')
-  project_port=$(ockam project show default --output json | jq .access_route -r | sed 's#.*/tcp/\([^/]*\)/.*#\1#')
+  project_address=$($OCKAM project show default --output json | jq .access_route -r | sed 's#/dnsaddr/\([^/]*\)/.*#\1#')
+  project_port=$($OCKAM project show default --output json | jq .access_route -r | sed 's#.*/tcp/\([^/]*\)/.*#\1#')
 
   # pass traffic through socat, so we can simulate the connection being interrupted
   socat TCP-LISTEN:${socat_port},reuseaddr TCP:${project_address}:${project_port} &
@@ -332,8 +332,8 @@ teardown() {
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 
-  kill -INT $socat_pid
-  sleep 35
+  kill -QUIT $socat_pid
+  sleep 37
 
   run_failure curl --fail --head --max-time 1 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
@@ -348,5 +348,5 @@ teardown() {
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 
-  kill -INT $socat_pid
+  kill -QUIT $socat_pid
 }
