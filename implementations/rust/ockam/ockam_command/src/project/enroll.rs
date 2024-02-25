@@ -7,7 +7,8 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cloud::project::{OktaAuth0, Project};
+use ockam_api::cloud::project::models::OktaAuth0;
+use ockam_api::cloud::project::Project;
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
@@ -82,16 +83,19 @@ impl EnrollCommand {
             .state
             .get_named_identity_or_default(&self.cloud_opts.identity)
             .await?;
-        let project = parse_project(&opts, &self).await?;
+        let project = store_project(&opts, &self).await?;
 
         // Create secure channel to the project's authority node
-        let node =
-            InMemoryNode::start_with_project_name(ctx, &opts.state, Some(project.name.clone()))
-                .await?;
+        let node = InMemoryNode::start_with_project_name(
+            ctx,
+            &opts.state,
+            Some(project.name().to_string()),
+        )
+        .await?;
         let authority_node_client = node
             .create_authority_client(
-                &project.authority_identifier().await.into_diagnostic()?,
-                &project.authority_access_route().into_diagnostic()?,
+                &project.authority_identifier().into_diagnostic()?,
+                project.authority_multiaddr().into_diagnostic()?,
                 Some(identity.name()),
             )
             .await?;
@@ -104,7 +108,9 @@ impl EnrollCommand {
         } else if self.okta {
             // Get auth0 token
             let okta_config: OktaAuth0 = project
+                .model()
                 .okta_config
+                .clone()
                 .ok_or(miette!("Okta addon not configured"))?
                 .into();
 
@@ -122,9 +128,10 @@ impl EnrollCommand {
         let project_name = {
             let project = opts
                 .state
+                .projects()
                 .get_project_by_name_or_default(&self.trust_opts.project_name.clone())
                 .await?;
-            project.name()
+            project.name().to_string()
         };
 
         // Display success message to stderr.
@@ -150,7 +157,7 @@ impl EnrollCommand {
     }
 }
 
-async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {
+async fn store_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {
     // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
     let project = if let Some(ticket) = &cmd.enroll_ticket {
         let project = ticket
@@ -158,8 +165,10 @@ async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<
             .as_ref()
             .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
             .clone();
-        opts.state.store_project(project.clone()).await?;
-        project
+        opts.state
+            .projects()
+            .import_and_store_project(project)
+            .await?
     } else {
         // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
         // currently okta auth does not use an enrollment token
@@ -167,7 +176,7 @@ async fn parse_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<
         //
         // REQUIRES Project passed or default project
         opts.state
-            .get_project_by_name_or_default(&cmd.trust_opts.project_name)
+            .projects().get_project_by_name_or_default(&cmd.trust_opts.project_name)
             .await
             .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?
     };

@@ -117,13 +117,13 @@ impl Output for Project {
     fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Project")?;
-        write!(w, "\n  Id: {}", self.id)?;
-        write!(w, "\n  Name: {}", self.name)?;
-        write!(w, "\n  Access route: {}", self.access_route()?)?;
+        write!(w, "\n  Id: {}", self.project_id())?;
+        write!(w, "\n  Name: {}", self.name())?;
+        write!(w, "\n  Project route: {}", self.project_multiaddr()?)?;
         write!(
             w,
             "\n  Identity identifier: {}",
-            self.identity
+            self.project_identifier()
                 .as_ref()
                 .map(|i| i.to_string())
                 .unwrap_or_default()
@@ -131,9 +131,9 @@ impl Output for Project {
         write!(
             w,
             "\n  Version: {}",
-            self.version.as_deref().unwrap_or("N/A")
+            self.model().version.as_deref().unwrap_or("N/A")
         )?;
-        write!(w, "\n  Running: {}", self.running.unwrap_or(false))?;
+        write!(w, "\n  Running: {}", self.model().running.unwrap_or(false))?;
         Ok(w)
     }
 
@@ -141,10 +141,10 @@ impl Output for Project {
         let output = format!(
             r#"Project {}
 Space {}"#,
-            self.name
+            self.name()
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
-            self.space_name
+            self.space_name()
                 .to_string()
                 .color(OckamColor::PrimaryResource.color()),
         );
@@ -158,26 +158,18 @@ pub struct ProjectConfigCompact(pub Project);
 
 impl Output for ProjectConfigCompact {
     fn output(&self) -> Result<String> {
-        let pi = self
-            .0
-            .identifier()
-            .map(|i| i.to_string())
-            .unwrap_or_else(|_| "N/A".to_string());
+        let pi = self.0.project_identifier()?.to_string();
         let ar = self
             .0
-            .authority_access_route()
+            .authority_multiaddr()
             .map(|r| r.to_string())
             .unwrap_or_else(|_| "N/A".to_string());
-        let ai = self
-            .0
-            .authority_change_history()
-            .map(|r| r.to_string())
-            .unwrap_or_else(|_| "N/A".to_string());
+        let ai = self.0.authority_identifier()?.to_string();
         let mut w = String::new();
-        writeln!(w, "{}: {}", "Project ID".bold(), self.0.id())?;
-        writeln!(w, "{}: {}", "Project identity".bold(), pi)?;
+        writeln!(w, "{}: {}", "Project ID".bold(), self.0.project_id())?;
+        writeln!(w, "{}: {}", "Project Identifier".bold(), pi)?;
         writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
-        write!(w, "{}: {}", "Authority identity".bold(), ai)?;
+        write!(w, "{}: {}", "Authority Identifier".bold(), ai)?;
         Ok(w)
     }
 }

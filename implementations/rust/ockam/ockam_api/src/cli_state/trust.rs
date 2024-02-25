@@ -114,8 +114,8 @@ impl CliState {
         }
 
         let project = match project_name {
-            Some(project_name) => self.get_project_by_name(project_name).await.ok(),
-            None => self.get_default_project().await.ok(),
+            Some(project_name) => self.projects().get_project_by_name(project_name).await.ok(),
+            None => self.projects().get_default_project().await.ok(),
         };
 
         let project = match project {
@@ -129,10 +129,10 @@ impl CliState {
             }
         };
 
-        let authority_identifier = project.authority_identifier().await?;
-        let authority_multiaddr = project.authority_access_route()?;
+        let authority_identifier = project.authority_identifier()?;
+        let authority_multiaddr = project.authority_multiaddr()?;
         let authority_route =
-            multiaddr_to_transport_route(&authority_multiaddr).ok_or(Error::new(
+            multiaddr_to_transport_route(authority_multiaddr).ok_or(Error::new(
                 Origin::Api,
                 Kind::NotFound,
                 format!("Invalid authority route: {}", &authority_multiaddr),

@@ -1,7 +1,7 @@
 use colorful::Colorful;
 use miette::miette;
 use ockam_api::cloud::operation::Operations;
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
@@ -40,7 +40,7 @@ pub async fn check_for_project_completion(
     opts.terminal.write_line(&fmt_ok!(
         "Configured Project {}.\n",
         &project
-            .name
+            .name()
             .to_string()
             .color(OckamColor::PrimaryResource.color())
     ))?;

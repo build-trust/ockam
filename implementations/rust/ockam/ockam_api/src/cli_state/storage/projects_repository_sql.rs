@@ -12,7 +12,7 @@ use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, To
 
 use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::{OktaConfig, Project, ProjectUserRole};
+use crate::cloud::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
 use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::minicbor_url::Url;
 
@@ -46,7 +46,7 @@ impl ProjectsSqlxDatabase {
 
 #[async_trait]
 impl ProjectsRepository for ProjectsSqlxDatabase {
-    async fn store_project(&self, project: &Project) -> Result<()> {
+    async fn store_project(&self, project: &ProjectModel) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
         let query1 = query_scalar(
@@ -57,14 +57,15 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
 
         let query2 = query(
-            "INSERT OR REPLACE INTO project VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+            "INSERT OR REPLACE INTO project (project_id, project_name, is_default, space_id, space_name, project_identifier, project_change_history, access_route, authority_change_history, authority_access_route, version, running, operation_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
         )
             .bind(project.id.to_sql())
             .bind(project.name.to_sql())
             .bind(is_already_default.to_sql())
             .bind(project.space_id.to_sql())
             .bind(project.space_name.to_sql())
-            .bind(project.identity.as_ref().map(|r| r.to_sql()))
+            .bind(project.identity.as_ref().map(|i| i.to_sql()))
+            .bind(project.project_change_history.as_ref().map(|r| r.to_sql()))
             .bind(project.access_route.to_sql())
             .bind(project.authority_identity.as_ref().map(|r| r.to_sql()))
             .bind(project.authority_access_route.as_ref().map(|r| r.to_sql()))
@@ -130,7 +131,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         transaction.commit().await.void()
     }
 
-    async fn get_project(&self, project_id: &str) -> Result<Option<Project>> {
+    async fn get_project(&self, project_id: &str) -> Result<Option<ProjectModel>> {
         let query =
             query("SELECT project_name FROM project WHERE project_id=$1").bind(project_id.to_sql());
         let row: Option<SqliteRow> = query
@@ -146,10 +147,10 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         }
     }
 
-    async fn get_project_by_name(&self, name: &str) -> Result<Option<Project>> {
+    async fn get_project_by_name(&self, name: &str) -> Result<Option<ProjectModel>> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query = query_as("SELECT project_id, project_name, is_default, space_id, space_name, identifier, access_route, authority_identity, authority_access_route, version, running, operation_id FROM project WHERE project_name=$1").bind(name.to_sql());
+        let query = query_as("SELECT project_id, project_name, is_default, space_id, space_name, project_identifier, project_change_history, access_route, authority_change_history, authority_access_route, version, running, operation_id FROM project WHERE project_name=$1").bind(name.to_sql());
         let row: Option<ProjectRow> = query.fetch_optional(&mut *transaction).await.into_core()?;
         let project = match row.map(|r| r.project()).transpose()? {
             Some(mut project) => {
@@ -199,7 +200,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         Ok(project)
     }
 
-    async fn get_projects(&self) -> Result<Vec<Project>> {
+    async fn get_projects(&self) -> Result<Vec<ProjectModel>> {
         let query = query("SELECT project_name FROM project");
         let rows: Vec<SqliteRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         let project_names: Vec<String> = rows.iter().map(|r| r.get(0)).collect();
@@ -213,7 +214,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         Ok(projects)
     }
 
-    async fn get_default_project(&self) -> Result<Option<Project>> {
+    async fn get_default_project(&self) -> Result<Option<ProjectModel>> {
         let query =
             query("SELECT project_name FROM project WHERE is_default=$1").bind(true.to_sql());
         let row: Option<SqliteRow> = query
@@ -279,9 +280,10 @@ struct ProjectRow {
     is_default: bool,
     space_id: String,
     space_name: String,
-    identifier: Option<String>,
+    project_identifier: Option<String>,
+    project_change_history: Option<String>,
     access_route: String,
-    authority_identity: Option<String>,
+    authority_change_history: Option<String>,
     authority_access_route: Option<String>,
     version: Option<String>,
     running: Option<bool>,
@@ -289,7 +291,7 @@ struct ProjectRow {
 }
 
 impl ProjectRow {
-    pub(crate) fn project(&self) -> Result<Project> {
+    pub(crate) fn project(&self) -> Result<ProjectModel> {
         self.complete_project(vec![], vec![], None, None)
     }
 
@@ -299,21 +301,22 @@ impl ProjectRow {
         user_roles: Vec<ProjectUserRole>,
         okta_config: Option<OktaConfig>,
         kafka_config: Option<KafkaConfig>,
-    ) -> Result<Project> {
-        let identifier = self
-            .identifier
+    ) -> Result<ProjectModel> {
+        let project_identifier = self
+            .project_identifier
             .as_ref()
             .map(|i| Identifier::from_string(i))
             .transpose()?;
-        Ok(Project {
+        Ok(ProjectModel {
             id: self.project_id.clone(),
             name: self.project_name.clone(),
             space_id: self.space_id.clone(),
             space_name: self.space_name.clone(),
-            identity: identifier,
+            identity: project_identifier,
+            project_change_history: self.project_change_history.clone(),
             access_route: self.access_route.clone(),
             authority_access_route: self.authority_access_route.clone(),
-            authority_identity: self.authority_identity.clone(),
+            authority_identity: self.authority_change_history.clone(),
             version: self.version.clone(),
             running: self.running,
             operation_id: self.operation_id.clone(),
@@ -502,8 +505,8 @@ mod test {
         name: &str,
         user_emails: Vec<&str>,
         user_roles: Vec<ProjectUserRole>,
-    ) -> Project {
-        Project {
+    ) -> ProjectModel {
+        ProjectModel {
             id: id.into(),
             name: name.into(),
             space_id: "space-id".into(),
@@ -519,6 +522,7 @@ mod test {
                 )
                 .unwrap(),
             ),
+            project_change_history: Some("project-identity".into()),
             authority_access_route: Some("authority-route".into()),
             authority_identity: Some("authority-identity".into()),
             okta_config: Some(create_okta_config()),

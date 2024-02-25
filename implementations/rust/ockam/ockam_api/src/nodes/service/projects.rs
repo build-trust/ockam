@@ -1,11 +1,13 @@
+use miette::IntoDiagnostic;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
-use crate::cloud::project::{OrchestratorVersionInfo, Project, Projects};
+use crate::cloud::project::models::OrchestratorVersionInfo;
+use crate::cloud::project::{Project, ProjectsOrchestratorApi};
 use crate::nodes::InMemoryNode;
 
 #[async_trait]
-impl Projects for InMemoryNode {
+impl ProjectsOrchestratorApi for InMemoryNode {
     #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
     async fn create_project(
         &self,
@@ -19,7 +21,11 @@ impl Projects for InMemoryNode {
         let project = controller
             .create_project(ctx, &space.space_id(), project_name, users)
             .await?;
-        self.cli_state.store_project(project.clone()).await?;
+        let project = self
+            .cli_state
+            .projects()
+            .import_and_store_project(project.clone())
+            .await?;
         Ok(project)
     }
 
@@ -29,10 +35,16 @@ impl Projects for InMemoryNode {
 
         // try to refresh the project from the controller
         match controller.get_project(ctx, project_id).await {
-            Ok(project) => self.cli_state.store_project(project.clone()).await?,
-            Err(e) => warn!("could no get the project {project_id} from the controller: {e:?}"),
+            Ok(project) => Ok(self
+                .cli_state
+                .projects()
+                .import_and_store_project(project.clone())
+                .await?),
+            Err(e) => {
+                warn!("could no get the project {project_id} from the controller: {e:?}");
+                Ok(self.cli_state.projects().get_project(project_id).await?)
+            }
         }
-        Ok(self.cli_state.get_project(project_id).await?)
     }
 
     #[instrument(skip_all, fields(project_name = project_name))]
@@ -43,9 +55,11 @@ impl Projects for InMemoryNode {
     ) -> miette::Result<Project> {
         let project_id = self
             .cli_state
+            .projects()
             .get_project_by_name_or_default(project_name)
             .await?
-            .id();
+            .project_id()
+            .to_string();
         self.get_project(ctx, &project_id).await
     }
 
@@ -55,7 +69,13 @@ impl Projects for InMemoryNode {
         ctx: &Context,
         project_name: &str,
     ) -> miette::Result<Project> {
-        let project_id = self.cli_state.get_project_by_name(project_name).await?.id();
+        let project_id = self
+            .cli_state
+            .projects()
+            .get_project_by_name(project_name)
+            .await?
+            .project_id()
+            .to_string();
         self.get_project(ctx, &project_id).await
     }
 
@@ -69,7 +89,7 @@ impl Projects for InMemoryNode {
         let controller = self.create_controller().await?;
         controller.delete_project(ctx, space_id, project_id).await?;
         self.cli_state.reset_project_journey(project_id).await?;
-        Ok(self.cli_state.delete_project(project_id).await?)
+        Ok(self.cli_state.projects().delete_project(project_id).await?)
     }
 
     #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
@@ -80,8 +100,12 @@ impl Projects for InMemoryNode {
         project_name: &str,
     ) -> miette::Result<()> {
         let space = self.cli_state.get_space_by_name(space_name).await?;
-        let project = self.cli_state.get_project_by_name(project_name).await?;
-        self.delete_project(ctx, &space.space_id(), &project.id())
+        let project = self
+            .cli_state
+            .projects()
+            .get_project_by_name(project_name)
+            .await?;
+        self.delete_project(ctx, &space.space_id(), project.project_id())
             .await
     }
 
@@ -107,17 +131,23 @@ impl Projects for InMemoryNode {
         };
         // Try to refresh the list of projects with the controller
         match self.create_controller().await?.list_projects(ctx).await {
-            Ok(projects) => {
-                for project in &projects {
-                    info!("retrieved project {}/{}", project.name, project.id);
-                    let mut project = project.clone();
+            Ok(project_models) => {
+                for project_model in &project_models {
+                    info!(
+                        "retrieved project {}/{}",
+                        project_model.name, project_model.id
+                    );
+                    let mut project = Project::import(project_model.clone())
+                        .await
+                        .into_diagnostic()?;
                     // If the project has no admin role, the name is set to the project id
                     // to avoid collisions with other projects with the same name that
                     // belong to other spaces.
+                    // FIXME
                     if !project.is_admin(&user) {
-                        project.name = project.id.clone();
+                        project.override_name(project.project_id().to_string());
                     }
-                    self.cli_state.store_project(project).await?
+                    self.cli_state.projects().store_project(project).await?;
                 }
             }
             Err(e) => warn!("could not get the list of projects from the controller {e:?}"),
@@ -126,6 +156,7 @@ impl Projects for InMemoryNode {
         // Return the admin projects
         Ok(self
             .cli_state
+            .projects()
             .get_projects()
             .await?
             .into_iter()
@@ -135,7 +166,7 @@ impl Projects for InMemoryNode {
 
     /// Wait until the operation associated with the project creation is complete
     /// At this stage the project node must be up and running
-    #[instrument(skip_all, fields(project_id = project.id))]
+    #[instrument(skip_all, fields(project_id = project.project_id()))]
     async fn wait_until_project_creation_operation_is_complete(
         &self,
         ctx: &Context,
@@ -144,15 +175,19 @@ impl Projects for InMemoryNode {
         let project = self
             .create_controller()
             .await?
-            .wait_until_project_creation_operation_is_complete(ctx, project)
+            .wait_until_project_creation_operation_is_complete(ctx, project.model())
             .await?;
-        self.cli_state.store_project(project.clone()).await?;
+        let project = self
+            .cli_state
+            .projects()
+            .import_and_store_project(project.clone())
+            .await?;
         Ok(project)
     }
 
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
-    #[instrument(skip_all, fields(project_id = project.id))]
+    #[instrument(skip_all, fields(project_id = project.project_id()))]
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
@@ -161,9 +196,86 @@ impl Projects for InMemoryNode {
         let project = self
             .create_controller()
             .await?
-            .wait_until_project_is_ready(ctx, project)
+            .wait_until_project_is_ready(ctx, project.model())
             .await?;
-        self.cli_state.store_project(project.clone()).await?;
+        let project = self
+            .cli_state
+            .projects()
+            .import_and_store_project(project.clone())
+            .await?;
         Ok(project)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::cloud::project::models::ProjectModel;
+    use crate::projects::Projects;
+    use crate::ProjectsSqlxDatabase;
+    use ockam::identity::{
+        identities, ChangeHistoryRepository, ChangeHistorySqlxDatabase, IdentitiesVerification,
+    };
+    use ockam_core::Result;
+    use ockam_node::database::SqlxDatabase;
+    use ockam_vault::SoftwareVaultForVerifyingSignatures;
+    use quickcheck::{Arbitrary, Gen};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_project_history() -> Result<()> {
+        let identities = identities().await?;
+
+        let project_identifier = identities.identities_creation().create_identity().await?;
+        let project_identity = identities.get_identity(&project_identifier).await?;
+        let authority_identifier = identities.identities_creation().create_identity().await?;
+        let authority_identity = identities.get_identity(&authority_identifier).await?;
+
+        let db = SqlxDatabase::in_memory("").await?;
+        let change_history_repository = Arc::new(ChangeHistorySqlxDatabase::new(db.clone()));
+        let projects = Projects::new(
+            Arc::new(ProjectsSqlxDatabase::new(db)),
+            IdentitiesVerification::new(
+                change_history_repository.clone(),
+                SoftwareVaultForVerifyingSignatures::create(),
+            ),
+        );
+
+        let mut g = Gen::new(100);
+        let mut project_model = ProjectModel::arbitrary(&mut g);
+
+        project_model.access_route = "".to_string();
+        project_model.authority_access_route = None;
+
+        project_model.authority_identity = Some(authority_identity.export_as_string()?);
+        project_model.identity = Some(project_identifier.clone());
+        project_model.project_change_history = Some(project_identity.export_as_string()?);
+
+        assert!(change_history_repository
+            .get_change_history(&project_identifier)
+            .await?
+            .is_none());
+        assert!(change_history_repository
+            .get_change_history(&authority_identifier)
+            .await?
+            .is_none());
+
+        projects.import_and_store_project(project_model).await?;
+
+        assert_eq!(
+            &change_history_repository
+                .get_change_history(&project_identifier)
+                .await?
+                .unwrap(),
+            project_identity.change_history()
+        );
+        assert_eq!(
+            &change_history_repository
+                .get_change_history(&authority_identifier)
+                .await?
+                .unwrap(),
+            authority_identity.change_history()
+        );
+
+        Ok(())
     }
 }

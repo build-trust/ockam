@@ -2,7 +2,7 @@ use clap::Args;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 
 use ockam_api::nodes::InMemoryNode;
 

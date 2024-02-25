@@ -7,7 +7,7 @@ use ockam::identity::Identifier;
 
 use crate::cli_state::Result;
 use crate::cli_state::{CliState, CliStateError};
-use crate::cloud::project::Project;
+use crate::cloud::project::models::ProjectModel;
 use crate::error::ApiError;
 
 /// The following CliState methods help keeping track of
@@ -38,7 +38,7 @@ impl CliState {
         }
 
         // Force enrollment if there are no spaces or projects in the database
-        if self.get_spaces().await?.is_empty() || self.get_projects().await?.is_empty() {
+        if self.get_spaces().await?.is_empty() || self.projects().get_projects().await?.is_empty() {
             return Ok(true);
         }
 
@@ -87,7 +87,7 @@ impl CliState {
             return Err(CliStateError::from(message))?;
         }
 
-        let default_project_exists = self.get_default_project().await.is_ok();
+        let default_project_exists = self.projects().get_default_project().await.is_ok();
         if !default_project_exists {
             let message =
                 "There should be a default project set for the current user. Please re-enroll";
@@ -163,11 +163,11 @@ impl IdentityEnrollment {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EnrollmentTicket {
     pub one_time_code: OneTimeCode,
-    pub project: Option<Project>,
+    pub project: Option<ProjectModel>,
 }
 
 impl EnrollmentTicket {
-    pub fn new(one_time_code: OneTimeCode, project: Option<Project>) -> Self {
+    pub fn new(one_time_code: OneTimeCode, project: Option<ProjectModel>) -> Self {
         Self {
             one_time_code,
             project,

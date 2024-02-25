@@ -13,7 +13,7 @@ use tracing::{error, info, instrument, warn};
 use ockam::Context;
 use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::ControllerClient;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
@@ -455,17 +455,21 @@ async fn get_user_project(
         Some(project) => {
             opts.terminal.write_line(&fmt_log!(
                 "Found Project {}.\n",
-                color_primary(project.project_name())
+                color_primary(project.name())
             ))?;
+
             project.clone()
         }
     };
 
     let project = check_project_readiness(opts, ctx, node, project).await?;
     // store the updated project
-    opts.state.store_project(project.clone()).await?;
+    opts.state.projects().store_project(project.clone()).await?;
     // set the project as the default one
-    opts.state.set_default_project(&project.id).await?;
+    opts.state
+        .projects()
+        .set_default_project(project.project_id())
+        .await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked {} as your default Project, {}.\n",

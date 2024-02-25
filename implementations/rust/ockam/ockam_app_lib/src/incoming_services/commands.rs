@@ -254,19 +254,20 @@ impl AppState {
 
         let user = state.get_default_user().await?;
         if let Some(my_project) = state
+            .projects()
             .get_projects()
             .await?
             .iter()
             .filter(|p|
                 // filter out projects that are not owned by the user
                 p.is_admin(&user))
-            .find(|p| p.id == ticket_project.id)
+            .find(|p| p.project_id() == ticket_project.id)
         {
             debug!(
                 "Skipping enrollment, the project {} is owned by the user",
-                my_project.name
+                my_project.name()
             );
-            Ok(Some(my_project.name.clone()))
+            Ok(Some(my_project.name().to_string()))
         } else {
             Ok(None)
         }

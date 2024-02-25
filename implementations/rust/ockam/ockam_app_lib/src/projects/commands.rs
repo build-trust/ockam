@@ -6,7 +6,7 @@ use tracing::{debug, info, trace};
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 
 use crate::projects::error::Error::ListingFailed;
 use crate::state::{AppState, StateKind};
@@ -25,13 +25,13 @@ impl AppState {
         let projects_guard = projects.read().await;
         let project = projects_guard
             .iter()
-            .find(|p| p.id == project_id)
+            .find(|p| p.project_id() == project_id)
             .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?
             .clone();
         let authority_node = self
             .authority_node(
-                &project.authority_identifier().await.into_diagnostic()?,
-                &project.authority_access_route().into_diagnostic()?,
+                &project.authority_identifier().into_diagnostic()?,
+                project.authority_multiaddr().into_diagnostic()?,
                 None,
             )
             .await
@@ -44,7 +44,7 @@ impl AppState {
                 None,
             )
             .await?;
-        Ok(EnrollmentTicket::new(otc, Some(project)))
+        Ok(EnrollmentTicket::new(otc, Some(project.model().clone())))
     }
 
     pub(crate) async fn refresh_projects(&self) -> Result<()> {

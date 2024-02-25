@@ -275,10 +275,11 @@ impl CreateCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
         let default_project_name = &opts
             .state
+            .projects()
             .get_default_project()
             .await
             .ok()
-            .map(|p| p.name());
+            .map(|p| p.name().to_string());
 
         self.to = Self::parse_arg_to(&opts.state, self.to, default_project_name.as_deref()).await?;
         Ok(self)

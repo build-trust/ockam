@@ -75,20 +75,22 @@ impl AddonConfigureKafkaSubcommand {
         opts: CommandGlobalOpts,
         addon_name: &str,
     ) -> miette::Result<()> {
-        let project_id = &opts
+        let project_id = opts
             .state
+            .projects()
             .get_project_by_name(&self.config.project_name.clone())
             .await?
-            .id();
+            .project_id()
+            .to_string();
         let config = KafkaConfig::new(self.config.bootstrap_server.clone());
 
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let controller = node.create_controller().await?;
 
         let response = controller
-            .configure_confluent_addon(ctx, project_id, config)
+            .configure_confluent_addon(ctx, &project_id, config)
             .await?;
-        check_configuration_completion(&opts, ctx, &node, project_id, &response.operation_id)
+        check_configuration_completion(&opts, ctx, &node, &project_id, &response.operation_id)
             .await?;
 
         opts.terminal

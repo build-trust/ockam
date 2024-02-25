@@ -51,9 +51,11 @@ impl CreateServiceInvitation {
         enrollment_ticket: EnrollmentTicket,
     ) -> Result<Self> {
         let node_identifier = cli_state.get_node(node_name.as_ref()).await?.identifier();
-        let project = cli_state.get_project_by_name(project_name.as_ref()).await?;
-        let project_authority_route = project.authority_access_route()?;
-        let project_authority_identifier = project.authority_identifier().await?;
+        let project = cli_state
+            .projects()
+            .get_project_by_name(project_name.as_ref())
+            .await?;
+        let project_authority_route = project.authority_multiaddr()?;
         // see also: ockam_command::project::ticket
         let enrollment_ticket = hex::encode(
             serde_json::to_vec(&enrollment_ticket)
@@ -62,11 +64,11 @@ impl CreateServiceInvitation {
         Ok(CreateServiceInvitation {
             enrollment_ticket,
             expires_at,
-            project_id: project.id(),
+            project_id: project.project_id().to_string(),
             recipient_email: recipient_email.clone(),
-            project_identity: project.identifier()?,
-            project_route: project.access_route()?.to_string(),
-            project_authority_identity: project_authority_identifier,
+            project_identity: project.project_identifier()?,
+            project_route: project.project_multiaddr()?.to_string(),
+            project_authority_identity: project.authority_identifier()?,
             project_authority_route: project_authority_route.to_string(),
             shared_node_identity: node_identifier,
             shared_node_route: service_route.as_ref().to_string(),

@@ -524,8 +524,11 @@ impl NodeManager {
     }
 
     pub(crate) async fn resolve_project(&self, name: &str) -> Result<(MultiAddr, Identifier)> {
-        let project = self.cli_state.get_project_by_name(name).await?;
-        Ok((project.access_route()?, project.identifier()?))
+        let project = self.cli_state.projects().get_project_by_name(name).await?;
+        Ok((
+            project.project_multiaddr()?.clone(),
+            project.project_identifier()?,
+        ))
     }
 }
 

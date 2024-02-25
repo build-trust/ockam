@@ -3,7 +3,7 @@ use core::fmt::Write;
 use clap::{Args, Subcommand};
 
 use ockam_api::cloud::addon::Addon;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 

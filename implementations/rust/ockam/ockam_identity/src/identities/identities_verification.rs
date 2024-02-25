@@ -108,7 +108,8 @@ impl IdentitiesVerification {
     /// Compare Identity that was received by any side-channel (e.g., Secure Channel) to the
     /// version we have observed and stored before.
     ///   - Do nothing if they're equal
-    ///   - Throw an error if the received version has conflict or is older that previously observed
+    ///   - Throw an error if the received version is older
+    ///   - Throw an error if the received version has conflict
     ///   - Update stored Identity if the received version is newer
     ///
     /// All the code is performed in the ChangeHistoryRepository so that checking the identity
@@ -116,6 +117,21 @@ impl IdentitiesVerification {
     /// can be done atomically
     ///
     pub async fn update_identity(&self, identity: &Identity) -> Result<()> {
-        self.repository.update_identity(identity).await
+        self.repository.update_identity(identity, false).await
+    }
+
+    /// Compare Identity that was received by any side-channel (e.g., Secure Channel) to the
+    /// version we have observed and stored before.
+    ///   - Do nothing if they're equal
+    ///   - Do nothing if the received version is older
+    ///   - Throw an error if the received version has conflict
+    ///   - Update stored Identity if the received version is newer
+    ///
+    /// All the code is performed in the ChangeHistoryRepository so that checking the identity
+    /// new change history and the identity old change history + insert the new change history
+    /// can be done atomically
+    ///
+    pub async fn update_identity_ignore_older(&self, identity: &Identity) -> Result<()> {
+        self.repository.update_identity(identity, true).await
     }
 }

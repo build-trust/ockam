@@ -29,9 +29,9 @@ const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 /// Create a Relay
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = false,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = false,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the relay. If not provided, 'default' will be used.
@@ -168,10 +168,11 @@ impl CreateCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> Result<Self> {
         let default_project_name = &opts
             .state
+            .projects()
             .get_default_project()
             .await
             .ok()
-            .map(|p| p.name());
+            .map(|p| p.name().to_string());
         let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_deref()).await?;
         self.project_relay |= at.starts_with(Project::CODE);
         let relay_name = Self::parse_arg_relay_name(self.relay_name, !self.project_relay)?;

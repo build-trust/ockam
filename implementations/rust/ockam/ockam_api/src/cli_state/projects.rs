@@ -1,39 +1,86 @@
+use ockam::identity::IdentitiesVerification;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
+use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
 use crate::cli_state::CliState;
+use crate::cloud::project::models::ProjectModel;
 use crate::cloud::project::Project;
+use crate::ProjectsRepository;
 
 use super::Result;
 
-impl CliState {
-    #[instrument(skip_all, fields(project_id = project.id))]
-    pub async fn store_project(&self, project: Project) -> Result<()> {
-        let repository = self.projects_repository();
-        repository.store_project(&project).await?;
+pub struct Projects {
+    projects_repository: Arc<dyn ProjectsRepository>,
+    identities_verification: IdentitiesVerification,
+}
+
+impl Projects {
+    pub fn new(
+        projects_repository: Arc<dyn ProjectsRepository>,
+        identities_verification: IdentitiesVerification,
+    ) -> Self {
+        Self {
+            projects_repository,
+            identities_verification,
+        }
+    }
+
+    #[instrument(skip_all, fields(project_id = project_model.id))]
+    pub async fn import_and_store_project(&self, project_model: ProjectModel) -> Result<Project> {
+        let project = Project::import(project_model.clone()).await?;
+        self.store_project(project).await
+    }
+
+    #[instrument(skip_all, fields(project_id = project.project_id()))]
+    pub async fn store_project(&self, project: Project) -> Result<Project> {
+        if let Ok(project_identity) = project.project_identity() {
+            self.identities_verification
+                .update_identity_ignore_older(project_identity)
+                .await?;
+        }
+
+        if let Ok(authority_identity) = project.authority_identity() {
+            self.identities_verification
+                .update_identity_ignore_older(authority_identity)
+                .await?;
+        }
+
+        self.projects_repository
+            .store_project(project.model())
+            .await?;
+
         // If there is no previous default project set this project as the default
-        let default_project = repository.get_default_project().await?;
+        let default_project = self.projects_repository.get_default_project().await?;
         if default_project.is_none() {
-            repository.set_default_project(&project.id).await?
+            self.projects_repository
+                .set_default_project(project.project_id())
+                .await?
         };
 
-        Ok(())
+        Ok(project)
     }
 
     #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
-        let repository = self.projects_repository();
         // delete the project
-        let project_exists = repository.get_project(project_id).await.is_ok();
-        repository.delete_project(project_id).await?;
+        let project_exists = self
+            .projects_repository
+            .get_project(project_id)
+            .await
+            .is_ok();
+        self.projects_repository.delete_project(project_id).await?;
 
         // set another project as the default project
         if project_exists {
-            let other_projects = repository.get_projects().await?;
+            let other_projects = self.projects_repository.get_projects().await?;
             if let Some(other_project) = other_projects.first() {
-                repository.set_default_project(&other_project.id()).await?;
+                self.projects_repository
+                    .set_default_project(&other_project.id)
+                    .await?;
             }
         }
         Ok(())
@@ -41,7 +88,7 @@ impl CliState {
 
     #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn set_default_project(&self, project_id: &str) -> Result<()> {
-        self.projects_repository()
+        self.projects_repository
             .set_default_project(project_id)
             .await?;
         Ok(())
@@ -49,8 +96,8 @@ impl CliState {
 
     #[instrument(skip_all)]
     pub async fn get_default_project(&self) -> Result<Project> {
-        match self.projects_repository().get_default_project().await? {
-            Some(project) => Ok(project),
+        match self.projects_repository.get_default_project().await? {
+            Some(project) => Ok(Project::import(project).await?),
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,
@@ -61,8 +108,8 @@ impl CliState {
 
     #[instrument(skip_all, fields(name = name))]
     pub async fn get_project_by_name(&self, name: &str) -> Result<Project> {
-        match self.projects_repository().get_project_by_name(name).await? {
-            Some(project) => Ok(project),
+        match self.projects_repository.get_project_by_name(name).await? {
+            Some(project) => Ok(Project::import(project).await?),
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,
@@ -73,8 +120,8 @@ impl CliState {
 
     #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn get_project(&self, project_id: &str) -> Result<Project> {
-        match self.projects_repository().get_project(project_id).await? {
-            Some(project) => Ok(project),
+        match self.projects_repository.get_project(project_id).await? {
+            Some(project) => Ok(Project::import(project).await?),
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,
@@ -96,15 +143,34 @@ impl CliState {
 
     #[instrument(skip_all)]
     pub async fn get_projects(&self) -> Result<Vec<Project>> {
-        Ok(self.projects_repository().get_projects().await?)
+        let project_models = self.projects_repository.get_projects().await?;
+
+        let mut projects = Vec::with_capacity(project_models.len());
+        for project_model in project_models {
+            let project = Project::import(project_model).await?;
+            projects.push(project);
+        }
+
+        Ok(projects)
     }
 
     #[instrument(skip_all)]
     pub async fn get_projects_grouped_by_name(&self) -> Result<HashMap<String, Project>> {
         let mut projects = HashMap::new();
         for project in self.get_projects().await? {
-            projects.insert(project.name.clone(), project);
+            projects.insert(project.name().to_string(), project);
         }
         Ok(projects)
+    }
+}
+
+impl CliState {
+    pub fn projects(&self) -> Projects {
+        let identities_verification = IdentitiesVerification::new(
+            self.change_history_repository(),
+            SoftwareVaultForVerifyingSignatures::create(),
+        );
+
+        Projects::new(self.projects_repository(), identities_verification)
     }
 }
