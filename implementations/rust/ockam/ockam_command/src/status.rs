@@ -8,7 +8,7 @@ use tracing::warn;
 use ockam::identity::{Identifier, TimestampInSeconds};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment};
-use ockam_api::cloud::project::OrchestratorVersionInfo;
+use ockam_api::cloud::project::models::OrchestratorVersionInfo;
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 

@@ -226,8 +226,8 @@ impl AppState {
             let projects_guard = projects.read().await;
             projects_guard
                 .iter()
-                .find(|p| p.name == *PROJECT_NAME)
-                .map(|p| p.id.to_owned())
+                .find(|p| p.name() == PROJECT_NAME)
+                .map(|p| p.project_id().to_string())
                 .ok_or_else(|| "could not find default project".to_string())
         }?;
 

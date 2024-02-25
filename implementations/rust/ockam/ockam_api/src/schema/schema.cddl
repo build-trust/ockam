@@ -53,13 +53,16 @@ project = {
     ?13: project_version,
     ?14: project_running,
     ?15: project_operation_id,
-    16: [* project_user_role]
+    16: [* project_user_role],
+    ?17: project_change_history
 }
 
 project_node_identity = identity_id
 
 authority_access_route = text
 authority_identity = text
+
+project_change_history = text
 
 projects = [* project]
 

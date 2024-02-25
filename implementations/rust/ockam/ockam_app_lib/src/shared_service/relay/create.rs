@@ -69,7 +69,7 @@ impl AppState {
         node_manager: Arc<InMemoryNode>,
     ) -> Result<()> {
         trace!("Creating relay");
-        match cli_state.get_default_project().await {
+        match cli_state.projects().get_default_project().await {
             Ok(project) => {
                 if let Some(_relay) = get_relay(&node_manager, cli_state).await? {
                     debug!(project = %project.name(), "Relay already exists");

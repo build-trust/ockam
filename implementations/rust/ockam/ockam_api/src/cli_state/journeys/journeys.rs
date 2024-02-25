@@ -107,7 +107,7 @@ impl CliState {
         // get the journey context
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let event_span_context = Context::current().span().span_context().clone();
-        let project = self.get_default_project().await.ok();
+        let project = self.projects().get_default_project().await.ok();
 
         // for both the host and the project journey create a span with a fixed duration
         // and add attributes to the span
@@ -164,36 +164,42 @@ impl CliState {
         );
         CurrentSpan::set_attribute_time(APPLICATION_EVENT_TIMESTAMP);
         if let Some(project) = project.as_ref() {
-            CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_ID, &project.space_id);
-            CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_NAME, &project.space_name);
-            CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_NAME, &project.name);
-            CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_ID, &project.id);
+            CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_ID, project.space_id());
+            CurrentSpan::set_attribute(APPLICATION_EVENT_SPACE_NAME, project.space_name());
+            CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_NAME, project.name());
+            CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_ID, project.project_id());
             CurrentSpan::set_attribute(
                 APPLICATION_EVENT_PROJECT_USER_ROLES,
                 &project
+                    .model()
                     .user_roles
                     .iter()
                     .map(|u| u.to_string())
                     .collect::<Vec<_>>()
                     .join(","),
             );
-            CurrentSpan::set_attribute(
-                APPLICATION_EVENT_PROJECT_ACCESS_ROUTE,
-                &project.access_route,
-            );
-            if let Some(identity) = project.identity.as_ref() {
+            if let Ok(project_multiaddr) = project.project_multiaddr() {
                 CurrentSpan::set_attribute(
-                    APPLICATION_EVENT_PROJECT_IDENTITY,
-                    &identity.to_string(),
+                    APPLICATION_EVENT_PROJECT_ACCESS_ROUTE,
+                    &project_multiaddr.to_string(),
                 );
             }
-            if let Some(route) = project.authority_access_route.as_ref() {
-                CurrentSpan::set_attribute(APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE, route);
+            if let Ok(project_identity) = project.project_identity() {
+                CurrentSpan::set_attribute(
+                    APPLICATION_EVENT_PROJECT_IDENTITY,
+                    &project_identity.to_string(),
+                );
             }
-            if let Some(identity) = project.authority_identity.as_ref() {
+            if let Ok(authority_multiaddr) = project.authority_multiaddr() {
+                CurrentSpan::set_attribute(
+                    APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE,
+                    &authority_multiaddr.to_string(),
+                );
+            }
+            if let Ok(authority_identity) = project.authority_identity() {
                 CurrentSpan::set_attribute(
                     APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY,
-                    &identity.to_string(),
+                    &authority_identity.to_string(),
                 );
             }
         }
@@ -218,21 +224,24 @@ impl CliState {
         };
         result.push(journey);
 
-        if let Ok(project) = self.get_default_project().await {
+        if let Ok(project) = self.projects().get_default_project().await {
             let journey = match self
-                .get_project_journey(&project.id, now, max_duration)
+                .get_project_journey(project.project_id(), now, max_duration)
                 .await?
             {
                 Some(Either::Right(journey)) => journey,
                 Some(Either::Left(journey)) => {
                     self.create_project_journey(
-                        &project.id,
+                        project.project_id(),
                         Some(journey.opentelemetry_context()),
                         now,
                     )
                     .await?
                 }
-                None => self.create_project_journey(&project.id, None, now).await?,
+                None => {
+                    self.create_project_journey(project.project_id(), None, now)
+                        .await?
+                }
             };
             result.push(journey.to_journey());
         };

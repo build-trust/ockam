@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 
 use ockam_api::cli_state;
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
@@ -177,7 +177,7 @@ impl AppState {
         info!("retrieving the user project");
         let node_manager = self.node_manager().await;
         let projects = node_manager.get_admin_projects(&self.context()).await?;
-        let main_project = projects.iter().find(|p| p.name == *PROJECT_NAME);
+        let main_project = projects.iter().find(|p| p.name() == PROJECT_NAME);
 
         let project = match main_project {
             Some(project) => project.clone(),
@@ -203,10 +203,14 @@ impl AppState {
             }
         };
         // set the selected project as the default one
-        self.state().await.set_default_project(&project.id).await?;
         self.state()
             .await
-            .set_node_project(&node_manager.node_name(), &Some(project.name()))
+            .projects()
+            .set_default_project(project.project_id())
+            .await?;
+        self.state()
+            .await
+            .set_node_project(&node_manager.node_name(), &Some(project.name().to_string()))
             .await?;
         Ok(project)
     }

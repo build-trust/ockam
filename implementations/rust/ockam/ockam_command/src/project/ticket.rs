@@ -25,6 +25,7 @@ use crate::{
     util::api::{CloudOpts, TrustOpts},
 };
 use crate::{terminal::color_primary, util::duration::duration_parser};
+use ockam_api::cloud::project::models::ProjectModel;
 use tracing::debug;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -133,17 +134,17 @@ impl TicketCommand {
         )
         .await?;
 
-        let project: Option<Project>;
+        let project_model: Option<ProjectModel>;
 
         let authority_node_client = if let Some(p) = get_project(&opts.state, &self.to).await? {
             let identity = opts
                 .state
                 .get_identity_name_or_default(&self.cloud_opts.identity)
                 .await?;
-            project = Some(p.clone());
+            project_model = Some(p.model().clone());
             node.create_authority_client(
-                &p.authority_identifier().await.into_diagnostic()?,
-                &p.authority_access_route().into_diagnostic()?,
+                &p.authority_identifier().into_diagnostic()?,
+                p.authority_multiaddr().into_diagnostic()?,
                 Some(identity),
             )
             .await?
@@ -166,7 +167,7 @@ impl TicketCommand {
                 .create_token(ctx, attributes, self.expires_in, self.usage_count)
                 .await?;
 
-            let ticket = EnrollmentTicket::new(token, project);
+            let ticket = EnrollmentTicket::new(token, project_model);
             let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
 
             opts.terminal.write_line(&fmt_ok!(
@@ -185,6 +186,7 @@ impl TicketCommand {
         Ok(())
     }
 }
+
 /// Get the project authority from the first address protocol.
 ///
 /// If the first protocol is a `/project`, look up the project's config.
@@ -192,17 +194,10 @@ async fn get_project(cli_state: &CliState, input: &MultiAddr) -> Result<Option<P
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
             let project_name = proto.cast::<proto::Project>().expect("project protocol");
-            match cli_state.get_project_by_name(&project_name).await.ok() {
+            match cli_state.projects().get_project_by_name(&project_name).await.ok() {
                 None => Err(miette!("Unknown project '{}'. Run 'ockam project list' to get a list of available projects.", project_name.to_string()))?,
                 Some(project) => {
-                    if project.authority_identifier().await.is_err() {
-                        Err(miette!(
-                            "missing authority in project {}",
-                            project_name.to_string()
-                        ))?
-                    } else {
-                        Ok(Some(project))
-                    }
+                    Ok(Some(project))
                 }
             }
         } else {

@@ -34,7 +34,7 @@ impl ChangeHistorySqlxDatabase {
 
 #[async_trait]
 impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
-    async fn update_identity(&self, identity: &Identity) -> Result<()> {
+    async fn update_identity(&self, identity: &Identity, ignore_older: bool) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         let query1 =
             query_as("SELECT identifier, change_history FROM identity WHERE identifier=$1")
@@ -52,9 +52,17 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
                 .await?;
 
                 match identity.compare(&known_identity) {
-                    IdentityHistoryComparison::Conflict | IdentityHistoryComparison::Older => {
+                    IdentityHistoryComparison::Conflict => {
                         return Err(IdentityError::ConsistencyError)?;
                     }
+                    IdentityHistoryComparison::Older => {
+                        if ignore_older {
+                            false
+                        } else {
+                            return Err(IdentityError::ConsistencyError)?;
+                        }
+                    }
+
                     IdentityHistoryComparison::Newer => true,
                     IdentityHistoryComparison::Equal => false,
                 }
@@ -249,9 +257,33 @@ mod tests {
         let rotated = identities.get_identity(&identifier).await?;
         identities_creation.rotate_identity(&identifier).await?;
 
+        let change_history_latest = identities_verification
+            .get_change_history(&identifier)
+            .await?;
+
         // try to update the identity with an old rotated version
         let result = identities_verification.update_identity(&rotated).await;
         assert!(result.is_err());
+
+        assert_eq!(
+            identities_verification
+                .get_change_history(&identifier)
+                .await?,
+            change_history_latest
+        );
+
+        let result = identities_verification
+            .update_identity_ignore_older(&rotated)
+            .await;
+        assert!(result.is_ok());
+
+        assert_eq!(
+            identities_verification
+                .get_change_history(&identifier)
+                .await?,
+            change_history_latest
+        );
+
         Ok(())
     }
 

@@ -11,7 +11,7 @@ use rustls_pki_types::ServerName;
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
-use ockam_api::cloud::project::OktaConfig;
+use ockam_api::cloud::project::models::OktaConfig;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::minicbor_url::Url;
@@ -91,11 +91,13 @@ impl AddonConfigureOktaSubcommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let project_id = &opts
+        let project_id = opts
             .state
+            .projects()
             .get_project_by_name(&self.project_name)
             .await?
-            .id();
+            .project_id()
+            .to_string();
 
         let base_url = Url::parse(self.tenant.as_str())
             .into_diagnostic()
@@ -126,9 +128,9 @@ impl AddonConfigureOktaSubcommand {
         let controller = node.create_controller().await?;
 
         let response = controller
-            .configure_okta_addon(ctx, project_id, okta_config)
+            .configure_okta_addon(ctx, &project_id, okta_config)
             .await?;
-        check_configuration_completion(&opts, ctx, &node, project_id, &response.operation_id)
+        check_configuration_completion(&opts, ctx, &node, &project_id, &response.operation_id)
             .await?;
 
         opts.terminal

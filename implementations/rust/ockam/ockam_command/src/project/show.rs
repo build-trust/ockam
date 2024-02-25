@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 use crate::terminal::tui::ShowCommandTui;
 
 use ockam::Context;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 
 use ockam_api::nodes::InMemoryNode;
 
@@ -98,14 +98,21 @@ impl ShowCommandTui for ShowTui {
             .get_admin_projects(&self.ctx)
             .await?
             .iter()
-            .map(|p| p.name())
+            .map(|p| p.name().to_string())
             .collect())
     }
 
     async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
         let project = match self.cmd_arg_item_name() {
             Some(command) => command.to_owned(),
-            None => self.opts.state.get_default_project().await?.name(),
+            None => self
+                .opts
+                .state
+                .projects()
+                .get_default_project()
+                .await?
+                .name()
+                .to_string(),
         };
         Ok(project)
     }

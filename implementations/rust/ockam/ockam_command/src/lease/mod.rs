@@ -78,12 +78,13 @@ async fn create_project_client(
         .await?;
     let project = opts
         .state
+        .projects()
         .get_project_by_name_or_default(&trust_opts.project_name)
         .await?;
 
     node.create_project_client(
-        &project.identifier().into_diagnostic()?,
-        &project.access_route().into_diagnostic()?,
+        &project.project_identifier().into_diagnostic()?,
+        project.project_multiaddr().into_diagnostic()?,
         Some(identity.clone()),
         CredentialsEnabled::On,
     )

@@ -131,13 +131,13 @@ impl CliState {
         project_name: &Option<String>,
     ) -> Result<()> {
         let project = match project_name {
-            Some(name) => Some(self.get_project_by_name(name).await?),
-            None => self.get_default_project().await.ok(),
+            Some(name) => Some(self.projects().get_project_by_name(name).await?),
+            None => self.projects().get_default_project().await.ok(),
         };
 
         if let Some(project) = project {
             self.nodes_repository()
-                .set_node_project_name(node_name, &project.name())
+                .set_node_project_name(node_name, project.name())
                 .await?
         };
         Ok(())
@@ -306,7 +306,7 @@ impl CliState {
             .get_node_project_name(node_name)
             .await?
         {
-            Some(project_name) => self.get_project_by_name(&project_name).await,
+            Some(project_name) => self.projects().get_project_by_name(&project_name).await,
             None => Err(Error::new(
                 Origin::Api,
                 Kind::NotFound,
@@ -540,6 +540,7 @@ impl NodeInfo {
 
 #[cfg(test)]
 mod tests {
+    use crate::cloud::project::models::ProjectModel;
     use crate::config::lookup::InternetAddress;
     use std::net::SocketAddr;
     use std::str::FromStr;
@@ -658,7 +659,7 @@ mod tests {
         assert_eq!(result.identifier(), identity.identifier());
 
         // a node can be created with a name, an existing identity and an existing project
-        let project = Project {
+        let project = ProjectModel {
             id: "project_id".to_string(),
             name: "project_name".to_string(),
             space_name: "1".to_string(),
@@ -666,6 +667,7 @@ mod tests {
             users: vec![],
             space_id: "1".to_string(),
             identity: None,
+            project_change_history: None,
             authority_access_route: None,
             authority_identity: None,
             okta_config: None,
@@ -675,17 +677,19 @@ mod tests {
             operation_id: None,
             user_roles: vec![],
         };
-        cli.store_project(project.clone()).await?;
+        cli.projects()
+            .import_and_store_project(project.clone())
+            .await?;
 
         let node = cli
             .create_node_with_optional_values(
                 "node-4",
                 &Some(identity.name()),
-                &Some(project.project_name()),
+                &Some(project.name.clone()),
             )
             .await?;
         let result = cli.get_node_project(&node.name()).await?;
-        assert_eq!(result.project_name(), project.project_name());
+        assert_eq!(result.name(), &project.name);
 
         Ok(())
     }

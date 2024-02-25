@@ -1,7 +1,7 @@
 use ockam_core::async_trait;
 use ockam_core::Result;
 
-use crate::cloud::project::Project;
+use crate::cloud::project::models::ProjectModel;
 
 /// This trait supports the storage of projects as retrieved from the Controller
 ///
@@ -13,19 +13,19 @@ pub trait ProjectsRepository: Send + Sync + 'static {
     /// Store a project in the database
     /// If the project has already been stored and is updated then we take care of
     /// keeping it as the default project if it was before
-    async fn store_project(&self, project: &Project) -> Result<()>;
+    async fn store_project(&self, project: &ProjectModel) -> Result<()>;
 
     /// Return a project given its id
-    async fn get_project(&self, project_id: &str) -> Result<Option<Project>>;
+    async fn get_project(&self, project_id: &str) -> Result<Option<ProjectModel>>;
 
     /// Return a project given its name
-    async fn get_project_by_name(&self, name: &str) -> Result<Option<Project>>;
+    async fn get_project_by_name(&self, name: &str) -> Result<Option<ProjectModel>>;
 
     /// Return all the projects
-    async fn get_projects(&self) -> Result<Vec<Project>>;
+    async fn get_projects(&self) -> Result<Vec<ProjectModel>>;
 
     /// Return the default project
-    async fn get_default_project(&self) -> Result<Option<Project>>;
+    async fn get_default_project(&self) -> Result<Option<ProjectModel>>;
 
     /// Set one project as the default project
     async fn set_default_project(&self, project_id: &str) -> Result<()>;

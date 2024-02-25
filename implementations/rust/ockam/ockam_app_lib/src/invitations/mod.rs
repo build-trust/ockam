@@ -35,12 +35,12 @@ impl AppState {
             .ok_or::<Error>(
                 format!("The outlet {outlet_socket_addr} wasn't found in the App state").into(),
             )??;
-        let project = cli_state.get_default_project().await?;
+        let project = cli_state.projects().get_default_project().await?;
 
         Ok(CreateServiceInvitation::new(
             &cli_state,
             None,
-            project.name(),
+            project.name().to_string(),
             recipient_email.clone(),
             NODE_NAME.to_string(),
             service_route.to_string(),

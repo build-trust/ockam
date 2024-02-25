@@ -7,7 +7,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
-use ockam_api::cloud::project::InfluxDBTokenLeaseManagerConfig;
+use ockam_api::cloud::project::models::InfluxDBTokenLeaseManagerConfig;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
@@ -124,11 +124,13 @@ impl AddonConfigureInfluxdbSubcommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let project_id = &opts
+        let project_id = opts
             .state
+            .projects()
             .get_project_by_name(&self.project_name)
             .await?
-            .id();
+            .project_id()
+            .to_string();
 
         let perms = match (&self.permissions, &self.permissions_path) {
             (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
@@ -154,9 +156,9 @@ impl AddonConfigureInfluxdbSubcommand {
         let controller = node.create_controller().await?;
 
         let response = controller
-            .configure_influxdb_addon(ctx, project_id, config)
+            .configure_influxdb_addon(ctx, &project_id, config)
             .await?;
-        check_configuration_completion(&opts, ctx, &node, project_id, &response.operation_id)
+        check_configuration_completion(&opts, ctx, &node, &project_id, &response.operation_id)
             .await?;
 
         opts.terminal

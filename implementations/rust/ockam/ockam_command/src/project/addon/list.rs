@@ -34,12 +34,18 @@ impl AddonListSubcommand {
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let project_name = self.project_name.clone();
-        let project_id = &opts.state.get_project_by_name(&project_name).await?.id();
+        let project_id = opts
+            .state
+            .projects()
+            .get_project_by_name(&project_name)
+            .await?
+            .project_id()
+            .to_string();
 
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let controller = node.create_controller().await?;
 
-        let addons = controller.list_addons(ctx, project_id).await?;
+        let addons = controller.list_addons(ctx, &project_id).await?;
         let output = opts.terminal.build_list(
             &addons,
             &format!("Addons for project {project_name}"),

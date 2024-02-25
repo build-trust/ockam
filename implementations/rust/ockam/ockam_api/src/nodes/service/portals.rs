@@ -12,7 +12,7 @@ use ockam_abac::{Action, Expr, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, AsyncTryClone, Route};
-use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
@@ -601,14 +601,15 @@ impl SessionReplacer for InletSessionReplacer {
         let access_control = {
             let authority = {
                 if let Some(p) = self.outlet_addr.first() {
-                    if let Some(p) = p.cast::<Project>() {
+                    if let Some(p) = p.cast::<ProjectProto>() {
                         let projects = self
                             .node_manager
                             .cli_state
+                            .projects()
                             .get_projects_grouped_by_name()
                             .await?;
                         if let Some(p) = projects.get(&*p) {
-                            Some(p.authority_identifier().await?)
+                            Some(p.authority_identifier()?)
                         } else {
                             None
                         }
@@ -743,7 +744,7 @@ impl Inlets for BackgroundNodeClient {
         wait_connection: bool,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
-            let via_project = outlet_addr.matches(0, &[Project::CODE.into()]);
+            let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
             let mut payload = if via_project {
                 CreateInlet::via_project(
                     listen_addr.into(),

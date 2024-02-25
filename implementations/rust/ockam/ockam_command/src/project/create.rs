@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cloud::project::Projects;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_project_completion;
@@ -19,8 +19,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create projects
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
     /// Name of the Space the project belongs to.

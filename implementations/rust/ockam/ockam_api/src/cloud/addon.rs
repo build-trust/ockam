@@ -7,7 +7,7 @@ use ockam_core::async_trait;
 use ockam_node::Context;
 
 use crate::cloud::operation::CreateOperationResponse;
-use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
+use crate::cloud::project::models::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
 use crate::cloud::{ControllerClient, HasSecureClient};
 
 const TARGET: &str = "ockam_api::cloud::addon";

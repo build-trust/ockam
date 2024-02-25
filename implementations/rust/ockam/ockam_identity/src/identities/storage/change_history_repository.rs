@@ -12,7 +12,7 @@ pub trait ChangeHistoryRepository: Send + Sync + 'static {
     /// Update the change history of an identity atomically
     ///  - verify that the new change history is compatible with the previous one
     ///  - store the new change history
-    async fn update_identity(&self, identity: &Identity) -> Result<()>;
+    async fn update_identity(&self, identity: &Identity, ignore_older: bool) -> Result<()>;
 
     /// Store an identifier with its change history
     async fn store_change_history(

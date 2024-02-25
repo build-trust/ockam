@@ -7,7 +7,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
-use ockam_api::cloud::project::{Project, Projects};
+use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::cloud::{CredentialsEnabled, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
@@ -60,16 +60,18 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     // Create a secure channel for each project.
     for name in meta.project.iter() {
         // Get the project node's access route + identity id from the config
-        let (project_access_route, project_identity_id) = {
+        let (project_access_route, project_identifier) = {
             // This shouldn't fail, as we did a refresh above if we found any missing project.
             let project = opts
                 .state
+                .projects()
                 .get_project_by_name(name)
                 .await
                 .context(format!("Failed to get project {name}"))?;
-            let id = project.identifier()?;
-            let node_route = project.access_route()?;
-            (node_route, id)
+            (
+                project.project_multiaddr()?.clone(),
+                project.project_identifier()?,
+            )
         };
 
         debug!("creating a secure channel to {project_access_route}");
@@ -77,7 +79,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
             .create_secure_channel(
                 ctx,
                 &project_access_route,
-                project_identity_id,
+                project_identifier,
                 identity_name.clone(),
                 timeout,
             )
@@ -147,11 +149,11 @@ async fn check_project_ready(
         return Ok(project);
     };
 
-    let project_id = project.id();
+    let project_id = project.project_id();
     let project: Project = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the project show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let project = node.get_project(ctx, &project_id).await?;
+        let project = node.get_project(ctx, project_id).await?;
         let result: miette::Result<Project> = if project.is_ready() {
             Ok(project)
         } else {
@@ -170,15 +172,12 @@ async fn check_project_node_accessible(
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
 ) -> Result<Project> {
-    let project_route = project.access_route()?;
-    let project_identity = project
-        .identity
-        .as_ref()
-        .ok_or(miette!("Project identity is not set."))?;
+    let project_route = project.project_multiaddr()?;
+    let project_identifier = project.project_identifier()?;
     let project_node = node
         .create_project_client(
-            project_identity,
-            &project_route,
+            &project_identifier,
+            project_route,
             None,
             CredentialsEnabled::Off,
         )
@@ -190,7 +189,7 @@ async fn check_project_node_accessible(
 
     Retry::spawn(retry_strategy.clone(), || async {
         // Handle the reachable result, so we can provide better errors in the case a project isn't
-        if let Ok(reachable) = project.is_reachable().await {
+        if let Ok(reachable) = project.try_connect_tcp().await {
             if reachable {
                 return Ok(());
             }
@@ -226,8 +225,8 @@ async fn check_authority_node_accessible(
 ) -> Result<Project> {
     let authority_node = node
         .create_authority_client(
-            &project.authority_identifier().await?,
-            &project.authority_access_route()?,
+            &project.authority_identifier()?,
+            project.authority_multiaddr()?,
             None,
         )
         .await?;

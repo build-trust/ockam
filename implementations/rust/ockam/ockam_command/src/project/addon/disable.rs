@@ -44,16 +44,18 @@ impl AddonDisableSubcommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let project_id = &opts
+        let project_id = opts
             .state
+            .projects()
             .get_project_by_name(&self.project_name)
             .await?
-            .id();
+            .project_id()
+            .to_string();
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let controller = node.create_controller().await?;
 
         let response = controller
-            .disable_addon(ctx, project_id, &self.addon_id)
+            .disable_addon(ctx, &project_id, &self.addon_id)
             .await?;
         let operation_id = response.operation_id;
         check_for_operation_completion(&opts, ctx, &node, &operation_id, "the addon disabling")
