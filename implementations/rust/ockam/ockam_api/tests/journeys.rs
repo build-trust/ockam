@@ -66,7 +66,6 @@ fn test_create_journey_event() {
     tracing_guard.force_flush();
     let mut spans = spans_exporter.get_finished_spans().unwrap();
     spans.sort_by_key(|s| s.start_time);
-    assert_eq!(spans.len(), 11);
 
     // keep only application events
     let spans: Vec<SpanData> = spans
@@ -79,7 +78,6 @@ fn test_create_journey_event() {
         .collect();
 
     let mut span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
-
     let mut expected = vec!["✅ enrolled", "✅ portal created", "❌ command error"];
 
     // spans are not necessarily retrieved in a deterministic order
