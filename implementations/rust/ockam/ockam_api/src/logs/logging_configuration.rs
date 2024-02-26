@@ -159,21 +159,6 @@ impl LoggingConfiguration {
         )
     }
 
-    /// LoggingConfiguration for a foreground command
-    pub fn foreground() -> ockam_core::Result<Self> {
-        Ok(LoggingConfiguration::new(
-            LoggingEnabled::On,
-            Level::TRACE,
-            global_error_handler_enabled()?,
-            100,
-            60,
-            LogFormat::Default,
-            Colored::Off,
-            None,
-            None,
-        ))
-    }
-
     /// Return a LoggingConfiguration which creates logs for a background node
     pub fn background(
         log_dir: Option<PathBuf>,

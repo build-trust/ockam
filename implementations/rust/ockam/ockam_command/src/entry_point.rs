@@ -1,11 +1,14 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
+use tracing_core::Level;
 
 use crate::{
     add_command_error_event, has_help_flag, pager, replace_hyphen_with_stdin, OckamCommand,
 };
 use ockam_api::cli_state::CliState;
-use ockam_api::logs::{LoggingConfiguration, LoggingTracing, TracingConfiguration};
+use ockam_api::logs::{
+    logging_configuration, Colored, LoggingConfiguration, LoggingTracing, TracingConfiguration,
+};
 
 /// Main method for running the `ockam` executable:
 ///
@@ -29,8 +32,15 @@ pub fn run() -> miette::Result<()> {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>()
                     .join(" ");
+
+                let logging_configuration = logging_configuration(
+                    Some(Level::TRACE),
+                    Colored::On,
+                    None,
+                    LoggingConfiguration::default_crates(),
+                );
                 let _guard = LoggingTracing::setup(
-                    &LoggingConfiguration::foreground().into_diagnostic()?,
+                    &logging_configuration.into_diagnostic()?,
                     &TracingConfiguration::foreground(true).into_diagnostic()?,
                     "local node",
                 );

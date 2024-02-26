@@ -1,4 +1,7 @@
-use ockam_api::logs::{LoggingConfiguration, LoggingTracing, TracingConfiguration};
+use ockam_api::logs::{
+    global_error_handler_enabled, Colored, LogFormat, LoggingConfiguration, LoggingEnabled,
+    LoggingTracing, TracingConfiguration,
+};
 use ockam_api::random_name;
 
 use opentelemetry::global;
@@ -13,6 +16,7 @@ use std::fs;
 use tempfile::NamedTempFile;
 
 use tracing::{error, info};
+use tracing_core::Level;
 
 /// These tests need to be integration tests
 /// They need to run in isolation because
@@ -27,7 +31,7 @@ fn test_log_and_traces() {
     let guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         logs_exporter.clone(),
-        &LoggingConfiguration::foreground()
+        &LoggingConfiguration::make_configuration()
             .unwrap()
             .set_log_directory(log_directory.into()),
         &TracingConfiguration::foreground(false).unwrap(),
@@ -81,4 +85,20 @@ fn test_log_and_traces() {
         stdout_file_checked,
         "the stdout log file must have been found and checked"
     )
+}
+
+/// HELPERS
+
+fn make_configuration() -> ockam_core::Result<LoggingConfiguration> {
+    Ok(LoggingConfiguration::new(
+        LoggingEnabled::On,
+        Level::TRACE,
+        global_error_handler_enabled()?,
+        100,
+        60,
+        LogFormat::Default,
+        Colored::Off,
+        None,
+        None,
+    ))
 }
