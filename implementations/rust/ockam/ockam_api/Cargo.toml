@@ -51,7 +51,7 @@ open = "5.0.0"
 opentelemetry = { version = "0.21.0", features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.2.0" }
 opentelemetry-otlp = { version = "0.14.0", features = ["logs", "metrics", "trace", "grpc-tonic", "tls-roots"], default-features = false }
-opentelemetry-semantic-conventions = { version = "0.13.0" }
+opentelemetry-semantic-conventions = { version = "0.14.0" }
 opentelemetry_sdk = { version = "0.21.2", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 petname = { version = "2.0.0-beta.4", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
