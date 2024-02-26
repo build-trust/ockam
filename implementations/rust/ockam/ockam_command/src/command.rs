@@ -11,7 +11,7 @@ use clap::Parser;
 use colorful::Colorful;
 use miette::GraphicalReportHandler;
 use ockam_core::OCKAM_TRACER_NAME;
-use opentelemetry::trace::{TraceContextExt, Tracer};
+use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
 use r3bl_rs_utils_core::UnicodeString;
 use r3bl_tui::{
@@ -109,13 +109,22 @@ impl OckamCommand {
         let command_name = self.subcommand.name();
         let result =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
-                let span = tracer
-                    .start_with_context(command_name.clone(), &opentelemetry_context.extract());
+                let context = Context::current();
+                let span_builder = SpanBuilder::from_name(command_name.clone().to_string())
+                    .with_links(vec![Link::new(
+                        opentelemetry_context
+                            .extract()
+                            .span()
+                            .span_context()
+                            .clone(),
+                        vec![],
+                    )]);
+                let span = tracer.build_with_context(span_builder, &context);
                 let cx = Context::current_with_span(span);
                 let _guard = cx.clone().attach();
                 self.run_command(options.clone(), &command_name, &arguments)
             } else {
-                tracer.in_span(self.subcommand.name(), |_| {
+                tracer.in_span(command_name.clone(), |_| {
                     self.run_command(options.clone(), &command_name, &arguments)
                 })
             };

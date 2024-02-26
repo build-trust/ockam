@@ -116,7 +116,9 @@ impl CliState {
         let start_time = SystemTime::from(Utc::now());
         let end_time = start_time.add(EVENT_DURATION);
 
-        let journeys = self.get_journeys(project.clone().map(|p| p.id)).await?;
+        let journeys = self
+            .get_journeys(project.clone().map(|p| p.project_id().to_string()))
+            .await?;
         for journey in journeys {
             let span_builder = SpanBuilder::from_name(event.to_string())
                 .with_start_time(start_time)
