@@ -69,6 +69,7 @@ const DEFAULT_JOURNEY_MAX_DURATION: Duration = Duration::from_secs(5 * 86400);
 ///
 impl CliState {
     /// This method adds a successful event to the project/host journeys
+    #[instrument(skip_all)]
     pub async fn add_journey_event(
         &self,
         event: JourneyEvent,
@@ -78,6 +79,7 @@ impl CliState {
     }
 
     /// This method adds an error event to the project/host journeys
+    #[instrument(skip_all)]
     pub async fn add_journey_error(
         &self,
         command_name: &str,
@@ -114,7 +116,7 @@ impl CliState {
         let start_time = SystemTime::from(Utc::now());
         let end_time = start_time.add(EVENT_DURATION);
 
-        let journeys = self.get_journeys().await?;
+        let journeys = self.get_journeys(project.clone().map(|p| p.id)).await?;
         for journey in journeys {
             let span_builder = SpanBuilder::from_name(event.to_string())
                 .with_start_time(start_time)
@@ -206,7 +208,7 @@ impl CliState {
     }
 
     /// Return a list of journeys for which we want to add spans
-    async fn get_journeys(&self) -> Result<Vec<Journey>> {
+    async fn get_journeys(&self, project_id: Option<String>) -> Result<Vec<Journey>> {
         let now = *Context::current()
             .get::<DateTime<Utc>>()
             .unwrap_or(&Utc::now());
@@ -224,24 +226,21 @@ impl CliState {
         };
         result.push(journey);
 
-        if let Ok(project) = self.projects().get_default_project().await {
+        if let Some(project_id) = project_id {
             let journey = match self
-                .get_project_journey(project.project_id(), now, max_duration)
+                .get_project_journey(&project_id, now, max_duration)
                 .await?
             {
                 Some(Either::Right(journey)) => journey,
                 Some(Either::Left(journey)) => {
                     self.create_project_journey(
-                        project.project_id(),
+                        &project_id,
                         Some(journey.opentelemetry_context()),
                         now,
                     )
                     .await?
                 }
-                None => {
-                    self.create_project_journey(project.project_id(), None, now)
-                        .await?
-                }
+                None => self.create_project_journey(&project_id, None, now).await?,
             };
             result.push(journey.to_journey());
         };

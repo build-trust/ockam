@@ -7,6 +7,7 @@ use ockam_api::{random_name, CliState};
 use ockam_node::Executor;
 use opentelemetry::global;
 use opentelemetry::trace::{FutureExt, Tracer};
+use opentelemetry_sdk::export::trace::SpanData;
 use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
@@ -67,32 +68,24 @@ fn test_create_journey_event() {
     spans.sort_by_key(|s| s.start_time);
     assert_eq!(spans.len(), 11);
 
+    // keep only application events
+    let spans: Vec<SpanData> = spans
+        .into_iter()
+        .filter(|s| {
+            s.attributes
+                .iter()
+                .any(|kv| &kv.key == APPLICATION_EVENT_TIMESTAMP)
+        })
+        .collect();
+
     let mut span_names = spans.iter().map(|s| s.name.as_ref()).collect::<Vec<&str>>();
-    let mut expected = vec![
-        "user event",
-        "get_default_project",
-        "✅ enrolled",
-        "get_default_project",
-        "get_default_project",
-        "✅ portal created",
-        "get_default_project",
-        "get_default_project",
-        "❌ command error",
-        "get_default_project",
-        "start host journey",
-    ];
+
+    let mut expected = vec!["✅ enrolled", "✅ portal created", "❌ command error"];
 
     // spans are not necessarily retrieved in a deterministic order
     span_names.sort();
     expected.sort();
     assert_eq!(span_names, expected);
-
-    // collect only the user events spans
-    spans.retain(|s| {
-        s.attributes
-            .iter()
-            .any(|kv| &kv.key == APPLICATION_EVENT_TIMESTAMP)
-    });
 
     // all user events have a fixed duration
     for span in spans {
