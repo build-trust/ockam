@@ -5,13 +5,12 @@ authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_rust_elixir_nifs"
 license = "Apache-2.0"
+publish = false
 repository = "https://github.com/ockam-network/ockam"
 description = "End-to-end encryption and mutual authentication for distributed applications."
-publish = false
 
 [lib]
-name = "ockly"
-path = "src/lib.rs"
+name = "ockam_rust_elixir_nifs"
 crate-type = ["cdylib"]
 
 [dependencies]
