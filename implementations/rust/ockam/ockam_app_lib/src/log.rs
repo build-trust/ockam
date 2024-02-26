@@ -1,5 +1,7 @@
 use crate::state::{AppState, NODE_NAME};
-use ockam_api::logs::{logging_configuration, Colored, LoggingTracing, TracingConfiguration};
+use ockam_api::logs::{
+    logging_configuration, Colored, CratesFilter, LoggingTracing, TracingConfiguration,
+};
 use tracing_core::Level;
 
 impl AppState {
@@ -17,24 +19,24 @@ impl AppState {
                 .block_on(async move { this.state().await });
             state.node_dir(NODE_NAME)
         };
-        let ockam_crates = [
-            "ockam",
-            "ockam_node",
-            "ockam_core",
-            "ockam_vault",
-            "ockam_identity",
-            "ockam_transport_tcp",
-            "ockam_api",
-            "ockam_command",
-            "ockam_app_lib",
-        ];
+        let ockam_crates = CratesFilter::Selected(vec![
+            "ockam".to_string(),
+            "ockam_node".to_string(),
+            "ockam_core".to_string(),
+            "ockam_vault".to_string(),
+            "ockam_identity".to_string(),
+            "ockam_transport_tcp".to_string(),
+            "ockam_api".to_string(),
+            "ockam_command".to_string(),
+            "ockam_app_lib".to_string(),
+        ]);
 
         let tracing_guard = LoggingTracing::setup(
             &logging_configuration(
                 Some(Level::DEBUG),
                 Colored::Off,
                 Some(node_dir),
-                &ockam_crates,
+                ockam_crates,
             )
             .unwrap(),
             &TracingConfiguration::foreground(true).unwrap(),

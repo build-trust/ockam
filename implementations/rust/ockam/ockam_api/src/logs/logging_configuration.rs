@@ -1,7 +1,7 @@
 use crate::config::LevelVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
-use ockam_core::env::{get_env, get_env_with_default, is_set};
+use ockam_core::env::{get_env, get_env_with_default, is_set, FromString};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use tracing_core::Level;
@@ -46,8 +46,14 @@ impl LoggingConfiguration {
         format: LogFormat,
         colored: Colored,
         log_dir: Option<PathBuf>,
-        crates: Option<&[&str]>,
+        crates_filter: CratesFilter,
     ) -> LoggingConfiguration {
+        let crates = match crates_filter {
+            CratesFilter::All => None,
+            CratesFilter::Default => Some(LoggingConfiguration::default_crates()),
+            CratesFilter::Selected(crates) => Some(crates),
+        };
+
         LoggingConfiguration {
             enabled,
             level,
@@ -57,7 +63,7 @@ impl LoggingConfiguration {
             format,
             colored,
             log_dir,
-            crates: crates.map(|cs| cs.iter().map(|c| c.to_string()).collect()),
+            crates,
         }
     }
 
@@ -155,14 +161,14 @@ impl LoggingConfiguration {
             LogFormat::Default,
             Colored::Off,
             None,
-            None,
+            CratesFilter::All,
         )
     }
 
     /// Return a LoggingConfiguration which creates logs for a background node
     pub fn background(
         log_dir: Option<PathBuf>,
-        crates: &[&str],
+        crates_filter: CratesFilter,
     ) -> ockam_core::Result<LoggingConfiguration> {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::On,
@@ -173,21 +179,21 @@ impl LoggingConfiguration {
             log_format()?,
             Colored::Off,
             log_dir,
-            Some(crates),
+            crates_filter,
         ))
     }
 
     /// List of default crates to keep for log messages
-    pub fn default_crates() -> &'static [&'static str] {
-        &[
-            "ockam",
-            "ockam_node",
-            "ockam_core",
-            "ockam_vault",
-            "ockam_identity",
-            "ockam_transport_tcp",
-            "ockam_api",
-            "ockam_command",
+    pub fn default_crates() -> Vec<String> {
+        vec![
+            "ockam".to_string(),
+            "ockam_node".to_string(),
+            "ockam_core".to_string(),
+            "ockam_vault".to_string(),
+            "ockam_identity".to_string(),
+            "ockam_transport_tcp".to_string(),
+            "ockam_api".to_string(),
+            "ockam_command".to_string(),
         ]
     }
 }
@@ -218,7 +224,7 @@ pub fn logging_configuration(
     preferred_log_level: Option<Level>,
     colored: Colored,
     log_dir: Option<PathBuf>,
-    crates: &[&str],
+    crates: CratesFilter,
 ) -> ockam_core::Result<LoggingConfiguration> {
     let is_legacy_variable_set = is_set::<LevelVar>(OCKAM_LOG)?;
     let enabled = if is_legacy_variable_set {
@@ -236,7 +242,7 @@ pub fn logging_configuration(
         log_format()?,
         colored,
         log_dir,
-        Some(crates),
+        crates,
     ))
 }
 
@@ -314,4 +320,37 @@ pub fn global_error_handler_enabled() -> ockam_core::Result<GlobalErrorHandler> 
         Some(v) => Ok(v),
         None => Ok(GlobalErrorHandler::LogFile),
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CratesFilter {
+    All,
+    Default,
+    Selected(Vec<String>),
+}
+
+impl FromString for CratesFilter {
+    fn from_string(s: &str) -> ockam_core::Result<Self> {
+        match s {
+            "all" => Ok(CratesFilter::All),
+            "default" => Ok(CratesFilter::Default),
+            other => Ok(CratesFilter::Selected(<Vec<String>>::from_string(other)?)),
+        }
+    }
+}
+
+impl Display for CratesFilter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CratesFilter::All => f.write_str("all"),
+            CratesFilter::Default => f.write_str("default"),
+            CratesFilter::Selected(s) => f.write_str(s.join(",").as_str()),
+        }
+    }
+}
+
+/// Return the crates which should generate logs. If the variable is not defined,
+/// then the ockam crates are returned.
+pub fn crates_filter() -> ockam_core::Result<CratesFilter> {
+    get_env_with_default(OCKAM_LOG_CRATES_FILTER, CratesFilter::Default)
 }

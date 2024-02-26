@@ -7,7 +7,7 @@ use crate::{
 };
 use ockam_api::cli_state::CliState;
 use ockam_api::logs::{
-    logging_configuration, Colored, LoggingConfiguration, LoggingTracing, TracingConfiguration,
+    crates_filter, logging_configuration, Colored, LoggingTracing, TracingConfiguration,
 };
 
 /// Main method for running the `ockam` executable:
@@ -37,7 +37,7 @@ pub fn run() -> miette::Result<()> {
                     Some(Level::TRACE),
                     Colored::On,
                     None,
-                    LoggingConfiguration::default_crates(),
+                    crates_filter().into_diagnostic()?,
                 );
                 let _guard = LoggingTracing::setup(
                     &logging_configuration.into_diagnostic()?,

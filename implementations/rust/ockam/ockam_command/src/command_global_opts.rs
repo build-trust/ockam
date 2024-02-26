@@ -8,8 +8,8 @@ use tracing::{debug, info};
 use tracing_core::Level;
 
 use ockam_api::logs::{
-    logging_configuration, Colored, LoggingConfiguration, LoggingTracing, TracingConfiguration,
-    TracingGuard,
+    crates_filter, logging_configuration, Colored, LoggingConfiguration, LoggingTracing,
+    TracingConfiguration, TracingGuard,
 };
 use ockam_api::CliState;
 
@@ -138,11 +138,9 @@ impl CommandGlobalOpts {
         };
 
         let log_path = cmd.log_path();
+        let crates = crates_filter().into_diagnostic()?;
         if cmd.is_background_node() {
-            Ok(
-                LoggingConfiguration::background(log_path, LoggingConfiguration::default_crates())
-                    .into_diagnostic()?,
-            )
+            Ok(LoggingConfiguration::background(log_path, crates).into_diagnostic()?)
         } else {
             let preferred_log_level = verbose_log_level(global_args.verbose);
             let colored = if !global_args.no_color && is_tty {
@@ -150,13 +148,10 @@ impl CommandGlobalOpts {
             } else {
                 Colored::Off
             };
-            Ok(logging_configuration(
-                preferred_log_level,
-                colored,
-                log_path,
-                LoggingConfiguration::default_crates(),
+            Ok(
+                logging_configuration(preferred_log_level, colored, log_path, crates)
+                    .into_diagnostic()?,
             )
-            .into_diagnostic()?)
         }
     }
 
