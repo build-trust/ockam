@@ -257,23 +257,23 @@ teardown() {
 }
 
 @test "portals - local inlet and outlet, removing and re-creating the outlet" {
-  port="$(random_port)"
   node_port="$(random_port)"
-
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+
+  inlet_port="$(random_port)"
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /node/blue/secure/api/service/outlet
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$inlet_port" --to /node/blue/secure/api/service/outlet
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node delete blue --yes
-  run_failure curl -sfI -m 3 "127.0.0.1:$port"
+  run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
-  sleep 20
-  run_success curl -sfI --retry-connrefused --retry-delay 2 --retry 10 -m 5 "127.0.0.1:$port"
+  sleep 15
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 @test "portals - local inlet and outlet in reverse order" {

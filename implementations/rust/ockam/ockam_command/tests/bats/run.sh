@@ -10,7 +10,7 @@ export BATS_TEST_TIMEOUT=240
 current_directory=$(dirname "$0")
 
 echo "Running local suite..."
-bats "$current_directory/local" --timing -j 8
+bats "$current_directory/local" --timing -j 3
 
 if [ -z "${ORCHESTRATOR_TESTS}" ]; then
   exit 0
