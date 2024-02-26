@@ -4,15 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.107.0 - 2024-02-21
+## 0.107.0 - 2024-02-26
 
 ### Added
 
+- Add opentelemetry tracing and logging support
+- Add sleep to tcp tests
+- Address review comments
+- Send pong to the inlet only after the outlet connected
+- Pass the tracing context at the ockam message level
+- Improve portals reliability and integration tests
 - Updated dependencies
+
+### Changed
+
+- Separate transport messages from local messages
 
 ### Fixed
 
+- Improve tcp resolution tests
 - Close the context automatically on each test macro execution
+- Disable portal packet counter field
 
 ## 0.106.0 - 2024-01-09
 

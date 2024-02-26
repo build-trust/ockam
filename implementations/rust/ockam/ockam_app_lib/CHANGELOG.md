@@ -4,19 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.117.0 - 2024-02-21
+## 0.117.0 - 2024-02-26
 
 ### Added
 
+- Add support for additional kafka addons
 - Add opentelemetry tracing and logging support
 - Delete `TrustContext`
 - Improve credentials management
+- Backup logs when app restarts inlet node
 - Instrument more functions for enrollement
+- Unify creation and retry connection for portal and relay
+- Pass the tracing context at the ockam message level
+- Add policies for resource types
+- Add an environment variable to configure a crates filter for log messages
+- Refactor `Project`-related code
 - Updated dependencies
+
+### Changed
+
+- Move the handling of attributes expiration date to a layer above the repository
+- Enable tracing by default
 
 ### Fixed
 
 - Command's verbose argument now has preference over env vars
+- Fix identity attributes expiration
+- Store policies isolated by node and resource
 
 ## 0.116.0 - 2024-01-09
 
