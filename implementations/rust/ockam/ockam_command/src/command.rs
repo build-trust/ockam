@@ -127,6 +127,7 @@ impl OckamCommand {
                 arguments.join(" "),
             )?
         };
+        options.shutdown();
         result
     }
 
