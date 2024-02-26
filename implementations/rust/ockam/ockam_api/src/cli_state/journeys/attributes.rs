@@ -7,6 +7,7 @@ use gethostname::gethostname;
 use opentelemetry::trace::{SpanId, TraceId};
 use opentelemetry::Key;
 use opentelemetry_sdk::trace::{IdGenerator, RandomIdGenerator};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::process::Command;
@@ -95,7 +96,7 @@ pub(crate) fn make_host() -> String {
         ),
         _ => gethostname().to_string_lossy().to_string(),
     };
-    convert_to_hex(&host)
+    convert_to_hex(&hash(host))
 }
 
 // Check if the string is already in hexadecimal format
@@ -111,6 +112,13 @@ fn convert_to_hex(s: &str) -> String {
             output
         })
     }
+}
+
+// Hash a string using SHA256
+fn hash(s: String) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(s.as_bytes());
+    format!("{:x}", hasher.finalize())
 }
 
 /// Parse an hex string to a TraceId and generate a random one in case of a parsing error
