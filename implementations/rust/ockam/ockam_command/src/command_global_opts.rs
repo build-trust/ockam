@@ -195,7 +195,14 @@ impl CommandGlobalOpts {
     /// Flush spans and log records
     pub fn force_flush(&self) {
         if let Some(tracing_guard) = self.tracing_guard.clone() {
-            tracing_guard.force_flush()
+            tracing_guard.force_flush();
+        };
+    }
+
+    /// Shutdown resources
+    pub fn shutdown(&self) {
+        if let Some(tracing_guard) = self.tracing_guard.clone() {
+            tracing_guard.shutdown();
         };
     }
 }

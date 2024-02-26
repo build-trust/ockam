@@ -133,7 +133,7 @@ impl CreateCommand {
         )
         .await?;
 
-        opts.force_flush();
+        opts.shutdown();
 
         // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
         opts.state.stop_node(&node_name, true).await?;

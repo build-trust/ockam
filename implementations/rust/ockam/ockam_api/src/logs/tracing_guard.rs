@@ -1,3 +1,4 @@
+use opentelemetry::global;
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::trace::TracerProvider;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -33,6 +34,12 @@ impl TracingGuard {
             logger_provider: None,
             tracer_provider: None,
         }
+    }
+
+    pub fn shutdown(&self) {
+        self.force_flush();
+        global::shutdown_tracer_provider();
+        global::shutdown_logger_provider();
     }
 
     /// Export the current batches of spans and log records
