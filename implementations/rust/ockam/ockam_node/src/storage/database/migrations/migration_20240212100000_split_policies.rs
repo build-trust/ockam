@@ -52,11 +52,11 @@ impl SplitPolicies {
 }
 
 #[derive(FromRow)]
-struct ResourcePolicyRow {
-    resource_name: String,
-    action: String,
-    expression: String,
-    node_name: String,
+pub(crate) struct ResourcePolicyRow {
+    pub(crate) resource_name: String,
+    pub(crate) action: String,
+    pub(crate) expression: String,
+    pub(crate) node_name: String,
 }
 
 #[cfg(test)]

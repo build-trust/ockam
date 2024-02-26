@@ -54,7 +54,7 @@ impl PolicyTrustContextId {
                 Self::update_expression(&expression)
             };
             for node_name in &node_names {
-                let insert = query("INSERT INTO policy (resource, action, expression, node_name) VALUES (?, ?, ?, ?)")
+                let insert = query("INSERT INTO resource_policy (resource_name, action, expression, node_name) VALUES (?, ?, ?, ?)")
                     .bind(row.resource.to_sql())
                     .bind(row.action.to_sql())
                     .bind(expression.to_sql())
@@ -185,6 +185,7 @@ struct PolicyRow {
 
 #[cfg(test)]
 mod test {
+    use crate::database::migration_20240212100000_split_policies::ResourcePolicyRow;
     use crate::database::migrations::sqlx_migration::NodesMigration;
     use crate::database::SqlxDatabase;
     use sqlx::query::Query;
@@ -192,14 +193,6 @@ mod test {
     use tempfile::NamedTempFile;
 
     use super::*;
-
-    #[derive(FromRow)]
-    struct PolicyRowNew {
-        resource: String,
-        action: String,
-        expression: String,
-        node_name: String,
-    }
 
     #[tokio::test]
     async fn update_expression() -> Result<()> {
@@ -242,7 +235,7 @@ mod test {
 
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
         NodesMigration
-            .migrate_schema_before(&pool, 20240111100002)
+            .migrate_schema_before(&pool, 20240212100000)
             .await?;
 
         let insert_node1 = insert_node("n1".to_string());
@@ -250,15 +243,15 @@ mod test {
 
         // true
         let expr1 = hex::decode("820481f5").unwrap();
-        let insert1 = insert_policy("R1".to_string(), "A1".to_string(), expr1);
+        let insert1 = insert_old_policy("R1".to_string(), "A1".to_string(), expr1);
 
         // subject.trust_context_id == a994262c-4d59-4756-a158-19db6994feed
         let expr2 = hex::decode("82078183820581613D82058178187375626A6563742E74727573745F636F6E746578745F6964820181782461393934323632632D346435392D343735362D613135382D313964623639393466656564").unwrap();
-        let insert2 = insert_policy("R2".to_string(), "A2".to_string(), expr2);
+        let insert2 = insert_old_policy("R2".to_string(), "A2".to_string(), expr2);
 
         // resource.trust_context_id == subject.trust_context_id && subject.ockam-role == enroller
         let expr3 = hex::decode("8207818382058163616e6482078183820581613d82058178197265736f757263652e74727573745f636f6e746578745f696482058178187375626a6563742e74727573745f636f6e746578745f696482078183820581613d820581727375626a6563742e6f636b616d2d726f6c6582018168656e726f6c6c6572").unwrap();
-        let insert3 = insert_policy("R3".to_string(), "A3".to_string(), expr3);
+        let insert3 = insert_old_policy("R3".to_string(), "A3".to_string(), expr3);
 
         insert_node1.execute(&pool).await.void()?;
         insert_node2.execute(&pool).await.void()?;
@@ -268,14 +261,14 @@ mod test {
 
         // apply migrations
         NodesMigration
-            .migrate_schema_range(&pool, 20240111100002, 20240212100000)
+            .migrate_schema_range(&pool, 20240212100000, 20240212100001)
             .await?;
         let migrated = PolicyTrustContextId::migrate_update_policies(&pool).await?;
         assert!(migrated);
 
         for node_name in &["n1", "n2"] {
-            let rows: Vec<PolicyRowNew> = query_as(
-                "SELECT resource, action, expression, node_name FROM policy WHERE node_name = ?",
+            let rows: Vec<ResourcePolicyRow> = query_as(
+                "SELECT resource_name, action, expression, node_name FROM resource_policy WHERE node_name = ?",
             )
             .bind(node_name.to_sql())
             .fetch_all(&pool)
@@ -285,17 +278,17 @@ mod test {
             assert_eq!(rows.len(), 3);
 
             assert_eq!(&rows[0].node_name, node_name);
-            assert_eq!(rows[0].resource, "R1");
+            assert_eq!(rows[0].resource_name, "R1");
             assert_eq!(rows[0].action, "A1");
             assert_eq!(rows[0].expression, "true");
 
             assert_eq!(&rows[1].node_name, node_name);
-            assert_eq!(rows[1].resource, "R2");
+            assert_eq!(rows[1].resource_name, "R2");
             assert_eq!(rows[1].action, "A2");
             assert_eq!(rows[1].expression, "subject.has_credential");
 
             assert_eq!(&rows[2].node_name, node_name);
-            assert_eq!(rows[2].resource, "R3");
+            assert_eq!(rows[2].resource_name, "R3");
             assert_eq!(rows[2].action, "A3");
             assert_eq!(
                 rows[2].expression,
@@ -307,12 +300,12 @@ mod test {
     }
 
     /// HELPERS
-    fn insert_policy(
+    fn insert_old_policy(
         resource: String,
         action: String,
         expression: Vec<u8>,
     ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
-        query("INSERT INTO policy (resource, action, expression) VALUES (?, ?, ?)")
+        query("INSERT INTO policy_old (resource, action, expression) VALUES (?, ?, ?)")
             .bind(resource.to_sql())
             .bind(action.to_sql())
             .bind(expression.to_sql())
