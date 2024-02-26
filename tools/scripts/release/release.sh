@@ -240,33 +240,6 @@ function homebrew_repo_bump() {
     --base main -H "${release_name}" -r mrinalwadhwa -R $OWNER/homebrew-ockam >>$log
 }
 
-function terraform_repo_bump() {
-  set -e
-  workflow_file_name="release-bump-pull-request.yml"
-  branch="main"
-
-  gh workflow run "$workflow_file_name" --ref "$branch" -R $OWNER/terraform-provider-ockam -F tag="$1" -F branch_name="$release_name" >>$log
-  # Wait for workflow run
-  sleep 10
-  approve_and_watch_workflow_progress "terraform-provider-ockam" "$workflow_file_name" "$branch"
-
-  # Create PR to kickstart workflow
-  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base main -H "${release_name}" -R $OWNER/terraform-provider-ockam >>$log
-}
-
-function terraform_binaries_release() {
-  set -e
-  workflow_file_name="release.yml"
-  branch="main"
-
-  gh workflow run "$workflow_file_name" --ref "$branch" -R $OWNER/terraform-provider-ockam -F tag="$1" >>$log
-  # Wait for workflow run
-  sleep 10
-
-  approve_and_watch_workflow_progress "terraform-provider-ockam" "$workflow_file_name" "$branch"
-}
-
 function update_docs_repo() {
   set -e
   workflow_file_name="release-docs-update.yml"
@@ -397,19 +370,6 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
     success_info "Homebrew release successful...."
   fi
 
-  if [[ -z $SKIP_TERRAFORM_BUMP || $SKIP_TERRAFORM_BUMP == false ]]; then
-    echo "Bumping Terraform"
-    terraform_repo_bump "$latest_tag_name"
-
-    success_info "Ockam Terraform version bump successful"
-  fi
-
-  if [[ -z $SKIP_TERRAFORM_BINARY_RELEASE || $SKIP_TERRAFORM_BINARY_RELEASE == false ]]; then
-    echo "Releasing Ockam Terraform binaries"
-    terraform_binaries_release "$latest_tag_name"
-    success_info "Ockam Terraform binary release successful"
-  fi
-
   if [[ -z $SKIP_DOCS_UPDATE || $SKIP_DOCS_UPDATE == false ]]; then
     echo "Updating ockam documentation repository"
     update_docs_repo "$latest_tag_name"
@@ -433,11 +393,6 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   # after all binaries are released.
   if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
     gh release download "$latest_tag_name" -p sha256sums.txt -R $OWNER/ockam -O "$(mktemp -d)/sha256sums.txt"
-  fi
-
-  # Check if terraform SHAsum file exist in Terraform draft release.
-  if [[ -z $SKIP_TERRAFORM_DRAFT_RELEASE || $SKIP_TERRAFORM_DRAFT_RELEASE == false ]]; then
-    gh release download "$latest_tag_name" -p "**SHA256SUMS" -R $OWNER/terraform-provider-ockam -O "$(mktemp -d)/sha256sums.txt"
   fi
 
   # Check if there's an homebrew PR
@@ -472,13 +427,6 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
     echo "Releasing Ockam Github release"
     release_ockam_binaries_as_production "$latest_tag_name"
-  fi
-
-  # Release Terraform Github release
-  if [[ -z $SKIP_TERRAFORM_DRAFT_RELEASE || $SKIP_TERRAFORM_DRAFT_RELEASE == false ]]; then
-    echo "Releasing Terraform release"
-    terraform_tag=${latest_tag_name:6}
-    gh release edit "$terraform_tag" --draft=false -R $OWNER/terraform-provider-ockam
   fi
 
   # Release Ockam package
