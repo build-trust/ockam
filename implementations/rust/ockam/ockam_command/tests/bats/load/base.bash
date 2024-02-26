@@ -30,7 +30,9 @@ if [[ -z $BATS_LIB ]]; then
   # export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
 fi
 
-export PYTHON_SERVER_PORT=5000
+if [[ -z $PYTHON_SERVER_PORT ]]; then
+  export PYTHON_SERVER_PORT=5000
+fi
 
 mkdir -p "$HOME/.bats-tests"
 
