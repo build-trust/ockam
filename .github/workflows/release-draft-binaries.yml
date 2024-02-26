@@ -115,24 +115,6 @@ jobs:
 
           text="$text
 
-          # Terraform
-
-          To install the [Ockam Terraform Provider](https://registry.terraform.io/providers/build-trust/ockam/$ockam_version), copy and paste this code into your Terraform configuration. Then, run \`terraform init\`.
-
-          \`\`\`
-          terraform {
-            required_providers {
-              ockam = {
-                source = \"build-trust/ockam\"
-                version = \"$ockam_version\"
-              }
-            }
-          }
-          provider "ockam" {}
-          \`\`\`"
-
-          text="$text
-
           # Rust Crates
 
           To use Ockam as a Rust library, run the following command within your project directory:

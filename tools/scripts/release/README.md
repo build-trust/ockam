@@ -77,8 +77,6 @@ Ockam release can also be done over CI either manually using the provided workfl
 - Crates IO Release
 - Binary Release
 - Homebrew Repo Bump
-- Terraform Repo Bump
-- Terraform Binary Release
 - Command Manual Update
 - Documentation Repository Update
 
@@ -101,8 +99,6 @@ On a successful run will,
 - Create Github release as draft with built binaries and NIFs
 - Release Ockam docker image with a draft tag
 - Bump Homebrew version and create a pull request for review in /homebrew-ockam repository
-- Bump Terraform version and create a pull request for review in /terraform-provider-ockam repository
-- Create Terraform draft release in /terraform-provider-ockam repository
 - Update Command manual
 - Update Ockam documentation repository
 
@@ -116,7 +112,6 @@ IS_DRAFT_RELEASE=false ./tools/scripts/release/release.sh
 This will
 - Release Ockam docker image as latest
 - Make Ockam Github release non-draft and latest
-- Make Terraform Github release non-draft and latest
 - Push our crates to crates.io
 
 The release script also allows for modifications provided by the `bump` and `publish` scripts, for example to create a release that uses a `RELEASE_VERSION` different from the default (minor)
@@ -133,8 +128,6 @@ We can skip steps during a release by defining variable below as `true`
 - `SKIP_CRATES_IO_PUBLISH` - Skips crates.io publish
 - `SKIP_OCKAM_BINARY_RELEASE` - Skips binary release
 - `SKIP_HOMEBREW_BUMP` - Skips Homebrew version bump
-- `SKIP_TERRAFORM_BUMP` - Skips Terraform version bump
-- `SKIP_TERRAFORM_BINARY_RELEASE` - Skips Terraform binary release
 - `SKIP_DOCS_UPDATE` - Skips Ockam documentation release
 - `SKIP_COMMAND_MANUAL_RELEASE` - Skips Ockam command manual release
 
