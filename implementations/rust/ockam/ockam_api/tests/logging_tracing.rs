@@ -1,6 +1,6 @@
 use ockam_api::logs::{
-    global_error_handler_enabled, Colored, LogFormat, LoggingConfiguration, LoggingEnabled,
-    LoggingTracing, TracingConfiguration,
+    global_error_handler_enabled, Colored, CratesFilter, LogFormat, LoggingConfiguration,
+    LoggingEnabled, LoggingTracing, TracingConfiguration,
 };
 use ockam_api::random_name;
 
@@ -31,7 +31,7 @@ fn test_log_and_traces() {
     let guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         logs_exporter.clone(),
-        &LoggingConfiguration::make_configuration()
+        &make_configuration()
             .unwrap()
             .set_log_directory(log_directory.into()),
         &TracingConfiguration::foreground(false).unwrap(),
@@ -99,6 +99,6 @@ fn make_configuration() -> ockam_core::Result<LoggingConfiguration> {
         LogFormat::Default,
         Colored::Off,
         None,
-        None,
+        CratesFilter::All,
     ))
 }
