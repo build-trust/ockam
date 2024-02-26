@@ -11,8 +11,9 @@ use tokio_retry::Retry;
 use tracing::debug;
 use tracing::log::LevelFilter;
 
-use crate::database::application_migration::ApplicationMigration;
-use crate::database::migrations::sqlx_migration::{NodesMigration, SqlxMigration};
+use crate::database::migrations::application_migration_set::ApplicationMigrationSet;
+use crate::database::migrations::node_migration_set::NodeMigrationSet;
+use crate::database::migrations::MigrationSet;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 
@@ -47,30 +48,30 @@ impl Deref for SqlxDatabase {
 impl SqlxDatabase {
     /// Constructor for a database persisted on disk
     pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_impl(path, Some(NodesMigration), None).await
+        Self::create_impl(path, Some(NodeMigrationSet), None).await
     }
 
     /// Constructor for a database persisted on disk, with a specific schema / migration
     pub async fn create_with_migration(
         path: impl AsRef<Path>,
-        migration: impl SqlxMigration,
+        migration_set: impl MigrationSet,
     ) -> Result<Self> {
-        Self::create_impl(path, Some(migration), None).await
+        Self::create_impl(path, Some(migration_set), None).await
     }
 
     /// Constructor for a database persisted on disk without migration
     pub async fn create_no_migration(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_impl(path, None::<NodesMigration>, None).await
+        Self::create_impl(path, None::<NodeMigrationSet>, None).await
     }
 
     /// Constructor for a database persisted on disk, passing a node name to isolate data between nodes where needed
     pub async fn create_with_node_name(path: impl AsRef<Path>, node_name: &str) -> Result<Self> {
-        Self::create_impl(path, Some(NodesMigration), Some(node_name.to_string())).await
+        Self::create_impl(path, Some(NodeMigrationSet), Some(node_name.to_string())).await
     }
 
     async fn create_impl(
         path: impl AsRef<Path>,
-        migration: Option<impl SqlxMigration>,
+        migration_set: Option<impl MigrationSet>,
         node_name: Option<String>,
     ) -> Result<Self> {
         path.as_ref()
@@ -91,8 +92,9 @@ impl SqlxDatabase {
         })
         .await?;
 
-        if let Some(migration) = migration {
-            migration.migrate(&db.pool).await?;
+        if let Some(migration_set) = migration_set {
+            let migrator = migration_set.create_migrator()?;
+            migrator.migrate(&db.pool).await?;
         }
 
         Ok(db)
@@ -101,24 +103,25 @@ impl SqlxDatabase {
     /// Create a nodes database in memory
     ///   => this database is deleted on an `ockam reset` command! (contrary to the application database below)
     pub async fn in_memory(usage: &str) -> Result<Self> {
-        Self::in_memory_with_migration(usage, NodesMigration).await
+        Self::in_memory_with_migration(usage, NodeMigrationSet).await
     }
 
     /// Create an application database in memory
     /// The application database which contains the application configurations
     ///   => this database is NOT deleted on an `ockam reset` command!
     pub async fn application_in_memory(usage: &str) -> Result<Self> {
-        Self::in_memory_with_migration(usage, ApplicationMigration).await
+        Self::in_memory_with_migration(usage, ApplicationMigrationSet).await
     }
 
     /// Create an in-memory database with a specific migration
     pub async fn in_memory_with_migration(
         usage: &str,
-        migration: impl SqlxMigration,
+        migration_set: impl MigrationSet,
     ) -> Result<Self> {
         debug!("create an in memory database for {usage}");
         let pool = Self::create_in_memory_connection_pool().await?;
-        migration.migrate(&pool).await?;
+        let migrator = migration_set.create_migrator()?;
+        migrator.migrate(&pool).await?;
         // FIXME: We should be careful if we run multiple nodes in one process
         let db = SqlxDatabase {
             pool: Arc::new(pool),
@@ -203,6 +206,20 @@ impl<T> FromSqlxError<T> for core::result::Result<T, sqlx::error::Error> {
                 let err = Error::new(Origin::Api, Kind::Internal, err.to_string());
                 Err(err)
             }
+        }
+    }
+}
+
+impl<T> FromSqlxError<T> for core::result::Result<T, sqlx::migrate::MigrateError> {
+    #[track_caller]
+    fn into_core(self) -> Result<T> {
+        match self {
+            Ok(r) => Ok(r),
+            Err(err) => Err(Error::new(
+                Origin::Application,
+                Kind::Io,
+                format!("migration error {err}"),
+            )),
         }
     }
 }

@@ -1,28 +1,61 @@
-use crate::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
-use ockam_core::Result;
+use crate::database::{FromSqlxError, RustMigration, ToSqlxType, ToVoid};
+use ockam_core::{async_trait, Result};
 use sqlx::sqlite::SqliteRow;
 use sqlx::*;
 
 /// This struct adds a node name column to the identity attributes table
 pub struct NodeNameIdentityAttributes;
 
+#[async_trait]
+impl RustMigration for NodeNameIdentityAttributes {
+    fn name(&self) -> &str {
+        Self::name()
+    }
+
+    fn version(&self) -> i64 {
+        Self::version()
+    }
+
+    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+        Self::migrate_attributes_node_name(connection).await
+    }
+}
+
 impl NodeNameIdentityAttributes {
+    /// Migration version
+    pub fn version() -> i64 {
+        20231231100000
+    }
+
+    /// Migration name
+    pub fn name() -> &'static str {
+        "migration_20231231100000_node_name_identity_attributes"
+    }
+
+    fn table_exists(table_name: &str) -> String {
+        format!("SELECT EXISTS(SELECT name FROM sqlite_schema WHERE type = 'table' AND name = '{table_name}')")
+    }
+
     /// Duplicate all attributes entry for every known node
-    pub(crate) async fn migrate_attributes_node_name(pool: &SqlitePool) -> Result<()> {
-        let mut conn = pool.acquire().await.into_core()?;
+    pub(crate) async fn migrate_attributes_node_name(
+        connection: &mut SqliteConnection,
+    ) -> Result<bool> {
         // don't run the migration twice
         let data_migration_needed: Option<SqliteRow> =
-            query(&SqlxDatabase::table_exists("identity_attributes_old"))
-                .fetch_optional(&mut *conn)
+            query(&Self::table_exists("identity_attributes_old"))
+                .fetch_optional(&mut *connection)
                 .await
                 .into_core()?;
         let data_migration_needed = data_migration_needed.map(|r| r.get(0)).unwrap_or(false);
 
         if !data_migration_needed {
-            return Ok(());
+            // Trigger marking as migrated
+            return Ok(true);
         };
 
-        let mut transaction = conn.begin().await.into_core()?;
+        let mut transaction = sqlx::Connection::begin(&mut *connection)
+            .await
+            .into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names
@@ -56,7 +89,7 @@ impl NodeNameIdentityAttributes {
 
         transaction.commit().await.void()?;
 
-        Ok(())
+        Ok(true)
     }
 }
 
@@ -77,8 +110,8 @@ struct NodeNameRow {
 
 #[cfg(test)]
 mod test {
-    use crate::database::migrations::sqlx_migration::NodesMigration;
-    use crate::database::SqlxDatabase;
+    use crate::database::migrations::node_migration_set::NodeMigrationSet;
+    use crate::database::{MigrationSet, SqlxDatabase};
     use sqlx::query::Query;
     use sqlx::sqlite::SqliteArguments;
     use std::collections::BTreeMap;
@@ -91,38 +124,40 @@ mod test {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
-        NodesMigration
-            .migrate_schema_before(&pool, 20231231100000)
+        let mut connection = pool.acquire().await.into_core()?;
+        NodeMigrationSet
+            .create_migrator()?
+            .migrate_before(&pool, NodeNameIdentityAttributes::version(), true)
             .await?;
 
         // insert attribute rows in the previous table
         let attributes = create_attributes("identifier1")?;
         let insert = insert_query("identifier1", attributes.clone());
-        insert.execute(&pool).await.void()?;
+        insert.execute(&mut *connection).await.void()?;
 
         let insert_node1 = insert_node("node1".to_string());
-        insert_node1.execute(&pool).await.void()?;
+        insert_node1.execute(&mut *connection).await.void()?;
 
         let insert_node2 = insert_node("node2".to_string());
-        insert_node2.execute(&pool).await.void()?;
+        insert_node2.execute(&mut *connection).await.void()?;
 
         // apply migrations
-        NodesMigration
-            .migrate_schema_single(&pool, 20231231100000)
+        NodeMigrationSet
+            .create_migrator()?
+            .migrate_before(&pool, NodeNameIdentityAttributes::version() + 1, false)
             .await?;
-        NodeNameIdentityAttributes::migrate_attributes_node_name(&pool).await?;
 
         // check data
         let rows1: Vec<IdentityAttributesRow> =
             query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind("node1".to_string().to_sql())
-                .fetch_all(&pool)
+                .fetch_all(&mut *connection)
                 .await
                 .into_core()?;
         let rows2: Vec<IdentityAttributesRow> =
             query_as("SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE node_name = ?")
                 .bind("node2".to_string().to_sql())
-                .fetch_all(&pool)
+                .fetch_all(&mut *connection)
                 .await
                 .into_core()?;
         assert_eq!(rows1.len(), 1);
@@ -154,7 +189,7 @@ mod test {
     }
 
     fn insert_query(identifier: &str, attributes: Vec<u8>) -> Query<Sqlite, SqliteArguments> {
-        query("INSERT INTO identity_attributes VALUES (?, ?, ?, ?, ?)")
+        query("INSERT INTO identity_attributes_old VALUES (?, ?, ?, ?, ?)")
             .bind(identifier.to_sql())
             .bind(attributes.to_sql())
             .bind(1.to_sql())

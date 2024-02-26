@@ -168,3 +168,18 @@ fn to_compile_errors(errors: Vec<syn::Error>) -> proc_macro2::TokenStream {
 fn to_compile_error(error: syn::Error) -> TokenStream {
     error.to_compile_error().into()
 }
+
+#[proc_macro]
+pub fn migrate(input: TokenStream) -> TokenStream {
+    use syn::LitStr;
+
+    let input = syn::parse_macro_input!(input as LitStr);
+
+    quote! {
+        {
+            let migrator = sqlx::sqlx_macros::migrate!(#input);
+            Migrator::new(migrator)
+        }
+    }
+    .into()
+}
