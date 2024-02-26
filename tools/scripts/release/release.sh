@@ -136,7 +136,7 @@ function ockam_bump() {
   workflow_file_name="release-bump-pull-request.yml"
   branch="develop"
 
-  gh workflow run "$workflow_file_name" --ref "$branch" -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \
+  gh workflow run "$workflow_file_name" --ref "$branch" -F redo_release_tag="$REDO_RELEASE_TAG" -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \
     -F ockam_bump_release_version="$OCKAM_BUMP_RELEASE_VERSION" -F ockam_bump_bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION" \
     -R $OWNER/ockam >>$log
 
@@ -284,7 +284,7 @@ function update_docs_repo() {
   # Check if the branch was created, new branch is only created when there are new doc updates
   if gh api "repos/build-trust/ockam-documentation/branches/${release_name}" --jq .name; then
     gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-      --base main -H "${release_name}" -r nazmulidris -R $OWNER/ockam-documentation
+      --base main -H "docs_${release_name}" -r nazmulidris -R $OWNER/ockam-documentation
   fi
 }
 
@@ -304,7 +304,7 @@ function update_command_manual() {
   approve_and_watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch"
 
   gh pr create --title "Ockam command manual update to $release" --body "Ockam commnad manual update $release" \
-    --base command -H "${release_name}" -R $OWNER/ockam-documentation >>$log
+    --base command -H "manual_${release_name}" -R $OWNER/ockam-documentation >>$log
 }
 
 function delete_ockam_draft_package() {
@@ -384,7 +384,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   echo "File and hash are $file_and_sha" >&3
 
-  if [[ -z $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE || $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE == false ]]; then
+  if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE == false ]]; then
     echo "Releasing Ockam docker image"
     release_ockam_package "$latest_tag_name" "$file_and_sha" false
     success_info "Ockam docker package draft release successful...."

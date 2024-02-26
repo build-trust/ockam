@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      redo_release_from_tag:
+      redo_release_tag:
         description: 'Redo a draft release from a recent tag. Should only be used if a draft release PR has been merged'
         required: false
       git_tag:
@@ -77,19 +77,19 @@ jobs:
           gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Redo Release From A Recent Draft PR
-        if: ${{ inputs.redo_release_from_tag != '' }}
+        if: ${{ inputs.redo_release_tag != '' }}
         env:
           OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION: ${{ github.event.inputs.ockam_bump_bumped_dep_crates_version }}
-          GIT_TAG_WE_WILL_BE_UPDATING: ${{ github.event.inputs.redo_release_from_tag }}
+          GIT_TAG_WE_WILL_BE_UPDATING: ${{ github.event.inputs.redo_release_tag }}
           LAST_RELEASED_TAG: ${{ github.event.inputs.git_tag }}
         run: |
           bash -ex ./tools/scripts/release/redo-draft-release.sh
 
           # Delete the old git tag, it'll be recreated when we are creating a new draft binary.
-          git push --delete origin ${{ inputs.redo_release_from_tag }}
+          git push --delete origin ${{ inputs.redo_release_tag }}
 
       - name: Bump Ockam
-        if: ${{ inputs.redo_release_from_tag == '' }}
+        if: ${{ inputs.redo_release_tag == '' }}
         env:
           OCKAM_BUMP_RELEASE_VERSION: '${{ github.event.inputs.ockam_bump_release_version }}'
           OCKAM_BUMP_MODIFIED_RELEASE: '${{ github.event.inputs.ockam_bump_modified_release }}'
@@ -98,7 +98,7 @@ jobs:
         run: bash -ex ./tools/scripts/release/crate-bump.sh
 
       - name: Generate Changelogs
-        if: ${{ inputs.redo_release_from_tag == '' }}
+        if: ${{ inputs.redo_release_tag == '' }}
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
         run: bash -ex ./tools/scripts/release/changelog.sh

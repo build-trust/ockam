@@ -1,7 +1,7 @@
 # Ockam Scripts
 
 This folder contains scripts to release Ockam Rust crates. Note, to run these scripts you need to run Bash version 4 upwards. All commands should be called from the Ockam root path.
-To perform release, release scripts automatically check for updated crates using `recently created git tags`, we can override the default setting if want to track updated crates with a more recent tag. To specify a `git tag`, we can define a variable `GIT_TAG` to any of the scripts. For example to generate changelog using a more recent `git tag` we can call the following command below
+For a release, release scripts automatically checks for updated crates using `recently created git tags`, we can override the default setting if want to track updated crates with a more recent tag. To specify a `git tag`, we can define a variable `GIT_TAG` to any of the scripts. For example to generate changelog using a more recent `git tag` we can call the following command below
 ```bash
 GIT_TAG="a_more_recent_git_tag_v0.0.0" tools/scripts/release/changelog.sh
 ```
@@ -34,15 +34,15 @@ OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION=patch RELEASE_VERSION=minor tools/scripts/r
 ```
 If `OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION` is not defined then transitive dependent crates are bumped as `minor`.
 
-## Changelog Generation (Requires zsh)
+## Changelog Generation
 
-Changelogs are generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/build-trust/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
+We generate Changelogs using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/build-trust/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
 To run changelog generator, from the Ockam root path, call
 ```bash
 tools/scripts/release/changelog.sh
 ```
 Generated changelogs should be called after `crate-bump` so we can log crates whose dependencies was only bumped.
-We can also generate changelog from a referenced `git tag`, changelog should be reviewed before commit.
+We can also generate changelog from a referenced `git tag`, you should review changelogs before commit.
 
 ## Crate Publish
 
@@ -79,12 +79,16 @@ Ockam release can also be done over CI either manually using the provided workfl
 - Homebrew Repo Bump
 - Terraform Repo Bump
 - Terraform Binary Release
+- Command Manual Update
+- Documentation Repository Update
 
 There are two steps to final release
 - Draft release
 - Production release
 
-To create a release, we first create a draft, which will later on be reviewed and pull requests merged before running the script to create a final release.
+### Creating Release
+
+To create a release, we first create a draft, which is reviewed and pull requests merged before running the script to create a final release.
 
 To start the release in draft mode we call from the ockam home
 
@@ -99,6 +103,8 @@ On a successful run will,
 - Bump Homebrew version and create a pull request for review in /homebrew-ockam repository
 - Bump Terraform version and create a pull request for review in /terraform-provider-ockam repository
 - Create Terraform draft release in /terraform-provider-ockam repository
+- Update Command manual
+- Update Ockam documentation repository
 
 After draft release is created, release is to be vetted and pull requests created in /ockam, /homebrew-ockam approved and merged before final release is started.
 
@@ -116,17 +122,21 @@ This will
 The release script also allows for modifications provided by the `bump` and `publish` scripts, for example to create a release that uses a `RELEASE_VERSION` different from the default (minor)
 
 ```bash
-RELEASE_VERSION=major GITHUB_USERNAME=metaclips release.sh
+OCKAM_BUMP_RELEASE_VERSION=major GITHUB_USERNAME=metaclips release.sh
 ```
 
+### Skipping Sets Of Release
+
 We can skip steps during a release by defining variable below as `true`
-- SKIP_OCKAM_BUMP - Skips Ockam bump
-- SKIP_OCKAM_PACKAGE_RELEASE - Skips Ockam Docker package release
-- SKIP_CRATES_IO_PUBLISH - Skips crates.io publish
-- SKIP_OCKAM_BINARY_RELEASE - Skips binary release
-- SKIP_HOMEBREW_BUMP - Skips Homebrew version bump
-- SKIP_TERRAFORM_BUMP - Skips Terraform version bump
-- SKIP_TERRAFORM_BINARY_RELEASE - Skips Terraform binary release
+- `SKIP_OCKAM_BUMP` - Skips Ockam bump
+- `SKIP_OCKAM_PACKAGE_RELEASE` - Skips Ockam Docker package release
+- `SKIP_CRATES_IO_PUBLISH` - Skips crates.io publish
+- `SKIP_OCKAM_BINARY_RELEASE` - Skips binary release
+- `SKIP_HOMEBREW_BUMP` - Skips Homebrew version bump
+- `SKIP_TERRAFORM_BUMP` - Skips Terraform version bump
+- `SKIP_TERRAFORM_BINARY_RELEASE` - Skips Terraform binary release
+- `SKIP_DOCS_UPDATE` - Skips Ockam documentation release
+- `SKIP_COMMAND_MANUAL_RELEASE` - Skips Ockam command manual release
 
 To skip Ockam bump
 ```bash
@@ -135,21 +145,18 @@ SKIP_OCKAM_BUMP=true ./tools/scripts/release/release.sh
 
 The release script can be called from any path.
 
-We also have a script to delete draft release, to delete draft
+
+### Update A Draft Release
+
+After a draft release is made, we can redo/update a draft release, updating a draft release
+- Updates the changelog
+- Updates crates versions if needed
+- Deletes the old git tag
+
+To redo a draft release...
 
 ```bash
-TAG_NAME=ockam_v0.71.0 ./delete_draft.sh
+REDO_RELEASE_TAG="ockam_v0.117.0" GIT_TAG="ockam_v0.116.0" ./tools/scripts/release/release.sh
 ```
 
-Where TAG_NAME is the tag of the draft release.
-
-## Acceptance Test
-
-After a release, we can test all generated assets to ensure they work accurately, the acceptance script checks
-
-- Test build our latest published Ockam crate from crates.io
-- Run Docker image
-- Build Homebrew
-- Build Terraform
-- Run our multi architecture binaries
-- Esure all creates are published to crates.io
+This will redo the `ockam_v0.117.0` release from `ockam_v0.116.0`, updating the changelogs, and bumping crates that were updated after the recent draft release.
