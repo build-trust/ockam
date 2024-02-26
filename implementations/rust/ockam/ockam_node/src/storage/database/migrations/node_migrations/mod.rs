@@ -1,2 +1,5 @@
+mod rust;
+pub use rust::*;
+
 /// This module defines the migrations to apply to the appliaction database
-pub mod application_migration;
+pub mod node_migration_set;

@@ -6,7 +6,7 @@ use rand::random;
 use cli_state::error::Result;
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
-use ockam_node::database::application_migration::ApplicationMigration;
+use ockam_node::database::application_migration_set::ApplicationMigrationSet;
 use ockam_node::Executor;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
@@ -184,7 +184,7 @@ impl CliState {
         let database = SqlxDatabase::create(Self::make_database_path(&dir)).await?;
         let application_database = SqlxDatabase::create_with_migration(
             Self::make_application_database_path(&dir),
-            ApplicationMigration,
+            ApplicationMigrationSet,
         )
         .await?;
         debug!("Opened the main database with options {:?}", database);

@@ -1,39 +1,47 @@
-use crate::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use crate::database::migrations::RustMigration;
+use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
 use core::fmt;
 use minicbor::{Decode, Encode};
-use ockam_core::Result;
+use ockam_core::{async_trait, Result};
 use regex::Regex;
-use sqlx::sqlite::SqliteRow;
 use sqlx::*;
 
 /// This migration updates policies to not rely on trust_context_id,
 /// also introduces `node_name` and  replicates policy for each existing node
 pub struct PolicyTrustContextId;
 
+#[async_trait]
+impl RustMigration for PolicyTrustContextId {
+    fn name(&self) -> &str {
+        Self::name()
+    }
+
+    fn version(&self) -> i64 {
+        Self::version()
+    }
+
+    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+        Self::migrate_update_policies(connection).await
+    }
+}
+
 impl PolicyTrustContextId {
+    /// Migration version
+    pub fn version() -> i64 {
+        20240111100002
+    }
+
+    /// Migration name
+    pub fn name() -> &'static str {
+        "migration_20240111100002_delete_trust_context"
+    }
+
     /// This migration updates policies to not rely on trust_context_id,
     /// also introduces `node_name` and  replicates policy for each existing node
-    pub(crate) async fn migrate_update_policies(pool: &SqlitePool) -> Result<bool> {
-        let migration_name = "migration_20240111100002_delete_trust_context";
-
-        if SqlxDatabase::has_migrated(pool, migration_name).await? {
-            return Ok(false);
-        }
-
-        let mut conn = pool.acquire().await.into_core()?;
-
-        let data_migration_needed: Option<SqliteRow> =
-            query(&SqlxDatabase::table_exists("policy_old"))
-                .fetch_optional(&mut *conn)
-                .await
-                .into_core()?;
-        let data_migration_needed = data_migration_needed.map(|r| r.get(0)).unwrap_or(false);
-
-        if !data_migration_needed {
-            return Ok(false);
-        }
-
-        let mut transaction = conn.begin().await.into_core()?;
+    pub(crate) async fn migrate_update_policies(connection: &mut SqliteConnection) -> Result<bool> {
+        let mut transaction = sqlx::Connection::begin(&mut *connection)
+            .await
+            .into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names
@@ -71,8 +79,6 @@ impl PolicyTrustContextId {
             .void()?;
 
         transaction.commit().await.void()?;
-
-        SqlxDatabase::mark_as_migrated(pool, migration_name).await?;
 
         Ok(true)
     }
@@ -185,8 +191,8 @@ struct PolicyRow {
 
 #[cfg(test)]
 mod test {
-    use crate::database::migrations::sqlx_migration::NodesMigration;
-    use crate::database::SqlxDatabase;
+    use crate::database::migrations::node_migration_set::NodeMigrationSet;
+    use crate::database::{MigrationSet, SqlxDatabase};
     use sqlx::query::Query;
     use sqlx::sqlite::SqliteArguments;
     use tempfile::NamedTempFile;
@@ -219,30 +225,17 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_migration_happens_only_once() -> Result<()> {
-        let db_file = NamedTempFile::new().unwrap();
-
-        let db = SqlxDatabase::create_no_migration(db_file.path()).await?;
-
-        NodesMigration.migrate_schema(&db.pool).await?;
-
-        let migrated = PolicyTrustContextId::migrate_update_policies(&db.pool).await?;
-        assert!(migrated);
-
-        let migrated = PolicyTrustContextId::migrate_update_policies(&db.pool).await?;
-        assert!(!migrated);
-
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn test_migration() -> Result<()> {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
 
         let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
-        NodesMigration
-            .migrate_schema_before(&pool, 20240111100002)
+
+        let mut connection = pool.acquire().await.into_core()?;
+
+        NodeMigrationSet
+            .create_migrator()?
+            .migrate_before(&pool, PolicyTrustContextId::version(), true)
             .await?;
 
         let insert_node1 = insert_node("n1".to_string());
@@ -267,18 +260,17 @@ mod test {
         insert3.execute(&pool).await.void()?;
 
         // apply migrations
-        NodesMigration
-            .migrate_schema_range(&pool, 20240111100002, 20240212100000)
+        NodeMigrationSet
+            .create_migrator()?
+            .migrate_before(&pool, PolicyTrustContextId::version() + 1, false)
             .await?;
-        let migrated = PolicyTrustContextId::migrate_update_policies(&pool).await?;
-        assert!(migrated);
 
         for node_name in &["n1", "n2"] {
             let rows: Vec<PolicyRowNew> = query_as(
                 "SELECT resource, action, expression, node_name FROM policy WHERE node_name = ?",
             )
             .bind(node_name.to_sql())
-            .fetch_all(&pool)
+            .fetch_all(&mut *connection)
             .await
             .into_core()?;
 
@@ -312,7 +304,7 @@ mod test {
         action: String,
         expression: Vec<u8>,
     ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
-        query("INSERT INTO policy (resource, action, expression) VALUES (?, ?, ?)")
+        query("INSERT INTO policy_old (resource, action, expression) VALUES (?, ?, ?)")
             .bind(resource.to_sql())
             .bind(action.to_sql())
             .bind(expression.to_sql())
