@@ -133,6 +133,83 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
     Ok(())
 }
 
+struct FailingWorkerProcessor {
+    shutdown_was_called: Arc<AtomicBool>,
+}
+
+#[async_trait]
+impl Worker for FailingWorkerProcessor {
+    type Context = Context;
+    type Message = String;
+
+    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+        Err(ockam_core::Error::new(Origin::Core, Kind::Internal, "test"))
+    }
+
+    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+        self.shutdown_was_called.store(true, Ordering::Relaxed);
+        Ok(())
+    }
+
+    async fn handle_message(
+        &mut self,
+        _ctx: &mut Self::Context,
+        _msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn worker_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<()> {
+    let shutdown_was_called = Arc::new(AtomicBool::new(false));
+    let worker = FailingWorkerProcessor {
+        shutdown_was_called: shutdown_was_called.clone(),
+    };
+    let res = ctx.start_worker("failing_worker", worker).await;
+    assert!(res.is_ok());
+    // Wait till tokio Runtime is shut down
+    //    std::thread::sleep(Duration::new(1, 0));
+    sleep(Duration::new(1, 0)).await;
+    assert!(shutdown_was_called.load(Ordering::Relaxed));
+    Ok(())
+}
+
+#[async_trait]
+impl Processor for FailingWorkerProcessor {
+    type Context = Context;
+
+    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+        Ok(true)
+    }
+
+    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+        Err(ockam_core::Error::new(Origin::Core, Kind::Internal, "test"))
+    }
+
+    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+        self.shutdown_was_called.store(true, Ordering::Relaxed);
+        Ok(())
+    }
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn processor_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<()> {
+    let shutdown_was_called = Arc::new(AtomicBool::new(false));
+    let processor = FailingWorkerProcessor {
+        shutdown_was_called: shutdown_was_called.clone(),
+    };
+    let res = ctx.start_processor("failing_processor", processor).await;
+    assert!(res.is_ok());
+    // Wait till tokio Runtime is shut down
+    //    std::thread::sleep(Duration::new(1, 0));
+    sleep(Duration::new(1, 0)).await;
+    assert!(shutdown_was_called.load(Ordering::Relaxed));
+    Ok(())
+}
+
 struct DummyProcessor;
 
 #[async_trait]
