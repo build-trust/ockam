@@ -4,13 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.50.0 - 2024-02-21
+## 0.50.0 - 2024-02-26
 
 ### Added
 
 - Delete `TrustContext`
 - Instrument more functions for enrollement
+- Add policy migration that removes `trust_context_id`
 - Introduce `subject.has_credential`
+- Add policies for resource types
 - Updated dependencies
 
 ### Changed
@@ -21,7 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix identity attributes expiration
+- Store policies isolated by node and resource
+- Fix policy storage expression type
 - Use the correct policies in inlets/outlets created by kafka services
+
+### Removed
+
+- Remove `--resource` and `--resource-type` args from `policy show|list|delete`
 
 ## 0.49.0 - 2024-01-09
 

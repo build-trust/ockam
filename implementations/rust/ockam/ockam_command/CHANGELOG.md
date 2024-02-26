@@ -4,33 +4,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.117.0 - 2024-02-21
+## 0.117.0 - 2024-02-26
 
 ### Added
 
+- Clarify ockam command output to indicate that it only supports kafka 3.4.x
+- Clarify output of kafka addon further
+- Add support for additional kafka addons
 - Improve ockam enroll command ux output, help, logs, errors
+- Add new way to parse relays
+- Refactor "ockam run" parsing logic
 - Add opentelemetry tracing and logging support
 - Use github api to check if command is outdated
 - Allow running `reset` command even if the database is in an invalid state
 - Improve ockam project ticket, ockam project enroll ux output, help, logs, errors
+- Refactor "ockam run" parsing logic
+- Add support for more commands to the `run` command
 - Add retry to cli upgrade test
 - Delete `TrustContext`
+- Add `skip_is_running_check` to the authority node
 - Add application errors
+- `run` support defining resources without names so they are assigned a random name
+- Improve ockam tcp-outlet commands ux output, help, logs, errors
+- Improve credentials management
+- In `ockam enroll` escalate project and space retrieval warning into error and exit
 - Instrument more functions for enrollement
+- Simplifies `projects` section from the `run` config file
+- Add `--enroller` flag to ockam project ticket command
+- Unify creation and retry connection for portal and relay
+- Add `variables` section to the `run` config, based on custom pattern
+- Parse variables as regular env variables
+- Tcp inlet creation will always optional validate unless `--no-connection-wait` is used
 - Add `--force` flag to `enroll` command and switch default behavior
+- Add ttl to `credential issue` command
+- Support removing all inlets via command
+- Pass the tracing context at the ockam message level
+- Add policies for resource types
+- Improve portals reliability and integration tests
+- Add an environment variable to configure a crates filter for log messages
+- Create time-limited journeys
+- Refactor `Project`-related code
+- Update enroll ux with new help text, display, and log progress status messages
 - Updated dependencies
+
+### Changed
+
+- Enable tracing by default
+- Incorporate review comments
 
 ### Fixed
 
 - Fix sqlx migration
+- Fix clippy warnings on nightly
 - Exit early when only testing arguments
+- Execute logging / tracing tests as integration tests
+- Command's verbose argument now has preference over env vars
 - When checking cli upgrade, add json header to request
 - Don't display log messages when showing the help
+- Ockam relay create shows remote address and worker address in correct order
+- Store policies isolated by node and resource
+- Fix okta authenticator, add identities to members table
+- Use the correct policies in inlets/outlets created by kafka services
+- Policy bats tests
+- Return error in `enroll` command if orchestrator fails to enrol identity
+- Command upgrade check
+- Do not log messages by default on command parsing errors
 
 ### Removed
 
 - Remove an unused function
 - Remove an unwrap
+- Remove `--resource` and `--resource-type` args from `policy show|list|delete`
 
 ## 0.116.0 - 2024-01-09
 

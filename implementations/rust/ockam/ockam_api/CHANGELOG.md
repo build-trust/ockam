@@ -4,28 +4,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.60.0 - 2024-02-21
+## 0.60.0 - 2024-02-26
 
 ### Added
 
+- Add support for additional kafka addons
+- Improve ockam enroll command ux output, help, logs, errors
+- Add opentelemetry tracing and logging support
+- Allow running `reset` command even if the database is in an invalid state
+- Restart a project journey if project is deleted
 - Delete `TrustContext`
+- Add `skip_is_running_check` to the authority node
 - Add application errors
+- Improve ockam tcp-outlet commands ux output, help, logs, errors
+- Improve credentials management
+- Backup logs when app restarts inlet node
 - Address review comments
 - Instrument more functions for enrollement
+- Simplifies `projects` section from the `run` config file
+- Introduce `subject.has_credential`
 - Unify creation and retry connection for portal and relay
+- Improve authority debug-ability
+- Tcp inlet creation will always optional validate unless `--no-connection-wait` is used
+- Add `--force` flag to `enroll` command and switch default behavior
+- Pass the tracing context at the ockam message level
+- Add policies for resource types
+- Improve portals reliability and integration tests
+- Add an environment variable to configure a crates filter for log messages
+- Create time-limited journeys
+- Hash the host name used in the trace id
+- Refactor `Project`-related code
+- Update enroll ux with new help text, display, and log progress status messages
 - Updated dependencies
 
 ### Changed
 
 - Move the handling of attributes expiration date to a layer above the repository
 - Separate transport messages from local messages
+- Enable tracing by default
+- Incorporate review comments
 
 ### Fixed
 
+- Fix clippy warnings on nightly
 - Close the context automatically on each test macro execution
 - Execute logging / tracing tests as integration tests
+- Command's verbose argument now has preference over env vars
+- Store policies isolated by node and resource
 - Make the journeys test more robust
+- Fix okta authenticator, add identities to members table
 - Set the proper span id on the propagated tracing context
+- Use a stable span name for the root span of the host journey
+- Avoid leaking resources when one step of the cleanup fails
+- Use the correct policies in inlets/outlets created by kafka services
+- Policy bats tests
+- Fixed flaky kafka integration test
+- Fixed kafka-related flaky tests
+- Put the tracing context field under a compilation flag
+- Avoid triggering tokio invalid reference drop in test
+- Disable portal packet counter field
+- Do not enforce enrollment limit
+- Do not log messages by default on command parsing errors
+- Don't set a logging appender when logging is disabled
+
+### Removed
+
+- Remove the tracing of sensitive parameters
+- Remove `--resource` and `--resource-type` args from `policy show|list|delete`
 
 ## 0.59.0 - 2024-01-09
 

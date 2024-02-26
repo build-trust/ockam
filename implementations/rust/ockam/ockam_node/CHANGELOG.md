@@ -4,18 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.109.0 - 2024-02-21
+## 0.109.0 - 2024-02-26
 
 ### Added
 
+- Add support for additional kafka addons
 - Add opentelemetry tracing and logging support
+- Implement `Default` for `ockam_node::compat::Mutex`
+- Delete `TrustContext`
 - Add application errors
+- Implement `sleep_long` sleep accounting for device sleep
+- Address review comments
+- Add policy migration that removes `trust_context_id`
+- Pass the tracing context at the ockam message level
+- Add policies for resource types
+- Improve portals reliability and integration tests
 - Updated dependencies
+
+### Changed
+
+- Separate transport messages from local messages
 
 ### Fixed
 
+- Fix sqlx migration
 - Close the context automatically on each test macro execution
+- Store policies isolated by node and resource
 - Set the proper span id on the propagated tracing context
+
+### Removed
+
+- Remove panic if onward route in invalid
 
 ## 0.108.0 - 2024-01-09
 

@@ -4,24 +4,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.104.0 - 2024-02-21
+## 0.104.0 - 2024-02-26
 
 ### Added
 
 - Delete `TrustContext`
+- Add a unit test for deleting expired attributes
+- Rename identity fields:
+- Increase `MAX_ALLOWED_TIME_DRIFT` from 5 to 60 seconds
 - Improve credentials management
+- Address review comments
+- Instrument more functions for enrollement
+- Remove `clock_skew_gap` from `CachedCredentialRetriever`
+- Pass the tracing context at the ockam message level
+- Improve portals reliability and integration tests
+- Refactor `Project`-related code
 - Updated dependencies
 
 ### Changed
 
 - Move the handling of attributes expiration date to a layer above the repository
+- Separate transport messages from local messages
+- Incorporate review comments
 
 ### Fixed
 
+- Fix clippy warnings on nightly
 - Close the context automatically on each test macro execution
 - Increase credential duration for tests
 - Fix identity attributes expiration
 - Increase secure channel sleep in tests
+- Store policies isolated by node and resource
+- Update identity storage tests to account for orchestrator
+- Avoid panicking while receiving invalid handshake message
+
+### Removed
+
+- Remove unused functions
 
 ## 0.103.0 - 2024-01-09
 
