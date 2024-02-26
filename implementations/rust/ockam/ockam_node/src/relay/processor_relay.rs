@@ -34,6 +34,7 @@ where
                     e
                 );
                 shutdown_and_stop_ack(&mut processor, &mut ctx, &ctx_addr).await;
+                return;
             }
         }
 

@@ -112,6 +112,7 @@ where
                     e
                 );
                 self.shutdown_and_stop_ack().await;
+                return;
             }
         }
 
