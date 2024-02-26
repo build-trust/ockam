@@ -149,14 +149,15 @@ impl LoggingTracing {
     /// Setup logging to the console or to a file
     pub fn set_up_local_logging_only(logging_configuration: &LoggingConfiguration) -> TracingGuard {
         let (appender, worker_guard) = make_logging_appender(logging_configuration);
-        let layers = registry().with(logging_configuration.env_filter());
-
-        let result = match logging_configuration.format() {
-            LogFormat::Pretty => layers.with(appender.pretty()).try_init(),
-            LogFormat::Json => layers.with(appender.json()).try_init(),
-            LogFormat::Default => layers.with(appender).try_init(),
+        if logging_configuration.is_enabled() {
+            let layers = registry().with(logging_configuration.env_filter());
+            let result = match logging_configuration.format() {
+                LogFormat::Pretty => layers.with(appender.pretty()).try_init(),
+                LogFormat::Json => layers.with(appender.json()).try_init(),
+                LogFormat::Default => layers.with(appender).try_init(),
+            };
+            result.expect("Failed to initialize tracing subscriber");
         };
-        result.expect("Failed to initialize tracing subscriber");
 
         // the global error handler prints errors when exporting spans or log records fails
         set_global_error_handler(logging_configuration);
