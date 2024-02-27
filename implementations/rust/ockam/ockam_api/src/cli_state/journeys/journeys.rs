@@ -29,11 +29,11 @@ pub const APPLICATION_EVENT_PROJECT_USER_ROLES: &Key =
 pub const APPLICATION_EVENT_PROJECT_ACCESS_ROUTE: &Key =
     &Key::from_static_str("app.event.project.access_route");
 pub const APPLICATION_EVENT_PROJECT_IDENTIFIER: &Key =
-    &Key::from_static_str("app.event.project.identity");
+    &Key::from_static_str("app.event.project.identifier");
 pub const APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE: &Key =
     &Key::from_static_str("app.event.project.authority_access_route");
-pub const APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY: &Key =
-    &Key::from_static_str("app.event.project.authority_identity");
+pub const APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTIFIER: &Key =
+    &Key::from_static_str("app.event.project.authority_identifier");
 
 pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.trace_id");
 pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.span_id");
@@ -196,10 +196,10 @@ impl CliState {
                     &authority_multiaddr.to_string(),
                 );
             }
-            if let Ok(authority_identity) = project.authority_identity() {
+            if let Ok(authority_identifier) = project.authority_identifier() {
                 CurrentSpan::set_attribute(
-                    APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTITY,
-                    &authority_identity.to_string(),
+                    APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTIFIER,
+                    &authority_identifier.to_string(),
                 );
             }
         }
