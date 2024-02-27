@@ -202,7 +202,6 @@ mod test {
 
             correlation_id += 1;
         }
-
-        context.stop().await
+        Ok(())
     }
 }

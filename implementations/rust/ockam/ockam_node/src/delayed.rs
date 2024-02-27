@@ -144,7 +144,7 @@ mod tests {
         sleep(Duration::from_millis(150)).await;
 
         assert_eq!(3, msgs_count.load(Ordering::Relaxed));
-        ctx.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -166,7 +166,7 @@ mod tests {
         sleep(Duration::from_millis(150)).await;
 
         assert_eq!(1, msgs_count.load(Ordering::Relaxed));
-        ctx.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -190,7 +190,7 @@ mod tests {
         sleep(Duration::from_millis(300)).await;
 
         assert_eq!(1, msgs_count.load(Ordering::Relaxed));
-        ctx.stop().await
+        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -214,7 +214,6 @@ mod tests {
         sleep(Duration::from_millis(300)).await;
 
         assert_eq!(1, msgs_count.load(Ordering::Relaxed));
-
-        ctx.stop().await
+        Ok(())
     }
 }

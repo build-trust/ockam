@@ -81,7 +81,7 @@ fn output(mut cont: Container) -> TokenStream {
         }
     };
     let ctx_stop_stmt = quote! {
-        let _ = AssertUnwindSafe(async { #ctx_ident.stop().await.unwrap(); })
+        let _ = AssertUnwindSafe(async { let _ = #ctx_ident.stop().await; })
             .catch_unwind()
             .await;
     };

@@ -248,7 +248,7 @@ mod tests {
     use super::*;
 
     #[ockam_macros::test(crate = "ockam")]
-    async fn test_process_multi_addr(ctx: &mut Context) -> ockam::Result<()> {
+    async fn test_process_multi_addr(_ctx: &mut Context) -> ockam::Result<()> {
         let cli_state = CliState::test().await?;
 
         cli_state.create_node("n1").await?;
@@ -284,8 +284,6 @@ mod tests {
                 assert!(process_nodes_multiaddr(&ma, &cli_state).await.is_err());
             }
         }
-
-        ctx.stop().await?;
         Ok(())
     }
 
