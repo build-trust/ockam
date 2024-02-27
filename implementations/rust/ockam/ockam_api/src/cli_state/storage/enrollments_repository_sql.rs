@@ -113,8 +113,6 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
               identity.identifier = identity_enrollment.identifier
             INNER JOIN named_identity ON
               identity.identifier = named_identity.identifier
-            INNER JOIN named_identity ON
-              identity.identifier = named_identity.identifier
             WHERE
               named_identity.name = ?
             "#,
@@ -182,6 +180,10 @@ mod tests {
         // retrieve only the enrolled identities
         let result = repository.get_enrolled_identities().await?;
         assert_eq!(result.len(), 1);
+
+        // the first identity must be seen as enrolled
+        let result = repository.is_identity_enrolled("identity1").await?;
+        assert!(result);
 
         // the first identity has been set as the default one when it has been created
         // so we should retrieve this information via is_default_identity_enrolled
