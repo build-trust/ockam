@@ -77,7 +77,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete tcp outlet".into()
+        "tcp-outlet delete".into()
     }
 
     pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

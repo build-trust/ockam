@@ -1,5 +1,5 @@
 use crate::fmt_warn;
-use crate::run::parser::resources::{ArgKey, ArgValue};
+use crate::run::parser::building_blocks::{ArgKey, ArgValue};
 use colorful::Colorful;
 use miette::{IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};

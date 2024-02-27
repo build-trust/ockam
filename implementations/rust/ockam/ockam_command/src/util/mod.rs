@@ -52,7 +52,7 @@ where
     F: FnOnce(Context) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
-    debug!("running {} asynchronously", command_name);
+    debug!("running '{}' asynchronously", command_name);
     let res = embedded_node(opts.clone(), |ctx| {
         async move { f(ctx).await }.with_context(OpenTelemetryContext::current_context())
     });

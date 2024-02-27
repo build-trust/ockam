@@ -46,7 +46,7 @@ impl ShowCommand {
         })
     }
     pub fn name(&self) -> String {
-        "show identity".into()
+        "identity show".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

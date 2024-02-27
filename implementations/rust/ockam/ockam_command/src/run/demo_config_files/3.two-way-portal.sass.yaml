@@ -1,0 +1,19 @@
+variables:
+  CUSTOMER: acmecorp
+  NAME_OF_SERVICE_AT_CUSTOMER: github
+  ADDRESS_OF_SAAS_SERVICE: 127.0.0.1:6666
+  ADDRESS_OF_INLET_TO_SERVICE_AT_CUSTOMER: 0.0.0.0:17777
+
+ticket: $ENROLLMENT_TICKET
+
+relays: saas
+
+tcp-outlets:
+  to: $ADDRESS_OF_SAAS_SERVICE
+  allow: '(= subject.to-saas "inlet")'
+
+tcp-inlets:
+  from: $ADDRESS_OF_INLET_TO_SERVICE_AT_CUSTOMER
+  to: $NAME_OF_SERVICE_AT_CUSTOMER
+  via: $CUSTOMER
+  allow: '(= subject.from-saas "outlet")'

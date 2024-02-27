@@ -40,7 +40,7 @@ impl ShowCommand {
     }
 
     pub fn name(&self) -> String {
-        "show secure channel".into()
+        "secure-channel show".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

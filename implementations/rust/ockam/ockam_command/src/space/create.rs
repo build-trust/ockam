@@ -41,7 +41,7 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create space".into()
+        "space crate".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

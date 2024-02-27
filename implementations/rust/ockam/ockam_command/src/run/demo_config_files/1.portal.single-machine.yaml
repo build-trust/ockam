@@ -1,4 +1,7 @@
-# https://docs.ockam.io/guides/examples/basic-web-app
+variables:
+  OCKAM_PORT: 4000
+  PG_PORT: 5432
+
 relays: default
 
 tcp-outlets:

@@ -6,6 +6,7 @@ use ockam_node::Context;
 
 use crate::node::show::print_query_status;
 use crate::node::util::spawn_node;
+use crate::node::CreateCommand;
 use crate::util::async_cmd;
 use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
 
@@ -33,7 +34,7 @@ impl StartCommand {
     }
 
     pub fn name(&self) -> String {
-        "start node".into()
+        "node start".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -164,20 +165,14 @@ async fn run_node(
         .unwrap_or("no transport address".to_string());
 
     // Restart node
-    spawn_node(
-        opts,
-        false,         // Skip is running check
-        node_name,     // The selected node name
-        &None,         // Use the default identity
-        &node_address, // The selected node api address
-        None,          // Launch config
-        None,          // No project information available
-        None,          // No Authority Identity
-        None,          // No Authority Address
-        false,         // No cache credentials
-        None,          // No opentelemetry context
-    )
-    .await?;
+    #[allow(clippy::field_reassign_with_default)]
+    let cmd = {
+        let mut cmd = CreateCommand::default();
+        cmd.name = node_name.to_string();
+        cmd.tcp_listener_address = node_address;
+        cmd
+    };
+    spawn_node(opts, cmd).await?;
 
     let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
     Ok(node)

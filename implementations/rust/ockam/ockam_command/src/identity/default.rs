@@ -27,7 +27,7 @@ impl DefaultCommand {
     }
 
     pub fn name(&self) -> String {
-        "get default identity".into()
+        "identity default".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

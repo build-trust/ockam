@@ -1,13 +1,15 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam_api::cli_state::random_name;
+use ockam_node::Context;
 
 use crate::terminal::OckamColor;
-use crate::util::async_cmd;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts};
+
+use crate::{docs, fmt_log, fmt_ok, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -31,26 +33,11 @@ pub struct CreateCommand {
     pub key_id: Option<String>,
 }
 
-impl CreateCommand {
-    pub fn new(name: String, vault: Option<String>, key_id: Option<String>) -> CreateCommand {
-        CreateCommand {
-            name,
-            vault,
-            key_id,
-        }
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "identity create";
 
-    pub fn name(&self) -> String {
-        "create identity".into()
-    }
-
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
-    pub(crate) async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         opts.terminal.write_line(&fmt_log!(
             "Creating identity {}...\n",
             &self
@@ -128,6 +115,19 @@ impl CreateCommand {
             .machine(identifier.clone())
             .json(serde_json::json!({ "identifier": &identifier }))
             .write_line()?;
+
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(CreateCommand::NAME, &[]);
+        assert!(cmd.is_ok());
     }
 }

@@ -33,7 +33,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list credentials".into()
+        "credential list".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

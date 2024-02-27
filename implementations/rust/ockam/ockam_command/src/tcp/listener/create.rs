@@ -36,7 +36,7 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create tcp listener".into()
+        "tcp-listener create".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

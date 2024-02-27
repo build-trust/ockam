@@ -1,4 +1,4 @@
-use crate::docs;
+use crate::{docs, Command};
 use clap::{Args, Subcommand};
 
 pub use addon::AddonCommand;

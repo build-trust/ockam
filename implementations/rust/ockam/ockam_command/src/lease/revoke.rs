@@ -31,7 +31,7 @@ impl RevokeCommand {
     }
 
     pub fn name(&self) -> String {
-        "revoke token".into()
+        "lease revoke".into()
     }
 
     async fn async_run(

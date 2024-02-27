@@ -58,6 +58,6 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create kafka consumer".into()
+        "kafka-consumer create".into()
     }
 }

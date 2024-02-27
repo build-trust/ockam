@@ -5,7 +5,7 @@ pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 mod create;
 mod delete;

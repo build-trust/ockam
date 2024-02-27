@@ -44,7 +44,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete space".into()
+        "space delete".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

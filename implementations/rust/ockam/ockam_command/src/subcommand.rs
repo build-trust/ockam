@@ -1,14 +1,15 @@
+use async_trait::async_trait;
 use clap::Subcommand;
 use std::path::PathBuf;
 
 use ockam_api::CliState;
 use ockam_core::OpenTelemetryContext;
+use ockam_node::Context;
 
 use crate::admin::AdminCommand;
 use crate::authority::{AuthorityCommand, AuthoritySubcommand};
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::completion::CompletionCommand;
-use crate::configuration::ConfigurationCommand;
 use crate::credential::CredentialCommand;
 use crate::enroll::EnrollCommand;
 use crate::environment::EnvironmentCommand;
@@ -42,6 +43,7 @@ use crate::tcp::connection::TcpConnectionCommand;
 use crate::tcp::inlet::TcpInletCommand;
 use crate::tcp::listener::TcpListenerCommand;
 use crate::tcp::outlet::TcpOutletCommand;
+use crate::util::async_cmd;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
 
@@ -87,7 +89,6 @@ pub enum OckamSubcommand {
     Run(RunCommand),
     Status(StatusCommand),
     Reset(ResetCommand),
-    Configuration(ConfigurationCommand),
 
     Completion(CompletionCommand),
     Markdown(MarkdownCommand),
@@ -138,7 +139,6 @@ impl OckamSubcommand {
             OckamSubcommand::Run(c) => c.run(opts),
             OckamSubcommand::Status(c) => c.run(opts),
             OckamSubcommand::Reset(c) => c.run(opts),
-            OckamSubcommand::Configuration(c) => c.run(opts),
 
             OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Markdown(c) => c.run(),
@@ -182,7 +182,7 @@ impl OckamSubcommand {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
                 NodeSubcommand::Create(cmd) => {
                     if cmd.child_process {
-                        Some(cmd.node_name.clone())
+                        Some(cmd.name.clone())
                     } else {
                         None
                     }
@@ -208,7 +208,7 @@ impl OckamSubcommand {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
                 NodeSubcommand::Create(cmd) => {
                     if cmd.child_process {
-                        CliState::default_node_dir(&cmd.node_name).ok()
+                        CliState::default_node_dir(&cmd.name).ok()
                     } else {
                         None
                     }
@@ -262,7 +262,6 @@ impl OckamSubcommand {
             OckamSubcommand::Run(c) => c.name(),
             OckamSubcommand::Status(c) => c.name(),
             OckamSubcommand::Reset(c) => c.name(),
-            OckamSubcommand::Configuration(c) => c.name(),
             OckamSubcommand::Completion(c) => c.name(),
             OckamSubcommand::Markdown(c) => c.name(),
             OckamSubcommand::Manpages(c) => c.name(),
@@ -270,4 +269,21 @@ impl OckamSubcommand {
             OckamSubcommand::FlowControl(c) => c.name(),
         }
     }
+}
+
+#[async_trait]
+pub trait Command: Sized + Send + Sync + 'static {
+    const NAME: &'static str;
+
+    fn name(&self) -> String {
+        Self::NAME.into()
+    }
+
+    fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        async_cmd(Self::NAME, opts.clone(), |ctx| async move {
+            self.async_run(&ctx, opts).await
+        })
+    }
+
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()>;
 }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
@@ -32,8 +33,8 @@ use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
-use crate::util::{async_cmd, find_available_port, port_is_free_guard, process_nodes_multiaddr};
-use crate::{docs, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, Error};
+use crate::util::{find_available_port, port_is_free_guard, process_nodes_multiaddr};
+use crate::{docs, fmt_info, fmt_log, fmt_ok, fmt_warn, Command, CommandGlobalOpts, Error};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -110,18 +111,11 @@ fn default_to_addr() -> String {
     "/project/<default_project_name>/service/forward_to_<default_relay_name>/secure/api/service/<default_service_name>".to_string()
 }
 
-impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "tcp-inlet create";
 
-    pub fn name(&self) -> String {
-        "create tcp inlet".into()
-    }
-
-    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
         opts.terminal.write_line(&fmt_log!(
@@ -264,7 +258,9 @@ impl CreateCommand {
 
         Ok(())
     }
+}
 
+impl CreateCommand {
     fn to(&self) -> MultiAddr {
         MultiAddr::from_str(&self.to).unwrap()
     }
@@ -360,9 +356,16 @@ impl CreateCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
     use ockam_api::cloud::project::models::ProjectModel;
     use ockam_api::cloud::project::Project;
     use ockam_api::nodes::InMemoryNode;
+
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(CreateCommand::NAME, &[]);
+        assert!(cmd.is_ok());
+    }
 
     #[ockam_macros::test]
     async fn parse_arg_to(ctx: &mut Context) -> ockam_core::Result<()> {

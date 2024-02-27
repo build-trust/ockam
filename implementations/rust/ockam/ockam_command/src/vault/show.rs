@@ -33,7 +33,7 @@ impl ShowCommand {
     }
 
     pub fn name(&self) -> String {
-        "show vault".into()
+        "vault show".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

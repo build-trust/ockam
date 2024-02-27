@@ -6,7 +6,7 @@ pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
 use crate::identity::default::DefaultCommand;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 mod create;
 mod default;

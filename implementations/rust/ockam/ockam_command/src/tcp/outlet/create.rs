@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -17,9 +18,9 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::node::util::initialize_default_node;
-use crate::util::async_cmd;
+
 use crate::util::parsers::socket_addr_parser;
-use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_info, fmt_ok, Command, CommandGlobalOpts};
 use crate::{fmt_log, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -58,18 +59,11 @@ pub struct CreateCommand {
     pub policy_expression: Option<Expr>,
 }
 
-impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "tcp-outlet create";
 
-    pub fn name(&self) -> String {
-        "create tcp outlet".into()
-    }
-
-    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let node_name = node.node_name();
@@ -137,5 +131,20 @@ impl CreateCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(
+            CreateCommand::NAME,
+            &["--to".to_string(), "127.0.0.1:5000".to_string()],
+        );
+        assert!(cmd.is_ok());
     }
 }

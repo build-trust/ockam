@@ -40,7 +40,7 @@ impl StoreCommand {
     }
 
     pub fn name(&self) -> String {
-        "store credential".into()
+        "credential store".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

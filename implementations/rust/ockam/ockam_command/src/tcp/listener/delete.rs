@@ -36,7 +36,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete tcp listener".into()
+        "tcp-listener delete".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

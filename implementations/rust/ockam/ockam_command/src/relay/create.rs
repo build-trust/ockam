@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::str::FromStr;
 
 use clap::Args;
@@ -19,8 +20,8 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::{async_cmd, colorize_connection_status, process_nodes_multiaddr};
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, Error, Result};
+use crate::util::{colorize_connection_status, process_nodes_multiaddr};
+use crate::{docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Error, Result};
 use crate::{node::util::initialize_default_node, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -64,18 +65,11 @@ pub fn default_at_addr() -> String {
     "/project/$DEFAULT_PROJECT_NAME".to_string()
 }
 
-impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "relay create";
 
-    pub fn name(&self) -> String {
-        "create relay".into()
-    }
-
-    pub async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
         let at = cmd.at();
@@ -156,7 +150,9 @@ impl CreateCommand {
 
         Ok(())
     }
+}
 
+impl CreateCommand {
     fn at(&self) -> MultiAddr {
         MultiAddr::from_str(&self.at).unwrap()
     }
@@ -239,9 +235,15 @@ Remote Address: {remote_address}"#,
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
     use ockam_api::nodes::InMemoryNode;
 
-    use super::*;
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(CreateCommand::NAME, &[]);
+        assert!(cmd.is_ok());
+    }
 
     #[ockam_macros::test(crate = "ockam")]
     async fn test_parse_arg_at(ctx: &mut Context) -> ockam::Result<()> {

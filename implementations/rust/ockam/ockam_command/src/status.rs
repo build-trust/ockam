@@ -36,7 +36,7 @@ impl StatusCommand {
     }
 
     pub fn name(&self) -> String {
-        "get status".to_string()
+        "status".to_string()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

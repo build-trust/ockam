@@ -37,7 +37,7 @@ impl VerifyCommand {
     }
 
     pub fn name(&self) -> String {
-        "verify credential".into()
+        "credential verify".into()
     }
 
     pub fn issuer(&self) -> &Identifier {

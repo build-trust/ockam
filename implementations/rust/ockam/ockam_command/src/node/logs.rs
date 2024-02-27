@@ -28,7 +28,7 @@ impl LogCommand {
         })
     }
     pub fn name(&self) -> String {
-        "get node logs".into()
+        "node logs".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

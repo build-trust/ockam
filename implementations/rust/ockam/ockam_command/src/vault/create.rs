@@ -1,9 +1,10 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use ockam_node::Context;
 use std::path::PathBuf;
 
-use crate::util::async_cmd;
-use crate::{docs, fmt_info, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_info, fmt_ok, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -25,18 +26,11 @@ pub struct CreateCommand {
     pub aws_kms: bool,
 }
 
-impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "vault create";
 
-    pub fn name(&self) -> String {
-        "create vault".into()
-    }
-
-    pub(crate) async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.state.get_named_vaults().await?.is_empty() {
             opts.terminal.write_line(&fmt_info!(
             "This is the first vault to be created in this environment. It will be set as the default vault"
@@ -57,5 +51,17 @@ impl CreateCommand {
             .json(serde_json::json!({ "name": &self.name }))
             .write_line()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(CreateCommand::NAME, &[]);
+        assert!(cmd.is_ok());
     }
 }

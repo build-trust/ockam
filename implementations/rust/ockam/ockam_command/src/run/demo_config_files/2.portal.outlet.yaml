@@ -1,0 +1,13 @@
+variables:
+  PG_PORT: 5432
+
+ticket: db.ticket
+
+nodes: db
+
+relays: db
+
+tcp-outlets:
+  db-outlet:
+    to: $PG_PORT
+    allow: '(= subject.component "web")'

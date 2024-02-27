@@ -63,7 +63,7 @@ impl SendCommand {
     }
 
     pub fn name(&self) -> String {
-        "send message".into()
+        "message send".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

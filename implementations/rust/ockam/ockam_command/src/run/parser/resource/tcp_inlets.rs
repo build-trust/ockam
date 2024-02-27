@@ -1,29 +1,58 @@
-use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, ResourceNameOrMap};
+use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
+use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::utils::parse_cmd_from_args;
+use crate::run::parser::resource::PreRunHooks;
 use crate::tcp::inlet::create::CreateCommand;
-use crate::{tcp::inlet, OckamSubcommand};
+use crate::{color_primary, tcp::inlet, Command, CommandGlobalOpts, OckamSubcommand};
+use async_trait::async_trait;
 use miette::{miette, Result};
+use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TcpInlets {
-    #[serde(alias = "tcp-inlets")]
+    #[serde(alias = "tcp-inlets", alias = "tcp-inlet")]
     pub tcp_inlets: Option<ResourceNameOrMap>,
 }
 
-impl ArgsToCommands<CreateCommand> for TcpInlets {
+#[async_trait]
+impl ConfigRunner<CreateCommand> for TcpInlets {
+    fn len(&self) -> usize {
+        match &self.tcp_inlets {
+            Some(c) => c.len(),
+            None => 0,
+        }
+    }
+
     fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        let get_subcommand = |args: &[String]| -> Result<CreateCommand> {
-            if let OckamSubcommand::TcpInlet(cmd) = parse_cmd_from_args("tcp-inlet create", args)? {
-                if let inlet::TcpInletSubCommand::Create(c) = cmd.subcommand {
-                    return Ok(c);
-                }
-            }
-            Err(miette!("Failed to parse command"))
-        };
         match self.tcp_inlets {
-            Some(c) => c.into_commands(get_subcommand, Some("alias")),
+            Some(c) => c.into_commands_with_name_arg(Self::get_subcommand, Some("alias")),
             None => Ok(vec![]),
         }
+    }
+
+    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
+        if let OckamSubcommand::TcpInlet(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
+            if let inlet::TcpInletSubCommand::Create(c) = cmd.subcommand {
+                return Ok(c);
+            }
+        }
+        Err(miette!(format!(
+            "Failed to parse {} command",
+            color_primary(CreateCommand::NAME)
+        )))
+    }
+
+    async fn pre_run_hooks(
+        _ctx: &Context,
+        _opts: &CommandGlobalOpts,
+        hooks: &PreRunHooks,
+        cmd: &mut CreateCommand,
+    ) -> Result<bool> {
+        if let Some(node_name) = hooks.override_node_name.clone() {
+            cmd.at = Some(node_name);
+        }
+        Ok(true)
     }
 }
 

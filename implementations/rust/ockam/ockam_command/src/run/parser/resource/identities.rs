@@ -1,28 +1,45 @@
 use crate::identity::CreateCommand;
-use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, ResourcesContainer};
-use crate::{identity, OckamSubcommand};
+use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
+use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::utils::parse_cmd_from_args;
+use crate::{color_primary, identity, Command, OckamSubcommand};
+use async_trait::async_trait;
 use miette::{miette, Result};
+
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Identities {
+    #[serde(alias = "identity")]
     pub identities: Option<ResourcesContainer>,
 }
 
-impl ArgsToCommands<CreateCommand> for Identities {
+#[async_trait]
+impl ConfigRunner<CreateCommand> for Identities {
+    fn len(&self) -> usize {
+        match &self.identities {
+            Some(c) => c.len(),
+            None => 0,
+        }
+    }
+
     fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        let get_subcommand = |args: &[String]| -> Result<CreateCommand> {
-            if let OckamSubcommand::Identity(cmd) = parse_cmd_from_args("identity create", args)? {
-                if let identity::IdentitySubcommand::Create(c) = cmd.subcommand {
-                    return Ok(c);
-                }
-            }
-            Err(miette!("Failed to parse command"))
-        };
         match self.identities {
-            Some(c) => c.into_commands(get_subcommand),
+            Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
         }
+    }
+
+    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
+        if let OckamSubcommand::Identity(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
+            if let identity::IdentitySubcommand::Create(c) = cmd.subcommand {
+                return Ok(c);
+            }
+        }
+        Err(miette!(format!(
+            "Failed to parse {} command",
+            color_primary(CreateCommand::NAME)
+        )))
     }
 }
 

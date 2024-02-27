@@ -1,28 +1,45 @@
 use crate::node::CreateCommand;
-use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, ResourcesContainer};
-use crate::{node, OckamSubcommand};
+use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
+use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::utils::parse_cmd_from_args;
+use crate::{color_primary, node, Command, OckamSubcommand};
+use async_trait::async_trait;
 use miette::{miette, Result};
+
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nodes {
+    #[serde(alias = "node")]
     pub nodes: Option<ResourcesContainer>,
 }
 
-impl ArgsToCommands<CreateCommand> for Nodes {
+#[async_trait]
+impl ConfigRunner<CreateCommand> for Nodes {
+    fn len(&self) -> usize {
+        match &self.nodes {
+            Some(c) => c.len(),
+            None => 0,
+        }
+    }
+
     fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        let get_subcommand = |args: &[String]| -> Result<CreateCommand> {
-            if let OckamSubcommand::Node(cmd) = parse_cmd_from_args("node create", args)? {
-                if let node::NodeSubcommand::Create(c) = cmd.subcommand {
-                    return Ok(c);
-                }
-            }
-            Err(miette!("Failed to parse command"))
-        };
         match self.nodes {
-            Some(c) => c.into_commands(get_subcommand),
+            Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
         }
+    }
+
+    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
+        if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
+            if let node::NodeSubcommand::Create(c) = cmd.subcommand {
+                return Ok(c);
+            }
+        }
+        Err(miette!(format!(
+            "Failed to parse {} command",
+            color_primary(CreateCommand::NAME)
+        )))
     }
 }
 
@@ -38,7 +55,7 @@ mod tests {
             let cmds = parsed.into_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
-            assert_eq!(cmd.node_name, "n1");
+            assert_eq!(cmd.name, "n1");
         };
 
         // Name only
@@ -68,8 +85,8 @@ mod tests {
             let parsed: Nodes = serde_yaml::from_str(c).unwrap();
             let cmds = parsed.into_commands().unwrap();
             assert_eq!(cmds.len(), 2);
-            assert_eq!(cmds[0].node_name, "n1");
-            assert_eq!(cmds[1].node_name, "n2");
+            assert_eq!(cmds[0].name, "n1");
+            assert_eq!(cmds[1].name, "n2");
         };
 
         // Name only
