@@ -297,21 +297,30 @@ impl TcpPortalWorker {
             self.write_half = Some(tx);
             self.read_half = Some(rx);
 
+            // Respond to Inlet before starting the processor but
+            // after the connection has been established
+            // to avoid a payload being sent before the pong
+            ctx.send_from_address(
+                pong_route.clone(),
+                PortalMessage::Pong,
+                self.addresses.remote.clone(),
+            )
+            .await?;
+
             self.start_receiver(ctx, pong_route.clone()).await?;
 
             debug!(
                 "Outlet at: {} successfully connected",
                 self.addresses.internal
             );
+        } else {
+            ctx.send_from_address(
+                pong_route.clone(),
+                PortalMessage::Pong,
+                self.addresses.remote.clone(),
+            )
+            .await?;
         }
-
-        // Respond to Inlet
-        ctx.send_from_address(
-            pong_route.clone(),
-            PortalMessage::Pong,
-            self.addresses.remote.clone(),
-        )
-        .await?;
 
         debug!("Outlet at: {} sent pong", self.addresses.internal);
 

@@ -40,7 +40,7 @@ async fn write_binary(stream: &mut TcpStream, payload: [u8; LENGTH]) {
 
 async fn read_assert_binary(stream: &mut TcpStream, expected_payload: [u8; LENGTH]) {
     let mut payload = [0u8; LENGTH];
-    let length = stream.read(&mut payload).await.unwrap();
+    let length = stream.read_exact(&mut payload).await.unwrap();
     assert_eq!(length, LENGTH);
     assert_eq!(payload, expected_payload);
 }
@@ -67,9 +67,10 @@ async fn portal__standard_flow__should_succeed(ctx: &mut Context) -> Result<()> 
 
         read_assert_binary(&mut stream, payload1).await;
         write_binary(&mut stream, payload2).await;
+        stream
     });
 
-    // Wait till listener is up
+    // Wait till the listener is up
     tokio::time::sleep(Duration::from_millis(250)).await;
 
     let mut stream = TcpStream::connect(inlet_addr).await.unwrap();
@@ -78,10 +79,6 @@ async fn portal__standard_flow__should_succeed(ctx: &mut Context) -> Result<()> 
 
     let res = handle.await;
     assert!(res.is_ok());
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
 
     Ok(())
 }
@@ -99,6 +96,7 @@ async fn portal__reverse_flow__should_succeed(ctx: &mut Context) -> Result<()> {
 
         write_binary(&mut stream, payload2).await;
         read_assert_binary(&mut stream, payload1).await;
+        stream
     });
 
     // Wait till listener is up
@@ -110,10 +108,6 @@ async fn portal__reverse_flow__should_succeed(ctx: &mut Context) -> Result<()> {
 
     let res = handle.await;
     assert!(res.is_ok());
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
 
     Ok(())
 }
@@ -171,10 +165,6 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
 
     let res = handle.await;
     assert!(res.is_ok());
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
 
     Ok(())
 }
