@@ -5,7 +5,7 @@ use miette::{miette, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 
 use ockam::identity::utils::now;
-use ockam::identity::{Identifier, TimestampInSeconds};
+use ockam::identity::{Identifier, Identity, TimestampInSeconds, Vault};
 use ockam::Context;
 use ockam_api::authenticator::{PreTrustedIdentities, PreTrustedIdentity};
 use ockam_api::authority_node;
@@ -95,6 +95,11 @@ pub struct CreateCommand {
     /// Okta: name of the attributes which can be retrieved from Okta
     #[arg(long, value_name = "ATTRIBUTE_NAMES", default_value = None)]
     attributes: Option<Vec<String>>,
+
+    /// Full, hex-encoded Identity (change history) of the account authority to trust
+    /// for account and project administrator credentials.
+    #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None)]
+    account_authority: Option<String>,
 }
 
 impl CreateCommand {
@@ -175,6 +180,10 @@ impl CreateCommand {
         if let Some(identity) = &self.identity {
             args.push("--identity".to_string());
             args.push(identity.clone());
+        }
+        if let Some(acc_auth_identity) = &self.account_authority {
+            args.push("--account-authority".to_string());
+            args.push(acc_auth_identity.clone());
         }
         args.push(self.node_name.to_string());
 
@@ -275,6 +284,20 @@ impl CreateCommand {
         let now = now().into_diagnostic()?;
         let trusted_identities = self.trusted_identities(now, &node.clone().identifier());
 
+        let account_authority = match &self.account_authority {
+            Some(account_authority_change_history) => Some(
+                Identity::import_from_string(
+                    None,
+                    account_authority_change_history.as_str(),
+                    Vault::create_verifying_vault(),
+                )
+                .await
+                .map(|i| i.change_history().clone())
+                .into_diagnostic()?,
+            ),
+            None => None,
+        };
+
         let configuration = authority_node::Configuration {
             identifier: node.identifier(),
             database_path: opts.state.database_path(),
@@ -286,6 +309,7 @@ impl CreateCommand {
             no_direct_authentication: self.no_direct_authentication,
             no_token_enrollment: self.no_token_enrollment,
             okta: okta_configuration,
+            account_authority,
         };
 
         authority_node::start_node(ctx, &configuration)

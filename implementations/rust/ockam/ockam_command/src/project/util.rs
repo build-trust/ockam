@@ -228,6 +228,7 @@ async fn check_authority_node_accessible(
             &project.authority_identifier()?,
             project.authority_multiaddr()?,
             None,
+            None,
         )
         .await?;
 

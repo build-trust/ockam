@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use ockam::identity::models::ChangeHistory;
 use serde::{Deserialize, Serialize};
 
 use ockam::identity::Identifier;
@@ -45,6 +46,9 @@ pub struct Configuration {
 
     /// optional configuration for the okta service
     pub okta: Option<OktaConfiguration>,
+
+    /// Account Authority identity
+    pub account_authority: Option<ChangeHistory>,
 }
 
 /// Local and private functions for the authority configuration

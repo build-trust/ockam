@@ -66,6 +66,7 @@ impl NodeManager {
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
         caller_identifier: &Identifier,
+        credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     ) -> Result<AuthorityNodeClient> {
         NodeManager::authority_node_client(
             &self.tcp_transport,
@@ -73,6 +74,7 @@ impl NodeManager {
             authority_identifier,
             authority_route,
             caller_identifier,
+            credential_retriever_creator,
         )
         .await
     }
@@ -149,6 +151,7 @@ impl NodeManager {
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
         caller_identifier: &Identifier,
+        credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     ) -> Result<AuthorityNodeClient> {
         let authority_route = multiaddr_to_transport_route(authority_route).ok_or_else(|| {
             ApiError::core(format!(
@@ -159,7 +162,7 @@ impl NodeManager {
         Ok(AuthorityNodeClient {
             secure_client: SecureClient::new(
                 secure_channels,
-                None,
+                credential_retriever_creator,
                 Arc::new(tcp_transport.clone()),
                 authority_route,
                 authority_identifier,

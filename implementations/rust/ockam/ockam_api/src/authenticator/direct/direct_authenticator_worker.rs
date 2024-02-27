@@ -12,14 +12,19 @@ use crate::authenticator::direct::types::AddMember;
 use crate::authenticator::direct::DirectAuthenticator;
 use crate::authenticator::AuthorityMembersRepository;
 
+use super::AccountAuthorityInfo;
+
 pub struct DirectAuthenticatorWorker {
     authenticator: DirectAuthenticator,
 }
 
 impl DirectAuthenticatorWorker {
-    pub fn new(members: Arc<dyn AuthorityMembersRepository>) -> Self {
+    pub fn new(
+        members: Arc<dyn AuthorityMembersRepository>,
+        account_authority: Option<AccountAuthorityInfo>,
+    ) -> Self {
         Self {
-            authenticator: DirectAuthenticator::new(members),
+            authenticator: DirectAuthenticator::new(members, account_authority),
         }
     }
 }

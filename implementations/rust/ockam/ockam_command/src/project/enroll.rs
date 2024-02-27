@@ -97,6 +97,7 @@ impl EnrollCommand {
                 &project.authority_identifier().into_diagnostic()?,
                 project.authority_multiaddr().into_diagnostic()?,
                 Some(identity.name()),
+                None,
             )
             .await?;
 
