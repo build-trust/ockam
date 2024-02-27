@@ -141,7 +141,7 @@ pub struct CloudOpts {
     pub identity: Option<String>,
 }
 
-#[derive(Clone, Debug, Args, Default)]
+#[derive(Clone, Debug, Args, Default, PartialEq)]
 pub struct TrustOpts {
     /// Project name to use for the command
     #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]

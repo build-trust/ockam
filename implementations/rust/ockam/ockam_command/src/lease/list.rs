@@ -38,7 +38,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list tokens".into()
+        "lease list".into()
     }
 
     async fn async_run(

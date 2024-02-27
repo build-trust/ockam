@@ -27,7 +27,7 @@ impl DefaultCommand {
     }
 
     pub fn name(&self) -> String {
-        "get default node".into()
+        "node default".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

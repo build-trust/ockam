@@ -10,7 +10,7 @@ use crate::vault::delete::DeleteCommand;
 use crate::vault::list::ListCommand;
 use crate::vault::move_vault::MoveCommand;
 use crate::vault::show::ShowCommand;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 use clap::{Args, Subcommand};
 

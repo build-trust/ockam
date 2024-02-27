@@ -99,7 +99,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn name(&self) -> String {
-        "create authority".to_string()
+        "authority create".to_string()
     }
 
     pub(crate) async fn spawn_background_node(

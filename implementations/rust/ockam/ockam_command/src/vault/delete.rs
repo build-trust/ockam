@@ -37,7 +37,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete vault".into()
+        "vault delete".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

@@ -35,7 +35,7 @@ impl ShowCommand {
     }
 
     pub fn name(&self) -> String {
-        "show tcp listener".into()
+        "tcp-listener show".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

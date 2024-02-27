@@ -1,59 +1,91 @@
-use crate::{OckamCommand, OckamSubcommand};
-use clap::{Args as ClapArgs, Parser};
-use miette::{IntoDiagnostic, Result};
-use once_cell::sync::Lazy;
+use clap::Args as ClapArgs;
+use miette::{miette, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
-static BINARY_PATH: Lazy<String> = Lazy::new(|| {
-    std::env::args()
-        .next()
-        .expect("Failed to get the binary path")
-});
+pub trait ArgsToCommands: Sized {
+    fn into_commands_with_name_arg<C, F>(
+        self,
+        _get_subcommand: F,
+        _name_arg_key: Option<&str>,
+    ) -> Result<Vec<C>>
+    where
+        C: ClapArgs,
+        F: Fn(&[String]) -> Result<C>,
+    {
+        Err(miette!("The command does not support named resources"))
+    }
 
-fn binary_path() -> &'static str {
-    &BINARY_PATH
+    fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
+    where
+        C: ClapArgs,
+        F: Fn(&[String]) -> Result<C>,
+    {
+        self.into_commands_with_name_arg(get_subcommand, None)
+    }
+
+    fn len(&self) -> usize;
 }
 
+/// A resource identified only by its name.
+///
+/// E.g. `vaults: v1`
 pub type ResourceName = String;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ResourcesContainer {
-    Name(ResourceName),
+    NameOrMap(ResourceNameOrMap),
     List(Vec<ResourceNameOrMap>),
-    Map(ResourceNameOrMap),
 }
 
-impl ResourcesContainer {
-    pub fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
+impl ArgsToCommands for ResourcesContainer {
+    fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
     where
         C: ClapArgs,
         F: Fn(&[String]) -> Result<C>,
     {
         match self {
-            ResourcesContainer::Name(name) => Ok(vec![get_subcommand(&[name])?]),
+            ResourcesContainer::NameOrMap(r) => r.into_commands(get_subcommand),
             ResourcesContainer::List(resources) => {
                 let mut cmds = vec![];
                 for r in resources {
-                    cmds.extend(r.into_commands(&get_subcommand, None)?);
+                    cmds.extend(r.into_commands(&get_subcommand)?);
                 }
                 Ok(cmds)
             }
-            ResourcesContainer::Map(r) => r.into_commands(get_subcommand, None),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            ResourcesContainer::NameOrMap(r) => r.len(),
+            ResourcesContainer::List(resources) => resources.iter().map(|r| r.len()).sum(),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+/// A list of resources identified by their name and a set of arguments.
+///
+/// E.g.
+/// ```yaml
+/// vaults:
+///   v1:
+///     path: "./v1.path"
+///     aws-kms: false
+///   v2:
+///     path: "./v2.path"
+///     aws-kms: true
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NamedResources {
     #[serde(flatten)]
     pub items: BTreeMap<ResourceName, Args>,
 }
 
-impl NamedResources {
-    pub fn into_commands<C, F>(
+impl ArgsToCommands for NamedResources {
+    fn into_commands_with_name_arg<C, F>(
         self,
         get_subcommand: F,
         name_arg_key: Option<&str>,
@@ -88,14 +120,18 @@ impl NamedResources {
                     a.args
                 };
                 // Add the rest of the arguments
-                parsed_args.extend(args.into_iter().flat_map(|(k, v)| as_command_arg(k, v)));
+                parsed_args.extend(as_command_args(args));
                 get_subcommand(&parsed_args)
             })
             .collect::<Result<Vec<_>>>()
     }
+
+    fn len(&self) -> usize {
+        self.items.len()
+    }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ResourceNameOrMap {
     Name(ResourceName),
@@ -103,8 +139,8 @@ pub enum ResourceNameOrMap {
     RandomlyNamedMap(UnnamedResources),
 }
 
-impl ResourceNameOrMap {
-    pub fn into_commands<C, F>(
+impl ArgsToCommands for ResourceNameOrMap {
+    fn into_commands_with_name_arg<C, F>(
         self,
         get_subcommand: F,
         name_arg_key: Option<&str>,
@@ -116,47 +152,72 @@ impl ResourceNameOrMap {
         match self {
             ResourceNameOrMap::Name(name) => Ok(vec![get_subcommand(&[name])?]),
             ResourceNameOrMap::NamedMap(resources) => {
-                resources.into_commands(get_subcommand, name_arg_key)
+                resources.into_commands_with_name_arg(get_subcommand, name_arg_key)
             }
             ResourceNameOrMap::RandomlyNamedMap(resources) => {
                 resources.into_commands(get_subcommand)
             }
         }
     }
+
+    fn len(&self) -> usize {
+        match self {
+            ResourceNameOrMap::Name(_) => 1,
+            ResourceNameOrMap::NamedMap(r) => r.len(),
+            ResourceNameOrMap::RandomlyNamedMap(r) => r.len(),
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+/// A list of resources identified by a set of arguments, without a name.
+///
+/// E.g.
+/// ```yaml
+/// vaults:
+///   - path: "./v1.path"
+///     aws-kms: false
+///   - path: "./v2.path"
+///     aws-kms: false
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum UnnamedResources {
     Single(Args),
     List(Vec<Args>),
 }
 
-impl UnnamedResources {
-    pub fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
+impl ArgsToCommands for UnnamedResources {
+    fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
     where
         C: ClapArgs,
         F: Fn(&[String]) -> Result<C>,
     {
         let items = match self {
             UnnamedResources::Single(args) => vec![args],
-            UnnamedResources::List(args) => args,
+            UnnamedResources::List(items) => items,
         };
         items
             .into_iter()
-            .map(|a| {
-                let args = a
-                    .args
-                    .into_iter()
-                    .flat_map(|(k, v)| as_command_arg(k, v))
-                    .collect::<Vec<_>>();
-                get_subcommand(&args)
-            })
+            .map(|a| get_subcommand(&as_command_args(a.args)))
             .collect::<Result<Vec<_>>>()
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            UnnamedResources::Single(_) => 1,
+            UnnamedResources::List(items) => items.len(),
+        }
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+/// A set of key/value pairs for a given indentation level.
+///
+/// E.g.
+/// ```yaml
+/// path: "./v1.path"
+/// aws-kms: false
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Args {
     #[serde(flatten)]
     pub args: BTreeMap<ArgKey, ArgValue>,
@@ -164,7 +225,7 @@ pub struct Args {
 
 pub type ArgKey = String;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ArgValue {
     String(String),
@@ -195,8 +256,15 @@ impl Display for ArgValue {
     }
 }
 
+/// Returns the command representation of a set of arguments
+pub fn as_command_args(args: BTreeMap<ArgKey, ArgValue>) -> Vec<String> {
+    args.into_iter()
+        .flat_map(|(k, v)| as_command_arg(k, v))
+        .collect::<Vec<_>>()
+}
+
 /// Return the command representation of the argument name and its value.
-pub fn as_command_arg(k: ArgKey, v: ArgValue) -> Vec<String> {
+fn as_command_arg(k: ArgKey, v: ArgValue) -> Vec<String> {
     match v {
         ArgValue::Bool(v) => {
             // Booleans are passed as a flag, and only when true.
@@ -213,7 +281,7 @@ pub fn as_command_arg(k: ArgKey, v: ArgValue) -> Vec<String> {
 }
 
 /// Return the command representation of the argument name
-pub fn as_keyword_arg(k: &ArgKey) -> String {
+fn as_keyword_arg(k: &ArgKey) -> String {
     // If the argument name is a single character, it's the short version of the argument.
     if k.len() == 1 {
         format!("-{k}")
@@ -222,21 +290,4 @@ pub fn as_keyword_arg(k: &ArgKey) -> String {
     else {
         format!("--{k}")
     }
-}
-
-/// Return a clap OckamSubcommand instance given the name of the
-/// command and the list of arguments
-pub fn parse_cmd_from_args(cmd: &str, args: &[String]) -> Result<OckamSubcommand> {
-    let args = [binary_path()]
-        .into_iter()
-        .chain(cmd.split(' '))
-        .chain(args.iter().map(|s| s.as_str()))
-        .collect::<Vec<_>>();
-    Ok(OckamCommand::try_parse_from(args)
-        .into_diagnostic()?
-        .subcommand)
-}
-
-pub trait ArgsToCommands<T> {
-    fn into_commands(self) -> Result<Vec<T>>;
 }

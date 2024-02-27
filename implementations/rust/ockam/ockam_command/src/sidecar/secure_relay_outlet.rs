@@ -4,7 +4,8 @@ use indoc::formatdoc;
 use ockam_node::Context;
 use std::net::SocketAddr;
 
-use crate::run::ConfigRunner;
+use crate::run::parser::resource::PreRunHooks;
+use crate::run::Config;
 use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
 use crate::{docs, fmt_info, CommandGlobalOpts};
@@ -87,7 +88,7 @@ impl SecureRelayOutlet {
             recipe.as_str().dark_gray()
         ))?;
 
-        ConfigRunner::run_config(ctx, opts, &recipe).await
+        Config::parse_and_run(ctx, opts, PreRunHooks::default(), &recipe).await
     }
 
     fn create_config_recipe(&self) -> String {
@@ -123,7 +124,8 @@ impl SecureRelayOutlet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::run::parser::{ArgsToCommands, Config};
+    use crate::run::parser::config::ConfigParser;
+    use crate::run::parser::resource::ConfigRunner;
     use ockam_api::authenticator::one_time_code::OneTimeCode;
     use ockam_api::EnrollmentTicket;
     use std::str::FromStr;
@@ -144,7 +146,7 @@ mod tests {
         };
         let config_recipe = cmd.create_config_recipe();
         let config = Config::parse(config_recipe.as_str()).unwrap();
-        config.projects.into_commands().unwrap();
+        config.project_enroll.into_commands().unwrap();
         config.policies.into_commands().unwrap();
         config.tcp_outlets.into_commands().unwrap();
         config.relays.into_commands().unwrap();

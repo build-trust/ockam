@@ -120,7 +120,7 @@ impl AddonConfigureInfluxdbSubcommand {
     }
 
     pub fn name(&self) -> String {
-        "configure influxdb addon".into()
+        "project addon configure influxdb".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

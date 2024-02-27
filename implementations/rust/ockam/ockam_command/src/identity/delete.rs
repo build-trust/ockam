@@ -36,7 +36,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete identity".into()
+        "identity delete".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

@@ -11,7 +11,7 @@ use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 mod create;
 mod default;
@@ -69,7 +69,7 @@ pub enum NodeSubcommand {
 impl NodeSubcommand {
     pub fn name(&self) -> String {
         match self {
-            NodeSubcommand::Create(c) => c.name(),
+            NodeSubcommand::Create(c) => c.tracing_name(),
             NodeSubcommand::Delete(c) => c.name(),
             NodeSubcommand::List(c) => c.name(),
             NodeSubcommand::Logs(c) => c.name(),

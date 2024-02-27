@@ -44,7 +44,7 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create project".into()
+        "project create".into()
     }
 
     pub(crate) async fn async_run(

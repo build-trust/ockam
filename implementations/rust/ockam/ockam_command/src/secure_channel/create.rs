@@ -61,7 +61,7 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create secure channel".into()
+        "secure-channel create".into()
     }
 
     // Read the `to` argument and return a MultiAddr

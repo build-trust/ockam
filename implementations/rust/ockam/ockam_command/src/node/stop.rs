@@ -33,7 +33,7 @@ impl StopCommand {
     }
 
     pub fn name(&self) -> String {
-        "stop node".into()
+        "node stop".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

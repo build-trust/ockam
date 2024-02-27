@@ -35,7 +35,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list nodes".into()
+        "node list".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

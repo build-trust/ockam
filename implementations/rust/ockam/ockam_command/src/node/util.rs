@@ -7,8 +7,6 @@ use rand::random;
 
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
-use ockam_core::OpenTelemetryContext;
-use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 use crate::node::show::is_node_up;
@@ -55,7 +53,7 @@ pub async fn initialize_default_node(
 ) -> miette::Result<()> {
     if opts.state.get_default_node().await.is_err() {
         let cmd = CreateCommand::default();
-        let node_name = cmd.node_name.clone();
+        let node_name = cmd.name.clone();
         cmd.spawn_background_node(opts).await?;
         let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name).await?;
         is_node_up(ctx, &mut node, true).await?;
@@ -65,19 +63,24 @@ pub async fn initialize_default_node(
 
 /// A utility function to spawn a new node into foreground mode
 #[allow(clippy::too_many_arguments)]
-pub async fn spawn_node(
-    opts: &CommandGlobalOpts,
-    skip_is_running_check: bool,
-    name: &str,
-    identity_name: &Option<String>,
-    address: &str,
-    launch_config: Option<String>,
-    project_name: Option<String>,
-    authority_identity: Option<String>,
-    authority_route: Option<MultiAddr>,
-    expect_cached_credential: bool,
-    opentelemetry_context: Option<OpenTelemetryContext>,
-) -> miette::Result<()> {
+pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
+    let CreateCommand {
+        skip_is_running_check,
+        name,
+        identity: identity_name,
+        tcp_listener_address: address,
+        launch_config,
+        trust_opts,
+        opentelemetry_context,
+        ..
+    } = cmd;
+    let TrustOpts {
+        project_name,
+        authority_identity,
+        authority_route,
+        expect_cached_credential,
+    } = trust_opts;
+
     let mut args = vec![
         match opts.global_args.verbose {
             0 => "-vv".to_string(),
@@ -108,9 +111,9 @@ pub async fn spawn_node(
         args.push(identity_name.to_string());
     }
 
-    if let Some(l) = launch_config {
+    if let Some(config) = launch_config {
         args.push("--launch-config".to_string());
-        args.push(l);
+        args.push(serde_json::to_string(&config).unwrap());
     }
 
     if let Some(project_name) = project_name {

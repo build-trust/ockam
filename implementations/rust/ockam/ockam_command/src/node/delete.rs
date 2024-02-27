@@ -42,7 +42,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete node".into()
+        "node delete".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

@@ -31,7 +31,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list services".into()
+        "service list".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

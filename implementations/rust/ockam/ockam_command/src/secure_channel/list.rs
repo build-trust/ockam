@@ -43,7 +43,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list secure channels".into()
+        "secure-channel list".into()
     }
 
     fn build_output(

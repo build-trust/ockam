@@ -47,7 +47,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete secure channel".into()
+        "secure-channel delete".into()
     }
 
     fn print_output(

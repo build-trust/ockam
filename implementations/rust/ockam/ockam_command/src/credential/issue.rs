@@ -44,7 +44,7 @@ impl IssueCommand {
     }
 
     pub fn name(&self) -> String {
-        "issue credential".into()
+        "credential issue".into()
     }
 
     fn attributes(&self) -> Result<HashMap<String, String>> {

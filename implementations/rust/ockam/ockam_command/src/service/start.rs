@@ -43,7 +43,7 @@ impl StartCommand {
     }
 
     pub fn name(&self) -> String {
-        "start service".into()
+        "service start".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

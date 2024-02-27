@@ -40,7 +40,7 @@ impl AddonDisableSubcommand {
     }
 
     pub fn name(&self) -> String {
-        "disable addon".into()
+        "project addon disable".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

@@ -1,28 +1,45 @@
-use crate::run::parser::resources::{parse_cmd_from_args, ArgsToCommands, ResourcesContainer};
+use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
+use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::vault::CreateCommand;
-use crate::{vault, OckamSubcommand};
+use crate::{color_primary, vault, Command, OckamSubcommand};
+use async_trait::async_trait;
 use miette::{miette, Result};
+
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Vaults {
+    #[serde(alias = "vault")]
     pub vaults: Option<ResourcesContainer>,
 }
 
-impl ArgsToCommands<CreateCommand> for Vaults {
+#[async_trait]
+impl ConfigRunner<CreateCommand> for Vaults {
+    fn len(&self) -> usize {
+        match &self.vaults {
+            Some(c) => c.len(),
+            None => 0,
+        }
+    }
+
     fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        let get_subcommand = |args: &[String]| -> Result<CreateCommand> {
-            if let OckamSubcommand::Vault(cmd) = parse_cmd_from_args("vault create", args)? {
-                if let vault::VaultSubcommand::Create(c) = cmd.subcommand {
-                    return Ok(c);
-                }
-            }
-            Err(miette!("Failed to parse command"))
-        };
         match self.vaults {
-            Some(c) => c.into_commands(get_subcommand),
+            Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
         }
+    }
+
+    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
+        if let OckamSubcommand::Vault(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
+            if let vault::VaultSubcommand::Create(c) = cmd.subcommand {
+                return Ok(c);
+            }
+        }
+        Err(miette!(format!(
+            "Failed to parse {} command",
+            color_primary(CreateCommand::NAME)
+        )))
     }
 }
 

@@ -34,7 +34,7 @@ impl CreateCommand {
             opts.state.get_named_identity(identity_name).await?;
         }
 
-        let node_name = self.node_name.clone();
+        let node_name = self.name.clone();
         CurrentSpan::set_attribute(NODE_NAME, node_name.as_str());
         debug!("create node in background mode");
 
@@ -106,32 +106,17 @@ impl CreateCommand {
     }
 
     pub(crate) async fn spawn_background_node(
-        &self,
+        self,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
         if !self.skip_is_running_check {
             self.guard_node_is_not_already_running(opts).await?;
         }
 
-        // Construct the arguments list and re-execute the ockam
+        // Construct the argument list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
-        info!("spawning a new node {}", &self.node_name);
-        spawn_node(
-            opts,
-            self.skip_is_running_check,
-            &self.node_name,
-            &self.identity,
-            &self.tcp_listener_address,
-            self.launch_config
-                .as_ref()
-                .map(|config| serde_json::to_string(config).unwrap()),
-            self.trust_opts.project_name.clone(),
-            self.trust_opts.authority_identity.clone(),
-            self.trust_opts.authority_route.clone(),
-            self.trust_opts.expect_cached_credential,
-            self.opentelemetry_context.clone(),
-        )
-        .await?;
+        info!("spawning a new node {}", &self.name);
+        spawn_node(opts, self).await?;
 
         Ok(())
     }

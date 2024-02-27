@@ -36,7 +36,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list tcp outlets".into()
+        "tcp-outlet list".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

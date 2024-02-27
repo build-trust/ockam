@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::sync::Arc;
 
 use clap::Args;
@@ -14,12 +15,11 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::{enroll::OidcServiceExt, fmt_ok, output::OutputFormat, terminal::color_primary};
-use crate::{fmt_log, output::CredentialAndPurposeKeyDisplay};
-
+use crate::enroll::OidcServiceExt;
+use crate::output::{CredentialAndPurposeKeyDisplay, OutputFormat};
 use crate::util::api::{CloudOpts, TrustOpts};
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::value_parsers::parse_enrollment_ticket;
+use crate::{color_primary, docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -31,8 +31,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// Path to an enrollment ticket file, or hex encoded enrollment ticket
-    #[arg(display_order = 800, group = "authentication_method", value_name = "ENROLLMENT TICKET PATH | ENROLLMENT TICKET", value_parser = parse_enroll_ticket)]
+    /// Path, URL or inlined hex-encoded enrollment ticket
+    #[arg(display_order = 800, group = "authentication_method", value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
     pub enroll_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]
@@ -47,32 +47,11 @@ pub struct EnrollCommand {
     pub okta: bool,
 }
 
-pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentTicket> {
-    let decoded = match std::fs::read_to_string(hex_encoded_data_or_path) {
-        Ok(data) => hex::decode(data.trim())
-            .into_diagnostic()
-            .context("Failed to decode enrollment ticket from file")?,
-        Err(_) => hex::decode(hex_encoded_data_or_path)
-            .into_diagnostic()
-            .context("Failed to decode enrollment ticket from file")?,
-    };
-    Ok(serde_json::from_slice(&decoded)
-        .into_diagnostic()
-        .context("Failed to parse enrollment ticket from decoded data")?)
-}
+#[async_trait]
+impl Command for EnrollCommand {
+    const NAME: &'static str = "project enroll";
 
-impl EnrollCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
-    pub fn name(&self) -> String {
-        "enroll".into()
-    }
-
-    pub async fn async_run(self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.global_args.output_format == OutputFormat::Json {
             return Err(miette::miette!(
                 "This command does not support JSON output. Please try running it again without '--output json'."
@@ -83,7 +62,7 @@ impl EnrollCommand {
             .state
             .get_named_identity_or_default(&self.cloud_opts.identity)
             .await?;
-        let project = store_project(&opts, &self).await?;
+        let project = self.store_project(&opts).await?;
 
         // Create secure channel to the project's authority node
         let node = InMemoryNode::start_with_project_name(
@@ -157,29 +136,43 @@ impl EnrollCommand {
     }
 }
 
-async fn store_project(opts: &CommandGlobalOpts, cmd: &EnrollCommand) -> Result<Project> {
-    // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
-    let project = if let Some(ticket) = &cmd.enroll_ticket {
-        let project = ticket
-            .project
-            .as_ref()
-            .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
-            .clone();
-        opts.state
-            .projects()
-            .import_and_store_project(project)
-            .await?
-    } else {
-        // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
-        // currently okta auth does not use an enrollment token
-        // however, it could be worked to use one in the future
-        //
-        // REQUIRES Project passed or default project
-        opts.state
-            .projects().get_project_by_name_or_default(&cmd.trust_opts.project_name)
-            .await
-            .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?
-    };
+impl EnrollCommand {
+    async fn store_project(&self, opts: &CommandGlobalOpts) -> Result<Project> {
+        // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
+        let project = if let Some(ticket) = &self.enroll_ticket {
+            let project = ticket
+                .project
+                .as_ref()
+                .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
+                .clone();
+            opts.state
+                .projects()
+                .import_and_store_project(project)
+                .await?
+        } else {
+            // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
+            // currently okta auth does not use an enrollment token
+            // however, it could be worked to use one in the future
+            //
+            // REQUIRES Project passed or default project
+            opts.state
+                .projects().get_project_by_name_or_default(&self.trust_opts.project_name)
+                .await
+                .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?
+        };
 
-    Ok(project)
+        Ok(project)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(EnrollCommand::NAME, &[]);
+        assert!(cmd.is_ok());
+    }
 }

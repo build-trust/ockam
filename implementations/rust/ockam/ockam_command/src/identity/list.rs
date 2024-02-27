@@ -31,7 +31,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list identity".into()
+        "identity list".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

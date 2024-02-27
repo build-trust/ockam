@@ -52,7 +52,7 @@ impl ShowCommand {
     }
 
     pub fn name(&self) -> String {
-        "show tcp outlet".into()
+        "tcp-outlet show".into()
     }
 
     pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

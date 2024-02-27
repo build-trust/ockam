@@ -43,7 +43,7 @@ impl ManpagesCommand {
     }
 
     pub fn name(&self) -> String {
-        "generate manpages".to_string()
+        "manpages".to_string()
     }
 }
 

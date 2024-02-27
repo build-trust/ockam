@@ -36,7 +36,7 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create token".into()
+        "lease create".into()
     }
 
     async fn async_run(

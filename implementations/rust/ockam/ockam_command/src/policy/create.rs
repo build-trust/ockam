@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
@@ -11,8 +12,8 @@ use ockam_api::nodes::{BackgroundNodeClient, Policies};
 use super::resource_type_parser;
 use crate::node::util::initialize_default_node;
 use crate::terminal::color_primary;
-use crate::util::async_cmd;
-use crate::{fmt_ok, fmt_warn, CommandGlobalOpts};
+
+use crate::{fmt_ok, fmt_warn, Command, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -33,22 +34,11 @@ pub struct CreateCommand {
     pub expression: Expr,
 }
 
-impl CreateCommand {
-    pub fn run(mut self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "policy create";
 
-    pub fn name(&self) -> String {
-        "create policy".into()
-    }
-
-    pub async fn async_run(
-        &mut self,
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-    ) -> miette::Result<()> {
+    async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
         // Backwards compatibility
@@ -78,5 +68,23 @@ impl CreateCommand {
             ))
             .write_line()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    #[test]
+    fn command_can_be_parsed_from_name() {
+        let cmd = parse_cmd_from_args(
+            CreateCommand::NAME,
+            &[
+                "--expression".to_string(),
+                "(= subject.a \"b\")".to_string(),
+            ],
+        );
+        assert!(cmd.is_ok());
     }
 }

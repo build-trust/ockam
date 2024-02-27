@@ -8,7 +8,7 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 
 use crate::Result;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SecureChannelListenerConfig {
     #[serde(default = "sec_listener_default_addr")]
     pub(crate) address: String,
@@ -23,12 +23,12 @@ pub struct SecureChannelListenerConfig {
     pub(crate) identity: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ServiceConfigs {
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub(crate) startup_services: Option<ServiceConfigs>,
 }

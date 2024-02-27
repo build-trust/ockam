@@ -32,7 +32,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list policies".into()
+        "policy list".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

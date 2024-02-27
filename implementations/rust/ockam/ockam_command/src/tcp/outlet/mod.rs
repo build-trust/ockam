@@ -3,7 +3,7 @@ mod delete;
 pub mod list;
 mod show;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 use create::CreateCommand;
 use delete::DeleteCommand;

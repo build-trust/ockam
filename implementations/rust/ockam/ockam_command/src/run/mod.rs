@@ -1,13 +1,14 @@
+mod config;
 pub mod parser;
-mod runner;
+pub use config::Config;
 
+use crate::run::parser::resource::PreRunHooks;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
-pub use runner::ConfigRunner;
 use std::path::PathBuf;
 
 /// Create nodes given a declarative configuration file
@@ -37,7 +38,7 @@ impl RunCommand {
     }
 
     pub fn name(&self) -> String {
-        "run command".to_string()
+        "run".to_string()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -72,6 +73,6 @@ impl RunCommand {
                 std::fs::read_to_string(path).into_diagnostic()?
             }
         };
-        ConfigRunner::run_config(ctx, opts, &contents).await
+        Config::parse_and_run(ctx, opts, PreRunHooks::default(), &contents).await
     }
 }

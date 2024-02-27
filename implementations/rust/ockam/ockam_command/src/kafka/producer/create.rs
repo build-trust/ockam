@@ -57,6 +57,6 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create kafka producer".into()
+        "kafka-producer create".into()
     }
 }

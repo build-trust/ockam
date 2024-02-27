@@ -7,7 +7,7 @@ pub use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::show::ShowCommand;
-use crate::CommandGlobalOpts;
+use crate::{Command, CommandGlobalOpts};
 
 mod create;
 mod delete;

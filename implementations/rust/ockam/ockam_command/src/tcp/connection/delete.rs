@@ -33,7 +33,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete tcp connection".into()
+        "tcp-connection delete".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

@@ -48,7 +48,7 @@ impl DeleteCommand {
     }
 
     pub fn name(&self) -> String {
-        "delete tcp inlet".into()
+        "tcp-inlet delete".into()
     }
 
     pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

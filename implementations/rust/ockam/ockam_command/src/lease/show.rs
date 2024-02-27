@@ -33,7 +33,7 @@ impl ShowCommand {
     }
 
     pub fn name(&self) -> String {
-        "show ticket".into()
+        "lease show".into()
     }
 
     async fn async_run(

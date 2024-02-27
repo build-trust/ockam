@@ -29,7 +29,7 @@ impl AddonListSubcommand {
     }
 
     pub fn name(&self) -> String {
-        "list addons".into()
+        "project addon list".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

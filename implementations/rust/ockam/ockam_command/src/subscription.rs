@@ -56,7 +56,7 @@ impl SubscriptionCommand {
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            SubscriptionSubcommand::Show { .. } => "show subscription",
+            SubscriptionSubcommand::Show { .. } => "subscription show",
         }
         .to_string()
     }

@@ -16,12 +16,13 @@ use ockam_core::{route, LOCAL};
 
 use crate::fmt_ok;
 use crate::node::CreateCommand;
+
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::{shutdown, CommandGlobalOpts};
 
 impl CreateCommand {
-    #[instrument(skip_all, fields(node_name = self.node_name))]
+    #[instrument(skip_all, fields(node_name = self.name))]
     pub(super) async fn foreground_mode(
         &self,
         ctx: &Context,
@@ -29,7 +30,7 @@ impl CreateCommand {
     ) -> miette::Result<()> {
         self.guard_node_is_not_already_running(&opts).await?;
 
-        let node_name = self.node_name.clone();
+        let node_name = self.name.clone();
         debug!("create node {node_name} in foreground mode");
 
         if opts
@@ -134,12 +135,11 @@ impl CreateCommand {
         opts.shutdown();
 
         // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
-        opts.state.stop_node(&node_name, true).await?;
+        let _ = opts.state.stop_node(&node_name, true).await;
         ctx.stop().await.into_diagnostic()?;
 
         opts.terminal
-            .write_line(fmt_ok!("Node stopped successfully"))
-            .unwrap();
+            .write_line(fmt_ok!("Node stopped successfully"))?;
 
         Ok(())
     }

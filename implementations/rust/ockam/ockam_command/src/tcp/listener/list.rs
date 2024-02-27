@@ -33,7 +33,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list tcp listeners".into()
+        "tcp-listener list".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

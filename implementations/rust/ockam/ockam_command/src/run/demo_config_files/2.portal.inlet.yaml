@@ -1,0 +1,12 @@
+variables:
+  OCKAM_PORT: 4000
+
+ticket: webapp.ticket
+
+nodes: web
+
+tcp-inlets:
+  web-inlet:
+    from: $OCKAM_PORT
+    via: db
+    allow: '(= subject.component "db")'

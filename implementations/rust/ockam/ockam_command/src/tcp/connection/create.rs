@@ -45,7 +45,7 @@ impl CreateCommand {
     }
 
     pub fn name(&self) -> String {
-        "create tcp connection".into()
+        "tcp-connection create".into()
     }
 
     #[allow(unused)]
