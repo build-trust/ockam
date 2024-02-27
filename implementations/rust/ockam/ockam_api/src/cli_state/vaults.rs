@@ -151,7 +151,7 @@ impl CliState {
             } else {
                 format!("Using the Vault named {}...", color_primary(vault_name))
             };
-            self.send_over_channel(message.clone());
+            self.notify(message.clone());
             info!(message);
             return Ok(existing_vault);
         }
@@ -167,7 +167,7 @@ impl CliState {
                 color_primary(vault_name)
             )
         };
-        self.send_over_channel(message.clone());
+        self.notify(message.clone());
         info!(message);
 
         self.create_a_vault(&Some(vault_name.to_string()), &None, false)

@@ -43,6 +43,7 @@ mod operation;
 mod output;
 pub mod pager;
 mod policy;
+mod progress_display;
 mod project;
 mod relay;
 mod reset;

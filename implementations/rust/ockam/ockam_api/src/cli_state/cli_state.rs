@@ -8,11 +8,14 @@ use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
 use ockam_node::database::application_migration::ApplicationMigration;
 use ockam_node::Executor;
-use tokio::sync::broadcast::{channel, Sender};
+use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use crate::cli_state::{self, CliStateError};
 use crate::logs::TracingEnabled;
-use crate::{ReportingChannelMessageType, REPORTING_CHANNEL_CAPACITY};
+use crate::Notification;
+
+/// Maximum number of notifications present in the channel
+const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
 
 /// The CliState struct manages all the data persisted locally.
 ///
@@ -43,7 +46,9 @@ pub struct CliState {
     database: SqlxDatabase,
     application_database: SqlxDatabase,
     tracing_enabled: TracingEnabled,
-    pub(crate) progress_bar_reporting_channel_sender: Sender<ReportingChannelMessageType>,
+    /// Broadcast channel to be notified of major events during a process supported by the
+    /// CliState API
+    notifications: Sender<Notification>,
 }
 
 pub fn color_primary(text: &str) -> String {
@@ -81,6 +86,15 @@ impl CliState {
 
     pub fn set_node_name(&mut self, node_name: impl AsRef<str>) {
         self.database.set_node_name(node_name.as_ref());
+    }
+
+    pub fn subscribe(&self) -> Receiver<Notification> {
+        self.notifications.subscribe()
+    }
+
+    // 00: make the notification arg a ref
+    pub fn notify(&self, notification: Notification) {
+        let _ = self.notifications.send(notification);
     }
 }
 
@@ -178,8 +192,7 @@ impl CliState {
             "Opened the application database with options {:?}",
             application_database
         );
-        let (progress_bar_reporting_channel_sender, _) =
-            channel::<ReportingChannelMessageType>(REPORTING_CHANNEL_CAPACITY);
+        let (notifications, _) = channel::<Notification>(NOTIFICATIONS_CHANNEL_CAPACITY);
         let state = Self {
             dir,
             database,
@@ -189,7 +202,7 @@ impl CliState {
             // the function set_tracing_enabled can be used to enable tracing, which
             // is eventually used to trace user journeys.
             tracing_enabled: TracingEnabled::Off,
-            progress_bar_reporting_channel_sender,
+            notifications,
         };
         Ok(state)
     }

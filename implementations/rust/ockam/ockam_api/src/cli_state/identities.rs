@@ -146,7 +146,7 @@ impl CliState {
                     "Enrolling the Identity named {} with Ockam Orchestrator...",
                     color_primary(name)
                 );
-                self.send_over_channel(message.clone());
+                self.notify(message.clone());
                 info!(message);
 
                 let it = self.get_named_identity(name).await;
@@ -157,7 +157,7 @@ impl CliState {
                         color_primary(name),
                         color_primary(named_identity.identifier().to_string().as_ref())
                     );
-                    self.send_over_channel(message.clone());
+                    self.notify(message.clone());
                     info!(message);
                 }
 
@@ -167,7 +167,7 @@ impl CliState {
             None => {
                 let message =
                     "Enrolling the default Identity with Ockam Orchestrator...".to_string();
-                self.send_over_channel(message.clone());
+                self.notify(message.clone());
                 info!(message);
 
                 self.get_or_create_default_named_identity().await
@@ -281,8 +281,8 @@ impl CliState {
                     color_primary(named_identity.name().as_ref()),
                     color_primary(named_identity.identifier().to_string().as_ref())
                 );
-                self.send_over_channel(message_1.clone());
-                self.send_over_channel(message_2.clone());
+                self.notify(message_1.clone());
+                self.notify(message_2.clone());
                 info!(message_1);
                 info!(message_2);
 
@@ -306,9 +306,9 @@ impl CliState {
                         color_primary(named_identity.name().as_ref()),
                         color_primary(named_identity.identifier().to_string().as_ref())
                     );
-                    self.send_over_channel(message_a.clone());
-                    self.send_over_channel(message_b.clone());
-                    self.send_over_channel(message_c.clone());
+                    self.notify(message_a.clone());
+                    self.notify(message_b.clone());
+                    self.notify(message_c.clone());
                     info!(message_a);
                     info!(message_b);
                     info!(message_c);
