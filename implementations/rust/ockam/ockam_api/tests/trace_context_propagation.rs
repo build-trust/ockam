@@ -1,6 +1,7 @@
 mod common;
 
 use crate::common::trace_code::*;
+use itertools::Itertools;
 use ockam::identity::{SecureChannelListenerOptions, SecureChannelOptions};
 use ockam::node;
 use ockam_api::echoer::Echoer;
@@ -24,7 +25,12 @@ fn test_context_propagation_across_instrumented_methods() {
     spans.reverse();
 
     // there must be 3 spans
-    assert_eq!(spans.len(), 3);
+    assert_eq!(
+        spans.len(),
+        3,
+        "{}",
+        spans.iter().map(|s| s.name.to_string()).join(", ")
+    );
     let span1 = spans.get(0).unwrap();
     let span2 = spans.get(1).unwrap();
     let span3 = spans.get(2).unwrap();
