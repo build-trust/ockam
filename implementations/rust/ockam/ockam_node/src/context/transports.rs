@@ -90,7 +90,7 @@ mod tests {
         let transport = Arc::new(SomeTransport());
         ctx.register_transport(transport.clone());
         assert!(ctx.is_transport_registered(transport.transport_type()));
-        ctx.stop().await
+        Ok(())
     }
 
     #[ockam_macros::test(crate = "crate")]
@@ -110,7 +110,7 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        ctx.stop().await
+        Ok(())
     }
 
     #[ockam_macros::test(crate = "crate")]
@@ -128,7 +128,7 @@ mod tests {
             .unwrap()
             .to_string()
             .contains("only one transport hop is allowed in a route"));
-        ctx.stop().await
+        Ok(())
     }
 
     struct SomeTransport();

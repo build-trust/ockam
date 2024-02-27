@@ -242,8 +242,7 @@ mod tests {
         let (_, drop_sender) = AsyncDrop::new(ctx.sender.clone());
         let (copy, _, _) = ctx.copy_with_mailboxes_detached(mailboxes, drop_sender);
         assert!(copy.is_transport_registered(transport.transport_type()));
-
-        ctx.stop().await
+        Ok(())
     }
 
     struct SomeTransport();

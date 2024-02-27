@@ -325,8 +325,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
         let message = child_ctx.receive::<String>().await?;
         assert_eq!(&payload, message.as_body());
     }
-
-    ctx.stop().await
+    Ok(())
 }
 
 #[ockam_macros::test]
@@ -745,8 +744,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         .send(return_route, "Hello, Alice!".to_string())
         .await?;
     assert_eq!("Hello, Alice!", child_ctx.receive::<String>().await?.body());
-
-    ctx.stop().await
+    Ok(())
 }
 
 struct Receiver {

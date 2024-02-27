@@ -282,7 +282,6 @@ mod tests {
             .to_string();
         assert!(res.contains("/ip4/127.0.0.1/tcp/"));
 
-        ctx.stop().await.unwrap();
         Ok(())
     }
 

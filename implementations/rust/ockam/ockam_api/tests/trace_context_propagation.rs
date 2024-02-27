@@ -251,7 +251,6 @@ async fn send_echo_message_over_secure_channel(
 
     ctx.stop_worker(channel.encryptor_address().clone()).await?;
     tokio::time::sleep(Duration::from_secs(1)).await;
-    ctx.stop().await?;
     Ok(result)
 }
 
