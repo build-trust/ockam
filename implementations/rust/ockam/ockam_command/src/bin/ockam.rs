@@ -5,7 +5,9 @@
 use ockam_command::util::exitcode;
 
 fn main() {
-    if ockam_command::entry_point::run().is_err() {
+    if let Err(e) = ockam_command::entry_point::run() {
+        // initialization errors are displayed here
+        println!("{:?}", e);
         std::process::exit(exitcode::SOFTWARE);
     }
 }
