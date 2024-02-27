@@ -9,6 +9,7 @@ defmodule Ockly.Native do
     path: "../../../rust/ockam/ockam_rust_elixir_nifs",
     force_build: System.get_env("CI_TEST") in ["1", "true"],
     version: version,
+    load_from: {:ockly, "priv/native/libockam_rust_elixir_nifs"},
     # This is a fake link, I'll update after deploying a released nif
     base_url: "https://github.com/build-trust/ockam/releases/download/ockam_v#{version}/ockam.nif"
 
