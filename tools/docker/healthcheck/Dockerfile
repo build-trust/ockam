@@ -12,10 +12,10 @@ RUN set -ex; \
     rustup show; \
     cargo --version; \
     cd implementations/elixir/ockam/ockam_healthcheck; \
-    MIX_ENV=prod OCKLY_PRECOMPILED_LIB=false mix local.hex --force; \
-    MIX_ENV=prod OCKLY_PRECOMPILED_LIB=false mix local.rebar --force; \
-    MIX_ENV=prod OCKLY_PRECOMPILED_LIB=false mix deps.get; \
-    MIX_ENV=prod OCKLY_PRECOMPILED_LIB=false mix release;
+    MIX_ENV=prod CI_TEST=true mix local.hex --force; \
+    MIX_ENV=prod CI_TEST=true mix local.rebar --force; \
+    MIX_ENV=prod CI_TEST=true mix deps.get; \
+    MIX_ENV=prod CI_TEST=true mix release;
 
 
 # Stage 2 - Create container and copy executables in above step
