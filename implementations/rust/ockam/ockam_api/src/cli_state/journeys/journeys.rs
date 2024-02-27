@@ -28,7 +28,7 @@ pub const APPLICATION_EVENT_PROJECT_USER_ROLES: &Key =
     &Key::from_static_str("app.event.project.user_roles");
 pub const APPLICATION_EVENT_PROJECT_ACCESS_ROUTE: &Key =
     &Key::from_static_str("app.event.project.access_route");
-pub const APPLICATION_EVENT_PROJECT_IDENTITY: &Key =
+pub const APPLICATION_EVENT_PROJECT_IDENTIFIER: &Key =
     &Key::from_static_str("app.event.project.identity");
 pub const APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE: &Key =
     &Key::from_static_str("app.event.project.authority_access_route");
@@ -184,10 +184,10 @@ impl CliState {
                     &project_multiaddr.to_string(),
                 );
             }
-            if let Ok(project_identity) = project.project_identity() {
+            if let Ok(project_identifier) = project.project_identifier() {
                 CurrentSpan::set_attribute(
-                    APPLICATION_EVENT_PROJECT_IDENTITY,
-                    &project_identity.to_string(),
+                    APPLICATION_EVENT_PROJECT_IDENTIFIER,
+                    &project_identifier.to_string(),
                 );
             }
             if let Ok(authority_multiaddr) = project.authority_multiaddr() {

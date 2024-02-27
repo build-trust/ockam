@@ -128,7 +128,16 @@ impl Project {
     }
 
     pub fn project_identifier(&self) -> Result<Identifier> {
-        Ok(self.project_identity()?.identifier().clone())
+        self.model.identity.clone().ok_or_else(|| {
+            Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!(
+                    "no identifier has been set for the project {}",
+                    self.model.name
+                ),
+            )
+        })
     }
 
     pub fn project_multiaddr(&self) -> Result<&MultiAddr> {
