@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use clap::Args;
 use colorful::Colorful;
-use indicatif::ProgressBar;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -22,14 +21,12 @@ use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::ReportingChannelMessageType;
-use ockam_api::REPORTING_CHANNEL_MESSAGE_DISPLAY_DELAY;
-use ockam_api::REPORTING_CHANNEL_POLL_DELAY;
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
 use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
+use crate::progress_display::ProgressDisplay;
 use crate::project::util::check_project_readiness;
 use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
@@ -97,78 +94,19 @@ impl EnrollCommand {
 
     // Creates one span in the trace
     #[instrument(
-        skip_all, // Drop all args that passed in, as Context doesn't play nice
-        fields(
-            enroller = ?self.identity, // https://docs.rs/tracing/latest/tracing/
-            authorization_code_flow = %self.authorization_code_flow,
-            force = %self.force,
-            skip_orchestrator_resources_creation = %self.skip_orchestrator_resources_creation,
-        )
+    skip_all, // Drop all args that passed in, as Context doesn't play nice
+    fields(
+    enroller = ? self.identity, // https://docs.rs/tracing/latest/tracing/
+    authorization_code_flow = % self.authorization_code_flow,
+    force = % self.force,
+    skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
+    )
     )]
     async fn run_impl(&self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
-        let sender = opts.state.open_channel();
-
-        // Disable displaying spinner here. To enable use
-        // `opts.terminal.progress_spinner();`. When the spinner is set to `None`, then
-        // the mechanism below will display the messages as soon as they come in from the
-        // channel. Otherwise, w/ the spinner enabled, the spinner will display them as
-        // they come in & at the end of it's lifecycle, it will display all of them at
-        // once (using `message_collector`).
-        let spinner: Option<ProgressBar> = None;
-
-        if let Some(bar) = spinner.as_ref() {
-            bar.set_message("Resolving your Identity....")
-        }
-
-        let identity_task_has_ended = Mutex::new(false);
-        let mut message_collector: Vec<ReportingChannelMessageType> = vec![];
-
-        let spinner_task = async {
-            let mut receiver = sender.subscribe();
-
-            loop {
-                tokio::select! {
-                    _ = tokio::time::sleep(REPORTING_CHANNEL_POLL_DELAY) => {
-                        if *identity_task_has_ended.lock().await {
-                            if let Some(bar) = spinner.as_ref() { bar.finish_and_clear() }
-                            break;
-                        }
-                    }
-                    message = receiver.recv() => {
-                        match message {
-                            // Message is available in channel.
-                            Ok(msg) => {
-                                // If spinner is available, set the message and save it to
-                                // the message_collector for later display.
-                                if let Some(bar) = spinner.as_ref() {
-                                    message_collector.push(msg.clone());
-                                    bar.set_message(msg);
-                                }
-                                // If spinner is not available, just display the message.
-                                else {
-                                    let _ = opts.terminal.write_line(fmt_log!("{}", msg));
-                                }
-
-                                // Fabricate a delay for a better UX, so the user has a chance to read the message.
-                                if spinner.is_some() {
-                                    let _ = tokio::time::sleep(REPORTING_CHANNEL_MESSAGE_DISPLAY_DELAY)
-                                        .await;
-                                }
-                            }
-                            // Unknown problem with channel.
-                            _ => {
-                                if let Some(bar) = spinner.as_ref() { bar.finish_and_clear() }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            let it: Result<()> = Ok(());
-            it
-        };
+        let identity_task_has_ended = Arc::new(Mutex::new(false));
+        let mut progress_display = ProgressDisplay::new(&opts);
 
         let identity_task = async {
             let it = opts
@@ -179,26 +117,14 @@ impl EnrollCommand {
             Ok(it)
         };
 
-        // Note: the ordering of the following tasks matters. The spinner_task must be
-        // started first as it sets up the mechanism to listen to messages from the
-        // channel. The identity_task must be started second as it sends messages to the
-        // channel.
-        let (_, identity) = try_join!(spinner_task, identity_task)?;
+        let (_, identity) = try_join!(
+            progress_display.start(identity_task_has_ended.clone()),
+            identity_task
+        )?;
 
         // If a named or default identity can't be found, then we can't proceed, so, return error.
         let identity = identity?;
-
-        // If spinner is Some, then recombine the messages received in the tasks (through
-        // the channel), if any, into a single message & display to user.
-        if !message_collector.is_empty() && spinner.is_some() {
-            message_collector.iter().for_each(|msg| {
-                let _ = opts.terminal.write_line(fmt_log!("{}", msg));
-            });
-            info!("Messages about vault and identity provisioning:",);
-            message_collector.iter().for_each(|msg| {
-                info!("Vault and identity provisioning: {:?}", msg);
-            });
-        }
+        progress_display.finalize();
 
         let identity_name = identity.name();
         let identifier = identity.identifier();
