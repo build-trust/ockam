@@ -53,6 +53,7 @@ async fn main(ctx: Context) -> Result<()> {
         &issuer,
         &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000/secure/api")?,
         &client,
+        None,
     )
     .await?;
     let credential = authority_node.issue_credential(node.context()).await.unwrap();

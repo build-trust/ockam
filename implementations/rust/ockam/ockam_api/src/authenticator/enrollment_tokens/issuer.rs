@@ -10,6 +10,7 @@ use ockam_core::compat::time::Duration;
 use ockam_core::Result;
 
 use crate::authenticator::common::EnrollerAccessControlChecks;
+use crate::authenticator::direct::AccountAuthorityInfo;
 use crate::authenticator::one_time_code::OneTimeCode;
 use crate::authenticator::{
     AuthorityEnrollmentTokenRepository, AuthorityMembersRepository, EnrollmentToken,
@@ -24,14 +25,20 @@ pub type EnrollmentTokenIssuerResult<T> = Either<T, EnrollmentTokenIssuerError>;
 pub struct EnrollmentTokenIssuer {
     pub(super) tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
     pub(super) members: Arc<dyn AuthorityMembersRepository>,
+    pub(super) account_authority: Option<AccountAuthorityInfo>,
 }
 
 impl EnrollmentTokenIssuer {
     pub fn new(
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
+        account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
-        Self { tokens, members }
+        Self {
+            tokens,
+            members,
+            account_authority,
+        }
     }
 
     #[instrument(skip_all, fields(enroller = %enroller, token_duration = token_duration.map_or("n/a".to_string(), |d| d.as_secs().to_string()), ttl_count = ttl_count.map_or("n/a".to_string(), |t| t.to_string())))]
@@ -42,8 +49,12 @@ impl EnrollmentTokenIssuer {
         token_duration: Option<Duration>,
         ttl_count: Option<u64>,
     ) -> Result<EnrollmentTokenIssuerResult<OneTimeCode>> {
-        let check =
-            EnrollerAccessControlChecks::check_identifier(self.members.clone(), enroller).await?;
+        let check = EnrollerAccessControlChecks::check_identifier(
+            self.members.clone(),
+            enroller,
+            &self.account_authority,
+        )
+        .await?;
 
         if !check.is_enroller {
             warn!(

@@ -10,6 +10,7 @@ use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
 use crate::authenticator::direct::types::CreateToken;
+use crate::authenticator::direct::AccountAuthorityInfo;
 use crate::authenticator::enrollment_tokens::EnrollmentTokenIssuer;
 use crate::authenticator::{AuthorityEnrollmentTokenRepository, AuthorityMembersRepository};
 
@@ -21,9 +22,10 @@ impl EnrollmentTokenIssuerWorker {
     pub fn new(
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
+        account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
-            issuer: EnrollmentTokenIssuer::new(tokens, members),
+            issuer: EnrollmentTokenIssuer::new(tokens, members, account_authority),
         }
     }
 }

@@ -34,7 +34,8 @@ impl EnrollmentTokenAcceptor {
         from: &Identifier,
     ) -> Result<EnrollmentTokenAcceptorResult<()>> {
         let check =
-            EnrollerAccessControlChecks::check_identifier(self.members.clone(), from).await?;
+            EnrollerAccessControlChecks::check_identifier(self.members.clone(), from, &None)
+                .await?;
 
         // Not allow updating existing members
         if check.is_member {

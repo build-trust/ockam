@@ -1,4 +1,5 @@
 use either::Either;
+use ockam::identity::IdentitiesAttributes;
 use std::collections::{BTreeMap, HashMap};
 
 use ockam::identity::utils::now;
@@ -23,11 +24,48 @@ pub type DirectAuthenticatorResult<T> = Either<T, DirectAuthenticatorError>;
 
 pub struct DirectAuthenticator {
     members: Arc<dyn AuthorityMembersRepository>,
+    account_authority: Option<AccountAuthorityInfo>,
+}
+#[derive(Clone)]
+pub struct AccountAuthorityInfo {
+    identities_attributes: Arc<IdentitiesAttributes>,
+    account_authority: Identifier,
+    project_identifier: String,
+}
+
+impl AccountAuthorityInfo {
+    pub fn new(
+        identities_attributes: Arc<IdentitiesAttributes>,
+        account_authority: Identifier,
+        project_identifier: String,
+    ) -> Self {
+        Self {
+            identities_attributes,
+            account_authority,
+            project_identifier,
+        }
+    }
+
+    pub fn identities_attributes(&self) -> Arc<IdentitiesAttributes> {
+        self.identities_attributes.clone()
+    }
+    pub fn account_authority(&self) -> &Identifier {
+        &self.account_authority
+    }
+    pub fn project_identifier(&self) -> String {
+        self.project_identifier.clone()
+    }
 }
 
 impl DirectAuthenticator {
-    pub fn new(members: Arc<dyn AuthorityMembersRepository>) -> Self {
-        Self { members }
+    pub fn new(
+        members: Arc<dyn AuthorityMembersRepository>,
+        account_authority: Option<AccountAuthorityInfo>,
+    ) -> Self {
+        Self {
+            members,
+            account_authority,
+        }
     }
 
     #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier))]
@@ -37,8 +75,12 @@ impl DirectAuthenticator {
         identifier: &Identifier,
         attributes: &BTreeMap<String, String>,
     ) -> Result<DirectAuthenticatorResult<()>> {
-        let check =
-            EnrollerAccessControlChecks::check_identifier(self.members.clone(), enroller).await?;
+        let check = EnrollerAccessControlChecks::check_identifier(
+            self.members.clone(),
+            enroller,
+            &self.account_authority,
+        )
+        .await?;
 
         if !check.is_enroller {
             warn!(
@@ -93,8 +135,12 @@ impl DirectAuthenticator {
         &self,
         enroller: &Identifier,
     ) -> Result<DirectAuthenticatorResult<HashMap<Identifier, AttributesEntry>>> {
-        let check =
-            EnrollerAccessControlChecks::check_identifier(self.members.clone(), enroller).await?;
+        let check = EnrollerAccessControlChecks::check_identifier(
+            self.members.clone(),
+            enroller,
+            &self.account_authority,
+        )
+        .await?;
 
         if !check.is_enroller {
             warn!("Non-enroller {} is trying to list members", enroller);
@@ -125,8 +171,12 @@ impl DirectAuthenticator {
         enroller: &Identifier,
         identifier: &Identifier,
     ) -> Result<DirectAuthenticatorResult<()>> {
-        let check_enroller =
-            EnrollerAccessControlChecks::check_identifier(self.members.clone(), enroller).await?;
+        let check_enroller = EnrollerAccessControlChecks::check_identifier(
+            self.members.clone(),
+            enroller,
+            &self.account_authority,
+        )
+        .await?;
 
         if !check_enroller.is_enroller {
             warn!(
@@ -138,8 +188,12 @@ impl DirectAuthenticator {
             )));
         }
 
-        let check_member =
-            EnrollerAccessControlChecks::check_identifier(self.members.clone(), identifier).await?;
+        let check_member = EnrollerAccessControlChecks::check_identifier(
+            self.members.clone(),
+            identifier,
+            &self.account_authority,
+        )
+        .await?;
 
         if check_member.is_pre_trusted {
             warn!(

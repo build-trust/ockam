@@ -155,6 +155,7 @@ impl NodeManager {
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
         caller_identity_name: Option<String>,
+        credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     ) -> miette::Result<AuthorityNodeClient> {
         self.make_authority_node_client(
             authority_identifier,
@@ -163,6 +164,7 @@ impl NodeManager {
                 .get_identifier_by_name(caller_identity_name)
                 .await
                 .into_diagnostic()?,
+            credential_retriever_creator,
         )
         .await
         .into_diagnostic()

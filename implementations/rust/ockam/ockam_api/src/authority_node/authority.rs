@@ -3,7 +3,7 @@ use std::path::Path;
 use tracing::info;
 
 use crate::authenticator::credential_issuer::CredentialIssuerWorker;
-use crate::authenticator::direct::DirectAuthenticatorWorker;
+use crate::authenticator::direct::{AccountAuthorityInfo, DirectAuthenticatorWorker};
 use crate::authenticator::enrollment_tokens::{
     EnrollmentTokenAcceptorWorker, EnrollmentTokenIssuerWorker,
 };
@@ -39,6 +39,7 @@ pub struct Authority {
     secure_channels: Arc<SecureChannels>,
     members: Arc<dyn AuthorityMembersRepository>,
     tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
+    account_authority: Option<AccountAuthorityInfo>,
 }
 
 /// Public functions to:
@@ -73,16 +74,32 @@ impl Authority {
 
         let identities = Identities::create(database).build();
 
-        let secure_channels = SecureChannels::from_identities(identities);
+        let identity_attrs = identities.identities_attributes().clone();
+        let secure_channels = SecureChannels::from_identities(identities.clone());
 
         let identifier = configuration.identifier();
         info!(identifier=%identifier, "retrieved the authority identifier");
-
+        let account_authority =
+            if let Some(change_history) = configuration.account_authority.clone() {
+                let acc_authority_identifier = identities
+                    .identities_creation()
+                    .identities_verification()
+                    .import_from_change_history(None, change_history)
+                    .await?;
+                Some(AccountAuthorityInfo::new(
+                    identity_attrs,
+                    acc_authority_identifier,
+                    configuration.project_identifier(),
+                ))
+            } else {
+                None
+            };
         Ok(Self {
             identifier,
             secure_channels,
             members,
             tokens,
+            account_authority,
         })
     }
 
@@ -102,6 +119,11 @@ impl Authority {
         let options = SecureChannelListenerOptions::new()
             .with_trust_policy(TrustEveryonePolicy)
             .as_consumer(&tcp_listener_flow_control_id);
+        let options = if let Some(account_authority) = &self.account_authority {
+            options.with_authority(account_authority.account_authority().clone())
+        } else {
+            options
+        };
         let secure_channel_listener_flow_control_id = options.spawner_flow_control_id().clone();
 
         let listener_name = configuration.secure_channel_listener_name();
@@ -135,7 +157,8 @@ impl Authority {
             return Ok(());
         }
 
-        let direct = DirectAuthenticatorWorker::new(self.members.clone());
+        let direct =
+            DirectAuthenticatorWorker::new(self.members.clone(), self.account_authority.clone());
 
         let name = configuration.authenticator_name();
         ctx.flow_controls()
@@ -158,7 +181,11 @@ impl Authority {
             return Ok(());
         }
 
-        let issuer = EnrollmentTokenIssuerWorker::new(self.tokens.clone(), self.members.clone());
+        let issuer = EnrollmentTokenIssuerWorker::new(
+            self.tokens.clone(),
+            self.members.clone(),
+            self.account_authority.clone(),
+        );
         let acceptor =
             EnrollmentTokenAcceptorWorker::new(self.tokens.clone(), self.members.clone());
 

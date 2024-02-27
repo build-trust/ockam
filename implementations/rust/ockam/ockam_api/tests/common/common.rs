@@ -1,9 +1,10 @@
-use ockam::identity::utils::now;
-use ockam::identity::{Identifier, SecureChannels, SecureClient};
-use ockam_api::authenticator::direct::{
-    OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
+use core::time::Duration;
+use ockam::identity::models::CredentialSchemaIdentifier;
+use ockam::identity::utils::AttributesBuilder;
+use ockam::identity::{
+    CredentialRetrieverCreator, Identifier, MemoryCredentialRetrieverCreator, SecureChannels,
+    SecureClient,
 };
-use ockam_api::authenticator::PreTrustedIdentity;
 use ockam_api::authority_node;
 use ockam_api::authority_node::{Authority, Configuration};
 use ockam_api::cloud::{AuthorityNodeClient, HasSecureClient};
@@ -36,6 +37,7 @@ pub async fn default_configuration() -> Result<Configuration> {
         no_direct_authentication: true,
         no_token_enrollment: true,
         okta: None,
+        account_authority: None,
     };
 
     // Hack to create Authority Identity using the same vault and storage
@@ -69,58 +71,74 @@ pub async fn start_authority(
     secure_channels: Arc<SecureChannels>,
     number_of_admins: usize,
 ) -> Result<AuthorityInfo> {
-    use ockam_core::compat::collections::BTreeMap;
-    let now = now()?;
-
-    let mut admin_ids = vec![];
-
-    let mut trusted_identities = BTreeMap::<Identifier, PreTrustedIdentity>::new();
-
-    let mut attrs = BTreeMap::<Vec<u8>, Vec<u8>>::new();
-    attrs.insert(
-        OCKAM_ROLE_ATTRIBUTE_KEY.as_bytes().to_vec(),
-        OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE.as_bytes().to_vec(),
-    );
+    println!("common.rs start_authority 1");
 
     let mut configuration = default_configuration().await?;
 
+    let account_authority = secure_channels
+        .identities()
+        .identities_creation()
+        .create_identity()
+        .await?;
+
+    let account_authority_identity = secure_channels
+        .identities()
+        .get_identity(&account_authority)
+        .await?;
+
+    let credentials_creation = secure_channels
+        .identities()
+        .credentials()
+        .credentials_creation();
+    let admin_attrs = AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
+        .with_attribute("project", configuration.project_identifier.clone())
+        .build();
+    let mut admins = vec![];
     for _ in 0..number_of_admins {
         let admin = secure_channels
             .identities()
             .identities_creation()
             .create_identity()
             .await?;
+        let cred = credentials_creation
+            .issue_credential(
+                &account_authority,
+                &admin,
+                admin_attrs.clone(),
+                Duration::from_secs(300),
+            )
+            .await?;
 
-        let entry =
-            PreTrustedIdentity::new(attrs.clone(), now, None, configuration.identifier.clone());
-        trusted_identities.insert(admin.clone(), entry);
-
-        admin_ids.push(admin);
-    }
-
-    configuration.no_direct_authentication = false;
-    configuration.no_token_enrollment = false;
-
-    configuration.trusted_identities = trusted_identities.into();
-
-    authority_node::start_node(ctx, &configuration).await?;
-
-    let mut admins = vec![];
-    for admin_id in admin_ids {
+        println!(
+            "Admin credential for {:?}: {:?} : {:?}",
+            admin,
+            cred,
+            cred.credential.get_credential_data().unwrap().subject
+        );
         let authority_node_client = NodeManager::authority_node_client(
             &TcpTransport::create(ctx).await?,
             secure_channels.clone(),
             &configuration.identifier,
             &MultiAddr::try_from("/secure/api")?,
-            &admin_id,
+            &admin,
+            Some(Arc::new(MemoryCredentialRetrieverCreator::new(cred))),
         )
         .await?;
-
         admins.push(AuthorityClient {
-            identifier: admin_id,
+            identifier: admin,
             client: authority_node_client,
         });
     }
+
+    configuration.account_authority = Some(account_authority_identity.change_history().clone());
+    configuration.no_direct_authentication = false;
+    configuration.no_token_enrollment = false;
+
+    println!(
+        "common.rs about to call authority::start_node with {:?}",
+        configuration.account_authority.is_some()
+    );
+    authority_node::start_node(ctx, &configuration).await?;
 
     Ok(AuthorityInfo {
         authority_identifier: configuration.identifier.clone(),
@@ -131,11 +149,12 @@ pub async fn start_authority(
 pub fn change_client_identifier(
     client: &AuthorityNodeClient,
     new_identifier: &Identifier,
+    new_credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
 ) -> AuthorityNodeClient {
     let client = client.get_secure_client();
     let client = SecureClient::new(
         client.secure_channels(),
-        client.credential_retriever_creator(),
+        new_credential_retriever_creator,
         client.transport(),
         client.secure_route().clone(),
         client.server_identifier(),

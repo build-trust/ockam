@@ -50,7 +50,7 @@ async fn admin_can_issue_token(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
-async fn admin_cant_accept_token(ctx: &mut Context) -> Result<()> {
+async fn admin_can_accept_token(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 
     let AuthorityInfo { admins, .. } = start_authority(ctx, secure_channels.clone(), 1).await?;
@@ -63,8 +63,8 @@ async fn admin_cant_accept_token(ctx: &mut Context) -> Result<()> {
         .unwrap();
 
     let res = admin.client.present_token(ctx, otc).await;
-    assert!(res.is_err());
 
+    assert!(res.is_ok());
     Ok(())
 }
 
@@ -93,16 +93,16 @@ async fn admin_can_add_enroller(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let enroller_client = change_client_identifier(&admin.client, &enroller);
+    let enroller_client = change_client_identifier(&admin.client, &enroller, None);
 
     enroller_client.present_token(ctx, otc).await.unwrap();
 
     let members = enroller_client.list_member_ids(ctx).await.unwrap();
-    assert_eq!(members.len(), 2);
+    assert_eq!(members.len(), 1);
     assert!(members.contains(&enroller));
 
     let members = enroller_client.list_members(ctx).await.unwrap();
-    assert_eq!(members.len(), 2);
+    assert_eq!(members.len(), 1);
     let attrs = members.get(&enroller).unwrap();
 
     assert!(attrs.added_at().abs_diff(now) < 5.into());
@@ -141,16 +141,16 @@ async fn admin_can_add_member(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client = change_client_identifier(&admin.client, &member);
+    let member_client = change_client_identifier(&admin.client, &member, None);
 
     member_client.present_token(ctx, otc).await.unwrap();
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
-    assert_eq!(members.len(), 2);
+    assert_eq!(members.len(), 1);
     assert!(members.contains(&member));
 
     let members = admin.client.list_members(ctx).await.unwrap();
-    assert_eq!(members.len(), 2);
+    assert_eq!(members.len(), 1);
     let attrs = members.get(&member).unwrap();
 
     assert!(attrs.added_at().abs_diff(now) < 5.into());
@@ -192,7 +192,7 @@ async fn enroller_can_add_member(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let enroller_client = change_client_identifier(&admin.client, &enroller);
+    let enroller_client = change_client_identifier(&admin.client, &enroller, None);
 
     enroller_client.present_token(ctx, otc).await.unwrap();
 
@@ -209,16 +209,16 @@ async fn enroller_can_add_member(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client = change_client_identifier(&admin.client, &member);
+    let member_client = change_client_identifier(&admin.client, &member, None);
 
     member_client.present_token(ctx, otc).await.unwrap();
 
     let members = enroller_client.list_member_ids(ctx).await.unwrap();
-    assert_eq!(members.len(), 3);
+    assert_eq!(members.len(), 2);
     assert!(members.contains(&member));
 
     let members = enroller_client.list_members(ctx).await.unwrap();
-    assert_eq!(members.len(), 3);
+    assert_eq!(members.len(), 2);
     let attrs = members.get(&member).unwrap();
 
     assert!(attrs.added_at().abs_diff(now) < 5.into());
@@ -236,7 +236,6 @@ async fn enroller_can_add_member(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
-#[ignore] // TODO with admin credentials.  For now, all enrollers have rights to add/remove enrollers
 async fn enroller_cant_add_enroller(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 
@@ -259,7 +258,7 @@ async fn enroller_cant_add_enroller(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let enroller_client = change_client_identifier(&admin.client, &enroller);
+    let enroller_client = change_client_identifier(&admin.client, &enroller, None);
 
     enroller_client.present_token(ctx, otc).await.unwrap();
 
@@ -296,7 +295,7 @@ async fn token_expiration(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client = change_client_identifier(&admin.client, &member);
+    let member_client = change_client_identifier(&admin.client, &member, None);
 
     ctx.sleep(Duration::from_secs(ttl + 1)).await;
 
@@ -304,8 +303,7 @@ async fn token_expiration(ctx: &mut Context) -> Result<()> {
     assert!(res.is_err());
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
-    assert_eq!(members.len(), 1);
-    assert!(!members.contains(&member));
+    assert_eq!(members.len(), 0);
 
     Ok(())
 }
@@ -328,14 +326,14 @@ async fn usage_count_default(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client1 = change_client_identifier(&admin.client, &member1);
+    let member_client1 = change_client_identifier(&admin.client, &member1, None);
 
     let member2 = secure_channels
         .identities()
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client2 = change_client_identifier(&admin.client, &member2);
+    let member_client2 = change_client_identifier(&admin.client, &member2, None);
 
     member_client1
         .present_token(ctx, otc.clone())
@@ -345,7 +343,7 @@ async fn usage_count_default(ctx: &mut Context) -> Result<()> {
     assert!(res.is_err());
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
-    assert_eq!(members.len(), 2);
+    assert_eq!(members.len(), 1);
     assert!(members.contains(&member1));
     assert!(!members.contains(&member2));
 
@@ -370,21 +368,21 @@ async fn usage_count2(ctx: &mut Context) -> Result<()> {
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client1 = change_client_identifier(&admin.client, &member1);
+    let member_client1 = change_client_identifier(&admin.client, &member1, None);
 
     let member2 = secure_channels
         .identities()
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client2 = change_client_identifier(&admin.client, &member2);
+    let member_client2 = change_client_identifier(&admin.client, &member2, None);
 
     let member3 = secure_channels
         .identities()
         .identities_creation()
         .create_identity()
         .await?;
-    let member_client3 = change_client_identifier(&admin.client, &member3);
+    let member_client3 = change_client_identifier(&admin.client, &member3, None);
 
     member_client1
         .present_token(ctx, otc.clone())
@@ -398,7 +396,7 @@ async fn usage_count2(ctx: &mut Context) -> Result<()> {
     assert!(res.is_err());
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
-    assert_eq!(members.len(), 3);
+    assert_eq!(members.len(), 2);
     assert!(members.contains(&member1));
     assert!(members.contains(&member2));
     assert!(!members.contains(&member3));

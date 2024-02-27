@@ -146,6 +146,7 @@ impl TicketCommand {
                 &p.authority_identifier().into_diagnostic()?,
                 p.authority_multiaddr().into_diagnostic()?,
                 Some(identity),
+                None,
             )
             .await?
         } else {
