@@ -56,7 +56,7 @@ defaults:
     shell: nix develop ../../tools/nix#elixir --command bash {0}
 
 env:
-  CI_TEST: true
+  OCKAM_BUILD_NIF: true
 
 jobs:
   test:

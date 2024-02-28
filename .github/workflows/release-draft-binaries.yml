@@ -380,7 +380,8 @@ jobs:
           cargo install tomlq
           ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
 
-          make nix_elixir_build_ockly
+          OCKAM_BUILD_NIF="true" make nix_elixir_build_ockly
+
           # 2.15 indicates that we will be using OTP version 2.15 as it's the oldest version
           mv implementations/elixir/ockam/ockly/priv/native/libockam_rust_elixir_nifs.so "libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so"
 
