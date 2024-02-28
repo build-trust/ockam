@@ -1,10 +1,11 @@
+use core::fmt::Debug;
 use sqlx::SqliteConnection;
 
 use ockam_core::{async_trait, Result};
 
 /// Individual rust migration
 #[async_trait]
-pub trait RustMigration: Send + Sync {
+pub trait RustMigration: Debug + Send + Sync {
     /// Name of the migration used to track which one was already applied
     fn name(&self) -> &str;
 

@@ -4,6 +4,7 @@ use sqlx::sqlite::SqliteRow;
 use sqlx::*;
 
 /// This struct adds a node name column to the identity attributes table
+#[derive(Debug)]
 pub struct NodeNameIdentityAttributes;
 
 #[async_trait]
@@ -127,7 +128,7 @@ mod test {
         let mut connection = pool.acquire().await.into_core()?;
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, NodeNameIdentityAttributes::version(), true)
+            .migrate_up_to_skip_last_rust_migration(&pool, NodeNameIdentityAttributes::version())
             .await?;
 
         // insert attribute rows in the previous table
@@ -144,7 +145,7 @@ mod test {
         // apply migrations
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, NodeNameIdentityAttributes::version() + 1, false)
+            .migrate_up_to(&pool, NodeNameIdentityAttributes::version())
             .await?;
 
         // check data
