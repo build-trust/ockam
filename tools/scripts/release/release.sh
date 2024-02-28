@@ -255,7 +255,7 @@ function update_docs_repo() {
   approve_and_watch_workflow_progress "ockam-documentation" "$workflow_file_name" "$branch_name"
 
   # Check if the branch was created, new branch is only created when there are new doc updates
-  if gh api "repos/build-trust/ockam-documentation/branches/${release_name}" --jq .name; then
+  if gh api "repos/build-trust/ockam-documentation/branches/docs_${release_name}" --jq .name; then
     gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
       --base main -H "docs_${release_name}" -r nazmulidris -R $OWNER/ockam-documentation
   fi
