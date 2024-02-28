@@ -83,12 +83,13 @@ impl CommandGlobalOpts {
                         "Consider upgrading to the latest version of Ockam Command"
                     ))
                     .unwrap();
+                let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("~/.ockam".to_string());
                 terminal
                     .write_line(fmt_log!(
                         "You can also try removing the local state using {} \
                         or deleting the directory at {}",
                         color_primary("ockam reset"),
-                        color_primary("~/.ockam")
+                        color_primary(ockam_home)
                     ))
                     .unwrap();
                 terminal
