@@ -82,11 +82,11 @@ jobs:
           OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION: ${{ github.event.inputs.ockam_bump_bumped_dep_crates_version }}
           GIT_TAG_WE_WILL_BE_UPDATING: ${{ github.event.inputs.redo_release_tag }}
           LAST_RELEASED_TAG: ${{ github.event.inputs.git_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bash -ex ./tools/scripts/release/redo-draft-release.sh
-
           # Delete the old git tag, it'll be recreated when we are creating a new draft binary.
-          git push --delete origin ${{ inputs.redo_release_tag }}
+          gh release delete ${{ inputs.redo_release_tag }} --cleanup-tag
 
       - name: Bump Ockam
         if: ${{ inputs.redo_release_tag == '' }}
