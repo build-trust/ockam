@@ -8,6 +8,7 @@ use sqlx::*;
 
 /// This migration updates policies to not rely on trust_context_id,
 /// also introduces `node_name` and  replicates policy for each existing node
+#[derive(Debug)]
 pub struct PolicyTrustContextId;
 
 #[async_trait]
@@ -235,7 +236,7 @@ mod test {
 
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, PolicyTrustContextId::version(), true)
+            .migrate_up_to_skip_last_rust_migration(&pool, PolicyTrustContextId::version())
             .await?;
 
         let insert_node1 = insert_node("n1".to_string());
@@ -262,7 +263,7 @@ mod test {
         // apply migrations
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, PolicyTrustContextId::version() + 1, false)
+            .migrate_up_to(&pool, PolicyTrustContextId::version())
             .await?;
 
         for node_name in &["n1", "n2"] {

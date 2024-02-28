@@ -5,6 +5,7 @@ use sqlx::*;
 
 /// This migration moves policies attached to resource types from
 /// table "resource_policy" to "resource_type_policy"
+#[derive(Debug)]
 pub struct SplitPolicies;
 
 #[async_trait]
@@ -102,7 +103,7 @@ mod test {
 
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, SplitPolicies::version(), true)
+            .migrate_up_to_skip_last_rust_migration(&pool, SplitPolicies::version())
             .await?;
 
         // insert some policies
@@ -121,7 +122,7 @@ mod test {
         // apply migrations
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, SplitPolicies::version() + 1, false)
+            .migrate_up_to(&pool, SplitPolicies::version())
             .await?;
 
         // check that the "tcp-inlet" and "tcp-outlet" policies are moved to the new table

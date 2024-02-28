@@ -4,6 +4,7 @@ use ockam_core::{async_trait, Result};
 use sqlx::*;
 
 /// This migration moves attributes from identity_attributes to the authority_member table for authority nodes
+#[derive(Debug)]
 pub struct AuthorityAttributes;
 
 #[async_trait]
@@ -123,7 +124,7 @@ mod test {
 
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, AuthorityAttributes::version(), true)
+            .migrate_up_to_skip_last_rust_migration(&pool, AuthorityAttributes::version())
             .await?;
 
         let authority_node_name = "authority".to_string();
@@ -157,7 +158,7 @@ mod test {
         // apply migrations
         NodeMigrationSet
             .create_migrator()?
-            .migrate_before(&pool, AuthorityAttributes::version() + 1, false)
+            .migrate_up_to(&pool, AuthorityAttributes::version())
             .await?;
 
         // check data
