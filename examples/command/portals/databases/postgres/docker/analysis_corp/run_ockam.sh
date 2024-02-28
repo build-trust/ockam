@@ -8,7 +8,7 @@ set -ex
 # The `project enroll` command creates a new vault and generates a cryptographic identity with
 # private keys stored in that vault.
 #
-# The enrollment ticket includes routes and identitifiers for the project membership authority
+# The enrollment ticket includes routes and identifiers for the project membership authority
 # and the project’s node that offers the relay service.
 #
 # The enrollment ticket also includes an enrollment token. The project enroll command

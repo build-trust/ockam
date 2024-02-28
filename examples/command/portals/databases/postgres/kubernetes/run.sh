@@ -9,7 +9,7 @@ set -e
 #
 # The example uses docker and kind to create these kubernetes clusters.
 #
-# You can read a detailed walkthough of this example at:
+# You can read a detailed walkthrough of this example at:
 # https://docs.ockam.io/portals/databases/postgres/kubernetes
 
 run() {
