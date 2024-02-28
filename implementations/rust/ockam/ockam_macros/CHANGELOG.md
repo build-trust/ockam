@@ -4,16 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.34.0 - 2024-02-26
+## 0.34.0 - 2024-02-28
 
 ### Added
 
 - Improve portals reliability and integration tests
+- Rework migrations
 - Updated dependencies
 
 ### Fixed
 
 - Close the context automatically on each test macro execution
+
+### Removed
+
+- Remove some unnecessary context stops
 
 ## 0.33.0 - 2024-01-09
 

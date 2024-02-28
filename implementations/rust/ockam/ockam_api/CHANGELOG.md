@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.60.0 - 2024-02-26
+## 0.60.0 - 2024-02-28
 
 ### Added
 
@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hash the host name used in the trace id
 - Refactor `Project`-related code
 - Update enroll ux with new help text, display, and log progress status messages
+- Start a new trace for a background node
+- Rework migrations
 - Updated dependencies
 
 ### Changed
@@ -43,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Separate transport messages from local messages
 - Enable tracing by default
 - Incorporate review comments
+- Extract the progress display as a separate struct
+- Get the default project only once
 
 ### Fixed
 
@@ -66,11 +70,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not enforce enrollment limit
 - Do not log messages by default on command parsing errors
 - Don't set a logging appender when logging is disabled
+- Fix a sql query
+- Get project identifier from model, without building the whole identity
+- Use project auth identifier in the journey instead of identity
+- Fix the flushing of traces
+- Make the journeys test more robust
 
 ### Removed
 
 - Remove the tracing of sensitive parameters
 - Remove `--resource` and `--resource-type` args from `policy show|list|delete`
+- Remove some unnecessary context stops
 
 ## 0.59.0 - 2024-01-09
 

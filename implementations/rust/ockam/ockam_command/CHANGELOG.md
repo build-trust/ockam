@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.117.0 - 2024-02-26
+## 0.117.0 - 2024-02-28
 
 ### Added
 
@@ -45,12 +45,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Create time-limited journeys
 - Refactor `Project`-related code
 - Update enroll ux with new help text, display, and log progress status messages
+- Display initialization errors when running ockam
+- Start a new trace for a background node
+- Show ockam home on initialization issue
 - Updated dependencies
 
 ### Changed
 
 - Enable tracing by default
 - Incorporate review comments
+- Extract the progress display as a separate struct
 
 ### Fixed
 
@@ -69,12 +73,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Return error in `enroll` command if orchestrator fails to enrol identity
 - Command upgrade check
 - Do not log messages by default on command parsing errors
+- Fix the flushing of traces
 
 ### Removed
 
 - Remove an unused function
 - Remove an unwrap
 - Remove `--resource` and `--resource-type` args from `policy show|list|delete`
+- Remove some unnecessary context stops
 
 ## 0.116.0 - 2024-01-09
 
