@@ -1,4 +1,4 @@
-# ockly
+# ockam_rust_elixir_nifs
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -43,11 +43,11 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
 
-[crate-image]: https://img.shields.io/crates/v/ockly.svg
-[crate-link]: https://crates.io/crates/ockly
+[crate-image]: https://img.shields.io/crates/v/ockam_rust_elixir_nifs.svg
+[crate-link]: https://crates.io/crates/ockam_rust_elixir_nifs
 
-[docs-image]: https://docs.rs/ockly/badge.svg
-[docs-link]: https://docs.rs/ockly
+[docs-image]: https://docs.rs/ockam_rust_elixir_nifs/badge.svg
+[docs-link]: https://docs.rs/ockam_rust_elixir_nifs
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE

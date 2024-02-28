@@ -12,6 +12,7 @@ description = "End-to-end encryption and mutual authentication for distributed a
 [lib]
 name = "ockam_rust_elixir_nifs"
 crate-type = ["cdylib"]
+path = "src/lib.rs"
 
 [dependencies]
 hex = { version = "0.4", default-features = false }
