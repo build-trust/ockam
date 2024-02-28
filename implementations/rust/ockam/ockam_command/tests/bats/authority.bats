@@ -72,7 +72,7 @@ teardown() {
   # issue and store project admin credentials for admin
   $OCKAM credential issue --as account_authority --for "$admin_identifier" --attribute project="1"  --encoding hex >"$OCKAM_HOME/admin.cred"
   run_success "$OCKAM" credential store --at admin --issuer "$account_authority_identifier" --credential-path "$OCKAM_HOME/admin.cred"
-  
+
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\"} }"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
