@@ -9,7 +9,7 @@ use std::fmt::Display;
 /// It is backed by a String and implements a PartialEq instance
 /// based on a lowercase comparison.
 ///
-/// Note that the SMTP RFC (https://www.rfc-editor.org/rfc/rfc5321.txt, section 2.4) specifies that
+/// Note that the SMTP RFC (<https://www.rfc-editor.org/rfc/rfc5321.txt>, section 2.4) specifies that
 /// we should not make a case insensitive comparison on the local part of the email address
 ///
 /// However we currently receive lowercase email addresses from the Controller in `ProjectUserRole`,

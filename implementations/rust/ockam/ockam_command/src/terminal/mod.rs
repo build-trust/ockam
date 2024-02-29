@@ -124,11 +124,11 @@ impl TerminalBackground {
     /// to work in some cases and fail in others. We want to degrade gracefully.
     /// So we rely on the simple tool of whether the COLORFGBG variable is set.
     ///
-    /// If it is set, it usually takes the form <foreground-color>:<background-color>
-    /// and if <background-color> is in {0,1,2,3,4,5,6,8}, then we assume the terminal
+    /// If it is set, it usually takes the form foreground-color:background-color
+    /// and if background-color is in {0,1,2,3,4,5,6,8}, then we assume the terminal
     /// has a dark background.
     ///
-    /// Reference: https://stackoverflow.com/a/54652367
+    /// Reference: <https://stackoverflow.com/a/54652367>
     pub fn detect_background_color() -> TerminalBackground {
         let terminal_colors = get_env::<TerminalColors>("COLORFGBG");
         if let Ok(Some(terminal_colors)) = terminal_colors {
