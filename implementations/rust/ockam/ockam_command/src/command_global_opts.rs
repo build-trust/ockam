@@ -135,7 +135,7 @@ impl CommandGlobalOpts {
         is_tty: bool,
     ) -> miette::Result<LoggingConfiguration> {
         if global_args.quiet {
-            return Ok(LoggingConfiguration::off());
+            return LoggingConfiguration::off().into_diagnostic();
         };
 
         let log_path = cmd.log_path();

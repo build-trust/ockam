@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use tracing_core::Level;
 use tracing_subscriber::EnvFilter;
 
-use super::{is_tracing_set, Colored, GlobalErrorHandler, LoggingEnabled};
+use super::{Colored, GlobalErrorHandler, LoggingEnabled};
 use crate::logs::LogFormat;
 
 /// List of all the configuration parameters relevant for configuring the logs
@@ -128,6 +128,22 @@ impl LoggingConfiguration {
         }
     }
 
+    /// Set the default crates
+    pub fn set_default_crates(self) -> LoggingConfiguration {
+        LoggingConfiguration {
+            crates: Some(LoggingConfiguration::default_crates()),
+            ..self
+        }
+    }
+
+    /// Set the all crates
+    pub fn set_all_crates(self) -> LoggingConfiguration {
+        LoggingConfiguration {
+            crates: None,
+            ..self
+        }
+    }
+
     /// Create an EnvFilter which keeps only the log messages
     ///
     ///  - for the configured level
@@ -151,18 +167,24 @@ impl LoggingConfiguration {
     }
 
     /// Return a LoggingConfiguration which doesn't log anything
-    pub fn off() -> LoggingConfiguration {
-        LoggingConfiguration::new(
+    /// We still retrieve:
+    ///  - the log level
+    ///  - the global error handler
+    ///  - the crates filter
+    ///
+    /// Since those pieces of configuration are used by both logging and tracing
+    pub fn off() -> ockam_core::Result<LoggingConfiguration> {
+        Ok(LoggingConfiguration::new(
             LoggingEnabled::Off,
-            Level::TRACE,
-            GlobalErrorHandler::Off,
+            log_level(None)?,
+            global_error_handler_enabled()?,
             0,
             0,
             LogFormat::Default,
             Colored::Off,
             None,
-            CratesFilter::All,
-        )
+            crates_filter()?,
+        ))
     }
 
     /// Return a LoggingConfiguration which creates logs for a background node
@@ -172,7 +194,7 @@ impl LoggingConfiguration {
     ) -> ockam_core::Result<LoggingConfiguration> {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::On,
-            log_level(None, LoggingEnabled::On)?,
+            log_level(None)?,
             GlobalErrorHandler::LogFile,
             log_max_size_bytes()?,
             log_max_files()?,
@@ -232,7 +254,7 @@ pub fn logging_configuration(
     } else {
         logging_enabled()?
     };
-    let level = log_level(preferred_log_level, enabled)?;
+    let level = log_level(preferred_log_level)?;
     Ok(LoggingConfiguration::new(
         enabled,
         level,
@@ -275,10 +297,7 @@ pub fn logging_enabled() -> ockam_core::Result<LoggingEnabled> {
 
 /// Return the log level, using the legacy environment variable if defined,
 /// or the current one.
-fn log_level(
-    preferred_log_level: Option<Level>,
-    logging_enabled: LoggingEnabled,
-) -> ockam_core::Result<Level> {
+fn log_level(preferred_log_level: Option<Level>) -> ockam_core::Result<Level> {
     let is_legacy_variable_set = is_set::<LevelVar>(OCKAM_LOG)?;
     let env_variable = if is_legacy_variable_set {
         println!("The OCKAM_LOG variable is deprecated. Please use: OCKAM_LOGGING=true OCKAM_LOG_LEVEL=trace (with the desired level) instead.");
@@ -286,7 +305,7 @@ fn log_level(
     } else {
         OCKAM_LOG_LEVEL
     };
-    get_log_level(env_variable, preferred_log_level, logging_enabled)
+    get_log_level(env_variable, preferred_log_level)
 }
 
 /// A user can pass a preferred logging level via a -vvv argument (with the number of 'v' indicating
@@ -294,14 +313,7 @@ fn log_level(
 fn get_log_level(
     variable_name: &str,
     preferred_log_level: Option<Level>,
-    logging_enabled: LoggingEnabled,
 ) -> ockam_core::Result<Level> {
-    // If we end-up with a log level that is not defined but tracing is on
-    // then we still need to provide a Level, since since parameter is used for both logs and traces
-    if logging_enabled == LoggingEnabled::Off && is_tracing_set()? {
-        return Ok(Level::TRACE);
-    };
-
     match preferred_log_level {
         Some(level) => Ok(level),
         None => get_env_with_default(

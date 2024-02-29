@@ -26,7 +26,9 @@ fn test_create_journey_event() {
     let tracing_guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         logs_exporter.clone(),
-        &LoggingConfiguration::off().set_crates(&["ockam_api"]),
+        &LoggingConfiguration::off()
+            .unwrap()
+            .set_crates(&["ockam_api"]),
         &TracingConfiguration::foreground(false).unwrap(),
         "test",
     );
