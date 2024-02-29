@@ -1,6 +1,7 @@
 use crate::registry::internal::InternalRegistry;
 use crate::{TcpListenerInfo, TcpReceiverInfo, TcpSenderInfo};
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::Address;
 
 /// Registry of all active workers and processors in TCP Transport to ease their lifecycle management
 #[derive(Default, Clone, Debug)]
