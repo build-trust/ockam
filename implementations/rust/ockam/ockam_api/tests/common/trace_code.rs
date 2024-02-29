@@ -22,7 +22,7 @@ where
     let guard = LoggingTracing::setup_with_exporters(
         spans_exporter.clone(),
         InMemoryLogsExporter::default(),
-        &LoggingConfiguration::off(),
+        &LoggingConfiguration::off().unwrap().set_all_crates(),
         &TracingConfiguration::foreground(true).unwrap(),
         "test",
     );
