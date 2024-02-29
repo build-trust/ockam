@@ -1,6 +1,6 @@
 use crate::common::test_spans::Trace;
 use ockam_api::logs::{LoggingConfiguration, LoggingTracing, TracingConfiguration};
-use ockam_core::AsyncTryClone;
+use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::{Context, NodeBuilder};
 use opentelemetry::global;
 use opentelemetry::trace::{FutureExt, Tracer};
@@ -27,13 +27,14 @@ where
         "test",
     );
 
-    let (ctx, mut executor) = NodeBuilder::new().build();
+    let (mut ctx, mut executor) = NodeBuilder::new().build();
 
     let tracer = global::tracer("ockam-test");
     let result = executor
         .execute_no_abort(async move {
             let result = tracer
                 .in_span("root", |_| {
+                    ctx.set_tracing_context(OpenTelemetryContext::current());
                     async { f(ctx.async_try_clone().await.unwrap()).await }.with_current_context()
                 })
                 .await;

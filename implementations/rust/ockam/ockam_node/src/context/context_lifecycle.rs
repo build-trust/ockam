@@ -119,7 +119,7 @@ impl Context {
             self.transports.clone(),
             &self.flow_controls,
             #[cfg(feature = "std")]
-            self.tracing_context(),
+            OpenTelemetryContext::current(),
         )
     }
 
