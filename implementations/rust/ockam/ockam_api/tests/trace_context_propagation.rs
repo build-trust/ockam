@@ -126,20 +126,19 @@ TcpRecvProcessor::process
 
 TcpRecvProcessor::process
 
-TcpSendWorker::handle_message
-└── TcpRecvProcessor::process
-    └── HandshakeWorker::handle_message
-        └── TcpSendWorker::handle_message
-            └── TcpRecvProcessor::process
-                └── HandshakeWorker::handle_message
-                    └── TcpSendWorker::handle_message
-                        └── TcpRecvProcessor::process
-                            └── HandshakeWorker::handle_message
-
 root
 └── send_echo_message_over_secure_channel
     ├── create tcp transport
     ├── create tcp transport
+    ├── TcpSendWorker::handle_message
+    |   └── TcpRecvProcessor::process
+    |       └── HandshakeWorker::handle_message
+    |           └── TcpSendWorker::handle_message
+    |               └── TcpRecvProcessor::process
+    |                   └── HandshakeWorker::handle_message
+    |                       └── TcpSendWorker::handle_message
+    |                           └── TcpRecvProcessor::process
+    |                               └── HandshakeWorker::handle_message
     └── MessageSender::handle_message
         └── EncryptorWorker::handle_message
             └── handle_encrypt
