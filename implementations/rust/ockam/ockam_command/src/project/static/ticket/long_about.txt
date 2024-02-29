@@ -1,9 +1,9 @@
-Ockam offers several pluggable enrollment protocols. This command allows project administrators to create a one-time enrollment ticket, and provide custom attributes, after they have run `ockam enroll`.
+The `project ticket` command allows you to create a one-time enrollment ticket, and provide custom attributes, after you have run `ockam enroll`. This is typically only done by Project administrators. How long the ticket is valid, and how many times it can be redeemed is also configurable via this command. Once redeemed, the attributes in this ticket are assigned to its redeemer. You can also use the `--relay` argument to allow the other Identity to create a Relay at the given address. The `--enroller` argument allows the Identity using the ticket to enroll other Identities into the Project, typically something that only administrators can do.
 
-Once an administrator creates a ticket, with attributes, for a project, another device can use it later. When another device runs `ockam project enroll` with the ticket, they become a member of the project, and they get a credential at the end. As a member, they can request a credential whenever they need one. Credentials do not live forever, and expire.
+Once you create a ticket, with attributes, for a Project, another Ockam node can use it later to enroll into this Project (using `ockam project enroll`).
 
-The identity on another device has the credential from the project's membership authority. The credential contains the attributes that the ticket was created with, which are key value pairs that are attested by the project's membership authority.
+When another Ockam node runs `ockam project enroll` with this ticket (the Identity of that node is enrolled), they become a member of the Project, and they get a credential at the end of this process. The Project's Membership Authority will cryptographically attest to the specific attributes that the ticket was created with. As a member, they can request a credential whenever they need one. Credentials do not live forever, and expire.
 
-The ticket is plain text representing a one-time use token and the non-sensitive data about the project, like the route to reach it, and some other information, which will be used to validate the project identity.
+The ticket is plain text representing a one-time use token and the non-sensitive data about the Project, like the route to reach it, and some other information, which will be used to validate the Project Identity. The ticket itself can be stored in an environment variable, or a file.
 
-This command can also be used to enroll known identities directly, without creating a ticket, into a project using the `--member` option.
+This command can also be used to enroll known Identities directly, without creating a ticket, into a Project using the `--member` option.

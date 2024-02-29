@@ -6,12 +6,17 @@ use ockam_api::cloud::project::ProjectsOrchestratorApi;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::output::{Output, ProjectConfigCompact};
 use crate::util::api::CloudOpts;
 use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
+use crate::{
+    docs,
+    output::{Output, ProjectConfigCompact},
+};
 
+/// Show project details
 #[derive(Clone, Debug, Args)]
+#[command(hide = docs::hide())]
 pub struct InfoCommand {
     /// Name of the project.
     #[arg(default_value = "default")]

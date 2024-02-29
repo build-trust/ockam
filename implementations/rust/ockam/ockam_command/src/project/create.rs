@@ -16,7 +16,7 @@ use crate::{docs, CommandGlobalOpts};
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
-/// Create projects
+/// Create a Project
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),

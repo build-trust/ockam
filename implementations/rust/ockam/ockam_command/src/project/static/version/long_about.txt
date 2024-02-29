@@ -1,1 +1,1 @@
-This command will return the version of the projects.
+This command will return the version of the Orchestrator Controller and the Projects
