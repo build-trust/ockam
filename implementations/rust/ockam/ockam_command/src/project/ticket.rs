@@ -35,7 +35,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt"
 /// equal to the value of that attribute. If the value is `*` then any name is allowed
 pub const OCKAM_RELAY_ATTRIBUTE: &str = "ockam-relay";
 
-/// Add members to a project, as an authorized enroller, directly or via an enrollment ticket
+/// Add members to a Project, as an authorized enroller, directly, or via an enrollment ticket
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
@@ -49,11 +49,11 @@ pub struct TicketCommand {
     #[command(flatten)]
     trust_opts: TrustOpts,
 
-    /// Bypass ticket creation, add this member directly to the project's authority, with the given attributes
+    /// Bypass ticket creation, add this member directly to the Project's Membership Authority, with the given attributes
     #[arg(value_name = "IDENTIFIER", long, short, conflicts_with = "expires_in")]
     member: Option<Identifier>,
 
-    /// The project name from this option is used to create the enrollment ticket. This takes precedence over `--project`
+    /// The Project name from this option is used to create the enrollment ticket. This takes precedence over `--project`
     #[arg(
         long,
         short,
@@ -83,7 +83,7 @@ pub struct TicketCommand {
     #[arg(long = "relay", value_name = "ENROLLEE_ALLOWED_RELAY_NAME")]
     allowed_relay_name: Option<String>,
 
-    /// Add the enroller role to your ticket. If you specify it, this flag is transformed into the attributes `--attribute ockam-role=enroller`. This role allows the identity using the ticket to enroll other identities into the project, typically something that only admins can do
+    /// Add the enroller role to your ticket. If you specify it, this flag is transformed into the attributes `--attribute ockam-role=enroller`. This role allows the Identity using the ticket to enroll other Identities into the Project, typically something that only admins can do
     #[arg(long = "enroller")]
     enroller: bool,
 }

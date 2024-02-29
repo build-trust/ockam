@@ -5,14 +5,14 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::CloudOpts;
 use crate::util::async_cmd;
+use crate::{color_primary, util::api::CloudOpts};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/version/after_long_help.txt");
 
-/// Return the version of the Orchestrator Controller and the projects
+/// Return the version of the Orchestrator Controller and the Projects
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
@@ -44,7 +44,10 @@ impl VersionCommand {
         let project_version = project_version
             .project_version
             .unwrap_or("unknown".to_string());
-        let plain = fmt_ok!("The version of the Projects is '{project_version}'");
+        let plain = fmt_ok!(
+            "Version of Orchestrator Controller and Projects is {}",
+            color_primary(project_version.clone())
+        );
 
         opts.terminal
             .stdout()

@@ -10,7 +10,7 @@ use crate::{docs, fmt_err, fmt_ok, CommandGlobalOpts};
 const LONG_ABOUT: &str = include_str!("./static/import/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/import/after_long_help.txt");
 
-/// Import projects
+/// Import a Project
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
