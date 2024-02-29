@@ -16,7 +16,7 @@ const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
-/// List projects
+/// List available Projects
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),

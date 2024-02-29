@@ -1,3 +1,7 @@
-In Ockam, a project is a collection of nodes and services that work together to achieve a common goal. The project also includes an Elastic Relay Service that can be used to create end-to-end secure channels.
+The `project` command allows you to manage your Ockam Projects. You can create new Projects, list existing Projects, import existing Projects, and delete them.
 
-When you enroll in Ockam, a project is created for you and you can create nodes and services within that project using the Ockam CLI.
+As an administrator, you can also create tickets to allow other Ockam Nodes to become members of your Project (using `ockam project ticket`). You can provide these tickets to others, and they can redeem them to enroll their Ockam Nodes into your Project (using `ockam project enroll`).
+
+An Ockam Project is a collection of Nodes and Workers that work together to achieve a common goal. You can create Nodes and Workers within a Project using various commands, like `ockam node create`.
+
+Upon enrolling in Ockam, using `ockam enroll`, the Orchestrator creates a new dedicated Project for you. It offers two services: a Membership Authority and a Relay Service. You can use the Relay Service to create end-to-end secure channels. You can use the Membership Authority to manage which Identities are members of your Project.
