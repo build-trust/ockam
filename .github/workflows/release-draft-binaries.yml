@@ -373,7 +373,7 @@ jobs:
       - name: Install Nix
         uses: ./.github/actions/cache_nix
         with:
-          cache-unique-id: elixir
+          cache-unique-id: nif_elixir_${{matrix.build}}
 
       - name: Build NIFs
         run: |
@@ -381,11 +381,11 @@ jobs:
           ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
 
           OCKAM_BUILD_NIF="true" make nix_elixir_build_ockly
-
           # 2.15 indicates that we will be using OTP version 2.15 as it's the oldest version
-          mv implementations/elixir/ockam/ockly/priv/native/libockam_rust_elixir_nifs.so "libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so"
+          cp implementations/elixir/ockam/ockly/priv/native/libockam_rust_elixir_nifs.so libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so &&
+            tar -zcvf "libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so.tar.gz" libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so
 
-          echo "FILE_NAME=libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so" >> $GITHUB_ENV
+          echo "FILE_NAME=libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so.tar.gz" >> $GITHUB_ENV
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4
@@ -421,7 +421,7 @@ jobs:
 
   sign_release:
     name: Sign All Assets
-    needs: [build_release, create_release] #, build_elixir_nifs]
+    needs: [build_release, create_release, build_elixir_nifs]
     runs-on: ubuntu-20.04
     environment: release
     permissions:

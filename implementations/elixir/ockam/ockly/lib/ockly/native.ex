@@ -11,7 +11,7 @@ defmodule Ockly.Native do
     version: version,
     load_from: {:ockly, "priv/native/libockam_rust_elixir_nifs"},
     # This is a fake link, I'll update after deploying a released nif
-    base_url: "https://github.com/build-trust/ockam/releases/download/ockam_v#{version}"
+    base_url: "https://github.com/metaclips/ockam/releases/download/ockam_v#{version}"
 
   def create_identity, do: create_identity(nil)
   def create_identity(_), do: error()
