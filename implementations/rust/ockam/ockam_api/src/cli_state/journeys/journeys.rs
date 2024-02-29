@@ -382,9 +382,7 @@ impl CliState {
             )])
         };
         let span = tracer.build_with_context(span_builder, &Context::default());
-
         let cx = Context::current_with_span(span);
-        let _guard = cx.clone().attach();
-        OpenTelemetryContext::current()
+        OpenTelemetryContext::inject(&cx)
     }
 }

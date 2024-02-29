@@ -45,7 +45,7 @@ impl OpenTelemetryContext {
     }
 
     /// Serialize the current OpenTelemetry context as OpenTelemetryContext
-    fn inject(context: &Context) -> Self {
+    pub fn inject(context: &Context) -> Self {
         global::get_text_map_propagator(|propagator| {
             let mut propagation_context = OpenTelemetryContext::empty();
             propagator.inject_context(context, &mut propagation_context);
