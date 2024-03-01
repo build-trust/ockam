@@ -7,7 +7,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Decodable, Error, Route};
+use ockam_core::{async_trait, Decodable, Encodable, Error, LocalMessage, Route};
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
 
@@ -150,13 +150,15 @@ impl EncryptorWorker {
 
         let msg = self.encrypt(ctx, msg).await?;
 
+        let payload = msg.encode()?;
+        // Decryptor doesn't need the return_route since it has `self.remote_route` as well
+        let msg = LocalMessage::new()
+            .with_payload(payload)
+            .with_onward_route(self.remote_route.clone());
+
         // Send the message to the decryptor on the other side
-        ctx.send_from_address(
-            self.remote_route.clone(),
-            msg,
-            self.addresses.encryptor.clone(),
-        )
-        .await?;
+        ctx.forward_from_address(msg, self.addresses.encryptor.clone())
+            .await?;
 
         Ok(())
     }
