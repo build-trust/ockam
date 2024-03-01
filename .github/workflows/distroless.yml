@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-20.04
     permissions:
       packages: write
-    environment: release
+    # environment: release
 
     steps:
       - name: Checkout

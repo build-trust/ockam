@@ -27,6 +27,7 @@ contents:
     - erlang-24
     - erlang-24-dev
     - openssl
+    - make
 
 archs:
   - x86_64
