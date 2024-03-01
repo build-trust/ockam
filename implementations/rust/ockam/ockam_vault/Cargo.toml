@@ -77,7 +77,7 @@ cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
-minicbor = { version = "0.20.0", features = ["derive"] }
+minicbor = { version = "0.21.0", features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.102.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.109.0", default_features = false, optional = true }
