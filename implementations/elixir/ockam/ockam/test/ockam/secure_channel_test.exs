@@ -33,9 +33,16 @@ defmodule Ockam.SecureChannel.Tests do
 
   defp man_in_the_middle(callback, initiator, n) do
     receive do
-      %Message{return_route: ^initiator} = message when n > 2 ->
-        callback.(message, n - 3) |> Enum.each(&Router.route/1)
+      # Message without return route means secure channel message _after_ handshake done
+      # = message when n > 2 ->
+      %Message{onward_route: [^initiator], return_route: []} = message ->
+        message |> Message.forward_trace() |> Router.route()
 
+      # = message when n > 2 ->
+      %Message{return_route: []} = message ->
+        callback.(message, n) |> Enum.each(&Router.route/1)
+
+      # This is a handshake message, let it pass
       %Message{} = message ->
         message |> Message.forward_trace() |> Router.route()
     end
@@ -76,7 +83,7 @@ defmodule Ockam.SecureChannel.Tests do
 
       Router.route(message)
 
-      if rem(i, 2) == 1 do
+      if rem(i, 2) == 0 do
         receive do
           %Message{payload: payload} ->
             assert i == :erlang.binary_to_term(payload)
@@ -169,7 +176,7 @@ defmodule Ockam.SecureChannel.Tests do
 
       Router.route(message)
 
-      if rem(i, 2) == 1 do
+      if rem(i, 2) == 0 do
         receive do
           %Message{payload: payload} ->
             assert i == :erlang.binary_to_term(payload)
