@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 [dependencies]
 hex = { version = "0.4", default-features = false }
 lazy_static = "1.4.0"
-minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.21.0", features = ["alloc", "derive"] }
 ockam_identity = { path = "../../../../../rust/ockam/ockam_identity" }
 ockam_vault = { path = "../../../../../rust/ockam/ockam_vault" }
 ockam_vault_aws = { path = "../../../../../rust/ockam/ockam_vault_aws" }
