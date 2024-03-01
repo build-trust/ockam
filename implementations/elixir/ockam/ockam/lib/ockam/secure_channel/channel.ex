@@ -253,8 +253,7 @@ defmodule Ockam.SecureChannel.Channel do
            send_payload_over_encrypted_channel(
              payload,
              e.encrypt_st,
-             c.peer_route,
-             c.inner_address
+             c.peer_route
            ) do
       {:reply, :ok,
        %{state | state: %Channel{c | channel_state: %Established{e | encrypt_st: encrypt_st}}}}
@@ -316,7 +315,7 @@ defmodule Ockam.SecureChannel.Channel do
         _from,
         %{state: %Channel{channel_state: %Established{} = e} = s} = ws
       ) do
-    send_payload_over_encrypted_channel(:close, e.encrypt_st, s.peer_route, s.inner_address)
+    send_payload_over_encrypted_channel(:close, e.encrypt_st, s.peer_route)
     {:stop, :normal, :ok, ws}
   end
 
@@ -609,8 +608,7 @@ defmodule Ockam.SecureChannel.Channel do
            send_over_encrypted_channel(
              message,
              e.encrypt_st,
-             state.peer_route,
-             state.inner_address
+             state.peer_route
            ) do
       {:ok, %Channel{state | channel_state: %Established{e | encrypt_st: encrypt_st}}}
     end
@@ -621,16 +619,16 @@ defmodule Ockam.SecureChannel.Channel do
     {:ok, state}
   end
 
-  defp send_over_encrypted_channel(message, encrypt_st, peer_route, inner_address) do
+  defp send_over_encrypted_channel(message, encrypt_st, peer_route) do
     payload = struct(Messages.Payload, Map.from_struct(message))
-    send_payload_over_encrypted_channel(payload, encrypt_st, peer_route, inner_address)
+    send_payload_over_encrypted_channel(payload, encrypt_st, peer_route)
   end
 
-  defp send_payload_over_encrypted_channel(payload, encrypt_st, peer_route, inner_address) do
+  defp send_payload_over_encrypted_channel(payload, encrypt_st, peer_route) do
     with {:ok, encoded} <- Messages.encode(payload),
          {:ok, ciphertext, encrypt_st} <- Encryptor.encrypt("", encoded, encrypt_st) do
       ciphertext = :bare.encode(ciphertext, :data)
-      envelope = %{onward_route: peer_route, return_route: [inner_address], payload: ciphertext}
+      envelope = %{onward_route: peer_route, return_route: [], payload: ciphertext}
       Router.route(envelope)
       {:ok, encrypt_st}
     end
