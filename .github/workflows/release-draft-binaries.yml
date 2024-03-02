@@ -352,17 +352,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [macos_m1, macos_intel, linux_x86_64]
+        build: [arm64, amd64]
         include:
-        - build: macos_m1
-          os: macos-14
-          target: aarch64-apple-darwin
-        - build: macos_intel
-          os: macos-latest
-          target: x86_64-apple-darwin
-        - build: linux_x86_64
-          os: ubuntu-20.04
-          target: x86_64-unknown-linux-musl
+        - build: arm64
+          os: ubuntu-22.04
+          target: aarch64-unknown-linux-gnu
+        - build: amd64
+          os: ubuntu-22.04
+          target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -370,19 +367,29 @@ jobs:
         with:
           ref: ${{ github.event.inputs.release_branch }}
 
-      - name: Install Nix
-        uses: ./.github/actions/cache_nix
-        with:
-          cache-unique-id: nif_elixir_${{matrix.build}}
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1      # https://github.com/docker/setup-qemu-action
 
-      - name: Build NIFs
+      - name: Build NIF For Linux
+        shell: bash
+        run: |
+          set -ex
+
+          docker build --platform linux/${{ matrix.build }}  --tag ghcr.io/build-trust/nif:latest --file tools/docker/nifs/Dockerfile .
+          id=$(docker create ghcr.io/build-trust/nif:latest)
+          docker cp "${id}:/work/implementations/elixir/ockam/ockly/priv/native/libockam_rust_elixir_nifs.so"  .
+
+      - name: Rename NIF
         run: |
           cargo install tomlq
           ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
 
-          OCKAM_BUILD_NIF="true" make nix_elixir_build_ockly
           # 2.15 indicates that we will be using OTP version 2.15 as it's the oldest version
-          cp implementations/elixir/ockam/ockly/priv/native/libockam_rust_elixir_nifs.so libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so &&
+          cp libockam_rust_elixir_nifs.so libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so &&
             tar -zcvf "libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so.tar.gz" libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so
 
           echo "FILE_NAME=libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so.tar.gz" >> $GITHUB_ENV

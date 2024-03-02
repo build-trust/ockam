@@ -1,6 +1,6 @@
 [package]
 name = "ockam_rust_elixir_nifs"
-version = "0.1.0"
+version = "0.117.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_rust_elixir_nifs"
@@ -17,7 +17,7 @@ path = "src/lib.rs"
 [dependencies]
 hex = { version = "0.4", default-features = false }
 lazy_static = "1.4.0"
-minicbor = { version = "0.20.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.21.0", features = ["alloc", "derive"] }
 ockam_identity = { path = "../ockam_identity" }
 ockam_vault = { path = "../ockam_vault" }
 ockam_vault_aws = { path = "../ockam_vault_aws" }

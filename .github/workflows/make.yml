@@ -36,10 +36,10 @@ concurrency:
 
 defaults:
   run:
-    shell: nix develop ./tools/nix --ignore-environment --keep CI --command bash {0}
+    shell: nix develop ./tools/nix --command bash {0}
 
 env:
-  CI: true
+  OCKAM_BUILD_NIF: true
 
 jobs:
   full_build_in_release_mode:
