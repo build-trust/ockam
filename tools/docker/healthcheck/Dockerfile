@@ -12,10 +12,10 @@ RUN set -ex; \
     rustup show; \
     cargo --version; \
     cd implementations/elixir/ockam/ockam_healthcheck; \
-    MIX_ENV=prod OCKAM_BUILD_NIF=true mix local.hex --force; \
-    MIX_ENV=prod OCKAM_BUILD_NIF=true mix local.rebar --force; \
-    MIX_ENV=prod OCKAM_BUILD_NIF=true mix deps.get; \
-    MIX_ENV=prod OCKAM_BUILD_NIF=true mix release;
+    MIX_ENV=prod mix local.hex --force; \
+    MIX_ENV=prod mix local.rebar --force; \
+    MIX_ENV=prod mix deps.get; \
+    MIX_ENV=prod mix release;
 
 
 # Stage 2 - Create container and copy executables in above step
