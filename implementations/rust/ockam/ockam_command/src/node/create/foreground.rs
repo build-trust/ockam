@@ -119,8 +119,6 @@ impl CreateCommand {
                 return Err(miette!("Failed to start services"));
             }
         }
-        // flush the current trace
-        opts.force_flush();
 
         // Create a channel for communicating back to the main thread
         let (tx, mut rx) = tokio::sync::mpsc::channel(2);

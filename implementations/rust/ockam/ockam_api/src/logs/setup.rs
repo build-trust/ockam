@@ -27,10 +27,8 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, registry};
 use ockam_node::Executor;
 
 use crate::journeys::APP_NAME;
-use crate::logs::log_processors::NonBlockingLogProcessor;
-use crate::logs::span_processors::NonBlockingSpanProcessor;
 use crate::logs::tracing_guard::TracingGuard;
-use crate::logs::{DecoratedSpanExporter, LogFormat};
+use crate::logs::LogFormat;
 use crate::logs::{GlobalErrorHandler, LoggingConfiguration, TracingConfiguration};
 
 pub struct LoggingTracing;
@@ -55,9 +53,7 @@ impl LoggingTracing {
         if tracing_configuration.is_enabled() && logging_configuration.is_enabled() {
             // set-up logging and tracing
             Self::setup_with_exporters(
-                DecoratedSpanExporter {
-                    exporter: create_span_exporter(tracing_configuration),
-                },
+                create_span_exporter(tracing_configuration),
                 create_log_exporter(tracing_configuration),
                 logging_configuration,
                 tracing_configuration,
@@ -186,8 +182,8 @@ fn create_log_exporter(
         opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(tracing_endpoint)
-            .with_metadata(get_otlp_headers())
             .with_timeout(log_export_timeout)
+            .with_metadata(get_otlp_headers())
             .build_log_exporter()
             .expect("failed to create the log exporter")
     })
@@ -207,8 +203,8 @@ fn create_span_exporter(
         opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(tracing_endpoint.clone())
-            .with_metadata(get_otlp_headers())
             .with_timeout(trace_export_timeout)
+            .with_metadata(get_otlp_headers())
             .build_span_exporter()
             .expect("failed to create the span exporter")
     })
@@ -232,7 +228,7 @@ fn create_opentelemetry_tracing_layer<
     let batch_config = BatchConfig::default()
         .with_max_export_timeout(tracing_configuration.trace_export_timeout())
         .with_scheduled_delay(tracing_configuration.trace_export_scheduled_delay())
-        .with_max_concurrent_exports(4);
+        .with_max_concurrent_exports(8);
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
         let (tracer, tracer_provider) = create_tracer(trace_config, batch_config, span_exporter);
@@ -266,7 +262,7 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
                 .build();
         let provider = LoggerProvider::builder()
             .with_config(config)
-            .with_log_processor(NonBlockingLogProcessor::new(log_processor))
+            .with_log_processor(log_processor)
             .build();
         let layer = OpenTelemetryTracingBridge::new(&provider);
         (layer, provider)
@@ -351,7 +347,7 @@ fn create_tracer<S: SpanExporter + 'static>(
         .with_batch_config(batch_config)
         .build();
     let provider = opentelemetry_sdk::trace::TracerProvider::builder()
-        .with_span_processor(NonBlockingSpanProcessor::new(span_processor))
+        .with_span_processor(span_processor)
         .with_config(trace_config)
         .build();
     let tracer = provider.versioned_tracer(
