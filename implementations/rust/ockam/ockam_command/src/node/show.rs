@@ -2,7 +2,9 @@ use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
 use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
-use tokio_retry::strategy::FixedInterval;
+use std::ops::Add;
+use std::time::Duration;
+use tokio_retry::strategy::FibonacciBackoff;
 use tracing::{info, trace, warn};
 
 use ockam_api::nodes::models::base::NodeStatus;
@@ -28,8 +30,11 @@ const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
-const IS_NODE_UP_TIME_BETWEEN_CHECKS_MS: usize = 50;
-const IS_NODE_UP_MAX_ATTEMPTS: usize = 60; // 3 seconds
+const IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS: u64 = 100;
+const IS_NODE_ACCESSIBLE_TIMEOUT: Duration = Duration::from_secs(180);
+
+const IS_NODE_READY_TIME_BETWEEN_CHECKS_MS: u64 = 100;
+const IS_NODE_READY_TIMEOUT: Duration = Duration::from_secs(180);
 
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
@@ -218,44 +223,72 @@ pub async fn is_node_up(
     node_client: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
-    let attempts = match wait_until_ready {
-        true => IS_NODE_UP_MAX_ATTEMPTS,
-        false => 1,
-    };
+    let node_name = node_client.node_name();
+    if !is_node_accessible(ctx, node_client, wait_until_ready).await? {
+        warn!(%node_name, "the node is not accessible in time");
+        return Ok(false);
+    }
+    if !is_node_ready(ctx, node_client, wait_until_ready).await? {
+        warn!(%node_name, "the node is not ready in time");
+        return Ok(false);
+    }
+    Ok(true)
+}
 
-    let retries =
-        FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
+/// Return true if the node is accessible via TCP
+async fn is_node_accessible(
+    ctx: &Context,
+    node_client: &mut BackgroundNodeClient,
+    wait_until_ready: bool,
+) -> Result<bool> {
+    let retries = FibonacciBackoff::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
 
-    let now = std::time::Instant::now();
     let node_name = node_client.node_name();
 
+    let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
-        // The node is down if its default tcp listener has not been started yet
-        let node = node_client.cli_state().get_node(&node_name).await.ok();
-        let node_tcp_listener_address = node.as_ref().and_then(|n| n.tcp_listener_address());
-
-        if node.is_none() || node_tcp_listener_address.is_none() {
-            trace!(%node_name, "node has not been initialized");
-            tokio::time::sleep(timeout_duration).await;
-            continue;
+        if total_time >= IS_NODE_ACCESSIBLE_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
+            return Ok(false);
+        };
+        if node_client.is_accessible(ctx).await.is_ok() {
+            trace!(%node_name, "node is accessible");
+            return Ok(true);
         }
+        trace!(%node_name, "node is not accessible");
+        tokio::time::sleep(timeout_duration).await;
+        total_time = total_time.add(timeout_duration)
+    }
+    Ok(false)
+}
 
-        // Test if node is up
-        // If node is down, we expect it won't reply and the timeout
-        // will trigger the next loop (i.e. no need to sleep here).
+/// Return true if the node has been initialized and is ready to accept requests
+async fn is_node_ready(
+    ctx: &Context,
+    node_client: &mut BackgroundNodeClient,
+    wait_until_ready: bool,
+) -> Result<bool> {
+    let retries = FibonacciBackoff::from_millis(IS_NODE_READY_TIME_BETWEEN_CHECKS_MS);
+
+    let node_name = node_client.node_name();
+    let now = std::time::Instant::now();
+    let mut total_time = Duration::from_secs(0);
+    for timeout_duration in retries {
+        if total_time >= IS_NODE_READY_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
+            return Ok(false);
+        };
+        // Test if node is ready
+        // If the node is down, we expect it won't reply and the timeout will trigger the next loop
         let result = node_client
-            .set_timeout_mut(timeout_duration)
-            .ask::<(), NodeStatus>(ctx, api::query_status())
+            .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), timeout_duration)
             .await;
         if let Ok(node_status) = result {
             let elapsed = now.elapsed();
-            info!(%node_name, ?elapsed, "node is up {:?}", node_status);
+            info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
             return Ok(true);
         } else {
             trace!(%node_name, "node is initializing");
-            tokio::time::sleep(timeout_duration).await;
         }
+        total_time = total_time.add(timeout_duration)
     }
-    warn!(%node_name, "node didn't respond in time");
     Ok(false)
 }

@@ -194,25 +194,38 @@ impl BackgroundNodeClient {
         res
     }
 
+    /// This method succeeds if a TCP connection can be established with the node
+    pub async fn is_accessible(&self, ctx: &Context) -> miette::Result<()> {
+        self.create_tcp_connection()
+            .await?
+            .stop(ctx)
+            .await
+            .into_diagnostic()
+    }
+
     /// Make a route to the node and connect using TCP
     async fn create_route(&self) -> miette::Result<(TcpConnection, Route)> {
+        let tcp_connection = self.create_tcp_connection().await?;
         let mut route = self.to.clone();
+        route
+            .modify()
+            .prepend(tcp_connection.sender_address().clone());
+        debug!("Sending requests to {route}");
+        Ok((tcp_connection, route))
+    }
+
+    /// Create a TCP connection to the node
+    async fn create_tcp_connection(&self) -> miette::Result<TcpConnection> {
         let node_info = self.cli_state.get_node(&self.node_name).await?;
-        if !node_info.is_running() {
-            return Err(miette!("Node {} is not running", &self.node_name));
-        }
         let tcp_listener_address = node_info
             .tcp_listener_address()
-            .unwrap_or_else(|| {
-                panic!(
-                    "an api transport should have been started for node {:?}",
-                    &node_info
-                )
-            })
+            .ok_or(miette!(
+                "an api transport should have been started for node {:?}",
+                &node_info
+            ))?
             .to_string();
 
-        let tcp_connection = self
-            .tcp_transport
+        self.tcp_transport
             .connect(&tcp_listener_address, TcpConnectionOptions::new())
             .await
             .map_err(|_| {
@@ -221,12 +234,7 @@ impl BackgroundNodeClient {
                     &self.node_name,
                     &tcp_listener_address
                 )
-            })?;
-        route
-            .modify()
-            .prepend(tcp_connection.sender_address().clone());
-        debug!("Sending requests to {route}");
-        Ok((tcp_connection, route))
+            })
     }
 
     /// Make a response / request client connected to the node
