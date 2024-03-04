@@ -1,5 +1,6 @@
 use core::time::Duration;
 
+use crate::authenticator::direct::AccountAuthorityInfo;
 use crate::authenticator::AuthorityMembersRepository;
 use ockam::identity::models::{CredentialAndPurposeKey, CredentialSchemaIdentifier};
 use ockam::identity::utils::AttributesBuilder;
@@ -23,6 +24,8 @@ pub struct CredentialIssuer {
     issuer: Identifier,
     subject_attributes: Attributes,
     credential_ttl: Duration,
+
+    account_authority: Option<AccountAuthorityInfo>,
 }
 
 impl CredentialIssuer {
@@ -34,6 +37,7 @@ impl CredentialIssuer {
         issuer: &Identifier,
         project_identifier: Option<String>, // Legacy value, should be removed when all clients are updated to the latest version
         credential_ttl: Option<Duration>,
+        account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA);
         let subject_attributes = if let Some(project_identifier) = project_identifier {
@@ -53,6 +57,7 @@ impl CredentialIssuer {
             issuer: issuer.clone(),
             subject_attributes,
             credential_ttl: credential_ttl.unwrap_or(DEFAULT_CREDENTIAL_VALIDITY),
+            account_authority,
         }
     }
 
@@ -61,6 +66,40 @@ impl CredentialIssuer {
         &self,
         subject: &Identifier,
     ) -> Result<Option<CredentialAndPurposeKey>> {
+        // Check if it has a valid project admin credential
+        if let Some(info) = self.account_authority.as_ref() {
+            if let Some(attrs) = info
+                .identities_attributes()
+                .get_attributes(subject, info.account_authority())
+                .await?
+            {
+                if attrs.attrs().get("project".as_bytes())
+                    == Some(&info.project_identifier().as_bytes().to_vec())
+                {
+                    let mut subject_attributes = self.subject_attributes.clone();
+                    subject_attributes.map.insert(
+                        "ockam-relay".as_bytes().to_vec().into(),
+                        "*".as_bytes().to_vec().into(),
+                    );
+                    let credential = self
+                        .credentials
+                        .credentials_creation()
+                        .issue_credential(
+                            &self.issuer,
+                            subject,
+                            subject_attributes,
+                            self.credential_ttl,
+                        )
+                        .await?;
+                    info!("Successfully issued a credential for admin {}", subject);
+
+                    return Ok(Some(credential));
+                }
+            }
+        }
+
+        // Otherwise, check if it's a member managed by this authority
+
         let member = match self.members.get_member(subject).await? {
             Some(member) => member,
             None => return Ok(None),

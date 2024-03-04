@@ -81,6 +81,7 @@ teardown() {
   # Make the admin present its project admin credential to the authority
   run_success "$OCKAM" secure-channel create --from admin --to "/node/authority/service/api" --identity admin
 
+
   cat <<EOF >>"$OCKAM_HOME/project.json"
 {
   "id": "1",
@@ -99,7 +100,12 @@ teardown() {
 }
 EOF
 
+
   run_success $OCKAM project import --project-file $OCKAM_HOME/project.json
+
+  run_success "$OCKAM" project enroll --identity admin
+  assert_output --partial '"ockam-relay": "*"'
+  assert_output --partial "$admin_identifier"
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
   run_success "$OCKAM" project enroll --identity m1
@@ -126,8 +132,8 @@ EOF
   # New enroller can enroll members
   run_success "$OCKAM" project ticket --identity m7
 
-  # But it can't enroll enrollers
-  run_failure "$OCKAM" project ticket --enroller --identity m7
+  # For now, it can enroll new enrollers as well.
+  run_success "$OCKAM" project ticket --enroller --identity m7
 
   run "$OCKAM" project enroll $token2 --identity m5
   assert_failure

@@ -50,7 +50,7 @@ impl EnrollerAccessControlChecks {
                 EnrollerCheckResult {
                     is_member: true,
                     is_enroller,
-                    is_admin: false,
+                    is_admin: is_enroller, // To be removed
                     is_pre_trusted: member.is_pre_trusted(),
                 }
             }
@@ -72,7 +72,7 @@ impl EnrollerAccessControlChecks {
                 {
                     r.is_admin = true;
                     r.is_enroller = true;
-                    //TODO: review if an admin should be member
+                    r.is_member = true;
                 }
             }
         }

@@ -386,6 +386,7 @@ async fn enroller_can_delete_member(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
+#[ignore] // TODO: for now as a stopgap, enrollers are considered as admins, so this tests is to be skipped
 async fn enroller_cant_delete_admin(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 
