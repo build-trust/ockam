@@ -4,8 +4,8 @@ use opentelemetry_sdk::export::logs::{LogData, LogExporter};
 
 /// This exporter can be used to intercept the log records sent to an OpenTelemetry collector
 #[derive(Debug)]
-struct DecoratedLogExporter<L: LogExporter> {
-    exporter: L,
+pub struct DecoratedLogExporter<L: LogExporter> {
+    pub exporter: L,
 }
 
 #[async_trait]

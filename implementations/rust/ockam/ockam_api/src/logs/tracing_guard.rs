@@ -8,7 +8,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 /// of spans and log records
 #[derive(Debug)]
 pub struct TracingGuard {
-    _worker_guard: WorkerGuard,
+    _worker_guard: Option<WorkerGuard>,
     logger_provider: Option<LoggerProvider>,
     tracer_provider: Option<TracerProvider>,
 }
@@ -21,7 +21,7 @@ impl TracingGuard {
         tracer_provider: TracerProvider,
     ) -> TracingGuard {
         TracingGuard {
-            _worker_guard: worker_guard,
+            _worker_guard: Some(worker_guard),
             logger_provider: Some(logger_provider),
             tracer_provider: Some(tracer_provider),
         }
@@ -30,9 +30,18 @@ impl TracingGuard {
     /// Create a Tracing guard when distributed tracing is deactivated
     pub fn guard_only(worker_guard: WorkerGuard) -> TracingGuard {
         TracingGuard {
-            _worker_guard: worker_guard,
+            _worker_guard: Some(worker_guard),
             logger_provider: None,
             tracer_provider: None,
+        }
+    }
+
+    /// Create a Tracing guard when only distributed tracing is activated
+    pub fn tracing_only(tracer_provider: TracerProvider) -> TracingGuard {
+        TracingGuard {
+            _worker_guard: None,
+            logger_provider: None,
+            tracer_provider: Some(tracer_provider),
         }
     }
 
