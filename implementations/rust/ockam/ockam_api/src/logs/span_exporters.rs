@@ -4,8 +4,8 @@ use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 
 /// This exporter can be used to intercept the spans sent to an OpenTelemetry collector
 #[derive(Debug)]
-struct DecoratedSpanExporter<S: SpanExporter> {
-    exporter: S,
+pub struct DecoratedSpanExporter<S: SpanExporter> {
+    pub exporter: S,
 }
 
 #[async_trait]

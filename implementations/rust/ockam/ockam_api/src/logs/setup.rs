@@ -30,7 +30,7 @@ use crate::journeys::APP_NAME;
 use crate::logs::log_processors::NonBlockingLogProcessor;
 use crate::logs::span_processors::NonBlockingSpanProcessor;
 use crate::logs::tracing_guard::TracingGuard;
-use crate::logs::LogFormat;
+use crate::logs::{DecoratedSpanExporter, LogFormat};
 use crate::logs::{GlobalErrorHandler, LoggingConfiguration, TracingConfiguration};
 
 pub struct LoggingTracing;
@@ -52,54 +52,31 @@ impl LoggingTracing {
         // For debugging those exporters can be decorated if we want to
         // intercept and print some of the data they send, e.g.:
         // let decorated = DecoratedSpanExporter { exporter: span_exporter }
-        if tracing_configuration.is_enabled() {
-            // create an exporter for spans
-            // sending them to an OpenTelemetry collector using gRPC
-            let trace_export_timeout = tracing_configuration.trace_export_timeout();
-            let tracing_endpoint = tracing_configuration.tracing_endpoint().to_string();
-
-            let span_exporter = Executor::execute_future(async move {
-                opentelemetry_otlp::new_exporter()
-                    .tonic()
-                    .with_endpoint(tracing_endpoint.clone())
-                    .with_metadata(get_otlp_headers())
-                    .with_timeout(trace_export_timeout)
-                    .build_span_exporter()
-                    .expect("failed to create the span exporter")
-            })
-            .expect("can't create a span exporter");
-
-            // create an exporter for log records
-            // sending them to an OpenTelemetry collector using gRPC
-            let log_export_timeout = tracing_configuration.log_export_timeout();
-            let tracing_endpoint = tracing_configuration.tracing_endpoint().to_string();
-
-            let log_exporter = Executor::execute_future(async move {
-                opentelemetry_otlp::new_exporter()
-                    .tonic()
-                    .with_endpoint(tracing_endpoint)
-                    .with_metadata(get_otlp_headers())
-                    .with_timeout(log_export_timeout)
-                    .build_log_exporter()
-                    .expect("failed to create the log exporter")
-            })
-            .expect("can't create a log exporter");
-
+        if tracing_configuration.is_enabled() && logging_configuration.is_enabled() {
             // set-up logging and tracing
             Self::setup_with_exporters(
-                span_exporter,
-                log_exporter,
+                DecoratedSpanExporter {
+                    exporter: create_span_exporter(tracing_configuration),
+                },
+                create_log_exporter(tracing_configuration),
+                logging_configuration,
+                tracing_configuration,
+                app_name,
+            )
+        } else if tracing_configuration.is_enabled() {
+            Self::setup_tracing_only(
+                create_span_exporter(tracing_configuration),
                 logging_configuration,
                 tracing_configuration,
                 app_name,
             )
         } else {
-            Self::set_up_local_logging_only(logging_configuration)
+            Self::setup_local_logging_only(logging_configuration)
         }
     }
 
     /// Setup the tracing and logging with some specific exporters
-    ///  - the BatchConfig is used to possible send spans in batches
+    ///  - the BatchConfig is used to send spans in batches
     ///  - the LoggingConfiguration is used to configure the logging layer
     ///    and the log files in particular
     pub fn setup_with_exporters<
@@ -147,7 +124,7 @@ impl LoggingTracing {
     }
 
     /// Setup logging to the console or to a file
-    pub fn set_up_local_logging_only(logging_configuration: &LoggingConfiguration) -> TracingGuard {
+    pub fn setup_local_logging_only(logging_configuration: &LoggingConfiguration) -> TracingGuard {
         let (appender, worker_guard) = make_logging_appender(logging_configuration);
         if logging_configuration.is_enabled() {
             let layers = registry().with(logging_configuration.env_filter());
@@ -164,6 +141,78 @@ impl LoggingTracing {
 
         TracingGuard::guard_only(worker_guard)
     }
+
+    /// Setup the tracing a specific span exporter
+    ///  - the BatchConfig is used to send spans in batches
+    ///  - the LoggingConfiguration contains a filter that is common to spans and logs
+    pub fn setup_tracing_only<T: SpanExporter + Send + 'static>(
+        span_exporter: T,
+        logging_configuration: &LoggingConfiguration,
+        tracing_configuration: &TracingConfiguration,
+        app_name: &str,
+    ) -> TracingGuard {
+        // configure the tracing layer exporting OpenTelemetry spans
+        let (tracing_layer, tracer_provider) =
+            create_opentelemetry_tracing_layer(app_name, tracing_configuration, span_exporter);
+
+        // initialize the tracing subscriber with all the layers
+        let result = registry()
+            .with(logging_configuration.env_filter())
+            .with(tracing_error::ErrorLayer::default())
+            .with(tracing_layer)
+            .try_init();
+
+        result.expect("Failed to initialize tracing subscriber");
+
+        // set the global settings:
+        //   - the propagator is used to encode the trace context data to strings (see OpenTelemetryContext for more details)
+        //   - the global error handler prints errors when exporting spans or log records fails
+        global::set_text_map_propagator(TraceContextPropagator::default());
+        set_global_error_handler(logging_configuration);
+
+        TracingGuard::tracing_only(tracer_provider)
+    }
+}
+
+fn create_log_exporter(
+    tracing_configuration: &TracingConfiguration,
+) -> opentelemetry_otlp::LogExporter {
+    // create an exporter for log records
+    // sending them to an OpenTelemetry collector using gRPC
+    let log_export_timeout = tracing_configuration.log_export_timeout();
+    let tracing_endpoint = tracing_configuration.tracing_endpoint().to_string();
+
+    Executor::execute_future(async move {
+        opentelemetry_otlp::new_exporter()
+            .tonic()
+            .with_endpoint(tracing_endpoint)
+            .with_metadata(get_otlp_headers())
+            .with_timeout(log_export_timeout)
+            .build_log_exporter()
+            .expect("failed to create the log exporter")
+    })
+    .expect("can't create a log exporter")
+}
+
+/// Create a span exporter
+fn create_span_exporter(
+    tracing_configuration: &TracingConfiguration,
+) -> opentelemetry_otlp::SpanExporter {
+    // create an exporter for spans
+    // sending them to an OpenTelemetry collector using gRPC
+    let trace_export_timeout = tracing_configuration.trace_export_timeout();
+    let tracing_endpoint = tracing_configuration.tracing_endpoint().to_string();
+
+    Executor::execute_future(async move {
+        opentelemetry_otlp::new_exporter()
+            .tonic()
+            .with_endpoint(tracing_endpoint.clone())
+            .with_metadata(get_otlp_headers())
+            .with_timeout(trace_export_timeout)
+            .build_span_exporter()
+            .expect("failed to create the span exporter")
+    })
+    .expect("can't create a span exporter")
 }
 
 /// Create the tracing layer for OpenTelemetry
@@ -182,7 +231,8 @@ fn create_opentelemetry_tracing_layer<
     let app = app_name.to_string();
     let batch_config = BatchConfig::default()
         .with_max_export_timeout(tracing_configuration.trace_export_timeout())
-        .with_scheduled_delay(tracing_configuration.trace_export_scheduled_delay());
+        .with_scheduled_delay(tracing_configuration.trace_export_scheduled_delay())
+        .with_max_concurrent_exports(4);
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
         let (tracer, tracer_provider) = create_tracer(trace_config, batch_config, span_exporter);
