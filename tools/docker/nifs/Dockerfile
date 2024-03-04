@@ -12,6 +12,6 @@ RUN set -ex; \
     rustup-init --no-update-default-toolchain -y; \
     rustup show; \
     cargo --version; \
-    OCKAM_BUILD_NIF=true make elixir_build_ockly;
+    make elixir_build_ockly;
 
 CMD ["sh"]

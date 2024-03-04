@@ -34,7 +34,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_rust_elixir_nifs = "0.1.0"
+ockam_rust_elixir_nifs = "0.117.0"
 ```
 
 ## License

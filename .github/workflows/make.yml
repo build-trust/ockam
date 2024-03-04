@@ -38,9 +38,6 @@ defaults:
   run:
     shell: nix develop ./tools/nix --command bash {0}
 
-env:
-  OCKAM_BUILD_NIF: true
-
 jobs:
   full_build_in_release_mode:
     name: Make - full_build_in_release_mode

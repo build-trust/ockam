@@ -5,6 +5,7 @@ COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
 COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
 
 ENV PATH=/root/.cargo/bin:$PATH
+ENV OCKAM_DOWNLOAD_NIF="1"
 COPY . /work
 RUN set -ex; \
     cd work; \

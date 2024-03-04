@@ -7,7 +7,7 @@ defmodule Ockly.Native do
     otp_app: :ockly,
     crate: "ockam_rust_elixir_nifs",
     path: "../../../rust/ockam/ockam_rust_elixir_nifs",
-    force_build: System.get_env("OCKAM_BUILD_NIF") in ["1", "true"],
+    force_build: System.get_env("OCKAM_DOWNLOAD_NIF") == nil,
     version: version,
     load_from: {:ockly, "priv/native/libockam_rust_elixir_nifs"},
     # This is a fake link, I'll update after deploying a released nif
