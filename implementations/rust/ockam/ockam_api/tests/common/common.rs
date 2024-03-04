@@ -71,8 +71,6 @@ pub async fn start_authority(
     secure_channels: Arc<SecureChannels>,
     number_of_admins: usize,
 ) -> Result<AuthorityInfo> {
-    println!("common.rs start_authority 1");
-
     let mut configuration = default_configuration().await?;
 
     let account_authority = secure_channels
@@ -109,12 +107,6 @@ pub async fn start_authority(
             )
             .await?;
 
-        println!(
-            "Admin credential for {:?}: {:?} : {:?}",
-            admin,
-            cred,
-            cred.credential.get_credential_data().unwrap().subject
-        );
         let authority_node_client = NodeManager::authority_node_client(
             &TcpTransport::create(ctx).await?,
             secure_channels.clone(),

@@ -3,6 +3,7 @@ use minicbor::Decoder;
 use tracing::trace;
 
 use crate::authenticator::credential_issuer::CredentialIssuer;
+use crate::authenticator::direct::AccountAuthorityInfo;
 use crate::authenticator::AuthorityMembersRepository;
 use ockam::identity::{Credentials, Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
@@ -25,6 +26,7 @@ impl CredentialIssuerWorker {
         issuer: &Identifier,
         project_identifier: Option<String>, // Legacy value, should be removed when all clients are updated to the latest version
         credential_ttl: Option<Duration>,
+        account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
             credential_issuer: CredentialIssuer::new(
@@ -33,6 +35,7 @@ impl CredentialIssuerWorker {
                 issuer,
                 project_identifier,
                 credential_ttl,
+                account_authority,
             ),
         }
     }

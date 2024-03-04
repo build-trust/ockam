@@ -229,6 +229,7 @@ impl Authority {
             &self.identifier,
             Some(configuration.project_identifier()),
             ttl,
+            self.account_authority.clone(),
         );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
