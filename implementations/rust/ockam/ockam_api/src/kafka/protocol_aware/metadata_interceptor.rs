@@ -158,7 +158,7 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
 
                 for (broker_id, metadata) in response.brokers {
                     let socket_addr = SocketAddr::from_str(
-                        format!("{}:{}", metadata.host, metadata.port).as_str(),
+                        format!("{}:{}", metadata.host.as_str(), metadata.port).as_str(),
                     )
                     .map_err(|e| {
                         InterceptError::Ockam(ockam_core::Error::new(

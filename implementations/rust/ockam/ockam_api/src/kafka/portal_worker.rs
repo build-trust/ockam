@@ -437,7 +437,7 @@ impl KafkaPortalWorker {
 
 #[cfg(test)]
 mod test {
-    use bytes::{Buf, BufMut, BytesMut};
+    use bytes::{Buf, BufMut, Bytes, BytesMut};
     use kafka_protocol::messages::metadata_request::MetadataRequestBuilder;
     use kafka_protocol::messages::metadata_response::MetadataResponseBroker;
     use kafka_protocol::messages::{
@@ -615,8 +615,8 @@ mod test {
 
         // you don't want to create a produce request since it would trigger
         // a lot of side effects and we just want to validate the transport
-        let mut insanely_huge_tag = BTreeMap::new();
-        insanely_huge_tag.insert(0, zero_buffer);
+        let mut insanely_huge_tag: BTreeMap<i32, Bytes> = BTreeMap::new();
+        insanely_huge_tag.insert(0, zero_buffer.into());
 
         let mut request_buffer = BytesMut::new();
         encode(
@@ -666,9 +666,9 @@ mod test {
         }
 
         // you don't want to create a produce request since it would trigger
-        // a lot of side effects and we just want to validate the transport
-        let mut insanely_huge_tag = BTreeMap::new();
-        insanely_huge_tag.insert(0, zero_buffer);
+        // a lot of side effects, and we just want to validate the transport
+        let mut insanely_huge_tag: BTreeMap<i32, Bytes> = BTreeMap::new();
+        insanely_huge_tag.insert(0, zero_buffer.into());
 
         let mut huge_outgoing_request = BytesMut::new();
         encode(
@@ -785,7 +785,7 @@ mod test {
             .request_api_key(api_key as i16)
             .request_api_version(TEST_KAFKA_API_VERSION)
             .correlation_id(1)
-            .client_id(Some(StrBytes::from_str("my-client-id")))
+            .client_id(Some(StrBytes::from_static_str("my-client-id")))
             .unknown_tagged_fields(Default::default())
             .build()
             .unwrap()
@@ -869,7 +869,7 @@ mod test {
                 .brokers(indexmap::IndexMap::from_iter(vec![(
                     BrokerId(1),
                     MetadataResponseBroker::builder()
-                        .host(StrBytes::from_str("bad.remote.host.example.com"))
+                        .host(StrBytes::from_static_str("bad.remote.host.example.com"))
                         .port(1234)
                         .rack(Default::default())
                         .unknown_tagged_fields(Default::default())

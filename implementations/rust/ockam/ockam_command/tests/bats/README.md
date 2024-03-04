@@ -72,7 +72,7 @@ To run docs tests, we need to setup the required environment
 - Influx server `docker run --name influxdb -p 8086:8086 influxdb:2.7.4`
 - Setup Influx, this requires [Nix](https://nixos.org/) `nix shell nixpkgs#influxdb2-cli --command influx setup --username username --password password --token token --org org --bucket bucket --name name --force`
 - Setup required environment variables `export CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS="*********" CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY="********" CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET="****" PG_HOST="127.0.0.1" INFLUX_PORT=8086 INFLUX_ORG=org INFLUX_BUCKET=bucket INFLUX_TOKEN=token`
-- We use an old client of Kafka v3.4.x, you can [download the Kafka client here](https://downloads.apache.org/kafka/3.4.1/kafka_2.13-3.4.1.tgz) and untar and set the required path, e.g., export PATH="$PATH_TO_KAFKA_BIN:$PATH"
+- We currently support v3.7.0 and earlier, you can [download the Kafka client here](https://downloads.apache.org/kafka/3.7.0/kafka_2.13-3.7.0.tgz) and untar and set the required path, e.g., export PATH="$PATH_TO_KAFKA_BIN:$PATH"
 
 
 To run the bats test, we use a [Nix shell](https://nixos.org/manual/nix/stable/command-ref/nix-shell)
