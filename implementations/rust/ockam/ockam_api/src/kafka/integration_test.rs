@@ -263,7 +263,7 @@ mod test {
             .request_api_key(ApiKey::ProduceKey as i16)
             .request_api_version(TEST_KAFKA_API_VERSION)
             .correlation_id(1)
-            .client_id(Some(StrBytes::from_str("my-client-id")))
+            .client_id(Some(StrBytes::from_static_str("my-client-id")))
             .unknown_tagged_fields(Default::default())
             .build()
             .unwrap();
@@ -295,7 +295,7 @@ mod test {
 
         let mut topic_data = IndexMap::new();
         topic_data.insert(
-            TopicName::from(StrBytes::from_str("my-topic-name")),
+            TopicName::from(StrBytes::from_static_str("my-topic-name")),
             TopicProduceData::builder()
                 .partition_data(vec![PartitionProduceData::builder()
                     .index(1)
@@ -369,7 +369,7 @@ mod test {
         stream: S,
         producer_request: &ProduceRequest,
     ) {
-        let topic_name = TopicName::from(StrBytes::from_str("my-topic-name"));
+        let topic_name = TopicName::from(StrBytes::from_static_str("my-topic-name"));
         let producer_content = producer_request
             .topic_data
             .get(&topic_name)
@@ -427,7 +427,7 @@ mod test {
                 .request_api_key(ApiKey::FetchKey as i16)
                 .request_api_version(TEST_KAFKA_API_VERSION)
                 .correlation_id(1)
-                .client_id(Some(StrBytes::from_str("my-client-id")))
+                .client_id(Some(StrBytes::from_static_str("my-client-id")))
                 .unknown_tagged_fields(Default::default())
                 .build()
                 .unwrap(),
@@ -441,7 +441,7 @@ mod test {
                 .session_id(0)
                 .session_epoch(0)
                 .topics(vec![FetchTopic::builder()
-                    .topic(TopicName::from(StrBytes::from_str("my-topic-name")))
+                    .topic(TopicName::from(StrBytes::from_static_str("my-topic-name")))
                     .topic_id(Uuid::from_slice(b"my-topic-name___").unwrap())
                     .partitions(vec![FetchPartition::builder()
                         .partition(1)

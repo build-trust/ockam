@@ -118,7 +118,8 @@ pub async fn async_run(
                     .color(OckamColor::PrimaryResource.color())
             ) + &fmt_log!(
                 "{}\n",
-                "Kafka clients v3.4.x are supported.".color(OckamColor::FmtWARNBackground.color())
+                "Kafka clients v3.7.0 and earlier are supported."
+                    .color(OckamColor::FmtWARNBackground.color())
             ) + &fmt_log!(
                 "{}: '{}'.\n",
                 "You can find the version you have with"

@@ -8,7 +8,7 @@ use kafka_protocol::messages::metadata_response::MetadataResponse;
 use kafka_protocol::messages::response_header::ResponseHeader;
 use kafka_protocol::messages::ApiKey;
 use kafka_protocol::protocol::buf::ByteBuf;
-use kafka_protocol::protocol::Decodable;
+use kafka_protocol::protocol::{Decodable, StrBytes};
 use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
@@ -18,7 +18,7 @@ use tracing::{trace, warn};
 
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::protocol_aware::utils::{decode_body, encode_response, string_to_str_bytes};
+use crate::kafka::protocol_aware::utils::{decode_body, encode_response};
 use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
 
 impl InletInterceptorImpl {
@@ -152,7 +152,7 @@ impl InletInterceptorImpl {
             );
 
             let ip_address = inlet_address.ip().to_string();
-            info.host = string_to_str_bytes(ip_address);
+            info.host = StrBytes::from_string(ip_address);
             info.port = inlet_address.port() as i32;
         }
         trace!("metadata response after: {:?}", &response);
@@ -187,7 +187,7 @@ impl InletInterceptorImpl {
                     .map_err(InterceptError::Ockam)?;
 
                 let ip_address = inlet_address.ip().to_string();
-                coordinator.host = string_to_str_bytes(ip_address);
+                coordinator.host = StrBytes::from_string(ip_address);
                 coordinator.port = inlet_address.port() as i32;
             }
         } else {
@@ -197,7 +197,7 @@ impl InletInterceptorImpl {
                 .map_err(InterceptError::Ockam)?;
 
             let ip_address = inlet_address.ip().to_string();
-            response.host = string_to_str_bytes(ip_address);
+            response.host = StrBytes::from_string(ip_address);
             response.port = inlet_address.port() as i32;
         }
 

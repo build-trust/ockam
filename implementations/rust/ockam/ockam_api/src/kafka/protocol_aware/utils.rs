@@ -2,7 +2,7 @@ use crate::kafka::portal_worker::InterceptError;
 use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
 use kafka_protocol::protocol::buf::ByteBuf;
-use kafka_protocol::protocol::{Decodable, Encodable, StrBytes};
+use kafka_protocol::protocol::{Decodable, Encodable};
 use std::io::{Error, ErrorKind};
 
 pub(crate) fn decode_body<T, B>(buffer: &mut B, api_version: i16) -> Result<T, InterceptError>
@@ -52,9 +52,4 @@ pub(crate) fn encode_response<H: Encodable, T: Encodable>(
         .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
 
     Ok(buffer)
-}
-
-pub(super) fn string_to_str_bytes(ip_address: String) -> StrBytes {
-    // TryFrom is broken, ugly but effective
-    unsafe { StrBytes::from_utf8_unchecked(bytes::Bytes::from(ip_address)) }
 }

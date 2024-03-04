@@ -89,8 +89,8 @@ mod test {
                             .build()
                             .unwrap(),
                         &ApiVersionsRequest::builder()
-                            .client_software_name(StrBytes::from_str("mr. software"))
-                            .client_software_version(StrBytes::from_str("1.0.0"))
+                            .client_software_name(StrBytes::from_static_str("mr. software"))
+                            .client_software_version(StrBytes::from_static_str("1.0.0"))
                             .unknown_tagged_fields(Default::default())
                             .build()
                             .unwrap(),
