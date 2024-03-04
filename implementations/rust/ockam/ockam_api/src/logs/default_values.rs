@@ -36,14 +36,9 @@ pub(crate) const DEFAULT_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Duratio
 /// Timeout for exporting spans or log records
 pub(crate) const DEFAULT_EXPORT_TIMEOUT: Duration = Duration::from_secs(5);
 
-// Maximum time between the export of batches
-// Important! For any foreground command execution
-// we need to set a large scheduled delay for the batch log processor.
-// Otherwise there can be a race condition where the 'ticks' from the scheduled exporting
-// always get emitted and processed before the shutdown event has an opportunity to be enqueued.
-// The result is that, when the collector endpoint is not responsive, a command stays stuck
-// in an infinite loop.
-pub(crate) const DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration::from_secs(1000);
+// Maximum time between the export of batches. We set it high for a foreground task
+// because we want the spans to be exported at the end of the execution
+pub(crate) const DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration::from_secs(10);
 
 // Maximum time between the export of batches
-pub(crate) const DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration::from_secs(5);
+pub(crate) const DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration::from_secs(1);

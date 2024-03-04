@@ -46,7 +46,6 @@ impl TracingGuard {
     }
 
     pub fn shutdown(&self) {
-        self.force_flush();
         global::shutdown_tracer_provider();
         global::shutdown_logger_provider();
     }
