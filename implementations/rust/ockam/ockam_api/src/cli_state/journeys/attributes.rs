@@ -35,7 +35,7 @@ pub fn default_attributes<'a>() -> HashMap<&'a Key, String> {
 ///  - The last 6 characters are the 'now' date as YYMMDD
 ///
 pub(crate) fn make_host_trace_id(now: DateTime<Utc>) -> TraceId {
-    let mut machine = make_host();
+    let mut machine = adjust(make_host(), 25, '1');
     // make sure that there exactly 25 characters
     if machine.len() < 25 {
         machine.extend(std::iter::repeat("1").take(25 - machine.len()));
@@ -62,7 +62,8 @@ pub(crate) fn make_host_trace_id(now: DateTime<Utc>) -> TraceId {
 ///
 pub(crate) fn make_project_trace_id(project_id: &str, now: DateTime<Utc>) -> TraceId {
     // take the whole project without '-' as the base for the trace id
-    let project_id_trace_id = &project_id.replace('-', "")[0..25];
+    // make sure that there exactly 25 characters
+    let project_id_trace_id = adjust(project_id.to_string().replace('-', ""), 25, '1');
 
     // trace_id as a 32 characters hex string = 1 + 25 + 6
     // The digit 1 is present at the beginning as a version indicator, in case we need to evolve the format
@@ -97,6 +98,17 @@ pub(crate) fn make_host() -> String {
         _ => gethostname().to_string_lossy().to_string(),
     };
     convert_to_hex(&hash(host))
+}
+
+/// Fill or trim a string so that it makes exactly the desired size
+fn adjust(s: String, desired_size: usize, filler: char) -> String {
+    let mut result = s;
+    let current_size = result.len();
+    // make sure that there exactly the desired number of characters
+    if current_size < desired_size {
+        result.extend(std::iter::repeat(filler).take(desired_size - current_size));
+    };
+    result[0..25].to_string()
 }
 
 // Check if the string is already in hexadecimal format
