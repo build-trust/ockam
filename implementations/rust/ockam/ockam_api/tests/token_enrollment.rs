@@ -236,6 +236,7 @@ async fn enroller_can_add_member(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
+#[ignore] // TODO with admin credentials.  For now, all enrollers have rights to add/remove enrollers
 async fn enroller_cant_add_enroller(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 
