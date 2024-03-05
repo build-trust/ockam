@@ -15,7 +15,7 @@ pub(crate) const DEFAULT_LOG_MAX_SIZE_MB: u64 = 100;
 pub(crate) const DEFAULT_LOG_MAX_FILES: u64 = 60;
 
 /// Default endpoint for the OpenTelemetry collector
-pub(crate) const DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT: &str =
+pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT: &str =
     "http://k8s-opentele-otelcoll-aa527132c8-70cbeef1b85b559b.elb.us-west-1.amazonaws.com:4317/";
 
 ///
@@ -24,13 +24,13 @@ pub(crate) const DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT: &str =
 
 /// Timeout for trying to access the OpenTelemetry collector endpoint when running a command
 /// It is quite high but experimentation shows that sometimes there's quite some lag even if the endpoint is available
-pub(crate) const DEFAULT_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT: Duration =
+pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT: Duration =
     Duration::from_millis(500);
 
 /// Timeout for trying to access the OpenTelemetry collector endpoint for a background
 /// Since the node is going to run uninterrupted, we leave a longer amount of time than for a command
 /// to try to reach the endpoint
-pub(crate) const DEFAULT_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Duration =
+pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Duration =
     Duration::from_secs(2);
 
 /// Timeout for exporting spans or log records

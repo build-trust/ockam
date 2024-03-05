@@ -1,6 +1,6 @@
 use crate::state::{AppState, NODE_NAME};
 use ockam_api::logs::{
-    logging_configuration, Colored, CratesFilter, LoggingTracing, TracingConfiguration,
+    logging_configuration, Colored, CratesFilter, ExportingConfiguration, LoggingTracing,
 };
 use tracing_core::Level;
 
@@ -39,7 +39,7 @@ impl AppState {
                 ockam_crates,
             )
             .unwrap(),
-            &TracingConfiguration::foreground(true).unwrap(),
+            &ExportingConfiguration::foreground(true).unwrap(),
             "portals",
         );
         self.tracing_guard

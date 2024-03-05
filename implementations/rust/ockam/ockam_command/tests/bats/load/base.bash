@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Disable logging and tracing so it doesn't interfere in the CLI input/output
+# Disable logging so it doesn't interfere in the CLI input/output
 export OCKAM_LOGGING=false
-export OCKAM_TRACING=false
+
+# Disable the opentelemetry export to improve performances
+export OCKAM_OPENTELEMETRY_EXPORT=false
 
 # Set QUIET to 1 to suppress user-facing logging written at stderr
 export QUIET=1

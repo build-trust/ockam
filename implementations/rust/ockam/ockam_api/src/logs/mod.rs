@@ -12,21 +12,21 @@
 mod current_span;
 mod default_values;
 mod env_variables;
+pub mod exporting_configuration;
 mod log_exporters;
 pub mod logging_configuration;
 mod logging_options;
 pub mod setup;
 mod span_exporters;
-pub mod tracing_configuration;
 mod tracing_guard;
 mod tracing_options;
 
 pub use current_span::*;
+pub use exporting_configuration::*;
 pub use log_exporters::*;
 pub use logging_configuration::*;
 pub use logging_options::*;
 pub use setup::*;
 pub use span_exporters::*;
-pub use tracing_configuration::*;
 pub use tracing_guard::*;
 pub use tracing_options::*;

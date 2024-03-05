@@ -8,8 +8,8 @@ use tracing::{debug, info};
 use tracing_core::Level;
 
 use ockam_api::logs::{
-    crates_filter, logging_configuration, Colored, LoggingConfiguration, LoggingTracing,
-    TracingConfiguration, TracingGuard,
+    crates_filter, logging_configuration, Colored, ExportingConfiguration, LoggingConfiguration,
+    LoggingTracing, TracingGuard,
 };
 use ockam_api::CliState;
 
@@ -112,7 +112,7 @@ impl CommandGlobalOpts {
     fn setup_logging_tracing(
         cmd: &OckamSubcommand,
         logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &TracingConfiguration,
+        tracing_configuration: &ExportingConfiguration,
     ) -> Option<Arc<TracingGuard>> {
         if !logging_configuration.is_enabled() && !tracing_configuration.is_enabled() {
             return None;
@@ -160,11 +160,11 @@ impl CommandGlobalOpts {
     fn make_tracing_configuration(
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
-    ) -> miette::Result<TracingConfiguration> {
+    ) -> miette::Result<ExportingConfiguration> {
         Ok(if cmd.is_background_node() {
-            TracingConfiguration::background(global_args.quiet).into_diagnostic()?
+            ExportingConfiguration::background(global_args.quiet).into_diagnostic()?
         } else {
-            TracingConfiguration::foreground(global_args.quiet).into_diagnostic()?
+            ExportingConfiguration::foreground(global_args.quiet).into_diagnostic()?
         })
     }
 
@@ -174,7 +174,7 @@ impl CommandGlobalOpts {
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
         logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &TracingConfiguration,
+        tracing_configuration: &ExportingConfiguration,
     ) {
         debug!("Arguments: {}", arguments.join(" "));
         debug!("Global arguments: {:#?}", &global_args);

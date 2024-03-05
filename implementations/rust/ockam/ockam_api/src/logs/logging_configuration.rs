@@ -328,7 +328,7 @@ fn get_log_level(
 
 /// Return the strategy to use for reporting logging/tracing errors
 pub fn global_error_handler_enabled() -> ockam_core::Result<GlobalErrorHandler> {
-    match get_env::<GlobalErrorHandler>(OCKAM_TRACE_GLOBAL_ERROR_HANDLER)? {
+    match get_env::<GlobalErrorHandler>(OCKAM_TRACING_GLOBAL_ERROR_HANDLER)? {
         Some(v) => Ok(v),
         None => Ok(GlobalErrorHandler::LogFile),
     }

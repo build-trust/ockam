@@ -1,14 +1,14 @@
 use crate::config::UrlVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
-use crate::logs::TracingEnabled;
+use crate::logs::ExportingEnabled;
 use ockam_core::env::{get_env_with_default, FromString};
 use std::fmt::{Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 use url::Url;
 
-/// The tracing configuration contains all the parameters needed to configure the OpenTelemetry tracing layer.
+/// The exporting configuration contains all the parameters needed to configure the OpenTelemetry tracing layer.
 ///
 /// Note: since this is the configuration for OpenTelemetry, this struct addresses the configuration
 /// of both spans _and log records_ sent to an OpenTelemetry collector.
@@ -16,26 +16,26 @@ use url::Url;
 /// The configuration for log messages printed in a file, or in the console, use the LoggingConfiguration.
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TracingConfiguration {
+pub struct ExportingConfiguration {
     /// If TracingEnabled::On then spans and log records are sent to an OpenTelemetry collector.
     /// Some parameters for exporting the
-    enabled: TracingEnabled,
+    enabled: ExportingEnabled,
     /// Maximum time for exporting a batch of spans
-    trace_export_timeout: Duration,
+    span_export_timeout: Duration,
     /// Maximum time for exporting a batch of log records
     log_export_timeout: Duration,
     /// Maximum time to wait until sending the current batch of spans
-    trace_export_scheduled_delay: Duration,
+    span_export_scheduled_delay: Duration,
     /// Maximum time to wait until sending the current batch of logs
     log_export_scheduled_delay: Duration,
     /// Url of the OpenTelemetry collector
-    tracing_endpoint: Url,
+    opentelemetry_endpoint: Url,
 }
 
-impl TracingConfiguration {
+impl ExportingConfiguration {
     /// Return true if distributed tracing is enabled
     pub fn is_enabled(&self) -> bool {
-        self.enabled == TracingEnabled::On
+        self.enabled == ExportingEnabled::On
     }
 
     /// Return the maximum time for exporting a batch of log records
@@ -49,64 +49,70 @@ impl TracingConfiguration {
     }
 
     /// Return the maximum time for exporting a batch of spans
-    pub fn trace_export_timeout(&self) -> Duration {
-        self.trace_export_timeout
+    pub fn span_export_timeout(&self) -> Duration {
+        self.span_export_timeout
     }
 
     /// Return the maximum time to wait until sending the current batch of spans
-    pub fn trace_export_scheduled_delay(&self) -> Duration {
-        self.trace_export_scheduled_delay
+    pub fn span_export_scheduled_delay(&self) -> Duration {
+        self.span_export_scheduled_delay
     }
 
     /// Return the URL where to export spans and log records
-    pub fn tracing_endpoint(&self) -> Url {
-        self.tracing_endpoint.clone()
+    pub fn opentelemetry_endpoint(&self) -> Url {
+        self.opentelemetry_endpoint.clone()
     }
 
     /// Create a tracing configuration for a user command running in the foreground.
     /// (meaning that the process will shut down once the command has been executed)
-    pub fn foreground(quiet: bool) -> ockam_core::Result<TracingConfiguration> {
-        Ok(TracingConfiguration {
-            enabled: tracing_enabled(quiet, tracing_endpoint_foreground_connection_timeout()?)?,
-            trace_export_timeout: trace_export_timeout()?,
-            log_export_timeout: trace_export_timeout()?,
-            trace_export_scheduled_delay: trace_foreground_export_scheduled_delay()?,
-            log_export_scheduled_delay: log_foreground_export_scheduled_delay()?,
-            tracing_endpoint: tracing_endpoint()?,
+    pub fn foreground(quiet: bool) -> ockam_core::Result<ExportingConfiguration> {
+        Ok(ExportingConfiguration {
+            enabled: exporting_enabled(
+                quiet,
+                opentelemetry_endpoint_foreground_connection_timeout()?,
+            )?,
+            span_export_timeout: span_export_timeout()?,
+            log_export_timeout: span_export_timeout()?,
+            span_export_scheduled_delay: foreground_span_export_scheduled_delay()?,
+            log_export_scheduled_delay: foreground_log_export_scheduled_delay()?,
+            opentelemetry_endpoint: opentelemetry_endpoint()?,
         })
     }
 
     /// Create a tracing configuration for a background node
-    pub fn background(quiet: bool) -> ockam_core::Result<TracingConfiguration> {
-        Ok(TracingConfiguration {
-            enabled: tracing_enabled(quiet, tracing_endpoint_background_connection_timeout()?)?,
-            trace_export_timeout: trace_export_timeout()?,
+    pub fn background(quiet: bool) -> ockam_core::Result<ExportingConfiguration> {
+        Ok(ExportingConfiguration {
+            enabled: exporting_enabled(
+                quiet,
+                opentelemetry_endpoint_background_connection_timeout()?,
+            )?,
+            span_export_timeout: span_export_timeout()?,
             log_export_timeout: log_export_timeout()?,
-            trace_export_scheduled_delay: trace_background_export_scheduled_delay()?,
-            log_export_scheduled_delay: log_background_export_scheduled_delay()?,
-            tracing_endpoint: tracing_endpoint()?,
+            span_export_scheduled_delay: background_span_export_scheduled_delay()?,
+            log_export_scheduled_delay: background_log_export_scheduled_delay()?,
+            opentelemetry_endpoint: opentelemetry_endpoint()?,
         })
     }
 
     /// Create a a tracing configuration which is disabled
-    pub fn off() -> ockam_core::Result<TracingConfiguration> {
-        Ok(TracingConfiguration {
-            enabled: TracingEnabled::Off,
-            trace_export_timeout: DEFAULT_EXPORT_TIMEOUT,
+    pub fn off() -> ockam_core::Result<ExportingConfiguration> {
+        Ok(ExportingConfiguration {
+            enabled: ExportingEnabled::Off,
+            span_export_timeout: DEFAULT_EXPORT_TIMEOUT,
             log_export_timeout: DEFAULT_EXPORT_TIMEOUT,
-            trace_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
+            span_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
             log_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
-            tracing_endpoint: Self::default_otel_exporter_otlp_endpoint()?,
+            opentelemetry_endpoint: Self::default_opentelemetry_endpoint()?,
         })
     }
 
     /// Return the default endpoint for exporting traces
-    fn default_otel_exporter_otlp_endpoint() -> ockam_core::Result<Url> {
-        Ok(UrlVar::from_string(DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT)?.url)
+    fn default_opentelemetry_endpoint() -> ockam_core::Result<Url> {
+        Ok(UrlVar::from_string(DEFAULT_OPENTELEMETRY_ENDPOINT)?.url)
     }
 }
 
-impl Display for TracingConfiguration {
+impl Display for ExportingConfiguration {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("tracing")
             .field("enabled", &self.enabled.to_string())
@@ -119,31 +125,31 @@ impl Display for TracingConfiguration {
 /// FOR NOW THE DEFAULT IS FALSE.
 /// TODO: set it to true after enough testing!
 ///
-pub fn is_tracing_set() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_TRACING, false)
+pub fn is_exporting_set() -> ockam_core::Result<bool> {
+    get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT, false)
 }
 
-/// Return TracingEnabled::On if:
+/// Return ExportingEnabled::On if:
 ///
-/// - Tracing has not been deactivated by the user
-/// - The tracing endpoint is accessible
+/// - Exporting has not been deactivated by the user
+/// - The opentelemetry endpoint is accessible
 ///
-fn tracing_enabled(
+fn exporting_enabled(
     quiet: bool,
     connection_check_timeout: Duration,
-) -> ockam_core::Result<TracingEnabled> {
-    if !is_tracing_set()? {
-        Ok(TracingEnabled::Off)
+) -> ockam_core::Result<ExportingEnabled> {
+    if !is_exporting_set()? {
+        Ok(ExportingEnabled::Off)
     } else {
-        let endpoint = tracing_endpoint()?;
+        let endpoint = opentelemetry_endpoint()?;
         if is_endpoint_accessible(endpoint.clone(), connection_check_timeout) {
-            Ok(TracingEnabled::On)
+            Ok(ExportingEnabled::On)
         } else {
             if !quiet {
-                println!("Tracing is disabled because the OpenTelemetry collector endpoint at {} cannot be reached after {}ms", endpoint, connection_check_timeout.as_millis());
-                println!("You can disable tracing with: `export OCKAM_TRACING=false` to avoid this connection check.");
+                println!("Exporting OpenTelemetry events is disabled because the OpenTelemetry collector endpoint at {} cannot be reached after {}ms", endpoint, connection_check_timeout.as_millis());
+                println!("You can disable the export of OpenTelemetry events with: `export OCKAM_OPENTELEMETRY_EXPORT=false` to avoid this connection check.");
             }
-            Ok(TracingEnabled::Off)
+            Ok(ExportingEnabled::Off)
         }
     }
 }
@@ -170,47 +176,47 @@ fn to_socket_addr(url: Url) -> Option<SocketAddr> {
 }
 
 /// Return the tracing endpoint, defined by an environment variable
-fn tracing_endpoint() -> ockam_core::Result<Url> {
+fn opentelemetry_endpoint() -> ockam_core::Result<Url> {
     Ok(get_env_with_default(
-        OCKAM_OTEL_EXPORTER_OTLP_ENDPOINT,
-        UrlVar::new(TracingConfiguration::default_otel_exporter_otlp_endpoint()?),
+        OCKAM_OPENTELEMETRY_ENDPOINT,
+        UrlVar::new(ExportingConfiguration::default_opentelemetry_endpoint()?),
     )?
     .url)
 }
 
 /// Return the export timeout for spans, defined by an environment variable
-pub fn trace_export_timeout() -> ockam_core::Result<Duration> {
-    get_env_with_default(OCKAM_TRACE_EXPORT_TIMEOUT, DEFAULT_EXPORT_TIMEOUT)
+pub fn span_export_timeout() -> ockam_core::Result<Duration> {
+    get_env_with_default(OCKAM_SPAN_EXPORT_TIMEOUT, DEFAULT_EXPORT_TIMEOUT)
 }
 
 /// Return the endpoint connection timeout, for a background node, defined by an environment variable
-fn tracing_endpoint_background_connection_timeout() -> ockam_core::Result<Duration> {
+fn opentelemetry_endpoint_background_connection_timeout() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
-        DEFAULT_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
+        OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
+        DEFAULT_OPENTELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
     )
 }
 
 /// Return the endpoint connection timeout, for a foreground command, defined by an environment variable
-fn tracing_endpoint_foreground_connection_timeout() -> ockam_core::Result<Duration> {
+fn opentelemetry_endpoint_foreground_connection_timeout() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
-        DEFAULT_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
+        OCKAM_FOREGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
+        DEFAULT_OPENTELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
     )
 }
 
 /// Return the delay between the export of 2 spans batches, for a foreground command, defined by an environment variable
-fn trace_foreground_export_scheduled_delay() -> ockam_core::Result<Duration> {
+fn foreground_span_export_scheduled_delay() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_TRACE_FOREGROUND_EXPORT_SCHEDULED_DELAY,
+        OCKAM_FOREGROUND_SPAN_EXPORT_SCHEDULED_DELAY,
         DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
     )
 }
 
 /// Return the delay between the export of 2 spans batches, for a background node, defined by an environment variable
-fn trace_background_export_scheduled_delay() -> ockam_core::Result<Duration> {
+fn background_span_export_scheduled_delay() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_TRACE_BACKGROUND_EXPORT_SCHEDULED_DELAY,
+        OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY,
         DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
     )
 }
@@ -221,17 +227,17 @@ pub fn log_export_timeout() -> ockam_core::Result<Duration> {
 }
 
 /// Return the delay between the export of 2 logs batches, for a foreground command, defined by an environment variable
-pub fn log_foreground_export_scheduled_delay() -> ockam_core::Result<Duration> {
+pub fn foreground_log_export_scheduled_delay() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_LOG_FOREGROUND_EXPORT_SCHEDULED_DELAY,
+        OCKAM_FOREGROUND_LOG_EXPORT_SCHEDULED_DELAY,
         DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
     )
 }
 
 /// Return the delay between the export of 2 logs batches, for a background node, defined by an environment variable
-pub fn log_background_export_scheduled_delay() -> ockam_core::Result<Duration> {
+pub fn background_log_export_scheduled_delay() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_LOG_BACKGROUND_EXPORT_SCHEDULED_DELAY,
+        OCKAM_BACKGROUND_LOG_EXPORT_SCHEDULED_DELAY,
         DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
     )
 }
