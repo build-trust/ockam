@@ -11,7 +11,7 @@ use ockam_node::Executor;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use crate::cli_state::{self, CliStateError};
-use crate::logs::TracingEnabled;
+use crate::logs::ExportingEnabled;
 use crate::Notification;
 
 /// Maximum number of notifications present in the channel
@@ -45,7 +45,7 @@ pub struct CliState {
     dir: PathBuf,
     database: SqlxDatabase,
     application_database: SqlxDatabase,
-    tracing_enabled: TracingEnabled,
+    tracing_enabled: ExportingEnabled,
     /// Broadcast channel to be notified of major events during a process supported by the
     /// CliState API
     notifications: Sender<Notification>,
@@ -201,22 +201,22 @@ impl CliState {
             // Once the logging/tracing options have been determined, then
             // the function set_tracing_enabled can be used to enable tracing, which
             // is eventually used to trace user journeys.
-            tracing_enabled: TracingEnabled::Off,
+            tracing_enabled: ExportingEnabled::Off,
             notifications,
         };
         Ok(state)
     }
 
     pub fn is_tracing_enabled(&self) -> bool {
-        self.tracing_enabled == TracingEnabled::On
+        self.tracing_enabled == ExportingEnabled::On
     }
 
     pub fn set_tracing_enabled(self, enabled: bool) -> CliState {
         CliState {
             tracing_enabled: if enabled {
-                TracingEnabled::On
+                ExportingEnabled::On
             } else {
-                TracingEnabled::Off
+                ExportingEnabled::Off
             },
             ..self
         }

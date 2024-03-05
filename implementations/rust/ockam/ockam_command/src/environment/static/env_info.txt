@@ -22,16 +22,16 @@ Logging
 - OCKAM_LOG_CRATES_FILTER: a filter for log messages based on crate names: `all`, `default`, comma-separated list of crate names. Default value: `default`, i.e. the list of `ockam` crates.
 
 Tracing
-- OCKAM_TRACING: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
-- OCKAM_OTEL_EXPORTER_OTLP_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
-- OCKAM_OTEL_EXPORTER_OTLP_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly.
-- OCKAM_TRACING_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
-- OCKAM_TRACING_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
-- OCKAM_TRACE_EXPORT_TIMEOUT: Timeout for trying to export spans. Default value: `5s`.
+- OCKAM_OPENTELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
+- OCKAM_OPENTELEMETRY_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
+- OCKAM_OPENTELEMETRY_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly.
+- OCKAM_FOREGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
+- OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
+- OCKAM_SPAN_EXPORT_TIMEOUT: Timeout for trying to export spans. Default value: `5s`.
 - OCKAM_LOG_EXPORT_TIMEOUT: Timeout for trying to export log records. Default value: `5s`.
-- OCKAM_TRACE_FOREGROUND_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `1000s` (this value is high to avoid a deadlock in the tracing library).
-- OCKAM_TRACE_BACKGROUND_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `5s`.
-- OCKAM_TRACE_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `1000s` (this value is high to avoid a deadlock in the tracing library).
+- OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `5s`.
+- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.

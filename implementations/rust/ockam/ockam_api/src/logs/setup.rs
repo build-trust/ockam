@@ -29,7 +29,7 @@ use ockam_node::Executor;
 use crate::journeys::APP_NAME;
 use crate::logs::tracing_guard::TracingGuard;
 use crate::logs::LogFormat;
-use crate::logs::{GlobalErrorHandler, LoggingConfiguration, TracingConfiguration};
+use crate::logs::{ExportingConfiguration, GlobalErrorHandler, LoggingConfiguration};
 
 pub struct LoggingTracing;
 
@@ -41,29 +41,23 @@ impl LoggingTracing {
     /// The TracingGuard is used to flush all events when dropped.
     pub fn setup(
         logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &TracingConfiguration,
+        exporting_configuration: &ExportingConfiguration,
         app_name: &str,
     ) -> TracingGuard {
-        // if the tracing configuration is enabled we use the
-        // exporters.
-        //
-        // For debugging those exporters can be decorated if we want to
-        // intercept and print some of the data they send, e.g.:
-        // let decorated = DecoratedSpanExporter { exporter: span_exporter }
-        if tracing_configuration.is_enabled() && logging_configuration.is_enabled() {
+        if exporting_configuration.is_enabled() && logging_configuration.is_enabled() {
             // set-up logging and tracing
             Self::setup_with_exporters(
-                create_span_exporter(tracing_configuration),
-                create_log_exporter(tracing_configuration),
+                create_span_exporter(exporting_configuration),
+                create_log_exporter(exporting_configuration),
                 logging_configuration,
-                tracing_configuration,
+                exporting_configuration,
                 app_name,
             )
-        } else if tracing_configuration.is_enabled() {
+        } else if exporting_configuration.is_enabled() {
             Self::setup_tracing_only(
-                create_span_exporter(tracing_configuration),
+                create_span_exporter(exporting_configuration),
                 logging_configuration,
-                tracing_configuration,
+                exporting_configuration,
                 app_name,
             )
         } else {
@@ -72,9 +66,8 @@ impl LoggingTracing {
     }
 
     /// Setup the tracing and logging with some specific exporters
-    ///  - the BatchConfig is used to send spans in batches
-    ///  - the LoggingConfiguration is used to configure the logging layer
-    ///    and the log files in particular
+    ///  - the LoggingConfiguration is used to configure the logging layer and the log files in particular
+    ///  - the Exporting configuration is used to send spans and log records to an OpenTelemetry collector
     pub fn setup_with_exporters<
         T: SpanExporter + Send + 'static,
         L: LogExporter + Send + 'static,
@@ -82,16 +75,16 @@ impl LoggingTracing {
         span_exporter: T,
         log_exporter: L,
         logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &TracingConfiguration,
+        exporting_configuration: &ExportingConfiguration,
         app_name: &str,
     ) -> TracingGuard {
         // configure the logging layer exporting OpenTelemetry log records
         let (logging_layer, logger_provider) =
-            create_opentelemetry_logging_layer(app_name, tracing_configuration, log_exporter);
+            create_opentelemetry_logging_layer(app_name, exporting_configuration, log_exporter);
 
         // configure the tracing layer exporting OpenTelemetry spans
         let (tracing_layer, tracer_provider) =
-            create_opentelemetry_tracing_layer(app_name, tracing_configuration, span_exporter);
+            create_opentelemetry_tracing_layer(app_name, exporting_configuration, span_exporter);
 
         // configure the appending layer, which outputs logs either to the console or to a file
         let (appender, worker_guard) = create_opentelemetry_appender(logging_configuration);
@@ -139,17 +132,16 @@ impl LoggingTracing {
     }
 
     /// Setup the tracing a specific span exporter
-    ///  - the BatchConfig is used to send spans in batches
-    ///  - the LoggingConfiguration contains a filter that is common to spans and logs
+    ///  - the LoggingConfiguration is used to filter spans (via its EnvFilter) and configure the global error handler
+    ///  - the Exporting configuration is used to send spans and log records to an OpenTelemetry collector
     pub fn setup_tracing_only<T: SpanExporter + Send + 'static>(
         span_exporter: T,
         logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &TracingConfiguration,
+        exporting_configuration: &ExportingConfiguration,
         app_name: &str,
     ) -> TracingGuard {
-        // configure the tracing layer exporting OpenTelemetry spans
         let (tracing_layer, tracer_provider) =
-            create_opentelemetry_tracing_layer(app_name, tracing_configuration, span_exporter);
+            create_opentelemetry_tracing_layer(app_name, exporting_configuration, span_exporter);
 
         // initialize the tracing subscriber with all the layers
         let result = registry()
@@ -170,13 +162,13 @@ impl LoggingTracing {
     }
 }
 
+// Create an exporter for log records
+// They are sent to an OpenTelemetry collector using gRPC
 fn create_log_exporter(
-    tracing_configuration: &TracingConfiguration,
+    exporting_configuration: &ExportingConfiguration,
 ) -> opentelemetry_otlp::LogExporter {
-    // create an exporter for log records
-    // sending them to an OpenTelemetry collector using gRPC
-    let log_export_timeout = tracing_configuration.log_export_timeout();
-    let tracing_endpoint = tracing_configuration.tracing_endpoint().to_string();
+    let log_export_timeout = exporting_configuration.log_export_timeout();
+    let tracing_endpoint = exporting_configuration.opentelemetry_endpoint().to_string();
 
     Executor::execute_future(async move {
         opentelemetry_otlp::new_exporter()
@@ -191,13 +183,12 @@ fn create_log_exporter(
 }
 
 /// Create a span exporter
+// They are sent to an OpenTelemetry collector using gRPC
 fn create_span_exporter(
-    tracing_configuration: &TracingConfiguration,
+    exporting_configuration: &ExportingConfiguration,
 ) -> opentelemetry_otlp::SpanExporter {
-    // create an exporter for spans
-    // sending them to an OpenTelemetry collector using gRPC
-    let trace_export_timeout = tracing_configuration.trace_export_timeout();
-    let tracing_endpoint = tracing_configuration.tracing_endpoint().to_string();
+    let trace_export_timeout = exporting_configuration.span_export_timeout();
+    let tracing_endpoint = exporting_configuration.opentelemetry_endpoint().to_string();
 
     Executor::execute_future(async move {
         opentelemetry_otlp::new_exporter()
@@ -218,7 +209,7 @@ fn create_opentelemetry_tracing_layer<
     S: SpanExporter + Send + 'static,
 >(
     app_name: &str,
-    tracing_configuration: &TracingConfiguration,
+    exporting_configuration: &ExportingConfiguration,
     span_exporter: S,
 ) -> (
     OpenTelemetryLayer<R, sdk::trace::Tracer>,
@@ -226,8 +217,8 @@ fn create_opentelemetry_tracing_layer<
 ) {
     let app = app_name.to_string();
     let batch_config = BatchConfig::default()
-        .with_max_export_timeout(tracing_configuration.trace_export_timeout())
-        .with_scheduled_delay(tracing_configuration.trace_export_scheduled_delay())
+        .with_max_export_timeout(exporting_configuration.span_export_timeout())
+        .with_scheduled_delay(exporting_configuration.span_export_scheduled_delay())
         .with_max_concurrent_exports(8);
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
@@ -244,15 +235,15 @@ fn create_opentelemetry_tracing_layer<
 /// Log records are exported in batches
 fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     app_name: &str,
-    tracing_configuration: &TracingConfiguration,
+    exporting_configuration: &ExportingConfiguration,
     log_exporter: L,
 ) -> (
     OpenTelemetryTracingBridge<LoggerProvider, opentelemetry_sdk::logs::Logger>,
     LoggerProvider,
 ) {
     let app = app_name.to_string();
-    let log_export_timeout = tracing_configuration.log_export_timeout();
-    let log_export_scheduled_delay = tracing_configuration.log_export_scheduled_delay();
+    let log_export_timeout = exporting_configuration.log_export_timeout();
+    let log_export_scheduled_delay = exporting_configuration.log_export_scheduled_delay();
     Executor::execute_future(async move {
         let config = sdk::logs::Config::default().with_resource(make_resource(app));
         let log_processor =
@@ -381,11 +372,11 @@ fn make_resource(app_name: String) -> Resource {
 /// from an environment variable if the OpenTelemetry collector endpoint is directly set to the Honeycomb API endpoint:
 /// https://api.honeycomb.io:443/v1/traces
 ///
-/// Then the OCKAM_OTEL_EXPORTER_OTLP_HEADERS variable can be defined as:
-/// export OCKAM_OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-team=YOUR_API_KEY,x-honeycomb-dataset=YOUR_DATASET"
+/// Then the OCKAM_OPENTELEMETRY_HEADERS variable can be defined as:
+/// export OCKAM_OPENTELEMETRY_HEADERS="x-honeycomb-team=YOUR_API_KEY,x-honeycomb-dataset=YOUR_DATASET"
 ///
 fn get_otlp_headers() -> MetadataMap {
-    match std::env::var("OCKAM_OTEL_EXPORTER_OTLP_HEADERS") {
+    match std::env::var("OCKAM_OPENTELEMETRY_HEADERS") {
         Ok(headers) => {
             match headers.split_once('=') {
                 // TODO: find a way to use a String as a key instead of a &'static str
