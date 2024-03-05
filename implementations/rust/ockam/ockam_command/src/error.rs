@@ -121,6 +121,7 @@ impl ErrorReportHandler {
         Self
     }
 
+    #[allow(dead_code)]
     // The cause of a [`Diagnostic`] could be both a [`Diagnostic`] or a [`std::error::Error`].
     // The cause of a [`std::error::Error`] can only be another [`std::error::Error`].
     fn print_causes(f: &mut Formatter, root: &dyn Diagnostic) -> core::fmt::Result {
@@ -164,7 +165,12 @@ impl miette::ReportHandler for ErrorReportHandler {
 
         writeln!(f, "\n{}\n", fmt_heading!("{}", "Error:".red()))?;
 
-        let error_message = error.to_string();
+        // Try to extract the source message from the error, and disregard the rest. If
+        // possible replace the new lines w/ fmt_log! outputs.
+        let error_message = match error.source() {
+            Some(err) => format!("{}", err),
+            None => format!("{}", error),
+        };
         error_message.lines().for_each(|line| {
             let _ = writeln!(f, "{}", fmt_log!("{}", line));
         });
@@ -184,16 +190,15 @@ impl miette::ReportHandler for ErrorReportHandler {
             None => "OCK500".to_string(),
         };
 
-        Self::print_causes(f, error)?;
+        // TODO: Display the cause of the error in a nicely formatted way; skip for now.
+        // Self::print_causes(f, error)?;
 
         let code_message = format!("Error code: {}", code_as_str).dark_gray();
-        let version_message = Version::short().to_string().dark_gray();
-        writeln!(
-            f,
-            "\n{}\n{}",
-            fmt_log!("{}", code_message),
-            fmt_log!("{}", version_message)
-        )?;
+        let version_message = format!("version: {}", Version::short()).dark_gray();
+        let footer_message = format!("\n{}\n{}", code_message, version_message);
+        footer_message.split('\n').for_each(|line| {
+            let _ = writeln!(f, "{}", fmt_log!("{}", line));
+        });
 
         writeln!(
             f,

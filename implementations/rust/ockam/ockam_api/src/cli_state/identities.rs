@@ -122,10 +122,11 @@ impl CliState {
             // Unable to get named identity.
             None => {
                 let error_message = format!(
-                    "{} {}\n{} {}\n",
-                    "Could not find an Identity with name",
+                    "{} {} {}.\n{} {}\n",
+                    "There is no Identity with name",
                     color_primary(name),
-                    "To get a list of Identities on your machine, please run",
+                    "on this machine",
+                    "To see a list of Identities on this machine, please run",
                     color_primary("ockam identity list")
                 );
                 Err(Error::new(Origin::Api, Kind::NotFound, error_message))?

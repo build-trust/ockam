@@ -1,10 +1,13 @@
+use std::process::exit;
+
 use clap::Parser;
+
 use miette::IntoDiagnostic;
 use tracing_core::Level;
 
 use crate::{
-    add_command_error_event, has_help_flag, pager, replace_hyphen_with_stdin, ErrorReportHandler,
-    OckamCommand,
+    add_command_error_event, fmt_log, has_help_flag, has_version_flag, pager,
+    replace_hyphen_with_stdin, util::exitcode, version::Version, ErrorReportHandler, OckamCommand,
 };
 use ockam_api::cli_state::CliState;
 use ockam_api::logs::{
@@ -22,6 +25,10 @@ pub fn run() -> miette::Result<()> {
         .collect::<Vec<_>>();
 
     let _ = miette::set_hook(Box::new(|_e| Box::new(ErrorReportHandler::new())));
+
+    if has_version_flag(&input) {
+        print_version_and_exit();
+    }
 
     match OckamCommand::try_parse_from(input.clone()) {
         Err(help) => {
@@ -48,6 +55,7 @@ pub fn run() -> miette::Result<()> {
                     "local node",
                     None,
                 );
+
                 let cli_state = CliState::with_default_dir()?;
                 let message = format!("could not parse the command: {}", command);
                 add_command_error_event(cli_state, &command, &message, input.join(" "))?;
@@ -55,6 +63,16 @@ pub fn run() -> miette::Result<()> {
             pager::render_help(help);
         }
         Ok(command) => command.run(input)?,
-    };
+    }
     Ok(())
+}
+
+fn print_version_and_exit() {
+    let version_msg = Version::long();
+    let version_msg_vec = version_msg.split('\n').collect::<Vec<_>>();
+    println!("{}", fmt_log!("ockam {}", version_msg_vec[0]));
+    for item in version_msg_vec.iter().skip(1) {
+        println!("{}", fmt_log!("{}", item));
+    }
+    exit(exitcode::OK);
 }

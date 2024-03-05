@@ -1,6 +1,9 @@
 use colorful::{core::color_string::CString, Colorful, RGB};
 use colors_transform::{Color, Rgb};
-use r3bl_tui::ColorWheel;
+use r3bl_rs_utils_core::UnicodeString;
+use r3bl_tui::{
+    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
+};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OckamColor {
@@ -54,9 +57,25 @@ pub fn color_primary(input: impl AsRef<str>) -> CString {
     input.as_ref().color(OckamColor::PrimaryResource.color())
 }
 
-#[allow(dead_code)]
 pub fn color_primary_alt(input: impl AsRef<str>) -> String {
-    ColorWheel::lolcat_into_string(input.as_ref())
+    let gradient_steps = Vec::from(
+        [
+            OckamColor::OckamBlue.value(),
+            OckamColor::HeaderGradient.value(),
+        ]
+        .map(String::from),
+    );
+    let colored_output = ColorWheel::new(vec![ColorWheelConfig::Rgb(
+        gradient_steps,
+        ColorWheelSpeed::Fast,
+        15,
+    )])
+    .colorize_into_string(
+        &UnicodeString::from(input.as_ref()),
+        GradientGenerationPolicy::ReuseExistingGradientAndResetIndex,
+        TextColorizationPolicy::ColorEachCharacter(None),
+    );
+    colored_output
 }
 
 pub fn color_email(input: impl AsRef<str>) -> CString {
@@ -64,5 +83,5 @@ pub fn color_email(input: impl AsRef<str>) -> CString {
 }
 
 pub fn color_uri(input: impl AsRef<str>) -> String {
-    ColorWheel::lolcat_into_string(input.as_ref())
+    color_primary_alt(input)
 }

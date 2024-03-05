@@ -150,11 +150,6 @@ impl OckamSubcommand {
         }
     }
 
-    /// Currently only enroll command displays the header
-    pub fn should_display_header(&self) -> bool {
-        matches!(self, OckamSubcommand::Enroll(_))
-    }
-
     /// Return the opentelemetry context if the command can be executed as the continuation
     /// of an existing trace
     pub fn get_opentelemetry_context(&self) -> Option<OpenTelemetryContext> {

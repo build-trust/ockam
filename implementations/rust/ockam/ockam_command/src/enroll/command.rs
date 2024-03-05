@@ -21,6 +21,7 @@ use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::CliState;
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
@@ -31,6 +32,11 @@ use crate::project::util::check_project_readiness;
 use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
 use crate::{docs, fmt_heading, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, Result};
+
+use r3bl_rs_utils_core::UnicodeString;
+use r3bl_tui::{
+    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
+};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -98,39 +104,44 @@ impl EnrollCommand {
     #[instrument(
     skip_all, // Drop all args that passed in, as Context doesn't play nice
     fields(
-    enroller = ? self.identity, // https://docs.rs/tracing/latest/tracing/
-    authorization_code_flow = % self.authorization_code_flow,
-    force = % self.force,
-    skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
-    )
-    )]
+        enroller = ? self.identity, // https://docs.rs/tracing/latest/tracing/
+        authorization_code_flow = % self.authorization_code_flow,
+        force = % self.force,
+        skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
+    ))]
     async fn run_impl(&self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
-        let identity_task_has_ended = Arc::new(Mutex::new(false));
+        if self.is_already_enrolled(&opts.state, &opts).await? {
+            return Ok(());
+        }
+
+        display_header(&opts);
+
+        let can_stop = Arc::new(Mutex::new(false));
         let mut progress_display = ProgressDisplay::new(&opts);
 
-        let identity_task = async {
+        let get_named_identity_task = async {
             let it = opts
                 .state
                 .get_named_identity_or_default(&self.identity)
                 .await;
-            *identity_task_has_ended.lock().await = true;
+            *can_stop.lock().await = true;
             Ok(it)
         };
 
         let (_, identity) = try_join!(
-            progress_display.start(identity_task_has_ended.clone()),
-            identity_task
+            progress_display.start(can_stop.clone()),
+            get_named_identity_task
         )?;
 
-        // If a named or default identity can't be found, then we can't proceed, so, print an error.
+        // If a named or default identity can't be found, then we can't proceed. Return
+        // error, and generate log.
         let identity = match identity {
             Ok(identity) => identity,
             Err(e) => {
-                opts.terminal
-                    .write_line(&fmt_warn!("{}", color_primary(e.to_string())))?;
-                return Ok(());
+                error!("Unable to find the Identity: {}", e);
+                return Err(e.into());
             }
         };
         progress_display.finalize();
@@ -213,6 +224,54 @@ impl EnrollCommand {
         Ok(())
     }
 
+    /// Check if the identity is already enrolled and display a message to the user.
+    async fn is_already_enrolled(
+        &self,
+        cli_state: &CliState,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<bool> {
+        let is_already_enrolled = !cli_state
+            .identity_should_enroll(&self.identity, false)
+            .await?;
+        if is_already_enrolled {
+            match &self.identity {
+                // Use default identity.
+                None => {
+                    if let Ok(named_identity) =
+                        cli_state.get_or_create_default_named_identity().await
+                    {
+                        let name = named_identity.name();
+                        let identifier = named_identity.identifier();
+                        let message = format!(
+                            "Your {} Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
+                            "default".to_string().dim(),
+                            color_primary(name),
+                            color_primary(identifier.to_string())
+                        );
+                        message.split('\n').for_each(|line| {
+                            opts.terminal.write_line(&fmt_log!("{}", line)).unwrap();
+                        });
+                    }
+                }
+                // Identity specified.
+                Some(ref name) => {
+                    let named_identity = cli_state.get_named_identity(name).await?;
+                    let name = named_identity.name();
+                    let identifier = named_identity.identifier();
+                    let message = format!(
+                        "Your Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
+                        color_primary(name),
+                        color_primary(identifier.to_string())
+                    );
+                    message.split('\n').for_each(|line| {
+                        opts.terminal.write_line(&fmt_log!("{}", line)).unwrap();
+                    });
+                }
+            };
+        }
+        Ok(is_already_enrolled)
+    }
+
     async fn enroll_identity(
         &self,
         ctx: &Context,
@@ -257,6 +316,29 @@ impl EnrollCommand {
 
         Ok(user_info)
     }
+}
+
+fn display_header(opts: &CommandGlobalOpts) {
+    let ockam_header = include_str!("../../static/ockam_ascii.txt").trim();
+    let gradient_steps = Vec::from(
+        [
+            OckamColor::OckamBlue.value(),
+            OckamColor::HeaderGradient.value(),
+        ]
+        .map(String::from),
+    );
+    let colored_header = ColorWheel::new(vec![ColorWheelConfig::Rgb(
+        gradient_steps,
+        ColorWheelSpeed::Medium,
+        50,
+    )])
+    .colorize_into_string(
+        &UnicodeString::from(ockam_header),
+        GradientGenerationPolicy::ReuseExistingGradientAndResetIndex,
+        TextColorizationPolicy::ColorEachCharacter(None),
+    );
+
+    let _ = opts.terminal.write_line(&format!("{}\n", colored_header));
 }
 
 fn ctrlc_handler(opts: CommandGlobalOpts) {
