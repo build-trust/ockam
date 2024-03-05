@@ -292,6 +292,7 @@ teardown() {
   run_failure curl --max-time 30 -O "http://127.0.0.1:$inlet_port/$file_name"
 
   rm "$OCKAM_HOME_BASE/$file_name"
+  rm "./$file_name"
 }
 
 @test "portals - local portal, outlet credential expires" {
@@ -336,4 +337,5 @@ teardown() {
   run_failure curl --max-time 30 -O "http://127.0.0.1:$inlet_port/$file_name"
 
   rm "$OCKAM_HOME_BASE/$file_name"
+  rm "./$file_name"
 }
