@@ -3,6 +3,11 @@ pub fn has_help_flag(input: &[String]) -> bool {
     input.contains(&"-h".to_string()) || input.contains(&"--help".to_string())
 }
 
+/// Return true if the list of arguments contains a version flag
+pub fn has_version_flag(input: &[String]) -> bool {
+    input.contains(&"-V".to_string()) || input.contains(&"--version".to_string())
+}
+
 /// Replaces the '-' placeholder character with a string value coming from stdin
 /// This is useful to be able to pipe the output of a command to another command.
 ///

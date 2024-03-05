@@ -12,7 +12,7 @@ impl Version {
     pub(crate) fn short() -> &'static str {
         let crate_version = crate_version!();
         let git_hash = env!("GIT_HASH");
-        let message = format!("Version: {crate_version}, compiled from: {git_hash}");
+        let message = format!("{crate_version}\ncompiled from: {git_hash}");
         Box::leak(message.into_boxed_str())
     }
 }

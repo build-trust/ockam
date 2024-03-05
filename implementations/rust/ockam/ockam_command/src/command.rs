@@ -1,11 +1,11 @@
 use crate::command_events::{add_command_error_event, add_command_event};
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::docs;
+use crate::fmt_warn;
 use crate::global_args::GlobalArgs;
 use crate::subcommand::OckamSubcommand;
 use crate::upgrade::check_if_an_upgrade_is_available;
 use crate::version::Version;
-use crate::{fmt_warn, OckamColor};
 
 use clap::Parser;
 use colorful::Colorful;
@@ -13,10 +13,6 @@ use miette::GraphicalReportHandler;
 use ockam_core::OCKAM_TRACER_NAME;
 use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
-use r3bl_rs_utils_core::UnicodeString;
-use r3bl_tui::{
-    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
-};
 use tracing::{instrument, warn};
 
 const ABOUT: &str = include_str!("./static/about.txt");
@@ -77,32 +73,6 @@ impl OckamCommand {
                 .terminal
                 .write_line(&fmt_warn!("Failed to check for upgrade"))
                 .unwrap();
-        }
-
-        // Display Header if needed
-        if self.subcommand.should_display_header() {
-            let ockam_header = include_str!("../static/ockam_ascii.txt").trim();
-            let gradient_steps = Vec::from(
-                [
-                    OckamColor::OckamBlue.value(),
-                    OckamColor::HeaderGradient.value(),
-                ]
-                .map(String::from),
-            );
-            let colored_header = ColorWheel::new(vec![ColorWheelConfig::Rgb(
-                gradient_steps,
-                ColorWheelSpeed::Medium,
-                50,
-            )])
-            .colorize_into_string(
-                &UnicodeString::from(ockam_header),
-                GradientGenerationPolicy::ReuseExistingGradientAndResetIndex,
-                TextColorizationPolicy::ColorEachCharacter(None),
-            );
-
-            let _ = options
-                .terminal
-                .write_line(&format!("{}\n", colored_header));
         }
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
