@@ -1,6 +1,7 @@
 use crate::portal::TcpInletListenProcessor;
 use crate::transport::common::{parse_socket_addr, resolve_peer};
 use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
+use core::fmt::Debug;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
 use tracing::instrument;
@@ -23,10 +24,11 @@ impl TcpTransport {
     /// # tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
+    #[instrument(skip(self), fields(address = ?bind_addr.clone().into(), outlet_route = ?outlet_route.clone()))]
     pub async fn create_inlet(
         &self,
-        bind_addr: impl Into<String>,
-        outlet_route: impl Into<Route>,
+        bind_addr: impl Into<String> + Clone + Debug,
+        outlet_route: impl Into<Route> + Clone + Debug,
         options: TcpInletOptions,
     ) -> Result<(SocketAddr, Address)> {
         let socket_addr = parse_socket_addr(&bind_addr.into())?;
@@ -54,7 +56,8 @@ impl TcpTransport {
     /// tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
-    pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
+    #[instrument(skip(self), fields(address = ?addr.clone().into()))]
+    pub async fn stop_inlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
         self.ctx.stop_processor(addr).await?;
 
         Ok(())
@@ -77,10 +80,11 @@ impl TcpTransport {
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
+    #[instrument(skip(self), fields(address = ?address.clone().into(), peer = ?peer.clone().into()))]
     pub async fn create_outlet(
         &self,
-        address: impl Into<Address>,
-        peer: impl Into<String>,
+        address: impl Into<Address> + Clone + Debug,
+        peer: impl Into<String> + Clone,
         options: TcpOutletOptions,
     ) -> Result<()> {
         // Resolve peer address
@@ -124,7 +128,8 @@ impl TcpTransport {
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
+    #[instrument(skip(self), fields(address = %addr.clone().into()))]
+    pub async fn stop_outlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
         self.ctx.stop_worker(addr).await?;
         Ok(())
     }
