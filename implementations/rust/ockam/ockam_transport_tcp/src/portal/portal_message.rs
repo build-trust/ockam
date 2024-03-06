@@ -3,7 +3,7 @@ use serde::de::{EnumAccess, VariantAccess};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// A command message type for a Portal
-#[derive(Serialize, Message, Debug)]
+#[derive(Serialize, Message, Debug, PartialEq, Eq)]
 pub enum PortalMessage {
     /// First message that Inlet sends to the Outlet
     Ping,
@@ -96,7 +96,7 @@ impl<'de> Deserialize<'de> for PortalMessage {
 }
 
 /// An internal message type for a Portal
-#[derive(Serialize, Deserialize, Message)]
+#[derive(Serialize, Deserialize, Message, PartialEq, Eq)]
 pub enum PortalInternalMessage {
     /// Connection was dropped
     Disconnect,

@@ -12,7 +12,7 @@ use ockam_transport_core::TransportError;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, instrument, trace, warn};
 
 /// Enumerate all `TcpPortalWorker` states
 ///
@@ -49,6 +49,7 @@ pub(crate) struct TcpPortalWorker {
 
 impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Inlet`]
+    #[instrument(skip_all)]
     pub(super) async fn start_new_inlet(
         ctx: &Context,
         registry: TcpRegistry,
@@ -72,6 +73,7 @@ impl TcpPortalWorker {
     }
 
     /// Start a new `TcpPortalWorker` of type [`TypeName::Outlet`]
+    #[instrument(skip_all)]
     pub(super) async fn start_new_outlet(
         ctx: &Context,
         registry: TcpRegistry,
@@ -95,6 +97,7 @@ impl TcpPortalWorker {
 
     /// Start a new `TcpPortalWorker`
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
     async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -167,6 +170,7 @@ impl TcpPortalWorker {
     }
 
     /// Start a `TcpPortalRecvProcessor`
+    #[instrument(skip_all)]
     async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.read_half.take() {
             let next_hop = onward_route.next()?.clone();
@@ -192,6 +196,7 @@ impl TcpPortalWorker {
         }
     }
 
+    #[instrument(skip_all)]
     async fn notify_remote_about_disconnection(&mut self, ctx: &Context) -> Result<()> {
         // Notify the other end
         if let Some(remote_route) = self.remote_route.take() {
@@ -219,6 +224,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     async fn stop_receiver(&self, ctx: &Context) -> Result<()> {
         // Avoiding race condition when both inlet and outlet connections
         // are dropped at the same time. In this case Processor may stop itself
@@ -243,6 +249,7 @@ impl TcpPortalWorker {
     }
 
     /// Start the portal disconnection process
+    #[instrument(skip_all)]
     async fn start_disconnection(
         &mut self,
         ctx: &Context,
@@ -274,6 +281,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     async fn handle_send_ping(&self, ctx: &Context, ping_route: Route) -> Result<State> {
         // Force creation of Outlet on the other side
         ctx.send_from_address(
@@ -288,6 +296,7 @@ impl TcpPortalWorker {
         Ok(State::ReceivePong)
     }
 
+    #[instrument(skip_all)]
     async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
         if self.write_half.is_none() {
             let stream = TcpStream::connect(self.peer)
@@ -334,6 +343,7 @@ impl Worker for TcpPortalWorker {
     type Context = Context;
     type Message = Any;
 
+    #[instrument(skip_all, name = "TcpPortalWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         let state = self.clone_state();
 
@@ -354,6 +364,7 @@ impl Worker for TcpPortalWorker {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpPortalWorker::shutdown")]
     async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
         self.registry.remove_portal_worker(&self.addresses.remote);
 
@@ -362,6 +373,7 @@ impl Worker for TcpPortalWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
+    #[instrument(skip_all, name = "TcpPortalWorker::handle_message")]
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         if self.is_disconnecting {
             return Ok(());
@@ -369,125 +381,135 @@ impl Worker for TcpPortalWorker {
 
         // Remove our own address from the route so the other end
         // knows what to do with the incoming message
+        let state = self.clone_state();
         let mut onward_route = msg.onward_route();
         let recipient = onward_route.step()?;
-
-        let return_route = msg.return_route();
-
         if onward_route.next().is_ok() {
             return Err(TransportError::UnknownRoute)?;
         }
-
-        let state = self.clone_state();
+        let return_route = msg.return_route();
+        let remote_packet = recipient != self.addresses.internal;
 
         match state {
             State::ReceivePong => {
-                if recipient == self.addresses.internal {
+                if !remote_packet {
                     return Err(TransportError::PortalInvalidState)?;
-                }
-
-                let msg = PortalMessage::decode(msg.payload())?;
-
-                if let PortalMessage::Pong = msg {
-                } else {
+                };
+                if PortalMessage::decode(msg.payload())? != PortalMessage::Pong {
                     return Err(TransportError::Protocol)?;
-                }
-
-                self.start_receiver(ctx, return_route.clone()).await?;
-
-                debug!("Inlet at: {} received pong", self.addresses.internal);
-
-                self.remote_route = Some(return_route);
-                self.state = State::Initialized;
+                };
+                self.handle_receive_pong(ctx, return_route).await
             }
             State::Initialized => {
-                if recipient == self.addresses.internal {
-                    trace!(
-                        "{:?} at: {} received internal tcp packet",
-                        self.portal_type.str(),
-                        self.addresses.internal
-                    );
+                trace!(
+                    "{:?} at: {} received {} tcp packet",
+                    self.portal_type.str(),
+                    self.addresses.internal,
+                    if remote_packet { "remote" } else { "internal " }
+                );
 
-                    let msg = PortalInternalMessage::decode(msg.payload())?;
-
-                    match msg {
-                        PortalInternalMessage::Disconnect => {
-                            info!(
-                                "Tcp stream was dropped for {:?} at: {}",
-                                self.portal_type.str(),
-                                self.addresses.internal
-                            );
-                            self.start_disconnection(ctx, DisconnectionReason::FailedRx)
-                                .await?;
-                        }
-                    }
-                } else {
-                    trace!(
-                        "{:?} at: {} received remote tcp packet",
-                        self.portal_type.str(),
-                        self.addresses.internal
-                    );
-
-                    // Send to Tcp stream
+                if remote_packet {
                     let msg = PortalMessage::decode(msg.payload())?;
-
+                    // Send to Tcp stream
                     match msg {
                         PortalMessage::Payload(payload, packet_counter) => {
-                            // detects both missing or out of order packets
-                            if let Some(packet_counter) = packet_counter {
-                                let expected_counter =
-                                    if self.last_received_packet_counter == u16::MAX {
-                                        0
-                                    } else {
-                                        self.last_received_packet_counter + 1
-                                    };
-
-                                if packet_counter != expected_counter {
-                                    warn!(
-                                        "Received packet with counter {} while expecting {}, disconnecting",
-                                        packet_counter, expected_counter
-                                    );
-                                    self.start_disconnection(ctx, DisconnectionReason::FailedRx)
-                                        .await?;
-                                    return Err(TransportError::RecvBadMessage)?;
-                                }
-                                self.last_received_packet_counter = packet_counter;
-                            }
-
-                            if let Some(tx) = &mut self.write_half {
-                                match tx.write_all(&payload).await {
-                                    Ok(()) => {}
-                                    Err(err) => {
-                                        warn!(
-                                            "Failed to send message to peer {} with error: {}",
-                                            self.peer, err
-                                        );
-                                        self.start_disconnection(
-                                            ctx,
-                                            DisconnectionReason::FailedTx,
-                                        )
-                                        .await?;
-                                    }
-                                }
-                            } else {
-                                return Err(TransportError::PortalInvalidState)?;
-                            }
+                            self.handle_payload(ctx, payload, packet_counter).await
                         }
                         PortalMessage::Disconnect => {
                             self.start_disconnection(ctx, DisconnectionReason::Remote)
-                                .await?;
+                                .await
                         }
                         PortalMessage::Ping | PortalMessage::Pong => {
                             return Err(TransportError::Protocol)?;
                         }
                     }
+                } else {
+                    let msg = PortalInternalMessage::decode(msg.payload())?;
+                    if msg != PortalInternalMessage::Disconnect {
+                        return Err(TransportError::Protocol)?;
+                    };
+                    self.handle_disconnect(ctx).await
                 }
             }
             State::SendPing { .. } | State::SendPong { .. } => {
                 return Err(TransportError::PortalInvalidState)?
             }
-        };
+        }
+    }
+}
 
+impl TcpPortalWorker {
+    #[instrument(skip_all)]
+    async fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
+        self.start_receiver(ctx, return_route.clone()).await?;
+        debug!("Inlet at: {} received pong", self.addresses.internal);
+        self.remote_route = Some(return_route);
+        self.state = State::Initialized;
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
+        info!(
+            "Tcp stream was dropped for {:?} at: {}",
+            self.portal_type.str(),
+            self.addresses.internal
+        );
+        self.start_disconnection(ctx, DisconnectionReason::FailedRx)
+            .await
+    }
+
+    #[instrument(skip_all)]
+    async fn handle_payload(
+        &mut self,
+        ctx: &Context,
+        payload: Vec<u8>,
+        packet_counter: Option<u16>,
+    ) -> Result<()> {
+        // detects both missing or out of order packets
+        self.check_packet_counter(ctx, packet_counter).await?;
+        if let Some(tx) = &mut self.write_half {
+            match tx.write_all(&payload).await {
+                Ok(()) => {}
+                Err(err) => {
+                    warn!(
+                        "Failed to send message to peer {} with error: {}",
+                        self.peer, err
+                    );
+                    self.start_disconnection(ctx, DisconnectionReason::FailedTx)
+                        .await?;
+                }
+            }
+        } else {
+            return Err(TransportError::PortalInvalidState)?;
+        };
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    async fn check_packet_counter(
+        &mut self,
+        ctx: &Context,
+        packet_counter: Option<u16>,
+    ) -> Result<()> {
+        if let Some(packet_counter) = packet_counter {
+            let expected_counter = if self.last_received_packet_counter == u16::MAX {
+                0
+            } else {
+                self.last_received_packet_counter + 1
+            };
+
+            if packet_counter != expected_counter {
+                warn!(
+                    "Received packet with counter {} while expecting {}, disconnecting",
+                    packet_counter, expected_counter
+                );
+                self.start_disconnection(ctx, DisconnectionReason::FailedRx)
+                    .await?;
+                return Err(TransportError::RecvBadMessage)?;
+            }
+            self.last_received_packet_counter = packet_counter;
+        };
         Ok(())
     }
 }

@@ -4566,6 +4566,7 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "ockam_transport_core",
+ "opentelemetry",
  "rand",
  "serde",
  "socket2 0.5.6",

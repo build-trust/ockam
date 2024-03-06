@@ -41,6 +41,7 @@ impl NodeManagerWorker {
         Ok(Response::ok().body(inlets))
     }
 
+    #[instrument(skip_all)]
     pub(super) async fn create_inlet(
         &self,
         ctx: &Context,
@@ -103,6 +104,7 @@ impl NodeManagerWorker {
 
 /// OUTLETS
 impl NodeManagerWorker {
+    #[instrument(skip_all)]
     pub(super) async fn create_outlet(
         &self,
         ctx: &Context,
@@ -173,6 +175,7 @@ impl NodeManagerWorker {
 impl NodeManager {
     #[instrument(skip(self, ctx))]
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
     pub async fn create_outlet(
         &self,
         ctx: &Context,
@@ -310,6 +313,7 @@ impl NodeManager {
 /// INLETS
 impl NodeManager {
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
     pub async fn create_inlet(
         self: &Arc<Self>,
         ctx: &Context,
@@ -538,6 +542,7 @@ impl NodeManager {
 
 impl InMemoryNode {
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
     pub async fn create_inlet(
         &self,
         ctx: &Context,
