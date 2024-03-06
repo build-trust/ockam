@@ -95,16 +95,16 @@ teardown() {
   run_success "$OCKAM" node create green
 
   # The green identity can't create relay as it isn't a member
-  fwd=$(random_str)
-  run_failure "$OCKAM" relay create "$fwd"
+  relay_name=$(random_str)
+  run_failure "$OCKAM" relay create "$relay_name"
 
   # Add the green identity as a member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $fwd
+  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $relay_name
 
   # Now the green node, with its green identity, can now access the project's services
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" relay create "$fwd"
+  run_success "$OCKAM" relay create "$relay_name"
 }
 
 @test "projects - send a message to a project node from an embedded node, enrolled member on different install" {
