@@ -24,7 +24,7 @@ use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{random_name, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
-use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::proto;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 
 use crate::node::util::initialize_default_node;
@@ -41,23 +41,39 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
-    /// Node on which to start the tcp inlet.
+    /// Node on which to start the TCP Inlet.
     #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
-    /// Address on which to accept tcp connections.
+    /// Address on which to accept TCP connections.
     #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
     pub from: SocketAddr,
 
-    /// Route to a tcp outlet. Can be a full route or the name of an existing relay
+    /// Route to a TCP Outlet or the name of the TCP Outlet service you want to connect to.
+    ///
+    /// If you are connecting to a local node, you can provide the route as `/node/n/service/outlet`.
+    ///
+    /// If you are connecting to a remote node through a relay in the Orchestrator you can either
+    /// provide the full route to the TCP Outlet as `/project/myproject/service/forward_to_myrelay/secure/api/service/outlet`,
+    /// or just the name of the service as `outlet` or `/service/outlet`.
+    /// If you are passing just the service name, consider using `--via` to specify the
+    /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
     #[arg(long, display_order = 900, id = "ROUTE", default_value_t = default_to_addr())]
     pub to: String,
+
+    /// Name of the relay that this TCP Inlet will use to connect to the TCP Outlet.
+    ///
+    /// Use this flag when you are using `--to` to specify the service name of a TCP Outlet
+    /// that is reachable through a relay in the Orchestrator.
+    /// If you don't provide it, the default relay name will be used, if necessary.
+    #[arg(long, display_order = 900, id = "RELAY_NAME")]
+    pub via: Option<String>,
 
     /// Authorized identity for secure channel connection
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     pub authorized: Option<Identifier>,
 
-    /// Assign a name to this inlet.
+    /// Assign a name to this TCP Inlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser, default_value_t = random_name(), hide_default_value = true)]
     pub alias: String,
 
@@ -72,7 +88,7 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]
     pub connection_wait: Duration,
 
-    /// Time to wait before retrying to connect to outlet.
+    /// Time to wait before retrying to connect to the TCP Outlet.
     #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser)]
     pub retry_wait: Duration,
 
@@ -80,7 +96,7 @@ pub struct CreateCommand {
     #[arg(long, value_parser = duration_parser)]
     pub timeout: Option<Duration>,
 
-    /// Create the inlet without waiting for the outlet to connect
+    /// Create the TCP Inlet without waiting for the TCP Outlet to connect
     #[arg(long, default_value = "false")]
     no_connection_wait: bool,
 }
@@ -91,7 +107,7 @@ pub(crate) fn default_from_addr() -> SocketAddr {
 }
 
 fn default_to_addr() -> String {
-    "/project/$DEFAULT_PROJECT_NAME/service/forward_to_$DEFAULT_RELAY_NAME/secure/api/service/outlet".to_string()
+    "/project/<default_project_name>/service/forward_to_<default_relay_name>/secure/api/service/<default_service_name>".to_string()
 }
 
 impl CreateCommand {
@@ -122,7 +138,7 @@ impl CreateCommand {
         let progress_bar = opts.terminal.progress_spinner();
         let create_inlet = async {
             port_is_free_guard(&cmd.from)?;
-            if cmd.to().matches(0, &[Project::CODE.into()]) && cmd.authorized.is_some() {
+            if cmd.to().matches(0, &[proto::Project::CODE.into()]) && cmd.authorized.is_some() {
                 return Err(miette!(
                     "--authorized can not be used with project addresses"
                 ))?;
@@ -273,95 +289,171 @@ impl CreateCommand {
     }
 
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
-        let default_project_name = &opts
-            .state
-            .projects()
-            .get_default_project()
-            .await
-            .ok()
-            .map(|p| p.name().to_string());
-
-        self.to = Self::parse_arg_to(&opts.state, self.to, default_project_name.as_deref()).await?;
+        self.to = Self::parse_arg_to(&opts.state, self.to, self.via.as_ref()).await?;
         Ok(self)
     }
 
     async fn parse_arg_to(
         state: &CliState,
         to: impl Into<String>,
-        default_project_name: Option<&str>,
+        via: Option<&String>,
     ) -> miette::Result<String> {
         let mut to = to.into();
-        // Replace the placeholders in the default arg value
-        if to.starts_with("/project/") {
-            let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
-            to = to.replace("$DEFAULT_PROJECT_NAME", project_name);
-            to = to.replace("$DEFAULT_RELAY_NAME", "default");
+        let to_is_default = to == default_to_addr();
+        let mut service_name = "outlet".to_string();
+        let relay_name = via.cloned().unwrap_or("default".to_string());
+
+        match MultiAddr::from_str(&to) {
+            // "to" is a valid multiaddr
+            Ok(to) => {
+                // check whether it's a full route or a single service
+                if let Some(proto) = to.first() {
+                    // "to" refers to the service name
+                    if proto.code() == proto::Service::CODE && to.len() == 1 {
+                        service_name = proto
+                            .cast::<proto::Service>()
+                            .ok_or_else(|| Error::arg_validation("to", via, None))?
+                            .to_string();
+                    }
+                    // "to" is a full route
+                    else {
+                        // "via" can't be passed if the user provides a value for "to"
+                        if !to_is_default && via.is_some() {
+                            return Err(Error::arg_validation(
+                                "to",
+                                via,
+                                Some("'via' can't be passed if 'to' is a route"),
+                            ))?;
+                        }
+                    }
+                }
+            }
+            // If it's not
+            Err(_) => {
+                // "to" refers to the service name
+                service_name = to.to_string();
+                // and we set "to" to the default route, so we can do the replacements later
+                to = default_to_addr();
+            }
         }
 
-        // Parse the address
-        let ma = match MultiAddr::from_str(&to) {
-            // The user provided a full route
-            Ok(ma) => ma,
-            // The user provided the name of the relay
-            Err(_) => {
-                if to.contains('/') {
-                    return Err(Error::arg_validation("to", to, None))?;
-                }
-                let project_name = default_project_name.ok_or(Error::NotEnrolled)?;
-                MultiAddr::from_str(&format!(
-                    "/project/{project_name}/service/forward_to_{to}/secure/api/service/outlet"
-                ))
-                .into_diagnostic()
-                .map_err(|e| Error::arg_validation("to", to, Some(&e.to_string())))?
-            }
-        };
-        Ok(process_nodes_multiaddr(&ma, state).await?.to_string())
+        // Replace the placeholders
+        if to.contains("<default_project_name>") {
+            let project_name = state
+                .projects()
+                .get_default_project()
+                .await
+                .map(|p| p.name().to_string())
+                .ok()
+                .ok_or(Error::arg_validation("to", via, Some("No projects found")))?;
+            to = to.replace("<default_project_name>", &project_name);
+        }
+        to = to.replace("<default_relay_name>", &relay_name);
+        to = to.replace("<default_service_name>", &service_name);
+
+        // Parse "to" as a multiaddr again with all the values in place
+        let to = MultiAddr::from_str(&to).into_diagnostic()?;
+        Ok(process_nodes_multiaddr(&to, state).await?.to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use miette::Result;
-
     use super::*;
+    use ockam_api::cloud::project::models::ProjectModel;
+    use ockam_api::cloud::project::Project;
+    use ockam_api::nodes::InMemoryNode;
 
-    #[tokio::test]
-    async fn test_parse_arg_to() -> Result<()> {
-        let state = CliState::test().await?;
-        let default_project_name = Some("p1");
-
-        // Invalid values
-        CreateCommand::parse_arg_to(&state, "/alice/service", default_project_name)
+    #[ockam_macros::test]
+    async fn parse_arg_to(ctx: &mut Context) -> ockam_core::Result<()> {
+        // Setup
+        let state = CliState::test().await.unwrap();
+        let node = InMemoryNode::start(ctx, &state).await.unwrap();
+        let node_name = node.node_name();
+        let node_port = state
+            .get_node(&node_name)
             .await
-            .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_to(&state, "alice/relay", default_project_name)
-            .await
-            .expect_err("Invalid protocol");
+            .unwrap()
+            .tcp_listener_port()
+            .unwrap();
+        let project = Project::import(ProjectModel {
+            identity: Some(
+                Identifier::from_str(
+                    "Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1",
+                )
+                .unwrap(),
+            ),
+            name: "p1".to_string(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        state.projects().store_project(project).await.unwrap();
 
-        // The placeholders are replaced when using the arg's default value
-        let res = CreateCommand::parse_arg_to(&state, default_to_addr(), default_project_name)
+        // Invalid "to" values throw an error
+        let cases = ["/alice/service", "alice/relay"];
+        for to in cases {
+            CreateCommand::parse_arg_to(&state, to, None)
+                .await
+                .expect_err("Invalid multiaddr");
+        }
+
+        // "to" default value
+        let res = CreateCommand::parse_arg_to(&state, default_to_addr(), None)
             .await
             .unwrap();
         assert_eq!(
             res,
-            "/project/p1/service/forward_to_default/secure/api/service/outlet"
+            "/project/p1/service/forward_to_default/secure/api/service/outlet".to_string()
         );
 
-        // The user provides a full project route
-        let addr = "/project/p1/service/forward_to_n1/secure/api/service/outlet";
-        let res = CreateCommand::parse_arg_to(&state, addr, default_project_name)
-            .await
-            .unwrap();
-        assert_eq!(res, addr);
+        // "to" argument accepts a full route
+        let cases = [
+            ("/project/p2/service/forward_to_n1/secure/api/service/myoutlet", None),
+            ("/worker/603b62d245c9119d584ba3d874eb8108/service/forward_to_n3/service/hop/service/outlet", None),
+            (&format!("/node/{node_name}/service/myoutlet"), Some(format!("/ip4/127.0.0.1/tcp/{node_port}/service/myoutlet"))),
+        ];
+        for (to, expected) in cases {
+            let res = CreateCommand::parse_arg_to(&state, to, None).await.unwrap();
+            let expected = expected.unwrap_or(to.to_string());
+            assert_eq!(res, expected);
+        }
 
-        // The user provides the name of the relay
-        let res = CreateCommand::parse_arg_to(&state, "alice", default_project_name)
+        // "to" argument accepts the name of the service
+        let res = CreateCommand::parse_arg_to(&state, "myoutlet", None)
             .await
             .unwrap();
         assert_eq!(
             res,
-            "/project/p1/service/forward_to_alice/secure/api/service/outlet"
+            "/project/p1/service/forward_to_default/secure/api/service/myoutlet".to_string()
         );
+
+        // "via" argument is used to replace the relay name
+        let cases = [
+            (
+                default_to_addr(),
+                "myrelay",
+                "/project/p1/service/forward_to_myrelay/secure/api/service/outlet",
+            ),
+            (
+                "myoutlet".to_string(),
+                "myrelay",
+                "/project/p1/service/forward_to_myrelay/secure/api/service/myoutlet",
+            ),
+        ];
+        for (to, via, expected) in cases {
+            let res = CreateCommand::parse_arg_to(&state, &to, Some(&via.to_string()))
+                .await
+                .unwrap();
+            assert_eq!(res, expected.to_string());
+        }
+
+        // if "to" is passed as a full route and also "via" is passed, return an error
+        let to = "/project/p1/service/forward_to_n1/secure/api/service/outlet";
+        CreateCommand::parse_arg_to(&state, to, Some(&"myrelay".to_string()))
+            .await
+            .expect_err("'via' can't be passed if 'to' is a full route");
+
         Ok(())
     }
 }

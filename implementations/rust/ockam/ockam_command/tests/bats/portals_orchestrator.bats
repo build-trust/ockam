@@ -27,12 +27,12 @@ teardown() {
   run_success "$OCKAM" node create blue
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
-  fwd="$(random_str)"
-  run_success "$OCKAM" relay create "$fwd" --to /node/blue
+  relay_name="$(random_str)"
+  run_success "$OCKAM" relay create "$relay_name" --to /node/blue
 
   run_success "$OCKAM" node create green
-  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
-    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
+  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$relay_name/service/api \
+    | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
@@ -53,11 +53,11 @@ teardown() {
   run_success "$OCKAM" node create blue
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
-  fwd="$(random_str)"
-  run_success "$OCKAM" relay create "$fwd" --to /node/blue
+  relay_name="$(random_str)"
+  run_success "$OCKAM" relay create "$relay_name" --to /node/blue
 
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --via "$relay_name"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
@@ -76,21 +76,21 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  fwd="$(random_str)"
+  relay_name="$(random_str)"
   run_success "$OCKAM" node create green --identity green
   run_success "$OCKAM" node create blue --identity blue
 
   # Green isn't enrolled as project member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
+  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name
 
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
-  run_success "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
+  run_success "$OCKAM" relay create "$relay_name" --to /node/blue
+  assert_output --partial "forward_to_$relay_name"
 
-  run_success bash -c "$OCKAM secure-channel create --from /node/green --identity green  --to /project/default/service/forward_to_$fwd/service/api \
+  run_success bash -c "$OCKAM secure-channel create --from /node/green --identity green  --to /project/default/service/forward_to_$relay_name/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
   # Green can't establish secure channel with blue, because it didn't exchange credential with it.
@@ -109,21 +109,21 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  fwd="$(random_str)"
+  relay_name="$(random_str)"
   run_success "$OCKAM" node create green --identity green
   run_success "$OCKAM" node create blue --identity blue
 
   # Green isn't enrolled as project member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
+  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name
 
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
-  run_success "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
+  run_success "$OCKAM" relay create "$relay_name" --to /node/blue
+  assert_output --partial "forward_to_$relay_name"
 
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to "$fwd"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --via "$relay_name"
   # Green can't establish secure channel with blue, because it isn't a member
   run_failure curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
@@ -142,23 +142,23 @@ teardown() {
   green_identifier=$($OCKAM identity show green)
   blue_identifier=$($OCKAM identity show blue)
 
-  fwd="$(random_str)"
+  relay_name="$(random_str)"
   run_success "$OCKAM" node create green --identity green
   run_success "$OCKAM" node create blue --identity blue
 
   # Add identities as members of the project
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $fwd
+  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name
   run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
 
   # Use project from the now enrolled identities
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
-  run_success "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
+  run_success "$OCKAM" relay create "$relay_name" --to /node/blue
+  assert_output --partial "forward_to_$relay_name"
 
-  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$fwd/service/api \
+  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$relay_name/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
@@ -168,9 +168,9 @@ teardown() {
   port="$(random_port)"
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  fwd="$(random_str)"
+  relay_name="$(random_str)"
   green_token=$($OCKAM project ticket --attribute app=app1)
-  blue_token=$($OCKAM project ticket --attribute app=app1 --relay $fwd)
+  blue_token=$($OCKAM project ticket --attribute app=app1 --relay $relay_name)
 
   setup_home_dir
   NON_ENROLLED_OCKAM_HOME=$OCKAM_HOME
@@ -188,11 +188,11 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/blue \
     --to 127.0.0.1:$PYTHON_SERVER_PORT --allow '(= subject.app "app1")'
 
-  run_success "$OCKAM" relay create "$fwd" --to /node/blue
-  assert_output --partial "forward_to_$fwd"
+  run_success "$OCKAM" relay create "$relay_name" --to /node/blue
+  assert_output --partial "forward_to_$relay_name"
 
   run_success "$OCKAM" tcp-inlet create --at /node/green \
-    --from "127.0.0.1:$port" --to "$fwd" --allow '(= subject.app "app1")'
+    --from "127.0.0.1:$port" --via "$relay_name" --allow '(= subject.app "app1")'
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
@@ -206,8 +206,7 @@ teardown() {
   run_success "$OCKAM" relay create --to /node/blue
 
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green \
-    --from "127.0.0.1:$port" --to "/project/default/service/forward_to_default/secure/api/service/outlet"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$port"
   run_success curl --fail --head --retry 4 --max-time 10 "127.0.0.1:$port"
 
   $OCKAM node delete blue --yes
@@ -262,7 +261,7 @@ teardown() {
 
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:${inlet_port}" \
-    --to "${relay_name}"
+    --via "${relay_name}"
 
   run_success curl --fail --head --max-time 10 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)

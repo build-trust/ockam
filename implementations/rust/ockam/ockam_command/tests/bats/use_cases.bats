@@ -71,11 +71,11 @@ teardown() {
 
   port_1=9002
   port_2=9003
-  fwd=$(random_str)
+  relay_name=$(random_str)
 
   # Administrator
   ADMIN_HOME="$OCKAM_HOME"
-  run_success bash -c "$OCKAM project ticket --attribute component=control --relay $fwd > $OCKAM_HOME/control.ticket"
+  run_success bash -c "$OCKAM project ticket --attribute component=control --relay $relay_name > $OCKAM_HOME/control.ticket"
   run_success bash -c "$OCKAM project ticket --attribute component=edge > $OCKAM_HOME/edge.ticket"
   run_success bash -c "$OCKAM project ticket --attribute component=x > $OCKAM_HOME/x.ticket"
 
@@ -88,7 +88,7 @@ teardown() {
   run_success $OCKAM node create control_plane1 --identity control_identity
   run_success $OCKAM tcp-outlet create --at /node/control_plane1 \
     --to 127.0.0.1:$PYTHON_SERVER_PORT --allow '(= subject.component "edge")'
-  run_success $OCKAM relay create "$fwd" --at /project/default --to /node/control_plane1
+  run_success $OCKAM relay create "$relay_name" --at /project/default --to /node/control_plane1
 
   # Edge plane
   setup_home_dir
@@ -98,7 +98,7 @@ teardown() {
   $OCKAM project enroll "$ADMIN_HOME/edge.ticket" --identity edge_identity
   $OCKAM node create edge_plane1 --identity edge_identity
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" \
-    --to "$fwd" --allow '(= subject.component "control")'
+    --via "$relay_name" --allow '(= subject.component "control")'
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port_1"
 
   ## The following is denied
@@ -106,7 +106,7 @@ teardown() {
   $OCKAM project enroll "$ADMIN_HOME/x.ticket" --identity x_identity
   $OCKAM node create x --identity x_identity
   $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" \
-    --to "$fwd" --allow '(= subject.component "control")'
+    --via "$relay_name" --allow '(= subject.component "control")'
   run curl --fail --head --max-time 10 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
 }
@@ -160,7 +160,7 @@ teardown() {
   run_success $OCKAM identity create web
   run_success $OCKAM project enroll ${MACHINE_A}/webapp.ticket --identity web
   run_success $OCKAM node create web --identity web
-  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --to db --allow '(= subject.component "db")'
+  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --via db --allow '(= subject.component "db")'
 
   export APP_PG_PORT="$OCKAM_PG_PORT_MACHINE_C"
   run_success start_python_server
@@ -235,11 +235,11 @@ teardown() {
   run_success "$OCKAM" policy create --at alice --resource tcp-inlet
 
   # Alice request to access Machine 1 in San Francisco is allowed
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --to m1 --allow '(= subject.application "Smart Factory")'
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --via m1 --allow '(= subject.application "Smart Factory")'
   run_success curl --fail --head --max-time 10 127.0.0.1:8000
 
   # Alice request to access Machine 2 in New York is denied
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --to m2 --allow '(= subject.application "Smart Factory")'
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --via m2 --allow '(= subject.application "Smart Factory")'
   run_failure curl --fail --head --max-time 10 127.0.0.1:9000
 }
 
