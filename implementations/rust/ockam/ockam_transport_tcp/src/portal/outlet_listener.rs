@@ -4,7 +4,7 @@ use ockam_core::{async_trait, Address, DenyAll, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 /// A TCP Portal Outlet listen worker
 ///
@@ -27,6 +27,7 @@ impl TcpOutletListenWorker {
         }
     }
 
+    #[instrument(skip_all, name = "TcpOutletListenWorker::start")]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -55,18 +56,21 @@ impl Worker for TcpOutletListenWorker {
     type Context = Context;
     type Message = PortalMessage;
 
+    #[instrument(skip_all, name = "TcpOutletListenWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry.add_outlet_listener_worker(&ctx.address());
 
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpOutletListenWorker::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry.remove_outlet_listener_worker(&ctx.address());
 
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpOutletListenWorker::handle_message")]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,

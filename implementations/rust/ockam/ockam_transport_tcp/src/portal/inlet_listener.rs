@@ -6,7 +6,7 @@ use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::{debug, error};
+use tracing::{debug, error, instrument};
 
 /// A TCP Portal Inlet listen processor
 ///
@@ -36,6 +36,7 @@ impl TcpInletListenProcessor {
     }
 
     /// Start a new `TcpInletListenProcessor`
+    #[instrument(skip_all, name = "TcpInletListenProcessor::start")]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -67,12 +68,14 @@ impl TcpInletListenProcessor {
 impl Processor for TcpInletListenProcessor {
     type Context = Context;
 
+    #[instrument(skip_all, name = "TcpInletListenProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry.add_inlet_listener_processor(&ctx.address());
 
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpInletListenProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_inlet_listener_processor(&ctx.address());
@@ -80,6 +83,7 @@ impl Processor for TcpInletListenProcessor {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpInletListenProcessor::process")]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let addresses = Addresses::generate(PortalType::Inlet);
         let outlet_listener_route = self.outlet_listener_route.clone();
