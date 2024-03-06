@@ -30,8 +30,8 @@ use crate::journeys::APP_NAME;
 use crate::logs::log_processors::NonBlockingLogProcessor;
 use crate::logs::span_processors::NonBlockingSpanProcessor;
 use crate::logs::tracing_guard::TracingGuard;
-use crate::logs::LogFormat;
 use crate::logs::{GlobalErrorHandler, LoggingConfiguration, TracingConfiguration};
+use crate::logs::{LogFormat, NodeSpanExporter};
 
 pub struct LoggingTracing;
 
@@ -45,6 +45,7 @@ impl LoggingTracing {
         logging_configuration: &LoggingConfiguration,
         tracing_configuration: &TracingConfiguration,
         app_name: &str,
+        node_name: Option<String>,
     ) -> TracingGuard {
         // if the tracing configuration is enabled we use the
         // exporters.
@@ -92,6 +93,7 @@ impl LoggingTracing {
                 logging_configuration,
                 tracing_configuration,
                 app_name,
+                node_name,
             )
         } else {
             Self::set_up_local_logging_only(logging_configuration)
@@ -111,14 +113,19 @@ impl LoggingTracing {
         logging_configuration: &LoggingConfiguration,
         tracing_configuration: &TracingConfiguration,
         app_name: &str,
+        node_name: Option<String>,
     ) -> TracingGuard {
         // configure the logging layer exporting OpenTelemetry log records
         let (logging_layer, logger_provider) =
             create_opentelemetry_logging_layer(app_name, tracing_configuration, log_exporter);
 
         // configure the tracing layer exporting OpenTelemetry spans
-        let (tracing_layer, tracer_provider) =
-            create_opentelemetry_tracing_layer(app_name, tracing_configuration, span_exporter);
+        let (tracing_layer, tracer_provider) = create_opentelemetry_tracing_layer(
+            app_name,
+            node_name,
+            tracing_configuration,
+            span_exporter,
+        );
 
         // configure the appending layer, which outputs logs either to the console or to a file
         let (appender, worker_guard) = create_opentelemetry_appender(logging_configuration);
@@ -173,6 +180,7 @@ fn create_opentelemetry_tracing_layer<
     S: SpanExporter + Send + 'static,
 >(
     app_name: &str,
+    node_name: Option<String>,
     tracing_configuration: &TracingConfiguration,
     span_exporter: S,
 ) -> (
@@ -185,7 +193,11 @@ fn create_opentelemetry_tracing_layer<
         .with_scheduled_delay(tracing_configuration.trace_export_scheduled_delay());
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
-        let (tracer, tracer_provider) = create_tracer(trace_config, batch_config, span_exporter);
+        let (tracer, tracer_provider) = create_tracer(
+            trace_config,
+            batch_config,
+            NodeSpanExporter::new(span_exporter, node_name),
+        );
         (
             tracing_opentelemetry::layer().with_tracer(tracer),
             tracer_provider,

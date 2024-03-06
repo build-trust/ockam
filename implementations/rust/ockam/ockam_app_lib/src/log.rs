@@ -41,6 +41,7 @@ impl AppState {
             .unwrap(),
             &TracingConfiguration::foreground(true).unwrap(),
             "portals",
+            Some("portals".to_string()),
         );
         self.tracing_guard
             .set(tracing_guard)

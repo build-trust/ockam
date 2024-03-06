@@ -27,6 +27,7 @@ pub use current_span::*;
 pub use logging_configuration::*;
 pub use logging_options::*;
 pub use setup::*;
+pub use span_exporters::*;
 pub use tracing_configuration::*;
 pub use tracing_guard::*;
 pub use tracing_options::*;

@@ -35,6 +35,7 @@ pub const APPLICATION_EVENT_PROJECT_AUTHORITY_ACCESS_ROUTE: &Key =
 pub const APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTIFIER: &Key =
     &Key::from_static_str("app.event.project.authority_identifier");
 
+pub const APPLICATION_EVENT_NODE_NAME: &Key = &Key::from_static_str("app.event.node_name");
 pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.trace_id");
 pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.span_id");
 pub const APPLICATION_EVENT_TIMESTAMP: &Key = &Key::from_static_str("app.event.timestamp");

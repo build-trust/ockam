@@ -123,8 +123,12 @@ impl CommandGlobalOpts {
         } else {
             "cli"
         };
-        let tracing_guard =
-            LoggingTracing::setup(logging_configuration, tracing_configuration, app_name);
+        let tracing_guard = LoggingTracing::setup(
+            logging_configuration,
+            tracing_configuration,
+            app_name,
+            cmd.node_name(),
+        );
         Some(Arc::new(tracing_guard))
     }
 
