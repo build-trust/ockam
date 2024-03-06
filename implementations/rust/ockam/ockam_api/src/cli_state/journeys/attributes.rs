@@ -35,13 +35,7 @@ pub fn default_attributes<'a>() -> HashMap<&'a Key, String> {
 ///  - The last 6 characters are the 'now' date as YYMMDD
 ///
 pub(crate) fn make_host_trace_id(now: DateTime<Utc>) -> TraceId {
-    let mut machine = adjust(make_host(), 25, '1');
-    // make sure that there exactly 25 characters
-    if machine.len() < 25 {
-        machine.extend(std::iter::repeat("1").take(25 - machine.len()));
-    };
-    machine = machine[0..25].to_string();
-
+    let machine = adjust(make_host(), 25, '1');
     // date as a 6 characters string
     let now = now_as_string(now);
 
@@ -108,7 +102,7 @@ fn adjust(s: String, desired_size: usize, filler: char) -> String {
     if current_size < desired_size {
         result.extend(std::iter::repeat(filler).take(desired_size - current_size));
     };
-    result[0..25].to_string()
+    result[0..desired_size].to_string()
 }
 
 // Check if the string is already in hexadecimal format
