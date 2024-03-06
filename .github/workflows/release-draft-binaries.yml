@@ -352,47 +352,59 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [arm64, amd64]
-        include:
-        - build: arm64
-          os: ubuntu-22.04
-          target: aarch64-unknown-linux-gnu
-        - build: amd64
-          os: ubuntu-22.04
-          target: x86_64-unknown-linux-gnu
-    runs-on: ${{ matrix.os }}
+        job:
+          - { target: aarch64-unknown-linux-gnu   , os: ubuntu-20.04 , use-cross: true }
+          - { target: x86_64-unknown-linux-gnu    , os: ubuntu-20.04  }
+          - { target: aarch64-apple-darwin        , os: macos-14      }
+          - { target: x86_64-apple-darwin         , os: macos-14      }
+
+    runs-on: ${{ matrix.job.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.release_branch }}
 
-      # https://github.com/docker/setup-qemu-action
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1      # https://github.com/docker/setup-qemu-action
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: ${{ matrix.job.target }}
 
-      - name: Build NIF For Linux
-        shell: bash
+      - name: Install Cross
+        if: matrix.job.use-cross == true
+        run: cargo install --version 0.2.4 cross
+
+      - name: Build NIFs
         run: |
           set -ex
 
-          docker build --platform linux/${{ matrix.build }}  --tag ghcr.io/build-trust/nif:latest --file tools/docker/nifs/Dockerfile .
-          id=$(docker create ghcr.io/build-trust/nif:latest)
-          docker cp "${id}:/work/implementations/elixir/ockam/ockly/priv/native/libockam_rust_elixir_nifs.so"  .
+          if [[ '${{ matrix.job.use-cross }}' == 'true' ]]; then
+            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release
+            exit
+          fi
 
-      - name: Rename NIF
+          rustup target add ${{ matrix.job.target }}
+          cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release
+
+      - name: List
+        run: |
+          ls target/${{ matrix.job.target }}/release/
+
+      - name: Rename Build
         run: |
           cargo install tomlq
           ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
 
-          # 2.15 indicates that we will be using OTP version 2.15 as it's the oldest version
-          cp libockam_rust_elixir_nifs.so libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so &&
-            tar -zcvf "libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so.tar.gz" libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so
+          final_name="libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.job.target }}.so"
+          if [[ "${{ matrix.job.target }}" == *"darwin"* ]]; then
+          cp target/${{ matrix.job.target }}/release/libockam_rust_elixir_nifs.dylib "$final_name"
+          else
+          cp target/${{ matrix.job.target }}/release/libockam_rust_elixir_nifs.so "$final_name"
+          fi
 
-          echo "FILE_NAME=libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.target }}.so.tar.gz" >> $GITHUB_ENV
+          tar -zcvf "${final_name}.tar.gz" "$final_name"
+          echo "FILE_NAME=${final_name}.tar.gz" >> $GITHUB_ENV
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4
