@@ -181,6 +181,32 @@ impl OckamSubcommand {
         }
     }
 
+    /// Return the node name for an ockam node create command
+    pub fn node_name(&self) -> Option<String> {
+        match self {
+            OckamSubcommand::Node(cmd) => match &cmd.subcommand {
+                NodeSubcommand::Create(cmd) => {
+                    if cmd.child_process {
+                        Some(cmd.node_name.clone())
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+            OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
+                AuthoritySubcommand::Create(cmd) => {
+                    if cmd.child_process {
+                        Some(cmd.node_name.clone())
+                    } else {
+                        None
+                    }
+                }
+            },
+            _ => None,
+        }
+    }
+
     /// Return a path if the command requires the creation of log files in a specific directory
     pub fn log_path(&self) -> Option<PathBuf> {
         match self {

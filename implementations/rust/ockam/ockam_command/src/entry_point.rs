@@ -46,6 +46,7 @@ pub fn run() -> miette::Result<()> {
                     &logging_configuration.into_diagnostic()?,
                     &ExportingConfiguration::foreground(true).into_diagnostic()?,
                     "local node",
+                    None,
                 );
                 let cli_state = CliState::with_default_dir()?;
                 let message = format!("could not parse the command: {}", command);
