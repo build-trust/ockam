@@ -92,6 +92,15 @@ force_kill_node() {
   run_success "$OCKAM" node create "$n"
 }
 
+@test "node - fail to create node when not existing identity is passed" {
+  i=$(random_str)
+
+  # Background node
+  run_failure "$OCKAM" node create --identity "$i"
+  # Foreground node
+  run_failure "$OCKAM" node create -f --identity "$i"
+}
+
 @test "node - fail to create two foreground nodes with the same name" {
   n="$(random_str)"
   run_success "$OCKAM" node create $n -f &

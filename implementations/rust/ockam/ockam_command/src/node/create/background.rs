@@ -30,6 +30,10 @@ impl CreateCommand {
             self.guard_node_is_not_already_running(&opts).await?;
         }
 
+        if let Some(identity_name) = &self.identity {
+            opts.state.get_named_identity(identity_name).await?;
+        }
+
         let node_name = self.node_name.clone();
         CurrentSpan::set_attribute(NODE_NAME, node_name.as_str());
         debug!("create node in background mode");
