@@ -5,7 +5,7 @@ use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 /// A TCP Listen processor
 ///
@@ -20,6 +20,7 @@ pub(crate) struct TcpListenProcessor {
 }
 
 impl TcpListenProcessor {
+    #[instrument(skip_all, name = "TcpListenProcessor::start")]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -52,6 +53,7 @@ impl TcpListenProcessor {
 impl Processor for TcpListenProcessor {
     type Context = Context;
 
+    #[instrument(skip_all, name = "TcpListenProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
@@ -64,12 +66,14 @@ impl Processor for TcpListenProcessor {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpListenProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry.remove_listener_processor(&ctx.address());
 
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpListenProcessor::process")]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         debug!("Waiting for incoming TCP connection...");
 

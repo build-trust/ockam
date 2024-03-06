@@ -50,6 +50,7 @@ impl TcpRecvProcessor {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all, name = "TcpRecvProcessor::start")]
     pub async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -94,6 +95,7 @@ impl TcpRecvProcessor {
 impl Processor for TcpRecvProcessor {
     type Context = Context;
 
+    #[instrument(skip_all, name = "TcpRecvProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
@@ -108,6 +110,7 @@ impl Processor for TcpRecvProcessor {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpRecvProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry.remove_receiver_processor(&ctx.address());
 

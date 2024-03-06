@@ -68,6 +68,7 @@ impl TcpSendWorker {
     /// Create a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all, name = "TcpSendWorker::start")]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -110,6 +111,7 @@ impl TcpSendWorker {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpSendWorker::stop")]
     async fn stop(&self, ctx: &Context) -> Result<()> {
         ctx.stop_worker(self.addresses.sender_address().clone())
             .await?;
@@ -117,6 +119,7 @@ impl TcpSendWorker {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpSendWorker::connect")]
     pub(crate) async fn connect(
         socket_address: SocketAddr,
     ) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
@@ -154,6 +157,7 @@ impl Worker for TcpSendWorker {
     type Context = Context;
     type Message = Any;
 
+    #[instrument(skip_all, name = "TcpSendWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
@@ -168,6 +172,7 @@ impl Worker for TcpSendWorker {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "TcpSendWorker::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_sender_worker(self.addresses.sender_address());
