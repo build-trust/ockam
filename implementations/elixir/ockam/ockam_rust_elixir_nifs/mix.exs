@@ -1,9 +1,9 @@
-defmodule Ockly.MixProject do
+defmodule OckamRustElixirNifs.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :ockly,
+      app: :ockam_rust_elixir_nifs,
       version: "0.117.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,

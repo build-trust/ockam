@@ -16,8 +16,8 @@ To build the NIF module:
 ### To load the NIF:
 
 ```elixir
-defmodule Ockly do
-  use Rustler, otp_app: :ockly, crate: "ockly"
+defmodule OckamRustElixirNifs do
+  use Rustler, otp_app: :ockam_rust_elixir_nifs, crate: "ockam_rust_elixir_nifs"
 
   # When your NIF is loaded, it will override this function.
   def add(_a, _b), do: :erlang.nif_error(:nif_not_loaded)

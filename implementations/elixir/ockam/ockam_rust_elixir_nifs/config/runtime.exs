@@ -6,4 +6,4 @@ aws_vault =
     :error -> false
   end
 
-config :ockly, aws_vault: aws_vault
+config :ockam_rust_elixir_nifs, aws_vault: aws_vault

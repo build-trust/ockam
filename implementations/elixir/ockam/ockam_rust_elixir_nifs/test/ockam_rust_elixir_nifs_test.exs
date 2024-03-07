@@ -1,21 +1,21 @@
-defmodule OcklyTest do
+defmodule OckamRustElixirNifsTest do
   use ExUnit.Case
-  doctest Ockly
+  doctest OckamRustElixirNifs
 
   test "create identity" do
-    {id, exported_identity} = Ockly.Native.create_identity()
+    {id, exported_identity} = OckamRustElixirNifs.Native.create_identity()
     {pub_key, secret_key} = :crypto.generate_key(:eddh, :x25519)
     {pub_key2, _secret_key2} = :crypto.generate_key(:eddh, :x25519)
-    attestation = Ockly.Native.attest_secure_channel_key(id, secret_key)
+    attestation = OckamRustElixirNifs.Native.attest_secure_channel_key(id, secret_key)
 
-    assert Ockly.Native.verify_secure_channel_key_attestation(
+    assert OckamRustElixirNifs.Native.verify_secure_channel_key_attestation(
              exported_identity,
              pub_key,
              attestation
            ) == true
 
     # attest for another key
-    assert Ockly.Native.verify_secure_channel_key_attestation(
+    assert OckamRustElixirNifs.Native.verify_secure_channel_key_attestation(
              exported_identity,
              pub_key2,
              attestation
@@ -24,23 +24,25 @@ defmodule OcklyTest do
 
     # attestation data is junk
     assert {:error, {:attestation_decode_error, _}} =
-             Ockly.Native.verify_secure_channel_key_attestation(
+             OckamRustElixirNifs.Native.verify_secure_channel_key_attestation(
                exported_identity,
                pub_key,
                pub_key
              )
 
-    assert Ockly.Native.check_identity(exported_identity) == id
+    assert OckamRustElixirNifs.Native.check_identity(exported_identity) == id
 
-    {subject_id, _subject_identity} = Ockly.Native.create_identity()
+    {subject_id, _subject_identity} = OckamRustElixirNifs.Native.create_identity()
     attrs = %{"Some" => "works!", "other" => "yes!"}
-    credential = Ockly.Native.issue_credential(exported_identity, subject_id, attrs, 60)
+
+    credential =
+      OckamRustElixirNifs.Native.issue_credential(exported_identity, subject_id, attrs, 60)
 
     {ttl, verified_attrs} =
-      Ockly.Native.verify_credential(subject_id, [exported_identity], credential)
+      OckamRustElixirNifs.Native.verify_credential(subject_id, [exported_identity], credential)
 
     {:error, {:credential_verification_failed, _}} =
-      Ockly.Native.verify_credential(id, [exported_identity], credential)
+      OckamRustElixirNifs.Native.verify_credential(id, [exported_identity], credential)
 
     assert verified_attrs == attrs
     assert ttl == System.os_time(:second) + 60
@@ -48,8 +50,8 @@ defmodule OcklyTest do
 
   test "create identity from existing secret" do
     {_pub, secret} = :crypto.generate_key(:eddsa, :ed25519)
-    key_id = Ockly.Native.import_signing_secret(secret)
-    {_id, _exported_identity} = Ockly.Native.create_identity(key_id)
+    key_id = OckamRustElixirNifs.Native.import_signing_secret(secret)
+    {_id, _exported_identity} = OckamRustElixirNifs.Native.create_identity(key_id)
   end
 
   test "check identity multiple times" do
@@ -65,9 +67,9 @@ defmodule OcklyTest do
     expected_identifier = "I092d652f05c3af8e93188b92f05d8605a62746ca9bd34dee85586c6c003b4bac"
 
     # Verifying identities multiple times must work
-    assert expected_identifier == Ockly.Native.check_identity(identity)
-    assert expected_identifier == Ockly.Native.check_identity(identity)
-    assert expected_identifier == Ockly.Native.check_identity(identity)
+    assert expected_identifier == OckamRustElixirNifs.Native.check_identity(identity)
+    assert expected_identifier == OckamRustElixirNifs.Native.check_identity(identity)
+    assert expected_identifier == OckamRustElixirNifs.Native.check_identity(identity)
   end
 
   test "import identity and existing secret" do
@@ -89,19 +91,24 @@ defmodule OcklyTest do
 
     identifier = "I10253701dafcc65a621ad9fb4097cb327c541de78827713320b749cbbdbd2e9f"
 
-    assert identifier == Ockly.Native.check_identity(identity)
-    _key_id = Ockly.Native.import_signing_secret(secret)
+    assert identifier == OckamRustElixirNifs.Native.check_identity(identity)
+    _key_id = OckamRustElixirNifs.Native.import_signing_secret(secret)
 
     # Check that we can use it
     {pub_key, secret_key} = :crypto.generate_key(:eddh, :x25519)
-    attestation = Ockly.Native.attest_secure_channel_key(identifier, secret_key)
+    attestation = OckamRustElixirNifs.Native.attest_secure_channel_key(identifier, secret_key)
 
-    assert Ockly.Native.verify_secure_channel_key_attestation(identity, pub_key, attestation) ==
+    assert OckamRustElixirNifs.Native.verify_secure_channel_key_attestation(
+             identity,
+             pub_key,
+             attestation
+           ) ==
              true
   end
 
   test "junk identity" do
-    assert {:error, {:identity_import_error, _}} = Ockly.Native.check_identity("junk")
+    assert {:error, {:identity_import_error, _}} =
+             OckamRustElixirNifs.Native.check_identity("junk")
   end
 
   test "hkdf" do
