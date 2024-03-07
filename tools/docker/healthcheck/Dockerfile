@@ -4,8 +4,9 @@ FROM ghcr.io/build-trust/ockam-elixir-builder:latest AS elixir-app-release-build
 COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
 COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
 
+# We will be recompiling NIF till 118 release
+# ENV OCKAM_DOWNLOAD_NIF="1"
 ENV PATH=/root/.cargo/bin:$PATH
-ENV OCKAM_DOWNLOAD_NIF="1"
 COPY . /work
 RUN set -ex; \
     cd work; \
