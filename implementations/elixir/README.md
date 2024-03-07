@@ -60,17 +60,17 @@ The code can be formatted with `mix format`.
 
 ### Native functions
 
-The `ockly` package provides a set of [NIF functions](https://www.erlang.org/doc/tutorial/nif.html).
+The `ockam_rust_elixir_nifs` package provides a set of [NIF functions](https://www.erlang.org/doc/tutorial/nif.html).
 Those functions are used by the `ockam` package in the implementation of secure channels.
 For example:
 
  - `create_identity`: create a new identity, including its private key
  - `issue_credential`: create a credential, for a given identity, attested by another identity
 
-The list of the NIF functions can be found in [this file](./ockam/ockly/lib/ockly/native.ex).
+The list of the NIF functions can be found in [this file](./ockam/ockam_rust_elixir_nifs/lib/ockam_rust_elixir_nifs/native.ex).
 
-The NIF functions are implemented using Rust using a project inside the `./ockly/native/ockly` directory.
-When you run `mix compile` in the `ockly` package, the underlying Rust project is then compiled using any `cargo` version
+The NIF functions are implemented using Rust using a project inside the `./ockam_rust_elixir_nifs/native/ockam_rust_elixir_nifs` directory.
+When you run `mix compile` in the `ockam_rust_elixir_nifs` package, the underlying Rust project is then compiled using any `cargo` version
 found on the `PATH`. Please refer to the [Ockam Rust project README](../rust/README.md) to install the necessary Rust tools.
 
 ## Test

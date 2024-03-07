@@ -1,15 +1,15 @@
-defmodule Ockly.Native do
+defmodule OckamRustElixirNifs.Native do
   @moduledoc false
 
   version = Mix.Project.config()[:version]
 
   use RustlerPrecompiled,
-    otp_app: :ockly,
+    otp_app: :ockam_rust_elixir_nifs,
     crate: "ockam_rust_elixir_nifs",
     path: "../../../rust/ockam/ockam_rust_elixir_nifs",
     force_build: System.get_env("OCKAM_DOWNLOAD_NIF") == nil,
     version: version,
-    load_from: {:ockly, "priv/native/libockam_rust_elixir_nifs"},
+    load_from: {:ockam_rust_elixir_nifs, "priv/native/libockam_rust_elixir_nifs"},
     # This is a fake link, I'll update after deploying a released nif
     base_url: "https://github.com/metaclips/ockam/releases/download/ockam_v#{version}"
 

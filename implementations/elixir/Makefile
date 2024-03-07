@@ -1,5 +1,5 @@
 PACKAGES := \
-	ockly \
+	ockam_rust_elixir_nifs \
 	ockam \
 	ockam_abac \
 	ockam_services \

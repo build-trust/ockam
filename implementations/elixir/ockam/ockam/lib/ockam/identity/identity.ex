@@ -20,7 +20,7 @@ defmodule Ockam.Identity do
   @spec create() ::
           {:ok, identity :: t()} | {:error, reason :: any()}
   def create() do
-    case Ockly.Native.create_identity() do
+    case OckamRustElixirNifs.Native.create_identity() do
       {:error, reason} -> {:error, reason}
       {id, data} -> {:ok, %Identity{identifier: Identifier.from_str(id), data: data}}
     end
@@ -29,9 +29,9 @@ defmodule Ockam.Identity do
   @spec create(secret_signing_key :: binary()) ::
           {:ok, identity :: t(), identitfier :: Identifier.t()} | {:error, reason :: any()}
   def create(secret) do
-    key_id = Ockly.Native.import_signing_secret(secret)
+    key_id = OckamRustElixirNifs.Native.import_signing_secret(secret)
 
-    case Ockly.Native.create_identity(key_id) do
+    case OckamRustElixirNifs.Native.create_identity(key_id) do
       {:error, reason} -> {:error, reason}
       {id, data} -> {:ok, %Identity{identifier: Identifier.from_str(id), data: data}}
     end
@@ -40,7 +40,7 @@ defmodule Ockam.Identity do
   @spec import(contact_data :: binary(), secret_signing_key :: binary()) ::
           {:ok, identity :: t(), identifier :: Identifier.t()} | {:error, any()}
   def import(contact_data, secret_signing_key) do
-    case Ockly.Native.import_signing_secret(secret_signing_key) do
+    case OckamRustElixirNifs.Native.import_signing_secret(secret_signing_key) do
       {:error, error} -> {:error, error}
       _key_id -> validate_contact_data(contact_data)
     end
@@ -49,7 +49,7 @@ defmodule Ockam.Identity do
   @spec validate_contact_data(contact_data :: binary()) ::
           {:ok, identity :: t(), identifier :: Identifier.t()} | {:error, any()}
   def validate_contact_data(contact_data) do
-    case Ockly.Native.check_identity(contact_data) do
+    case OckamRustElixirNifs.Native.check_identity(contact_data) do
       {:error, reason} ->
         {:error, reason}
 
@@ -73,7 +73,10 @@ defmodule Ockam.Identity do
   @spec attest_purpose_key(contact :: t(), secret_key :: %{private: binary(), public: binary()}) ::
           {:ok, proof()} | {:error, any()}
   def attest_purpose_key(%Identity{identifier: identifier}, %{private: secret_key, public: _}) do
-    case Ockly.Native.attest_secure_channel_key(Identifier.to_str(identifier), secret_key) do
+    case OckamRustElixirNifs.Native.attest_secure_channel_key(
+           Identifier.to_str(identifier),
+           secret_key
+         ) do
       {:error, reason} -> {:error, reason}
       attestation -> {:ok, %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}}
     end
@@ -90,7 +93,11 @@ defmodule Ockam.Identity do
         pubkey,
         %Ockam.Identity.PurposeKeyAttestation{attestation: attestation}
       ) do
-    case Ockly.Native.verify_secure_channel_key_attestation(identity_data, pubkey, attestation) do
+    case OckamRustElixirNifs.Native.verify_secure_channel_key_attestation(
+           identity_data,
+           pubkey,
+           attestation
+         ) do
       {:error, reason} -> {:error, reason}
       true -> {:ok, true}
     end
@@ -99,7 +106,12 @@ defmodule Ockam.Identity do
   # TODO refactor so that subject is an identity instead of identifier
   def issue_credential(%Identity{data: issuer}, %Identifier{} = subject, attrs, ttl)
       when is_map(attrs) do
-    case Ockly.Native.issue_credential(issuer, Identifier.to_str(subject), attrs, ttl) do
+    case OckamRustElixirNifs.Native.issue_credential(
+           issuer,
+           Identifier.to_str(subject),
+           attrs,
+           ttl
+         ) do
       {:error, reason} -> {:error, reason}
       cred -> {:ok, cred}
     end
@@ -109,7 +121,11 @@ defmodule Ockam.Identity do
       when is_list(authorities) do
     authorities = Enum.map(authorities, fn a -> a.data end)
 
-    case Ockly.Native.verify_credential(Identifier.to_str(subject_id), authorities, credential) do
+    case OckamRustElixirNifs.Native.verify_credential(
+           Identifier.to_str(subject_id),
+           authorities,
+           credential
+         ) do
       {:error, reason} ->
         {:error, reason}
 

@@ -58,7 +58,7 @@ defmodule Ockam.MixProject do
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
-      {:ockly, path: "../ockly"}
+      {:ockam_rust_elixir_nifs, path: "../ockam_rust_elixir_nifs"}
     ]
   end
 
