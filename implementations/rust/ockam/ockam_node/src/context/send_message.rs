@@ -259,7 +259,7 @@ impl Context {
 
         // Pack transport message into a LocalMessage wrapper
         cfg_if! {
-        if #[cfg(feature = "std")] {
+        if #[cfg(feature = "tracing_context")] {
             let local_msg = LocalMessage::new()
                 // make sure to set the latest tracing context, to get the latest span id
                 .with_tracing_context(self.tracing_context().update())

@@ -25,6 +25,7 @@ where
         &LoggingConfiguration::off().unwrap().set_all_crates(),
         &ExportingConfiguration::foreground(true).unwrap(),
         "test",
+        None,
     );
 
     let (mut ctx, mut executor) = NodeBuilder::new().build();

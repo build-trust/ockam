@@ -1,10 +1,12 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-use crate::{compat::vec::Vec, Message, Route, OCKAM_TRACER_NAME};
+#[cfg(feature = "tracing_context")]
+use crate::OCKAM_TRACER_NAME;
+use crate::{compat::vec::Vec, Message, Route};
 #[cfg(feature = "std")]
 use cfg_if::cfg_if;
 use core::fmt::{self, Display, Formatter};
-#[cfg(feature = "std")]
+#[cfg(feature = "tracing_context")]
 use opentelemetry::{
     global,
     trace::{Link, SpanBuilder, TraceContextExt, Tracer},
@@ -60,13 +62,36 @@ impl TransportMessage {
         }
     }
 
-    /// Return a TransportMessage with a new tracing context
+    /// Return a TransportMessage with a new tracing context:
+    ///    - A new trace is started
+    ///    - The previous trace and the new trace are linked together
+    ///
+    /// We start a new trace here in order to make sure that each transport message is always
+    /// associated to a globally unique trace id and then cannot be correlated with another transport
+    /// message that would leave the same node for example.
+    ///
+    /// We can still navigate the two created traces as one thanks to their link.
     #[cfg(feature = "std")]
-    pub fn set_tracing_context(self, _tracing_context: OpenTelemetryContext) -> Self {
+    pub fn start_new_tracing_context(self, _tracing_context: OpenTelemetryContext) -> Self {
         cfg_if! {
             if #[cfg(feature = "tracing_context")] {
+                // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
+                let tracer = global::tracer(OCKAM_TRACER_NAME);
+                let span_builder = SpanBuilder::from_name("TransportMessage::start_trace")
+                      .with_links(vec![Link::new(_tracing_context.extract().span().span_context().clone(), vec![])]);
+                let span = tracer.build_with_context(span_builder, &Context::default());
+                let cx = Context::current_with_span(span);
+
+                // create a span to close the previous trace and link it to the new trace
+                let span_builder = SpanBuilder::from_name("TransportMessage::end_trace")
+                                 .with_links(vec![Link::new(cx.span().span_context().clone(), vec![])]);
+                let _ = tracer.build_with_context(span_builder, &_tracing_context.extract());
+
+                // create the new opentelemetry context
+                let tracing_context = OpenTelemetryContext::inject(&cx);
+
                 Self {
-                    tracing_context: Some(_tracing_context.to_string()),
+                    tracing_context: Some(tracing_context.to_string()),
                     ..self
                 }
             } else {
@@ -76,34 +101,12 @@ impl TransportMessage {
     }
 
     /// Return the tracing context
-    #[cfg(feature = "std")]
+    #[cfg(feature = "tracing_context")]
     pub fn tracing_context(&self) -> OpenTelemetryContext {
         cfg_if! {
             if #[cfg(feature = "tracing_context")] {
                 match self.tracing_context.as_ref() {
-                    // if we receive a tracing context we need to end the current trace and start
-                    // a new one. We do this to make sure that trace ids can not be used to correlate
-                    // nodes interacting over a relay or a hop. This way there's only ever one trace id
-                    // between 2 nodes.
-                    Some(tracing_context) => {
-                        // get the caller tracing context
-                        let caller_tracing_context = OpenTelemetryContext::from_remote_context(tracing_context.as_str());
-
-                        // start a new trace, and link it to the previous trace, via the caller context
-                        let tracer = global::tracer(OCKAM_TRACER_NAME);
-                        let span_builder = SpanBuilder::from_name("TransportMessage::start_trace")
-                                 .with_links(vec![Link::new(caller_tracing_context.extract().span().span_context().clone(), vec![])]);
-                        let span = tracer.build_with_context(span_builder, &Context::default());
-                        let cx = Context::current_with_span(span);
-
-                        // create a span to close the previous trace and link it to the new trace
-                        let span_builder = SpanBuilder::from_name("TransportMessage::end_trace")
-                                 .with_links(vec![Link::new(cx.span().span_context().clone(), vec![])]);
-                        let _ = tracer.build_with_context(span_builder, &caller_tracing_context.extract());
-
-                        // return the new opentelemetry context
-                        OpenTelemetryContext::inject(&cx)
-                    }
+                    Some(tracing_context) => OpenTelemetryContext::from_remote_context(tracing_context),
                     None => OpenTelemetryContext::current(),
                 }
             } else {

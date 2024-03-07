@@ -36,6 +36,7 @@ fn test_log_and_traces() {
             .set_log_directory(log_directory.into()),
         &ExportingConfiguration::foreground(false).unwrap(),
         "test",
+        None,
     );
 
     let tracer = global::tracer("ockam-test");
