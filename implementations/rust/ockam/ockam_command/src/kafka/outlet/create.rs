@@ -60,7 +60,7 @@ impl CreateCommand {
             start_service_impl(ctx, &node, "KafkaOutlet", req).await?;
             *is_finished.lock().await = true;
 
-            Ok::<_, crate::Error>(())
+            Ok(())
         };
 
         let msgs = vec![

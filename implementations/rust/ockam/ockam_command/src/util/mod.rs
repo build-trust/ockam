@@ -43,7 +43,6 @@ pub fn local_cmd(res: miette::Result<()>) -> miette::Result<()> {
     if let Err(error) = &res {
         // Note: error! is also called in command_event.rs::add_command_error_event()
         error!(%error, "Failed to run command");
-        eprintln!("{:?}", error);
     }
     res
 }

@@ -108,8 +108,7 @@ impl Addons for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("list addons")
     }
 
     #[instrument(skip_all, fields(project_id = project_id))]
@@ -128,8 +127,7 @@ impl Addons for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("configure kafka addon")
     }
 
     #[instrument(skip_all, fields(project_id = project_id))]
@@ -146,8 +144,7 @@ impl Addons for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("configure okta addon")
     }
 
     #[instrument(skip_all, fields(project_id = project_id))]
@@ -167,8 +164,7 @@ impl Addons for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("configure influxdb addon")
     }
 
     #[instrument(skip_all, fields(project_id = project_id, addon_id = addon_id))]
@@ -185,7 +181,6 @@ impl Addons for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("disable addon")
     }
 }

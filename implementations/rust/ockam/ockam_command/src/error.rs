@@ -4,7 +4,7 @@ use crate::{fmt_heading, fmt_log};
 use colorful::Colorful;
 use miette::miette;
 use miette::Diagnostic;
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 
 pub type Result<T> = miette::Result<T, Error>;
 
@@ -114,18 +114,39 @@ impl Error {
     }
 }
 
-impl From<anyhow::Error> for Error {
-    #[track_caller]
-    fn from(e: anyhow::Error) -> Self {
-        Error::new(exitcode::SOFTWARE, miette!(e.to_string()))
-    }
-}
-
 pub struct ErrorReportHandler;
 
 impl ErrorReportHandler {
     pub fn new() -> Self {
         Self
+    }
+
+    // The cause of a [`Diagnostic`] could be both a [`Diagnostic`] or a [`std::error::Error`].
+    // The cause of a [`std::error::Error`] can only be another [`std::error::Error`].
+    fn print_causes(f: &mut Formatter, root: &dyn Diagnostic) -> core::fmt::Result {
+        let mut error_source = None;
+        let mut diagnostic_source = Some(root);
+        loop {
+            if let Some(source) = diagnostic_source {
+                diagnostic_source = source.diagnostic_source();
+                if diagnostic_source.is_none() {
+                    error_source = source.source();
+                } else {
+                    error_source = None;
+                }
+            } else if let Some(source) = error_source {
+                error_source = source.source();
+            }
+
+            if let Some(source) = error_source {
+                writeln!(f, "       > {}", source)?;
+            } else if let Some(source) = diagnostic_source {
+                writeln!(f, "       > {}", source)?;
+            } else {
+                break;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -143,12 +164,7 @@ impl miette::ReportHandler for ErrorReportHandler {
 
         writeln!(f, "\n{}\n", fmt_heading!("{}", "Error:".red()))?;
 
-        // Try to extract the source message from the error, and disregard the rest. If
-        // possible replace the new lines w/ fmt_log! outputs.
-        let error_message = match error.source() {
-            Some(err) => format!("{}", err),
-            None => format!("{}", error),
-        };
+        let error_message = error.to_string();
         error_message.lines().for_each(|line| {
             let _ = writeln!(f, "{}", fmt_log!("{}", line));
         });
@@ -167,6 +183,9 @@ impl miette::ReportHandler for ErrorReportHandler {
             Some(code) => code.to_string(),
             None => "OCK500".to_string(),
         };
+
+        Self::print_causes(f, error)?;
+
         let code_message = format!("Error code: {}", code_as_str).dark_gray();
         let version_message = Version::short().to_string().dark_gray();
         writeln!(

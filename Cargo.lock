@@ -4192,7 +4192,6 @@ dependencies = [
 name = "ockam_api"
 version = "0.60.0"
 dependencies = [
- "anyhow",
  "aws-config",
  "base64-url",
  "bytes 1.5.0",
@@ -4293,7 +4292,6 @@ dependencies = [
 name = "ockam_command"
 version = "0.117.0"
 dependencies = [
- "anyhow",
  "arboard",
  "assert_cmd",
  "async-trait",
@@ -4373,6 +4371,7 @@ dependencies = [
  "futures-util",
  "hashbrown 0.14.3",
  "hex",
+ "miette",
  "minicbor",
  "ockam_macros",
  "once_cell",

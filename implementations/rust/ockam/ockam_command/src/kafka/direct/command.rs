@@ -70,7 +70,7 @@ pub async fn async_run(
 
         *is_finished.lock().await = true;
 
-        Ok::<_, crate::Error>(())
+        Ok(())
     };
 
     let msgs = vec![

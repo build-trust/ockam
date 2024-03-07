@@ -183,8 +183,7 @@ impl ControllerClient {
             .ask(ctx, "spaces", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("create space")
     }
 
     pub async fn get_space(&self, ctx: &Context, space_id: &str) -> miette::Result<Space> {
@@ -194,8 +193,7 @@ impl ControllerClient {
             .ask(ctx, "spaces", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("get space")
     }
 
     pub async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()> {
@@ -205,8 +203,7 @@ impl ControllerClient {
             .tell(ctx, "spaces", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("delete space")
     }
 
     pub async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
@@ -215,8 +212,7 @@ impl ControllerClient {
             .ask(ctx, "spaces", Request::get("/v0/"))
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("list spaces")
     }
 }
 

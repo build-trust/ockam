@@ -28,8 +28,7 @@ impl ControllerClient {
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("create project")
     }
 
     pub async fn get_project(
@@ -43,8 +42,7 @@ impl ControllerClient {
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("get project")
     }
 
     pub async fn delete_project(
@@ -59,8 +57,7 @@ impl ControllerClient {
             .tell(ctx, "projects", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("delete project")
     }
 
     pub async fn get_orchestrator_version_info(
@@ -72,8 +69,7 @@ impl ControllerClient {
             .ask(ctx, "version_info", Request::get(""))
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("get orchestrator version")
     }
 
     #[instrument(skip_all)]
@@ -83,8 +79,7 @@ impl ControllerClient {
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("list projects")
     }
 
     pub async fn wait_until_project_creation_operation_is_complete(
