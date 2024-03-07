@@ -241,7 +241,12 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
             .send_and_receive(
                 route![NODEMANAGER_ADDR],
                 Request::post("/node/secure_channel")
-                    .body(CreateSecureChannelRequest::new(&destination, None, None))
+                    .body(CreateSecureChannelRequest::new(
+                        &destination,
+                        None,
+                        None,
+                        None,
+                    ))
                     .to_vec()?,
             )
             .await?;

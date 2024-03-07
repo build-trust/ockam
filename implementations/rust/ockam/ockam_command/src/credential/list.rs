@@ -51,7 +51,7 @@ impl ListCommand {
 
         let credentials = credentials
             .into_iter()
-            .map(|c| CredentialOutput::from_credential(c, true))
+            .map(|c| CredentialOutput::from_credential(c.0, c.1, true))
             .collect::<Result<Vec<CredentialOutput>>>()?;
 
         let list = opts.terminal.build_list(

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use miette::IntoDiagnostic;
 
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::Identifier;
 use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::Result;
@@ -375,6 +376,7 @@ pub trait SecureChannelsCreation {
         addr: &MultiAddr,
         authorized: Identifier,
         identity_name: Option<String>,
+        credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> miette::Result<Address>;
 }
@@ -387,6 +389,7 @@ impl SecureChannelsCreation for InMemoryNode {
         addr: &MultiAddr,
         authorized: Identifier,
         identity_name: Option<String>,
+        credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> miette::Result<Address> {
         self.node_manager
@@ -395,6 +398,7 @@ impl SecureChannelsCreation for InMemoryNode {
                 addr.clone(),
                 identity_name,
                 Some(vec![authorized]),
+                credential,
                 timeout,
             )
             .await
@@ -411,9 +415,15 @@ impl SecureChannelsCreation for BackgroundNodeClient {
         addr: &MultiAddr,
         authorized: Identifier,
         identity_name: Option<String>,
+        credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> miette::Result<Address> {
-        let body = CreateSecureChannelRequest::new(addr, Some(vec![authorized]), identity_name);
+        let body = CreateSecureChannelRequest::new(
+            addr,
+            Some(vec![authorized]),
+            identity_name,
+            credential,
+        );
         let request = Request::post("/node/secure_channel").body(body);
         let response: CreateSecureChannelResponse = if let Some(t) = timeout {
             self.ask_with_timeout(ctx, request, t).await?

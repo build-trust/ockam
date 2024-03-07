@@ -76,7 +76,7 @@ impl CreateCommand {
                 &self.trust_opts.project_name,
                 &self.trust_opts.authority_identity,
                 &self.trust_opts.authority_route,
-                self.trust_opts.expect_cached_credential,
+                &self.trust_opts.credential_scope,
             )
             .await
             .into_diagnostic()?;

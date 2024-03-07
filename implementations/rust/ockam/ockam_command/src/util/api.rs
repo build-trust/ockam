@@ -157,7 +157,7 @@ pub struct TrustOpts {
 
     /// Expect credential manually saved to the storage
     #[arg(long)]
-    pub expect_cached_credential: bool,
+    pub credential_scope: Option<String>,
 }
 
 ////////////// !== validators

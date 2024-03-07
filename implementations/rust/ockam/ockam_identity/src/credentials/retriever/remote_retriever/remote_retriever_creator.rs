@@ -1,5 +1,6 @@
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, AllowAll, DenyAll, Mailboxes, Result};
 use ockam_node::compat::asynchronous::RwLock;
@@ -18,6 +19,7 @@ pub struct RemoteCredentialRetrieverCreator {
     transport: Arc<dyn Transport>,
     secure_channels: Arc<SecureChannels>,
     info: RemoteCredentialRetrieverInfo,
+    scope: String,
     timing_options: RemoteCredentialRetrieverTimingOptions,
 
     // Should be only one retriever per subject Identifier
@@ -31,12 +33,14 @@ impl RemoteCredentialRetrieverCreator {
         transport: Arc<dyn Transport>,
         secure_channels: Arc<SecureChannels>,
         info: RemoteCredentialRetrieverInfo,
+        scope: String,
     ) -> Self {
         Self {
             ctx,
             transport,
             secure_channels,
             info,
+            scope,
             timing_options: Default::default(),
             registry: Default::default(),
         }
@@ -48,6 +52,7 @@ impl RemoteCredentialRetrieverCreator {
         transport: Arc<dyn Transport>,
         secure_channels: Arc<SecureChannels>,
         info: RemoteCredentialRetrieverInfo,
+        scope: String,
         timing_options: RemoteCredentialRetrieverTimingOptions,
     ) -> Self {
         Self {
@@ -55,6 +60,7 @@ impl RemoteCredentialRetrieverCreator {
             transport,
             secure_channels,
             info,
+            scope,
             timing_options,
             registry: Default::default(),
         }
@@ -105,6 +111,7 @@ impl CredentialRetrieverCreator for RemoteCredentialRetrieverCreator {
             self.secure_channels.clone(),
             self.info.clone(),
             subject.clone(),
+            self.scope.clone(),
             self.timing_options,
         );
         debug!(

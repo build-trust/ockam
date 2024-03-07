@@ -4,6 +4,7 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::DEFAULT_TIMEOUT;
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
@@ -47,6 +48,14 @@ pub struct CreateCommand {
     /// Identifiers authorized to be presented by the listener
     #[arg(value_name = "IDENTIFIER", long, short, display_order = 801)]
     pub authorized: Option<Vec<Identifier>>,
+
+    #[arg(
+        short,
+        long = "credential",
+        value_name = "CREDENTIAL",
+        display_order = 802
+    )]
+    pub credential: Option<String>,
 
     #[command(flatten)]
     identity_opts: IdentityOpts,
@@ -105,13 +114,27 @@ impl CreateCommand {
         let to = self.parse_to_route(&opts, ctx, &node).await?;
         let authorized_identifiers = self.authorized.clone();
 
+        let credential = match &self.credential {
+            Some(c) => {
+                let c = hex::decode(c).map_err(|_| miette!("Invalid credential hex"))?;
+                let c: CredentialAndPurposeKey =
+                    minicbor::decode(&c).map_err(|_| miette!("Invalid credential"))?;
+                Some(c)
+            }
+            None => None,
+        };
+
         let create_secure_channel = async {
             let identity_name = opts
                 .state
                 .get_identity_name_or_default(&self.identity_opts.identity)
                 .await?;
-            let payload =
-                CreateSecureChannelRequest::new(&to, authorized_identifiers, Some(identity_name));
+            let payload = CreateSecureChannelRequest::new(
+                &to,
+                authorized_identifiers,
+                Some(identity_name),
+                credential,
+            );
             let request = Request::post("/node/secure_channel").body(payload);
             let response: CreateSecureChannelResponse = node.ask(ctx, request).await?;
             *is_finished.lock().await = true;

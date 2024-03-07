@@ -37,17 +37,20 @@ impl CredentialSqlxDatabase {
 
 impl CredentialSqlxDatabase {
     /// Return all cached credentials for the given node
-    pub async fn get_all(&self) -> Result<Vec<CredentialAndPurposeKey>> {
-        let query = query_as("SELECT credential FROM credential WHERE node_name=?")
+    pub async fn get_all(&self) -> Result<Vec<(CredentialAndPurposeKey, String)>> {
+        let query = query_as("SELECT credential, scope FROM credential WHERE node_name=?")
             .bind(self.database.node_name()?.to_sql());
 
-        let cached_credential: Vec<CachedCredentialRow> =
+        let cached_credential: Vec<CachedCredentialAndScopeRow> =
             query.fetch_all(&*self.database.pool).await.into_core()?;
 
         let res = cached_credential
             .into_iter()
-            .map(|c| c.credential())
-            .collect::<Result<Vec<CredentialAndPurposeKey>>>()?;
+            .map(|c| {
+                let cred = c.credential()?;
+                Ok((cred, c.scope().to_string()))
+            })
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(res)
     }
@@ -59,12 +62,14 @@ impl CredentialRepository for CredentialSqlxDatabase {
         &self,
         subject: &Identifier,
         issuer: &Identifier,
+        scope: &str,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         let query = query_as(
-            "SELECT credential FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND node_name=$3"
+            "SELECT credential FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND scope=$3 AND node_name=$4"
             )
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
+            .bind(scope.to_sql())
             .bind(self.database.node_name()?.to_sql());
         let cached_credential: Option<CachedCredentialRow> = query
             .fetch_optional(&*self.database.pool)
@@ -77,24 +82,27 @@ impl CredentialRepository for CredentialSqlxDatabase {
         &self,
         subject: &Identifier,
         issuer: &Identifier,
+        scope: &str,
         expires_at: TimestampInSeconds,
         credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let query = query(
-            "INSERT OR REPLACE INTO credential (subject_identifier, issuer_identifier, credential, expires_at, node_name) VALUES (?, ?, ?, ?, ?)"
+            "INSERT OR REPLACE INTO credential (subject_identifier, issuer_identifier, scope, credential, expires_at, node_name) VALUES (?, ?, ?, ?, ?, ?)"
             )
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
+            .bind(scope.to_sql())
             .bind(credential.encode_as_cbor_bytes()?.to_sql())
             .bind(expires_at.to_sql())
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
-    async fn delete(&self, subject: &Identifier, issuer: &Identifier) -> Result<()> {
-        let query = query("DELETE FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND node_name=$3")
+    async fn delete(&self, subject: &Identifier, issuer: &Identifier, scope: &str) -> Result<()> {
+        let query = query("DELETE FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND scope=$3 AND node_name=$4")
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
+            .bind(scope.to_sql())
             .bind(self.database.node_name()?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -112,6 +120,21 @@ impl CachedCredentialRow {
     }
 }
 
+#[derive(FromRow)]
+struct CachedCredentialAndScopeRow {
+    credential: Vec<u8>,
+    scope: String,
+}
+
+impl CachedCredentialAndScopeRow {
+    fn credential(&self) -> Result<CredentialAndPurposeKey> {
+        CredentialAndPurposeKey::decode_from_cbor_bytes(&self.credential)
+    }
+    pub fn scope(&self) -> &str {
+        &self.scope
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ockam_core::compat::rand::random_string;
@@ -125,7 +148,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_cached_credential_repository() -> Result<()> {
-        let repository = create_repository().await?;
+        let scope = "test".to_string();
+        let repository =
+            Arc::new(CredentialSqlxDatabase::create_with_node_name(&random_string()).await?);
+
+        let all = repository.get_all().await?;
+        assert_eq!(all.len(), 0);
 
         let identities = identities().await?;
 
@@ -145,11 +173,16 @@ mod tests {
             .put(
                 &subject,
                 &issuer,
+                &scope,
                 credential1.get_credential_data()?.expires_at,
                 credential1.clone(),
             )
             .await?;
-        let credential2 = repository.get(&subject, &issuer).await?;
+
+        let all = repository.get_all().await?;
+        assert_eq!(all.len(), 1);
+
+        let credential2 = repository.get(&subject, &issuer, &scope).await?;
         assert_eq!(credential2, Some(credential1));
 
         let attributes2 = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
@@ -164,24 +197,20 @@ mod tests {
             .put(
                 &subject,
                 &issuer,
+                &scope,
                 credential3.get_credential_data()?.expires_at,
                 credential3.clone(),
             )
             .await?;
-        let credential4 = repository.get(&subject, &issuer).await?;
+        let all = repository.get_all().await?;
+        assert_eq!(all.len(), 1);
+        let credential4 = repository.get(&subject, &issuer, &scope).await?;
         assert_eq!(credential4, Some(credential3));
 
-        repository.delete(&subject, &issuer).await?;
-        let result = repository.get(&subject, &issuer).await?;
+        repository.delete(&subject, &issuer, &scope).await?;
+        let result = repository.get(&subject, &issuer, &scope).await?;
         assert_eq!(result, None);
 
         Ok(())
-    }
-
-    /// HELPERS
-    async fn create_repository() -> Result<Arc<dyn CredentialRepository>> {
-        Ok(Arc::new(
-            CredentialSqlxDatabase::create_with_node_name(&random_string()).await?,
-        ))
     }
 }

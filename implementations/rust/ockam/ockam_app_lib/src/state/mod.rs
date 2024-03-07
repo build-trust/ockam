@@ -7,7 +7,6 @@ use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
 
 pub use kind::StateKind;
-use ockam::identity::Identifier;
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::CliState;
@@ -19,7 +18,6 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_core::AsyncTryClone;
-use ockam_multiaddr::MultiAddr;
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{
@@ -379,18 +377,12 @@ impl AppState {
 
     pub async fn authority_node(
         &self,
-        authority_identifier: &Identifier,
-        authority_route: &MultiAddr,
+        project: &Project,
         caller_identity_name: Option<String>,
     ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
-            .create_authority_client(
-                authority_identifier,
-                authority_route,
-                caller_identity_name,
-                None,
-            )
+            .create_authority_client(project, caller_identity_name)
             .await?)
     }
 
@@ -708,7 +700,7 @@ pub(crate) async fn make_node_manager(
         .await?;
 
     let trust_options = cli_state
-        .retrieve_trust_options(&None, &None, &None, false)
+        .retrieve_trust_options(&None, &None, &None, &None)
         .await
         .into_diagnostic()?;
 

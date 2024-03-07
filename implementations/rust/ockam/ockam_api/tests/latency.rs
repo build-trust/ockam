@@ -44,6 +44,7 @@ pub fn measure_message_latency_two_nodes() {
                     None,
                     None,
                     None,
+                    None,
                 )
                 .await
                 .unwrap();

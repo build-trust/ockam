@@ -277,11 +277,11 @@ async fn init(
         ctx.async_try_clone().await?,
         Arc::new(tcp),
         client_secure_channels.clone(),
-        RemoteCredentialRetrieverInfo::new(
+        RemoteCredentialRetrieverInfo::create_for_project_member(
             authority.clone(),
             route!["authority_api"],
-            "credential_issuer".into(),
         ),
+        "test".to_string(),
         timing_options,
     ));
 

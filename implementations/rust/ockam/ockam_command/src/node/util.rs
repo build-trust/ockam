@@ -78,7 +78,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         project_name,
         authority_identity,
         authority_route,
-        expect_cached_credential,
+        credential_scope,
     } = trust_opts;
 
     let mut args = vec![
@@ -94,8 +94,9 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         "--child-process".to_string(),
     ];
 
-    if expect_cached_credential {
-        args.push("--expect-cached-credential".to_string());
+    if let Some(credential_scope) = credential_scope {
+        args.push("--credential-scope".to_string());
+        args.push(credential_scope)
     }
 
     if skip_is_running_check {
@@ -108,7 +109,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
 
     if let Some(identity_name) = identity_name {
         args.push("--identity".to_string());
-        args.push(identity_name.to_string());
+        args.push(identity_name);
     }
 
     if let Some(config) = launch_config {

@@ -29,11 +29,7 @@ impl AppState {
             .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?
             .clone();
         let authority_node = self
-            .authority_node(
-                &project.authority_identifier().into_diagnostic()?,
-                project.authority_multiaddr().into_diagnostic()?,
-                None,
-            )
+            .authority_node(&project, None)
             .await
             .into_diagnostic()?;
         let otc = authority_node

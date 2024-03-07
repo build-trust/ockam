@@ -101,7 +101,9 @@ pub async fn start_manager_for_tests(
         trust_options.unwrap_or_else(|| {
             NodeManagerTrustOptions::new(
                 NodeManagerCredentialRetrieverOptions::InMemory(credential),
+                NodeManagerCredentialRetrieverOptions::None,
                 Some(identifier),
+                NodeManagerCredentialRetrieverOptions::None,
             )
         }),
     )
@@ -206,7 +208,9 @@ impl TestNode {
             listen_addr,
             Some(NodeManagerTrustOptions::new(
                 NodeManagerCredentialRetrieverOptions::None,
+                NodeManagerCredentialRetrieverOptions::None,
                 None,
+                NodeManagerCredentialRetrieverOptions::None,
             )),
         )
         .await

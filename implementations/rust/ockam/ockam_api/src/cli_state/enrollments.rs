@@ -143,18 +143,18 @@ impl IdentityEnrollment {
             enrolled_at,
         }
     }
-    pub fn identifier(&self) -> Identifier {
-        self.identifier.clone()
+    pub fn identifier(&self) -> &Identifier {
+        &self.identifier
     }
 
     #[allow(dead_code)]
-    pub fn name(&self) -> Option<String> {
-        self.name.clone()
+    pub fn name(&self) -> &Option<String> {
+        &self.name
     }
 
     #[allow(dead_code)]
-    pub fn email(&self) -> Option<EmailAddress> {
-        self.email.clone()
+    pub fn email(&self) -> &Option<EmailAddress> {
+        &self.email
     }
 
     #[allow(dead_code)]

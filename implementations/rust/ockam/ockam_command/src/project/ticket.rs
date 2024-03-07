@@ -125,12 +125,7 @@ impl TicketCommand {
             .await?;
 
         let authority_node_client = node
-            .create_authority_client(
-                &project.authority_identifier().into_diagnostic()?,
-                project.authority_multiaddr().into_diagnostic()?,
-                Some(identity),
-                None,
-            )
+            .create_authority_client(&project, Some(identity))
             .await?;
 
         let attributes = self.attributes()?;

@@ -65,6 +65,7 @@ impl CredentialCommand {
 
 pub struct CredentialOutput {
     credential: String,
+    scope: String,
     subject: Identifier,
     issuer: Identifier,
     created_at: TimestampInSeconds,
@@ -75,7 +76,11 @@ pub struct CredentialOutput {
 }
 
 impl CredentialOutput {
-    pub fn from_credential(credential: CredentialAndPurposeKey, is_verified: bool) -> Result<Self> {
+    pub fn from_credential(
+        credential: CredentialAndPurposeKey,
+        scope: String,
+        is_verified: bool,
+    ) -> Result<Self> {
         let str = hex::encode(credential.encode_as_cbor_bytes()?);
         let credential_data = credential.credential.get_credential_data()?;
         let purpose_key_data = credential.purpose_key_attestation.get_attestation_data()?;
@@ -98,6 +103,7 @@ impl CredentialOutput {
 
         let s = Self {
             credential: str,
+            scope,
             subject,
             issuer: purpose_key_data.subject,
             created_at: credential_data.created_at,
@@ -123,6 +129,7 @@ impl Output for CredentialOutput {
 
         let output = format!(
             "Credential:\n\
+            \tscope:       {scope}\n\
             \tsubject:     {subject}\n\
             \tissuer:      {issuer}\n\
             \tis_verified: {is_verified}\n\
@@ -131,6 +138,7 @@ impl Output for CredentialOutput {
             \tschema:      {schema}\n\
             \tattributes:  {attributes}\n\
             \tbinary:      {credential}",
+            scope = self.scope,
             subject = self.subject,
             issuer = self.issuer,
             is_verified = is_verified,

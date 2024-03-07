@@ -11,7 +11,7 @@ use ockam::{node, Context, Result, TcpOutletOptions, TcpTransportExtension};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;
-use ockam_api::{multiaddr_to_route, multiaddr_to_transport_route, DefaultAddress};
+use ockam_api::{multiaddr_to_route, multiaddr_to_transport_route};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
@@ -80,11 +80,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         node.context().async_try_clone().await?,
         Arc::new(tcp.clone()),
         node.secure_channels(),
-        RemoteCredentialRetrieverInfo::new(
+        RemoteCredentialRetrieverInfo::create_for_project_member(
             project.authority_identifier(),
             project_authority_route,
-            DefaultAddress::CREDENTIAL_ISSUER.into(),
         ),
+        "test".to_string(),
     ));
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
