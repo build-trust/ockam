@@ -53,6 +53,7 @@ impl LoggingTracing {
                 logging_configuration,
                 exporting_configuration,
                 app_name,
+                node_name,
             )
         } else if exporting_configuration.is_enabled() {
             Self::setup_tracing_only(
@@ -146,9 +147,14 @@ impl LoggingTracing {
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
+        node_name: Option<String>,
     ) -> TracingGuard {
-        let (tracing_layer, tracer_provider) =
-            create_opentelemetry_tracing_layer(app_name, exporting_configuration, span_exporter);
+        let (tracing_layer, tracer_provider) = create_opentelemetry_tracing_layer(
+            app_name,
+            node_name,
+            exporting_configuration,
+            span_exporter,
+        );
 
         // initialize the tracing subscriber with all the layers
         let result = registry()

@@ -39,6 +39,7 @@ std = [
   "regex",
   "serde_json",
   "tinyvec/std",
+  "tracing_context",
   "tracing-error",
   "tracing-opentelemetry",
   "tracing-subscriber",

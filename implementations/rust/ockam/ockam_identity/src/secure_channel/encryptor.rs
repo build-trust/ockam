@@ -3,6 +3,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
+use tracing_attributes::instrument;
 
 use crate::IdentityError;
 
@@ -30,6 +31,7 @@ impl Encryptor {
         (b, n)
     }
 
+    #[instrument(skip_all)]
     pub async fn rekey(
         vault: &Arc<dyn VaultForSecureChannels>,
         key: &AeadSecretKeyHandle,
@@ -46,6 +48,7 @@ impl Encryptor {
         vault.convert_secret_buffer_to_aead_key(buffer).await
     }
 
+    #[instrument(skip_all)]
     pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         let current_nonce = self.nonce;
         if current_nonce == u64::MAX {
@@ -82,6 +85,7 @@ impl Encryptor {
         Self { key, nonce, vault }
     }
 
+    #[instrument(skip_all)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
         if !self.vault.delete_aead_secret_key(self.key.clone()).await? {
             Err(Error::new(

@@ -225,6 +225,7 @@ impl Decryptor {
         Ok((nonce, Encryptor::convert_nonce_from_u64(nonce).1))
     }
 
+    #[instrument(skip_all)]
     pub async fn decrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         if payload.len() < 8 {
             return Err(IdentityError::InvalidNonce)?;
@@ -258,6 +259,7 @@ impl Decryptor {
     }
 
     /// Remove the channel keys on shutdown
+    #[instrument(skip_all)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
         self.vault
             .delete_aead_secret_key(self.key_tracker.current_key.clone())
