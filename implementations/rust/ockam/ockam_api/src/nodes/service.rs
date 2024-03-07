@@ -91,7 +91,7 @@ pub struct NodeManager {
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) secure_channels: Arc<SecureChannels>,
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
-    authority: Option<Identifier>,
+    project_authority: Option<Identifier>,
     pub(crate) registry: Arc<Registry>,
     pub(crate) medic_handle: MedicHandle,
 }
@@ -116,8 +116,8 @@ impl NodeManager {
         self.credential_retriever_creator.clone()
     }
 
-    pub fn authority(&self) -> Option<Identifier> {
-        self.authority.clone()
+    pub fn project_authority(&self) -> Option<Identifier> {
+        self.project_authority.clone()
     }
 
     pub fn node_name(&self) -> String {
@@ -422,7 +422,7 @@ impl NodeManager {
             tcp_transport: transport_options.tcp_transport,
             secure_channels,
             credential_retriever_creator,
-            authority: trust_options.authority,
+            project_authority: trust_options.authority,
             registry,
             medic_handle,
         };

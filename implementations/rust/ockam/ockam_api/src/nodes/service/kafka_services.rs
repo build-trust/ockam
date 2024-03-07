@@ -171,8 +171,8 @@ impl InMemoryNode {
                 ApiError::core("Unable to get flow control for secure channel listener")
             })?;
 
-        let authority_identifier = self
-            .authority
+        let project_authority = self
+            .project_authority
             .clone()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
 
@@ -195,7 +195,7 @@ impl InMemoryNode {
         OutletManagerService::create(
             context,
             self.secure_channels.clone(),
-            authority_identifier.clone(),
+            project_authority.clone(),
             default_secure_channel_listener_flow_control_id,
             outlet_policy_expression.clone(),
         )
@@ -218,7 +218,7 @@ impl InMemoryNode {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             consumer_node_addr,
-            authority_identifier,
+            project_authority,
         );
 
         let inlet_controller = KafkaInletController::new(
@@ -287,8 +287,8 @@ impl InMemoryNode {
             outlet_node_multiaddr.to_string()
         );
 
-        let authority_identifier = self
-            .authority
+        let project_authority = self
+            .project_authority
             .clone()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
 
@@ -296,7 +296,7 @@ impl InMemoryNode {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(outlet_node_multiaddr.clone()),
-            authority_identifier,
+            project_authority,
         );
 
         let inlet_policy_expression = if let Some(project) = outlet_node_multiaddr
@@ -387,8 +387,8 @@ impl NodeManager {
         )
         .await?;
 
-        let authority_id = self
-            .authority
+        let project_authority = self
+            .project_authority
             .clone()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
         let outlet_policy_expression = None;
@@ -396,7 +396,7 @@ impl NodeManager {
         OutletManagerService::create(
             context,
             self.secure_channels.clone(),
-            authority_id,
+            project_authority,
             default_secure_channel_listener_flow_control_id,
             outlet_policy_expression.clone(),
         )

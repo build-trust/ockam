@@ -202,8 +202,8 @@ impl NodeManager {
             options
         };
 
-        let options = match self.authority() {
-            Some(authority) => options.with_authority(authority),
+        let options = match self.project_authority() {
+            Some(project_authority) => options.with_authority(project_authority),
             None => options,
         };
 
@@ -310,8 +310,8 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let options = match self.authority() {
-            Some(authority) => options.with_authority(authority),
+        let options = match self.project_authority() {
+            Some(project_authority) => options.with_authority(project_authority),
             None => options,
         };
 

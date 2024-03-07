@@ -802,12 +802,16 @@ mod test {
         context: &mut Context,
     ) -> ockam::Result<()> {
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
-        let authority = handle.node_manager.node_manager.authority().unwrap();
+        let project_authority = handle
+            .node_manager
+            .node_manager
+            .project_authority()
+            .unwrap();
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handle.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::default()),
-            authority,
+            project_authority,
         )
         .into_trait();
 

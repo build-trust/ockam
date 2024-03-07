@@ -71,12 +71,16 @@ mod test {
         listener_address: Address,
         outlet_address: Address,
     ) -> ockam::Result<u16> {
-        let authority = handler.node_manager.node_manager.authority().unwrap();
+        let project_authority = handler
+            .node_manager
+            .node_manager
+            .project_authority()
+            .unwrap();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
             ConsumerNodeAddr::Relay(MultiAddr::try_from("/service/api")?),
             Some(HopRelayCreator {}),
-            authority,
+            project_authority,
         );
 
         let mut interceptor_multiaddr = MultiAddr::default();

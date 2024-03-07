@@ -196,7 +196,7 @@ impl NodeManager {
 
         let ac = self
             .access_control(
-                self.authority(),
+                self.project_authority(),
                 Resource::new(addr.address(), ResourceType::Echoer),
                 Action::HandleMessage,
                 None,
