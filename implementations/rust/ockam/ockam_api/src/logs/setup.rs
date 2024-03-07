@@ -7,9 +7,9 @@ use opentelemetry_sdk::export::logs::LogExporter;
 use opentelemetry_sdk::export::trace::SpanExporter;
 use opentelemetry_sdk::logs::{BatchLogProcessor, LoggerProvider};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::trace::{BatchConfig, BatchSpanProcessor};
-use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::trace::{BatchConfig, BatchConfigBuilder, BatchSpanProcessor};
 use opentelemetry_sdk::{self as sdk};
+use opentelemetry_sdk::{logs, Resource};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
 use std::io::{empty, stdout};
 use tonic::metadata::*;
@@ -216,10 +216,11 @@ fn create_opentelemetry_tracing_layer<
     opentelemetry_sdk::trace::TracerProvider,
 ) {
     let app = app_name.to_string();
-    let batch_config = BatchConfig::default()
+    let batch_config = BatchConfigBuilder::default()
         .with_max_export_timeout(exporting_configuration.span_export_timeout())
         .with_scheduled_delay(exporting_configuration.span_export_scheduled_delay())
-        .with_max_concurrent_exports(8);
+        .with_max_concurrent_exports(8)
+        .build();
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
         let (tracer, tracer_provider) = create_tracer(trace_config, batch_config, span_exporter);
@@ -246,10 +247,13 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     let log_export_scheduled_delay = exporting_configuration.log_export_scheduled_delay();
     Executor::execute_future(async move {
         let config = sdk::logs::Config::default().with_resource(make_resource(app));
+        let batch_config = logs::BatchConfigBuilder::default()
+            .with_max_export_timeout(log_export_timeout)
+            .with_scheduled_delay(log_export_scheduled_delay)
+            .build();
         let log_processor =
             BatchLogProcessor::builder(log_exporter, opentelemetry_sdk::runtime::Tokio)
-                .with_max_timeout(log_export_timeout)
-                .with_scheduled_delay(log_export_scheduled_delay)
+                .with_batch_config(batch_config)
                 .build();
         let provider = LoggerProvider::builder()
             .with_config(config)
