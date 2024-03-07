@@ -141,7 +141,7 @@ impl EnrollCommand {
 
         let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 
-        if let Err(ref error) = retrieve_user_space_and_project(
+        if let Err(error) = retrieve_user_space_and_project(
             &opts,
             ctx,
             &node,
@@ -169,7 +169,7 @@ impl EnrollCommand {
             error!("{error}");
 
             // Exit the command with an error
-            return Err(miette!(format!(
+            return Err(error.wrap_err(format!(
                 "There was a problem, please try to enroll again using {}.",
                 color_primary("ockam enroll")
             )));
@@ -287,15 +287,10 @@ async fn retrieve_user_space_and_project(
     ctx: &Context,
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
-) -> Result<Project> {
+) -> miette::Result<Project> {
     let space = get_user_space(opts, ctx, node, skip_orchestrator_resources_creation)
         .await
-        .map_err(|e| {
-            miette!(
-                "Unable to retrieve and set a Space as default {:?}",
-                e.to_string()
-            )
-        })?
+        .wrap_err("Unable to retrieve and set a Space as default")?
         .ok_or(miette!("No Space was found"))?;
 
     info!("Retrieved your default Space {space:#?}");
@@ -349,7 +344,7 @@ async fn get_user_space(
     ctx: &Context,
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
-) -> Result<Option<Space>> {
+) -> miette::Result<Option<Space>> {
     // Get the available spaces for node's identity
     // Those spaces might have been created previously and all the local state reset
     opts.terminal

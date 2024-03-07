@@ -169,6 +169,23 @@ impl<T> Reply<T> {
         }
     }
 
+    #[cfg(feature = "std")]
+    #[track_caller]
+    pub fn miette_success(self, request_kind: &str) -> Result<T, miette::Report> {
+        match self {
+            Reply::Successful(t) => Ok(t),
+            Reply::Failed(e, status) => {
+                let message = if let Some(message) = e.message {
+                    format!("Failed request to {request_kind} ({message})")
+                } else {
+                    format!("Failed request to {request_kind}")
+                };
+                let internal = internal::MietteError { message, status };
+                Err(miette::Report::from(internal))
+            }
+        }
+    }
+
     /// Return the value T as an option if it has been found .
     /// Any failure indicated by a non-OK or not-NotFound status is interpreted as an error
     #[track_caller]
@@ -405,6 +422,49 @@ impl Display for Error {
         .flatten()
         .collect();
         write!(f, "{}", fields.join(", "))
+    }
+}
+
+#[cfg(feature = "std")]
+mod internal {
+    use crate::api::Status;
+    use core::fmt::{Debug, Display, Formatter};
+
+    impl std::error::Error for MietteError {}
+
+    pub(crate) struct MietteError {
+        pub(crate) message: String,
+        pub(crate) status: Option<Status>,
+    }
+
+    impl Display for MietteError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.message)?;
+            if let Some(status) = &self.status {
+                write!(f, " ({})", status)?;
+            }
+            Ok(())
+        }
+    }
+
+    impl Debug for MietteError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+            write!(
+                f,
+                "MietteError {{ message: {:?}, code: {:?} }}",
+                self.message, self.status
+            )
+        }
+    }
+
+    #[cfg(feature = "std")]
+    impl miette::Diagnostic for MietteError {
+        fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+            self.status.map(|s| {
+                let s: Box<dyn Display> = Box::new(s);
+                s
+            })
+        }
     }
 }
 

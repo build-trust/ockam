@@ -513,7 +513,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         &self,
         output_messages: &[String],
         is_finished: &Mutex<bool>,
-    ) -> Result<()> {
+    ) -> miette::Result<()> {
         if output_messages.is_empty() {
             return Ok(());
         }
@@ -527,7 +527,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         output_messages: &[String],
         is_finished: &Mutex<bool>,
         progress_bar: Option<&ProgressBar>,
-    ) -> Result<()> {
+    ) -> miette::Result<()> {
         let progress_bar = match progress_bar {
             Some(pb) => pb,
             None => return Ok(()),

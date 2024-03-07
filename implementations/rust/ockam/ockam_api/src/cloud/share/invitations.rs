@@ -90,8 +90,7 @@ impl Invitations for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("create invitation")
     }
 
     async fn create_service_invitation(
@@ -126,8 +125,7 @@ impl Invitations for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("create service invitation")
     }
 
     async fn accept_invitation(
@@ -140,8 +138,7 @@ impl Invitations for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("redeem invitation")
     }
 
     async fn show_invitation(
@@ -155,8 +152,7 @@ impl Invitations for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("get invitation")
     }
 
     async fn list_invitations(
@@ -170,8 +166,7 @@ impl Invitations for ControllerClient {
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("list invitations")
     }
 
     async fn ignore_invitation(&self, ctx: &Context, invitation_id: String) -> miette::Result<()> {
@@ -181,7 +176,6 @@ impl Invitations for ControllerClient {
             .tell(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("ignore invitation")
     }
 }

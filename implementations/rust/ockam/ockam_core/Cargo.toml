@@ -43,6 +43,7 @@ std = [
   "tracing-opentelemetry",
   "tracing-subscriber",
   "strum/std",
+  "miette",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -80,6 +81,7 @@ core2 = { version = "0.4.0", default-features = false, optional = true }
 futures-util = { version = "0.3.30", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
 hashbrown = { version = "0.14", default-features = false, features = ["ahash", "serde"] }
 hex = { version = "0.4", default-features = false, optional = true }
+miette = { version = "7", optional = true }
 minicbor = { version = "0.21.0", features = ["derive"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default_features = false }
 once_cell = { version = "1", optional = true, default-features = false }

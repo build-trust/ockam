@@ -107,9 +107,9 @@ impl StoreCommand {
                 .map_err(|_e| miette!("Invalid credential"))?;
 
             *is_finished.lock().await = true;
-            Ok(credential
+            credential
                 .encode_as_string()
-                .map_err(|_e| miette!("Invalid credential"))?)
+                .map_err(|_e| miette!("Invalid credential"))
         };
 
         let output_messages = vec![format!("Storing credential...")];

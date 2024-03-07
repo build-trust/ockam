@@ -56,8 +56,7 @@ impl Enroll for ControllerClient {
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("generate token")
     }
 
     #[instrument(skip_all)]
@@ -74,8 +73,7 @@ impl Enroll for ControllerClient {
             .tell(ctx, "enrollment_token_authenticator", req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+            .miette_success("authenticate token")
     }
 }
 

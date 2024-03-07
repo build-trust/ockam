@@ -85,15 +85,16 @@ pub async fn verify_credential(
     let send_req = async {
         let credential_as_str = match (&credential, &credential_path) {
             (_, Some(credential_path)) => tokio::fs::read_to_string(credential_path)
-                .await?
+                .await
+                .into_diagnostic()?
                 .trim()
                 .to_string(),
             (Some(credential), _) => credential.clone(),
             _ => {
                 *is_finished.lock().await = true;
-                return Err(
-                    miette!("Credential or Credential Path argument must be provided").into(),
-                );
+                return Err(miette!(
+                    "Credential or Credential Path argument must be provided"
+                ));
             }
         };
 
@@ -108,7 +109,7 @@ pub async fn verify_credential(
         .await;
 
         *is_finished.lock().await = true;
-        Ok(result.map_err(|e| e.wrap_err("Credential is invalid"))?)
+        result.map_err(|e| e.wrap_err("Credential is invalid"))
     };
 
     let output_messages = vec!["Verifying credential...".to_string()];
