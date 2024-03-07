@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use tracing::instrument;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
@@ -276,6 +277,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         Ok(HkdfOutput(Sha256HkdfOutput(output)))
     }
 
+    #[instrument(skip_all)]
     async fn aead_encrypt(
         &self,
         secret_key_handle: &AeadSecretKeyHandle,
@@ -288,6 +290,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         aes.encrypt_message(plain_text, nonce, aad)
     }
 
+    #[instrument(skip_all)]
     async fn aead_decrypt(
         &self,
         secret_key_handle: &AeadSecretKeyHandle,
@@ -397,6 +400,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         Ok(handle)
     }
 
+    #[instrument(skip_all)]
     async fn delete_aead_secret_key(&self, secret_key_handle: AeadSecretKeyHandle) -> Result<bool> {
         Ok(self
             .ephemeral_aead_secrets

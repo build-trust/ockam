@@ -1,6 +1,7 @@
 use ockam_core::Result;
 use ockam_vault::AeadSecretKeyHandle;
 use tracing::{trace, warn};
+use tracing_attributes::instrument;
 
 use crate::IdentityError;
 
@@ -38,6 +39,7 @@ impl KeyTracker {
     ///      - if the the nonce falls before the previous interval
     ///      - if it the previous nonce but is not set
     ///      - we reached the maximum number of rekeyings
+    #[instrument(skip_all)]
     pub(crate) fn get_key(&self, nonce: u64) -> Result<Option<AeadSecretKeyHandle>> {
         trace!(
             "The current number of rekeys is {}, the rekey interval is {}",
@@ -87,6 +89,7 @@ impl KeyTracker {
     }
 
     // Update the key if a key renewal happened
+    #[instrument(skip_all)]
     pub(crate) fn update_key(
         &mut self,
         decryption_key: AeadSecretKeyHandle,

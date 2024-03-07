@@ -1,5 +1,6 @@
 use crate::secure_channel::encryptor::KEY_RENEWAL_INTERVAL;
 use crate::IdentityError;
+use tracing_attributes::instrument;
 
 /// fails compilation if [`KEY_RENEWAL_INTERVAL`] + 1 is bigger than [`BitmapType::BITS`].
 ///
@@ -23,6 +24,7 @@ impl NonceTracker {
     }
 
     /// Mark a nonce as received, reject all invalid nonce values
+    #[instrument(skip_all)]
     pub(crate) fn mark(&self, nonce: u64) -> ockam_core::Result<NonceTracker> {
         let new_tracker = if nonce > self.current_nonce {
             // normal case, we increase the nonce and move the window
