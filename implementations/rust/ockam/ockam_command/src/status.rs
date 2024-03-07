@@ -177,8 +177,8 @@ impl StatusData {
         let mut identities = vec![];
         for identity in identities_details.into_iter() {
             let mut identity_status = IdentityWithLinkedNodes {
-                identifier: identity.identifier(),
-                name: identity.name(),
+                identifier: identity.identifier().clone(),
+                name: identity.name().clone(),
                 is_default: identity.is_default(),
                 enrolled_at: identity
                     .enrolled_at()

@@ -85,10 +85,12 @@ impl NodeManager {
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
+        // TODO: Currently admin authenticates as a member on the Project node, but we may choose to
+        //  use project admin credentials in the future
         credentials_enabled: CredentialsEnabled,
     ) -> Result<ProjectNodeClient> {
         let credential_retriever_creator = match credentials_enabled {
-            CredentialsEnabled::On => self.credential_retriever_creator.clone(),
+            CredentialsEnabled::On => self.credential_retriever_creators.project_member.clone(),
             CredentialsEnabled::Off => None,
         };
 
@@ -246,7 +248,7 @@ impl NodeManager {
         get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap()
     }
 
-    async fn controller_route() -> Result<Route> {
+    pub async fn controller_route() -> Result<Route> {
         let multiaddr = Self::controller_multiaddr();
         multiaddr_to_transport_route(&multiaddr).ok_or_else(|| {
             ApiError::core(format!(

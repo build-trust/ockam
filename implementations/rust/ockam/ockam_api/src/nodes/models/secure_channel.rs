@@ -3,6 +3,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::{Identifier, SecureChannel, DEFAULT_TIMEOUT};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, Result};
@@ -23,6 +24,7 @@ pub struct CreateSecureChannelRequest {
     #[n(2)] pub authorized_identifiers: Option<Vec<Identifier>>,
     #[n(4)] pub timeout: Option<Duration>,
     #[n(5)] pub identity_name: Option<String>,
+    #[n(6)] pub credential: Option<CredentialAndPurposeKey>,
 }
 
 impl CreateSecureChannelRequest {
@@ -30,12 +32,14 @@ impl CreateSecureChannelRequest {
         addr: &MultiAddr,
         authorized_identifiers: Option<Vec<Identifier>>,
         identity_name: Option<String>,
+        credential: Option<CredentialAndPurposeKey>,
     ) -> Self {
         Self {
             addr: addr.to_owned(),
             authorized_identifiers,
             timeout: Some(DEFAULT_TIMEOUT),
             identity_name,
+            credential,
         }
     }
 }

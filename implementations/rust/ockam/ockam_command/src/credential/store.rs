@@ -21,6 +21,12 @@ pub struct StoreCommand {
     #[arg(long = "issuer", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
     pub issuer: Identifier,
 
+    /// Scope is used to separate credentials given they have the same Issuer&Subject Identifiers
+    /// Scope can be an arbitrary value, however project admin, project member, and account admin
+    /// credentials have scope of a specific format. See [`CredentialScope`]
+    #[arg(long = "scope", value_name = "CREDENTIAL_SCOPE")]
+    pub scope: String,
+
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
 
@@ -100,6 +106,7 @@ impl StoreCommand {
                 .put(
                     &subject,
                     &purpose_key_data.subject,
+                    &self.scope,
                     credential_data.expires_at,
                     credential.clone(),
                 )

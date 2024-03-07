@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
@@ -46,12 +47,20 @@ impl NodeManagerWorker {
             authorized_identifiers,
             timeout,
             identity_name: identity,
+            credential,
             ..
         } = create_secure_channel;
 
         let response = self
             .node_manager
-            .create_secure_channel(ctx, addr, identity, authorized_identifiers, timeout)
+            .create_secure_channel(
+                ctx,
+                addr,
+                identity,
+                authorized_identifiers,
+                credential,
+                timeout,
+            )
             .await
             .map(|secure_channel| {
                 Response::ok().body(CreateSecureChannelResponse::new(secure_channel))
@@ -163,6 +172,7 @@ impl NodeManager {
         addr: MultiAddr,
         identity_name: Option<String>,
         authorized_identifiers: Option<Vec<Identifier>>,
+        credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
@@ -177,6 +187,7 @@ impl NodeManager {
                 connection.route()?,
                 &identifier,
                 authorized_identifiers,
+                credential,
                 timeout,
             )
             .await?;
@@ -191,6 +202,7 @@ impl NodeManager {
         sc_route: Route,
         identifier: &Identifier,
         authorized_identifiers: Option<Vec<Identifier>>,
+        credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
     ) -> Result<SecureChannel> {
         debug!(%sc_route, "Creating secure channel");
@@ -207,10 +219,13 @@ impl NodeManager {
             None => options,
         };
 
-        let options = match self.credential_retriever_creator.as_ref() {
-            None => options,
-            Some(credential_retriever_creator) => {
-                options.with_credential_retriever_creator(credential_retriever_creator.clone())?
+        let options = if let Some(credential) = credential {
+            options.with_credential(credential)?
+        } else {
+            match self.credential_retriever_creators.project_member.as_ref() {
+                None => options,
+                Some(credential_retriever_creator) => options
+                    .with_credential_retriever_creator(credential_retriever_creator.clone())?,
             }
         };
 
@@ -315,7 +330,7 @@ impl NodeManager {
             None => options,
         };
 
-        let options = match self.credential_retriever_creator.as_ref() {
+        let options = match self.credential_retriever_creators.project_member.as_ref() {
             None => options,
             Some(credential_retriever_creator) => {
                 options.with_credential_retriever_creator(credential_retriever_creator.clone())?

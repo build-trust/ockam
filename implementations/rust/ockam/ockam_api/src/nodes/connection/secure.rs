@@ -58,6 +58,7 @@ impl Instantiator for SecureChannelInstantiator {
                 route![transport_route, route],
                 &self.identifier,
                 self.authorized_identities.clone(),
+                None,
                 self.timeout,
             )
             .await?;

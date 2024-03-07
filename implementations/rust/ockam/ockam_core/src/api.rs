@@ -566,7 +566,7 @@ impl Request {
         Request::build(Method::Patch, path)
     }
 
-    fn build<P: Into<String>>(method: Method, path: P) -> Request {
+    pub fn build<P: Into<String>>(method: Method, path: P) -> Request {
         Request {
             header: RequestHeader::new(method, path, false),
             body: None,

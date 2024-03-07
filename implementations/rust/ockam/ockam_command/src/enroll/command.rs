@@ -287,7 +287,7 @@ impl EnrollCommand {
             .await
             .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
         opts.state
-            .set_identifier_as_enrolled(&node.identifier())
+            .set_identifier_as_enrolled(&node.identifier(), &user_info.email)
             .await
             .wrap_err("Unable to set your local Identity as enrolled")?;
 

@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use miette::Context as _;
-use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
@@ -72,12 +72,7 @@ impl Command for EnrollCommand {
         )
         .await?;
         let authority_node_client = node
-            .create_authority_client(
-                &project.authority_identifier().into_diagnostic()?,
-                project.authority_multiaddr().into_diagnostic()?,
-                Some(identity.name()),
-                None,
-            )
+            .create_authority_client(&project, Some(identity.name()))
             .await?;
 
         // Enroll

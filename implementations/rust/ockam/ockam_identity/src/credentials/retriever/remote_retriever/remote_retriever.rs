@@ -2,6 +2,7 @@ use core::cmp::max;
 use tracing::{debug, error, info, trace, warn};
 
 use ockam_core::api::Request;
+use ockam_core::compat::string::String;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
@@ -76,6 +77,7 @@ pub struct RemoteCredentialRetriever {
     secure_channels: Arc<SecureChannels>,
     pub(super) issuer_info: RemoteCredentialRetrieverInfo,
     pub(super) subject: Identifier,
+    scope: String,
     pub(super) timing_options: RemoteCredentialRetrieverTimingOptions,
 
     is_initialized: Arc<Mutex<bool>>,
@@ -92,6 +94,7 @@ impl RemoteCredentialRetriever {
         secure_channels: Arc<SecureChannels>,
         issuer_info: RemoteCredentialRetrieverInfo,
         subject: Identifier,
+        scope: String,
         timing_options: RemoteCredentialRetrieverTimingOptions,
     ) -> Self {
         debug!(
@@ -105,6 +108,7 @@ impl RemoteCredentialRetriever {
             secure_channels,
             issuer_info,
             subject,
+            scope,
             timing_options,
             is_initialized: Arc::new(Mutex::new(false)),
             last_presented_credential: Arc::new(RwLock::new(None)),
@@ -129,6 +133,7 @@ impl RemoteCredentialRetriever {
         let last_presented_credential = match CachedCredentialRetriever::retrieve_impl(
             &self.issuer_info.issuer,
             &self.subject,
+            &self.scope,
             now,
             self.secure_channels
                 .identities
@@ -285,7 +290,14 @@ impl RemoteCredentialRetriever {
         );
 
         let credential = client
-            .ask(&self.ctx, "credential_issuer", Request::post("/"))
+            .ask(
+                &self.ctx,
+                &self.issuer_info.service_address,
+                Request::build(
+                    self.issuer_info.request_method,
+                    self.issuer_info.api_service_address.clone(),
+                ),
+            )
             .await?
             .success()?;
 
@@ -318,6 +330,7 @@ impl RemoteCredentialRetriever {
             .put(
                 &self.subject,
                 &self.issuer_info.issuer,
+                &self.scope,
                 expires_at,
                 credential,
             )

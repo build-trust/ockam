@@ -6,7 +6,7 @@ use clap::Subcommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use list_ids::ListIdsCommand;
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
@@ -113,12 +113,7 @@ pub(super) async fn create_authority_client(
         .await?;
 
     Ok(node
-        .create_authority_client(
-            &project.authority_identifier().into_diagnostic()?,
-            project.authority_multiaddr().into_diagnostic()?,
-            Some(identity),
-            None,
-        )
+        .create_authority_client(project, Some(identity))
         .await?)
 }
 

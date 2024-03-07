@@ -6,6 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
+use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 use tracing::{debug, error};
@@ -18,6 +19,7 @@ pub const DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP: TimestampInSeconds = TimestampInSec
 pub struct CachedCredentialRetriever {
     issuer: Identifier,
     subject: Identifier,
+    scope: String,
     cache: Arc<dyn CredentialRepository>,
 }
 
@@ -26,11 +28,13 @@ impl CachedCredentialRetriever {
     pub fn new(
         issuer: Identifier,
         subject: Identifier,
+        scope: String,
         cache: Arc<dyn CredentialRepository>,
     ) -> Self {
         Self {
             issuer,
             subject,
+            scope,
             cache,
         }
     }
@@ -39,6 +43,7 @@ impl CachedCredentialRetriever {
     pub async fn retrieve_impl(
         issuer: &Identifier,
         for_identity: &Identifier,
+        scope: &str,
         now: TimestampInSeconds,
         cache: Arc<dyn CredentialRepository>,
         clock_skew_gap: TimestampInSeconds,
@@ -49,7 +54,7 @@ impl CachedCredentialRetriever {
         );
 
         // check if we have a valid cached credential
-        if let Some(cached_credential) = cache.get(for_identity, issuer).await? {
+        if let Some(cached_credential) = cache.get(for_identity, issuer, scope).await? {
             // add an extra minute to have a bit of leeway for clock skew
             if cached_credential.get_expires_at()? > now + clock_skew_gap {
                 debug!("Found valid cached credential for: {}", for_identity);
@@ -59,7 +64,7 @@ impl CachedCredentialRetriever {
                     "Found expired cached credential for: {}. Deleting...",
                     for_identity
                 );
-                let delete_res = cache.delete(for_identity, issuer).await;
+                let delete_res = cache.delete(for_identity, issuer, scope).await;
 
                 if let Some(err) = delete_res.err() {
                     error!(
@@ -80,13 +85,18 @@ impl CachedCredentialRetriever {
 /// Creator for [`CachedCredentialRetriever`]
 pub struct CachedCredentialRetrieverCreator {
     issuer: Identifier,
+    scope: String,
     cache: Arc<dyn CredentialRepository>,
 }
 
 impl CachedCredentialRetrieverCreator {
     /// Constructor
-    pub fn new(issuer: Identifier, cache: Arc<dyn CredentialRepository>) -> Self {
-        Self { issuer, cache }
+    pub fn new(issuer: Identifier, scope: String, cache: Arc<dyn CredentialRepository>) -> Self {
+        Self {
+            issuer,
+            scope,
+            cache,
+        }
     }
 }
 
@@ -96,6 +106,7 @@ impl CredentialRetrieverCreator for CachedCredentialRetrieverCreator {
         Ok(Arc::new(CachedCredentialRetriever::new(
             self.issuer.clone(),
             subject.clone(),
+            self.scope.clone(),
             self.cache.clone(),
         )))
     }
@@ -112,6 +123,7 @@ impl CredentialRetriever for CachedCredentialRetriever {
         match Self::retrieve_impl(
             &self.issuer,
             &self.subject,
+            &self.scope,
             now,
             self.cache.clone(),
             // We can't refresh the credential, so let's still present it even if it's

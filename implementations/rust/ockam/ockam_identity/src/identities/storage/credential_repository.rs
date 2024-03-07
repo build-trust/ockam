@@ -12,6 +12,7 @@ pub trait CredentialRepository: Send + Sync + 'static {
         &self,
         subject: &Identifier,
         issuer: &Identifier,
+        scope: &str,
     ) -> Result<Option<CredentialAndPurposeKey>>;
 
     /// Put credential (overwriting)
@@ -19,10 +20,11 @@ pub trait CredentialRepository: Send + Sync + 'static {
         &self,
         subject: &Identifier,
         issuer: &Identifier,
+        scope: &str,
         expires_at: TimestampInSeconds,
         credential: CredentialAndPurposeKey,
     ) -> Result<()>;
 
     /// Delete credential
-    async fn delete(&self, subject: &Identifier, issuer: &Identifier) -> Result<()>;
+    async fn delete(&self, subject: &Identifier, issuer: &Identifier, scope: &str) -> Result<()>;
 }

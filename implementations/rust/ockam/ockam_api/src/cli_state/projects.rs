@@ -1,4 +1,4 @@
-use ockam::identity::IdentitiesVerification;
+use ockam::identity::{Identifier, IdentitiesVerification};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -7,9 +7,11 @@ use ockam_core::Error;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
 use crate::cli_state::CliState;
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::models::ProjectModel;
 use crate::cloud::project::Project;
-use crate::ProjectsRepository;
+use crate::cloud::share::RoleInShare;
+use crate::{EnrollmentStatus, ProjectsRepository};
 
 use super::Result;
 
@@ -165,6 +167,35 @@ impl Projects {
 }
 
 impl CliState {
+    pub async fn is_project_admin(
+        &self,
+        caller_identifier: &Identifier,
+        project: &Project,
+    ) -> Result<bool> {
+        let enrolled = self
+            .get_identity_enrollments(EnrollmentStatus::Enrolled)
+            .await?;
+
+        let emails: Vec<EmailAddress> = enrolled
+            .iter()
+            .flat_map(|x| {
+                if x.identifier() == caller_identifier {
+                    x.email().clone()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let is_project_admin = project
+            .model()
+            .user_roles
+            .iter()
+            .any(|u| u.role == RoleInShare::Admin && emails.contains(&u.email));
+
+        Ok(is_project_admin)
+    }
+
     pub fn projects(&self) -> Projects {
         let identities_verification = IdentitiesVerification::new(
             self.change_history_repository(),

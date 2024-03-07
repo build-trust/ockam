@@ -136,7 +136,7 @@ impl AppState {
         let node = cli_state.get_node(NODE_NAME).await?;
         let identifier = node.identifier();
         cli_state
-            .set_identifier_as_enrolled(&identifier)
+            .set_identifier_as_enrolled(&identifier, &user_info.email)
             .await
             .into_diagnostic()?;
         info!(%identifier, "User enrolled successfully");
