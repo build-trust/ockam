@@ -24,7 +24,7 @@ TCP Transport for the Ockam Routing Protocol.
 
 [features]
 default = ["std"]
-std = ["ockam_macros/std", "ockam_transport_core/std"]
+std = ["ockam_macros/std", "ockam_transport_core/std", "opentelemetry"]
 no_std = ["ockam_macros/no_std", "ockam_transport_core/no_std"]
 alloc = []
 
@@ -35,7 +35,7 @@ ockam_core = { path = "../ockam_core", version = "^0.102.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
 ockam_node = { path = "../ockam_node", version = "^0.109.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.75.0" }
-opentelemetry = { version = "0.21.0", features = ["logs", "metrics", "trace"] }
+opentelemetry = { version = "0.22.0", features = ["logs", "metrics", "trace"], optional = true }
 rand = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = { version = "0.5.6", features = ["all"] }

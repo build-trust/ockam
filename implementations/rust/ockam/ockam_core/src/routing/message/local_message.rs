@@ -192,7 +192,7 @@ impl LocalMessage {
     /// Create a [`LocalMessage`] from a decoded [`TransportMessage`]
     pub fn from_transport_message(transport_message: TransportMessage) -> LocalMessage {
         cfg_if! {
-            if #[cfg(feature = "std")] {
+            if #[cfg(feature = "tracing_context")] {
                 LocalMessage::new()
                     .with_tracing_context(transport_message.tracing_context())
                     .with_onward_route(transport_message.onward_route)
@@ -214,7 +214,7 @@ impl LocalMessage {
         cfg_if! {
             if #[cfg(feature = "std")] {
                 // make sure to pass the latest tracing context
-                transport_message.set_tracing_context(self.tracing_context.update())
+                transport_message.start_new_tracing_context(self.tracing_context.update())
             } else {
                 transport_message
             }

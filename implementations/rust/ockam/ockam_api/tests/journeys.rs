@@ -31,6 +31,7 @@ fn test_create_journey_event() {
             .set_crates(&["ockam_api"]),
         &ExportingConfiguration::foreground(false).unwrap(),
         "test",
+        None,
     );
     let tracer = global::tracer("ockam-test");
     let result = tracer.in_span("user event", |cx| {
