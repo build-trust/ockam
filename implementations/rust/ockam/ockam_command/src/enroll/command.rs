@@ -124,8 +124,15 @@ impl EnrollCommand {
             identity_task
         )?;
 
-        // If a named or default identity can't be found, then we can't proceed, so, return error.
-        let identity = identity?;
+        // If a named or default identity can't be found, then we can't proceed, so, print an error.
+        let identity = match identity {
+            Ok(identity) => identity,
+            Err(e) => {
+                opts.terminal
+                    .write_line(&fmt_warn!("{}", color_primary(e.to_string())))?;
+                return Ok(());
+            }
+        };
         progress_display.finalize();
 
         let identity_name = identity.name();
