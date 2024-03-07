@@ -63,19 +63,20 @@ impl AppState {
             .await?
             .identifier();
 
-        let authority = node_manager
-            .authority()
-            .ok_or(ockam_core::Error::new_unknown(
-                Origin::Application,
-                "NodeManager has no authority",
-            ))?;
+        let project_authority =
+            node_manager
+                .project_authority()
+                .ok_or(ockam_core::Error::new_unknown(
+                    Origin::Application,
+                    "NodeManager has no authority",
+                ))?;
 
         Ok(Arc::new(InvitationAccessControl::new(
             outlet_worker_addr,
             identities_attributes,
             invitations,
             local_identity,
-            authority,
+            project_authority,
         )))
     }
 }

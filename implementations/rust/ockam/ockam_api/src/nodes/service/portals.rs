@@ -209,7 +209,7 @@ impl NodeManager {
             OutletAccessControl::IncomingAccessControl(iac) => iac,
             OutletAccessControl::PolicyExpression(expression) => {
                 self.access_control(
-                    self.authority(),
+                    self.project_authority(),
                     Resource::new(worker_addr.address(), ResourceType::TcpOutlet),
                     Action::HandleMessage,
                     expression,
@@ -220,7 +220,7 @@ impl NodeManager {
 
         let options = {
             let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
-            let options = if self.authority().is_none() {
+            let options = if self.project_authority().is_none() {
                 options.as_consumer(&self.api_transport_flow_control_id)
             } else {
                 options
@@ -625,7 +625,7 @@ impl SessionReplacer for InletSessionReplacer {
                     None
                 }
             }
-            .or(self.node_manager.authority());
+            .or(self.node_manager.project_authority());
 
             self.node_manager
                 .access_control(
