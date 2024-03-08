@@ -4365,6 +4365,7 @@ dependencies = [
  "opentelemetry-otlp",
  "pem-rfc7468",
  "proptest",
+ "r3bl_ansi_color",
  "r3bl_rs_utils_core",
  "r3bl_tui",
  "r3bl_tuify",
@@ -4383,6 +4384,7 @@ dependencies = [
  "strip-ansi-escapes",
  "syntect",
  "tempfile",
+ "termbg",
  "thiserror",
  "time",
  "tiny_http",
@@ -7020,6 +7022,19 @@ dependencies = [
  "fastrand 2.0.1",
  "rustix 0.38.31",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "termbg"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c12e6e0bf9bc6ac887681aeddabfcc5dbdea20d3f43d6d18f237c34fe942dde"
+dependencies = [
+ "async-std",
+ "crossterm",
+ "is-terminal",
+ "thiserror",
+ "winapi",
 ]
 
 [[package]]
