@@ -1,6 +1,0 @@
-#!/bin/bash
-
-PROJECT_NAME="influxdb-demo"
-export INFLUXDB_TOKEN=$(ockam project ticket --attribute component=influxdb)
-export TELEGRAF_TOKEN=$(ockam project ticket --attribute component=telegraf)
-docker compose up
