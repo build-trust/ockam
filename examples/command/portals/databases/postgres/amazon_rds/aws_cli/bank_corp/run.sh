@@ -3,9 +3,6 @@ set -ex
 
 run() {
     enrollment_ticket="$1"
-    region=$(aws configure get region)
-    user_id=$(aws sts get-caller-identity  --query 'UserId' |  awk -F'"|:' '{print tolower($1)}')
-    name="ockam-ex-pg-rds-bank-corp-$user_id"
 
     # ----------------------------------------------------------------------------------------------------------------
     # CREATE NETWORK
@@ -22,20 +19,22 @@ run() {
     rtb_id=$(aws ec2 create-route-table --vpc-id "$vpc_id" --query 'RouteTable.RouteTableId')
     aws ec2 create-route --route-table-id "$rtb_id" --destination-cidr-block 0.0.0.0/0 --gateway-id "$gw_id"
 
+    az1=$(aws ec2 describe-availability-zones --query "AvailabilityZones[0].ZoneName")
     subnet1_id=$(aws ec2 create-subnet --vpc-id "$vpc_id" --cidr-block 10.0.0.0/25 \
-        --availability-zone "${region}a" --query 'Subnet.SubnetId')
+        --availability-zone "$az1" --query 'Subnet.SubnetId')
     aws ec2 modify-subnet-attribute --subnet-id "$subnet1_id" --map-public-ip-on-launch
     aws ec2 associate-route-table --subnet-id "$subnet1_id" --route-table-id "$rtb_id"
 
+    az2=$(aws ec2 describe-availability-zones --query "AvailabilityZones[1].ZoneName")
     subnet2_id=$(aws ec2 create-subnet --vpc-id "$vpc_id" --cidr-block 10.0.0.128/25 \
-        --availability-zone "${region}b" --query 'Subnet.SubnetId')
+        --availability-zone "$az2" --query 'Subnet.SubnetId')
     aws ec2 modify-subnet-attribute --subnet-id "$subnet2_id" --map-public-ip-on-launch
     aws ec2 associate-route-table --subnet-id "$subnet2_id" --route-table-id "$rtb_id"
 
     # Create a security group to allow:
     #   - TCP egress to the Internet
     #   - Postgess ingress only from withing our two subnets.
-    sg_id=$(aws ec2 create-security-group --group-name "$name" --vpc-id "$vpc_id" --query 'GroupId' \
+    sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
         --description "Allow TCP egress and Postgres ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
     aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr 10.0.0.0/24 --protocol tcp --port 5432
@@ -71,9 +70,6 @@ run() {
 }
 
 cleanup() {
-    user_id=$(aws sts get-caller-identity  --query 'UserId' |  awk -F'"|:' '{print tolower($1)}')
-    name="ockam-ex-pg-rds-bank-corp-$user_id"
-
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
@@ -130,6 +126,11 @@ cleanup() {
 
 export AWS_PAGER="";
 export AWS_DEFAULT_OUTPUT="text";
+
+user=""
+command -v sha256sum &>/dev/null && user=$(aws sts get-caller-identity | sha256sum | cut -c 1-20)
+command -v shasum &>/dev/null && user=$(aws sts get-caller-identity | shasum -a 256 | cut -c 1-20)
+export name="ockam-ex-pg-rds-bank-corp-$user"
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.
