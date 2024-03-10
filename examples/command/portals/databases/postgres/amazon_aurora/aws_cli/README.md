@@ -1,4 +1,4 @@
-# Amazon RDS
+# Amazon Aurora
 
 This hands-on example uses Ockam to create an end-to-end encrypted portal to postgres.
 
