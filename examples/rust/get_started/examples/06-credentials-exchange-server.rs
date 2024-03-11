@@ -77,7 +77,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp_listener_options = TcpListenerOptions::new();
     let sc_listener_options = SecureChannelListenerOptions::new()
         .with_authority(issuer.clone())
-        .with_credential(credential)?
+        .with_credential(credential)
         .as_consumer(&tcp_listener_options.spawner_flow_control_id());
 
     node.flow_controls().add_consumer(

@@ -5,10 +5,7 @@ use ockam_core::{Address, OutgoingAccessControl, Result};
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::Addresses;
-use crate::{
-    CredentialRetrieverCreator, Identifier, IdentityError, MemoryCredentialRetrieverCreator,
-    TrustEveryonePolicy, TrustPolicy,
-};
+use crate::{CredentialRetrieverOptions, Identifier, TrustEveryonePolicy, TrustPolicy};
 
 use core::fmt;
 use core::fmt::Formatter;
@@ -24,7 +21,7 @@ pub struct SecureChannelOptions {
     // To verify other party's credentials
     pub(crate) authority: Option<Identifier>,
     // To obtain our credentials
-    pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
+    pub(crate) credential_retriever_options: CredentialRetrieverOptions,
     pub(crate) timeout: Duration,
 }
 
@@ -46,7 +43,7 @@ impl SecureChannelOptions {
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
             authority: None,
-            credential_retriever_creator: None,
+            credential_retriever_options: CredentialRetrieverOptions::None,
             timeout: DEFAULT_TIMEOUT,
         }
     }
@@ -57,23 +54,18 @@ impl SecureChannelOptions {
         self
     }
 
-    /// Set [`CredentialRetrieverCreator`]
-    pub fn with_credential_retriever_creator(
+    /// Set [`CredentialRetriever`]
+    pub fn with_credential_retriever_options(
         mut self,
-        credential_retriever_creator: Arc<dyn CredentialRetrieverCreator>,
-    ) -> Result<Self> {
-        if self.credential_retriever_creator.is_some() {
-            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
-        }
-        self.credential_retriever_creator = Some(credential_retriever_creator);
-        Ok(self)
+        credential_retriever_options: CredentialRetrieverOptions,
+    ) -> Self {
+        self.credential_retriever_options = credential_retriever_options;
+        self
     }
 
     /// Set credential
-    pub fn with_credential(self, credential: CredentialAndPurposeKey) -> Result<Self> {
-        self.with_credential_retriever_creator(Arc::new(MemoryCredentialRetrieverCreator::new(
-            credential,
-        )))
+    pub fn with_credential(self, credential: CredentialAndPurposeKey) -> Self {
+        self.with_credential_retriever_options(CredentialRetrieverOptions::InMemory(credential))
     }
 
     /// Sets Trusted Authority
@@ -143,7 +135,7 @@ pub struct SecureChannelListenerOptions {
     // To verify other party's credentials
     pub(crate) authority: Option<Identifier>,
     // To obtain our credentials
-    pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
+    pub(crate) credential_retriever_options: CredentialRetrieverOptions,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -163,7 +155,7 @@ impl SecureChannelListenerOptions {
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
             authority: None,
-            credential_retriever_creator: None,
+            credential_retriever_options: CredentialRetrieverOptions::None,
         }
     }
 
@@ -176,23 +168,18 @@ impl SecureChannelListenerOptions {
         self
     }
 
-    /// Set [`CredentialRetrieverCreator`]
-    pub fn with_credential_retriever_creator(
+    /// Set [`CredentialRetrieverOptions`]
+    pub fn with_credential_retriever_options(
         mut self,
-        credential_retriever_creator: Arc<dyn CredentialRetrieverCreator>,
-    ) -> Result<Self> {
-        if self.credential_retriever_creator.is_some() {
-            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
-        }
-        self.credential_retriever_creator = Some(credential_retriever_creator);
-        Ok(self)
+        credential_retriever_options: CredentialRetrieverOptions,
+    ) -> Self {
+        self.credential_retriever_options = credential_retriever_options;
+        self
     }
 
     /// Set credential
-    pub fn with_credential(self, credential: CredentialAndPurposeKey) -> Result<Self> {
-        self.with_credential_retriever_creator(Arc::new(MemoryCredentialRetrieverCreator::new(
-            credential,
-        )))
+    pub fn with_credential(self, credential: CredentialAndPurposeKey) -> Self {
+        self.with_credential_retriever_options(CredentialRetrieverOptions::InMemory(credential))
     }
 
     /// Sets Trusted Authority

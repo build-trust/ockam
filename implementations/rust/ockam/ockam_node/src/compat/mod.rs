@@ -15,6 +15,9 @@ mod mutex;
 #[cfg(not(feature = "std"))]
 mod rwlock;
 
+/// Broadcast channel
+pub mod broadcast;
+
 /// Async Mutex and RwLock
 #[cfg(not(feature = "std"))]
 pub mod asynchronous {

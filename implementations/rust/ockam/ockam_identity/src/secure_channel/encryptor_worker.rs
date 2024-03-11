@@ -16,8 +16,8 @@ use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::Encryptor;
 use crate::{
-    ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError,
-    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
+    ChangeHistoryRepository, CredentialAndPurposeKeyMessage, CredentialRefresher, Identifier,
+    IdentityError, PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
 };
 
 #[derive(Debug, Clone)]
@@ -34,7 +34,7 @@ pub(crate) struct EncryptorWorker {
     encryptor: Encryptor,
     my_identifier: Identifier,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
-    credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+    credential_refresher: Option<Arc<CredentialRefresher>>,
     last_presented_credential: Option<CredentialAndPurposeKey>,
     shared_state: SecureChannelSharedState,
 }
@@ -48,7 +48,7 @@ impl EncryptorWorker {
         encryptor: Encryptor,
         my_identifier: Identifier,
         change_history_repository: Arc<dyn ChangeHistoryRepository>,
-        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+        credential_refresher: Option<Arc<CredentialRefresher>>,
         last_presented_credential: Option<CredentialAndPurposeKey>,
         shared_state: SecureChannelSharedState,
     ) -> Self {
@@ -59,7 +59,7 @@ impl EncryptorWorker {
             encryptor,
             my_identifier,
             change_history_repository,
-            credential_retriever,
+            credential_refresher,
             last_presented_credential,
             shared_state,
         }
@@ -166,29 +166,17 @@ impl EncryptorWorker {
     /// Asks credential retriever for a new credential and presents it to the other side, including
     /// the latest change_history
     #[instrument(skip_all)]
-    async fn handle_refresh_credentials(&mut self, ctx: &<Self as Worker>::Context) -> Result<()> {
+    async fn handle_refresh_credentials(
+        &mut self,
+        ctx: &<Self as Worker>::Context,
+        credential_and_purpose_key: CredentialAndPurposeKey,
+    ) -> Result<()> {
         debug!(
             "Started credentials refresh for {}",
             self.addresses.encryptor
         );
 
-        let credential_retriever = match &self.credential_retriever {
-            Some(credential_retriever) => credential_retriever,
-            None => return Err(IdentityError::NoCredentialRetriever)?,
-        };
-
-        let credential = match credential_retriever.retrieve().await {
-            Ok(credential) => credential,
-            Err(err) => {
-                error!(
-                    "Credentials refresh failed for {} with error={}",
-                    self.addresses.encryptor, err,
-                );
-                return Err(err);
-            }
-        };
-
-        if Some(&credential) == self.last_presented_credential.as_ref() {
+        if Some(&credential_and_purpose_key) == self.last_presented_credential.as_ref() {
             // Credential hasn't actually changed
             warn!(
                 "Credentials refresh for {} cancelled since credential hasn't changed",
@@ -214,7 +202,7 @@ impl EncryptorWorker {
 
         let msg = RefreshCredentialsMessage {
             change_history,
-            credentials: vec![credential.clone()],
+            credentials: vec![credential_and_purpose_key.clone()],
         };
         let msg = SecureChannelMessage::RefreshCredentials(msg);
 
@@ -233,7 +221,7 @@ impl EncryptorWorker {
         )
         .await?;
 
-        self.last_presented_credential = Some(credential);
+        self.last_presented_credential = Some(credential_and_purpose_key);
 
         Ok(())
     }
@@ -262,10 +250,9 @@ impl Worker for EncryptorWorker {
     type Context = Context;
 
     async fn initialize(&mut self, _ctx: &mut Self::Context) -> Result<()> {
-        if let Some(credential_retriever) = &self.credential_retriever {
-            credential_retriever.subscribe(&self.addresses.encryptor_internal)?;
+        if let Some(remote_credential_refresher) = &self.credential_refresher {
+            remote_credential_refresher.subscribe(&self.addresses.encryptor_internal)?;
         }
-
         Ok(())
     }
 
@@ -282,7 +269,9 @@ impl Worker for EncryptorWorker {
         } else if msg_addr == self.addresses.encryptor_api {
             self.handle_encrypt_api(ctx, msg).await?;
         } else if msg_addr == self.addresses.encryptor_internal {
-            self.handle_refresh_credentials(ctx).await?;
+            let credential_and_purpose_key = CredentialAndPurposeKeyMessage::decode(msg.payload())?;
+            self.handle_refresh_credentials(ctx, credential_and_purpose_key.0)
+                .await?;
         } else {
             return Err(IdentityError::UnknownChannelMsgDestination)?;
         }
@@ -292,8 +281,8 @@ impl Worker for EncryptorWorker {
 
     #[instrument(skip_all, name = "EncryptorWorker::shutdown")]
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
-        if let Some(credential_retriever) = &self.credential_retriever {
-            credential_retriever.unsubscribe(&self.addresses.encryptor_internal)?;
+        if let Some(remote_credential_refresher) = &self.credential_refresher {
+            remote_credential_refresher.unsubscribe(&self.addresses.encryptor_internal)?;
         }
 
         let _ = context

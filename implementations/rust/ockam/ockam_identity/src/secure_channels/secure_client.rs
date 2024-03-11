@@ -1,4 +1,4 @@
-use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{CredentialRetrieverOptions, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
 use minicbor::{Decode, Encode};
 use tracing::error;
 
@@ -30,8 +30,8 @@ use ockam_transport_core::Transport;
 pub struct SecureClient {
     // secure_channels is used to create a secure channel before sending a request
     secure_channels: Arc<SecureChannels>,
-    // Credential retriever
-    credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
+    // Credential retriever options if a credential retriever is required
+    credential_retriever_options: CredentialRetrieverOptions,
     // transport to instantiate connections
     transport: Arc<dyn Transport>,
     // destination for the secure channel
@@ -51,7 +51,7 @@ impl SecureClient {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         secure_channels: Arc<SecureChannels>,
-        credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
+        credential_retriever_options: CredentialRetrieverOptions,
         transport: Arc<dyn Transport>,
         server_route: Route,
         server_identifier: &Identifier,
@@ -61,7 +61,7 @@ impl SecureClient {
     ) -> SecureClient {
         Self {
             secure_channels,
-            credential_retriever_creator,
+            credential_retriever_options,
             transport,
             secure_route: server_route,
             server_identifier: server_identifier.clone(),
@@ -76,9 +76,9 @@ impl SecureClient {
         self.secure_channels.clone()
     }
 
-    /// CredentialRetriever
-    pub fn credential_retriever_creator(&self) -> Option<Arc<dyn CredentialRetrieverCreator>> {
-        self.credential_retriever_creator.clone()
+    /// CredentialRetrieverOptions
+    pub fn credential_retriever_options(&self) -> CredentialRetrieverOptions {
+        self.credential_retriever_options.clone()
     }
 
     /// Transport
@@ -237,11 +237,7 @@ impl SecureClient {
             .with_timeout(self.secure_channel_timeout);
 
         let options =
-            if let Some(credential_retriever_creator) = self.credential_retriever_creator.clone() {
-                options.with_credential_retriever_creator(credential_retriever_creator)?
-            } else {
-                options
-            };
+            options.with_credential_retriever_options(self.credential_retriever_options.clone());
 
         let secure_channel = self
             .secure_channels

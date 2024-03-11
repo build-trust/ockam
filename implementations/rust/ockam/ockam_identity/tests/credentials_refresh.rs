@@ -3,17 +3,19 @@ use std::time::Duration;
 
 use ockam_core::api::Response;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Any, AsyncTryClone, Routed, Worker};
+use ockam_core::{async_trait, Any, Routed, Worker};
 use ockam_core::{route, Result};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
-    Credentials, Identifier, IdentitySecureChannelLocalInfo, RemoteCredentialRetrieverCreator,
-    RemoteCredentialRetrieverInfo, RemoteCredentialRetrieverTimingOptions,
-    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    CredentialRetrieverOptions, Credentials, Identifier, IdentitySecureChannelLocalInfo,
+    RemoteCredentialRefresherTimingOptions, RemoteCredentialRetrieverInfo,
+    RemoteCredentialRetrieverTimingOptions, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannels,
 };
 use ockam_node::Context;
+use ockam_transport_core::Transport;
 use ockam_transport_tcp::TcpTransport;
 
 struct CredentialIssuer {
@@ -48,7 +50,7 @@ impl Worker for CredentialIssuer {
                 &self.authority,
                 &subject,
                 AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-                    .with_attribute(b"key", b"value")
+                    .with_attribute(*b"key", *b"value")
                     .build(),
                 self.ttl,
             )
@@ -67,22 +69,35 @@ impl Worker for CredentialIssuer {
 
 #[ockam_macros::test]
 async fn autorefresh(ctx: &mut Context) -> Result<()> {
-    let timing_options = RemoteCredentialRetrieverTimingOptions {
-        min_refresh_interval: Duration::from_secs(1),
-        proactive_refresh_gap: 1.into(),
-        clock_skew_gap: 0.into(),
+    let retriever_timing_options = RemoteCredentialRetrieverTimingOptions {
         request_timeout: Duration::from_secs(2),
         ..Default::default()
     };
+
+    // The proactive refresh gap is 1s meaning that we will try to refresh 1 second before the
+    // expiration date of a credential
+    let refresher_timing_options = RemoteCredentialRefresherTimingOptions {
+        clock_skew_gap: 0.into(),
+        min_refresh_interval: Duration::from_secs(1),
+        proactive_refresh_gap: 1.into(),
+    };
+
+    // The TTL for a credential is 5 seconds
     let res = init(
         ctx,
         Duration::from_secs(0),
         Duration::from_secs(5),
-        timing_options,
+        retriever_timing_options,
+        refresher_timing_options,
     )
     .await?;
 
+    // during the initialization no call is made to retrieve a credential
     assert_eq!(res.call_counter.load(Ordering::Relaxed), 0);
+
+    // we create a secure channel
+    // this will retrieve a credential during the handshake
+    // and schedule a refresh
     let _channel = res
         .client_secure_channels
         .create_secure_channel(
@@ -90,14 +105,17 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
             &res.client,
             route!["server_api"],
             SecureChannelOptions::new()
-                .with_credential_retriever_creator(res.retriever)?
+                .with_credential_retriever_options(res.retriever_options)
                 .with_authority(res.authority.clone()),
         )
         .await?;
 
+    // The credential has been retrieved once
     assert_eq!(res.call_counter.load(Ordering::Relaxed), 1);
+    // We advance time at time > 1s
     ctx.sleep(Duration::from_secs(1)).await;
 
+    // We check that the credential has been stored locally
     let server_attrs1 = res
         .server_secure_channels
         .identities()
@@ -106,9 +124,16 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
         .await?
         .unwrap();
 
+    // We advance time at time > 5s
+    // The initial credential expires at time = 5s
+    // but since we proactively retrieve the credential 1s before its expiration date, we retrieve it at time = 4s
     ctx.sleep(Duration::from_secs(4)).await;
     assert_eq!(res.call_counter.load(Ordering::Relaxed), 2);
 
+    // We advance time at time > 14s
+    // The credential has been refreshed at time = 4s, had an expiration date at time = 9s
+    // so we fetched it again at time = 8s. The new credential had an expiration date at time = 13s
+    // so we fetched yet another one at time = 12s
     ctx.sleep(Duration::from_secs(9)).await;
     assert_eq!(res.call_counter.load(Ordering::Relaxed), 4);
 
@@ -152,18 +177,21 @@ async fn autorefresh(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn init_fail(ctx: &mut Context) -> Result<()> {
-    let timing_options = RemoteCredentialRetrieverTimingOptions {
+    let retriever_timing_options = RemoteCredentialRetrieverTimingOptions {
+        request_timeout: Duration::from_secs(2),
+        ..Default::default()
+    };
+    let refresher_timing_options = RemoteCredentialRefresherTimingOptions {
         min_refresh_interval: Duration::from_secs(1),
         proactive_refresh_gap: 1.into(),
         clock_skew_gap: 0.into(),
-        request_timeout: Duration::from_secs(2),
-        ..Default::default()
     };
     let res = init(
         ctx,
         Duration::from_secs(0),
         Duration::from_secs(5),
-        timing_options,
+        retriever_timing_options,
+        refresher_timing_options,
     )
     .await?;
 
@@ -176,7 +204,7 @@ async fn init_fail(ctx: &mut Context) -> Result<()> {
             &res.client,
             route!["server_api"],
             SecureChannelOptions::new()
-                .with_credential_retriever_creator(res.retriever)?
+                .with_credential_retriever_options(res.retriever_options)
                 .with_authority(res.authority.clone()),
         )
         .await;
@@ -199,14 +227,15 @@ struct InitResult {
     server_secure_channels: Arc<SecureChannels>,
     authority_secure_channels: Arc<SecureChannels>,
 
-    retriever: Arc<RemoteCredentialRetrieverCreator>,
+    retriever_options: CredentialRetrieverOptions,
 }
 
 async fn init(
     ctx: &Context,
     delay: Duration,
     ttl: Duration,
-    timing_options: RemoteCredentialRetrieverTimingOptions,
+    retriever_timing_options: RemoteCredentialRetrieverTimingOptions,
+    refresher_timing_options: RemoteCredentialRefresherTimingOptions,
 ) -> Result<InitResult> {
     let tcp = TcpTransport::create(ctx).await?;
 
@@ -273,17 +302,16 @@ async fn init(
         )
         .await?;
 
-    let retriever = Arc::new(RemoteCredentialRetrieverCreator::new_extended(
-        ctx.async_try_clone().await?,
-        Arc::new(tcp),
-        client_secure_channels.clone(),
-        RemoteCredentialRetrieverInfo::new(
+    let retriever_options = CredentialRetrieverOptions::Remote {
+        retriever_info: RemoteCredentialRetrieverInfo::new(
             authority.clone(),
             route!["authority_api"],
             "credential_issuer".into(),
+            tcp.transport_type(),
         ),
-        timing_options,
-    ));
+        retriever_timing_options,
+        refresher_timing_options,
+    };
 
     Ok(InitResult {
         call_counter,
@@ -294,6 +322,6 @@ async fn init(
         client_secure_channels,
         server_secure_channels,
         authority_secure_channels,
-        retriever,
+        retriever_options,
     })
 }

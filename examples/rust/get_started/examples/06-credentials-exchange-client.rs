@@ -73,7 +73,7 @@ async fn main(ctx: Context) -> Result<()> {
             route![server_connection, DefaultAddress::SECURE_CHANNEL_LISTENER],
             SecureChannelOptions::new()
                 .with_authority(issuer.clone())
-                .with_credential(credential)?,
+                .with_credential(credential),
         )
         .await?;
 

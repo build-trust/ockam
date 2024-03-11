@@ -1,9 +1,12 @@
-use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
+use crate::nodes::service::NodeManagerTrustOptions;
 use crate::{multiaddr_to_transport_route, CliState, DefaultAddress};
-use ockam::identity::{IdentitiesVerification, RemoteCredentialRetrieverInfo};
+use ockam::identity::{
+    CredentialRetrieverOptions, IdentitiesVerification, RemoteCredentialRetrieverInfo,
+};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::TCP;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
 impl CliState {
@@ -71,10 +74,11 @@ impl CliState {
                     authority_identifier.clone(),
                     authority_route,
                     DefaultAddress::CREDENTIAL_ISSUER.into(),
+                    TCP,
                 );
 
                 let trust_options = NodeManagerTrustOptions::new(
-                    NodeManagerCredentialRetrieverOptions::Remote(info),
+                    CredentialRetrieverOptions::remote_default(info),
                     Some(authority_identifier.clone()),
                 );
 
@@ -86,7 +90,7 @@ impl CliState {
                 trust_options
             } else if expect_cached_credential {
                 let trust_options = NodeManagerTrustOptions::new(
-                    NodeManagerCredentialRetrieverOptions::CacheOnly(authority_identifier.clone()),
+                    CredentialRetrieverOptions::CacheOnly(authority_identifier.clone()),
                     Some(authority_identifier.clone()),
                 );
 
@@ -98,7 +102,7 @@ impl CliState {
                 trust_options
             } else {
                 let trust_options = NodeManagerTrustOptions::new(
-                    NodeManagerCredentialRetrieverOptions::None,
+                    CredentialRetrieverOptions::None,
                     Some(authority_identifier.clone()),
                 );
 
@@ -123,7 +127,7 @@ impl CliState {
             None => {
                 info!("TrustOptions configured: No Authority. No Credentials");
                 return Ok(NodeManagerTrustOptions::new(
-                    NodeManagerCredentialRetrieverOptions::None,
+                    CredentialRetrieverOptions::None,
                     None,
                 ));
             }
@@ -141,10 +145,11 @@ impl CliState {
             authority_identifier.clone(),
             authority_route,
             DefaultAddress::CREDENTIAL_ISSUER.into(),
+            TCP,
         );
 
         let trust_options = NodeManagerTrustOptions::new(
-            NodeManagerCredentialRetrieverOptions::Remote(info),
+            CredentialRetrieverOptions::remote_default(info),
             Some(authority_identifier.clone()),
         );
 

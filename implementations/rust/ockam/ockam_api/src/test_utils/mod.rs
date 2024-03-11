@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 use crate::config::lookup::InternetAddress;
-use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
 use ockam_node::{Context, NodeBuilder};
 use sqlx::__rt::timeout;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -15,7 +14,7 @@ use tokio::runtime::Runtime;
 use tracing::{error, info};
 
 use ockam::identity::utils::AttributesBuilder;
-use ockam::identity::SecureChannels;
+use ockam::identity::{CredentialRetrieverOptions, SecureChannels};
 use ockam::Result;
 use ockam_core::AsyncTryClone;
 use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
@@ -25,6 +24,7 @@ use crate::cli_state::{random_name, CliState};
 use crate::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use crate::nodes::InMemoryNode;
 use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
+use crate::NodeManagerTrustOptions;
 
 /// This struct is used by tests, it has two responsibilities:
 /// - guard to delete the cli state at the end of the test, the cli state
@@ -100,7 +100,7 @@ pub async fn start_manager_for_tests(
         ),
         trust_options.unwrap_or_else(|| {
             NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::InMemory(credential),
+                CredentialRetrieverOptions::InMemory(credential),
                 Some(identifier),
             )
         }),
@@ -205,7 +205,7 @@ impl TestNode {
             &mut context,
             listen_addr,
             Some(NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
                 None,
             )),
         )

@@ -107,7 +107,9 @@ impl CommonStateMachine {
         // prepare the payload that will be sent either in message 2 or message 3
         let change_history = self.identities.get_change_history(&self.identifier).await?;
         let credential = match &self.credential_retriever {
-            Some(credential_retriever) => Some(credential_retriever.retrieve().await?),
+            Some(credential_retriever) => {
+                Some(credential_retriever.retrieve(&self.identifier).await?)
+            }
             None => None,
         };
 
