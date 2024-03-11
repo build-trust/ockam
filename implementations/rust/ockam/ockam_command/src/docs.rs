@@ -1,8 +1,8 @@
 use colorful::Colorful;
 use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
-use r3bl_ansi_color::{AnsiStyledText, Color, Style as StyleAnsi};
 use std::time::Duration;
+use syntect::util::as_24_bit_terminal_escaped;
 use syntect::{
     easy::HighlightLines,
     highlighting::{Style, Theme as SyntectTheme, ThemeSet},
@@ -27,17 +27,9 @@ discord channel https://discord.ockam.io
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 static HEADER_RE: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into()));
-static THEME: Lazy<Option<SyntectTheme>> = Lazy::new(|| {
+static THEME: Lazy<SyntectTheme> = Lazy::new(|| {
     let mut theme_set = ThemeSet::load_defaults();
-    match termbg::theme(Duration::from_millis(100)) {
-        Ok(termbg::Theme::Light) => theme_set.themes.remove("base16-ocean.light"),
-        Ok(termbg::Theme::Dark) => theme_set.themes.remove("base16-ocean.dark"),
-        Err(_) => None,
-    }
-});
-static DEFAULT_THEME: Lazy<SyntectTheme> = Lazy::new(|| {
-    let mut theme_set = ThemeSet::load_defaults();
-    theme_set.themes.remove("base16-ocean.dark").unwrap_or(
+    let default_theme = theme_set.themes.remove("base16-ocean.dark").unwrap_or(
         theme_set.themes.remove("base16-ocean.light").unwrap_or(
             theme_set
                 .themes
@@ -45,7 +37,13 @@ static DEFAULT_THEME: Lazy<SyntectTheme> = Lazy::new(|| {
                 .map(|(_, theme)| theme)
                 .unwrap_or_default(),
         ),
-    )
+    );
+    match termbg::theme(Duration::from_millis(100)) {
+        Ok(termbg::Theme::Light) => theme_set.themes.remove("base16-ocean.light"),
+        Ok(termbg::Theme::Dark) => theme_set.themes.remove("base16-ocean.dark"),
+        Err(_) => None,
+    }
+    .unwrap_or(default_theme)
 });
 
 fn is_markdown() -> bool {
@@ -100,11 +98,13 @@ fn process_terminal_docs(input: String) -> String {
     let mut code_highlighter = FencedCodeBlockHighlighter::new();
 
     for line in LinesWithEndings::from(&input) {
-        // Check if the current line is a code block start/end or content.
-        let is_code_line = code_highlighter.process_line(&mut output, line);
-
-        // The line is not part of a code block, so process normally.
-        if !is_code_line {
+        // TODO: disabled because the syntax is adding some unexpected newlines
+        // if code_highlighter.in_fenced_block(line) {
+        if false {
+            output.push(code_highlighter.highlight(line));
+        }
+        // The line is not part of a fenced block, so process normally.
+        else {
             // Replace headers with bold and underline text
             if HEADER_RE.is_match(line) {
                 output.push(line.to_string().bold().underlined().to_string());
@@ -127,59 +127,32 @@ struct FencedCodeBlockHighlighter<'a> {
     in_fenced_block: bool,
 }
 
+#[allow(dead_code)]
 impl FencedCodeBlockHighlighter<'_> {
     fn new() -> Self {
         let syntax = SYNTAX_SET.find_syntax_by_extension("sh").unwrap();
-        let theme = THEME.as_ref().unwrap_or(&DEFAULT_THEME);
+        let theme = &THEME;
         Self {
             inner: HighlightLines::new(syntax, theme),
             in_fenced_block: false,
         }
     }
 
-    fn process_line(&mut self, output: &mut Vec<String>, line: &str) -> bool {
-        if line == "```sh\n" {
+    fn in_fenced_block(&mut self, line: &str) -> bool {
+        if line.contains("```sh") {
             self.in_fenced_block = true;
-            return true;
-        }
-
-        if !self.in_fenced_block {
-            return false;
-        }
-
-        if line == "```\n" {
-            // Push a reset to clear the coloring.
-            output.push("\x1b[0m".to_string());
+        } else if line.contains("```\n") {
             self.in_fenced_block = false;
-            return true;
         }
+        self.in_fenced_block
+    }
 
-        // Highlight the code line
+    fn highlight(&mut self, line: &str) -> String {
         let highlighted: Vec<(Style, &str)> = self
             .inner
             .highlight_line(line, &SYNTAX_SET)
             .unwrap_or_default();
-
-        // Convert each syntect range to an ANSI styled string
-        Self::write(output, &highlighted);
-
-        true
-    }
-
-    /// Writes a vector of syntect highlighted strings as ANSI styled strings
-    fn write(output: &mut Vec<String>, highlighted: &Vec<(Style, &str)>) {
-        for (style, text) in highlighted {
-            let ansi_styled_text = AnsiStyledText {
-                text,
-                style: &[StyleAnsi::Foreground(Color::Rgb(
-                    style.foreground.r,
-                    style.foreground.g,
-                    style.foreground.b,
-                ))],
-            };
-
-            output.push(ansi_styled_text.to_string());
-        }
+        as_24_bit_terminal_escaped(&highlighted[..], false)
     }
 }
 
@@ -205,29 +178,20 @@ mod tests {
     #[test]
     fn test_syntax_highlighting() {
         let mut highlighter = FencedCodeBlockHighlighter::new();
-        let mut output = Vec::new();
 
-        // Simulate the start of a code block
-        assert!(highlighter.process_line(&mut output, "```sh\n"));
+        // Start of a fenced block
+        assert!(highlighter.in_fenced_block("```sh\n"));
 
-        // Simulate processing a line of code within the code block
-        let code_line = "echo \"Hello, world!\"\n";
-        let highlighted = highlighter.process_line(&mut output, code_line);
+        // Highlight line
+        let line = highlighter.highlight("echo \"Hello, world!\"\n");
+        assert!(line.contains("\x1b[38;2;150;181;180m")); // color before "echo"
+        assert!(line.contains("\x1b[38;2;192;197;206m")); // color after "echo"
 
-        // We expect this line to be processed (highlighted)
-        assert!(highlighted);
-
-        // The output should contain the syntax highlighted version of the code line
-        // This is a simplistic check for ANSI escape codes
-        assert!(output.last().unwrap().contains("\x1b["));
-
-        // Simulate the end of a code block
-        assert!(highlighter.process_line(&mut output, "```\n"));
-
-        // Check that the highlighting is reset at the end
-        assert!(output.last().unwrap().contains("\x1b[0m"));
+        // Close fenced block
+        assert!(!highlighter.in_fenced_block("```\n"));
     }
 
+    #[ignore = "The highlighting is disabled"]
     #[test]
     fn test_process_terminal_docs_with_code_blocks() {
         let input = "```sh
