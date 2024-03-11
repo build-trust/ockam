@@ -34,6 +34,6 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # This makes the remote AI API available on all localhost IPs at - 0.0.0.0:3000
 ockam node create
 ockam policy create --resource tcp-inlet --expression '(= subject.ai-outlet "true")'
-ockam tcp-inlet create --from 0.0.0.0:3000 --to ai
+ockam tcp-inlet create --from 0.0.0.0:3000 --via ai
 
 EOS

@@ -2,8 +2,8 @@
 # To create a new TCP Outlet to the TCP server, using the default node
 $ ockam tcp-outlet create --to 127.0.0.1:5000
 
-# To create a new TCP Outlet at the given address, to the TCP server, with given alias
-$ ockam tcp-outlet create --to 127.0.0.1:5000 --alias my-outlet --from payroll-db-outlet
+# To create a new TCP Outlet at the given address, to the TCP server
+$ ockam tcp-outlet create --to 127.0.0.1:5000 --from payroll-db-outlet
 
 # To create a new TCP Outlet to the TCP server, using a specific node
 $ ockam tcp-outlet create --at n1 --to 127.0.0.1:5000
