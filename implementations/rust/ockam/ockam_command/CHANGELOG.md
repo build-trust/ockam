@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.118.0 - 2024-03-11
+
+### Added
+
+- Update ux strings in enroll, project, project ticket, project enroll commands
+- Tune the timeouts for checking if a node is ready
+- Add syntax highlighting for command's fenced code blocks
+- Change behavior of how the target route is handled in "tcp-inlet create"
+- Upgraded kafka library, with kafka 3.7.0 support
+- Propagating the errors from api clients to the command
+- Add the node name to spans
+- Update display, log output in frequently used commands
+- Updated dependencies
+
+### Changed
+
+- Rename methods and variables to insist on the exporting
+- Disable syntax highlighting in command help
+
+### Fixed
+
+- Fail background node creation if passed identity does not exist
+- Fix the blocking processing of spans and log records
+- Only display the error once when an identity is not found for the enroll command
+
 ## 0.117.0 - 2024-02-28
 
 ### Added

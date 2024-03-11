@@ -27,7 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_vault = "0.102.0"
+ockam_vault = "0.103.0"
 ```
 
 ## License
