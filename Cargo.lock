@@ -4229,7 +4229,7 @@ dependencies = [
  "serde",
  "sqlx",
  "str-buf",
- "strum 0.26.1",
+ "strum 0.26.2",
  "tempfile",
  "tokio",
  "tracing",
@@ -4434,7 +4434,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "spin 0.9.8",
- "strum 0.26.1",
+ "strum 0.26.2",
  "tinyvec",
  "tokio",
  "tracing",
@@ -6848,9 +6848,9 @@ checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
 
 [[package]]
 name = "strum"
-version = "0.26.1"
+version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "723b93e8addf9aa965ebe2d11da6d7540fa2283fcea14b3371ff055f7ba13f5f"
+checksum = "5d8cec3501a5194c432b2b7976db6b7d10ec95c253208b45f83f7136aa985e29"
 dependencies = [
  "strum_macros 0.26.1",
 ]

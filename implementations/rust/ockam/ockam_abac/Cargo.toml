@@ -42,7 +42,7 @@ ockam_identity = { version = "0.105.0", path = "../ockam_identity", default-feat
 ockam_node = { version = "0.110.0", path = "../ockam_node", default-features = false }
 once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
 serde = { version = "1", default-features = false, features = ["derive"] }
-strum = { version = "0.26.1", default-features = false, features = ["derive"] }
+strum = { version = "0.26.2", default-features = false, features = ["derive"] }
 
 # optional:
 ockam_executor = { version = "0.72.0", path = "../ockam_executor", default-features = false, optional = true }
