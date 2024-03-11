@@ -1,23 +1,22 @@
-# Ockam
+# Rust implementation of Ockam
 
-Thank you for your interest in contributing to the Ockam open source projects.
+[Ockam](https://github.com/build-trust/ockam) is a suite of open source programming libraries and command line tools
+to orchestrate end-to-end encryption, mutual authentication, key management, credential management, and authorization
+policy enforcement – at massive scale.
 
-Ockam is a collection of protocols and toolkits for building connected
-systems that you can trust. This folder contains the Rust implementation of Ockam.
+This folder contains the Rust implementation of Ockam.
 
-Please read our community's [*Code of Conduct Covenant*][conduct] and our [contributing guidelines][contributing].
+Please read our community's [*Code of Conduct*][conduct] and our [*contributing guidelines*][contributing].
 
-To start contributing to our rust code, clone the Ockam repo from Github and change your current directory
-to `implementations/rust`:
+To start contributing to our rust code, clone the Ockam repo from Github:
 
 ```
 git clone git@github.com:build-trust/ockam.git
-cd implementations/rust
 ```
 
 # Get Help
 
-Ask a question on [Discord](https://discord.ockam.io).
+Ask a question on our [contributors' discord](https://discord.ockam.io).
 
 # Using `cargo`
 
@@ -41,14 +40,17 @@ The code can be built with:
 cargo build
 ```
 
-This will produce an `ockam` executable at `target/debug/ockam`.
+This will produce an `ockam` command executable at `target/debug/ockam`.
 
-You can also typecheck the code, as you modify it, with:
+If you install `cargo-watch`, you can also typecheck the code, as you modify it:
+
 ```
+cargo install --locked cargo-watch
 cargo watch -x check
 ```
 
 or, if you want to include the test code:
+
 ```
 cargo watch -x "check --tests"
 ```
@@ -59,6 +61,7 @@ The `ockam` crate has a Cargo feature named `"std"` that is enabled by default.
 However it can also be built in a `no_std` context with:
 
 ```
+rustup target add thumbv7em-none-eabihf
 cargo build --target thumbv7em-none-eabihf --package ockam --no-default-features --features 'no_std alloc software_vault'
 ```
 
@@ -73,25 +76,28 @@ cargo test
 ### Concurrent tests
 
 There is also a way to run all the tests concurrently, to run them faster, with `nextest`:
+
 ```
-cargo --config-file tools/nextest/.config/nextest.toml run --no-fail-fast
+cargo install --locked cargo-nextest
+cargo nextest --config-file tools/nextest/.config/nextest.toml run --no-fail-fast
 ```
 
 `--no-fail-fast` runs all the tests, regardless of failures.
 
 ### BATS tests
 
-The Ockam system tests are implemented using a command-line test tool: [bats](https://bats-core.readthedocs.io).
+Tests for Ockam Command are implemented using a command-line test tool: [bats](https://bats-core.readthedocs.io).
 Please consult [the `bats` installation instructions to install it on your system](https://bats-core.readthedocs.io/en/stable/installation.html).
 
 Once `bats` is installed you can run the `bats` test suite with:
+
 ```
 # --jobs 4 run the tests concurrently using 4 threads
 bats implementations/rust/ockam/ockam_command/tests/bats --jobs 4
 ```
 
-The `implementations/rust/ockam/ockam_command/tests/bats` directory contains several tests files, covering different
-functionalities. You can specify which file you want to test and even add a filter for the subset of tests you want to run:
+The `implementations/rust/ockam/ockam_command/tests/bats` directory contains several tests files, covering tests for different
+functionality. You can specify which file you want to test and even add a filter for the subset of tests you want to run:
 
 ```
 # run only the CRUD tests in the vault test suite
@@ -112,7 +118,9 @@ You can ask cargo to automatically fix any formatting inconsistencies by running
 cargo fmt
 ```
 
-`clippy` is a Cargo plugin that can catch many common mistakes. You can run on the Ockam code with:
+Clippy is a tool for Rust code analysis and improvement. It catches many common mistakes.
+You can run on the Ockam code with:
+
 ```
 cargo clippy --no-deps --all-targets -- -D warnings
 ```
@@ -130,7 +138,7 @@ cargo doc
 The `README.md` files for a given crate is generated from the documentation header in the top-level `lib.rs` file,
 using the `cargo readme` plugin.
 
-That plugin must be installed with `cargo install cargo-readme`. Then a `README` file in a given crate can be updated with:
+That plugin must be installed with `cargo install --locked cargo-readme`. Then a `README` file in a given crate can be updated with:
 ```
 # update the README file for the ockam_identity crate
 cd implementations/rust/ockam_identity
