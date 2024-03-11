@@ -34,6 +34,6 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # This makes the remote postgres available on all localhost IPs at - 0.0.0.0:3000
 ockam node create
 ockam policy create --resource tcp-inlet --expression '(= subject.monitoring-api-outlet "true")'
-ockam tcp-inlet create --from 0.0.0.0:3000 --to monitoring-api
+ockam tcp-inlet create --from 0.0.0.0:3000 --via monitoring-api
 
 EOS
