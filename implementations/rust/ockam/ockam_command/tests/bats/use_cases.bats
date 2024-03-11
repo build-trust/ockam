@@ -351,7 +351,7 @@ EOF
   run_success "$OCKAM" project enroll "${ADMIN_HOME}/telegraf.ticket" --identity telegraf
   run_success "$OCKAM" node create telegraf --identity telegraf
   run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "127.0.0.1:${INFLUX_PORT}" \
-    --to influxdb --allow '(= subject.component "influxdb")'
+    --via influxdb --allow '(= subject.component "influxdb")'
 
   run_success kill_telegraf_instance
   run_success start_telegraf_instance
