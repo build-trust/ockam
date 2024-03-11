@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.61.0 - 2024-03-11
+
+### Added
+
+- Tune the timeouts for checking if a node is ready
+- Added manual tests to measure latency
+- Upgraded kafka library, with kafka 3.7.0 support
+- Propagating the errors from api clients to the command
+- Add the node name to spans
+- Instrument the tcp portal
+- Instrument more functions for secure channels
+- Start a new trace before sending a transport message
+- Update display, log output in frequently used commands
+- Updated dependencies
+
+### Changed
+
+- Don't initialize logging at all if log is not enabled
+- Rename methods and variables to insist on the exporting
+- Refactor the code thanks to pr review comments
+
+### Fixed
+
+- Fix the blocking processing of spans and log records
+- Fix the creation of a trace id from a project id in tests
+
 ## 0.60.0 - 2024-02-28
 
 ### Added
