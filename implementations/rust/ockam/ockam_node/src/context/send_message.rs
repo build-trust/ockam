@@ -108,6 +108,7 @@ impl Context {
 
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(self.tracing_context());
+        child_ctx.set_protocol_version(self.protocol_version());
 
         child_ctx.send(route, msg).await?;
         child_ctx
@@ -262,6 +263,7 @@ impl Context {
             let local_msg = LocalMessage::new()
                 // make sure to set the latest tracing context, to get the latest span id
                 .with_tracing_context(self.tracing_context().update())
+                .with_protocol_version(self.protocol_version())
                 .with_onward_route(route)
                 .with_return_route(route![sending_address.clone()])
                 .with_payload(payload)
@@ -271,7 +273,8 @@ impl Context {
                .with_onward_route(route)
                .with_return_route(route![sending_address.clone()])
                .with_payload(payload)
-               .with_local_info(local_info);
+               .with_local_info(local_info)
+               .with_protocol_version(self.protocol_version());
                }
            }
 
@@ -361,6 +364,9 @@ impl Context {
             .take_sender()?;
 
         // Pack the transport message into a RelayMessage wrapper
+        let mut local_msg = local_msg;
+        local_msg = local_msg.with_protocol_version(self.protocol_version());
+
         let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
         debugger::log_outgoing_message(self, &relay_msg);

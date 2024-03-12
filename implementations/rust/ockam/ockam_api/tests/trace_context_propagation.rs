@@ -80,20 +80,26 @@ fn test_context_propagation_across_workers_and_nodes() {
     //  - 1 for the sent message
     let actual = display_traces(spans);
     let expected = r#"
-TcpRecvProcessor::process
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
 
-TcpRecvProcessor::process
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── Echoer::handle_message
+        └── TcpSendWorker::handle_message
+            └── TransportMessage::end_trace
 
 root
 └── send_echo_message
     ├── create tcp transport
+    ├── TcpListenProcessor::start
     ├── create tcp transport
+    ├── TcpSendWorker::connect
+    ├── TcpSendWorker::start
+    ├── TcpRecvProcessor::start
     └── MessageSender::handle_message
         └── TcpSendWorker::handle_message
-            └── TcpRecvProcessor::process
-                └── Echoer::handle_message
-                    └── TcpSendWorker::handle_message
-                        └── TcpRecvProcessor::process
+            └── TransportMessage::end_trace
 "#;
     pretty_assertions::assert_eq!(format!("\n{actual}"), expected);
 }
@@ -107,52 +113,98 @@ fn test_context_propagation_across_workers_and_nodes_over_secure_channel() {
     let (received, spans) = trace_code(|ctx| send_echo_message_over_secure_channel(ctx, "hello"));
     assert_eq!(received.unwrap(), "hello".to_string());
 
-    // There are 6 traces:
-    //  - 2 for the shutdown of encryptors on both sides of the secure channel
-    //  - 2 for the TCP processors, just waiting to process incoming TCP data
-    //  - 1 for the initial handshake
-    //  - 1 for sending an encrypted message
+    // There are many traces:
+    //  - The main "root" trace is for creating the secure channel and sending a message
+    //  - The other traces are mostly the reception of a transport message (which starts a new trace)
+    //    and the processing of that message until a response is sent back
+    //    (if any, sometimes the received message is just a shutdown signal)
     let actual = display_traces(spans);
     let expected = r#"
-EncryptorWorker::shutdown
+TcpSendWorker::handle_message
+└── TransportMessage::end_trace
 
-EncryptorWorker::shutdown
-└── TcpSendWorker::handle_message
-    └── TcpRecvProcessor::process
-        └── DecryptorWorker::handle_message
-            └── handle_decrypt
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── DecryptorWorker::handle_message
+        └── handle_decrypt
+            └── decrypt
+                ├── mark
+                ├── get_key
+                ├── aead_decrypt
+                └── update_key
 
-TcpRecvProcessor::process
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── DecryptorWorker::handle_message
+        └── handle_decrypt
+            └── decrypt
+                ├── mark
+                ├── get_key
+                ├── aead_decrypt
+                └── update_key
 
-TcpRecvProcessor::process
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── DecryptorWorker::handle_message
+        └── handle_decrypt
+            ├── decrypt
+            |   ├── mark
+            |   ├── get_key
+            |   ├── aead_decrypt
+            |   └── update_key
+            └── Echoer::handle_message
+                └── EncryptorWorker::handle_message
+                    └── handle_encrypt
+                        ├── encrypt
+                        |   └── aead_encrypt
+                        └── TcpSendWorker::handle_message
+                            └── TransportMessage::end_trace
+
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── HandshakeWorker::handle_message
+        ├── aead_decrypt
+        ├── delete_aead_secret_key
+        ├── aead_decrypt
+        └── delete_aead_secret_key
+
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── HandshakeWorker::handle_message
+        ├── aead_decrypt
+        ├── delete_aead_secret_key
+        ├── aead_decrypt
+        ├── aead_encrypt
+        ├── delete_aead_secret_key
+        ├── aead_encrypt
+        ├── delete_aead_secret_key
+        └── TcpSendWorker::handle_message
+            └── TransportMessage::end_trace
+
+TransportMessage::start_trace
+└── TcpRecvProcessor::process
+    └── HandshakeWorker::handle_message
+        ├── aead_encrypt
+        ├── delete_aead_secret_key
+        ├── aead_encrypt
+        └── TcpSendWorker::handle_message
+            └── TransportMessage::end_trace
 
 root
 └── send_echo_message_over_secure_channel
     ├── create tcp transport
+    ├── TcpListenProcessor::start
     ├── create tcp transport
-    ├── TcpSendWorker::handle_message
-    |   └── TcpRecvProcessor::process
-    |       └── HandshakeWorker::handle_message
-    |           └── TcpSendWorker::handle_message
-    |               └── TcpRecvProcessor::process
-    |                   └── HandshakeWorker::handle_message
-    |                       └── TcpSendWorker::handle_message
-    |                           └── TcpRecvProcessor::process
-    |                               └── HandshakeWorker::handle_message
+    ├── TcpSendWorker::connect
+    ├── TcpSendWorker::start
+    ├── TcpRecvProcessor::start
     └── MessageSender::handle_message
         └── EncryptorWorker::handle_message
             └── handle_encrypt
+                ├── encrypt
+                |   └── aead_encrypt
                 └── TcpSendWorker::handle_message
-                    └── TcpRecvProcessor::process
-                        └── DecryptorWorker::handle_message
-                            └── handle_decrypt
-                                └── Echoer::handle_message
-                                    └── EncryptorWorker::handle_message
-                                        └── handle_encrypt
-                                            └── TcpSendWorker::handle_message
-                                                └── TcpRecvProcessor::process
-                                                    └── DecryptorWorker::handle_message
-                                                        └── handle_decrypt
+                    └── TransportMessage::end_trace
 "#;
     pretty_assertions::assert_eq!(format!("\n{actual}"), expected);
 }
