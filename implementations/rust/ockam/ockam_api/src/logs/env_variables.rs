@@ -34,6 +34,9 @@ pub(crate) const OCKAM_LOG_CRATES_FILTER: &str = "OCKAM_LOG_CRATES_FILTER";
 /// Decides if spans and log records should be created and exported. Accepted values, see BooleanVar. For example; true, false, 1, 0
 pub(crate) const OCKAM_OPENTELEMETRY_EXPORT: &str = "OCKAM_OPENTELEMETRY_EXPORT";
 
+/// Boolean set to true if the current user is an Ockam developer
+pub(crate) const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";
+
 ///
 /// OPENTELEMETRY COLLECTOR ENDPOINT CONFIGURATION
 ///

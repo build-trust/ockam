@@ -29,7 +29,7 @@ use ockam_node::Executor;
 use crate::journeys::APP_NAME;
 use crate::logs::tracing_guard::TracingGuard;
 use crate::logs::{ExportingConfiguration, GlobalErrorHandler, LoggingConfiguration};
-use crate::logs::{LogFormat, NodeSpanExporter};
+use crate::logs::{LogFormat, OckamSpanExporter};
 
 pub struct LoggingTracing;
 
@@ -235,12 +235,13 @@ fn create_opentelemetry_tracing_layer<
         .with_scheduled_delay(exporting_configuration.span_export_scheduled_delay())
         .with_max_concurrent_exports(8)
         .build();
+    let is_ockam_developer = exporting_configuration.is_ockam_developer();
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
         let (tracer, tracer_provider) = create_tracer(
             trace_config,
             batch_config,
-            NodeSpanExporter::new(span_exporter, node_name),
+            OckamSpanExporter::new(span_exporter, node_name, is_ockam_developer),
         );
         (
             tracing_opentelemetry::layer().with_tracer(tracer),
