@@ -30,12 +30,20 @@ pub struct ExportingConfiguration {
     log_export_scheduled_delay: Duration,
     /// Url of the OpenTelemetry collector
     opentelemetry_endpoint: Url,
+    /// True if the user is an Ockam developer
+    /// This boolean is set on spans to distinguish internal usage for external usage
+    is_ockam_developer: bool,
 }
 
 impl ExportingConfiguration {
     /// Return true if distributed tracing is enabled
     pub fn is_enabled(&self) -> bool {
         self.enabled == ExportingEnabled::On
+    }
+
+    /// Return true if the current user is an Ockam developer as determined by the OCKAM_DEVELOPER environment variable
+    pub fn is_ockam_developer(&self) -> bool {
+        self.is_ockam_developer
     }
 
     /// Return the maximum time for exporting a batch of log records
@@ -76,6 +84,7 @@ impl ExportingConfiguration {
             span_export_scheduled_delay: foreground_span_export_scheduled_delay()?,
             log_export_scheduled_delay: foreground_log_export_scheduled_delay()?,
             opentelemetry_endpoint: opentelemetry_endpoint()?,
+            is_ockam_developer: is_ockam_developer()?,
         })
     }
 
@@ -91,6 +100,7 @@ impl ExportingConfiguration {
             span_export_scheduled_delay: background_span_export_scheduled_delay()?,
             log_export_scheduled_delay: background_log_export_scheduled_delay()?,
             opentelemetry_endpoint: opentelemetry_endpoint()?,
+            is_ockam_developer: is_ockam_developer()?,
         })
     }
 
@@ -103,6 +113,7 @@ impl ExportingConfiguration {
             span_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
             log_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
             opentelemetry_endpoint: Self::default_opentelemetry_endpoint()?,
+            is_ockam_developer: is_ockam_developer()?,
         })
     }
 
@@ -182,6 +193,11 @@ fn opentelemetry_endpoint() -> ockam_core::Result<Url> {
         UrlVar::new(ExportingConfiguration::default_opentelemetry_endpoint()?),
     )?
     .url)
+}
+
+/// Return true if the current user is an internal user
+fn is_ockam_developer() -> ockam_core::Result<bool> {
+    get_env_with_default(OCKAM_DEVELOPER, false)
 }
 
 /// Return the export timeout for spans, defined by an environment variable
