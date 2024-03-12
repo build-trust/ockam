@@ -210,7 +210,7 @@ impl LocalMessage {
     /// Create a [`TransportMessage`] from a [`LocalMessage`]
     pub fn into_transport_message(self) -> TransportMessage {
         let transport_message =
-            TransportMessage::v1(self.onward_route, self.return_route, self.payload);
+            TransportMessage::latest(self.onward_route, self.return_route, self.payload);
 
         cfg_if! {
             if #[cfg(feature = "std")] {

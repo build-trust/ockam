@@ -57,7 +57,7 @@ mod test {
 
     #[test]
     fn prepare_message_should_discard_large_messages() {
-        let msg = TransportMessage::v1(route![], route![], vec![0; u16::MAX as usize + 1]);
+        let msg = TransportMessage::latest(route![], route![], vec![0; u16::MAX as usize + 1]);
         let result = encode_transport_message(msg);
         assert!(result.is_err());
     }

@@ -191,7 +191,7 @@ where
 
         let recipient = msg.msg_addr();
         if recipient == self.internal_addr {
-            let msg = TransportMessage::v1(route![], route![], vec![]);
+            let msg = TransportMessage::latest(route![], route![], vec![]);
             // Sending empty heartbeat
             if ws_sink
                 .send(WebSocketMessage::from(msg.encode()?))

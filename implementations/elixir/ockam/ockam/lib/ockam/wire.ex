@@ -12,7 +12,7 @@ defmodule Ockam.Wire do
   require DecodeError
   require EncodeError
 
-  @default_implementation Ockam.Wire.Binary.V1
+  @default_implementation Ockam.Wire.Binary.Versions
 
   @doc """
   Encodes a message into a binary.
