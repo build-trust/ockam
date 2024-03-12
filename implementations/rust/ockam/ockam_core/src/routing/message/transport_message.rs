@@ -17,6 +17,15 @@ use opentelemetry::{
     Context,
 };
 
+/// Version for transport messages
+pub type ProtocolVersion = u8;
+
+/// Latest protocol version for transport messages
+pub const LATEST_PROTOCOL_VERSION: ProtocolVersion = 2;
+
+/// Protocol version for transport messages. This version doesn't have a tracing_context field
+pub const PROTOCOL_VERSION_V1: ProtocolVersion = 1;
+
 /// A generic transport message type.
 ///
 /// This type is exposed in `ockam_core` (and the root `ockam` crate) in
@@ -33,7 +42,7 @@ use opentelemetry::{
 #[derive(Debug, Clone, Eq, PartialEq, Message)]
 pub struct TransportMessage {
     /// The transport protocol version.
-    pub version: u8,
+    pub version: ProtocolVersion,
     /// Onward message route.
     pub onward_route: Route,
     /// Return message route.
@@ -55,13 +64,47 @@ impl TransportMessage {
         return_route: impl Into<Route>,
         payload: Vec<u8>,
     ) -> Self {
+        TransportMessage::new(
+            LATEST_PROTOCOL_VERSION,
+            onward_route.into(),
+            return_route.into(),
+            payload,
+            #[cfg(feature = "tracing_context")]
+            None,
+        )
+    }
+
+    /// Create a transport message in version v1
+    pub fn v1(
+        onward_route: impl Into<Route>,
+        return_route: impl Into<Route>,
+        payload: Vec<u8>,
+    ) -> Self {
         Self {
-            version: 2,
+            version: PROTOCOL_VERSION_V1,
             onward_route: onward_route.into(),
             return_route: return_route.into(),
             payload,
             #[cfg(feature = "tracing_context")]
             tracing_context: None,
+        }
+    }
+
+    /// Create a new transport message
+    pub fn new(
+        version: ProtocolVersion,
+        onward_route: impl Into<Route>,
+        return_route: impl Into<Route>,
+        payload: Vec<u8>,
+        #[cfg(feature = "tracing_context")] _tracing_context: Option<String>,
+    ) -> Self {
+        Self {
+            version,
+            onward_route: onward_route.into(),
+            return_route: return_route.into(),
+            payload,
+            #[cfg(feature = "tracing_context")]
+            tracing_context: _tracing_context,
         }
     }
 
@@ -76,7 +119,7 @@ impl TransportMessage {
         };
         let version = buf[0];
         match version {
-            1 => TransportMessageV1::decode(&buf)
+            PROTOCOL_VERSION_V1 => TransportMessageV1::decode(&buf)
                 .map(|t| t.to_latest())
                 .map_err(|e| {
                     Error::new(
@@ -85,7 +128,7 @@ impl TransportMessage {
                         format!("Error decoding message: {:?}", e),
                     )
                 }),
-            2 => TransportMessage::decode(&buf).map_err(|e| {
+            LATEST_PROTOCOL_VERSION => TransportMessage::decode(&buf).map_err(|e| {
                 Error::new(
                     Origin::Transport,
                     Kind::Serialization,
@@ -184,7 +227,7 @@ impl TransportMessageV1 {
     /// Convert a transport message v1 to the latest version of the protocol
     pub fn to_latest(self) -> TransportMessage {
         TransportMessage {
-            version: 2,
+            version: PROTOCOL_VERSION_V1,
             onward_route: self.onward_route,
             return_route: self.return_route,
             payload: self.payload,
@@ -209,7 +252,6 @@ impl TransportMessageV1 {
 }
 
 #[cfg(test)]
-#[cfg(feature = "tracing_context")]
 mod tests {
     use super::*;
     use crate::{route, Encodable, TransportMessageV1};
@@ -221,15 +263,23 @@ mod tests {
         let transport_message_v2 =
             TransportMessage::latest(route!["onward"], route!["return"], vec![]);
 
-        // a v1 message should be decodable as the latest version
+        // a v1 message should be decodable as the latest structure
         let encoded_v1 = transport_message_v1.encode().unwrap();
+        let expected = TransportMessage::new(
+            PROTOCOL_VERSION_V1,
+            route!["onward"],
+            route!["return"],
+            vec![],
+            #[cfg(feature = "tracing_context")]
+            None,
+        );
         assert_eq!(
             TransportMessage::decode_message(encoded_v1).unwrap(),
-            transport_message_v2
+            expected
         );
 
         // a v2 message should be decodable as the latest version
-        let encoded_v2 = transport_message_v2.encode().unwrap();
+        let encoded_v2 = transport_message_v2.clone().encode().unwrap();
         assert_eq!(
             TransportMessage::decode_message(encoded_v2).unwrap(),
             transport_message_v2
@@ -241,6 +291,7 @@ mod tests {
             onward_route: route![],
             return_route: route![],
             payload: vec![],
+            #[cfg(feature = "tracing_context")]
             tracing_context: None,
         }
         .encode()

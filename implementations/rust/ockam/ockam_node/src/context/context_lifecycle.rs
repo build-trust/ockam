@@ -9,7 +9,7 @@ use ockam_core::OpenTelemetryContext;
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AsyncTryClone, DenyAll, Error, IncomingAccessControl, Mailboxes,
-    OutgoingAccessControl, Result, TransportType,
+    OutgoingAccessControl, ProtocolVersion, Result, TransportType,
 };
 use ockam_transport_core::Transport;
 
@@ -58,7 +58,9 @@ impl Context {
     ///
     /// `async_drop_sender` must be provided when creating a detached
     /// Context type (i.e. not backed by a worker relay).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
+        protocol_version: ProtocolVersion,
         rt: Handle,
         sender: SmallSender<NodeMessage>,
         mailboxes: Mailboxes,
@@ -71,6 +73,7 @@ impl Context {
         let (ctrl_tx, ctrl_rx) = small_channel();
         (
             Self {
+                protocol_version,
                 rt,
                 sender,
                 mailboxes,
@@ -95,6 +98,7 @@ impl Context {
         mailboxes: Mailboxes,
     ) -> (Context, SenderPair, SmallReceiver<CtrlSignal>) {
         Context::new(
+            self.protocol_version(),
             self.runtime().clone(),
             self.sender().clone(),
             mailboxes,
@@ -112,6 +116,7 @@ impl Context {
         drop_sender: AsyncDropSender,
     ) -> (Context, SenderPair, SmallReceiver<CtrlSignal>) {
         Context::new(
+            self.protocol_version(),
             self.runtime().clone(),
             self.sender().clone(),
             mailboxes,

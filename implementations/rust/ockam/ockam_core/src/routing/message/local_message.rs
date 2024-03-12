@@ -1,6 +1,9 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
+use crate::{
+    compat::vec::Vec, route, Address, Message, ProtocolVersion, Route, TransportMessage,
+    PROTOCOL_VERSION_V1,
+};
 use crate::{LocalInfo, Result};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
@@ -40,6 +43,8 @@ use serde::{Deserialize, Serialize};
 ///
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct LocalMessage {
+    /// Protocol version which should be used on the return route
+    protocol_version: ProtocolVersion,
     /// Onward message route.
     onward_route: Route,
     /// Return message route. This field must be populated by routers handling this message along the way.
@@ -56,6 +61,11 @@ pub struct LocalMessage {
 }
 
 impl LocalMessage {
+    /// Return the protocol version on the return route
+    pub fn protocol_version(&self) -> ProtocolVersion {
+        self.protocol_version
+    }
+
     /// Return the message onward route
     pub fn onward_route(&self) -> Route {
         self.onward_route.clone()
@@ -198,19 +208,27 @@ impl LocalMessage {
                     .with_onward_route(transport_message.onward_route)
                     .with_return_route(transport_message.return_route)
                     .with_payload(transport_message.payload)
+                    .with_protocol_version(transport_message.version)
             } else {
                 LocalMessage::new()
                     .with_onward_route(transport_message.onward_route)
                     .with_return_route(transport_message.return_route)
                     .with_payload(transport_message.payload)
+                    .with_protocol_version(transport_message.version)
             }
         }
     }
 
     /// Create a [`TransportMessage`] from a [`LocalMessage`]
     pub fn into_transport_message(self) -> TransportMessage {
-        let transport_message =
-            TransportMessage::latest(self.onward_route, self.return_route, self.payload);
+        let transport_message = TransportMessage::new(
+            self.protocol_version,
+            self.onward_route,
+            self.return_route,
+            self.payload,
+            #[cfg(feature = "tracing_context")]
+            None,
+        );
 
         cfg_if! {
             if #[cfg(feature = "std")] {
@@ -238,6 +256,7 @@ impl LocalMessage {
         local_info: Vec<LocalInfo>,
     ) -> Self {
         LocalMessage {
+            protocol_version: PROTOCOL_VERSION_V1,
             onward_route,
             return_route,
             payload,
@@ -284,6 +303,14 @@ impl LocalMessage {
     pub fn with_tracing_context(self, tracing_context: OpenTelemetryContext) -> Self {
         Self {
             tracing_context,
+            ..self
+        }
+    }
+
+    /// Specify the version for the message
+    pub fn with_protocol_version(self, protocol_version: ProtocolVersion) -> Self {
+        Self {
+            protocol_version,
             ..self
         }
     }

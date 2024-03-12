@@ -26,6 +26,11 @@ impl TestSpan {
         self.id.clone()
     }
 
+    /// Return the span name
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
     /// Return the id of the parent span
     pub fn parent_id(&self) -> TestSpanId {
         TestSpanId {
@@ -73,7 +78,7 @@ impl Display for TestSpanId {
 /// Tree of TestSpans forming a trace where the
 /// parent / child relationship uses the span.parent_span_id attribute
 #[derive(Debug)]
-pub struct Trace(Tree<TestSpan>);
+pub struct Trace(pub Tree<TestSpan>);
 
 impl Display for Trace {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

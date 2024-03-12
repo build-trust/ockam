@@ -54,6 +54,14 @@ where
 pub fn display_traces(spans: Vec<SpanData>) -> String {
     let mut traces = Trace::from_span_data(spans);
     traces.sort_by_key(|t| t.to_string());
+
+    // remove some uninteresting traces based on their root name
+    traces.retain(|t| {
+        !["start", "shutdown", "initialize", "process"]
+            .iter()
+            .any(|v| t.0.to_string().split('\n').collect::<Vec<_>>()[0].ends_with(v))
+    });
+
     traces
         .iter()
         .map(|t| t.to_string())
