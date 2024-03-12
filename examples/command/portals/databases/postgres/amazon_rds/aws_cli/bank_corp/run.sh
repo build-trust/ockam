@@ -61,7 +61,7 @@ run() {
 
     sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
     sed "s/\$POSTGRES_ADDRESS/${db_endpoint}/g" user_data1.sh > user_data.sh
-    instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type t2.micro \
+    instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type c5n.large \
         --subnet-id "$subnet1_id" --security-group-ids "$sg_id" \
         --user-data file://user_data.sh --query 'Instances[0].InstanceId')
     aws ec2 create-tags --resources "$instance_id" --tags "Key=Name,Value=${name}-ec2-instance"
