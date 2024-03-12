@@ -10,8 +10,7 @@
     dead_code,
     trivial_casts,
     trivial_numeric_casts,
-    unused_import_braces,
-    unused_qualifications
+    unused_import_braces
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

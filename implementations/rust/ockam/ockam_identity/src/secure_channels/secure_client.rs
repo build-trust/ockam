@@ -8,7 +8,7 @@ use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{self, route, Address, Result, Route};
+use ockam_core::{route, Address, Result, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
 use ockam_transport_core::Transport;
