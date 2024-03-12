@@ -6,7 +6,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait, AllowOnwardAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
 };
-use ockam_core::{Decodable, LocalMessage, Processor, Result, TransportMessage};
+use ockam_core::{LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
@@ -166,8 +166,8 @@ impl Processor for TcpRecvProcessor {
         }
 
         // Deserialize the message now
-        let transport_message = TransportMessage::decode(&buf).map_err(|e| {
-            error!("Error decoding message: {:?}", e);
+        let transport_message = TransportMessage::decode_message(buf).map_err(|e| {
+            error!("{e:?}");
             TransportError::RecvBadMessage
         })?;
         let local_message = LocalMessage::from_transport_message(transport_message);

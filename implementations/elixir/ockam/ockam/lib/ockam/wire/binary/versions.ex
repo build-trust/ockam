@@ -1,4 +1,4 @@
-defmodule Ockam.Wire.Binary.V1 do
+defmodule Ockam.Wire.Binary.Versions do
   @moduledoc false
 
   @behaviour Ockam.Wire
@@ -6,7 +6,8 @@ defmodule Ockam.Wire.Binary.V1 do
   alias Ockam.Address
   alias Ockam.Message
 
-  @version 1
+  @latest_version 2
+  @version_1 1
 
   @address_spec {:struct, [type: :uint, value: :data]}
   @route_spec {:array, @address_spec}
@@ -43,7 +44,7 @@ defmodule Ockam.Wire.Binary.V1 do
         nil ->
           :bare.encode(
             %{
-              version: @version,
+              version: @version_1,
               onward_route: normalize_route(onward_route),
               return_route: normalize_route(return_route),
               payload: payload
@@ -54,7 +55,7 @@ defmodule Ockam.Wire.Binary.V1 do
         context ->
           :bare.encode(
             %{
-              version: @version,
+              version: @latest_version,
               onward_route: normalize_route(onward_route),
               return_route: normalize_route(return_route),
               payload: payload,
@@ -78,7 +79,7 @@ defmodule Ockam.Wire.Binary.V1 do
   def decode(encoded) do
     ## Expect first byte to be the version
     case encoded do
-      <<@version, _rest::binary>> ->
+      <<@version_1, _rest::binary>> ->
         case :bare.decode(encoded, @message_spec) do
           {:ok, %{onward_route: onward_route, return_route: return_route} = decoded, ""} ->
             {:ok,
@@ -90,6 +91,12 @@ defmodule Ockam.Wire.Binary.V1 do
                })
              )}
 
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      <<@latest_version, _rest::binary>> ->
+        case :bare.decode(encoded, @message_spec) do
           {:ok, _decoded, _rest} ->
             decode_with_tracing_context(encoded)
 

@@ -21,7 +21,7 @@ impl MitmMonitor {
 
             let should_be_not_reachable_address: Address = address.trim().into();
 
-            let msg = TransportMessage::v1(route![should_be_not_reachable_address.clone()], route![], vec![]);
+            let msg = TransportMessage::latest(route![should_be_not_reachable_address.clone()], route![], vec![]);
 
             let msg = encode_transport_message(msg)?;
             {
