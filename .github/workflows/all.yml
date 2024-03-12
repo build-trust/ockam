@@ -47,7 +47,7 @@ jobs:
     container: # gitlab.com/greut/eclint
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - shell: sh
@@ -61,7 +61,7 @@ jobs:
     container:
       image: returntocorp/semgrep
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - name: Run Semgrep
