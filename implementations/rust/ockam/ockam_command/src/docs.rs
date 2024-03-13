@@ -196,7 +196,7 @@ mod tests {
     fn test_process_terminal_docs_with_code_blocks() {
         let input = "```sh
         # To enroll a known identity
-        $ ockam project ticket --member id_identifier
+        $ ockam project-member add identifier
 
         # To generate an enrollment ticket that can be used to enroll a device
         $ ockam project ticket --attribute component=control

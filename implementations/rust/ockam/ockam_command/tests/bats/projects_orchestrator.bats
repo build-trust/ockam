@@ -60,7 +60,7 @@ teardown() {
   run_failure "$OCKAM" project enroll --identity blue
 
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  $OCKAM project ticket --member "$green_identifier" --attribute role=member
+  $OCKAM project-member add "$green_identifier" --attribute role=member
   blue_token=$($OCKAM project ticket --attribute role=member)
 
   # Green' identity was added by enroller
@@ -100,7 +100,7 @@ teardown() {
 
   # Add the green identity as a member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $relay_name
+  run_success "$OCKAM" project-member add "$green_identifier" --attribute role=member --relay $relay_name
 
   # Now the green node, with its green identity, can now access the project's services
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
@@ -123,7 +123,7 @@ teardown() {
   m1_identifier=$($OCKAM identity show m1)
 
   export OCKAM_HOME=$ADMIN_HOME
-  run_success "$OCKAM" project ticket --member $m1_identifier --attribute role=member
+  run_success "$OCKAM" project-member add $m1_identifier --attribute role=member
 
   export OCKAM_HOME=$USER_HOME
   # m1' identity was added by enroller
@@ -188,8 +188,8 @@ teardown() {
   m2_identifier=$($OCKAM identity show m2)
 
   export OCKAM_HOME=$ADMIN_HOME
-  run_success "$OCKAM" project ticket --member $m1_identifier --attribute service=sensor
-  run_success "$OCKAM" project ticket --member $m2_identifier --attribute service=web
+  run_success "$OCKAM" project-member add $m1_identifier --attribute service=sensor
+  run_success "$OCKAM" project-member add $m2_identifier --attribute service=web
 
   export OCKAM_HOME=$USER_HOME
 

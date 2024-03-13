@@ -1,7 +1,8 @@
-use crate::authority::create::CreateCommand;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use clap::Subcommand;
+use create::CreateCommand;
+
 mod create;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");

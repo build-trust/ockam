@@ -1,0 +1,1 @@
+This command lists all members and their attributes on a given Project Membership Authority node.

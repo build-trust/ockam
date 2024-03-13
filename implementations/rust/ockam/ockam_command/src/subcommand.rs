@@ -27,6 +27,7 @@ use crate::node::NodeCommand;
 use crate::node::NodeSubcommand;
 use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
+use crate::project_member::ProjectMemberCommand;
 use crate::relay::RelayCommand;
 use crate::reset::ResetCommand;
 use crate::run::RunCommand;
@@ -54,6 +55,7 @@ pub enum OckamSubcommand {
     Enroll(EnrollCommand),
     Space(SpaceCommand),
     Project(ProjectCommand),
+    ProjectMember(ProjectMemberCommand),
     Sidecar(SidecarCommand),
     Admin(AdminCommand),
     #[cfg(feature = "orchestrator")]
@@ -82,7 +84,9 @@ pub enum OckamSubcommand {
     Vault(VaultCommand),
     Identity(IdentityCommand),
     Credential(CredentialCommand),
+
     Authority(AuthorityCommand),
+
     Policy(PolicyCommand),
     Lease(LeaseCommand),
 
@@ -105,6 +109,7 @@ impl OckamSubcommand {
             OckamSubcommand::Enroll(c) => c.run(opts),
             OckamSubcommand::Space(c) => c.run(opts),
             OckamSubcommand::Project(c) => c.run(opts),
+            OckamSubcommand::ProjectMember(c) => c.run(opts),
             OckamSubcommand::Admin(c) => c.run(opts),
             #[cfg(feature = "orchestrator")]
             OckamSubcommand::Share(c) => c.run(opts),
@@ -132,7 +137,9 @@ impl OckamSubcommand {
             OckamSubcommand::Vault(c) => c.run(opts),
             OckamSubcommand::Identity(c) => c.run(opts),
             OckamSubcommand::Credential(c) => c.run(opts),
+
             OckamSubcommand::Authority(c) => c.run(opts),
+
             OckamSubcommand::Policy(c) => c.run(opts),
             OckamSubcommand::Lease(c) => c.run(opts),
 
@@ -235,6 +242,7 @@ impl OckamSubcommand {
             OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Space(c) => c.name(),
             OckamSubcommand::Project(c) => c.name(),
+            OckamSubcommand::ProjectMember(c) => c.name(),
             OckamSubcommand::Sidecar(c) => c.name(),
             OckamSubcommand::Admin(c) => c.name(),
             OckamSubcommand::Share(c) => c.name(),

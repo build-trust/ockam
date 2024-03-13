@@ -31,7 +31,7 @@ impl ImportCommand {
     }
 
     pub fn name(&self) -> String {
-        "import project".into()
+        "project import".into()
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {

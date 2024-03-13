@@ -1,0 +1,8 @@
+An Ockam Project Membership Authority node is an Ockam node running a limited set of services used by other nodes to:
+
+- issue credentials
+- create enrollment tokens
+- accept enrollment tokens
+- authenticate identities as project members
+
+Project Membership Authority node can be controlled by an authorized Identity (enroller) using this command.
