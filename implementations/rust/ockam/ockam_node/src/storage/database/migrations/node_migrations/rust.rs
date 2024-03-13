@@ -8,3 +8,5 @@ pub mod migration_20240111100002_delete_trust_context;
 /// This migration moves policies attached to resource types from
 /// table "resource_policy" to "resource_type_policy"
 pub mod migration_20240212100000_split_policies;
+/// This migration removes orphan resources
+pub mod migration_20240313100000_remove_orphan_resources;

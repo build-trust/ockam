@@ -114,6 +114,9 @@ impl NodesRepository for NodesSqlxDatabase {
             sqlx::query("DELETE FROM credential WHERE node_name=?").bind(node_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
 
+        let query = sqlx::query("DELETE FROM resource WHERE node_name=?").bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
         let query =
             sqlx::query("DELETE FROM resource_policy WHERE node_name=?").bind(node_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
