@@ -10,6 +10,8 @@ defmodule Ockam.Transport.TCP.Handler do
   require Logger
 
   @address_prefix "TCP_H_"
+  @active 10
+  @send_timeout 30000
 
   def start_link(ref, _socket, transport, opts) do
     start_link(ref, transport, opts)
@@ -25,7 +27,7 @@ defmodule Ockam.Transport.TCP.Handler do
     {handler_options, ranch_options} = Keyword.pop(opts, :handler_options, [])
 
     {:ok, socket} = :ranch.handshake(ref, ranch_options)
-    :ok = :inet.setopts(socket, [{:active, true}, {:packet, 2}, {:nodelay, true}])
+    :ok = :inet.setopts(socket, [{:active, @active}, {:send_timeout, @send_timeout},{:packet, 2}, {:nodelay, true}])
 
     {:ok, address} = Ockam.Node.register_random_address(@address_prefix, __MODULE__)
 
@@ -105,6 +107,11 @@ defmodule Ockam.Transport.TCP.Handler do
     {function_name, _} = __ENV__.function
     Telemetry.emit_event(function_name, metadata: %{name: "transport_close"})
     {:stop, :normal, state}
+  end
+
+  def handle_info({:tcp_passive, socket}, %{idle_timeout: idle_timeout} = state) do
+    :ok = :inet.setopts(socket, [{:active, @active}])
+    {:noreply, state, idle_timeout}
   end
 
   def handle_info(
