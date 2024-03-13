@@ -8,7 +8,7 @@ use ockam_api::nodes::InMemoryNode;
 use crate::operation::util::check_for_project_completion;
 use crate::output::Output;
 use crate::project::util::check_project_readiness;
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::util::parsers::validate_project_name;
 use crate::{docs, CommandGlobalOpts};
@@ -32,7 +32,7 @@ pub struct CreateCommand {
     pub project_name: String,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
     //TODO:  list of admins
 }
 

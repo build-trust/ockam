@@ -22,7 +22,7 @@ use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 use crate::{
     output::OutputFormat,
-    util::api::{CloudOpts, TrustOpts},
+    util::api::{IdentityOpts, TrustOpts},
 };
 use crate::{terminal::color_primary, util::duration::duration_parser};
 use ockam_api::cloud::project::models::ProjectModel;
@@ -44,7 +44,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP),
 pub struct TicketCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    identity_opts: IdentityOpts,
 
     #[command(flatten)]
     trust_opts: TrustOpts,
@@ -139,7 +139,7 @@ impl TicketCommand {
         let authority_node_client = if let Some(p) = get_project(&opts.state, &self.to).await? {
             let identity = opts
                 .state
-                .get_identity_name_or_default(&self.cloud_opts.identity)
+                .get_identity_name_or_default(&self.identity_opts.identity)
                 .await?;
             project_model = Some(p.model().clone());
             node.create_authority_client(

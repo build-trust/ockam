@@ -7,7 +7,7 @@ use ockam_api::cloud::{CredentialsEnabled, ProjectNodeClient};
 use ockam_api::nodes::InMemoryNode;
 pub use show::ShowCommand;
 
-use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::CommandGlobalOpts;
 
 use self::revoke::RevokeCommand;
@@ -24,7 +24,7 @@ pub struct LeaseCommand {
     subcommand: LeaseSubcommand,
 
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    identity_opts: IdentityOpts,
 
     #[command(flatten)]
     trust_opts: TrustOpts,
@@ -41,10 +41,10 @@ pub enum LeaseSubcommand {
 impl LeaseCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(opts, self.cloud_opts, self.trust_opts),
-            LeaseSubcommand::List(c) => c.run(opts, self.cloud_opts, self.trust_opts),
-            LeaseSubcommand::Show(c) => c.run(opts, self.cloud_opts, self.trust_opts),
-            LeaseSubcommand::Revoke(c) => c.run(opts, self.cloud_opts, self.trust_opts),
+            LeaseSubcommand::Create(c) => c.run(opts, self.identity_opts, self.trust_opts),
+            LeaseSubcommand::List(c) => c.run(opts, self.identity_opts, self.trust_opts),
+            LeaseSubcommand::Show(c) => c.run(opts, self.identity_opts, self.trust_opts),
+            LeaseSubcommand::Revoke(c) => c.run(opts, self.identity_opts, self.trust_opts),
         }
     }
 
@@ -61,20 +61,20 @@ impl LeaseCommand {
 async fn create_project_client(
     ctx: &ockam_node::Context,
     opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
+    identity_opts: &IdentityOpts,
     trust_opts: &TrustOpts,
 ) -> miette::Result<ProjectNodeClient> {
     let node = InMemoryNode::start_with_project_name_and_identity(
         ctx,
         &opts.state,
-        cloud_opts.identity.clone(),
+        identity_opts.identity.clone(),
         trust_opts.project_name.clone(),
     )
     .await?;
 
     let identity = opts
         .state
-        .get_identity_name_or_default(&cloud_opts.identity)
+        .get_identity_name_or_default(&identity_opts.identity)
         .await?;
     let project = opts
         .state

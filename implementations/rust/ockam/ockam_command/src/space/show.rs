@@ -10,7 +10,7 @@ use ockam_core::AsyncTryClone;
 use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
@@ -31,7 +31,7 @@ pub struct ShowCommand {
     pub name: Option<String>,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 impl ShowCommand {

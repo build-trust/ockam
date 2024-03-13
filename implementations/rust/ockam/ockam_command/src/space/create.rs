@@ -3,7 +3,7 @@ use colorful::Colorful;
 use miette::miette;
 
 use crate::output::Output;
-use crate::util::api::{self, CloudOpts};
+use crate::util::api::{self, IdentityOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
@@ -30,7 +30,7 @@ pub struct CreateCommand {
     pub admins: Vec<String>,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 impl CreateCommand {
@@ -47,7 +47,7 @@ impl CreateCommand {
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if !opts
             .state
-            .is_identity_enrolled(&self.cloud_opts.identity)
+            .is_identity_enrolled(&self.identity_opts.identity)
             .await?
         {
             return Err(miette!(

@@ -14,7 +14,7 @@ use tokio::try_join;
 use crate::lease::create_project_client;
 use crate::output::Output;
 use crate::terminal::OckamColor;
-use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -29,11 +29,11 @@ impl ListCommand {
     pub fn run(
         self,
         opts: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
+        identity_opts: IdentityOpts,
         trust_opts: TrustOpts,
     ) -> miette::Result<()> {
         async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, cloud_opts, trust_opts).await
+            self.async_run(&ctx, opts, identity_opts, trust_opts).await
         })
     }
 
@@ -45,11 +45,11 @@ impl ListCommand {
         &self,
         ctx: &Context,
         opts: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
+        identity_opts: IdentityOpts,
         trust_opts: TrustOpts,
     ) -> miette::Result<()> {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let project_node = create_project_client(ctx, &opts, &cloud_opts, &trust_opts).await?;
+        let project_node = create_project_client(ctx, &opts, &identity_opts, &trust_opts).await?;
 
         let send_req = async {
             let tokens: Vec<Token> = project_node.list_tokens(ctx).await?;

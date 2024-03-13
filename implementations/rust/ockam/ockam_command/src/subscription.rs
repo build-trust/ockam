@@ -11,7 +11,7 @@ use ockam_api::cloud::ControllerClient;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::output::Output;
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
@@ -22,7 +22,7 @@ pub struct SubscriptionCommand {
     subcommand: SubscriptionSubcommand,
 
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    identity_opts: IdentityOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]

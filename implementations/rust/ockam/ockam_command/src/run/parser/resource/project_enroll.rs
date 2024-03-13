@@ -47,7 +47,7 @@ struct ParsedEnrollCommand {
 impl ParsedCommand for ParsedEnrollCommand {
     /// Before running the enroll command, check if the identity is not already enrolled
     async fn is_valid(&self, _ctx: &Context, opts: &CommandGlobalOpts) -> Result<bool> {
-        let identity_name = &self.command.cloud_opts.identity;
+        let identity_name = &self.command.identity_opts.identity;
         let identity = opts
             .state
             .clone()

@@ -9,7 +9,7 @@ use ockam_api::cloud::share::Invitations;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -21,7 +21,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 )]
 pub struct ShowCommand {
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
     pub invitation_id: String,
 }
 
