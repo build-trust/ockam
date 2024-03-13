@@ -9,3 +9,7 @@ reason = "Unmaintained crate pulled-in by cddl-cat used for validating CDDL sche
 [[IgnoredVulns]]
 id = "RUSTSEC-2022-0048"
 reason = "Unmaintained crate pulled in from a transitive dependency serde-xml-rs"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0081"
+reason = "Unmaintained crate pulled in from a transitive dependency line-wrap"
