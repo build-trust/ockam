@@ -42,8 +42,8 @@ teardown() {
   # Green isn't enrolled as project member
   relay_name_blue="$(random_str)"
   relay_name_green="$(random_str)"
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name_blue
-  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member --relay $relay_name_green
+  run_success "$OCKAM" project-member add "$blue_identifier" --attribute role=member --relay $relay_name_blue
+  run_success "$OCKAM" project-member add "$green_identifier" --attribute role=member --relay $relay_name_green
 
   run_success "$OCKAM" node create green --identity green
   run_success "$OCKAM" node create blue --identity blue

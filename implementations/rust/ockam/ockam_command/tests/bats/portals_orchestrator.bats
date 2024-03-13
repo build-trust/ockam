@@ -82,7 +82,7 @@ teardown() {
 
   # Green isn't enrolled as project member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name
+  run_success "$OCKAM" project-member add "$blue_identifier" --attribute role=member --relay $relay_name
 
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
@@ -115,7 +115,7 @@ teardown() {
 
   # Green isn't enrolled as project member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name
+  run_success "$OCKAM" project-member add "$blue_identifier" --attribute role=member --relay $relay_name
 
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
@@ -148,8 +148,8 @@ teardown() {
 
   # Add identities as members of the project
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" project ticket --member "$blue_identifier" --attribute role=member --relay $relay_name
-  run_success "$OCKAM" project ticket --member "$green_identifier" --attribute role=member
+  run_success "$OCKAM" project-member add "$blue_identifier" --attribute role=member --relay $relay_name
+  run_success "$OCKAM" project-member add "$green_identifier" --attribute role=member
 
   # Use project from the now enrolled identities
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME

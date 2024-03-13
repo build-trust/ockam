@@ -31,7 +31,7 @@ impl VersionCommand {
     }
 
     pub fn name(&self) -> String {
-        "get version".into()
+        "project version".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

@@ -96,7 +96,7 @@ impl TicketCommand {
     }
 
     pub fn name(&self) -> String {
-        "create project ticket".into()
+        "project ticket".into()
     }
 
     fn attributes(&self) -> Result<BTreeMap<String, String>> {

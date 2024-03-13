@@ -39,7 +39,7 @@ teardown() {
   run_success "$OCKAM" identity create m1
   m1_identifier=$($OCKAM identity show m1)
 
-  run_success "$OCKAM" project ticket --member "$m1_identifier" --attribute role=member
+  run_success "$OCKAM" project-member add "$m1_identifier" --attribute role=member
 
   # m1' identity was added by enroller
   run_success "$OCKAM" project enroll --identity m1

@@ -30,7 +30,7 @@ impl Display for AttributesEntry {
         }
         f.debug_struct("AttributesEntry")
             .field("attrs", &attributes.join(","))
-            .field("added_att", &self.added_at)
+            .field("added_at", &self.added_at)
             .field(
                 "expires_at",
                 &self.expires_at.map_or("n/a".to_string(), |e| e.to_string()),

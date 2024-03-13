@@ -184,3 +184,69 @@ EOF
   run_success "$OCKAM" project enroll $token --identity m3
   assert_output --partial "m3_member"
 }
+
+@test "local authority - test api commands" {
+  port="$(random_port)"
+
+  run "$OCKAM" identity create authority
+  run "$OCKAM" identity create enroller
+
+  run "$OCKAM" identity create m
+
+  enroller_identifier=$($OCKAM identity show enroller)
+  authority_identifier=$($OCKAM identity show authority)
+  authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
+  m_identifier=$($OCKAM identity show m)
+
+  # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
+  # For the first test we start the node with no direct authentication service nor token enrollment
+  trusted="{\"$enroller_identifier\": {\"ockam-role\": \"enroller\"}}"
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
+  sleep 1 # wait for authority to start TCP listener
+
+  cat <<EOF >>"$OCKAM_HOME/project.json"
+{
+  "id": "1",
+  "name": "default",
+  "space_name": "together-porgy",
+  "access_route": "/dnsaddr/127.0.0.1/tcp/4000/service/api",
+  "users": [],
+  "space_id": "1",
+  "identity": "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+  "authority_access_route": "/dnsaddr/127.0.0.1/tcp/$port/service/api",
+  "authority_identity": "$authority_identity_full",
+  "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",
+  "running": false,
+  "operation_id": null,
+  "user_roles": []
+}
+EOF
+
+  run_success bash -c "$OCKAM project import --project-file $OCKAM_HOME/project.json"
+
+  run_success "$OCKAM" project-member list-ids --identity enroller
+  assert_output --partial "$enroller_identifier"
+
+  run_success "$OCKAM" project-member list --identity enroller
+  assert_output --partial "$enroller_identifier"
+  assert_output --partial "attrs: \"ockam-role=enroller\""
+  assert_output --partial "attested_by: \"$authority_identifier\""
+
+  run_success "$OCKAM" project-member add "$m_identifier" --identity enroller --attribute key=value --relay="*"
+
+  run_success "$OCKAM" project-member list-ids --identity enroller
+  assert_output --partial "$enroller_identifier"
+  assert_output --partial "$m_identifier"
+
+  run_success "$OCKAM" project-member list --identity enroller
+  assert_output --partial "$enroller_identifier"
+  assert_output --partial "attrs: \"ockam-role=enroller\""
+  assert_output --partial "attested_by: \"$authority_identifier\""
+
+  assert_output --partial "$m_identifier"
+  assert_output --partial "key=value"
+  assert_output --partial "ockam-relay=*"
+  assert_output --partial "attested_by: \"$enroller_identifier\""
+
+  run_success "$OCKAM" project-member delete "$m_identifier" --identity enroller
+}

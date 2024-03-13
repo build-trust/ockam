@@ -4,7 +4,4 @@ $ ockam project ticket --attribute component=db --attribute location=sf
 
 # To generate an enrollment ticket that can be used to enroll a machine and save it to a file
 $ ockam project ticket --attribute component=db --attribute location=sf > ticket.txt
-
-# To enroll a known identity (run `ockam identity list` to see known identities)
-$ ockam project ticket --member identifier
 ```

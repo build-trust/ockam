@@ -5,5 +5,3 @@ Once you create a ticket, with attributes, for a Project, another Ockam node can
 When another Ockam node runs `ockam project enroll` with this ticket (the Identity of that node is enrolled), they become a member of the Project, and they get a credential at the end of this process. The Project's Membership Authority will cryptographically attest to the specific attributes that the ticket was created with. As a member, they can request a credential whenever they need one. Credentials do not live forever, and expire.
 
 The ticket is plain text representing a one-time use token and the non-sensitive data about the Project, like the route to reach it, and some other information, which will be used to validate the Project Identity. The ticket itself can be stored in an environment variable, or a file.
-
-This command can also be used to enroll known Identities directly, without creating a ticket, into a Project using the `--member` option.

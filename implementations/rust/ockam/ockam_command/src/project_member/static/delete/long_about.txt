@@ -1,0 +1,1 @@
+This deletes a member from a given Project Membership Authority node.

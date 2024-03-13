@@ -1,0 +1,1 @@
+This command adds a member to a given Project Membership Authority node.

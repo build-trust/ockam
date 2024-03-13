@@ -44,6 +44,7 @@ pub mod pager;
 mod policy;
 mod progress_display;
 mod project;
+mod project_member;
 mod relay;
 mod reset;
 mod run;
