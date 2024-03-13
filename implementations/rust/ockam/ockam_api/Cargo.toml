@@ -49,7 +49,7 @@ once_cell = "1.19"
 open = "5.1.2"
 opentelemetry = { version = "0.22.0", features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.3.0" }
-opentelemetry-otlp = { version = "0.15.0", features = ["logs", "metrics", "trace", "grpc-tonic", "tls-roots"], default-features = false }
+opentelemetry-otlp = { version = "0.15.0", features = ["logs", "metrics", "trace", "grpc-tonic", "tls", "tls-roots"], default-features = false }
 opentelemetry-semantic-conventions = { version = "0.14.0" }
 opentelemetry_sdk = { version = "0.22.1", features = ["logs", "metrics", "trace", "rt-tokio", "rt-tokio-current-thread", "testing", "logs_level_enabled"], default-features = false }
 petname = { version = "2.0.0-beta.4", default-features = false, features = ["default-rng", "default-words"] }
