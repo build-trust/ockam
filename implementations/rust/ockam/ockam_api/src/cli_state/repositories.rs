@@ -14,7 +14,7 @@ use crate::cli_state::{UsersRepository, UsersSqlxDatabase};
 /// These functions create repository implementations to access data
 /// stored in the database
 impl CliState {
-    pub(super) fn change_history_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
+    pub fn change_history_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
         Arc::new(ChangeHistorySqlxDatabase::new(self.database()))
     }
 
