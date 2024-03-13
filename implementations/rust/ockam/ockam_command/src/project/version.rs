@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::async_cmd;
-use crate::{color_primary, util::api::CloudOpts};
+use crate::{color_primary, util::api::IdentityOpts};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
@@ -20,7 +20,7 @@ after_long_help = docs::about(AFTER_LONG_HELP)
 )]
 pub struct VersionCommand {
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 impl VersionCommand {

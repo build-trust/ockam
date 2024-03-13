@@ -9,7 +9,7 @@ use ockam_api::cloud::space::Spaces;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -26,7 +26,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 )]
 pub struct ListCommand {
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 impl ListCommand {

@@ -6,7 +6,7 @@ use ockam_api::cloud::project::ProjectsOrchestratorApi;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -29,7 +29,7 @@ pub struct DeleteCommand {
     pub project_name: String,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 
     /// Confirm the deletion without prompting
     #[arg(display_order = 901, long, short)]

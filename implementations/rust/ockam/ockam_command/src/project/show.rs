@@ -10,7 +10,7 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::output::{Output, ProjectConfigCompact};
 use crate::terminal::PluralTerm;
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use ockam_core::AsyncTryClone;
@@ -34,7 +34,7 @@ pub struct ShowCommand {
     pub name: Option<String>,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 impl ShowCommand {

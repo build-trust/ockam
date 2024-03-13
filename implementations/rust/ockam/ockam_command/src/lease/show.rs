@@ -5,7 +5,7 @@ use ockam_api::InfluxDbTokenLease;
 
 use crate::lease::create_project_client;
 use crate::output::Output;
-use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -24,11 +24,11 @@ impl ShowCommand {
     pub fn run(
         self,
         opts: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
+        identity_opts: IdentityOpts,
         trust_opts: TrustOpts,
     ) -> miette::Result<()> {
         async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, cloud_opts, trust_opts).await
+            self.async_run(&ctx, opts, identity_opts, trust_opts).await
         })
     }
 
@@ -40,10 +40,10 @@ impl ShowCommand {
         &self,
         ctx: &Context,
         opts: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
+        identity_opts: IdentityOpts,
         trust_opts: TrustOpts,
     ) -> miette::Result<()> {
-        let project_node = create_project_client(ctx, &opts, &cloud_opts, &trust_opts).await?;
+        let project_node = create_project_client(ctx, &opts, &identity_opts, &trust_opts).await?;
         let token = project_node.get_token(ctx, self.token_id.clone()).await?;
 
         opts.terminal

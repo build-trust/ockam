@@ -14,7 +14,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
-use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::duration::duration_parser;
 use crate::util::{async_cmd, clean_nodes_multiaddr};
 use crate::{docs, CommandGlobalOpts};
@@ -49,7 +49,7 @@ pub struct SendCommand {
     pub message: String,
 
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    identity_opts: IdentityOpts,
 
     #[command(flatten)]
     pub trust_opts: TrustOpts,
@@ -90,7 +90,7 @@ impl SendCommand {
         } else {
             let identity_name = opts
                 .state
-                .get_identity_name_or_default(&self.cloud_opts.identity)
+                .get_identity_name_or_default(&self.identity_opts.identity)
                 .await?;
 
             info!("starting an in memory node to send a message");

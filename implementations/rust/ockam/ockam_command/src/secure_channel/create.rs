@@ -19,7 +19,7 @@ use crate::node::util::initialize_default_node;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::{async_cmd, clean_nodes_multiaddr};
 use crate::{
     docs, error::Error, fmt_log, fmt_ok, terminal::OckamColor, util::exitcode, CommandGlobalOpts,
@@ -48,9 +48,8 @@ pub struct CreateCommand {
     #[arg(value_name = "IDENTIFIER", long, short, display_order = 801)]
     pub authorized: Option<Vec<Identifier>>,
 
-    /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    identity_opts: IdentityOpts,
 }
 
 impl CreateCommand {
@@ -77,7 +76,7 @@ impl CreateCommand {
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
         let identity_name = opts
             .state
-            .get_identity_name_or_default(&self.cloud_opts.identity)
+            .get_identity_name_or_default(&self.identity_opts.identity)
             .await?;
 
         let projects_sc = get_projects_secure_channels_from_config_lookup(
@@ -109,7 +108,7 @@ impl CreateCommand {
         let create_secure_channel = async {
             let identity_name = opts
                 .state
-                .get_identity_name_or_default(&self.cloud_opts.identity)
+                .get_identity_name_or_default(&self.identity_opts.identity)
                 .await?;
             let payload =
                 CreateSecureChannelRequest::new(&to, authorized_identifiers, Some(identity_name));

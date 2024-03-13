@@ -11,7 +11,7 @@ use tokio::try_join;
 
 use crate::lease::create_project_client;
 use crate::terminal::OckamColor;
-use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use crate::{fmt_log, fmt_ok};
@@ -27,11 +27,11 @@ impl CreateCommand {
     pub fn run(
         self,
         opts: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
+        identity_opts: IdentityOpts,
         trust_opts: TrustOpts,
     ) -> miette::Result<()> {
         async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, cloud_opts, trust_opts).await
+            self.async_run(&ctx, opts, identity_opts, trust_opts).await
         })
     }
 
@@ -43,13 +43,13 @@ impl CreateCommand {
         &self,
         ctx: &Context,
         opts: CommandGlobalOpts,
-        cloud_opts: CloudOpts,
+        identity_opts: IdentityOpts,
         trust_opts: TrustOpts,
     ) -> miette::Result<()> {
         opts.terminal
             .write_line(&fmt_log!("Creating influxdb token...\n"))?;
 
-        let project_node = create_project_client(ctx, &opts, &cloud_opts, &trust_opts).await?;
+        let project_node = create_project_client(ctx, &opts, &identity_opts, &trust_opts).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {

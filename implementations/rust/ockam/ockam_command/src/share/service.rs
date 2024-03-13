@@ -12,7 +12,7 @@ use ockam_api::cloud::share::{CreateServiceInvitation, Invitations};
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
@@ -24,7 +24,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 )]
 pub struct ServiceCreateCommand {
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
     pub project_id: String,
     #[arg(value_parser = EmailAddress::parse)]
     pub recipient_email: EmailAddress,

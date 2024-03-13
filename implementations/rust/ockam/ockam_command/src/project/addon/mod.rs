@@ -19,7 +19,7 @@ use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
 use crate::project::addon::list::AddonListSubcommand;
 use crate::project::util::check_project_readiness;
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::{CommandGlobalOpts, Result};
 
 mod configure_influxdb;
@@ -35,7 +35,7 @@ pub struct AddonCommand {
     #[command(subcommand)]
     subcommand: AddonSubcommand,
     #[command(flatten)]
-    cloud_opts: CloudOpts,
+    identity_opts: IdentityOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]

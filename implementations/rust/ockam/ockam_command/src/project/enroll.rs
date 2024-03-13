@@ -17,7 +17,7 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
 use crate::output::{CredentialAndPurposeKeyDisplay, OutputFormat};
-use crate::util::api::{CloudOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::value_parsers::parse_enrollment_ticket;
 use crate::{color_primary, docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Result};
 
@@ -36,7 +36,7 @@ pub struct EnrollCommand {
     pub enrollment_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 
     /// Trust options, defaults to the default project
     #[command(flatten)]
@@ -60,7 +60,7 @@ impl Command for EnrollCommand {
 
         let identity = opts
             .state
-            .get_named_identity_or_default(&self.cloud_opts.identity)
+            .get_named_identity_or_default(&self.identity_opts.identity)
             .await?;
         let project = self.store_project(&opts).await?;
 

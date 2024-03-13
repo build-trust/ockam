@@ -135,7 +135,7 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 ////////////// !== share CLI args
 
 #[derive(Clone, Debug, Args)]
-pub struct CloudOpts {
+pub struct IdentityOpts {
     /// Run the command as the given Identity name
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,

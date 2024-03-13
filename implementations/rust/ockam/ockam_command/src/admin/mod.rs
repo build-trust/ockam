@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
 mod subscription;
@@ -14,7 +14,7 @@ pub struct AdminCommand {
     pub subcommand: AdminSubCommand,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]

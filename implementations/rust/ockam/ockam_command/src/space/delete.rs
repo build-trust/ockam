@@ -10,7 +10,7 @@ use ockam_core::AsyncTryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::terminal::PluralTerm;
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
@@ -29,7 +29,7 @@ pub struct DeleteCommand {
     pub space_name: Option<String>,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 
     /// Confirm the deletion without prompting
     #[arg(display_order = 901, long, short)]

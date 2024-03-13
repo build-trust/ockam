@@ -6,7 +6,7 @@ use ockam_api::cloud::project::ProjectsOrchestratorApi;
 
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::CloudOpts;
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 use crate::{
@@ -23,7 +23,7 @@ pub struct InfoCommand {
     pub name: String,
 
     #[command(flatten)]
-    pub cloud_opts: CloudOpts,
+    pub identity_opts: IdentityOpts,
 }
 
 impl InfoCommand {
