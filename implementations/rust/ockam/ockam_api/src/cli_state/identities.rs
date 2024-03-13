@@ -407,7 +407,7 @@ impl CliState {
     /// Once a identity has been created, store it.
     /// If there is no previous default identity we set it as the default identity
     #[instrument(skip_all, fields(name = %name, identifier = %identifier, vault_name = %vault_name))]
-    async fn store_named_identity(
+    pub async fn store_named_identity(
         &self,
         identifier: &Identifier,
         name: &str,

@@ -111,10 +111,9 @@ impl ShowCommand {
         let identity = opts.state.get_identity_by_optional_name(name).await?;
 
         let (plain, json) = if full {
-            let change_history = identity.change_history();
-
             if Some(EncodeFormat::Hex) == encoding {
-                let encoded = hex::encode(change_history.export().into_diagnostic()?);
+                let change_history = identity.change_history();
+                let encoded = change_history.export_as_string().into_diagnostic()?;
                 let json = to_string_pretty(&json!({"encoded": &encoded}));
                 (encoded, json)
             } else {

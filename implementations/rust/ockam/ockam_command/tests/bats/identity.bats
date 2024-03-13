@@ -90,3 +90,20 @@ teardown() {
   run_success "$OCKAM" identity default "${i}"
   assert_output "${i}"
 }
+
+@test "identity - export/import" {
+  # Create and export
+  run_success "$OCKAM" identity create
+  run_success "$OCKAM" identity show --full --encoding hex
+  exported=$output
+
+  # Remove it
+  run_success "$OCKAM" identity delete --all --yes
+  run_success "$OCKAM" identity list --output json
+  assert_output --partial "[]"
+
+  # Import it back
+  run_success "$OCKAM" identity create --identity "$exported"
+  run_success "$OCKAM" identity show --full --encoding hex
+  assert_output "$exported"
+}
