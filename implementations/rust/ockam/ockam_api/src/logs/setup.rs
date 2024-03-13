@@ -181,12 +181,12 @@ fn create_log_exporter(
     exporting_configuration: &ExportingConfiguration,
 ) -> opentelemetry_otlp::LogExporter {
     let log_export_timeout = exporting_configuration.log_export_timeout();
-    let tracing_endpoint = exporting_configuration.opentelemetry_endpoint().to_string();
+    let endpoint = exporting_configuration.opentelemetry_endpoint().to_string();
 
     Executor::execute_future(async move {
         opentelemetry_otlp::new_exporter()
             .tonic()
-            .with_endpoint(tracing_endpoint)
+            .with_endpoint(endpoint)
             .with_timeout(log_export_timeout)
             .with_metadata(get_otlp_headers())
             .build_log_exporter()
@@ -201,12 +201,12 @@ fn create_span_exporter(
     exporting_configuration: &ExportingConfiguration,
 ) -> opentelemetry_otlp::SpanExporter {
     let trace_export_timeout = exporting_configuration.span_export_timeout();
-    let tracing_endpoint = exporting_configuration.opentelemetry_endpoint().to_string();
+    let endpoint = exporting_configuration.opentelemetry_endpoint().to_string();
 
     Executor::execute_future(async move {
         opentelemetry_otlp::new_exporter()
             .tonic()
-            .with_endpoint(tracing_endpoint.clone())
+            .with_endpoint(endpoint.clone())
             .with_timeout(trace_export_timeout)
             .with_metadata(get_otlp_headers())
             .build_span_exporter()
