@@ -11,7 +11,7 @@ defmodule Ockam.Transport.TCP.Client do
   require Logger
 
   @active 10
-  @send_timeout 30000
+  @send_timeout 30_000
 
   @impl true
   def address_prefix(_options), do: "TCP_C_"
@@ -118,7 +118,6 @@ defmodule Ockam.Transport.TCP.Client do
     :ok = :inet.setopts(socket, [{:active, @active}])
     {:noreply, state}
   end
-
 
   def handle_info({:tcp_closed, _}, state) do
     {:stop, :normal, state}
