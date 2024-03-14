@@ -12,6 +12,11 @@ defmodule Ockam.Node do
 
   require Logger
 
+  @queue_size_high_watermark 25
+  @max_sleep 2000
+  @min_sleep 5
+  @slowdown_factor 1.1
+
   # `get_random_unused_address/1` uses this as the length of the new address
   # that will be generated.
   @default_address_length_in_bytes 8
@@ -112,10 +117,34 @@ defmodule Ockam.Node do
         report_message(:unsent, address, message)
         :ok
 
-      _pid ->
+      pid ->
+        maybe_slowdown_sender(pid)
         Registry.send(address, message)
         report_message(:sent, address, message)
         :ok
+    end
+  end
+
+  # Make the sender process to sleep if the destination' queue size is large.
+  # While the beam do have a similar mechanism that punish process by increase their reduction counts,
+  # our problem is that there isn't really anything else to run, so the sender keep being scheduled.
+  # An attempt to use explicit ack when overloaded is tricky to get right on the current codebase,
+  # as it introduce deadlocks.
+  def maybe_slowdown_sender(destination_pid) do
+    {_, queue_len} = Process.info(destination_pid, :message_queue_len)
+
+    if queue_len > @queue_size_high_watermark do
+      sleep_ms = min(@max_sleep, round(:rand.uniform() * @slowdown_factor ** queue_len))
+
+      if sleep_ms > @min_sleep do
+        Process.sleep(sleep_ms)
+
+        if queue_len > @queue_size_high_watermark * 2 do
+          Logger.warn(
+            "backpressure, pausing sender for #{sleep_ms}ms,  destination #{inspect(destination_pid)} has a queue of #{queue_len}"
+          )
+        end
+      end
     end
   end
 

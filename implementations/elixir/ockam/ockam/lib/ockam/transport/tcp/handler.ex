@@ -11,7 +11,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
   @address_prefix "TCP_H_"
   @active 10
-  @send_timeout 30000
+  @send_timeout 30_000
 
   def start_link(ref, _socket, transport, opts) do
     start_link(ref, transport, opts)
@@ -27,7 +27,14 @@ defmodule Ockam.Transport.TCP.Handler do
     {handler_options, ranch_options} = Keyword.pop(opts, :handler_options, [])
 
     {:ok, socket} = :ranch.handshake(ref, ranch_options)
-    :ok = :inet.setopts(socket, [{:active, @active}, {:send_timeout, @send_timeout},{:packet, 2}, {:nodelay, true}])
+
+    :ok =
+      :inet.setopts(socket, [
+        {:active, @active},
+        {:send_timeout, @send_timeout},
+        {:packet, 2},
+        {:nodelay, true}
+      ])
 
     {:ok, address} = Ockam.Node.register_random_address(@address_prefix, __MODULE__)
 
