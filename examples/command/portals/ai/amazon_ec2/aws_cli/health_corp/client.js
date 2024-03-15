@@ -6,7 +6,8 @@ async function run() {
       return;
     }
 
-    const query = "Write a 3 line poem about computers";
+    const query = "What is Ockam's Razor?";
+    console.log("Connected to the model.\n\n App: ", query);
     const queryResponse = await fetch("http://localhost:3000/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
