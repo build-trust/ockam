@@ -168,7 +168,7 @@ impl CreateOutlet {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize)]
+#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {

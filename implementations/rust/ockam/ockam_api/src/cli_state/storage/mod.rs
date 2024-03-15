@@ -31,3 +31,5 @@ mod users_repository;
 mod users_repository_sql;
 mod vaults_repository;
 mod vaults_repository_sql;
+mod tcp_portals_repository;
+mod tcp_portals_repository_sql;
