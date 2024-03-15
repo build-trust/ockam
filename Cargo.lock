@@ -2266,6 +2266,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-display-controller"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abdb518d44a2eda3b8a5dfc27b60a4bbbf2bb87eee436796d54c290ee6cc6545"
+
+[[package]]
 name = "embedded-dma"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6750,13 +6756,14 @@ dependencies = [
 
 [[package]]
 name = "stm32h7xx-hal"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e08bcfbdbe4458133f2fd55994a5c4f1b4bf28084f0218e93cdbc19d7c70219f"
+checksum = "3bd869329be25440b24e2b3583a1c016151b4a54bc36d96d82af7fcd9d010b98"
 dependencies = [
  "bare-metal 1.0.0",
  "cast",
  "cortex-m 0.7.7",
+ "embedded-display-controller",
  "embedded-dma",
  "embedded-hal 0.2.7",
  "embedded-storage",
