@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.118.0 - 2024-03-11
+## 0.118.0 - 2024-03-18
 
 ### Added
 
@@ -16,12 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Propagating the errors from api clients to the command
 - Add the node name to spans
 - Update display, log output in frequently used commands
+- `node create` can be run given a configuration file
 - Updated dependencies
 
 ### Changed
 
 - Rename methods and variables to insist on the exporting
 - Disable syntax highlighting in command help
+- Refactor the parsing and execution of run commands
+- Change help message shown in command errors output
 
 ### Fixed
 
