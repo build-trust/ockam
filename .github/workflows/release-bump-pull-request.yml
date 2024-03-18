@@ -85,8 +85,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bash -ex ./tools/scripts/release/redo-draft-release.sh
+
           # Delete the old git tag, it'll be recreated when we are creating a new draft binary.
-          gh release delete ${{ inputs.redo_release_tag }} --cleanup-tag
+          if gh release view ${{ inputs.redo_release_tag }}; then
+            gh release delete ${{ inputs.redo_release_tag }} --cleanup-tag
+          fi
 
       - name: Bump Ockam
         if: ${{ inputs.redo_release_tag == '' }}
