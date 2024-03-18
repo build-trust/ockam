@@ -1,11 +1,12 @@
 use crate::node::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
-use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{color_primary, node, Command, OckamSubcommand};
 use async_trait::async_trait;
 use miette::{miette, Result};
 
+use crate::run::parser::resource::{ParsedCommands, ValuesOverrides};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,22 +15,7 @@ pub struct Nodes {
     pub nodes: Option<ResourcesContainer>,
 }
 
-#[async_trait]
-impl ConfigRunner<CreateCommand> for Nodes {
-    fn len(&self) -> usize {
-        match &self.nodes {
-            Some(c) => c.len(),
-            None => 0,
-        }
-    }
-
-    fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        match self.nodes {
-            Some(c) => c.into_commands(Self::get_subcommand),
-            None => Ok(vec![]),
-        }
-    }
-
+impl Nodes {
     fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
         if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
             if let node::NodeSubcommand::Create(c) = cmd.subcommand {
@@ -43,6 +29,18 @@ impl ConfigRunner<CreateCommand> for Nodes {
     }
 }
 
+#[async_trait]
+impl CommandsParser<CreateCommand> for Nodes {
+    fn parse_commands(self, _overrides: &ValuesOverrides) -> Result<ParsedCommands> {
+        match self.nodes {
+            Some(c) => c
+                .into_commands(Self::get_subcommand)
+                .map(ParsedCommands::new),
+            None => Ok(ParsedCommands::empty()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,7 +50,7 @@ mod tests {
     fn single_node_config() {
         let test = |c: &str| {
             let parsed: Nodes = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.name, "n1");
@@ -83,7 +81,7 @@ mod tests {
     fn multiple_node_config() {
         let test = |c: &str| {
             let parsed: Nodes = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands().unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].name, "n1");
             assert_eq!(cmds[1].name, "n2");

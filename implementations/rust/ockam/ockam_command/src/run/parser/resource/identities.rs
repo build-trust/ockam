@@ -1,11 +1,12 @@
 use crate::identity::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
-use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{color_primary, identity, Command, OckamSubcommand};
 use async_trait::async_trait;
 use miette::{miette, Result};
 
+use crate::run::parser::resource::{ParsedCommands, ValuesOverrides};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,22 +15,7 @@ pub struct Identities {
     pub identities: Option<ResourcesContainer>,
 }
 
-#[async_trait]
-impl ConfigRunner<CreateCommand> for Identities {
-    fn len(&self) -> usize {
-        match &self.identities {
-            Some(c) => c.len(),
-            None => 0,
-        }
-    }
-
-    fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        match self.identities {
-            Some(c) => c.into_commands(Self::get_subcommand),
-            None => Ok(vec![]),
-        }
-    }
-
+impl Identities {
     fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
         if let OckamSubcommand::Identity(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
             if let identity::IdentitySubcommand::Create(c) = cmd.subcommand {
@@ -43,6 +29,18 @@ impl ConfigRunner<CreateCommand> for Identities {
     }
 }
 
+#[async_trait]
+impl CommandsParser<CreateCommand> for Identities {
+    fn parse_commands(self, _overrides: &ValuesOverrides) -> Result<ParsedCommands> {
+        match self.identities {
+            Some(c) => c
+                .into_commands(Self::get_subcommand)
+                .map(ParsedCommands::new),
+            None => Ok(ParsedCommands::empty()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,7 +50,7 @@ mod tests {
     fn single_identity_config() {
         let test = |c: &str| {
             let parsed: Identities = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.name, "i1");
@@ -83,7 +81,7 @@ mod tests {
     fn multiple_identity_config() {
         let test = |c: &str| {
             let parsed: Identities = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands().unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].name, "i1");
             assert_eq!(cmds[1].name, "i2");

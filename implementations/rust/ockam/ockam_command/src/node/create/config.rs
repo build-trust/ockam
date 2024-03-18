@@ -89,23 +89,22 @@ impl NodeConfig {
         opts: CommandGlobalOpts,
         node_name: &str,
     ) -> miette::Result<()> {
+        let overrides = &ValuesOverrides::default().with_override_node_name(node_name);
+
         // Build commands and return validation errors before running any command.
-        let project_enroll = self.project_enroll.into_commands()?;
-        let nodes = self.node.into_commands()?;
-        let relays = self.relays.into_commands()?;
-        let policies = self.policies.into_commands()?;
-        let tcp_outlets = self.tcp_outlets.into_commands()?;
-        let tcp_inlets = self.tcp_inlets.into_commands()?;
+        let commands = vec![
+            self.project_enroll.parse_commands(overrides)?,
+            self.node.parse_commands(overrides)?,
+            self.relays.parse_commands(overrides)?,
+            self.policies.parse_commands(overrides)?,
+            self.tcp_outlets.parse_commands(overrides)?,
+            self.tcp_inlets.parse_commands(overrides)?,
+        ];
 
         // Run commands
-        let hooks = PreRunHooks::default().with_override_node_name(node_name);
-        ProjectEnroll::run(ctx, opts.clone(), &hooks, project_enroll).await?;
-        Node::run(ctx, opts.clone(), &hooks, nodes).await?;
-        Relays::run(ctx, opts.clone(), &hooks, relays).await?;
-        Policies::run(ctx, opts.clone(), &hooks, policies).await?;
-        TcpOutlets::run(ctx, opts.clone(), &hooks, tcp_outlets).await?;
-        TcpInlets::run(ctx, opts.clone(), &hooks, tcp_inlets).await?;
-
+        for cmd in commands {
+            cmd.run(ctx, &opts).await?
+        }
         Ok(())
     }
 }
@@ -149,7 +148,12 @@ mod tests {
         // No node config, cli args should be used
         let mut config = NodeConfig::parse("").unwrap();
         let node_name = config.merge(cli_args.clone()).unwrap();
-        let node = config.node.as_commands().unwrap().pop().unwrap();
+        let node = config
+            .node
+            .parse_commands(&ValuesOverrides::default())
+            .unwrap()
+            .pop()
+            .unwrap();
         assert_eq!(node_name, node.name);
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
@@ -167,7 +171,12 @@ mod tests {
         )
         .unwrap();
         let node_name = config.merge(cli_args).unwrap();
-        let node = config.node.as_commands().unwrap().pop().unwrap();
+        let node = config
+            .node
+            .parse_commands(&ValuesOverrides::default())
+            .unwrap()
+            .pop()
+            .unwrap();
         assert_eq!(node_name, node.name);
         assert_eq!(node_name, "n1");
         assert_eq!(node.tcp_listener_address, "127.0.0.1:5555".to_string());

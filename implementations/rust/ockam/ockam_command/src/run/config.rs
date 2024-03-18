@@ -51,40 +51,37 @@ impl Config {
     pub async fn run(
         self,
         ctx: &Context,
-        opts: CommandGlobalOpts,
-        hooks: PreRunHooks,
+        opts: &CommandGlobalOpts,
+        overrides: &ValuesOverrides,
     ) -> miette::Result<()> {
-        // Build commands and return validation errors before running any command.
-        let vaults = self.vaults.into_commands()?;
-        let identities = self.identities.into_commands()?;
-        let project_enroll = self.project_enroll.into_commands()?;
-        let nodes = self.nodes.into_commands()?;
-        let relays = self.relays.into_commands()?;
-        let policies = self.policies.into_commands()?;
-        let tcp_outlets = self.tcp_outlets.into_commands()?;
-        let tcp_inlets = self.tcp_inlets.into_commands()?;
+        // Parse values into clap commands
+        let commands = vec![
+            self.vaults.parse_commands(overrides)?,
+            self.identities.parse_commands(overrides)?,
+            self.project_enroll.parse_commands(overrides)?,
+            self.nodes.parse_commands(overrides)?,
+            self.relays.parse_commands(overrides)?,
+            self.policies.parse_commands(overrides)?,
+            self.tcp_outlets.parse_commands(overrides)?,
+            self.tcp_inlets.parse_commands(overrides)?,
+        ];
 
         // Run commands
-        Vaults::run(ctx, opts.clone(), &hooks, vaults).await?;
-        Identities::run(ctx, opts.clone(), &hooks, identities).await?;
-        ProjectEnroll::run(ctx, opts.clone(), &hooks, project_enroll).await?;
-        Nodes::run(ctx, opts.clone(), &hooks, nodes).await?;
-        Relays::run(ctx, opts.clone(), &hooks, relays).await?;
-        Policies::run(ctx, opts.clone(), &hooks, policies).await?;
-        TcpOutlets::run(ctx, opts.clone(), &hooks, tcp_outlets).await?;
-        TcpInlets::run(ctx, opts.clone(), &hooks, tcp_inlets).await?;
-
+        for cmd in commands {
+            cmd.run(ctx, opts).await?
+        }
         Ok(())
     }
+    // Build commands and return validation errors before running any command.
 
     pub async fn parse_and_run(
         ctx: &Context,
         opts: CommandGlobalOpts,
-        hooks: PreRunHooks,
+        overrides: ValuesOverrides,
         contents: &str,
     ) -> miette::Result<()> {
         let config = Config::parse(&Config::resolve(contents)?)?;
-        config.run(ctx, opts, hooks).await
+        config.run(ctx, &opts, &overrides).await
     }
 }
 
