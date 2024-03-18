@@ -205,11 +205,12 @@ impl miette::ReportHandler for ErrorReportHandler {
             "\n{}\n{}",
             fmt_log!(
                 "{}",
-                "If you need help, please create an issue on our github: ".dark_gray()
+                "If you need help, please email us on support@ockam.io".dark_gray()
             ),
             fmt_log!(
                 "{}",
-                "https://github.com/build-trust/ockam/issues/new/choose".dark_gray()
+                "We will promptly help you get unstuck and quickly resolve any problems."
+                    .dark_gray()
             )
         )?;
 
