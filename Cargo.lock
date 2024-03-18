@@ -7643,11 +7643,10 @@ checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
 
 [[package]]
 name = "utcnow"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b10d49a98e3bbd9b73084a7b15f96c5b2136d5a2e2799b99d19a2774d8519d1f"
+checksum = "493ace370ee8579788f83a4f0eef89183c527b7551b4ad71364fac10371872b7"
 dependencies = [
- "autocfg",
  "const_fn",
  "errno",
  "js-sys",
