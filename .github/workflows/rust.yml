@@ -214,7 +214,6 @@ jobs:
         if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
 
 
-
   test_ockam_command:
     name: Rust - test_ockam_command
     strategy:
@@ -311,22 +310,72 @@ jobs:
           target: ${{ matrix.target }}
           platform_operating_system: ${{ matrix.os }}
 
-  # test_orchestrator_ockam_command:
-  #   name: Rust - test_orchestrator_ockam_command
-  #   runs-on: ubuntu-20.04
-  #   container: ghcr.io/build-trust/artifacts-helper:latest
-  #   environment: ${{ github.event_name == 'merge_group' && 'merge_queue' || '' }}
-  #   permissions:
-  #     contents: read
-  #     packages: read
+  test_orchestrator_ockam_command:
+    name: Rust - test_orchestrator_ockam_command
+    runs-on: large-runner-linux64
+    container: ghcr.io/build-trust/artifacts-helper:latest
+    environment: ${{ github.event_name == 'merge_group' && 'merge_queue' || '' }}
+    if: github.event_name == 'merge_group'
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
-  #   steps:
-  #     - name: Run Ockam Bats Test On Development Cluster
-  #       if: github.event_name == 'merge_group'
-  #       uses: build-trust/.github/actions/run_bats_test@custom-actions
-  #       with:
-  #         perform_ockam_enroll: 'true'
-  #         script_path: "/artifacts-scripts"
-  #         ockam_repository_ref: ${{ inputs.commit_sha }}
-  #         controller_id: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ID }}
-  #         controller_addr: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ADDRESS }}
+    steps:
+      - name: Get Postgres URL
+        shell: nix shell nixpkgs/nixos-23.11#dnsutils --command bash {0}
+        run: |
+          set -ex
+          postgres_port=$(dig +short postgres)
+          echo "===${postgres_port}==="
+          echo "PG_HOST=$postgres_port" >> $GITHUB_ENV
+
+          nix-store --delete
+
+      - name: Start InfluxDB Instance
+        shell: nix shell nixpkgs/nixos-23.11#influxdb2-cli --command bash {0}
+        run: |
+          influxd &> file.log &
+          sleep 5
+          cat file.log
+          influx setup --username username --password password --token token --org org --bucket bucket --force
+          cat file.log
+
+          nix-store --delete
+          nix-collect-garbage
+
+      - name: Run Ockam Bats Test On Development Cluster
+        uses: build-trust/.github/actions/run_bats_test@custom-actions
+        env:
+          # end-to-end-encrypted-kafka
+          CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS: ${{ secrets.CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS }}
+          CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY: ${{ secrets.CONFLUENT_CLOUD_KAFKA_CLUSTER_API_KEY }}
+          CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_KAFKA_CLUSTER_API_SECRET }}
+          # InfluxDB Cloud token lease management
+          INFLUXDB_ADMIN_TOKEN: ${{ secrets.INFLUXDB_ADMIN_TOKEN }}
+          INFLUXDB_ORG_ID: ${{ secrets.INFLUXDB_ORG_ID }}
+          INFLUXDB_ENDPOINT_URL: ${{ secrets.INFLUXDB_ENDPOINT_URL }}
+          # Telegraf + InfluxDB
+          INFLUX_PORT: 8086
+          INFLUX_TOKEN: token
+          INFLUX_ORG: org
+          INFLUX_BUCKET: bucket
+          DOCS_TESTS: 1
+        with:
+          perform_ockam_enroll: 'true'
+          script_path: "/artifacts-scripts"
+          ockam_repository_ref: ${{ inputs.commit_sha }}
+          controller_id: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ID }}
+          controller_addr: ${{ secrets.ORCHESTRATOR_DEVELOPMENT_CONTROLLER_ADDRESS }}
+          build_ockam_binary: true
