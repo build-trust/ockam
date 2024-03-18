@@ -33,7 +33,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct EnrollCommand {
     /// Path, URL or inlined hex-encoded enrollment ticket
     #[arg(display_order = 800, group = "authentication_method", value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
-    pub enroll_ticket: Option<EnrollmentTicket>,
+    pub enrollment_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
@@ -80,7 +80,7 @@ impl Command for EnrollCommand {
             .await?;
 
         // Enroll
-        if let Some(tkn) = self.enroll_ticket.as_ref() {
+        if let Some(tkn) = self.enrollment_ticket.as_ref() {
             authority_node_client
                 .present_token(ctx, &tkn.one_time_code)
                 .await?;
@@ -139,7 +139,7 @@ impl Command for EnrollCommand {
 impl EnrollCommand {
     async fn store_project(&self, opts: &CommandGlobalOpts) -> Result<Project> {
         // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
-        let project = if let Some(ticket) = &self.enroll_ticket {
+        let project = if let Some(ticket) = &self.enrollment_ticket {
             let project = ticket
                 .project
                 .as_ref()

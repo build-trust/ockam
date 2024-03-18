@@ -272,7 +272,7 @@ impl OckamSubcommand {
 }
 
 #[async_trait]
-pub trait Command: Sized + Send + Sync + 'static {
+pub trait Command: Clone + Sized + Send + Sync + 'static {
     const NAME: &'static str;
 
     fn name(&self) -> String {

@@ -4,7 +4,34 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
+/// This trait defines the methods used to convert a set of arguments that describe a section of
+/// the configuration file into a list of commands of the same kind.
+///
+/// For example, the following section would describe a list of nodes in a yaml configuration file:
+/// ```yaml
+/// nodes:
+///  n1:
+///   identity: ...
+///   tcp-listener-address: ...
+///  n2:
+///   identity: ...
+///   tcp-listener-address: ...
+/// ```
+/// Now, a struct implementing this trait will be able to convert the above section into a list of
+/// Clap command instances that can be executed to create those nodes.
 pub trait ArgsToCommands: Sized {
+    /// Given a function that can convert a set of arguments into a command, this method will
+    /// return all the commands that can be created from a section of the configuration file.
+    fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
+    where
+        C: ClapArgs,
+        F: Fn(&[String]) -> Result<C>,
+    {
+        self.into_commands_with_name_arg(get_subcommand, None)
+    }
+
+    /// Similar to [`into_commands`](Self::into_commands), but passing the name of the argument
+    /// in the configuration file that will be used as the name of the resource in relative the command.
     fn into_commands_with_name_arg<C, F>(
         self,
         _get_subcommand: F,
@@ -17,14 +44,7 @@ pub trait ArgsToCommands: Sized {
         Err(miette!("The command does not support named resources"))
     }
 
-    fn into_commands<C, F>(self, get_subcommand: F) -> Result<Vec<C>>
-    where
-        C: ClapArgs,
-        F: Fn(&[String]) -> Result<C>,
-    {
-        self.into_commands_with_name_arg(get_subcommand, None)
-    }
-
+    /// Returns the number of commands that can be created from the section of the configuration file.
     fn len(&self) -> usize;
 }
 

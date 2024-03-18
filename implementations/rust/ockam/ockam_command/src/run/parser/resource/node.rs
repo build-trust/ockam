@@ -1,7 +1,8 @@
 use crate::node::CreateCommand;
 use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
-use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
+use crate::run::parser::resource::ValuesOverrides;
 use crate::{color_primary, node, Command, OckamSubcommand};
 use async_trait::async_trait;
 use miette::{miette, Result};
@@ -25,23 +26,23 @@ impl Node {
     pub const NAME_ARG: &'static str = "name";
 }
 
-#[async_trait]
-impl ConfigRunner<CreateCommand> for Node {
-    fn len(&self) -> usize {
-        if self.name.is_some()
-            || self.skip_is_running_check.is_some()
-            || self.exit_on_eof.is_some()
-            || self.tcp_listener_address.is_some()
-            || self.identity.is_some()
-            || self.project.is_some()
-        {
-            1
-        } else {
-            0
+impl Node {
+    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
+        if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
+            if let node::NodeSubcommand::Create(c) = cmd.subcommand {
+                return Ok(c);
+            }
         }
+        Err(miette!(format!(
+            "Failed to parse {} command",
+            color_primary(CreateCommand::NAME)
+        )))
     }
+}
 
-    fn into_commands(self) -> Result<Vec<CreateCommand>> {
+#[async_trait]
+impl CommandsParser<CreateCommand> for Node {
+    fn parse_commands(self, _overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
         // Convert the struct into a map of key-value pairs
         let mut args: BTreeMap<ArgKey, ArgValue> = BTreeMap::new();
         if let Some(name) = self.name {
@@ -73,19 +74,7 @@ impl ConfigRunner<CreateCommand> for Node {
             cmd_args.push(name.to_string());
         }
         cmd_args.extend(as_command_args(args));
-        Self::get_subcommand(&cmd_args).map(|c| vec![c])
-    }
-
-    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
-        if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
-            if let node::NodeSubcommand::Create(c) = cmd.subcommand {
-                return Ok(c);
-            }
-        }
-        Err(miette!(format!(
-            "Failed to parse {} command",
-            color_primary(CreateCommand::NAME)
-        )))
+        Ok(vec![Self::get_subcommand(&cmd_args)?])
     }
 }
 
@@ -97,7 +86,7 @@ mod tests {
     fn node_config() {
         let test = |c: &str| {
             let parsed: Node = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.name, "n1");

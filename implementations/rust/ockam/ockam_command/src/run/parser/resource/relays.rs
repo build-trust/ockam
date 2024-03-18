@@ -1,12 +1,11 @@
 use crate::relay::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
-use crate::run::parser::resource::traits::ConfigRunner;
+use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::PreRunHooks;
-use crate::{color_primary, relay, Command, CommandGlobalOpts, OckamSubcommand};
+use crate::run::parser::resource::ValuesOverrides;
+use crate::{color_primary, relay, Command, OckamSubcommand};
 use async_trait::async_trait;
 use miette::{miette, Result};
-use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -15,22 +14,7 @@ pub struct Relays {
     pub relays: Option<ResourcesContainer>,
 }
 
-#[async_trait]
-impl ConfigRunner<CreateCommand> for Relays {
-    fn len(&self) -> usize {
-        match &self.relays {
-            Some(c) => c.len(),
-            None => 0,
-        }
-    }
-
-    fn into_commands(self) -> Result<Vec<CreateCommand>> {
-        match self.relays {
-            Some(c) => c.into_commands(Self::get_subcommand),
-            None => Ok(vec![]),
-        }
-    }
-
+impl Relays {
     fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
         if let OckamSubcommand::Relay(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
             if let relay::RelaySubCommand::Create(c) = cmd.subcommand {
@@ -42,17 +26,23 @@ impl ConfigRunner<CreateCommand> for Relays {
             color_primary(CreateCommand::NAME)
         )))
     }
+}
 
-    async fn pre_run_hooks(
-        _ctx: &Context,
-        _opts: &CommandGlobalOpts,
-        hooks: &PreRunHooks,
-        cmd: &mut CreateCommand,
-    ) -> Result<bool> {
-        if let Some(node_name) = hooks.override_node_name.clone() {
-            cmd.to = Some(node_name);
+#[async_trait]
+impl CommandsParser<CreateCommand> for Relays {
+    fn parse_commands(self, overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+        match self.relays {
+            Some(c) => {
+                let mut cmds = c.into_commands(Self::get_subcommand)?;
+                if let Some(node_name) = overrides.override_node_name.as_ref() {
+                    for cmd in cmds.iter_mut() {
+                        cmd.to = Some(node_name.clone());
+                    }
+                };
+                Ok(cmds)
+            }
+            None => Ok(vec![]),
         }
-        Ok(true)
     }
 }
 
@@ -65,7 +55,7 @@ mod tests {
     fn single_relay_config() {
         let test = |c: &str| {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.relay_name, "r1");
@@ -96,7 +86,7 @@ mod tests {
     fn multiple_relay_config() {
         let test = |c: &str| {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.into_commands().unwrap();
+            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].relay_name, "r1");
             assert_eq!(cmds[1].relay_name, "r2");
