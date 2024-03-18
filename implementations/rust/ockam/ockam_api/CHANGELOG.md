@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.61.0 - 2024-03-11
+## 0.61.0 - 2024-03-18
 
 ### Added
 
@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Instrument more functions for secure channels
 - Start a new trace before sending a transport message
 - Update display, log output in frequently used commands
+- Introduced several cpu consumption optimizations
+- Add an environment variable to specify if a user is an ockam developer
 - Updated dependencies
 
 ### Changed
@@ -24,11 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Don't initialize logging at all if log is not enabled
 - Rename methods and variables to insist on the exporting
 - Refactor the code thanks to pr review comments
+- Do small renaming of some local variables
 
 ### Fixed
 
 - Fix the blocking processing of spans and log records
 - Fix the creation of a trace id from a project id in tests
+
+### Removed
+
+- Remove resources when deleting a node
 
 ## 0.60.0 - 2024-02-28
 
