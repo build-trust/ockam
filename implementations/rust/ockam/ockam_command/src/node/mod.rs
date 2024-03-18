@@ -69,7 +69,7 @@ pub enum NodeSubcommand {
 impl NodeSubcommand {
     pub fn name(&self) -> String {
         match self {
-            NodeSubcommand::Create(c) => c.tracing_name(),
+            NodeSubcommand::Create(c) => c.name(),
             NodeSubcommand::Delete(c) => c.name(),
             NodeSubcommand::List(c) => c.name(),
             NodeSubcommand::Logs(c) => c.name(),

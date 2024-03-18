@@ -87,7 +87,7 @@ impl AddonConfigureOktaSubcommand {
     }
 
     pub fn name(&self) -> String {
-        "project addon configure influxdb".into()
+        "project addon configure okta".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

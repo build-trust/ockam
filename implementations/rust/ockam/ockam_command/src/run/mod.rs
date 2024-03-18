@@ -1,8 +1,9 @@
 mod config;
 pub mod parser;
+
 pub use config::Config;
 
-use crate::run::parser::resource::PreRunHooks;
+use crate::run::parser::resource::ValuesOverrides;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -73,6 +74,6 @@ impl RunCommand {
                 std::fs::read_to_string(path).into_diagnostic()?
             }
         };
-        Config::parse_and_run(ctx, opts, PreRunHooks::default(), &contents).await
+        Config::parse_and_run(ctx, opts, ValuesOverrides::default(), &contents).await
     }
 }

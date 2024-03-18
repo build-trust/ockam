@@ -146,12 +146,12 @@ impl Command for CreateCommand {
                     |ctx| async move { self.foreground_mode(&ctx, opts).await },
                 ))
             } else {
-                async_cmd(&self.tracing_name(), opts.clone(), |ctx| async move {
+                async_cmd(&self.name(), opts.clone(), |ctx| async move {
                     self.background_mode(&ctx, opts).await
                 })
             }
         } else {
-            return async_cmd(&self.tracing_name(), opts.clone(), |ctx| async move {
+            return async_cmd(&self.name(), opts.clone(), |ctx| async move {
                 self.run_config(&ctx, &opts).await
             });
         }
@@ -159,14 +159,6 @@ impl Command for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn tracing_name(&self) -> String {
-        if self.child_process {
-            "node create".into()
-        } else {
-            "node create foreground".into()
-        }
-    }
-
     pub async fn guard_node_is_not_already_running(
         &self,
         opts: &CommandGlobalOpts,
