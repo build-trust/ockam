@@ -94,6 +94,7 @@ impl CliState {
 
     // 00: make the notification arg a ref
     pub fn notify(&self, notification: Notification) {
+        info!(notification);
         let _ = self.notifications.send(notification);
     }
 }

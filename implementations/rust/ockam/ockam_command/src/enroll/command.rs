@@ -29,7 +29,7 @@ use crate::operation::util::check_for_project_completion;
 use crate::output::OutputFormat;
 use crate::progress_display::ProgressDisplay;
 use crate::project::util::check_project_readiness;
-use crate::terminal::{color_email, color_primary, color_uri, OckamColor};
+use crate::terminal::{color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
 use crate::{docs, fmt_heading, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, Result};
 
@@ -200,26 +200,22 @@ impl EnrollCommand {
             .await?;
 
         // Output
-        opts.terminal.write_line(&fmt_ok!(
-            "Enrolled the following Identity in your Orchestrator account ({}):",
-            color_email(user_info.email.to_string())
-        ))?;
-        // Print the identity name
         opts.terminal
-            .write_line(&fmt_log!("name: {}", color_primary(identity_name)))?;
-        // Print the identity identifier.
-        opts.terminal.write_line(&fmt_log!(
-            "identifier: {}\n",
-            color_primary(identifier.to_string())
-        ))?;
-        // Final line
-        opts.terminal.write_line(fmt_log!(
-            "{} {}:",
-            "Take a look at our docs site to learn how to securely connect your apps using",
-            color_primary("Ockam")
-        ))?;
-        opts.terminal
-            .write_line(fmt_log!("{}\n", color_uri("https://docs.ockam.io/")))?;
+            .write_line(&fmt_log!(
+                "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.",
+                color_primary(identity_name),
+                color_primary(identifier.to_string())
+            ))?
+            .write_line(&fmt_log!(
+                "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
+            ))?
+            .write_line(&fmt_log!(
+                "Please explore our documentation to learn how you can use Ockam"
+            ))?
+            .write_line(&fmt_log!(
+                "to create encrypted Portals to remote services, databases, and more {}",
+                color_uri("https://docs.ockam.io")
+            ))?;
 
         Ok(())
     }
@@ -288,6 +284,10 @@ impl EnrollCommand {
             }
         }
 
+        opts.terminal.write_line(&fmt_log!(
+            "Enrolling your Identity with Ockam Orchestrator..."
+        ))?;
+
         // Run OIDC service
         let oidc_service = OidcService::default();
         let token = if self.authorization_code_flow {
@@ -307,12 +307,10 @@ impl EnrollCommand {
         enroll_with_node(&controller, ctx, token)
             .await
             .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
-        let identifier = node.identifier();
         opts.state
-            .set_identifier_as_enrolled(&identifier)
+            .set_identifier_as_enrolled(&node.identifier())
             .await
             .wrap_err("Unable to set your local Identity as enrolled")?;
-        info!("Enrolled your local Identity with the identifier {identifier}");
 
         Ok(user_info)
     }
@@ -370,6 +368,7 @@ async fn retrieve_user_space_and_project(
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
 ) -> miette::Result<Project> {
+    opts.terminal.write_line(fmt_heading!(""))?;
     let space = get_user_space(opts, ctx, node, skip_orchestrator_resources_creation)
         .await
         .wrap_err("Unable to retrieve and set a Space as default")?
@@ -391,6 +390,7 @@ async fn retrieve_user_space_and_project(
     ))?
     .ok_or(miette!("No Project was found"))?;
     info!("Retrieved your default Project {project:#?}");
+    opts.terminal.write_line(fmt_heading!(""))?;
     Ok(project)
 }
 
@@ -430,7 +430,7 @@ async fn get_user_space(
     // Get the available spaces for node's identity
     // Those spaces might have been created previously and all the local state reset
     opts.terminal
-        .write_line(&fmt_heading!("Getting available Spaces in your account."))?;
+        .write_line(&fmt_log!("Getting available Spaces in your account."))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
         let spaces = node.get_spaces(ctx).await?;
@@ -452,18 +452,9 @@ async fn get_user_space(
                 return Ok(None);
             }
 
-            opts.terminal
-                .write_line(&fmt_log!("No Spaces are defined in your account, creating a new one.\n"))?
-                .write_line(&fmt_log!(
-                    "{}",
-                    "If you don't use it for a few weeks, we'll delete the Space and Projects within it."
-                        .to_string()
-                        .color(OckamColor::FmtWARNBackground.color())
-                ))?
-                .write_line(&fmt_log!(
-                    "Interested in deploying Ockam Orchestrator in production? Contact us at: {}.\n",
-                    color_email("hello@ockam.io")
-                ))?;
+            opts.terminal.write_line(&fmt_log!(
+                "No Spaces are defined in your account, creating a new one..."
+            ))?;
 
             let is_finished = Mutex::new(false);
             let space_name = random_name();
@@ -479,6 +470,10 @@ async fn get_user_space(
             )];
             let progress_output = opts.terminal.progress_output(&message, &is_finished);
             let (space, _) = try_join!(create_space, progress_output)?;
+            opts.terminal.write_line(&fmt_ok!(
+                "Created a new Space named {}.",
+                color_primary(space.name.clone())
+            ))?;
             space
         }
         Some(space) => {
@@ -490,10 +485,16 @@ async fn get_user_space(
         }
     };
     opts.terminal.write_line(&fmt_ok!(
-        "Marked {} as your default Space, {}.",
+        "Marked {} as your default Space, {}.\n",
         color_primary(space.name.clone()),
         "on this machine".dim()
     ))?;
+
+    opts.terminal.write_line(fmt_log!("This Space does not have a Subscription attached to it."))?
+        .write_line(fmt_log!("As a courtesy, we created a temporary Space for you, so you can continue to build.\n"))?
+        .write_line(fmt_log!("Please subscribe to an Ockam plan within two weeks {}", color_uri("https://www.ockam.io/pricing")))?
+        .write_line(fmt_log!("{}\n", "If you don't subscribe in that time, your Space and all Projects will be permanently deleted.".color(OckamColor::FmtWARNBackground.color())))?;
+
     Ok(Some(space))
 }
 
@@ -505,8 +506,8 @@ async fn get_user_project(
     space: &Space,
 ) -> Result<Option<Project>> {
     // Get available project for the given space
-    opts.terminal.write_line(&fmt_heading!(
-        "Getting available Projects in the Space {}.",
+    opts.terminal.write_line(&fmt_log!(
+        "Getting available Projects in the Space {}...",
         color_primary(&space.name)
     ))?;
 
@@ -527,14 +528,14 @@ async fn get_user_project(
         None => {
             if skip_orchestrator_resources_creation {
                 opts.terminal.write_line(&fmt_log!(
-                    "No Projects are defined in the Space {}.",
+                    "No Project is defined in the Space {}.",
                     color_primary(&space.name)
                 ))?;
                 return Ok(None);
             }
 
             opts.terminal.write_line(&fmt_log!(
-                "No Projects are defined in the Space {}. Creating a new one.\n",
+                "No Project is defined in the Space {}, creating a new one...",
                 color_primary(&space.name)
             ))?;
 
@@ -556,7 +557,7 @@ async fn get_user_project(
             let (project, _) = try_join!(get_project, progress_output)?;
 
             opts.terminal.write_line(&fmt_ok!(
-                "Created Project {}.",
+                "Created a new Project named {}.",
                 color_primary(&project_name)
             ))?;
 
@@ -564,7 +565,7 @@ async fn get_user_project(
         }
         Some(project) => {
             opts.terminal.write_line(&fmt_log!(
-                "Found Project {}.\n",
+                "Found Project named {}.",
                 color_primary(project.name())
             ))?;
 
@@ -582,8 +583,7 @@ async fn get_user_project(
         .await?;
 
     opts.terminal.write_line(&fmt_ok!(
-        "Marked {} as your default Project, {}.\n",
-        color_primary(project.project_name()),
+        "Marked this new Project as your default Project, {}.",
         "on this machine".dim()
     ))?;
     Ok(Some(project))

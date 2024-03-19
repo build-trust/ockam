@@ -5,9 +5,9 @@ use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
+use crate::terminal::OckamColor;
 use crate::CommandGlobalOpts;
 use crate::{fmt_log, fmt_para};
-use crate::{fmt_ok, terminal::OckamColor};
 
 pub async fn check_for_project_completion(
     opts: &CommandGlobalOpts,
@@ -36,14 +36,6 @@ pub async fn check_for_project_completion(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.finish_and_clear();
     }
-
-    opts.terminal.write_line(&fmt_ok!(
-        "Configured Project {}.\n",
-        &project
-            .name()
-            .to_string()
-            .color(OckamColor::PrimaryResource.color())
-    ))?;
 
     Ok(project)
 }
