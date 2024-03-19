@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Check Commit Lint
-        uses: build-trust/.github/actions/commit_lint@custom-actions
+        uses: build-trust/.github/actions/commit_lint@0455ed96606ee7021639e74a1ae0289a30e33d86
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 

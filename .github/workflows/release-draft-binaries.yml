@@ -371,7 +371,7 @@ jobs:
           ref: ${{ github.event.inputs.release_branch }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@78c6b5541adb5849f5d72d15da722aedb26327ca # Stable branch
         with:
           toolchain: stable
           target: ${{ matrix.job.target }}

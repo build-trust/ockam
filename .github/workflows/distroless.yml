@@ -100,14 +100,14 @@ jobs:
           echo "BUILDER=$builder_image_sha" >> $GITHUB_OUTPUT
           echo "BASE=$base_image_sha" >> $GITHUB_OUTPUT
 
-      - uses: build-trust/.github/actions/image_cosign@custom-actions
+      - uses: build-trust/.github/actions/image_cosign@0455ed96606ee7021639e74a1ae0289a30e33d86
         with:
           cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
           image: 'ghcr.io/${{ env.ORGANIZATION }}/ockam-elixir-base@${{ steps.image_ref.outputs.BASE }}'
           ref: ${{ steps.image_ref.outputs.BASE }}
 
-      - uses: build-trust/.github/actions/image_cosign@custom-actions
+      - uses: build-trust/.github/actions/image_cosign@0455ed96606ee7021639e74a1ae0289a30e33d86
         with:
           cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
