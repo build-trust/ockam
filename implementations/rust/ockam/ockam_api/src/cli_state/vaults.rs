@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter};
+use colorful::Colorful;
+use std::fmt::{Debug, Display, Formatter};
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -8,11 +9,10 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 
+use crate::cli_state::{random_name, CliState, Result};
 use crate::CliStateError;
-use crate::{
-    cli_state::{random_name, CliState, Result},
-    color_primary,
-};
+
+static DEFAULT_VAULT_NAME: &str = "default";
 
 /// The methods below support the creation and update of local vaults
 ///
@@ -141,37 +141,26 @@ impl CliState {
     #[instrument(skip_all, fields(vault_name = vault_name))]
     pub async fn get_or_create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
         let vaults_repository = self.vaults_repository();
+        self.notify("We need a Vault to store Identity secrets.".to_string());
+        let is_default = vault_name == DEFAULT_VAULT_NAME;
 
         if let Ok(Some(existing_vault)) = vaults_repository.get_named_vault(vault_name).await {
-            let message = if vault_name == "default" {
-                format!(
-                    "Using the default Vault named {}...",
-                    color_primary(vault_name)
-                )
-            } else {
-                format!("Using the Vault named {}...", color_primary(vault_name))
-            };
-            self.notify(message.clone());
-            info!(message);
             return Ok(existing_vault);
+        } else {
+            self.notify("There is no default Vault on this machine, creating one...".to_string());
         }
 
-        let message = if vault_name == "default" {
-            format!(
-                "Creating a new default Vault named {}...",
-                color_primary(vault_name)
-            )
-        } else {
-            format!(
-                "Creating a new Vault named {}...",
-                color_primary(vault_name)
-            )
-        };
-        self.notify(message.clone());
-        info!(message);
-
-        self.create_a_vault(&Some(vault_name.to_string()), &None, false)
-            .await
+        let named_vault = self
+            .create_a_vault(&Some(vault_name.to_string()), &None, false)
+            .await?;
+        self.notify("Created a new Vault on your disk.".to_string());
+        if is_default {
+            self.notify(format!(
+                "Marked this new vault as your default Vault, {}.\n",
+                "on this machine".dim()
+            ));
+        }
+        Ok(named_vault)
     }
 
     /// Return the existing vault if there is only one
@@ -181,7 +170,7 @@ impl CliState {
     pub async fn get_or_create_default_named_vault(&self) -> Result<NamedVault> {
         let vaults = self.vaults_repository().get_named_vaults().await?;
         match &vaults[..] {
-            [] => self.get_or_create_named_vault("default").await,
+            [] => self.get_or_create_named_vault(DEFAULT_VAULT_NAME).await,
             [vault] => Ok(vault.clone()),
             _ => Err(ockam_core::Error::new(
                 Origin::Api,
@@ -311,7 +300,7 @@ impl CliState {
     async fn make_vault_name(&self) -> Result<String> {
         let vaults_repository = self.vaults_repository();
         if vaults_repository.get_named_vaults().await?.is_empty() {
-            Ok("default".to_string())
+            Ok(DEFAULT_VAULT_NAME.to_string())
         } else {
             Ok(random_name())
         }
@@ -491,7 +480,7 @@ mod tests {
 
         // create a default vault
         let vault = cli.get_or_create_default_named_vault().await?;
-        assert_eq!(vault.name(), "default".to_string());
+        assert_eq!(vault.name(), DEFAULT_VAULT_NAME.to_string());
 
         // the same vault is returned the second time
         let result = cli.get_or_create_default_named_vault().await?;
@@ -506,7 +495,7 @@ mod tests {
 
         // create a default vault
         let vault1 = cli.get_or_create_default_named_vault().await?;
-        assert_eq!(vault1.name(), "default".to_string());
+        assert_eq!(vault1.name(), DEFAULT_VAULT_NAME.to_string());
 
         // that vault can be retrieved by passing its name
         let result = cli.get_named_vault_or_default(&Some(vault1.name())).await?;
@@ -569,7 +558,7 @@ mod tests {
 
         // the first vault is stored in the main database with the name 'default'
         let result = cli.create_named_vault(&None, &None).await?;
-        assert_eq!(result.name(), "default".to_string());
+        assert_eq!(result.name(), DEFAULT_VAULT_NAME.to_string());
         assert_eq!(result.path(), cli.database_path());
 
         // the second vault is stored in a separate file, with a random name

@@ -71,45 +71,41 @@ impl OidcServiceExt for OidcService {
         }
         // Otherwise, write the instructions at stderr as normal
         else {
+            opts.terminal.write_line(&fmt_heading!(
+                "Please sign into your Ockam Account to activate this machine:\n"
+            ))?;
+
             clipboard = Clipboard::new();
             let otc_string = clipboard
                 .as_mut()
                 .ok()
                 .and_then(|clip| clip.set_text(device_code.user_code.to_string()).ok())
                 .map_or(
-                    fmt_heading!(
-                        "Please copy this one-time code: {}",
+                    fmt_log!(
+                        "You'll need to enter the one-time code: {}",
                         format!(" {} ", device_code.user_code).bg_white().black()
                     ),
                     |_| {
-                        fmt_heading!(
-                            "Your one-time code: {} has been {}.",
+                        fmt_log!(
+                            "You'll need to enter the one-time code: {}, {}.",
                             format!(" {} ", device_code.user_code).bg_white().black(),
-                            "copied to the clipboard".color(OckamColor::Success.color())
+                            "we've copied it to your clipboard".color(OckamColor::Success.color())
                         )
                     },
                 );
-
-            opts.terminal
-                .write_line(&fmt_heading!(
-                    "Let's associate your Ockam Identity with an Orchestrator account."
-                ))?
-                .write_line(&otc_string)?
-                .write(fmt_log!(
-                    "Please press {} to open {} in your browser.",
-                    " ENTER ↵ ".bg_white().black().blink(),
-                    color_uri(&device_code.verification_uri)
-                ))?;
+            opts.terminal.write_line(&otc_string)?.write(fmt_log!(
+                "Press {} to open {} in your browser.\n",
+                " ENTER ↵ ".bg_white().black().blink(),
+                color_uri(&device_code.verification_uri)
+            ))?;
 
             let mut input = String::new();
             match stdin().read_line(&mut input) {
                 Ok(_) => {
-                    opts.terminal
-                        .write_line(&fmt_log!(""))?
-                        .write_line(&fmt_log!(
-                            "Opening {}, in your browser, to begin activating this machine...",
-                            color_uri(&device_code.verification_uri)
-                        ))?;
+                    opts.terminal.write_line(&fmt_log!(
+                        "Opening {}, in your browser, to begin activating this machine...\n",
+                        color_uri(&device_code.verification_uri)
+                    ))?;
                 }
                 Err(_e) => {
                     return Err(miette!(
@@ -154,7 +150,7 @@ impl OidcServiceExt for OidcService {
                 }
                 terminal.map(|terminal| {
                     terminal.write_line(fmt_ok!(
-                        "Email <{}> verified.",
+                        "Signed into account <{}> and activated this machine.",
                         color_email(user_info.email.to_string())
                     ))
                 });
@@ -229,8 +225,6 @@ impl OidcServiceExt for OidcService {
                     if let Some(spinner) = spinner_option.as_ref() {
                         spinner.finish_and_clear();
                     }
-                    opts.terminal
-                        .write_line(&fmt_ok!("Activation successful.\n"))?;
                     return Ok(token);
                 }
                 _ => {

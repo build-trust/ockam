@@ -1,3 +1,4 @@
+use colorful::Colorful;
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{Identifier, Identity};
 use ockam_core::errcode::{Kind, Origin};
@@ -142,37 +143,9 @@ impl CliState {
     ) -> Result<NamedIdentity> {
         match name {
             // Identity specified.
-            Some(name) => {
-                let message = format!(
-                    "Enrolling the Identity named {} with Ockam Orchestrator...",
-                    color_primary(name)
-                );
-                self.notify(message.clone());
-                info!(message);
-
-                let it = self.get_named_identity(name).await;
-
-                if let Ok(named_identity) = &it {
-                    let message = format!(
-                        "{} has Identifier {}",
-                        color_primary(name),
-                        color_primary(named_identity.identifier().to_string().as_ref())
-                    );
-                    self.notify(message.clone());
-                    info!(message);
-                }
-
-                it
-            }
+            Some(name) => self.get_named_identity(name).await,
             // No identity specified.
-            None => {
-                let message =
-                    "Enrolling the default Identity with Ockam Orchestrator...".to_string();
-                self.notify(message.clone());
-                info!(message);
-
-                self.get_or_create_default_named_identity().await
-            }
+            None => self.get_or_create_default_named_identity().await,
         }
     }
 
@@ -272,50 +245,30 @@ impl CliState {
             .await?
         {
             // Has default identity.
-            Some(named_identity) => {
-                let message_1 = format!(
-                    "Enrolling the existing default Identity named {} with Ockam Orchestrator...",
+            Some(named_identity) => Ok(named_identity),
+            // Create a new default identity.
+            None => {
+                let message =
+                    "There is no default Identity on this machine, generating one...\n".to_string();
+                self.notify(message.clone());
+
+                let named_identity = self.create_identity_with_name(&random_name()).await?;
+
+                self.notify(format!(
+                    "Generated a new Identity named {}.",
                     color_primary(named_identity.name().as_ref())
-                );
-                let message_2 = format!(
+                ));
+                self.notify(format!(
                     "{} has Identifier {}",
                     color_primary(named_identity.name().as_ref()),
                     color_primary(named_identity.identifier().to_string().as_ref())
-                );
-                self.notify(message_1.clone());
-                self.notify(message_2.clone());
-                info!(message_1);
-                info!(message_2);
-
+                ));
+                self.notify(format!(
+                    "Marked {} as your default Identity, {}.\n",
+                    color_primary(named_identity.name().as_ref()),
+                    "on this machine".dim()
+                ));
                 Ok(named_identity)
-            }
-            // Create a new default identity.
-            None => {
-                let named_identity = self.create_identity_with_name(&random_name()).await;
-
-                if let Ok(named_identity) = &named_identity {
-                    let message_a = format!(
-                        "Creating a new default Identity named {}...",
-                        color_primary(named_identity.name().as_ref())
-                    );
-                    let message_b = format!(
-                        "Enrolling the newly created default Identity named {} with Ockam Orchestrator...",
-                        color_primary(named_identity.name().as_ref())
-                    );
-                    let message_c = format!(
-                        "{} has Identifier {}",
-                        color_primary(named_identity.name().as_ref()),
-                        color_primary(named_identity.identifier().to_string().as_ref())
-                    );
-                    self.notify(message_a.clone());
-                    self.notify(message_b.clone());
-                    self.notify(message_c.clone());
-                    info!(message_a);
-                    info!(message_b);
-                    info!(message_c);
-                }
-
-                named_identity
             }
         }
     }
