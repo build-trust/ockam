@@ -70,7 +70,7 @@ teardown() {
   run_success "$OCKAM" node create admin --tcp-listener-address "127.0.0.1:$port_admin" --identity admin --authority-identity $account_authority_full --expect-cached-credential
 
   # issue and store project admin credentials for admin
-  $OCKAM credential issue --as account_authority --for "$admin_identifier" --attribute project="1"  --encoding hex >"$OCKAM_HOME/admin.cred"
+  $OCKAM credential issue --as account_authority --for "$admin_identifier" --attribute project="1" --encoding hex >"$OCKAM_HOME/admin.cred"
   run_success "$OCKAM" credential store --at admin --issuer "$account_authority_identifier" --credential-path "$OCKAM_HOME/admin.cred"
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
@@ -80,7 +80,6 @@ teardown() {
 
   # Make the admin present its project admin credential to the authority
   run_success "$OCKAM" secure-channel create --from admin --to "/node/authority/service/api" --identity admin
-
 
   cat <<EOF >>"$OCKAM_HOME/project.json"
 {
@@ -99,7 +98,6 @@ teardown() {
   "user_roles": []
 }
 EOF
-
 
   run_success $OCKAM project import --project-file $OCKAM_HOME/project.json
 
