@@ -458,7 +458,7 @@ jobs:
         run: gh release download ${{ needs.create_release.outputs.tag_name }} -R ${{ github.repository_owner }}/ockam
 
       - name: Generate File SHASum
-        run: shasum -a 256 .* > sha256sums.txt
+        run: shasum -a 256 *ockam* > sha256sums.txt
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4
