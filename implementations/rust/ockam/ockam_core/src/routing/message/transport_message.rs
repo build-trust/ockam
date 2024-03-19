@@ -1,13 +1,11 @@
 use crate::alloc::string::ToString;
 use crate::errcode::{Kind, Origin};
-use crate::errcode::{Kind, Origin};
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
 #[cfg(feature = "tracing_context")]
 use crate::OCKAM_TRACER_NAME;
-use crate::{Error, Result};
-#[cfg(feature = "std")]
 use crate::{compat::vec::Vec, Decodable, Encodable, Encoded, Message, Route};
+use crate::{Error, Result};
 use cfg_if::cfg_if;
 use core::fmt::{self, Display, Formatter};
 #[cfg(feature = "tracing_context")]
@@ -80,26 +78,20 @@ impl TransportMessage {
         return_route: impl Into<Route>,
         payload: Vec<u8>,
     ) -> Self {
-        Self {
-            version: PROTOCOL_VERSION_V1,
-            onward_route: onward_route.into(),
-            return_route: return_route.into(),
-            payload,
-            #[cfg(feature = "tracing_context")]
-            tracing_context: None,
-        }
+        TransportMessage::new(PROTOCOL_VERSION_V1, onward_route, return_route, payload)
     }
 
     /// Create a new transport message
     pub fn new(
-        version: ProtocolVersion,
+        _version: ProtocolVersion,
         onward_route: impl Into<Route>,
         return_route: impl Into<Route>,
         payload: Vec<u8>,
         #[cfg(feature = "tracing_context")] _tracing_context: Option<String>,
     ) -> Self {
         Self {
-            version,
+            // for now only produce version 1 messages
+            version: PROTOCOL_VERSION_V1,
             onward_route: onward_route.into(),
             return_route: return_route.into(),
             payload,
@@ -207,101 +199,8 @@ impl Display for TransportMessage {
     }
 }
 
-/// This is
-#[derive(Debug, Clone, Eq, PartialEq, Message)]
-pub struct TransportMessageV1 {
-    /// The transport protocol version.
-    pub version: u8,
-    /// Onward message route.
-    pub onward_route: Route,
-    /// Return message route.
-    ///
-    /// This field must be populated by routers handling this message
-    /// along the way.
-    pub return_route: Route,
-    /// The message payload.
-    pub payload: Vec<u8>,
-}
-
-impl TransportMessageV1 {
-    /// Convert a transport message v1 to the latest version of the protocol
-    pub fn to_latest(self) -> TransportMessage {
-        TransportMessage {
-            version: PROTOCOL_VERSION_V1,
-            onward_route: self.onward_route,
-            return_route: self.return_route,
-            payload: self.payload,
-            #[cfg(feature = "tracing_context")]
-            tracing_context: None,
-        }
-    }
-
-    /// Create a new transport message with version v1
-    pub fn new(
-        onward_route: impl Into<Route>,
-        return_route: impl Into<Route>,
-        payload: Vec<u8>,
-    ) -> Self {
-        Self {
-            version: 1,
-            onward_route: onward_route.into(),
-            return_route: return_route.into(),
-            payload,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{route, Encodable, TransportMessageV1};
-
-    #[test]
-    fn test_encode_decode() {
-        let transport_message_v1 =
-            TransportMessageV1::new(route!["onward"], route!["return"], vec![]);
-        let transport_message_v2 =
-            TransportMessage::latest(route!["onward"], route!["return"], vec![]);
-
-        // a v1 message should be decodable as the latest structure
-        let encoded_v1 = transport_message_v1.encode().unwrap();
-        let expected = TransportMessage::new(
-            PROTOCOL_VERSION_V1,
-            route!["onward"],
-            route!["return"],
-            vec![],
-            #[cfg(feature = "tracing_context")]
-            None,
-        );
-        assert_eq!(
-            TransportMessage::decode_message(encoded_v1).unwrap(),
-            expected
-        );
-
-        // a v2 message should be decodable as the latest version
-        let encoded_v2 = transport_message_v2.clone().encode().unwrap();
-        assert_eq!(
-            TransportMessage::decode_message(encoded_v2).unwrap(),
-            transport_message_v2
-        );
-
-        // any other version must fail to be decoded
-        let encoded_v3 = TransportMessage {
-            version: 3,
-            onward_route: route![],
-            return_route: route![],
-            payload: vec![],
-            #[cfg(feature = "tracing_context")]
-            tracing_context: None,
-        }
-        .encode()
-        .unwrap();
-        assert!(TransportMessage::decode_message(encoded_v3).is_err());
-    }
-}
-
 impl Encodable for TransportMessage {
-    fn encode(self) -> crate::Result<Encoded> {
+    fn encode(self) -> Result<Encoded> {
         cfg_if! {
             if #[cfg(feature = "tracing_context")] {
                 let tracing = if let Some(tracing_context) = self.tracing_context {
@@ -340,7 +239,7 @@ impl Encodable for TransportMessage {
 }
 
 impl Decodable for TransportMessage {
-    fn decode(slice: &[u8]) -> crate::Result<Self> {
+    fn decode(slice: &[u8]) -> Result<Self> {
         Self::internal_decode(slice).ok_or_else(|| {
             crate::Error::new(
                 Origin::Transport,
@@ -391,14 +290,56 @@ impl TransportMessage {
     }
 }
 
+/// This is version 1 of the transport message without a tracing_context field
+#[derive(Debug, Clone, Eq, PartialEq, Message)]
+pub struct TransportMessageV1 {
+    /// The transport protocol version.
+    pub version: u8,
+    /// Onward message route.
+    pub onward_route: Route,
+    /// Return message route.
+    ///
+    /// This field must be populated by routers handling this message
+    /// along the way.
+    pub return_route: Route,
+    /// The message payload.
+    pub payload: Vec<u8>,
+}
+
+impl TransportMessageV1 {
+    /// Convert a transport message v1 to the latest version of the protocol
+    pub fn to_latest(self) -> TransportMessage {
+        TransportMessage {
+            version: PROTOCOL_VERSION_V1,
+            onward_route: self.onward_route,
+            return_route: self.return_route,
+            payload: self.payload,
+            #[cfg(feature = "tracing_context")]
+            tracing_context: None,
+        }
+    }
+
+    /// Create a new transport message with version v1
+    pub fn new(
+        onward_route: impl Into<Route>,
+        return_route: impl Into<Route>,
+        payload: Vec<u8>,
+    ) -> Self {
+        Self {
+            version: 1,
+            onward_route: onward_route.into(),
+            return_route: return_route.into(),
+            payload,
+        }
+    }
+}
+
 impl Encodable for TransportMessageV1 {
-    fn encode(self) -> crate::Result<Encoded> {
-        let tracing = 0;
+    fn encode(self) -> Result<Encoded> {
         let mut encoded = Vec::with_capacity(
             1 + self.onward_route.encoded_size()
                 + self.return_route.encoded_size()
-                + crate::bare::size_of_slice(&self.payload)
-                + tracing,
+                + crate::bare::size_of_slice(&self.payload),
         );
         encoded.push(self.version);
         self.onward_route.manual_encode(&mut encoded);
@@ -410,7 +351,7 @@ impl Encodable for TransportMessageV1 {
 }
 
 impl Decodable for TransportMessageV1 {
-    fn decode(slice: &[u8]) -> crate::Result<Self> {
+    fn decode(slice: &[u8]) -> Result<Self> {
         Self::internal_decode(slice).ok_or_else(|| {
             crate::Error::new(
                 Origin::Transport,
@@ -441,63 +382,50 @@ impl TransportMessageV1 {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use crate::{route, Decodable, Encodable};
-    use serde::Serialize;
-
-    #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-    pub struct TransportMessageWithoutTracing {
-        /// The transport protocol version.
-        pub version: u8,
-        /// Onward message route.
-        pub onward_route: Route,
-        /// Return message route.
-        ///
-        /// This field must be populated by routers handling this message
-        /// along the way.
-        pub return_route: Route,
-        /// The message payload.
-        pub payload: Vec<u8>,
-    }
+    use crate::{route, Encodable, TransportMessageV1};
 
     #[test]
-    fn encode_decode_transport_message() {
-        let msg = TransportMessage::v1(
-            route!["onward", "route!"],
-            route!["return", "route!"],
-            "hello".as_bytes().to_vec(),
+    fn test_encode_decode() {
+        let transport_message_v1 =
+            TransportMessageV1::new(route!["onward"], route!["return"], vec![]);
+        let transport_message_v2 =
+            TransportMessage::latest(route!["onward"], route!["return"], vec![]);
+
+        // a v1 message should be decodable as the latest structure
+        let encoded_v1 = transport_message_v1.encode().unwrap();
+        let expected = TransportMessage::new(
+            PROTOCOL_VERSION_V1,
+            route!["onward"],
+            route!["return"],
+            vec![],
+            #[cfg(feature = "tracing_context")]
+            None,
+        );
+        assert_eq!(
+            TransportMessage::decode_message(encoded_v1).unwrap(),
+            expected
         );
 
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                msg.tracing_context = Some("tracing context".to_string());
-            }
-        }
-        let encoded = msg.clone().encode().unwrap();
-        let decoded = TransportMessage::decode(&encoded).unwrap();
-        assert_eq!(msg, decoded);
-    }
+        // a v2 message should be decodable as the latest version
+        let encoded_v2 = transport_message_v2.clone().encode().unwrap();
+        assert_eq!(
+            TransportMessage::decode_message(encoded_v2).unwrap(),
+            transport_message_v2
+        );
 
-    #[test]
-    fn can_decode_older_serialized_version() {
-        let msg = TransportMessageWithoutTracing {
-            version: 1,
-            onward_route: route!["onward", "route!"],
-            return_route: route!["return", "route!"],
-            payload: "hello".as_bytes().to_vec(),
-        };
-
-        let encoded = msg.clone().encode().unwrap();
-        let decoded = TransportMessage::decode(&encoded).unwrap();
-        assert_eq!(decoded.version, 1);
-        assert_eq!(decoded.onward_route, route!["onward", "route!"]);
-        assert_eq!(decoded.return_route, route!["return", "route!"]);
-        assert_eq!(decoded.payload, "hello".as_bytes().to_vec());
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                assert!(decoded.tracing_context.is_none());
-            }
+        // any other version must fail to be decoded
+        let encoded_v3 = TransportMessage {
+            version: 3,
+            onward_route: route![],
+            return_route: route![],
+            payload: vec![],
+            #[cfg(feature = "tracing_context")]
+            tracing_context: None,
         }
+        .encode()
+        .unwrap();
+        assert!(TransportMessage::decode_message(encoded_v3).is_err());
     }
 }

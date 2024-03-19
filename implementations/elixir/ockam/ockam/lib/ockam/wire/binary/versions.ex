@@ -55,7 +55,7 @@ defmodule Ockam.Wire.Binary.Versions do
         context ->
           :bare.encode(
             %{
-              version: @latest_version,
+              version: @version_1,
               onward_route: normalize_route(onward_route),
               return_route: normalize_route(return_route),
               payload: payload,
