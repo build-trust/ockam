@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 impl CreateCommand {
     pub async fn run_config(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         let contents = async_parse_path_or_url(&self.name).await?;
+        for (key, value) in &self.variables {
+            std::env::set_var(key, value);
+        }
         let mut config = NodeConfig::new(&contents)?;
         let node_name = config.merge(self)?;
         config.run(ctx, opts.clone(), &node_name).await?;
