@@ -249,7 +249,16 @@ impl NodeManager {
                     authority,
                 )
                 .await?;
-            Ok(Arc::new(policy_access_control))
+
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "std")] {
+                    let cached_policy_access_control = ockam_core::access_control::CachedIncomingAccessControl::new(
+                        Box::new(policy_access_control));
+                    Ok(Arc::new(cached_policy_access_control))
+                } else {
+                    Ok(Arc::new(policy_access_control))
+                }
+            }
         } else {
             warn! {
                 resource_name = resource_name_str,

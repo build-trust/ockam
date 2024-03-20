@@ -4225,6 +4225,7 @@ dependencies = [
  "base64-url",
  "bytes 1.5.0",
  "cddl-cat",
+ "cfg-if",
  "chrono",
  "colorful",
  "either",

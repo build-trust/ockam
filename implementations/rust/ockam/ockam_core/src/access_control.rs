@@ -67,6 +67,8 @@ pub trait OutgoingAccessControl: Debug + Send + Sync + 'static {
 mod all;
 mod allow_all;
 mod any;
+#[cfg(feature = "std")]
+mod cache;
 mod deny_all;
 mod onward;
 mod source;
@@ -74,6 +76,8 @@ mod source;
 pub use all::*;
 pub use allow_all::*;
 pub use any::*;
+#[cfg(feature = "std")]
+pub use cache::*;
 pub use deny_all::*;
 pub use onward::*;
 pub use source::*;
