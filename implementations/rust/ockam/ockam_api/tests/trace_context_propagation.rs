@@ -69,7 +69,6 @@ async fn nested_function() -> OpenTelemetryContext {
 
 /// This test checks that the tracing context is correctly propagated intra-nodes
 /// when several workers are involved and inter-nodes when TransportMessages are sent
-#[cfg(feature = "tracing_context")]
 #[test]
 fn test_context_propagation_across_workers_and_nodes() {
     let (received, spans) = trace_code(|ctx| send_echo_message(ctx, "hello"));
@@ -107,7 +106,6 @@ root
 /// This test checks that the tracing context is correctly propagated intra-nodes
 /// when several workers are involved and inter-nodes when TransportMessages are sent
 /// over a secure channel
-#[cfg(feature = "tracing_context")]
 #[test]
 fn test_context_propagation_across_workers_and_nodes_over_secure_channel() {
     let (received, spans) = trace_code(|ctx| send_echo_message_over_secure_channel(ctx, "hello"));
@@ -120,9 +118,6 @@ fn test_context_propagation_across_workers_and_nodes_over_secure_channel() {
     //    (if any, sometimes the received message is just a shutdown signal)
     let actual = display_traces(spans);
     let expected = r#"
-TcpSendWorker::handle_message
-└── TransportMessage::end_trace
-
 TransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── DecryptorWorker::handle_message
@@ -198,6 +193,8 @@ root
     ├── TcpSendWorker::connect
     ├── TcpSendWorker::start
     ├── TcpRecvProcessor::start
+    ├── TcpSendWorker::handle_message
+    |   └── TransportMessage::end_trace
     └── MessageSender::handle_message
         └── EncryptorWorker::handle_message
             └── handle_encrypt

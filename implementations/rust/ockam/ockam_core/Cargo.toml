@@ -70,9 +70,6 @@ error-traces = [
 # message flows within Ockam apps.
 debugger = []
 
-# Feature: "tracing_context" adds a tracing_context field on Ockam messages to propagate the context for distributed tracing
-tracing_context = []
-
 [dependencies]
 async-trait = "0.1.78"
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }

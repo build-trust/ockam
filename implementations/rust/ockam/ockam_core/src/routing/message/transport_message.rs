@@ -1,14 +1,14 @@
 use crate::alloc::string::ToString;
+use crate::compat::string::String;
 use crate::errcode::{Kind, Origin};
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-#[cfg(feature = "tracing_context")]
+#[cfg(feature = "std")]
 use crate::OCKAM_TRACER_NAME;
 use crate::{compat::vec::Vec, Decodable, Encodable, Encoded, Message, Route};
 use crate::{Error, Result};
-use cfg_if::cfg_if;
 use core::fmt::{self, Display, Formatter};
-#[cfg(feature = "tracing_context")]
+#[cfg(feature = "std")]
 use opentelemetry::{
     global,
     trace::{Link, SpanBuilder, TraceContextExt, Tracer},
@@ -51,7 +51,6 @@ pub struct TransportMessage {
     /// The message payload.
     pub payload: Vec<u8>,
     /// An optional tracing context
-    #[cfg(feature = "tracing_context")]
     pub tracing_context: Option<String>,
 }
 
@@ -67,7 +66,6 @@ impl TransportMessage {
             onward_route.into(),
             return_route.into(),
             payload,
-            #[cfg(feature = "tracing_context")]
             None,
         )
     }
@@ -78,25 +76,29 @@ impl TransportMessage {
         return_route: impl Into<Route>,
         payload: Vec<u8>,
     ) -> Self {
-        TransportMessage::new(PROTOCOL_VERSION_V1, onward_route, return_route, payload)
+        TransportMessage::new(
+            PROTOCOL_VERSION_V1,
+            onward_route,
+            return_route,
+            payload,
+            None,
+        )
     }
 
     /// Create a new transport message
     pub fn new(
-        _version: ProtocolVersion,
+        version: ProtocolVersion,
         onward_route: impl Into<Route>,
         return_route: impl Into<Route>,
         payload: Vec<u8>,
-        #[cfg(feature = "tracing_context")] _tracing_context: Option<String>,
+        tracing_context: Option<String>,
     ) -> Self {
         Self {
-            // for now only produce version 1 messages
-            version: PROTOCOL_VERSION_V1,
+            version,
             onward_route: onward_route.into(),
             return_route: return_route.into(),
             payload,
-            #[cfg(feature = "tracing_context")]
-            tracing_context: _tracing_context,
+            tracing_context,
         }
     }
 
@@ -146,45 +148,36 @@ impl TransportMessage {
     /// We can still navigate the two created traces as one thanks to their link.
     #[cfg(feature = "std")]
     pub fn start_new_tracing_context(self, _tracing_context: OpenTelemetryContext) -> Self {
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
-                let tracer = global::tracer(OCKAM_TRACER_NAME);
-                let span_builder = SpanBuilder::from_name("TransportMessage::start_trace")
-                      .with_links(vec![Link::new(_tracing_context.extract().span().span_context().clone(), vec![])]);
-                let span = tracer.build_with_context(span_builder, &Context::default());
-                let cx = Context::current_with_span(span);
+        // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
+        let tracer = global::tracer(OCKAM_TRACER_NAME);
+        let span_builder =
+            SpanBuilder::from_name("TransportMessage::start_trace").with_links(vec![Link::new(
+                _tracing_context.extract().span().span_context().clone(),
+                vec![],
+            )]);
+        let span = tracer.build_with_context(span_builder, &Context::default());
+        let cx = Context::current_with_span(span);
 
-                // create a span to close the previous trace and link it to the new trace
-                let span_builder = SpanBuilder::from_name("TransportMessage::end_trace")
-                                 .with_links(vec![Link::new(cx.span().span_context().clone(), vec![])]);
-                let _ = tracer.build_with_context(span_builder, &_tracing_context.extract());
+        // create a span to close the previous trace and link it to the new trace
+        let span_builder = SpanBuilder::from_name("TransportMessage::end_trace")
+            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![])]);
+        let _ = tracer.build_with_context(span_builder, &_tracing_context.extract());
 
-                // create the new opentelemetry context
-                let tracing_context = OpenTelemetryContext::inject(&cx);
+        // create the new opentelemetry context
+        let tracing_context = OpenTelemetryContext::inject(&cx);
 
-                Self {
-                    tracing_context: Some(tracing_context.to_string()),
-                    ..self
-                }
-            } else {
-                self
-            }
+        Self {
+            tracing_context: Some(tracing_context.to_string()),
+            ..self
         }
     }
 
     /// Return the tracing context
-    #[cfg(feature = "tracing_context")]
+    #[cfg(feature = "std")]
     pub fn tracing_context(&self) -> OpenTelemetryContext {
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                match self.tracing_context.as_ref() {
-                    Some(tracing_context) => OpenTelemetryContext::from_remote_context(tracing_context),
-                    None => OpenTelemetryContext::current(),
-                }
-            } else {
-                OpenTelemetryContext::current()
-            }
+        match self.tracing_context.as_ref() {
+            Some(tracing_context) => OpenTelemetryContext::from_remote_context(tracing_context),
+            None => OpenTelemetryContext::current(),
         }
     }
 }
@@ -201,16 +194,10 @@ impl Display for TransportMessage {
 
 impl Encodable for TransportMessage {
     fn encode(self) -> Result<Encoded> {
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                let tracing = if let Some(tracing_context) = self.tracing_context {
-                    1 + crate::bare::size_of_slice(tracing_context)
-                } else {
-                    1
-                };
-            } else {
-                let tracing = 0;
-            }
+        let tracing = if let Some(tracing_context) = self.tracing_context.as_ref() {
+            1 + crate::bare::size_of_slice(tracing_context.as_bytes())
+        } else {
+            1
         };
 
         let mut encoded = Vec::with_capacity(
@@ -223,16 +210,11 @@ impl Encodable for TransportMessage {
         self.onward_route.manual_encode(&mut encoded);
         self.return_route.manual_encode(&mut encoded);
         crate::bare::write_slice(&mut encoded, &self.payload);
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                if let Some(tracing_context) = self.tracing_context {
-                    vec.push(1);
-                    crate::bare::write_str(&mut encoded, &tracing_context);
-                }
-                else {
-                    encoded.push(0);
-                }
-            }
+        if let Some(tracing_context) = self.tracing_context.as_ref() {
+            encoded.push(1);
+            crate::bare::write_str(&mut encoded, tracing_context);
+        } else {
+            encoded.push(0);
         }
         Ok(encoded)
     }
@@ -260,33 +242,21 @@ impl TransportMessage {
         let return_route = Route::manual_decode(slice, &mut index)?;
         let payload = crate::bare::read_slice(slice, &mut index)?;
 
-        cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
-                // ignore if missing, keep compatibility with older messages
-                let present = slice.get(index).unwrap_or(0);
-                index += 1;
-                let tracing_context = if present == 1 {
-                    crate::bare::read_str(slice, &mut index).map(|s| s.to_string())
-                } else {
-                    None
-                };
+        let present = slice.get(index).unwrap_or(&0);
+        index += 1;
+        let tracing_context = if present == &1 {
+            crate::bare::read_str(slice, &mut index).map(|s| s.to_string())
+        } else {
+            None
+        };
 
-                Some(Self {
-                    version: *version,
-                    onward_route,
-                    return_route,
-                    payload: payload.to_vec(),
-                    tracing_context
-                })
-            } else {
-                Some(Self {
-                    version: *version,
-                    onward_route,
-                    return_route,
-                    payload: payload.to_vec(),
-                })
-            }
-        }
+        Some(Self {
+            version: *version,
+            onward_route,
+            return_route,
+            payload: payload.to_vec(),
+            tracing_context,
+        })
     }
 }
 
@@ -314,7 +284,6 @@ impl TransportMessageV1 {
             onward_route: self.onward_route,
             return_route: self.return_route,
             payload: self.payload,
-            #[cfg(feature = "tracing_context")]
             tracing_context: None,
         }
     }
@@ -400,7 +369,6 @@ mod tests {
             route!["onward"],
             route!["return"],
             vec![],
-            #[cfg(feature = "tracing_context")]
             None,
         );
         assert_eq!(
@@ -421,7 +389,6 @@ mod tests {
             onward_route: route![],
             return_route: route![],
             payload: vec![],
-            #[cfg(feature = "tracing_context")]
             tracing_context: None,
         }
         .encode()
