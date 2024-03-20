@@ -26,6 +26,7 @@ inherits = "test"
 debug = 1
 strip = "none"
 inherits = "release"
+force-frame-pointers = "yes"
 
 # compromise: minimal optimization on selected dependencies
 # to reduce cli bootstrap time by ~5x
