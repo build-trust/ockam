@@ -24,7 +24,8 @@ perf_pid=$!
 
 sleep 1
 "${OCKAM}" tcp-outlet create --to 5000 --at portal
-"${OCKAM}" tcp-inlet create --from 8000 --to /secure/api/service/outlet --at portal
+"${OCKAM}" relay create --to portal
+"${OCKAM}" tcp-inlet create --from 8000 --to /project/default/service/forward_to_default/secure/api/service/outlet --at portal
 
 iperf3 --server --port 5000 --one-off &
 iperf3_server_pid=$!
