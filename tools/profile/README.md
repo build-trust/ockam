@@ -5,6 +5,7 @@ This directory contains tools for profiling ockam.
 Two scenarios for performance profiling:
 - `portal.perf` - local portal, within one node
 - `portal_two_nodes.perf` - two nodes, one inlet and outlet
+- `relay_port.perf` - one node, one inlet and outlet passing through a relay
 
 And one scenario for heap profiling:
 - `portal.valgrind.dhat` - local portal, within one node
