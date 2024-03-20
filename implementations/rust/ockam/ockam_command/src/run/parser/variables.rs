@@ -1,7 +1,8 @@
 use crate::fmt_warn;
 use crate::run::parser::building_blocks::{ArgKey, ArgValue};
 use colorful::Colorful;
-use miette::{IntoDiagnostic, Result};
+use miette::{miette, IntoDiagnostic, Result};
+use ockam_api::color_primary;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tracing::warn;
@@ -16,8 +17,14 @@ impl Variables {
         let self_ = serde_yaml::from_str::<Variables>(contents).into_diagnostic()?;
         self_.load()?;
         shellexpand::env(&contents)
-            .into_diagnostic()
             .map(|c| c.to_string())
+            .map_err(|e| {
+                miette!(
+                    "Failed to resolve variable {}: {}",
+                    color_primary(&e.var_name),
+                    e.cause
+                )
+            })
     }
 
     /// Loads the variables into the environment, giving preference to variables set externally.
