@@ -202,14 +202,14 @@ impl LocalMessage {
     /// Create a [`LocalMessage`] from a decoded [`TransportMessage`]
     pub fn from_transport_message(transport_message: TransportMessage) -> LocalMessage {
         cfg_if! {
-            if #[cfg(feature = "tracing_context")] {
+            if #[cfg(feature = "std")] {
                 LocalMessage::new()
                     .with_tracing_context(transport_message.tracing_context())
                     .with_onward_route(transport_message.onward_route)
                     .with_return_route(transport_message.return_route)
                     .with_payload(transport_message.payload)
                     .with_protocol_version(transport_message.version)
-            } else {
+                } else {
                 LocalMessage::new()
                     .with_onward_route(transport_message.onward_route)
                     .with_return_route(transport_message.return_route)
@@ -226,7 +226,6 @@ impl LocalMessage {
             self.onward_route,
             self.return_route,
             self.payload,
-            #[cfg(feature = "tracing_context")]
             None,
         );
 

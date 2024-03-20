@@ -259,24 +259,24 @@ impl Context {
 
         // Pack transport message into a LocalMessage wrapper
         cfg_if! {
-        if #[cfg(feature = "tracing_context")] {
-            let local_msg = LocalMessage::new()
-                // make sure to set the latest tracing context, to get the latest span id
-                .with_tracing_context(self.tracing_context().update())
-                .with_protocol_version(self.protocol_version())
-                .with_onward_route(route)
-                .with_return_route(route![sending_address.clone()])
-                .with_payload(payload)
-                .with_local_info(local_info);
-        } else {
-           let local_msg = LocalMessage::new()
-               .with_onward_route(route)
-               .with_return_route(route![sending_address.clone()])
-               .with_payload(payload)
-               .with_local_info(local_info)
-               .with_protocol_version(self.protocol_version());
-               }
-           }
+            if #[cfg(feature = "std")] {
+                let local_msg = LocalMessage::new()
+                    // make sure to set the latest tracing context, to get the latest span id
+                    .with_tracing_context(self.tracing_context().update())
+                    .with_protocol_version(self.protocol_version())
+                    .with_onward_route(route)
+                    .with_return_route(route![sending_address.clone()])
+                    .with_payload(payload)
+                    .with_local_info(local_info);
+            } else {
+                let local_msg = LocalMessage::new()
+                    .with_protocol_version(self.protocol_version())
+                    .with_onward_route(route)
+                    .with_return_route(route![sending_address.clone()])
+                    .with_payload(payload)
+                    .with_local_info(local_info);
+            }
+        }
 
         // Pack local message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
