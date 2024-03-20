@@ -129,21 +129,20 @@ defmodule Ockam.Wire.Binary.Versions.Tests do
       assert "" = payload
     end
 
-    # uncomment when the project node is able to emit v2 messages
-    #    test "encode/1 and decode/1 with tracing context" do
-    #      context = "{\"traceparent\":\"00-1234-01\",\"tracestate\":{}}"
-    #
-    #      {:ok, encoded} =
-    #        Versions.encode(%Ockam.Message{
-    #          onward_route: ["printer"],
-    #          return_route: [],
-    #          payload: "hello",
-    #          local_metadata: %{tracing_context: context}
-    #        })
-    #
-    #      {:ok, decoded} = Versions.decode(encoded)
-    #
-    #      assert decoded.local_metadata.tracing_context == context
-    #    end
+    test "encode/1 and decode/1 with tracing context" do
+      context = "{\"traceparent\":\"00-1234-01\",\"tracestate\":{}}"
+
+      {:ok, encoded} =
+        Versions.encode(%Ockam.Message{
+          onward_route: ["printer"],
+          return_route: [],
+          payload: "hello",
+          local_metadata: %{tracing_context: context}
+        })
+
+      {:ok, decoded} = Versions.decode(encoded)
+
+      assert decoded.local_metadata.tracing_context == context
+    end
   end
 end
