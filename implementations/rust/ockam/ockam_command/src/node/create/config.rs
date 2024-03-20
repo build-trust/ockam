@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 impl CreateCommand {
     pub async fn run_config(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         let contents = async_parse_path_or_url(&self.name).await?;
+        // Set environment variables from the cli command args
         for (key, value) in &self.variables {
             std::env::set_var(key, value);
         }
@@ -50,8 +51,8 @@ impl NodeConfig {
     /// Merge the arguments of the node defined in the config with the arguments from the
     /// "create" command, giving precedence to the config values.
     fn merge(&mut self, cli_args: CreateCommand) -> miette::Result<String> {
-        // Set environment variables from the cli command
-        // overriding the duplicates the config file.
+        // Set environment variables from the cli command again
+        // to override the duplicate entries from the config file.
         for (key, value) in &cli_args.variables {
             std::env::set_var(key, value);
         }

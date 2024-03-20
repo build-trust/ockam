@@ -1,3 +1,4 @@
+use crate::progress_display::ProgressDisplay;
 use crate::terminal::OckamColor;
 use crate::{docs, fmt_log, fmt_ok, Command, CommandGlobalOpts};
 use async_trait::async_trait;
@@ -7,7 +8,7 @@ use miette::IntoDiagnostic;
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::IdentitiesVerification;
 use ockam_api::cli_state::random_name;
-use ockam_api::color_primary;
+use ockam_api::{color_primary, NamedVault};
 use ockam_node::Context;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
@@ -25,7 +26,7 @@ pub struct CreateCommand {
     pub name: String,
 
     /// Vault name to store the identity key
-    #[arg(long, value_name = "VAULT_NAME", global = true)]
+    #[arg(long, value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 
     /// Key ID to use for the identity creation
@@ -42,26 +43,22 @@ impl Command for CreateCommand {
     const NAME: &'static str = "identity create";
 
     async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let _progress_display = ProgressDisplay::start(&opts);
+        let vault = match &self.vault {
+            Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
+            None => opts.state.get_or_create_default_named_vault().await?,
+        };
         if let Some(identity) = self.identity.clone() {
-            self.import(opts, identity).await?;
+            self.import(opts, vault, identity).await?;
         } else {
-            self.create(opts).await?;
+            self.create(opts, vault).await?;
         };
         Ok(())
     }
 }
 
 impl CreateCommand {
-    async fn create(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        opts.terminal.write_line(&fmt_log!(
-            "Creating identity {}...\n",
-            color_primary(&self.name)
-        ))?;
-
-        let vault = match &self.vault {
-            Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
-            None => opts.state.get_or_create_default_named_vault().await?,
-        };
+    async fn create(self, opts: CommandGlobalOpts, vault: NamedVault) -> miette::Result<()> {
         let identity = match &self.key_id {
             Some(key_id) => {
                 opts.state
@@ -99,13 +96,12 @@ impl CreateCommand {
         Ok(())
     }
 
-    async fn import(self, opts: CommandGlobalOpts, identity: String) -> miette::Result<()> {
-        opts.terminal.write_line(&fmt_log!(
-            "Importing identity {}...\n",
-            color_primary(&self.name)
-        ))?;
-
-        let named_vault = opts.state.get_named_vault_or_default(&self.vault).await?;
+    async fn import(
+        self,
+        opts: CommandGlobalOpts,
+        vault: NamedVault,
+        identity: String,
+    ) -> miette::Result<()> {
         let change_history = ChangeHistory::import_from_string(&identity).into_diagnostic()?;
         let identifier = IdentitiesVerification::new(
             opts.state.change_history_repository(),
@@ -115,8 +111,9 @@ impl CreateCommand {
         .await
         .into_diagnostic()?;
         opts.state
-            .store_named_identity(&identifier, &self.name, &named_vault.name())
+            .store_named_identity(&identifier, &self.name, &vault.name())
             .await?;
+
         opts.terminal
             .stdout()
             .plain(fmt_ok!(

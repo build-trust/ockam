@@ -118,33 +118,12 @@ impl EnrollCommand {
 
         display_header(&opts);
 
-        let can_stop = Arc::new(Mutex::new(false));
-        let mut progress_display = ProgressDisplay::new(&opts);
-
-        let get_named_identity_task = async {
-            let it = opts
-                .state
+        let identity = {
+            let _progress_display = ProgressDisplay::start(&opts);
+            opts.state
                 .get_named_identity_or_default(&self.identity)
-                .await;
-            *can_stop.lock().await = true;
-            Ok(it)
+                .await?
         };
-
-        let (_, identity) = try_join!(
-            progress_display.start(can_stop.clone()),
-            get_named_identity_task
-        )?;
-
-        // If a named or default identity can't be found, then we can't proceed. Return
-        // error, and generate log.
-        let identity = match identity {
-            Ok(identity) => identity,
-            Err(e) => {
-                error!("Unable to find the Identity: {}", e);
-                return Err(e.into());
-            }
-        };
-        progress_display.finalize();
 
         let identity_name = identity.name();
         let identifier = identity.identifier();

@@ -141,15 +141,14 @@ impl CliState {
     #[instrument(skip_all, fields(vault_name = vault_name))]
     pub async fn get_or_create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
         let vaults_repository = self.vaults_repository();
-        self.notify("We need a Vault to store Identity secrets.".to_string());
         let is_default = vault_name == DEFAULT_VAULT_NAME;
 
         if let Ok(Some(existing_vault)) = vaults_repository.get_named_vault(vault_name).await {
             return Ok(existing_vault);
-        } else {
-            self.notify("There is no default Vault on this machine, creating one...".to_string());
         }
 
+        self.notify("We need a Vault to store Identity secrets.".to_string());
+        self.notify("There is no default Vault on this machine, creating one...".to_string());
         let named_vault = self
             .create_a_vault(&Some(vault_name.to_string()), &None, false)
             .await?;
