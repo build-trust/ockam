@@ -42,6 +42,10 @@ impl CliState {
         Arc::new(NodesSqlxDatabase::new(self.database()))
     }
 
+    pub(super) fn tcp_portals_repository(&self) -> Arc<dyn TcpPortalsRepository> {
+        Arc::new(TcpPortalsSqlxDatabase::new(self.database()))
+    }
+
     pub(super) fn projects_repository(&self) -> Arc<dyn ProjectsRepository> {
         Arc::new(ProjectsSqlxDatabase::new(self.database()))
     }
