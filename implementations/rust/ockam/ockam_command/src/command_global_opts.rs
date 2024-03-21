@@ -47,6 +47,7 @@ impl CommandGlobalOpts {
         cmd: &OckamSubcommand,
     ) -> miette::Result<Self> {
         let terminal = Terminal::from(global_args);
+        let rt = Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"));
         let logging_configuration =
             Self::make_logging_configuration(global_args, cmd, terminal.is_tty())?;
         let tracing_configuration = Self::make_tracing_configuration(global_args, cmd)?;
@@ -102,7 +103,7 @@ impl CommandGlobalOpts {
             global_args: global_args.clone(),
             state,
             terminal,
-            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
+            rt,
             tracing_guard,
         })
     }

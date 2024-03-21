@@ -58,6 +58,15 @@ pub(crate) const OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: &st
 /// OPENTELEMETRY COLLECTOR EXPORT CONFIGURATION
 ///
 
+/// Name of the background node used to export OpenTelemetry traces
+pub(crate) const OCKAM_OPENTELEMETRY_NODE_NAME: &str = "ockam-opentelemetry-export";
+
+/// Name of the inlet used to export OpenTelemetry traces
+pub(crate) const OCKAM_OPENTELEMETRY_INLET_ALIAS: &str = "ockam-opentelemetry";
+
+/// Name of the relay used to export OpenTelemetry traces
+pub(crate) const OCKAM_OPENTELEMETRY_RELAY_NAME: &str = "ockam-opentelemetry";
+
 /// Timeout for trying to export spans to the endpoint.
 /// Accepted values, see DurationVar. For example: 500ms
 pub(crate) const OCKAM_SPAN_EXPORT_TIMEOUT: &str = "OCKAM_SPAN_EXPORT_TIMEOUT";
