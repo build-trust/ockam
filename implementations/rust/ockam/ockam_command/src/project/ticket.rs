@@ -5,17 +5,14 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 
-use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::{
-    Members, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
+    OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cli_state::CliState;
-use ockam_api::cloud::project::Project;
 use ockam_api::nodes::InMemoryNode;
-use ockam_multiaddr::{proto, MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 
 use crate::fmt_ok;
 use crate::util::async_cmd;
@@ -25,7 +22,6 @@ use crate::{
     util::api::{IdentityOpts, TrustOpts},
 };
 use crate::{terminal::color_primary, util::duration::duration_parser};
-use ockam_api::cloud::project::models::ProjectModel;
 use tracing::debug;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -49,18 +45,9 @@ pub struct TicketCommand {
     #[command(flatten)]
     trust_opts: TrustOpts,
 
-    /// Bypass ticket creation, add this member directly to the Project's Membership Authority, with the given attributes
-    #[arg(value_name = "IDENTIFIER", long, short, conflicts_with = "expires_in")]
-    member: Option<Identifier>,
-
     /// The Project name from this option is used to create the enrollment ticket. This takes precedence over `--project`
-    #[arg(
-        long,
-        short,
-        default_value = "/project/default",
-        value_name = "ROUTE_TO_PROJECT"
-    )]
-    to: MultiAddr,
+    #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
+    to: Option<MultiAddr>,
 
     /// Attributes in `key=value` format to be attached to the member. You can specify this option multiple times for multiple attributes
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
@@ -68,15 +55,11 @@ pub struct TicketCommand {
 
     // Note: MAX_TOKEN_DURATION holds the default value.
     /// Duration for which the enrollment ticket is valid, if you don't specify this, the default is 10 minutes. Examples: 10000ms, 600s, 600, 10m, 1h, 1d. If you don't specify a length sigil, it is assumed to be seconds
-    #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser = duration_parser)]
+    #[arg(long = "expires-in", value_name = "DURATION", value_parser = duration_parser)]
     expires_in: Option<Duration>,
 
     /// Number of times the ticket can be used to enroll, the default is 1
-    #[arg(
-        long = "usage-count",
-        value_name = "USAGE_COUNT",
-        conflicts_with = "member"
-    )]
+    #[arg(long = "usage-count", value_name = "USAGE_COUNT")]
     usage_count: Option<u64>,
 
     /// Name of the relay that the identity using the ticket will be allowed to create. This name is transformed into attributes to prevent collisions when creating relay names. For example: `--relay foo` is shorthand for `--attribute ockam-relay=foo`
@@ -127,84 +110,53 @@ impl TicketCommand {
         ));
         }
 
+        let project = crate::project_member::get_project(&opts.state, &self.to).await?;
+
         let node = InMemoryNode::start_with_project_name(
             ctx,
             &opts.state,
-            self.trust_opts.project_name.clone(),
+            Some(project.name().to_string()),
         )
         .await?;
 
-        let project_model: Option<ProjectModel>;
+        let identity = opts
+            .state
+            .get_identity_name_or_default(&self.identity_opts.identity)
+            .await?;
 
-        let authority_node_client = if let Some(p) = get_project(&opts.state, &self.to).await? {
-            let identity = opts
-                .state
-                .get_identity_name_or_default(&self.identity_opts.identity)
-                .await?;
-            project_model = Some(p.model().clone());
-            node.create_authority_client(
-                &p.authority_identifier().into_diagnostic()?,
-                p.authority_multiaddr().into_diagnostic()?,
+        let authority_node_client = node
+            .create_authority_client(
+                &project.authority_identifier().into_diagnostic()?,
+                project.authority_multiaddr().into_diagnostic()?,
                 Some(identity),
                 None,
             )
-            .await?
-        } else {
-            return Err(miette!("Cannot create a ticket. Please specify a route to your project or to an authority node"));
-        };
+            .await?;
 
         let attributes = self.attributes()?;
         debug!(attributes = ?attributes, "Attributes passed");
 
-        // If an identity identifier is given add it as a member, otherwise
-        // request an enrollment token that a future member can use to get a
+        // Request an enrollment token that a future member can use to get a
         // credential.
-        if let Some(id) = &self.member {
-            authority_node_client
-                .add_member(ctx, id.clone(), attributes)
-                .await?
-        } else {
-            let token = authority_node_client
-                .create_token(ctx, attributes, self.expires_in, self.usage_count)
-                .await?;
+        let token = authority_node_client
+            .create_token(ctx, attributes, self.expires_in, self.usage_count)
+            .await?;
 
-            let ticket = EnrollmentTicket::new(token, project_model);
-            let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
+        let ticket = EnrollmentTicket::new(token, Some(project.model().clone()));
+        let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
 
-            opts.terminal.write_line(&fmt_ok!(
-                "{}: {}",
-                "Created enrollment ticket. You can use it to enroll another machine using",
-                color_primary("ockam project enroll")
-            ))?;
+        opts.terminal.write_line(&fmt_ok!(
+            "{}: {}",
+            "Created enrollment ticket. You can use it to enroll another machine using",
+            color_primary("ockam project enroll")
+        ))?;
 
-            opts.terminal
-                .clone()
-                .stdout()
-                .machine(ticket_serialized)
-                .write_line()?;
-        }
+        opts.terminal
+            .clone()
+            .stdout()
+            .machine(ticket_serialized)
+            .write_line()?;
 
         Ok(())
-    }
-}
-
-/// Get the project authority from the first address protocol.
-///
-/// If the first protocol is a `/project`, look up the project's config.
-async fn get_project(cli_state: &CliState, input: &MultiAddr) -> Result<Option<Project>> {
-    if let Some(proto) = input.first() {
-        if proto.code() == proto::Project::CODE {
-            let project_name = proto.cast::<proto::Project>().expect("project protocol");
-            match cli_state.projects().get_project_by_name(&project_name).await.ok() {
-                None => Err(miette!("Unknown project '{}'. Run 'ockam project list' to get a list of available projects.", project_name.to_string()))?,
-                Some(project) => {
-                    Ok(Some(project))
-                }
-            }
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(None)
     }
 }
