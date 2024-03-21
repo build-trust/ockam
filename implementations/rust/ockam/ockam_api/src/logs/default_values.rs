@@ -16,7 +16,7 @@ pub(crate) const DEFAULT_LOG_MAX_FILES: u64 = 60;
 
 /// Default endpoint for the OpenTelemetry collector
 pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT: &str =
-    "http://k8s-opentele-otelcoll-aa527132c8-70cbeef1b85b559b.elb.us-west-1.amazonaws.com:4317/";
+    "https://otelcoll.orchestrator.ockam.io:443";
 
 ///
 /// TRACING
