@@ -59,12 +59,14 @@ jobs:
     name: All - lint_semgrep
     runs-on: ubuntu-20.04
     container:
-      image: returntocorp/semgrep
+      image: returntocorp/semgrep@sha256:2fd35fa409f209e0fea0c2d72cf1e5b801a607959a93b13d04822bb3b6a9dfe4
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - name: Run Semgrep
+        # Bash is not available in the specified docker image of semgrep
+        shell: sh
         # .semgrepignore is not processed outside of working directory. See https://github.com/returntocorp/semgrep/issues/5669
         run: |
           mv tools/semgrep/.semgrepignore . & \
