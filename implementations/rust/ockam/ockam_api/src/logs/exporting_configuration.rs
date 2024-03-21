@@ -182,6 +182,11 @@ fn to_socket_addr(url: Url) -> Option<SocketAddr> {
             .to_socket_addrs()
             .ok()
             .and_then(|mut addrs| addrs.next()),
+        // the port might be unspecified, in that case we use 443, a HTTPS port
+        (Some(host), None) => (host, 443)
+            .to_socket_addrs()
+            .ok()
+            .and_then(|mut addrs| addrs.next()),
         _ => None,
     }
 }
