@@ -3,6 +3,7 @@ use ockam_core::async_trait;
 use ockam_core::Result;
 
 use crate::cli_state::enrollments::IdentityEnrollment;
+use crate::cloud::email_address::EmailAddress;
 
 /// This trait stores the enrollment status for local identities
 /// If an identity has been enrolled it is possible to retrieve:
@@ -15,7 +16,7 @@ use crate::cli_state::enrollments::IdentityEnrollment;
 #[async_trait]
 pub trait EnrollmentsRepository: Send + Sync + 'static {
     /// Set the identifier as enrolled, and set a timestamp to record the information
-    async fn set_as_enrolled(&self, identifier: &Identifier) -> Result<()>;
+    async fn set_as_enrolled(&self, identifier: &Identifier, email: &EmailAddress) -> Result<()>;
 
     /// Get the list of enrolled identities
     async fn get_enrolled_identities(&self) -> Result<Vec<IdentityEnrollment>>;

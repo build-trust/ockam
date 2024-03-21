@@ -12,6 +12,7 @@ use ockam_core::Result;
 
 use crate::cli_state::enrollments::IdentityEnrollment;
 use crate::cli_state::EnrollmentsRepository;
+use crate::cloud::email_address::EmailAddress;
 
 #[derive(Clone)]
 pub struct EnrollmentsSqlxDatabase {
@@ -33,10 +34,11 @@ impl EnrollmentsSqlxDatabase {
 
 #[async_trait]
 impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
-    async fn set_as_enrolled(&self, identifier: &Identifier) -> Result<()> {
-        let query = query("INSERT OR REPLACE INTO identity_enrollment VALUES (?, ?)")
+    async fn set_as_enrolled(&self, identifier: &Identifier, email: &EmailAddress) -> Result<()> {
+        let query = query("INSERT OR REPLACE INTO identity_enrollment(identifier, enrolled_at, email) VALUES (?, ?, ?)")
             .bind(identifier.to_sql())
-            .bind(OffsetDateTime::now_utc().to_sql());
+            .bind(OffsetDateTime::now_utc().to_sql())
+            .bind(email.to_sql());
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
@@ -45,7 +47,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
             r#"
             SELECT
               identity.identifier, named_identity.name, named_identity.is_default,
-              identity_enrollment.enrolled_at
+              identity_enrollment.enrolled_at, identity_enrollment.email
             FROM identity
             INNER JOIN identity_enrollment ON
               identity.identifier = identity_enrollment.identifier
@@ -66,7 +68,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
             r#"
             SELECT
               identity.identifier, named_identity.name, named_identity.is_default,
-              identity_enrollment.enrolled_at
+              identity_enrollment.enrolled_at, identity_enrollment.email
             FROM identity
             LEFT JOIN identity_enrollment ON
               identity.identifier = identity_enrollment.identifier
@@ -130,6 +132,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
 pub struct EnrollmentRow {
     identifier: String,
     name: Option<String>,
+    email: Option<String>,
     is_default: bool,
     enrolled_at: Option<i64>,
 }
@@ -137,9 +140,16 @@ pub struct EnrollmentRow {
 impl EnrollmentRow {
     fn identity_enrollment(&self) -> Result<IdentityEnrollment> {
         let identifier = Identifier::from_str(self.identifier.as_str())?;
+        let email = self
+            .email
+            .as_ref()
+            .map(|e| EmailAddress::parse(e.as_str()))
+            .transpose()?;
+
         Ok(IdentityEnrollment::new(
             identifier,
             self.name.clone(),
+            email,
             self.is_default,
             self.enrolled_at(),
         ))
@@ -170,8 +180,12 @@ mod tests {
         let identity1 = create_identity(db.clone(), "identity1").await?;
         create_identity(db.clone(), "identity2").await?;
 
+        let email = EmailAddress::parse("test@example.com")?;
+
         // an identity can be enrolled
-        repository.set_as_enrolled(identity1.identifier()).await?;
+        repository
+            .set_as_enrolled(identity1.identifier(), &email)
+            .await?;
 
         // retrieve the identities and their enrollment status
         let result = repository.get_all_identities_enrollments().await?;
@@ -180,6 +194,7 @@ mod tests {
         // retrieve only the enrolled identities
         let result = repository.get_enrolled_identities().await?;
         assert_eq!(result.len(), 1);
+        assert_eq!(result[0].email(), Some(email));
 
         // the first identity must be seen as enrolled
         let result = repository.is_identity_enrolled("identity1").await?;
