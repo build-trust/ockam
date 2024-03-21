@@ -7,6 +7,7 @@ use ockam::identity::Identifier;
 
 use crate::cli_state::Result;
 use crate::cli_state::{CliState, CliStateError};
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::models::ProjectModel;
 use crate::error::ApiError;
 
@@ -47,10 +48,14 @@ impl CliState {
     }
 
     #[instrument(skip_all, fields(identifier = %identifier))]
-    pub async fn set_identifier_as_enrolled(&self, identifier: &Identifier) -> Result<()> {
+    pub async fn set_identifier_as_enrolled(
+        &self,
+        identifier: &Identifier,
+        email: &EmailAddress,
+    ) -> Result<()> {
         Ok(self
             .enrollment_repository()
-            .set_as_enrolled(identifier)
+            .set_as_enrolled(identifier, email)
             .await?)
     }
 
@@ -117,6 +122,7 @@ impl Display for EnrollmentStatus {
 pub struct IdentityEnrollment {
     identifier: Identifier,
     name: Option<String>,
+    email: Option<EmailAddress>,
     is_default: bool,
     enrolled_at: Option<OffsetDateTime>,
 }
@@ -125,12 +131,14 @@ impl IdentityEnrollment {
     pub fn new(
         identifier: Identifier,
         name: Option<String>,
+        email: Option<EmailAddress>,
         is_default: bool,
         enrolled_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             identifier,
             name,
+            email,
             is_default,
             enrolled_at,
         }
@@ -142,6 +150,11 @@ impl IdentityEnrollment {
     #[allow(dead_code)]
     pub fn name(&self) -> Option<String> {
         self.name.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn email(&self) -> Option<EmailAddress> {
+        self.email.clone()
     }
 
     #[allow(dead_code)]
