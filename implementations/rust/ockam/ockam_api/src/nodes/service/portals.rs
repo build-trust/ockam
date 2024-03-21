@@ -256,7 +256,11 @@ impl NodeManager {
                     )
                     .await;
 
-                OutletStatus::new(socket_addr, worker_addr, None)
+                let tcp_outlet_status = self
+                    .cli_state
+                    .create_tcp_outlet(&self.node_name, &socket_addr, &worker_addr, &None)
+                    .await?;
+                tcp_outlet_status
             }
             Err(e) => {
                 warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
@@ -275,6 +279,9 @@ impl NodeManager {
         if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr).await {
             debug!(%worker_addr, "Successfully removed outlet from node registry");
 
+            self.cli_state
+                .delete_tcp_outlet(&self.node_name, worker_addr)
+                .await?;
             self.cli_state
                 .delete_resource(&worker_addr.address().into())
                 .await?;
@@ -426,18 +433,24 @@ impl NodeManager {
             )
             .await;
 
-        Ok(InletStatus::new(
-            listen_addr.clone(),
-            outcome.as_ref().map(|s| s.worker.address().to_string()),
-            alias.clone(),
-            None,
-            outcome.as_ref().map(|s| s.route.to_string()),
-            outcome
-                .as_ref()
-                .map(|s| s.connection_status)
-                .unwrap_or(ConnectionStatus::Down),
-            outlet_addr.to_string(),
-        ))
+        let tcp_inlet_status = self
+            .cli_state
+            .create_tcp_inlet(
+                &self.node_name,
+                &listen_addr,
+                &outcome.clone().map(|s| s.worker),
+                &alias,
+                &None,
+                &outcome.clone().map(|s| s.route),
+                outcome
+                    .as_ref()
+                    .map(|s| s.connection_status)
+                    .unwrap_or(ConnectionStatus::Down),
+                &outlet_addr,
+            )
+            .await?;
+
+        Ok(tcp_inlet_status)
     }
 
     pub async fn delete_inlet(&self, alias: &str) -> Result<InletStatus> {
@@ -445,6 +458,9 @@ impl NodeManager {
         if let Some(inlet_to_delete) = self.registry.inlets.remove(alias).await {
             debug!(%alias, "Successfully removed inlet from node registry");
             inlet_to_delete.session.close().await?;
+            self.cli_state
+                .delete_tcp_inlet(&self.node_name, &alias)
+                .await?;
             self.cli_state.delete_resource(&alias.into()).await?;
             Ok(InletStatus::new(
                 inlet_to_delete.bind_addr,
@@ -803,7 +819,7 @@ pub trait Outlets {
 
 #[async_trait]
 impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = %to, from = ?from))]
+    #[instrument(skip_all, fields(to = % to, from = ? from))]
     async fn create_outlet(
         &self,
         ctx: &Context,

@@ -40,18 +40,20 @@ impl ModelStateSqlxDatabase {
 /// The implementation simply serializes / deserializes the ModelState as JSON
 #[async_trait]
 impl ModelStateRepository for ModelStateSqlxDatabase {
-    async fn store(&self, model_state: &ModelState) -> Result<()> {
+    async fn store(&self, node_name: &str, model_state: &ModelState) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
         // remove previous tcp_outlet_status state
-        query("DELETE FROM tcp_outlet_status")
+        query("DELETE FROM tcp_outlet_status where node_name = ?")
+            .bind(node_name.to_sql())
             .execute(&mut *transaction)
             .await
             .void()?;
 
         // re-insert the new state
         for tcp_outlet_status in &model_state.tcp_outlets {
-            let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?)")
+            let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
+                .bind(node_name.to_sql())
                 .bind(tcp_outlet_status.socket_addr.to_sql())
                 .bind(tcp_outlet_status.worker_addr.to_sql())
                 .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
@@ -77,8 +79,11 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         Ok(())
     }
 
-    async fn load(&self) -> Result<ModelState> {
-        let query1 = query_as("SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status");
+    async fn load(&self, node_name: &str) -> Result<ModelState> {
+        let query1 = query_as(
+            "SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = ?",
+        )
+        .bind(node_name.to_sql());
         let result: Vec<TcpOutletStatusRow> =
             query1.fetch_all(&*self.database.pool).await.into_core()?;
         let tcp_outlets = result
@@ -149,10 +154,11 @@ mod tests {
     async fn store_and_load() -> Result<()> {
         let db = create_database().await?;
         let repository = create_repository(db.clone());
+        let node_name = "node";
 
         let mut state = ModelState::default();
-        repository.store(&state).await?;
-        let loaded = repository.load().await?;
+        repository.store(node_name, &state).await?;
+        let loaded = repository.load(node_name).await?;
         assert!(state.tcp_outlets.is_empty());
         assert_eq!(state, loaded);
 
@@ -168,8 +174,8 @@ mod tests {
             enabled: true,
             name: Some("aws".to_string()),
         });
-        repository.store(&state).await?;
-        let loaded = repository.load().await?;
+        repository.store(node_name, &state).await?;
+        let loaded = repository.load(node_name).await?;
         assert_eq!(state.tcp_outlets.len(), 1);
         assert_eq!(state.incoming_services.len(), 1);
         assert_eq!(state, loaded);
@@ -181,15 +187,15 @@ mod tests {
                 Address::from_string(format!("s{i}")),
                 None,
             ));
-            repository.store(&state).await.unwrap();
+            repository.store(node_name, &state).await.unwrap();
         }
-        let loaded = repository.load().await?;
+        let loaded = repository.load(node_name).await?;
         assert_eq!(state.tcp_outlets.len(), 5);
         assert_eq!(state, loaded);
 
         // Reload from DB scratch to emulate an app restart
         let repository = create_repository(db);
-        let loaded = repository.load().await?;
+        let loaded = repository.load(node_name).await?;
         assert_eq!(state.tcp_outlets.len(), 5);
         assert_eq!(state.incoming_services.len(), 1);
         assert_eq!(state, loaded);
@@ -202,8 +208,8 @@ mod tests {
             name: Some("aws".to_string()),
         });
 
-        repository.store(&state).await?;
-        let loaded = repository.load().await?;
+        repository.store(node_name, &state).await?;
+        let loaded = repository.load(node_name).await?;
 
         assert_eq!(state.tcp_outlets.len(), 2);
         assert_eq!(state.incoming_services.len(), 2);

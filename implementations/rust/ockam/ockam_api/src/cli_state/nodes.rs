@@ -105,7 +105,7 @@ impl CliState {
     /// Delete a node
     ///  - first stop it if it is running
     ///  - then remove it from persistent storage
-    #[instrument(skip_all, fields(node_name = node_name, force = %force))]
+    #[instrument(skip_all, fields(node_name = node_name, force = % force))]
     pub async fn delete_node(&self, node_name: &str, force: bool) -> Result<()> {
         self.stop_node(node_name, force).await?;
         self.remove_node(node_name).await?;
@@ -113,7 +113,7 @@ impl CliState {
     }
 
     /// Delete all created nodes
-    #[instrument(skip_all, fields(force = %force))]
+    #[instrument(skip_all, fields(force = % force))]
     pub async fn delete_all_nodes(&self, force: bool) -> Result<()> {
         let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
@@ -158,6 +158,12 @@ impl CliState {
         let repository = self.nodes_repository();
         let node_exists = repository.get_node(node_name).await.is_ok();
         repository.delete_node(node_name).await?;
+
+        // remove the node portals
+        self.tcp_portals_repository()
+            .delete_tcp_portals_by_node(node_name)
+            .await?;
+
         // set another node as the default node
         if node_exists {
             let other_nodes = repository.get_nodes().await?;
@@ -175,7 +181,7 @@ impl CliState {
     /// Stop a background node
     ///
     ///  - if force is true, send a SIGKILL signal to the node process
-    #[instrument(skip_all, fields(node_name = node_name, force = %force))]
+    #[instrument(skip_all, fields(node_name = node_name, force = % force))]
     pub async fn stop_node(&self, node_name: &str, force: bool) -> Result<()> {
         let node = self.get_node(node_name).await?;
         self.nodes_repository().set_no_node_pid(node_name).await?;
@@ -221,7 +227,7 @@ impl CliState {
     }
 
     /// Set a TCP listener address on a node when the TCP listener has been started
-    #[instrument(skip_all, fields(node_name = node_name, address = %address))]
+    #[instrument(skip_all, fields(node_name = node_name, address = % address))]
     pub async fn set_tcp_listener_address(
         &self,
         node_name: &str,
@@ -247,7 +253,7 @@ impl CliState {
 
     /// Set the current process id on a background node
     /// Keeping track of a background node process id allows us to kill its process when stopping the node
-    #[instrument(skip_all, fields(node_name = node_name, pid = %pid))]
+    #[instrument(skip_all, fields(node_name = node_name, pid = % pid))]
     pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
         Ok(self.nodes_repository().set_node_pid(node_name, pid).await?)
     }
@@ -341,7 +347,7 @@ impl CliState {
 /// Private functions
 impl CliState {
     /// This method creates a node
-    #[instrument(skip_all, fields(node_name = node_name, identifier = %identifier))]
+    #[instrument(skip_all, fields(node_name = node_name, identifier = % identifier))]
     pub async fn create_node_with_identifier(
         &self,
         node_name: &str,

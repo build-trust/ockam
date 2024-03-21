@@ -147,7 +147,7 @@ impl AppState {
         let node_manager = create_node_manager(context.clone(), &cli_state).await;
         let model_state_repository = create_model_state_repository(&cli_state);
         let model_state = model_state_repository
-            .load()
+            .load(&node_manager.node_name())
             .await
             .unwrap_or(ModelState::default());
 
@@ -433,10 +433,12 @@ impl AppState {
         trace!(?model_state, "updating model state locally");
         f(&mut model_state);
         trace!(?model_state, "persisting model state to DB");
+
+        let node_manager = self.node_manager.read().await;
         self.model_state_repository
             .read()
             .await
-            .store(&model_state)
+            .store(&node_manager.node_name, &model_state)
             .await?;
         Ok(())
     }

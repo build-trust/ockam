@@ -23,6 +23,7 @@ mod resources;
 pub mod secure_channels;
 pub mod spaces;
 pub mod storage;
+mod tcp_portals;
 pub mod test_support;
 pub mod trust;
 pub mod users;
