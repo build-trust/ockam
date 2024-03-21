@@ -30,7 +30,7 @@ fn test_create_journey_event() {
         &LoggingConfiguration::off()
             .unwrap()
             .set_crates(&["ockam_api"]),
-        &ExportingConfiguration::foreground(false).unwrap(),
+        &ExportingConfiguration::foreground().unwrap(),
         "test",
         None,
     );

@@ -134,6 +134,13 @@ impl NodesRepository for NodesSqlxDatabase {
             .bind(node_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
 
+        let query = sqlx::query("DELETE FROM tcp_inlet WHERE node_name=?").bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
+        let query =
+            sqlx::query("DELETE FROM tcp_outlet_status WHERE node_name=?").bind(node_name.to_sql());
+        query.execute(&mut *transaction).await.void()?;
+
         let query =
             sqlx::query("DELETE FROM node_project WHERE node_name=?").bind(node_name.to_sql());
         query.execute(&mut *transaction).await.void()?;

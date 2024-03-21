@@ -8,8 +8,8 @@ use crate::Result;
 #[async_trait]
 pub trait ModelStateRepository: Send + Sync + 'static {
     /// Store / update the full model state in the database
-    async fn store(&self, model_state: &ModelState) -> Result<()>;
+    async fn store(&self, node_name: &str, model_state: &ModelState) -> Result<()>;
 
     /// Load the model state from the database
-    async fn load(&self) -> Result<ModelState>;
+    async fn load(&self, node_name: &str) -> Result<ModelState>;
 }

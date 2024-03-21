@@ -34,8 +34,15 @@ pub(crate) const OCKAM_LOG_CRATES_FILTER: &str = "OCKAM_LOG_CRATES_FILTER";
 /// Decides if spans and log records should be created and exported. Accepted values, see BooleanVar. For example; true, false, 1, 0
 pub(crate) const OCKAM_OPENTELEMETRY_EXPORT: &str = "OCKAM_OPENTELEMETRY_EXPORT";
 
+/// Decides if spans and log records should be exported via the project exporter portal. Accepted values, see BooleanVar. For example; true, false, 1, 0
+pub(crate) const OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL: &str =
+    "OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL";
+
 /// Boolean set to true if the current user is an Ockam developer
 pub(crate) const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";
+
+/// If this variable is true, print statements will debug the setting of the OpenTelemetry export
+pub(crate) const OCKAM_OPENTELEMETRY_EXPORT_DEBUG: &str = "OCKAM_OPENTELEMETRY_EXPORT_DEBUG";
 
 ///
 /// OPENTELEMETRY COLLECTOR ENDPOINT CONFIGURATION
@@ -57,6 +64,15 @@ pub(crate) const OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: &st
 ///
 /// OPENTELEMETRY COLLECTOR EXPORT CONFIGURATION
 ///
+
+/// Name of the background node used to export OpenTelemetry traces
+pub(crate) const OCKAM_OPENTELEMETRY_NODE_NAME: &str = "ockam-opentelemetry-inlet";
+
+/// Name of the inlet used to export OpenTelemetry traces
+pub(crate) const OCKAM_OPENTELEMETRY_INLET_ALIAS: &str = "ockam-opentelemetry";
+
+/// Name of the relay used to export OpenTelemetry traces
+pub(crate) const OCKAM_OPENTELEMETRY_RELAY_NAME: &str = "ockam-opentelemetry";
 
 /// Timeout for trying to export spans to the endpoint.
 /// Accepted values, see DurationVar. For example: 500ms
@@ -93,6 +109,16 @@ pub(crate) const OCKAM_SPAN_EXPORT_QUEUE_SIZE: &str = "OCKAM_SPAN_EXPORT_QUEUE_S
 /// Size of the queue used to batch log records.
 /// Accepted values, u16. For example: 2048
 pub(crate) const OCKAM_LOG_EXPORT_QUEUE_SIZE: &str = "OCKAM_LOG_EXPORT_QUEUE_SIZE";
+
+/// Maximum time for sending a log batch and not waiting for a response when running
+/// a foreground command and using a portal to export log records. For example: 200ms
+pub(crate) const OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: &str =
+    "OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF";
+
+/// Maximum time for sending a span batch and not waiting for a response when running
+/// a foreground command and using a portal to export span batches. For example: 200ms
+pub(crate) const OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: &str =
+    "OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF";
 
 ///
 /// OPENTELEMETRY COLLECTOR ERRORS CONFIGURATION

@@ -34,6 +34,10 @@ Tracing
 - OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `2048`
 - OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `2048`
 - OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
+- OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `300ms`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `300ms`.
+- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
+
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.
@@ -42,6 +46,8 @@ Devs Usage
 - OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.
 - OCKAM_AUTHENTICATOR_ENDPOINT: a `string` that overrides the default endpoint of the authenticator. Defaults to `https://account.ockam.io`.
 - OCKAM_DEVELOPER: a `boolean` specifying if the current user is an Ockam developer (for more accurate metrics).
+- OCKAM_OPENTELEMETRY_EXPORT_DEBUG: a `boolean` specifying if debug messages must be printed to the console when the OpenTelemetry export is configured.
+- OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL: a `boolean` specifying if traces must be exported via a portal when a project exists (this feature flag is set to `false` for now)
 
 Internal (to enable some special behavior in the logic)
 - OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.

@@ -26,7 +26,7 @@ where
             .unwrap()
             .set_all_crates()
             .set_log_level(tracing_core::metadata::Level::TRACE),
-        &ExportingConfiguration::foreground(true).unwrap(),
+        &ExportingConfiguration::foreground().unwrap(),
         "test",
         None,
     );

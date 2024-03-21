@@ -48,3 +48,10 @@ pub(crate) const DEFAULT_SPAN_EXPORT_QUEUE_SIZE: u16 = 2048;
 
 // Size of the queue used to batch logs.
 pub(crate) const DEFAULT_LOG_EXPORT_QUEUE_SIZE: u16 = 2048;
+
+// Maximum time for sending log record batches when using a portal
+pub(crate) const DEFAULT_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Duration = Duration::from_millis(300);
+
+// Maximum time for sending span batches when using a portal
+pub(crate) const DEFAULT_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: Duration =
+    Duration::from_millis(300);
