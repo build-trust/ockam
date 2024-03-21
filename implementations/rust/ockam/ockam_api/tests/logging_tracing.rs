@@ -34,7 +34,7 @@ fn test_log_and_traces() {
         &make_configuration()
             .unwrap()
             .set_log_directory(log_directory.into()),
-        &ExportingConfiguration::foreground(false).unwrap(),
+        &ExportingConfiguration::foreground().unwrap(),
         "test",
         None,
     );

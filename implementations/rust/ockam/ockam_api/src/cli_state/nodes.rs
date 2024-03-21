@@ -164,6 +164,7 @@ impl CliState {
         let repository = self.nodes_repository();
         let node_exists = repository.get_node(node_name).await.is_ok();
         repository.delete_node(node_name).await?;
+
         // set another node as the default node
         if node_exists {
             let other_nodes = repository.get_nodes().await?;

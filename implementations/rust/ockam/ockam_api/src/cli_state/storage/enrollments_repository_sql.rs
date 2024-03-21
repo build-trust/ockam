@@ -36,9 +36,9 @@ impl EnrollmentsSqlxDatabase {
 impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
     async fn set_as_enrolled(&self, identifier: &Identifier, email: &EmailAddress) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO identity_enrollment(identifier, enrolled_at, email) VALUES (?, ?, ?)")
-            .bind(identifier.to_sql())
-            .bind(OffsetDateTime::now_utc().to_sql())
-            .bind(email.to_sql());
+                .bind(identifier.to_sql())
+                .bind(OffsetDateTime::now_utc().to_sql())
+                .bind(email.to_sql());
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
@@ -163,11 +163,13 @@ impl EnrollmentRow {
 
 #[cfg(test)]
 mod tests {
-    use crate::cli_state::{EnrollmentsRepository, IdentitiesRepository, IdentitiesSqlxDatabase};
+    use std::sync::Arc;
+
     use ockam::identity::{
         identities, ChangeHistoryRepository, ChangeHistorySqlxDatabase, Identity,
     };
-    use std::sync::Arc;
+
+    use crate::cli_state::{EnrollmentsRepository, IdentitiesRepository, IdentitiesSqlxDatabase};
 
     use super::*;
 

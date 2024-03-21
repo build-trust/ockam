@@ -28,7 +28,9 @@ use crate::cli_state::journeys::APP_NAME;
 use ockam_node::Executor;
 
 use crate::logs::tracing_guard::TracingGuard;
-use crate::logs::{ExportingConfiguration, GlobalErrorHandler, LoggingConfiguration};
+use crate::logs::{
+    ExportingConfiguration, GlobalErrorHandler, LoggingConfiguration, OckamLogExporter,
+};
 use crate::logs::{LogFormat, OckamSpanExporter};
 
 pub struct LoggingTracing;
@@ -237,12 +239,18 @@ fn create_opentelemetry_tracing_layer<
         .with_max_queue_size(exporting_configuration.span_export_queue_size() as usize)
         .build();
     let is_ockam_developer = exporting_configuration.is_ockam_developer();
+    let span_export_cutoff = exporting_configuration.span_export_cutoff();
     Executor::execute_future(async move {
         let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
         let (tracer, tracer_provider) = create_tracer(
             trace_config,
             batch_config,
-            OckamSpanExporter::new(span_exporter, node_name, is_ockam_developer),
+            OckamSpanExporter::new(
+                span_exporter,
+                node_name,
+                is_ockam_developer,
+                span_export_cutoff,
+            ),
         );
         (
             tracing_opentelemetry::layer().with_tracer(tracer),
@@ -266,6 +274,7 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     let log_export_timeout = exporting_configuration.log_export_timeout();
     let log_export_scheduled_delay = exporting_configuration.log_export_scheduled_delay();
     let log_export_queue_size = exporting_configuration.log_export_queue_size();
+    let log_export_cutoff = exporting_configuration.log_export_cutoff();
     Executor::execute_future(async move {
         let config = sdk::logs::Config::default().with_resource(make_resource(app));
         let batch_config = logs::BatchConfigBuilder::default()
@@ -273,6 +282,9 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
             .with_scheduled_delay(log_export_scheduled_delay)
             .with_max_queue_size(log_export_queue_size as usize)
             .build();
+
+        let log_exporter = OckamLogExporter::new(log_exporter, log_export_cutoff);
+
         let log_processor =
             BatchLogProcessor::builder(log_exporter, opentelemetry_sdk::runtime::Tokio)
                 .with_batch_config(batch_config)

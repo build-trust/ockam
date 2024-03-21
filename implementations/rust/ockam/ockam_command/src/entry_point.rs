@@ -51,7 +51,7 @@ pub fn run() -> miette::Result<()> {
                 );
                 let _guard = LoggingTracing::setup(
                     &logging_configuration.into_diagnostic()?,
-                    &ExportingConfiguration::foreground(true).into_diagnostic()?,
+                    &ExportingConfiguration::foreground().into_diagnostic()?,
                     "local node",
                     None,
                 );

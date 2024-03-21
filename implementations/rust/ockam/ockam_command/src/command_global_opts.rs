@@ -47,8 +47,10 @@ impl CommandGlobalOpts {
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
     ) -> miette::Result<Self> {
+        let rt = Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"));
         let logging_configuration =
             Self::make_logging_configuration(global_args, cmd, Term::stdout().is_term())?;
+        let tracing_configuration = Self::make_tracing_configuration(cmd)?;
         let terminal = Terminal::new(
             logging_configuration.is_enabled(),
             global_args.quiet,
@@ -56,7 +58,6 @@ impl CommandGlobalOpts {
             global_args.no_input,
             global_args.output_format.clone(),
         );
-        let tracing_configuration = Self::make_tracing_configuration(global_args, cmd)?;
         let tracing_guard =
             Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);
 
@@ -109,7 +110,7 @@ impl CommandGlobalOpts {
             global_args: global_args.clone(),
             state,
             terminal,
-            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
+            rt,
             tracing_guard,
         })
     }
@@ -164,14 +165,11 @@ impl CommandGlobalOpts {
     }
 
     /// Create the tracing configuration, depending on the command to execute
-    fn make_tracing_configuration(
-        global_args: &GlobalArgs,
-        cmd: &OckamSubcommand,
-    ) -> miette::Result<ExportingConfiguration> {
+    fn make_tracing_configuration(cmd: &OckamSubcommand) -> miette::Result<ExportingConfiguration> {
         Ok(if cmd.is_background_node() {
-            ExportingConfiguration::background(global_args.quiet).into_diagnostic()?
+            ExportingConfiguration::background().into_diagnostic()?
         } else {
-            ExportingConfiguration::foreground(global_args.quiet).into_diagnostic()?
+            ExportingConfiguration::foreground().into_diagnostic()?
         })
     }
 

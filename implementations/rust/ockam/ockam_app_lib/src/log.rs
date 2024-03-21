@@ -39,7 +39,7 @@ impl AppState {
                 ockam_crates,
             )
             .unwrap(),
-            &ExportingConfiguration::foreground(true).unwrap(),
+            &ExportingConfiguration::foreground().unwrap(),
             "portals",
             Some("portals".to_string()),
         );
