@@ -22,6 +22,6 @@ ockam_identity = { path = "../ockam_identity" }
 ockam_vault = { path = "../ockam_vault" }
 ockam_vault_aws = { path = "../ockam_vault_aws" }
 # Enable credentials-sso feature in ockam_vault_aws for use on sso environments (like dev machines)
-rustler = "0.31.0"
+rustler = "0.32.1"
 time = "0.3.34"
 tokio = "1.36.0"
