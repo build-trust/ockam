@@ -50,7 +50,7 @@ impl EnrollerAccessControlChecks {
                 EnrollerCheckResult {
                     is_member: true,
                     is_enroller,
-                    is_admin: is_enroller, // To be removed
+                    is_admin: false,
                     is_pre_trusted: member.is_pre_trusted(),
                 }
             }
@@ -75,6 +75,11 @@ impl EnrollerAccessControlChecks {
                     r.is_member = true;
                 }
             }
+            r.is_admin = r.is_admin || (!info.enforce_admin_checks() && r.is_enroller);
+        } else {
+            // If there is no account authority configured, treat enrollers as admins.
+            // To be removed when we stop supporting legacy clients.
+            r.is_admin = r.is_enroller;
         }
         Ok(r)
     }
