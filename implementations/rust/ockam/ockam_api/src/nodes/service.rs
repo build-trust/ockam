@@ -502,7 +502,7 @@ impl NodeManager {
         authorized: Option<Vec<Identifier>>,
         timeout: Option<Duration>,
     ) -> Result<Connection> {
-        debug!(?timeout, "connecting to {}", &addr);
+        debug!(identifier, ?timeout, "connecting to {}", &addr);
         let connection = ConnectionBuilder::new(addr.clone())
             .instantiate(
                 ctx.clone(),

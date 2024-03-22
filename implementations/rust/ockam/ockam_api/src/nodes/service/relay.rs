@@ -264,6 +264,7 @@ struct RelaySessionReplacer {
 impl SessionReplacer for RelaySessionReplacer {
     async fn create(&mut self) -> std::result::Result<ReplacerOutcome, ockam_core::Error> {
         debug!(addr = self.addr.to_string(), relay_address = ?self.relay_address, at_rust_node = ?self.at_rust_node, "Handling CreateRelay request");
+        debug!(identifier = self.node_manager.identifier(), address = self.addr.to_string(), "making a secure channel connection");
         let connection = self
             .node_manager
             .make_connection(

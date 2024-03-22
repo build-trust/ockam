@@ -32,6 +32,7 @@ impl Worker for RemoteRelay {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         if msg.msg_addr() == self.addresses.heartbeat {
+            debug!("RemoteRelay received heartbeat message");
             // Heartbeat message, send registration message
             ctx.send_from_address(
                 self.registration_route.clone(),
@@ -89,12 +90,14 @@ impl Worker for RemoteRelay {
                     }
 
                     if let Some(heartbeat) = &mut self.heartbeat {
+                        debug!("RemoteRelay schedule a new heartbeat");
                         heartbeat.schedule(self.heartbeat_interval).await?;
                     }
 
                     Ok(())
                 }
                 Ok(next) if next == &self.addresses.main_remote => {
+                    debug!("RemoteRelay received a forward to itself");
                     // Explicitly check that we don't forward to ourselves as this would somewhat
                     // overcome our outgoing access control, even though it shouldn't be possible
                     // to exploit it in any way
@@ -118,6 +121,7 @@ impl Worker for RemoteRelay {
                 }
             }
         } else {
+            debug!("RemoteRelay received an unknown forward destination address");
             Err(OckamError::UnknownForwarderDestinationAddress)?
         }
     }
