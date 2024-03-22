@@ -84,12 +84,13 @@ impl PortalMessage<'_> {
                 let mut vec = Vec::with_capacity(capacity);
                 vec.push(3);
                 write_slice(&mut vec, payload);
-                if let Some(counter) = counter {
-                    vec.push(1); // has counter
-                    vec.extend_from_slice(&counter.to_le_bytes())
-                } else {
-                    vec.push(0);
-                }
+                // TODO: re-enable once orchestrator accepts packet counter
+                // if let Some(counter) = counter {
+                //     vec.push(1); // has counter
+                //     vec.extend_from_slice(&counter.to_le_bytes())
+                // } else {
+                //     vec.push(0);
+                // }
                 Ok(vec)
             }
         }

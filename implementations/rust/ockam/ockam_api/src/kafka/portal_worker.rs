@@ -305,10 +305,8 @@ impl KafkaPortalWorker {
         message_interceptor: Arc<dyn KafkaMessageInterceptor>,
         flow_controls: &FlowControls,
         secure_channel_flow_control_id: Option<FlowControlId>,
-        flow_control_id: Option<FlowControlId>,
         spawner_flow_control_id: Option<FlowControlId>,
         incoming_access_control: Arc<AbacAccessControl>,
-        outgoing_access_control: Arc<FlowControlOutgoingAccessControl>,
     ) -> ockam_core::Result<Address> {
         let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
         let responses_worker_address = Address::random_tagged("KafkaPortalWorker.responses");
@@ -333,30 +331,21 @@ impl KafkaPortalWorker {
             fixed_onward_route: None,
         };
 
-        // allowing the other worker to allow forwarding of the `pong` message
-        WorkerBuilder::new(request_worker)
-            .with_address(requests_worker_address.clone())
-            .with_incoming_access_control_arc(Arc::new(AnyIncomingAccessControl::new(vec![
-                Arc::new(AllowSourceAddress(responses_worker_address.clone())),
-                incoming_access_control,
-            ])))
-            .with_outgoing_access_control_arc(outgoing_access_control)
-            .start(context)
-            .await?;
+        let flow_control_id = FlowControls::generate_flow_control_id();
 
-        if let Some(flow_control_id) = flow_control_id {
-            flow_controls.add_producer(
-                requests_worker_address.clone(),
-                &flow_control_id,
-                spawner_flow_control_id.as_ref(),
-                vec![],
-            );
+        // add the default outlet as consumer for the interceptor
+        flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
 
-            // we need to receive the first message from the listener
-            if let Some(spawner_flow_control_id) = spawner_flow_control_id.as_ref() {
-                flow_controls
-                    .add_consumer(requests_worker_address.clone(), spawner_flow_control_id);
-            }
+        flow_controls.add_producer(
+            requests_worker_address.clone(),
+            &flow_control_id,
+            spawner_flow_control_id.as_ref(),
+            vec![],
+        );
+
+        // we need to receive the first message from the listener
+        if let Some(spawner_flow_control_id) = spawner_flow_control_id.as_ref() {
+            flow_controls.add_consumer(requests_worker_address.clone(), spawner_flow_control_id);
         }
 
         if let Some(secure_channel_flow_control_id) = secure_channel_flow_control_id.as_ref() {
@@ -365,6 +354,21 @@ impl KafkaPortalWorker {
                 secure_channel_flow_control_id,
             );
         }
+
+        // allow the other worker to forward the `pong` message
+        WorkerBuilder::new(request_worker)
+            .with_address(requests_worker_address.clone())
+            .with_incoming_access_control_arc(Arc::new(AnyIncomingAccessControl::new(vec![
+                Arc::new(AllowSourceAddress(responses_worker_address.clone())),
+                incoming_access_control,
+            ])))
+            .with_outgoing_access_control_arc(Arc::new(FlowControlOutgoingAccessControl::new(
+                flow_controls,
+                flow_control_id.clone(),
+                spawner_flow_control_id.clone(),
+            )))
+            .start(context)
+            .await?;
 
         WorkerBuilder::new(response_worker)
             .with_address(responses_worker_address)
