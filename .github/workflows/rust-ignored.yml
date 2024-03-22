@@ -106,8 +106,8 @@ jobs:
     steps:
       - run: 'echo "Rust - lint_cargo_lock - Ignored"'
 
-  # test_orchestrator_ockam_command:
-  #   name: Rust - test_orchestrator_ockam_command
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #     - run: 'echo "Rust - test_orchestrator_ockam_command - Ignored"'
+  test_orchestrator_ockam_command:
+    name: Rust - test_orchestrator_ockam_command
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - test_orchestrator_ockam_command - Ignored"'
