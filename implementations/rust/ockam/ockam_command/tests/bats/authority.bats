@@ -75,7 +75,7 @@ teardown() {
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\"} }"
-  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1  --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full --enforce-admin-checks
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full --enforce-admin-checks
   sleep 2 # wait for authority to start TCP listener
 
   # Make the admin present its project admin credential to the authority
@@ -137,7 +137,6 @@ EOF
   run "$OCKAM" project enroll $token2 --identity m5
   assert_failure
 }
-
 
 @test "authority - enrollment ticket ttl" {
   port="$(random_port)"
@@ -207,12 +206,11 @@ EOF
   authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
   m1_identifier=$($OCKAM identity show m1)
 
-
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   trusted="{\"$m1_identifier\": {\"ockam-role\": \"enroller\", \"sample_attr\": \"sample_val\"} }"
 
   # Authority in legacy mode, with enrollers as admins
-  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1  --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
   sleep 2 # wait for authority to start TCP listener
 
   cat <<EOF >>"$OCKAM_HOME/project.json"
@@ -240,12 +238,11 @@ EOF
   assert_output --partial "sample_val"
 
   # m1 can enroll new enrollers
-  token1=$($OCKAM project ticket --identity m1 --enroller  --attribute sample_attr=m2_member)
+  token1=$($OCKAM project ticket --identity m1 --enroller --attribute sample_attr=m2_member)
   run_success "$OCKAM" project enroll $token1 --identity m2
   assert_output --partial "m2_member"
   assert_output --partial "enroller"
 }
-
 
 @test "local authority - test api commands" {
   port="$(random_port)"
