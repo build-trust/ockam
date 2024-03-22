@@ -75,7 +75,7 @@ teardown() {
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\"} }"
-  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1  --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full --enforce-admin-checks
   sleep 2 # wait for authority to start TCP listener
 
   # Make the admin present its project admin credential to the authority
@@ -130,12 +130,14 @@ EOF
   # New enroller can enroll members
   run_success "$OCKAM" project ticket --identity m7
 
-  # For now, it can enroll new enrollers as well.
-  run_success "$OCKAM" project ticket --enroller --identity m7
+  # Enroller can't enroll new enrollers
+  run "$OCKAM" project ticket --enroller --identity m7
+  assert_failure
 
   run "$OCKAM" project enroll $token2 --identity m5
   assert_failure
 }
+
 
 @test "authority - enrollment ticket ttl" {
   port="$(random_port)"
@@ -184,6 +186,66 @@ EOF
   run_success "$OCKAM" project enroll $token --identity m3
   assert_output --partial "m3_member"
 }
+
+@test "authority - legacy enrollers as admins" {
+  port="$(random_port)"
+
+  run "$OCKAM" identity create authority
+
+  # Authority will trust project-admin credentials issued by this other identity (Account Authority)
+  run "$OCKAM" identity create account_authority
+
+  run "$OCKAM" identity create admin
+  # m1 will be pre-enrolled as enroller.
+  run "$OCKAM" identity create m1
+  run "$OCKAM" identity create m2
+
+  account_authority_full=$($OCKAM identity show account_authority --full --encoding hex)
+  account_authority_identifier=$($OCKAM identity show account_authority)
+
+  admin_identifier=$($OCKAM identity show admin)
+  authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
+  m1_identifier=$($OCKAM identity show m1)
+
+
+  # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
+  trusted="{\"$m1_identifier\": {\"ockam-role\": \"enroller\", \"sample_attr\": \"sample_val\"} }"
+
+  # Authority in legacy mode, with enrollers as admins
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1  --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
+  sleep 2 # wait for authority to start TCP listener
+
+  cat <<EOF >>"$OCKAM_HOME/project.json"
+{
+  "id": "1",
+  "name": "default",
+  "space_name": "together-porgy",
+  "access_route": "/dnsaddr/127.0.0.1/tcp/4000/service/api",
+  "users": [],
+  "space_id": "1",
+  "identity": "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+  "authority_access_route": "/dnsaddr/127.0.0.1/tcp/$port/service/api",
+  "authority_identity": "$authority_identity_full",
+  "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",
+  "running": false,
+  "operation_id": null,
+  "user_roles": []
+}
+EOF
+
+  run_success $OCKAM project import --project-file $OCKAM_HOME/project.json
+
+  # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
+  run_success "$OCKAM" project enroll --identity m1
+  assert_output --partial "sample_val"
+
+  # m1 can enroll new enrollers
+  token1=$($OCKAM project ticket --identity m1 --enroller  --attribute sample_attr=m2_member)
+  run_success "$OCKAM" project enroll $token1 --identity m2
+  assert_output --partial "m2_member"
+  assert_output --partial "enroller"
+}
+
 
 @test "local authority - test api commands" {
   port="$(random_port)"

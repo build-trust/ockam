@@ -90,6 +90,7 @@ impl Authority {
                     identity_attrs,
                     acc_authority_identifier,
                     configuration.project_identifier(),
+                    configuration.enforce_admin_checks,
                 ))
             } else {
                 None

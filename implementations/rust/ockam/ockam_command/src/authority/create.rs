@@ -100,6 +100,10 @@ pub struct CreateCommand {
     /// for account and project administrator credentials.
     #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None)]
     account_authority: Option<String>,
+
+    /// Enforce distintion between admins and enrollers
+    #[arg(long, value_name = "ENFORCE_ADMIN_CHECKS", default_value_t = false)]
+    enforce_admin_checks: bool,
 }
 
 impl CreateCommand {
@@ -184,6 +188,9 @@ impl CreateCommand {
         if let Some(acc_auth_identity) = &self.account_authority {
             args.push("--account-authority".to_string());
             args.push(acc_auth_identity.clone());
+        }
+        if self.enforce_admin_checks {
+            args.push("--enforce-admin-checks".to_string());
         }
         args.push(self.node_name.to_string());
 
@@ -310,6 +317,7 @@ impl CreateCommand {
             no_token_enrollment: self.no_token_enrollment,
             okta: okta_configuration,
             account_authority,
+            enforce_admin_checks: self.enforce_admin_checks,
         };
 
         authority_node::start_node(ctx, &configuration)

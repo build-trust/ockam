@@ -49,6 +49,9 @@ pub struct Configuration {
 
     /// Account Authority identity
     pub account_authority: Option<ChangeHistory>,
+
+    /// Differentiate between admins and enrollers
+    pub enforce_admin_checks: bool,
 }
 
 /// Local and private functions for the authority configuration

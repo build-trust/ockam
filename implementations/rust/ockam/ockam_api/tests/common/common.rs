@@ -38,6 +38,7 @@ pub async fn default_configuration() -> Result<Configuration> {
         no_token_enrollment: true,
         okta: None,
         account_authority: None,
+        enforce_admin_checks: false,
     };
 
     // Hack to create Authority Identity using the same vault and storage

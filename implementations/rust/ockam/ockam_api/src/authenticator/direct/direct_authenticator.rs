@@ -31,6 +31,7 @@ pub struct AccountAuthorityInfo {
     identities_attributes: Arc<IdentitiesAttributes>,
     account_authority: Identifier,
     project_identifier: String,
+    enforce_admin_checks: bool,
 }
 
 impl AccountAuthorityInfo {
@@ -38,11 +39,13 @@ impl AccountAuthorityInfo {
         identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Identifier,
         project_identifier: String,
+        enforce_admin_checks: bool,
     ) -> Self {
         Self {
             identities_attributes,
             account_authority,
             project_identifier,
+            enforce_admin_checks,
         }
     }
 
@@ -54,6 +57,9 @@ impl AccountAuthorityInfo {
     }
     pub fn project_identifier(&self) -> String {
         self.project_identifier.clone()
+    }
+    pub fn enforce_admin_checks(&self) -> bool {
+        self.enforce_admin_checks
     }
 }
 
