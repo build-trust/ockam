@@ -9,12 +9,12 @@ set -e
 # You can call it as follow:
 #
 # To install the latest released version:
-# curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/tools/install.sh | bash
+# curl --proto '=https' --tlsv1.2 -sSf https://install.command.ockam.io | bash
 #
 # Or
 #
 # To install a specific version:
-# curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/tools/install.sh | bash -s -- --version v0.80.0
+# curl --proto '=https' --tlsv1.2 -sSf https://install.command.ockam.io | bash -s -- --version v0.80.0
 
 # It borrows ideas from the MIT Licensed rustup-init script which has
 # been used and tested in many environments over many years
