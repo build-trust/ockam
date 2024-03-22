@@ -344,7 +344,7 @@ impl InMemoryNode {
             inlet_policy_expression,
             None,
             None,
-            false,
+            true,
         )
         .await?;
 

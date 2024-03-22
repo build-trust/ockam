@@ -113,7 +113,7 @@ impl Worker for OutletManagerService {
         )
         .await?;
 
-        message = message.push_front_return_route(&worker_address);
+        message = message.push_front_onward_route(&worker_address);
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
