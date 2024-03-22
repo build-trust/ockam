@@ -1,6 +1,6 @@
 FROM alpine:3
 
-ENV KAFKA_VERSION 3.5.0
+ENV KAFKA_VERSION 3.7.0
 ENV SCALA_VERSION 2.13
 
 RUN apk add --update --no-cache curl
