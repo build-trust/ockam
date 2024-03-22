@@ -128,7 +128,7 @@ impl KafkaInletController {
             prefix,
             suffix,
             None,
-            false,
+            true,
         );
         if let Some(expr) = policy_expression {
             payload.set_policy_expression(expr);

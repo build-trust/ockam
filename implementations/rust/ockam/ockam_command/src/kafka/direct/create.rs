@@ -50,7 +50,7 @@ impl CreateCommand {
             bind_address: self.bind_address,
             brokers_port_range: self
                 .brokers_port_range
-                .unwrap_or_else(|| make_brokers_port_range(&self.bootstrap_server)),
+                .unwrap_or_else(|| make_brokers_port_range(&self.bind_address)),
             consumer_route: self.consumer_route,
             bootstrap_server: self.bootstrap_server,
         };

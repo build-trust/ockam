@@ -1,7 +1,7 @@
 use crate::kafka::outlet_controller::KafkaOutletController;
 use crate::kafka::portal_worker::KafkaPortalWorker;
 use crate::kafka::protocol_aware::OutletInterceptorImpl;
-use crate::kafka::{KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS};
+use crate::kafka::KAFKA_OUTLET_INTERCEPTOR_ADDRESS;
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::{AbacAccessControl, Expr};
@@ -17,9 +17,7 @@ use std::sync::Arc;
 pub(crate) struct OutletManagerService {
     outlet_controller: KafkaOutletController,
     incoming_access_control: Arc<AbacAccessControl>,
-    flow_control_id: FlowControlId,
     spawner_flow_control_id: FlowControlId,
-    outgoing_access_control: Arc<FlowControlOutgoingAccessControl>,
 }
 
 impl OutletManagerService {
@@ -43,9 +41,6 @@ impl OutletManagerService {
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
-        // add the default outlet as consumer for the interceptor
-        flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
-
         let abac = AbacAccessControl::check_credential_only(
             secure_channels.identities().identities_attributes(),
             authority_identifier,
@@ -53,17 +48,16 @@ impl OutletManagerService {
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(policy_expression),
             incoming_access_control: Arc::new(abac),
-            flow_control_id: flow_control_id.clone(),
-            outgoing_access_control: Arc::new(FlowControlOutgoingAccessControl::new(
-                flow_controls,
-                flow_control_id.clone(),
-                Some(spawner_flow_control_id.clone()),
-            )),
-            spawner_flow_control_id,
+            spawner_flow_control_id: spawner_flow_control_id.clone(),
         };
 
         let incoming = worker.incoming_access_control.clone();
-        let outgoing = worker.outgoing_access_control.clone();
+        let outgoing = Arc::new(FlowControlOutgoingAccessControl::new(
+            flow_controls,
+            flow_control_id.clone(),
+            Some(spawner_flow_control_id),
+        ));
+
         WorkerBuilder::new(worker)
             .with_address(worker_address)
             .with_incoming_access_control_arc(incoming)
@@ -102,18 +96,16 @@ impl Worker for OutletManagerService {
             message.onward_route(),
             Arc::new(OutletInterceptorImpl::new(
                 self.outlet_controller.clone(),
-                self.flow_control_id.clone(),
+                self.spawner_flow_control_id.clone(),
             )),
             &context.flow_controls().clone(),
             secure_channel_flow_control_id,
-            Some(self.flow_control_id.clone()),
             Some(self.spawner_flow_control_id.clone()),
             self.incoming_access_control.clone(),
-            self.outgoing_access_control.clone(),
         )
         .await?;
 
-        message = message.push_front_return_route(&worker_address);
+        message = message.push_front_onward_route(&worker_address);
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",

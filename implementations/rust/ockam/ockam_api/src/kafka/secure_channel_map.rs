@@ -154,8 +154,7 @@ impl<F: RelayCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     }
 }
 
-/// Describe to reach the consumer node:
-/// either directly or through a relay
+/// Describe how to reach the consumer node: either directly or through a relay
 #[derive(Clone)]
 pub(crate) enum ConsumerNodeAddr {
     Direct(MultiAddr),
@@ -318,8 +317,8 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
 
         let mut inner = self.inner.lock().await;
 
-        // when we are using direct mode, there is only one consumer, and use the same secure
-        // channel for all topics
+        // when we are using direct mode, there is only one consumer, and the same
+        // secure channel is used for all topics
         let topic_partition_key = match &inner.consumer_node_multiaddr {
             ConsumerNodeAddr::Direct(_) | ConsumerNodeAddr::None => ("".to_string(), 0i32),
             ConsumerNodeAddr::Relay(_) => (topic_name.to_string(), partition),
