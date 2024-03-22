@@ -43,6 +43,10 @@
 		78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D520822ADD5CAE00F36B64 /* Helpers.swift */; };
 		78ED0DA12AD4354400574AE9 /* OpenPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA02AD4354400574AE9 /* OpenPortal.swift */; };
 		78ED0DA32AD4501200574AE9 /* InviteToPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA22AD4501200574AE9 /* InviteToPortal.swift */; };
+		ECEC32A12B4969B50074DC64 /* LaunchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEC32A02B4969B50074DC64 /* LaunchService.swift */; };
+		ECEC32A32B496A4D0074DC64 /* MainAppLaunchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEC32A22B496A4D0074DC64 /* MainAppLaunchService.swift */; };
+		ECEC32A52B496C130074DC64 /* LaunchServiceObservable.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEC32A42B496C130074DC64 /* LaunchServiceObservable.swift */; };
+		ECEC97962B497C300046B483 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEC97952B497C300046B483 /* PreferencesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -100,6 +104,10 @@
 		78D520822ADD5CAE00F36B64 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		78ED0DA02AD4354400574AE9 /* OpenPortal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenPortal.swift; sourceTree = "<group>"; };
 		78ED0DA22AD4501200574AE9 /* InviteToPortal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteToPortal.swift; sourceTree = "<group>"; };
+		ECEC32A02B4969B50074DC64 /* LaunchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchService.swift; sourceTree = "<group>"; };
+		ECEC32A22B496A4D0074DC64 /* MainAppLaunchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainAppLaunchService.swift; sourceTree = "<group>"; };
+		ECEC32A42B496C130074DC64 /* LaunchServiceObservable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchServiceObservable.swift; sourceTree = "<group>"; };
+		ECEC97952B497C300046B483 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +146,7 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
+				ECEC329F2B49690D0074DC64 /* Launch Service */,
 				78A77C2E2B2B275A00DEC3AC /* AnimatedEllipsis.swift */,
 				7893D4082B1F54F800454933 /* EnrollmentBlock.swift */,
 				7859A47F2B1DD4960085C7F7 /* FluidMenuBarExtra */,
@@ -157,6 +166,7 @@
 				7827D5082AD93F1700F7A20F /* ClickableMenuEntry.swift */,
 				78D520822ADD5CAE00F36B64 /* Helpers.swift */,
 				78BD349C2AFA621500F09058 /* BrokenStateView.swift */,
+				ECEC97952B497C300046B483 /* PreferencesView.swift */,
 				785C8DC02B0BAD5E00926DCD /* About.swift */,
 				785A072F2B14A60E002FF30C /* Constants.swift */,
 				785A07312B14C810002FF30C /* SentInvitations.swift */,
@@ -192,6 +202,16 @@
 				7859A4852B1DD4960085C7F7 /* RootViewModifier.swift */,
 			);
 			path = FluidMenuBarExtra;
+			sourceTree = "<group>";
+		};
+		ECEC329F2B49690D0074DC64 /* Launch Service */ = {
+			isa = PBXGroup;
+			children = (
+				ECEC32A02B4969B50074DC64 /* LaunchService.swift */,
+				ECEC32A22B496A4D0074DC64 /* MainAppLaunchService.swift */,
+				ECEC32A42B496C130074DC64 /* LaunchServiceObservable.swift */,
+			);
+			path = "Launch Service";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -283,16 +303,20 @@
 			files = (
 				785A07342B14CF29002FF30C /* LocalPortalView.swift in Sources */,
 				7827D5092AD93F1700F7A20F /* ClickableMenuEntry.swift in Sources */,
+				ECEC32A12B4969B50074DC64 /* LaunchService.swift in Sources */,
 				78BD34A12AFCFDF100F09058 /* RemotePortalView.swift in Sources */,
 				785A07322B14C810002FF30C /* SentInvitations.swift in Sources */,
 				782D5B4B2AC1D3D700D1B27F /* MainView.swift in Sources */,
 				785A07302B14A60E002FF30C /* Constants.swift in Sources */,
 				78A77C2F2B2B275A00DEC3AC /* AnimatedEllipsis.swift in Sources */,
 				785A073C2B15EAC8002FF30C /* EnrollmentStatus.swift in Sources */,
+				ECEC32A52B496C130074DC64 /* LaunchServiceObservable.swift in Sources */,
+				ECEC97962B497C300046B483 /* PreferencesView.swift in Sources */,
 				78B7EF702B0F649D0062B2B3 /* DeleteIncomingService.swift in Sources */,
 				78ED0DA12AD4354400574AE9 /* OpenPortal.swift in Sources */,
 				78D520832ADD5CAE00F36B64 /* Helpers.swift in Sources */,
 				7859A4892B1DD4960085C7F7 /* FluidMenuBarExtraWindow.swift in Sources */,
+				ECEC32A32B496A4D0074DC64 /* MainAppLaunchService.swift in Sources */,
 				7859A48A2B1DD4960085C7F7 /* EventMonitor.swift in Sources */,
 				78695A302B2332F600432B83 /* Hint.swift in Sources */,
 				7859A4862B1DD4960085C7F7 /* UpdateSizeAction.swift in Sources */,

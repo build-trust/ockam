@@ -216,6 +216,12 @@ struct MainView: View {
                                 .padding(.horizontal, HorizontalSpacingUnit)
                         }
                         ClickableMenuEntry(
+                            text: "Preferences",
+                            icon: "gear"
+                            ) {
+                                OpenWindowWorkaround.shared.openWindow(windowName: "preferences")
+                            }
+                        ClickableMenuEntry(
                             text: "Reset", icon: "arrow.counterclockwise",
                             action: {
                                 restartCurrentProcess()
