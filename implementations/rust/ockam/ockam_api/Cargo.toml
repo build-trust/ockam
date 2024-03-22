@@ -56,7 +56,7 @@ opentelemetry_sdk = { version = "0.22.1", features = ["logs", "metrics", "trace"
 petname = { version = "2.0.0-beta.4", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
 regex = "1.10.3"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 sha2 = "0.10.8"
