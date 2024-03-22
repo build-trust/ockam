@@ -154,7 +154,7 @@ fn setup_aws_kms(key_ids: Vec<String>) -> NifResult<bool> {
                     .with_vault(Vault::new(
                         aws_vault.clone(),
                         secure_channel_vault,
-                        aws_vault,
+                        Vault::create_credential_vault().await.unwrap(),
                         Vault::create_verifying_vault(),
                     ));
                 *IDENTITIES.write().unwrap() = Some(builder.build());
