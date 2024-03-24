@@ -69,12 +69,14 @@ impl Display for Attributes {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let mut attributes = vec![];
         for (key, value) in self.map.clone() {
-            if let (Ok(k), Ok(v)) = (
-                String::from_utf8(key.to_vec()),
-                String::from_utf8(value.to_vec()),
-            ) {
-                attributes.push(format!("{k}={v}"))
-            }
+            let key = Vec::<u8>::from(key);
+            let value = Vec::<u8>::from(value);
+            let key =
+                String::from_utf8(key.clone()).unwrap_or(format!("HEX:{}", hex::encode(&key)));
+            let value =
+                String::from_utf8(value.clone()).unwrap_or(format!("HEX:{}", hex::encode(&value)));
+
+            attributes.push(format!("{key}={value}"))
         }
         f.debug_struct("Attributes")
             .field("attrs", &attributes.join(","))
