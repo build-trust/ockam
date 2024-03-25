@@ -58,12 +58,12 @@ pub use ockam_abac as abac;
 /// Mark an Ockam Processor implementation.
 ///
 /// This is currently implemented as a re-export of the `async_trait` macro, but
-/// may be changed in the future to a [`Processor`](crate::Processor)-specific macro.
+/// may be changed in the future to a [`Processor`]-specific macro.
 pub use ockam_core::processor;
 /// Mark an Ockam Worker implementation.
 ///
 /// This is currently implemented as a re-export of the `async_trait` macro, but
-/// may be changed in the future to a [`Worker`](crate::Worker)-specific macro.
+/// may be changed in the future to a [`Worker`]-specific macro.
 pub use ockam_core::worker;
 pub use ockam_core::{
     allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,
