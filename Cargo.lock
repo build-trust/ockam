@@ -1936,7 +1936,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
 dependencies = [
  "cfg-if",
- "hashbrown 0.14.4",
+ "hashbrown 0.14.3",
  "lock_api",
  "once_cell",
  "parking_lot_core",
@@ -2997,9 +2997,9 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hashbrown"
-version = "0.14.4"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e57fa0ae458eb99874f54c09f4f9174f8b45fb87e854536a4e608696247f0c23"
+checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
 dependencies = [
  "ahash",
  "allocator-api2",
@@ -3012,7 +3012,7 @@ version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8094feaf31ff591f651a2664fb9cfd92bba7a60ce3197265e9482ebe753c8f7"
 dependencies = [
- "hashbrown 0.14.4",
+ "hashbrown 0.14.3",
 ]
 
 [[package]]
@@ -3383,7 +3383,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b0b929d511467233429c45a44ac1dcaa21ba0f5ba11e4879e6ed28ddb4f9df4"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.4",
+ "hashbrown 0.14.3",
 ]
 
 [[package]]
@@ -4469,7 +4469,7 @@ dependencies = [
  "cfg-if",
  "core2",
  "futures-util",
- "hashbrown 0.14.4",
+ "hashbrown 0.14.3",
  "hex",
  "miette",
  "minicbor",
@@ -4660,7 +4660,7 @@ name = "ockam_transport_tcp"
 version = "0.108.0"
 dependencies = [
  "cfg-if",
- "hashbrown 0.14.4",
+ "hashbrown 0.14.3",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
@@ -4679,7 +4679,7 @@ version = "0.52.0"
 dependencies = [
  "bytes 1.5.0",
  "futures-util",
- "hashbrown 0.14.4",
+ "hashbrown 0.14.3",
  "ockam",
  "ockam_core",
  "ockam_macros",
