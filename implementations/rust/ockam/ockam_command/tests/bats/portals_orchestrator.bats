@@ -2,10 +2,6 @@
 
 # ===== SETUP
 
-setup_file() {
-  load load/base.bash
-}
-
 setup() {
   load load/base.bash
   load load/orchestrator.bash
@@ -232,13 +228,13 @@ teardown() {
     --to "/project/default/service/forward_to_${relay_name}/secure/api/service/outlet"
 
   # generate 10MB of random data
-  run_success openssl rand -out "${OCKAM_HOME_BASE}/payload" $((1024 * 1024 * 10))
+  run_success openssl rand -out "${OCKAM_HOME_BASE}/.tmp/payload" $((1024 * 1024 * 10))
 
   # write payload to file `payload.copy`
-  run_success curl --fail --max-time 60 "127.0.0.1:${port}/payload" -o "${OCKAM_HOME}/payload.copy"
+  run_success curl --fail --max-time 60 "127.0.0.1:${port}/.tmp/payload" -o "${OCKAM_HOME}/payload.copy"
 
   # compare `payload` and `payload.copy`
-  run_success cmp "${OCKAM_HOME_BASE}/payload" "${OCKAM_HOME}/payload.copy"
+  run_success cmp "${OCKAM_HOME_BASE}/.tmp/payload" "${OCKAM_HOME}/payload.copy"
 }
 
 @test "portals - create an inlet/outlet pair, connection goes down, connection restored" {

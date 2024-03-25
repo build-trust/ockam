@@ -2,10 +2,6 @@
 
 # ===== SETUP
 
-setup_file() {
-  load load/base.bash
-}
-
 setup() {
   load load/base.bash
   load load/orchestrator.bash

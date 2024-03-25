@@ -40,14 +40,13 @@ impl ParsedCommands {
         for cmd in self.commands.into_iter() {
             if cmd.is_valid(ctx, opts).await? {
                 cmd.run(ctx, opts).await?;
-                opts.terminal.write_line("")?;
             }
         }
         Ok(())
     }
 }
 
-impl<C: Command> From<Vec<C>> for ParsedCommands {
+impl<C: ParsedCommand> From<Vec<C>> for ParsedCommands {
     fn from(cmds: Vec<C>) -> ParsedCommands {
         ParsedCommands::new(cmds)
     }

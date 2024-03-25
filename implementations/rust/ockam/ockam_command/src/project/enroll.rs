@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::project::models::OktaAuth0;
 use ockam_api::cloud::project::Project;
-use ockam_api::enroll::enrollment::Enrollment;
+use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
@@ -82,9 +82,18 @@ impl Command for EnrollCommand {
 
         // Enroll
         if let Some(tkn) = self.enrollment_ticket.as_ref() {
-            authority_node_client
+            match authority_node_client
                 .present_token(ctx, &tkn.one_time_code)
-                .await?;
+                .await?
+            {
+                EnrollStatus::EnrolledSuccessfully => {}
+                EnrollStatus::AlreadyEnrolled => {
+                    opts.terminal
+                        .write_line(&fmt_ok!("Identity is already enrolled with the project"))?;
+                    return Ok(());
+                }
+                _ => return Err(miette!("Failed to enroll identity with project")),
+            }
         } else if self.okta {
             // Get auth0 token
             let okta_config: OktaAuth0 = project

@@ -15,7 +15,7 @@ teardown() {
 # ===== TESTS
 
 @test "projects - a project can be imported from a JSON file" {
-  cat <<EOF >>"$OCKAM_HOME/project.json"
+  cat <<EOF >"$OCKAM_HOME/project.json"
 {
   "id": "66529571-169f-44c6-8a6f-5282c1eda44c",
   "name": "awesome",

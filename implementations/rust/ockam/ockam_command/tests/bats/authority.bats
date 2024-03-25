@@ -81,7 +81,7 @@ teardown() {
   # Make the admin present its project admin credential to the authority
   run_success "$OCKAM" secure-channel create --from admin --to "/node/authority/service/api" --identity admin
 
-  cat <<EOF >>"$OCKAM_HOME/project.json"
+  cat <<EOF >"$OCKAM_HOME/project.json"
 {
   "id": "1",
   "name": "default",
@@ -154,7 +154,7 @@ EOF
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   sleep 1 # wait for authority to start TCP listener
 
-  cat <<EOF >>"$OCKAM_HOME/project.json"
+  cat <<EOF >"$OCKAM_HOME/project.json"
 {
   "id": "1",
   "name": "default",
@@ -213,7 +213,7 @@ EOF
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
   sleep 2 # wait for authority to start TCP listener
 
-  cat <<EOF >>"$OCKAM_HOME/project.json"
+  cat <<EOF >"$OCKAM_HOME/project.json"
 {
   "id": "1",
   "name": "default",
@@ -263,7 +263,7 @@ EOF
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   sleep 1 # wait for authority to start TCP listener
 
-  cat <<EOF >>"$OCKAM_HOME/project.json"
+  cat <<EOF >"$OCKAM_HOME/project.json"
 {
   "id": "1",
   "name": "default",

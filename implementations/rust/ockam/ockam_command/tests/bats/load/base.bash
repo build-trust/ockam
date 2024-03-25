@@ -46,7 +46,7 @@ setup_python_server() {
     touch "$p"
 
     # Log server data to OCKAM_HOME_BASE
-    python3 -m http.server --bind 127.0.0.1 $PYTHON_SERVER_PORT &>python_server.log &
+    python3 -m http.server --bind 127.0.0.1 $PYTHON_SERVER_PORT &>./.tmp/python_server.log &
     pid="$!"
     echo "$pid" >"$p"
     popd || {
@@ -66,7 +66,7 @@ teardown_python_server() {
 }
 
 python_pid_file_path() {
-  echo "$OCKAM_HOME_BASE/http_server.pid"
+  echo "$OCKAM_HOME_BASE/.tmp/http_server.pid"
 }
 
 # Sets the CLI directory to a random directory under /tmp
@@ -92,7 +92,7 @@ teardown_home_dir() {
       # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
       # For some reason, if the directory is moved, the teardown function gets stuck.
       echo "Failed test dir: $OCKAM_HOME" >&3
-      cp -r "$OCKAM_HOME/." "$HOME/.bats-tests"
+      cp -r "$OCKAM_HOME" "$HOME/.bats-tests"
     fi
     run $OCKAM node delete --all --force --yes
   done
