@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.62.0 - 2024-03-25
+
+### Added
+
+- Authority project admin credentials
+- Admins are implicit members, enrollers as admins
+- `identity create` can import an identity
+- Backcompatible encoding/decoding optimizations
+- Improve output for `enroll` command
+- Add one second cache for incoming and outgoing access control
+- Flag to enable/disable enrollers-as-admins on authority
+- Use https for the default opentelemetry collector endpoint
+- Add bats coverage for `node create ./config.yaml` command
+- Updated dependencies
+
+### Changed
+
+- Simplify `ProgressDisplay` to remove the mutex used to stop the message recv end
+
+### Fixed
+
+- Fix routing and flow control for local kafka outlets
+
 ## 0.61.0 - 2024-03-18
 
 ### Added
