@@ -1,0 +1,7 @@
+relay: default
+
+tcp-outlet:
+  to: $SERVICE_PORT
+
+tcp-inlet:
+  from: $CLIENT_PORT

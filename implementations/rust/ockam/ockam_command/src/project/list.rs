@@ -1,5 +1,5 @@
 use clap::Args;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -40,9 +40,6 @@ impl ListCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        if !opts.state.is_enrolled().await? {
-            return Err(miette!("You must enroll before you can list your projects"));
-        }
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_projects = async {
@@ -59,11 +56,9 @@ impl ListCommand {
 
         let (projects, _) = try_join!(get_projects, progress_output)?;
 
-        let plain = &opts.terminal.build_list(
-            &projects,
-            "Projects",
-            "No projects found on this system.",
-        )?;
+        let plain = &opts
+            .terminal
+            .build_list(&projects, "Projects", "No projects found")?;
         let json = serde_json::to_string_pretty(&projects).into_diagnostic()?;
 
         opts.terminal

@@ -7,7 +7,6 @@ use miette::{miette, IntoDiagnostic};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use tracing::instrument;
-use url::Url;
 
 use ockam_api::cli_state::random_name;
 use ockam_api::EnrollmentTicket;
@@ -19,7 +18,7 @@ use crate::service::config::Config;
 use crate::util::api::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{async_cmd, local_cmd};
-use crate::value_parsers::{parse_enrollment_ticket, parse_key_val};
+use crate::value_parsers::{is_url, parse_enrollment_ticket, parse_key_val};
 use crate::{docs, Command, CommandGlobalOpts, Result};
 
 pub mod background;
@@ -175,7 +174,7 @@ impl CreateCommand {
 
     // Return true if the `name` argument is a node name, false if it's a config file path or URL
     fn has_name_arg(&self) -> bool {
-        Url::parse(&self.name).is_err() && std::fs::metadata(&self.name).is_err()
+        is_url(&self.name).is_none() && std::fs::metadata(&self.name).is_err()
     }
 }
 

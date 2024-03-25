@@ -1,12 +1,10 @@
 use crate::project::EnrollCommand;
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::{ParsedCommand, ValuesOverrides};
-use crate::{color_primary, fmt_info, Command, CommandGlobalOpts, OckamSubcommand};
+use crate::run::parser::resource::ValuesOverrides;
+use crate::{color_primary, Command, OckamSubcommand};
 use async_trait::async_trait;
-use colorful::Colorful;
 use miette::{miette, Result};
-use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -35,38 +33,6 @@ impl CommandsParser<EnrollCommand> for ProjectEnroll {
             Some(path_or_contents) => Ok(vec![Self::get_subcommand(&[path_or_contents])?]),
             None => Ok(vec![]),
         }
-    }
-}
-
-/// This struct supports some additional validation on the EnrollCommand before running it
-struct ParsedEnrollCommand {
-    command: EnrollCommand,
-}
-
-#[async_trait]
-impl ParsedCommand for ParsedEnrollCommand {
-    /// Before running the enroll command, check if the identity is not already enrolled
-    async fn is_valid(&self, _ctx: &Context, opts: &CommandGlobalOpts) -> Result<bool> {
-        let identity_name = &self.command.identity_opts.identity;
-        let identity = opts
-            .state
-            .clone()
-            .get_named_identity_or_default(identity_name)
-            .await?;
-        if let Ok(is_enrolled) = opts.state.is_identity_enrolled(identity_name).await {
-            if is_enrolled {
-                opts.terminal.write_line(&fmt_info!(
-                    "Identity {} is already enrolled",
-                    color_primary(identity.name())
-                ))?;
-                return Ok(false);
-            }
-        }
-        Ok(true)
-    }
-
-    async fn run(&self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
-        self.command.clone().async_run(ctx, opts.clone()).await
     }
 }
 

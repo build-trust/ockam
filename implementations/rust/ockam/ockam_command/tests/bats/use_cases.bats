@@ -3,9 +3,6 @@
 # https://docs.ockam.io/use-cases
 
 # ===== SETUP
-setup_file() {
-  load load/base.bash
-}
 
 setup() {
   load load/base.bash

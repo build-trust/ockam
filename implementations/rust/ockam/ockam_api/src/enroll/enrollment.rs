@@ -32,7 +32,11 @@ pub trait Enrollment {
         token: OidcToken,
     ) -> miette::Result<()>;
 
-    async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> miette::Result<()>;
+    async fn present_token(
+        &self,
+        ctx: &Context,
+        token: &OneTimeCode,
+    ) -> miette::Result<EnrollStatus>;
 
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey>;
 }
@@ -59,7 +63,11 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
             .await
     }
 
-    async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> miette::Result<()> {
+    async fn present_token(
+        &self,
+        ctx: &Context,
+        token: &OneTimeCode,
+    ) -> miette::Result<EnrollStatus> {
         self.get_secure_client().present_token(ctx, token).await
     }
 
@@ -110,14 +118,31 @@ impl Enrollment for SecureClient {
     }
 
     #[instrument(skip_all)]
-    async fn present_token(&self, ctx: &Context, token: &OneTimeCode) -> miette::Result<()> {
+    async fn present_token(
+        &self,
+        ctx: &Context,
+        token: &OneTimeCode,
+    ) -> miette::Result<EnrollStatus> {
         let req = Request::post("/").body(token);
         trace!(target: TARGET, "present a token");
-        self.tell(ctx, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR, req)
+        match self
+            .tell(ctx, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR, req)
             .await
             .into_diagnostic()?
-            .success()
-            .into_diagnostic()
+        {
+            Reply::Successful(_) => Ok(EnrollStatus::EnrolledSuccessfully),
+            Reply::Failed(e, s) => match (e.message(), s) {
+                // TODO: the `authenticator` should return proper error codes
+                (Some(error), Some(Status::Forbidden)) => {
+                    if error.to_lowercase().contains("already a member") {
+                        Ok(EnrollStatus::AlreadyEnrolled)
+                    } else {
+                        Err(miette::miette!(e))
+                    }
+                }
+                _ => Err(miette::miette!(e)),
+            },
+        }
     }
 
     #[instrument(skip_all)]
