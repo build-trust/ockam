@@ -8,29 +8,28 @@ use ockam::{Error, TcpConnectionOptions, TcpTransportExtension};
 
 use std::path::PathBuf;
 
-use structopt::StructOpt;
+use clap::Parser;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "sender", about = "An example of file transfer implemented with ockam.")]
-struct Opt {
+#[derive(Debug, Parser)]
+#[command(name = "sender", about = "An example of file transfer implemented with ockam.")]
+struct Sender {
     /// Input file
-    #[structopt(parse(from_os_str))]
     input: PathBuf,
 
     /// Forwarding address
-    #[structopt(short, long)]
+    #[arg(short, long)]
     address: String,
 
     /// Sending chunk
-    #[structopt(short, long, default_value = "8192")]
+    #[arg(short, long, default_value = "8192")]
     chunk_size: usize,
 }
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let opt = Opt::from_args();
+    let opt = Sender::parse();
 
     let node = node(ctx).await?;
     let tcp = node.create_tcp_transport().await?;
