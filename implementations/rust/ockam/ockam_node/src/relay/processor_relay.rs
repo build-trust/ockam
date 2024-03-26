@@ -33,6 +33,8 @@ where
                     ctx.address(),
                     e
                 );
+                shutdown_and_stop_ack(&mut processor, &mut ctx, &ctx_addr).await;
+                return;
             }
         }
 
@@ -89,18 +91,7 @@ where
         };
 
         // If we reach this point the router has signaled us to shut down
-        match processor.shutdown(&mut ctx).await {
-            Ok(()) => {}
-            Err(e) => {
-                error!("Failure during '{}' processor shutdown: {}", ctx_addr, e);
-            }
-        }
-
-        // Finally send the router a stop ACK -- log errors
-        trace!("Sending shutdown ACK");
-        if let Err(e) = ctx.send_stop_ack().await {
-            error!("Error occurred during stop ACK sending: {}", e);
-        }
+        shutdown_and_stop_ack(&mut processor, &mut ctx, &ctx_addr).await;
     }
 
     /// Create a processor relay with two node contexts
@@ -112,5 +103,26 @@ where
     ) {
         let relay = ProcessorRelay::<P>::new(processor, ctx);
         rt.spawn(relay.run(ctrl_rx));
+    }
+}
+
+async fn shutdown_and_stop_ack<P>(
+    processor: &mut P,
+    ctx: &mut Context,
+    ctx_addr: &ockam_core::Address,
+) where
+    P: Processor<Context = Context>,
+{
+    match processor.shutdown(ctx).await {
+        Ok(()) => {}
+        Err(e) => {
+            error!("Failure during '{}' processor shutdown: {}", ctx_addr, e);
+        }
+    }
+
+    // Finally send the router a stop ACK -- log errors
+    trace!("Sending shutdown ACK");
+    if let Err(e) = ctx.send_stop_ack().await {
+        error!("Error occurred during stop ACK sending: {}", e);
     }
 }

@@ -244,7 +244,7 @@ teardown() {
   run_success "$OCKAM" node create n2 --tcp-listener-address "127.0.0.1:${node_port}"
   run_success "$OCKAM" tcp-outlet create --at /node/n2 --to 127.0.0.1:5000
 
-  sleep 15
+  sleep 45 # wait for the inlet to recover
 
   run_success curl --fail --head --retry 4 --max-time 30 "127.0.0.1:${inlet_port}"
 }
