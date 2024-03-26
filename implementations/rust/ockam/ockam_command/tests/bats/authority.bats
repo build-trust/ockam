@@ -67,11 +67,10 @@ teardown() {
 
   # Create a node for the admin, used as a hack to present the project admin credential to the authority
   port_admin="$(random_port)"
-  run_success "$OCKAM" node create admin --tcp-listener-address "127.0.0.1:$port_admin" --identity admin --authority-identity $account_authority_full --expect-cached-credential
+  run_success "$OCKAM" node create admin --tcp-listener-address "127.0.0.1:$port_admin" --identity admin --authority-identity $account_authority_full
 
-  # issue and store project admin credentials for admin
-  $OCKAM credential issue --as account_authority --for "$admin_identifier" --attribute project="1" --encoding hex >"$OCKAM_HOME/admin.cred"
-  run_success "$OCKAM" credential store --at admin --issuer "$account_authority_identifier" --credential-path "$OCKAM_HOME/admin.cred"
+  # issue project admin credentials for admin
+  admin_cred=$($OCKAM credential issue --as account_authority --for "$admin_identifier" --attribute project="1" --encoding hex)
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\"} }"
@@ -79,7 +78,7 @@ teardown() {
   sleep 2 # wait for authority to start TCP listener
 
   # Make the admin present its project admin credential to the authority
-  run_success "$OCKAM" secure-channel create --from admin --to "/node/authority/service/api" --identity admin
+  run_success "$OCKAM" secure-channel create --from admin --to "/node/authority/service/api" --identity admin --credential $admin_cred
 
   cat <<EOF >"$OCKAM_HOME/project.json"
 {

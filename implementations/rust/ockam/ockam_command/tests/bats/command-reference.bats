@@ -263,10 +263,10 @@ teardown() {
     --for "$I1_IDENTIFIER" --attribute city="New York" \
     --encoding hex)
 
-  run_success "$OCKAM" node create "$n1" --identity "$i1" --authority-identity "$AUTHORITY_IDENTITY" --expect-cached-credential
+  run_success "$OCKAM" node create "$n1" --identity "$i1" --authority-identity "$AUTHORITY_IDENTITY" --credential-scope "test"
   run_success "$OCKAM" node create "$n2" --identity "$i2" --authority-identity "$AUTHORITY_IDENTITY"
 
-  run_success "$OCKAM" credential store --issuer "$AUTHORITY_IDENTIFIER" --credential "$I1_CREDENTIAL" --at "$n1"
+  run_success "$OCKAM" credential store --issuer "$AUTHORITY_IDENTIFIER" --credential "$I1_CREDENTIAL" --at "$n1" --scope "test"
 
   run_success bash -c "$OCKAM secure-channel create --from $n1 --identity $i1 --to /node/$n2/service/api |
     $OCKAM message send --timeout 1 hello --from $n1 --to -/service/echo"

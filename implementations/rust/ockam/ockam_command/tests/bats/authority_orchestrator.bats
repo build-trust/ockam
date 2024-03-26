@@ -36,3 +36,32 @@ teardown() {
 
   run_success "$OCKAM" project-member delete "$m_identifier"
 }
+
+@test "project authority - test api authorization rules" {
+  # Enroller
+  run "$OCKAM" identity create e
+  # Member
+  run "$OCKAM" identity create m
+
+  run "$OCKAM" identity create t
+
+  e_identifier=$($OCKAM identity show e)
+  m_identifier=$($OCKAM identity show m)
+  t_identifier=$($OCKAM identity show t)
+
+  run_success "$OCKAM" project-member add "$e_identifier" --enroller
+
+  run_success "$OCKAM" project-member list-ids
+  run_success "$OCKAM" project-member list
+
+  # TODO: Should not work after we enable all checks on Authority nodes
+  # run_failure "$OCKAM" project-member add "$m_identifier" --enroller --identity e
+  run_success "$OCKAM" project-member add "$m_identifier" --identity e
+
+  run_failure "$OCKAM" project-member list --identity m
+  run_failure "$OCKAM" project-member list-ids --identity m
+  run_failure "$OCKAM" project-member add "$t_identifier" --identity m
+  run_failure "$OCKAM" project-member delete "$m_identifier" --identity m
+
+  run_success "$OCKAM" project-member delete "$m_identifier" --identity e
+}
