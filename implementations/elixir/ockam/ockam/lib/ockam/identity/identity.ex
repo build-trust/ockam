@@ -17,6 +17,13 @@ defmodule Ockam.Identity do
 
   @type compare_result() :: :none | :equal | :conflict | :newer | :older
 
+  @default_cred_schema 0
+  @account_cred_schema 1
+
+  def account_cred_schema() do
+    @account_cred_schema
+  end
+
   @spec create() ::
           {:ok, identity :: t()} | {:error, reason :: any()}
   def create() do
@@ -104,9 +111,14 @@ defmodule Ockam.Identity do
   end
 
   # TODO refactor so that subject is an identity instead of identifier
-  def issue_credential(%Identity{data: issuer}, %Identifier{} = subject, attrs, ttl)
+  def issue_credential(issuer, subject, attrs, ttl) when is_map(attrs) do
+    issue_credential(@default_cred_schema, issuer, subject, attrs, ttl)
+  end
+
+  def issue_credential(schema, %Identity{data: issuer}, %Identifier{} = subject, attrs, ttl)
       when is_map(attrs) do
     case OckamRustElixirNifs.Native.issue_credential(
+           schema,
            issuer,
            Identifier.to_str(subject),
            attrs,
@@ -129,8 +141,9 @@ defmodule Ockam.Identity do
       {:error, reason} ->
         {:error, reason}
 
-      {expiration, verified_attrs} ->
+      {schema, expiration, verified_attrs} ->
         attributes = %AttributeSet{
+          schema: schema,
           attributes: %AttributeSet.Attributes{attributes: verified_attrs},
           expiration: expiration
         }

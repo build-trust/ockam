@@ -23,7 +23,7 @@ defmodule OckamRustElixirNifs.Native do
 
   def setup_aws_kms(_), do: error()
 
-  def issue_credential(_, _, _, _), do: error()
+  def issue_credential(_, _, _, _, _), do: error()
 
   defp error, do: :erlang.nif_error(:nif_not_loaded)
 end

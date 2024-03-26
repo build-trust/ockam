@@ -19,10 +19,12 @@ defmodule Ockam.Credential.AttributeSet do
     end
   end
 
+  # This is never exchanged on his own, why we define cbor encoding for it here?
   typedstruct do
     plugin(Ockam.TypedCBOR.Plugin)
     field(:attributes, Attributes.t(), minicbor: [key: 1, schema: Attributes.minicbor_schema()])
     field(:expiration, integer(), minicbor: [key: 2])
+    field(:schema, integer(), minicbor: [key: 3])
   end
 
   def expired?(%__MODULE__{expiration: expiration}) do
