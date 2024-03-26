@@ -45,9 +45,6 @@ where
         // This future encodes the main processor run loop logic
         let run_loop = async {
             loop {
-                // protect against accidental async executor deadlock
-                crate::tokio::task::yield_now().await;
-
                 match processor.process(&mut ctx).await {
                     Ok(should_continue) => {
                         if !should_continue {

@@ -57,9 +57,6 @@ cfg_if! {
         /// AEAD Secret Length.
         pub const AEAD_SECRET_LENGTH: usize = AES128_SECRET_LENGTH;
 
-        /// AES-GCM nonce length
-        pub const AES_NONCE_LENGTH: usize = 12;
-
         /// AEAD Secret.
         #[derive(Eq, PartialEq, Clone, Zeroize, ZeroizeOnDrop)]
         pub struct AeadSecret(pub [u8; AEAD_SECRET_LENGTH]);

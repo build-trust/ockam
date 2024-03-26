@@ -99,6 +99,21 @@ impl NodeBuilder {
         let flow_controls = FlowControls::new();
 
         let rt = self.rt.unwrap_or_else(|| {
+            #[cfg(feature = "std")]
+            {
+                Arc::new(
+                    crate::tokio::runtime::Builder::new_multi_thread()
+                        // Using a lower stack size than the default (2MB),
+                        // this helps improve the cache hit ratio and reduces
+                        // the memory footprint.
+                        // Can be increased if needed.
+                        .thread_stack_size(1024 * 1024)
+                        .enable_all()
+                        .build()
+                        .expect("cannot initialize the tokio runtime"),
+                )
+            }
+            #[cfg(not(feature = "std"))]
             Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"))
         });
         let mut exe = Executor::new(rt.clone(), &flow_controls);

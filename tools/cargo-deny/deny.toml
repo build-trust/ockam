@@ -22,6 +22,7 @@ exceptions = [
   { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
+  { allow = ["OpenSSL"], name = "aws-lc-sys", version = "*" },
 
   # used by ockam_app_lib only as a build dependency
   { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },

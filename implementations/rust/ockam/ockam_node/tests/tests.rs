@@ -220,6 +220,7 @@ impl Processor for DummyProcessor {
     type Context = Context;
 
     async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
+        tokio::task::yield_now().await;
         Ok(true)
     }
 }
