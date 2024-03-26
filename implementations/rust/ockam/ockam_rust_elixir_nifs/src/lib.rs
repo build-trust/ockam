@@ -320,6 +320,7 @@ fn check_identity<'a>(env: Env<'a>, identity: Binary) -> NifResult<Binary<'a>> {
 #[rustler::nif]
 fn issue_credential<'a>(
     env: Env<'a>,
+    schema: u64,
     issuer_identity: Binary,
     subject_identifier: String,
     attrs: HashMap<String, String>,
@@ -334,7 +335,7 @@ fn issue_credential<'a>(
             .import(None, &issuer_identity)
             .await
             .map_err(|e| (atoms::identity_import_error(), e.to_string()))?;
-        let mut attr_builder = AttributesBuilder::with_schema(CredentialSchemaIdentifier(0));
+        let mut attr_builder = AttributesBuilder::with_schema(CredentialSchemaIdentifier(schema));
         for (key, value) in attrs {
             attr_builder = attr_builder.with_attribute(key, value)
         }
@@ -363,7 +364,7 @@ fn verify_credential(
     expected_subject: String,
     authorities: Vec<Binary>,
     credential: Binary,
-) -> NifResult<(u64, HashMap<String, String>)> {
+) -> NifResult<(u64, u64, HashMap<String, String>)> {
     let identities_ref = identities_ref()?;
     let expected_subject = Identifier::from_str(&expected_subject)
         .map_err(|e| Error::Term(Box::new((atoms::invalid_identifier(), e.to_string()))))?;
@@ -402,6 +403,11 @@ fn verify_credential(
             );
         }
         Ok((
+            credential_and_purpose_key_data
+                .credential_data
+                .subject_attributes
+                .schema
+                .0,
             *credential_and_purpose_key_data
                 .credential_data
                 .expires_at

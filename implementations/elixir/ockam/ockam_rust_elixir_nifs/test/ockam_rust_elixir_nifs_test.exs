@@ -35,10 +35,18 @@ defmodule OckamRustElixirNifsTest do
     {subject_id, _subject_identity} = OckamRustElixirNifs.Native.create_identity()
     attrs = %{"Some" => "works!", "other" => "yes!"}
 
-    credential =
-      OckamRustElixirNifs.Native.issue_credential(exported_identity, subject_id, attrs, 60)
+    schema = 2
 
-    {ttl, verified_attrs} =
+    credential =
+      OckamRustElixirNifs.Native.issue_credential(
+        schema,
+        exported_identity,
+        subject_id,
+        attrs,
+        60
+      )
+
+    {^schema, ttl, verified_attrs} =
       OckamRustElixirNifs.Native.verify_credential(subject_id, [exported_identity], credential)
 
     {:error, {:credential_verification_failed, _}} =
