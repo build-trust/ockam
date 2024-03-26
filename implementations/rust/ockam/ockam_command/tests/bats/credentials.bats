@@ -27,7 +27,7 @@ teardown() {
   run_success "$OCKAM" credential verify --issuer "$idt1_short" --credential-path "$OCKAM_HOME/credential"
   assert_output --partial "true"
 
-  run_success "$OCKAM" credential store --issuer "$idt1_short" --credential-path "$OCKAM_HOME/credential"
+  run_success "$OCKAM" credential store --issuer "$idt1_short" --credential-path "$OCKAM_HOME/credential" --scope "test"
 
   run_success "$OCKAM" credential list
   assert_output --partial "{\"application\":\"Smart Factory\",\"city\":\"New York\""
@@ -43,6 +43,6 @@ teardown() {
   run_success "$OCKAM" credential verify --issuer "$idt1_short" --credential-path "$OCKAM_HOME/bad_credential"
   assert_output --partial "false"
 
-  run_failure "$OCKAM" credential store --issuer "$idt1_short" --credential-path "$OCKAM_HOME/bad_credential"
+  run_failure "$OCKAM" credential store --issuer "$idt1_short" --credential-path "$OCKAM_HOME/bad_credential" --scope "test"
   assert_output --partial "Credential is not verified"
 }

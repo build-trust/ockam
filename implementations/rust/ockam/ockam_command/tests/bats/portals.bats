@@ -265,18 +265,18 @@ teardown() {
   authority_identity=$($OCKAM identity show authority --full --encoding hex)
 
   # Create a node for alice that trusts authority as a credential authority
-  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --expect-cached-credential
+  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
 
   # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --expect-cached-credential
+  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --credential-scope "test"
 
   # issue and store a short-lived credential for alice
   alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 5s --encoding hex)
-  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential
+  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential --scope "test"
 
   # issue and store credential for bob
   bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --encoding hex)
-  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential
+  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
 
   run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
@@ -311,18 +311,18 @@ teardown() {
   authority_identity=$($OCKAM identity show authority --full --encoding hex)
 
   # Create a node for alice that trusts authority as a credential authority
-  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --expect-cached-credential
+  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
 
   # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --expect-cached-credential
+  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --credential-scope "test"
 
   # issue and store a short-lived credential for alice
   alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --encoding hex)
-  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential
+  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential --scope "test"
 
   # issue and store credential for bob
   bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 5s --encoding hex)
-  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential
+  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
 
   run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet

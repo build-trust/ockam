@@ -32,9 +32,6 @@ teardown() {
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
-  run_success "$OCKAM" identity create bob
-  bob_identifier=$($OCKAM identity show bob)
-
   run_success "$OCKAM" identity create attacker
   attacker_identifier=$($OCKAM identity show attacker)
   attacker_identity=$($OCKAM identity show attacker --full --encoding hex)
@@ -45,33 +42,21 @@ teardown() {
   authority_identity=$($OCKAM identity show authority --full --encoding hex)
 
   # Create a node for alice that trusts authority as a credential authority
-  run_success "$OCKAM" node create alice --tcp-listener-address "127.0.0.1:$port" --identity alice --authority-identity $authority_identity --expect-cached-credential
-
-  # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --expect-cached-credential
-
-  # issue and store credentials for alice
-  $OCKAM credential issue --as authority --for "$alice_identifier" --attribute city="New York" --encoding hex >"$OCKAM_HOME/alice.cred"
-  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential-path "$OCKAM_HOME/alice.cred"
-
-  # issue and store credential for bob
-  $OCKAM credential issue --as authority --for "$bob_identifier" --attribute city="New York" --encoding hex >"$OCKAM_HOME/bob.cred"
-  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential-path "$OCKAM_HOME/bob.cred"
+  run_success "$OCKAM" node create alice --tcp-listener-address "127.0.0.1:$port" --identity alice --authority-identity $authority_identity
 
   msg=$(random_str)
 
   # Create a node for attacker
-  run_success "$OCKAM" node create attacker --identity attacker --authority-identity attacker_identity
+  run_success "$OCKAM" node create attacker --identity attacker --authority-identity $attacker_identity
 
   # Fail, attacker won't present any credential
-  run_failure $OCKAM message send --timeout 2 --from attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
+  run_failure $OCKAM message send --timeout 2 --from attacker --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
 
   # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
-  $OCKAM credential issue --as attacker --for $attacker_identifier --encoding hex >"$OCKAM_HOME/attacker.cred"
-  run_failure "$OCKAM" credential store --node attacker --issuer "$attacker_identity" --credential-path "$OCKAM_HOME/attacker.cred"
+  attacker_cred=$($OCKAM credential issue --as attacker --for $attacker_identifier --encoding hex)
+  run_success "$OCKAM" credential store --at attacker --issuer "$attacker_identifier" --scope "test" --credential $attacker_cred
 
-  run_success $OCKAM message send --timeout 2 --from bob --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
-  assert_output "$msg"
+  run_failure $OCKAM message send --timeout 2 --from attacker --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
 }
 
 @test "trust - online authority; Credential Exchange is performed" {
@@ -102,7 +87,7 @@ teardown() {
   run_success "$OCKAM" node create --identity alice --tcp-listener-address 127.0.0.1:$node_port --authority-identity $authority_identity
   sleep 1
 
-  run_success "$OCKAM" node create bob_node --identity bob --authority-identity $authority_identity --authority-route $authority_route
+  run_success "$OCKAM" node create bob_node --identity bob --authority-identity $authority_identity --authority-route $authority_route --credential-scope "test"
   sleep 1
 
   # send a message to alice using the trust context
