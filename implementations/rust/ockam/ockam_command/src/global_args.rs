@@ -2,7 +2,6 @@ use clap::ArgAction;
 use clap::Args;
 use ockam_core::env::get_env_with_default;
 
-use crate::docs;
 use crate::output::OutputFormat;
 
 /// Those arguments are common to all commands
@@ -35,21 +34,15 @@ pub struct GlobalArgs {
     pub verbose: u8,
 
     /// Output without any colors
-    #[arg(hide = docs::hide(), global = true, long, default_value_t = no_color_default_value())]
+    #[arg(global = true, long, default_value_t = no_color_default_value())]
     pub no_color: bool,
 
     /// Disable tty functionality
-    #[arg(hide = docs::hide(), global = true, long, default_value_t = no_input_default_value())]
+    #[arg(global = true, long, default_value_t = no_input_default_value())]
     pub no_input: bool,
 
     /// Output format
-    #[arg(
-    hide = docs::hide(),
-    global = true,
-    long = "output",
-    value_enum,
-    default_value = "plain"
-    )]
+    #[arg(global = true, long = "output", value_enum, default_value = "plain")]
     pub output_format: OutputFormat,
 
     // if test_argument_parser is true, command arguments are checked
