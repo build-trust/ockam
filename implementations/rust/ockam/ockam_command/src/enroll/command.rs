@@ -109,7 +109,7 @@ impl EnrollCommand {
         force = % self.force,
         skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
     ))]
-    async fn run_impl(&self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
         if self.is_already_enrolled(&opts.state, &opts).await? {
@@ -127,7 +127,7 @@ impl EnrollCommand {
 
         let identity_name = identity.name();
         let identifier = identity.identifier();
-        let node = InMemoryNode::start_node_with_identity(ctx, &opts.state, &identity_name).await?;
+        let node = InMemoryNode::start_with_identity(ctx, &opts.state, &identity_name).await?;
 
         let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 
@@ -352,9 +352,6 @@ async fn retrieve_user_space_and_project(
         .await
         .wrap_err("Unable to retrieve and set a Space as default")?
         .ok_or(miette!("No Space was found"))?;
-
-    info!("Retrieved your default Space {space:#?}");
-
     let project = get_user_project(
         opts,
         ctx,
@@ -368,7 +365,6 @@ async fn retrieve_user_space_and_project(
         color_primary(&space.name)
     ))?
     .ok_or(miette!("No Project was found"))?;
-    info!("Retrieved your default Project {project:#?}");
     opts.terminal.write_line(fmt_heading!(""))?;
     Ok(project)
 }

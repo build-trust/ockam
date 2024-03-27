@@ -5,7 +5,7 @@ use miette::{miette, IntoDiagnostic};
 use tokio::time::{sleep, Duration};
 use tracing::{debug, instrument};
 
-use ockam::{Address, AsyncTryClone, TcpListenerOptions};
+use ockam::{Address, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
@@ -45,15 +45,14 @@ impl CreateCommand {
         };
 
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
-        let options = TcpListenerOptions::new();
-        let listener = tcp
-            .listen(&self.tcp_listener_address, options)
+        let tcp_listener = tcp
+            .listen(&self.tcp_listener_address, TcpListenerOptions::new())
             .await
             .into_diagnostic()?;
 
         debug!(
             "set the node {node_name} listener address to {:?}",
-            listener.socket_address()
+            tcp_listener.socket_address()
         );
 
         // Set node_name so that node can isolate its data in the storage from other nodes
@@ -65,7 +64,7 @@ impl CreateCommand {
                 &node_name,
                 &self.identity,
                 &self.trust_opts.project_name,
-                Some(&listener),
+                Some(&tcp_listener),
             )
             .await?;
         debug!("created node {node_info:?}");
@@ -89,10 +88,7 @@ impl CreateCommand {
                 self.launch_config.is_none(),
                 true,
             ),
-            NodeManagerTransportOptions::new(
-                listener.flow_control_id().clone(),
-                tcp.async_try_clone().await.into_diagnostic()?,
-            ),
+            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),
             trust_options,
         )
         .await
@@ -100,7 +96,7 @@ impl CreateCommand {
         let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
 
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await
             .into_diagnostic()?;

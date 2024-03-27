@@ -370,14 +370,14 @@ impl NamedVault {
     }
 
     pub async fn vault(&self) -> Result<Vault> {
+        let mut vault = Vault::create_with_database(self.database().await?);
         if self.is_kms {
-            let mut vault = Vault::create().await?;
             let aws_vault = Arc::new(AwsSigningVault::create().await?);
             vault.identity_vault = aws_vault.clone();
             vault.credential_vault = aws_vault;
             Ok(vault)
         } else {
-            Ok(Vault::create_with_database(self.database().await?))
+            Ok(vault)
         }
     }
 
