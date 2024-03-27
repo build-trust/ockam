@@ -1,5 +1,5 @@
 use ockam_api::logs::{
-    global_error_handler_enabled, Colored, CratesFilter, ExportingConfiguration, LogFormat,
+    global_error_handler, Colored, CratesFilter, ExportingConfiguration, LogFormat,
     LoggingConfiguration, LoggingEnabled, LoggingTracing,
 };
 
@@ -94,7 +94,7 @@ fn make_configuration() -> ockam_core::Result<LoggingConfiguration> {
     Ok(LoggingConfiguration::new(
         LoggingEnabled::On,
         Level::TRACE,
-        global_error_handler_enabled()?,
+        global_error_handler()?,
         100,
         60,
         LogFormat::Default,

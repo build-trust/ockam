@@ -40,7 +40,7 @@ impl LoggingConfiguration {
     pub fn new(
         enabled: LoggingEnabled,
         level: Level,
-        global_error_handler_enabled: GlobalErrorHandler,
+        global_error_handler: GlobalErrorHandler,
         max_size_bytes: u64,
         max_files: u64,
         format: LogFormat,
@@ -57,7 +57,7 @@ impl LoggingConfiguration {
         LoggingConfiguration {
             enabled,
             level,
-            global_error_handler: global_error_handler_enabled,
+            global_error_handler,
             max_size_bytes,
             max_files,
             format,
@@ -177,7 +177,7 @@ impl LoggingConfiguration {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::Off,
             log_level(None)?,
-            global_error_handler_enabled()?,
+            global_error_handler()?,
             0,
             0,
             LogFormat::Default,
@@ -195,7 +195,7 @@ impl LoggingConfiguration {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::On,
             log_level(None)?,
-            GlobalErrorHandler::LogFile,
+            global_error_handler()?,
             log_max_size_bytes()?,
             log_max_files()?,
             log_format()?,
@@ -258,7 +258,7 @@ pub fn logging_configuration(
     Ok(LoggingConfiguration::new(
         enabled,
         level,
-        GlobalErrorHandler::LogFile,
+        global_error_handler()?,
         log_max_size_bytes()?,
         log_max_files()?,
         log_format()?,
@@ -327,7 +327,7 @@ fn get_log_level(
 }
 
 /// Return the strategy to use for reporting logging/tracing errors
-pub fn global_error_handler_enabled() -> ockam_core::Result<GlobalErrorHandler> {
+pub fn global_error_handler() -> ockam_core::Result<GlobalErrorHandler> {
     match get_env::<GlobalErrorHandler>(OCKAM_TRACING_GLOBAL_ERROR_HANDLER)? {
         Some(v) => Ok(v),
         None => Ok(GlobalErrorHandler::LogFile),
