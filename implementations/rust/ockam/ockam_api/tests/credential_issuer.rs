@@ -70,9 +70,10 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         members,
         identities.credentials(),
         &auth_identifier,
+        "test".to_string(),
         None,
         None,
-        None,
+        true,
     );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 

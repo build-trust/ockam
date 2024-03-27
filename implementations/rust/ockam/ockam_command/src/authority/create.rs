@@ -101,9 +101,14 @@ pub struct CreateCommand {
     #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None)]
     account_authority: Option<String>,
 
-    /// Enforce distintion between admins and enrollers
+    /// Enforce distinction between admins and enrollers
     #[arg(long, value_name = "ENFORCE_ADMIN_CHECKS", default_value_t = false)]
     enforce_admin_checks: bool,
+
+    /// Not include trust context id and project id into the credential
+    /// TODO: Set to true after old clients are updated
+    #[arg(long, value_name = "DISABLE_TRUST_CONTEXT_ID", default_value_t = false)]
+    disable_trust_context_id: bool,
 }
 
 impl CreateCommand {
@@ -191,6 +196,9 @@ impl CreateCommand {
         }
         if self.enforce_admin_checks {
             args.push("--enforce-admin-checks".to_string());
+        }
+        if self.disable_trust_context_id {
+            args.push("--disable_trust_context_id".to_string());
         }
         args.push(self.node_name.to_string());
 
@@ -318,6 +326,7 @@ impl CreateCommand {
             okta: okta_configuration,
             account_authority,
             enforce_admin_checks: self.enforce_admin_checks,
+            disable_trust_context_id: self.disable_trust_context_id,
         };
 
         authority_node::start_node(ctx, &configuration)
