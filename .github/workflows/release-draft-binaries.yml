@@ -185,19 +185,19 @@ jobs:
         build: [linux_arm64, linux_86, linux_armv7, macos_silicon, macos_86]
         include:
         - build: linux_arm64
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           toolchain: stable
           target: aarch64-unknown-linux-musl
           build_app: false
           use-cross-build: true
         - build: linux_armv7
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           toolchain: stable
           target: armv7-unknown-linux-musleabihf
           use-cross-build: true
           build_app: false
         - build: linux_86
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           toolchain: stable
           target: x86_64-unknown-linux-musl
           use-cross-build: true
@@ -210,13 +210,13 @@ jobs:
           build_app: true
           build_command: false
         - build: macos_silicon
-          os: macos-13
+          os: macos-14
           toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false
           build_app: true
         - build: macos_86
-          os: macos-13
+          os: macos-14
           toolchain: stable
           target: x86_64-apple-darwin
           use-cross-build: false
@@ -232,7 +232,7 @@ jobs:
       run: echo "${{ needs.create_release.outputs.upload_url }}"
 
     - name: Apple Signing Initialization
-      if: ${{ matrix.os == 'macos-13' }}
+      if: ${{ matrix.os == 'macos-14' }}
       shell: bash
       env:
         BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}

@@ -31,23 +31,12 @@ runs:
         override: true
         target: ${{ inputs.target }}
     - shell: bash
-      if: inputs.platform_operating_system == 'ubuntu-20.04'
-      run: |
-        set -x
-        use_cross_build=${{ inputs.use_cross_build }}
-        if [[ $use_cross_build == true ]]; then
-          cargo install --version 0.1.16 cross
-        else
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-        fi
-    - shell: bash
       if: inputs.platform_operating_system == 'ubuntu-22.04'
       run: |
         set -x
         use_cross_build=${{ inputs.use_cross_build }}
         if [[ $use_cross_build == true ]]; then
-          cargo install --version 0.1.16 cross
+          cargo install --version 0.2.4 cross
         else
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
