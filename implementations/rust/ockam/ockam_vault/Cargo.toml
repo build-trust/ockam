@@ -36,8 +36,6 @@ OCKAM_XX_25519_ChaChaPolyBLAKE2s = []
 std = [
   "ockam_macros/std",
   "ockam_node/std",
-  "aes-gcm/alloc",
-  "aes-gcm/std",
   "ed25519-dalek/std",
   "rand/std",
   "rand/std_rng",
@@ -70,8 +68,12 @@ alloc = [
 
 storage = ["ockam_node/storage", "sqlx"]
 
+# AWS LC provides binaries only for x86_64 and aarch64
+[target.'cfg(all(any(target_arch="x86_64", target_arch="aarch64"),target_os="linux",target_env="gnu"))'.dependencies]
+aws-lc-rs = { version = "1.6", default-features = false, features = ["non-fips"] }
+
 [dependencies]
-aes-gcm = { version = "0.10", default-features = false, features = ["aes"] }
+aes-gcm = { version = "0.10", default-features = false, features = ["aes"], optional = true }
 arrayref = "0.3"
 cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }

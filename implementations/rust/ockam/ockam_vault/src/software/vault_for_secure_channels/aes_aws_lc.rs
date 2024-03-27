@@ -1,13 +1,13 @@
-use crate::{AeadSecret, VaultError, AES_NONCE_LENGTH};
+use aws_lc_rs::aead::{Aad, LessSafeKey, Nonce, Tag, UnboundKey};
+use aws_lc_rs::error::Unspecified;
+use cfg_if::cfg_if;
 
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
-use aes_gcm::aead::consts::{U0, U12, U16};
-use aes_gcm::aead::{Aead, Nonce, Payload, Tag};
-use aes_gcm::aes::cipher::Unsigned;
-use aes_gcm::{AeadCore, AeadInPlace, AesGcm, KeyInit};
-use cfg_if::cfg_if;
+use crate::{AeadSecret, VaultError};
+
+const TAG_LENGTH: usize = 16;
 
 impl AesGen {
     pub fn encrypt_message(
@@ -17,90 +17,91 @@ impl AesGen {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<()> {
-        if nonce.len() != AES_NONCE_LENGTH {
-            return Err(VaultError::AeadAesGcmEncrypt)?;
-        }
-
-        destination.reserve(msg.len() + <AesGen as AeadCore>::TagSize::to_usize());
+        destination.reserve(msg.len() + TAG_LENGTH);
         let encrypted_payload_start = destination.len();
         destination.extend_from_slice(msg);
 
         let tag = self
             .encrypt_in_place_detached(
-                nonce.into(),
+                Nonce::try_assume_unique_for_key(nonce)
+                    .map_err(|_| VaultError::AeadAesGcmEncrypt)?,
                 aad,
                 &mut destination[encrypted_payload_start..],
             )
             .map_err(|_| VaultError::AeadAesGcmEncrypt)?;
 
-        destination.extend_from_slice(tag.as_slice());
+        destination.extend_from_slice(tag.as_ref());
 
         Ok(())
     }
     pub fn decrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
-        if nonce.len() != AES_NONCE_LENGTH {
-            return Err(VaultError::AeadAesGcmEncrypt)?;
-        }
+        // the tag is stored at the end of the message
+        let (msg, tag) = msg.split_at(msg.len() - TAG_LENGTH);
+        let mut out = vec![0u8; msg.len()];
+        self.decrypt(
+            Nonce::try_assume_unique_for_key(nonce).map_err(|_| VaultError::AeadAesGcmDecrypt)?,
+            aad,
+            msg,
+            tag,
+            &mut out,
+        )
+        .map_err(|_| VaultError::AeadAesGcmDecrypt)?;
 
-        Ok(self
-            .decrypt(nonce.into(), Payload { aad, msg })
-            .map_err(|_| VaultError::AeadAesGcmDecrypt)?)
+        Ok(out)
     }
 }
 
 cfg_if! {
     if #[cfg(any(not(feature = "disable_default_noise_protocol"), feature = "OCKAM_XX_25519_AES256_GCM_SHA256"))] {
-        use aes_gcm::Aes256Gcm;
-        type AesType = aes_gcm::aes::Aes256;
+        const AES_TYPE: aws_lc_rs::aead::Algorithm = aws_lc_rs::aead::AES_256_GCM;
 
         /// This enum is necessary to be able to dispatch the encrypt or decrypt functions
         /// based of the algorithm type. It would be avoided if `make_aes` could return existential types
         /// but those types are not allowed in return values in Rust
-        pub struct AesGen(AesGcm<AesType, U12>);
+        pub struct AesGen(AeadSecret);
 
         /// Depending on the secret type make the right type of encrypting / decrypting algorithm
         pub(super) fn make_aes(secret: &AeadSecret) -> AesGen {
-            AesGen(Aes256Gcm::new((&secret.0).into()))
+            AesGen(secret.clone())
         }
     } else if #[cfg(feature = "OCKAM_XX_25519_AES128_GCM_SHA256")] {
-        use aes_gcm::Aes128Gcm;
-        type AesType = aes_gcm::aes::Aes128;
+        const AES_TYPE: aws_lc_rs::aead::Algorithm = aws_lc_rs::aead::AES_128_GCM;
 
         /// This enum is necessary to be able to dispatch the encrypt or decrypt functions
         /// based of the algorithm type. It would be avoided if `make_aes` could return existential types
         /// but those types are not allowed in return values in Rust
-        pub struct AesGen(AesGcm<AesType, U12>);
+        pub struct AesGen(AeadSecret);
 
         /// Depending on the secret type make the right type of encrypting / decrypting algorithm
         pub(super) fn make_aes(secret: &AeadSecret) -> AesGen {
-            AesGen(Aes128Gcm::new((&secret.0).into()))
+            AesGen(secret.clone())
         }
     }
 }
 
-impl AeadInPlace for AesGen {
+impl AesGen {
     fn encrypt_in_place_detached(
         &self,
-        nonce: &Nonce<Self>,
+        nonce: Nonce,
         aad: &[u8],
         buffer: &mut [u8],
-    ) -> aes_gcm::aead::Result<Tag<Self>> {
-        self.0.encrypt_in_place_detached(nonce, aad, buffer)
+    ) -> Result<Tag, Unspecified> {
+        let unbound_key = UnboundKey::new(&AES_TYPE, &self.0 .0).unwrap();
+        let key = LessSafeKey::new(unbound_key);
+        let aad = Aad::from(aad);
+        key.seal_in_place_separate_tag(nonce, aad, buffer)
     }
 
-    fn decrypt_in_place_detached(
+    fn decrypt(
         &self,
-        nonce: &Nonce<Self>,
+        nonce: Nonce,
         aad: &[u8],
-        buffer: &mut [u8],
-        tag: &Tag<Self>,
-    ) -> aes_gcm::aead::Result<()> {
-        self.0.decrypt_in_place_detached(nonce, aad, buffer, tag)
+        input: &[u8],
+        tag: &[u8],
+        output: &mut [u8],
+    ) -> Result<(), Unspecified> {
+        let unbound_key = UnboundKey::new(&AES_TYPE, &self.0 .0).unwrap();
+        let key = LessSafeKey::new(unbound_key);
+        key.open_separate_gather(nonce, Aad::from(aad), input, tag, output)
     }
-}
-
-impl AeadCore for AesGen {
-    type NonceSize = U12;
-    type TagSize = U16;
-    type CiphertextOverhead = U0;
 }

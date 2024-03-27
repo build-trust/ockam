@@ -20,7 +20,7 @@ use crate::{
     AEAD_SECRET_LENGTH,
 };
 
-use super::aes::make_aes;
+use super::make_aes;
 
 /// [`SecureChannelVault`] implementation using software
 pub struct SoftwareVaultForSecureChannels {
