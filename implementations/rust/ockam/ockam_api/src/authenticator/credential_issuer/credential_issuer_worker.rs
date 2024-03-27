@@ -24,9 +24,10 @@ impl CredentialIssuerWorker {
         members: Arc<dyn AuthorityMembersRepository>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
-        project_identifier: Option<String>, // Legacy value, should be removed when all clients are updated to the latest version
+        project_identifier: String,
         credential_ttl: Option<Duration>,
         account_authority: Option<AccountAuthorityInfo>,
+        disable_trust_context_id: bool,
     ) -> Self {
         Self {
             credential_issuer: CredentialIssuer::new(
@@ -36,6 +37,7 @@ impl CredentialIssuerWorker {
                 project_identifier,
                 credential_ttl,
                 account_authority,
+                disable_trust_context_id,
             ),
         }
     }

@@ -35,12 +35,13 @@ impl CredentialIssuer {
         members: Arc<dyn AuthorityMembersRepository>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
-        project_identifier: Option<String>, // Legacy value, should be removed when all clients are updated to the latest version
+        project_identifier: String,
         credential_ttl: Option<Duration>,
         account_authority: Option<AccountAuthorityInfo>,
+        disable_trust_context_id: bool,
     ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA);
-        let subject_attributes = if let Some(project_identifier) = project_identifier {
+        let subject_attributes = if !disable_trust_context_id {
             // Legacy value, should be removed when all clients are updated to the latest version
             subject_attributes.with_attribute(
                 TRUST_CONTEXT_ID.to_vec(),

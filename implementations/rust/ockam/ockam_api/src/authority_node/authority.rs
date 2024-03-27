@@ -228,9 +228,10 @@ impl Authority {
             self.members.clone(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
-            Some(configuration.project_identifier()),
+            configuration.project_identifier(),
             ttl,
             self.account_authority.clone(),
+            configuration.disable_trust_context_id,
         );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();

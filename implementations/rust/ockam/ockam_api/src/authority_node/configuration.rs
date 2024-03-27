@@ -52,6 +52,10 @@ pub struct Configuration {
 
     /// Differentiate between admins and enrollers
     pub enforce_admin_checks: bool,
+
+    /// Will not include trust_context_id and project id into credential
+    /// Set to true after old clients are updated
+    pub disable_trust_context_id: bool,
 }
 
 /// Local and private functions for the authority configuration
