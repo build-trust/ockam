@@ -1,10 +1,9 @@
 use either::Either;
-use ockam::identity::IdentitiesAttributes;
 use std::collections::{BTreeMap, HashMap};
 
 use ockam::identity::utils::now;
-use ockam::identity::AttributesEntry;
 use ockam::identity::Identifier;
+use ockam::identity::{AttributesEntry, IdentitiesAttributes};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 
@@ -24,11 +23,11 @@ pub type DirectAuthenticatorResult<T> = Either<T, DirectAuthenticatorError>;
 
 pub struct DirectAuthenticator {
     members: Arc<dyn AuthorityMembersRepository>,
+    identities_attributes: Arc<IdentitiesAttributes>,
     account_authority: Option<AccountAuthorityInfo>,
 }
 #[derive(Clone)]
 pub struct AccountAuthorityInfo {
-    identities_attributes: Arc<IdentitiesAttributes>,
     account_authority: Identifier,
     project_identifier: String,
     enforce_admin_checks: bool,
@@ -36,22 +35,17 @@ pub struct AccountAuthorityInfo {
 
 impl AccountAuthorityInfo {
     pub fn new(
-        identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Identifier,
         project_identifier: String,
         enforce_admin_checks: bool,
     ) -> Self {
         Self {
-            identities_attributes,
             account_authority,
             project_identifier,
             enforce_admin_checks,
         }
     }
 
-    pub fn identities_attributes(&self) -> Arc<IdentitiesAttributes> {
-        self.identities_attributes.clone()
-    }
     pub fn account_authority(&self) -> &Identifier {
         &self.account_authority
     }
@@ -66,10 +60,12 @@ impl AccountAuthorityInfo {
 impl DirectAuthenticator {
     pub fn new(
         members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
             members,
+            identities_attributes,
             account_authority,
         }
     }
@@ -83,6 +79,7 @@ impl DirectAuthenticator {
     ) -> Result<DirectAuthenticatorResult<()>> {
         let check = EnrollerAccessControlChecks::check_identifier(
             self.members.clone(),
+            self.identities_attributes.clone(),
             enroller,
             &self.account_authority,
         )
@@ -143,6 +140,7 @@ impl DirectAuthenticator {
     ) -> Result<DirectAuthenticatorResult<HashMap<Identifier, AttributesEntry>>> {
         let check = EnrollerAccessControlChecks::check_identifier(
             self.members.clone(),
+            self.identities_attributes.clone(),
             enroller,
             &self.account_authority,
         )
@@ -179,6 +177,7 @@ impl DirectAuthenticator {
     ) -> Result<DirectAuthenticatorResult<()>> {
         let check_enroller = EnrollerAccessControlChecks::check_identifier(
             self.members.clone(),
+            self.identities_attributes.clone(),
             enroller,
             &self.account_authority,
         )
@@ -196,6 +195,7 @@ impl DirectAuthenticator {
 
         let check_member = EnrollerAccessControlChecks::check_identifier(
             self.members.clone(),
+            self.identities_attributes.clone(),
             identifier,
             &self.account_authority,
         )

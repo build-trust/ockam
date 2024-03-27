@@ -68,6 +68,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         .add_consumer(auth_worker_addr.clone(), &sc_flow_control_id);
     let auth = CredentialIssuerWorker::new(
         members,
+        identities.identities_attributes(),
         identities.credentials(),
         &auth_identifier,
         "test".to_string(),

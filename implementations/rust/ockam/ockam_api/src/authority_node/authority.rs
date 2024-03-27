@@ -74,7 +74,6 @@ impl Authority {
 
         let identities = Identities::create(database).build();
 
-        let identity_attrs = identities.identities_attributes().clone();
         let secure_channels = SecureChannels::from_identities(identities.clone());
 
         let identifier = configuration.identifier();
@@ -87,7 +86,6 @@ impl Authority {
                     .import_from_change_history(None, change_history)
                     .await?;
                 Some(AccountAuthorityInfo::new(
-                    identity_attrs,
                     acc_authority_identifier,
                     configuration.project_identifier(),
                     configuration.enforce_admin_checks,
@@ -158,8 +156,11 @@ impl Authority {
             return Ok(());
         }
 
-        let direct =
-            DirectAuthenticatorWorker::new(self.members.clone(), self.account_authority.clone());
+        let direct = DirectAuthenticatorWorker::new(
+            self.members.clone(),
+            self.secure_channels.identities().identities_attributes(),
+            self.account_authority.clone(),
+        );
 
         let name = configuration.authenticator_name();
         ctx.flow_controls()
@@ -185,6 +186,7 @@ impl Authority {
         let issuer = EnrollmentTokenIssuerWorker::new(
             self.tokens.clone(),
             self.members.clone(),
+            self.secure_channels.identities().identities_attributes(),
             self.account_authority.clone(),
         );
         let acceptor =
@@ -226,6 +228,7 @@ impl Authority {
         // create and start a credential issuer worker
         let issuer = CredentialIssuerWorker::new(
             self.members.clone(),
+            self.secure_channels.identities().identities_attributes(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
             configuration.project_identifier(),

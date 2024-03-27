@@ -4,7 +4,7 @@ use rand::Rng;
 use std::collections::BTreeMap;
 
 use ockam::identity::utils::now;
-use ockam::identity::Identifier;
+use ockam::identity::{Identifier, IdentitiesAttributes};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::Result;
@@ -25,6 +25,7 @@ pub type EnrollmentTokenIssuerResult<T> = Either<T, EnrollmentTokenIssuerError>;
 pub struct EnrollmentTokenIssuer {
     pub(super) tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
     pub(super) members: Arc<dyn AuthorityMembersRepository>,
+    pub(super) identities_attributes: Arc<IdentitiesAttributes>,
     pub(super) account_authority: Option<AccountAuthorityInfo>,
 }
 
@@ -32,11 +33,13 @@ impl EnrollmentTokenIssuer {
     pub fn new(
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
             tokens,
             members,
+            identities_attributes,
             account_authority,
         }
     }
@@ -51,6 +54,7 @@ impl EnrollmentTokenIssuer {
     ) -> Result<EnrollmentTokenIssuerResult<OneTimeCode>> {
         let check = EnrollerAccessControlChecks::check_identifier(
             self.members.clone(),
+            self.identities_attributes.clone(),
             enroller,
             &self.account_authority,
         )
