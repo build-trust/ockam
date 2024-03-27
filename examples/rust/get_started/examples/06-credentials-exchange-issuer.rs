@@ -56,6 +56,7 @@ async fn main(ctx: Context) -> Result<()> {
     // distinct for each identifier, but for this example we'll keep things simple.
     let credential_issuer = CredentialIssuerWorker::new(
         members.clone(),
+        node.identities_attributes(),
         node.credentials(),
         &issuer,
         "test".to_string(),

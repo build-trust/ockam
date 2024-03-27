@@ -5,7 +5,9 @@ use tracing::trace;
 use crate::authenticator::credential_issuer::CredentialIssuer;
 use crate::authenticator::direct::AccountAuthorityInfo;
 use crate::authenticator::AuthorityMembersRepository;
-use ockam::identity::{Credentials, Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::{
+    Credentials, Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo,
+};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
@@ -20,8 +22,10 @@ pub struct CredentialIssuerWorker {
 
 impl CredentialIssuerWorker {
     /// Create a new credentials issuer
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
         project_identifier: String,
@@ -32,6 +36,7 @@ impl CredentialIssuerWorker {
         Self {
             credential_issuer: CredentialIssuer::new(
                 members,
+                identities_attributes,
                 credentials,
                 issuer,
                 project_identifier,

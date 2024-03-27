@@ -2,7 +2,7 @@ use either::Either;
 use minicbor::Decoder;
 use tracing::trace;
 
-use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::{Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Routed, Worker};
@@ -21,10 +21,15 @@ pub struct DirectAuthenticatorWorker {
 impl DirectAuthenticatorWorker {
     pub fn new(
         members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
-            authenticator: DirectAuthenticator::new(members, account_authority),
+            authenticator: DirectAuthenticator::new(
+                members,
+                identities_attributes,
+                account_authority,
+            ),
         }
     }
 }

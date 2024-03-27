@@ -1,6 +1,6 @@
 use crate::authenticator::direct::{OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY};
 use crate::authenticator::AuthorityMembersRepository;
-use ockam::identity::Identifier;
+use ockam::identity::{Identifier, IdentitiesAttributes};
 use ockam_core::Result;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -39,12 +39,11 @@ impl EnrollerAccessControlChecks {
         false
     }
 
-    pub(crate) async fn check_identifier(
+    pub(crate) async fn check_is_member(
         members: Arc<dyn AuthorityMembersRepository>,
         identifier: &Identifier,
-        account_authority: &Option<AccountAuthorityInfo>,
     ) -> Result<EnrollerCheckResult> {
-        let mut r = match members.get_member(identifier).await? {
+        let r = match members.get_member(identifier).await? {
             Some(member) => {
                 let is_enroller = Self::check_bin_attributes_is_enroller(member.attributes());
                 EnrollerCheckResult {
@@ -61,9 +60,20 @@ impl EnrollerAccessControlChecks {
                 is_pre_trusted: false,
             },
         };
+
+        Ok(r)
+    }
+
+    pub(crate) async fn check_identifier(
+        members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
+        identifier: &Identifier,
+        account_authority: &Option<AccountAuthorityInfo>,
+    ) -> Result<EnrollerCheckResult> {
+        let mut r = Self::check_is_member(members, identifier).await?;
+
         if let Some(info) = account_authority {
-            if let Some(attrs) = info
-                .identities_attributes()
+            if let Some(attrs) = identities_attributes
                 .get_attributes(identifier, info.account_authority())
                 .await?
             {

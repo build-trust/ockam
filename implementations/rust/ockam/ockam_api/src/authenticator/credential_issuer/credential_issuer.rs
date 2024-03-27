@@ -4,7 +4,7 @@ use crate::authenticator::direct::AccountAuthorityInfo;
 use crate::authenticator::AuthorityMembersRepository;
 use ockam::identity::models::{CredentialAndPurposeKey, CredentialSchemaIdentifier};
 use ockam::identity::utils::AttributesBuilder;
-use ockam::identity::{Attributes, Credentials, Identifier};
+use ockam::identity::{Attributes, Credentials, Identifier, IdentitiesAttributes};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 
@@ -20,6 +20,7 @@ pub const DEFAULT_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialIssuer {
     members: Arc<dyn AuthorityMembersRepository>,
+    identities_attributes: Arc<IdentitiesAttributes>,
     credentials: Arc<Credentials>,
     issuer: Identifier,
     subject_attributes: Attributes,
@@ -30,9 +31,11 @@ pub struct CredentialIssuer {
 
 impl CredentialIssuer {
     /// Create a new credentials issuer
+    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all, fields(issuer = %issuer, project_identifier = project_identifier.clone(), credential_ttl = credential_ttl.map_or("n/a".to_string(), |d| d.as_secs().to_string())))]
     pub fn new(
         members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
         project_identifier: String,
@@ -54,6 +57,7 @@ impl CredentialIssuer {
 
         Self {
             members,
+            identities_attributes,
             credentials,
             issuer: issuer.clone(),
             subject_attributes,
@@ -69,8 +73,8 @@ impl CredentialIssuer {
     ) -> Result<Option<CredentialAndPurposeKey>> {
         // Check if it has a valid project admin credential
         if let Some(info) = self.account_authority.as_ref() {
-            if let Some(attrs) = info
-                .identities_attributes()
+            if let Some(attrs) = self
+                .identities_attributes
                 .get_attributes(subject, info.account_authority())
                 .await?
             {

@@ -2,7 +2,7 @@ use either::Either;
 use minicbor::Decoder;
 use tracing::trace;
 
-use ockam::identity::IdentitySecureChannelLocalInfo;
+use ockam::identity::{IdentitiesAttributes, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
@@ -22,10 +22,16 @@ impl EnrollmentTokenIssuerWorker {
     pub fn new(
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
+        identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
-            issuer: EnrollmentTokenIssuer::new(tokens, members, account_authority),
+            issuer: EnrollmentTokenIssuer::new(
+                tokens,
+                members,
+                identities_attributes,
+                account_authority,
+            ),
         }
     }
 }
