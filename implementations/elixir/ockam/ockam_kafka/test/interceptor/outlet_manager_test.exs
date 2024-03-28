@@ -1,9 +1,44 @@
+defmodule Ockam.Kafka.Interceptor.OutletManager.Test.TcpEchoer do
+  @behaviour :ranch_protocol
+
+  def start_link(ref, transport, opts) do
+    pid = spawn_link(__MODULE__, :init, [ref, transport, opts])
+    {:ok, pid}
+  end
+
+  def init(ref, transport, _opts) do
+    {:ok, socket} = :ranch.handshake(ref)
+    loop(socket, transport)
+  end
+
+  defp loop(socket, transport) do
+    case transport.recv(socket, 0, 5000) do
+      {:ok, data} ->
+        transport.send(socket, data)
+        loop(socket, transport)
+
+      _ ->
+        :ok = transport.close(socket)
+    end
+  end
+
+  def start(port) do
+    :ranch.start_listener(:echo_listener, :ranch_tcp, [port: port], __MODULE__, [])
+    :ok
+  end
+
+  def close() do
+    :ranch.stop_listener(:echo_listener)
+  end
+end
+
 defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
   use ExUnit.Case
 
   alias Ockam.Kafka.Interceptor.InletManager
   alias Ockam.Kafka.Interceptor.OutletManager
   alias Ockam.Kafka.Interceptor.OutletManager.Outlet
+  alias Ockam.Kafka.Interceptor.OutletManager.Test.TcpEchoer
 
   test "set outlets" do
     outlet_prefix = "outlet_"
@@ -89,7 +124,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
       {OutletManager, [outlet_prefix: outlet_prefix, ssl: ssl, ssl_options: ssl_options]}
     )
 
-    Ockam.Transport.TCP.start(listen: [port: 12_000])
+    :ok = TcpEchoer.start(12_000)
 
     InletManager.set_inlets(InletManager, [1])
 
@@ -103,13 +138,21 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
       }
     ])
 
-    ## Connect to inlet port
-    {:ok, client} = Ockam.Transport.TCP.Client.create(destination: {"localhost", 11_001})
+    ## Connect to inlet port 11_001
+    {:ok, socket} =
+      :gen_tcp.connect('localhost', 11_001, [:binary, {:packet, 2}, {:active, false}])
 
-    {:ok, "echo"} = Ockam.Services.Echo.create(address: "echo")
+    ## Send message to inlet
+    :ok = :gen_tcp.send(socket, "HI")
 
-    ## We can call "echo" via inlet-outlet pair
-    assert {:ok, %Ockam.Message{payload: "HI"}} =
-             Ockam.Workers.Call.call_on_current_process("HI", [client, "echo"])
+    ## log socket
+    IO.inspect(socket)
+
+    ## Receive message from outlet
+    {:ok, data} = :gen_tcp.recv(socket, 0)
+    assert "HI" = data
+
+    :ok = :gen_tcp.close(socket)
+    TcpEchoer.close()
   end
 end

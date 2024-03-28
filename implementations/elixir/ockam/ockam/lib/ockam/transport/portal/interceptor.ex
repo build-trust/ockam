@@ -92,6 +92,17 @@ defmodule Ockam.Transport.Portal.Interceptor do
     interceptor_mod = Keyword.fetch!(options, :interceptor_mod)
     interceptor_options = Keyword.get(options, :interceptor_options, [])
 
+    state =
+      Map.merge(
+        state,
+        %{
+          inner_incoming_packet_counter: 0xFFFF,
+          inner_outgoing_packet_counter: 0xFFFF,
+          outer_incoming_packet_counter: 0xFFFF,
+          outer_outgoing_packet_counter: 0xFFFF
+        }
+      )
+
     case interceptor_mod.setup(interceptor_options, state) do
       {:ok, state} ->
         state = Map.put(state, :interceptor_mod, interceptor_mod)
@@ -182,8 +193,8 @@ defmodule Ockam.Transport.Portal.Interceptor do
 
   defp handle_tunnel_message(type, %Message{payload: payload} = message, state) do
     case TunnelProtocol.decode(payload) do
-      {:ok, {:payload, tunnel_payload}} ->
-        intercept_tunnel_payload(type, tunnel_payload, state)
+      {:ok, {:payload, {tunnel_payload, packet_counter}}} ->
+        intercept_tunnel_payload_packet_counter(type, tunnel_payload, packet_counter, state)
 
       {:ok, signal} ->
         case intercept_tunnel_signal(type, signal, state) do
@@ -201,6 +212,36 @@ defmodule Ockam.Transport.Portal.Interceptor do
     end
   end
 
+  defp intercept_tunnel_payload_packet_counter(type, payload, msg_packet_counter, state) do
+    if msg_packet_counter != :undefined do
+      packet_counter =
+        case type do
+          :outer -> Map.get(state, :outer_incoming_packet_counter)
+          :inner -> Map.get(state, :inner_incoming_packet_counter)
+        end
+
+      packet_counter = increment_packet_counter(packet_counter)
+
+      if packet_counter == msg_packet_counter do
+        state =
+          case type do
+            :outer -> Map.put(state, :outer_incoming_packet_counter, packet_counter)
+            :inner -> Map.put(state, :inner_incoming_packet_counter, packet_counter)
+          end
+
+        intercept_tunnel_payload(type, payload, state)
+      else
+        Logger.warning(
+          "Packet counter mismatch, expected #{packet_counter}, got #{msg_packet_counter}"
+        )
+
+        {:stop, :packet_counter_mismatch, state}
+      end
+    else
+      intercept_tunnel_payload(type, payload, state)
+    end
+  end
+
   defp intercept_tunnel_payload(type, payload, %{interceptor_mod: interceptor_mod} = state) do
     mod_return =
       case type do
@@ -210,29 +251,56 @@ defmodule Ockam.Transport.Portal.Interceptor do
 
     case mod_return do
       {:ok, payloads, state} ->
-        encoded_payloads = encode_payloads(payloads)
+        {encoded_payloads, state} = encode_payloads(type, payloads, state)
         {:ok, encoded_payloads, state}
 
       ## TODO: send disconnect to both sides on exit?
       {:stop, reason, payloads, state} ->
-        encoded_payloads = encode_payloads(payloads)
+        {encoded_payloads, state} = encode_payloads(type, payloads, state)
         {:stop, reason, encoded_payloads, state}
     end
   end
 
-  defp encode_payloads(payloads) do
-    ## Each payload may result in 1 or more tunnel payloads
-    Enum.flat_map(payloads, fn payload ->
-      case byte_size(payload) do
-        small when small <= @max_payload_size ->
-          [TunnelProtocol.encode({:payload, payload})]
-
-        large ->
-          Enum.map(chunk_payload(large, @max_payload_size), fn payload ->
-            TunnelProtocol.encode({:payload, payload})
-          end)
+  defp encode_payloads(type, payloads, state) do
+    packet_counter =
+      case type do
+        :outer -> Map.get(state, :outer_outgoing_packet_counter)
+        :inner -> Map.get(state, :inner_outgoing_packet_counter)
       end
-    end)
+
+    ## Each payload may result in 1 or more tunnel payloads
+    {encoded_payloads, packet_counter} =
+      Enum.flat_map_reduce(payloads, packet_counter, fn payload, packet_counter ->
+        case byte_size(payload) do
+          small when small <= @max_payload_size ->
+            packet_counter = increment_packet_counter(packet_counter)
+
+            {
+              [TunnelProtocol.encode({:payload, {payload, packet_counter}})],
+              packet_counter
+            }
+
+          large ->
+            chunks = chunk_payload(large, @max_payload_size)
+
+            Enum.map_reduce(chunks, packet_counter, fn payload ->
+              packet_counter = increment_packet_counter(packet_counter)
+
+              {
+                TunnelProtocol.encode({:payload, {payload, packet_counter}}),
+                packet_counter
+              }
+            end)
+        end
+      end)
+
+    state =
+      case type do
+        :outer -> Map.put(state, :outer_outgoing_packet_counter, packet_counter)
+        :inner -> Map.put(state, :inner_outgoing_packet_counter, packet_counter)
+      end
+
+    {encoded_payloads, state}
   end
 
   defp chunk_payload(payload, max_size) when byte_size(payload) >= max_size do
@@ -266,6 +334,15 @@ defmodule Ockam.Transport.Portal.Interceptor do
 
       :pong ->
         {:ok, [payload], Map.put(state, :pong_route, Message.return_route(message))}
+    end
+  end
+
+  defp increment_packet_counter(packet_counter) do
+    # 0xFFFF is the maximum value for a u16
+    if packet_counter == 0xFFFF do
+      0
+    else
+      packet_counter + 1
     end
   end
 end
