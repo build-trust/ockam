@@ -249,7 +249,7 @@ pub fn logging_configuration(
     crates: CratesFilter,
 ) -> ockam_core::Result<LoggingConfiguration> {
     let is_legacy_variable_set = is_set::<LevelVar>(OCKAM_LOG)?;
-    let enabled = if is_legacy_variable_set {
+    let enabled = if is_legacy_variable_set || preferred_log_level.is_some() {
         LoggingEnabled::On
     } else {
         logging_enabled()?

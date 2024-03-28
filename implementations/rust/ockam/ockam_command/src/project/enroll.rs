@@ -51,7 +51,7 @@ pub struct EnrollCommand {
 impl Command for EnrollCommand {
     const NAME: &'static str = "project enroll";
 
-    async fn async_run(self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.global_args.output_format == OutputFormat::Json {
             return Err(miette::miette!(
                 "This command does not support JSON output. Please try running it again without '--output json'."

@@ -105,7 +105,7 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node with a specific identity
-    pub async fn start_node_with_identity(
+    pub async fn start_with_identity(
         ctx: &Context,
         cli_state: &CliState,
         identity_name: &str,

@@ -138,7 +138,7 @@ impl CliState {
     /// Return a named identity given its name or the default named identity
     #[instrument(skip_all, fields(name = name.clone()))]
     pub async fn get_named_identity_or_default(
-        &mut self,
+        &self,
         name: &Option<String>,
     ) -> Result<NamedIdentity> {
         match name {
