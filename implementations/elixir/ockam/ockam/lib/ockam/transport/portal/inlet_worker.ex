@@ -25,7 +25,16 @@ defmodule Ockam.Transport.Portal.InletWorker do
     Logger.info("Starting inlet worker.  Outlet peer: #{inspect(peer_route)}")
 
     {:ok,
-     Map.merge(state, %{peer_route: peer_route, stage: :wait_for_socket, tcp_wrapper: tcp_wrapper})}
+     Map.merge(
+       state,
+       %{
+         peer_route: peer_route,
+         stage: :wait_for_socket,
+         tcp_wrapper: tcp_wrapper,
+         incoming_packet_counter: 0xFFFF,
+         outgoing_packet_counter: 0xFFFF
+       }
+     )}
   end
 
   @impl true
@@ -53,18 +62,27 @@ defmodule Ockam.Transport.Portal.InletWorker do
   end
 
   @impl true
-  def handle_info({:tcp, socket, data}, %{peer_route: peer_route} = state) do
+  def handle_info(
+        {:tcp, socket, data},
+        %{
+          peer_route: peer_route,
+          outgoing_packet_counter: packet_counter
+        } = state
+      ) do
     :ok = :inet.setopts(socket, active: :once)
+
+    packet_counter = increment_packet_counter(packet_counter)
 
     :ok =
       Worker.route(
         %Message{
-          payload: TunnelProtocol.encode({:payload, data}),
+          payload: TunnelProtocol.encode({:payload, {data, packet_counter}}),
           onward_route: peer_route
         },
         state
       )
 
+    state = Map.put(state, :outgoing_packet_counter, packet_counter)
     {:noreply, state}
   end
 
@@ -102,17 +120,47 @@ defmodule Ockam.Transport.Portal.InletWorker do
   end
 
   defp handle_protocol_msg(
-         %{socket: socket, stage: :connected, tcp_wrapper: tcp_wrapper} = state,
-         {:payload, data},
+         %{
+           socket: socket,
+           stage: :connected,
+           tcp_wrapper: tcp_wrapper,
+           incoming_packet_counter: packet_counter
+         } = state,
+         {:payload, {data, msg_packet_counter}},
          _return_route
        ) do
-    :ok = tcp_wrapper.wrap_tcp_call(:gen_tcp, :send, [socket, data])
-    {:ok, state}
+    if msg_packet_counter != :undefined do
+      packet_counter = increment_packet_counter(packet_counter)
+
+      if packet_counter != msg_packet_counter do
+        Logger.warning(
+          "Packet counter mismatch, expected #{packet_counter}, got #{msg_packet_counter}"
+        )
+
+        {:stop, :packet_counter_mismatch, state}
+      else
+        :ok = tcp_wrapper.wrap_tcp_call(:gen_tcp, :send, [socket, data])
+        state = Map.put(state, :incoming_packet_counter, packet_counter)
+        {:ok, state}
+      end
+    else
+      :ok = tcp_wrapper.wrap_tcp_call(:gen_tcp, :send, [socket, data])
+      {:ok, state}
+    end
   end
 
   defp handle_protocol_msg(%{socket: socket} = state, :disconnect, _return_route) do
     Logger.info("Peer disconnected")
     :ok = :gen_tcp.close(socket)
     {:stop, :normal, state}
+  end
+
+  defp increment_packet_counter(packet_counter) do
+    # 0xFFFF is the maximum value for a u16
+    if packet_counter == 0xFFFF do
+      0
+    else
+      packet_counter + 1
+    end
   end
 end

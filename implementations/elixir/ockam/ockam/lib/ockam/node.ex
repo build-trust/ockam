@@ -140,7 +140,7 @@ defmodule Ockam.Node do
         Process.sleep(sleep_ms)
 
         if queue_len > @queue_size_high_watermark * 2 do
-          Logger.warn(
+          Logger.warning(
             "backpressure, pausing sender for #{sleep_ms}ms,  destination #{inspect(destination_pid)} has a queue of #{queue_len}"
           )
         end

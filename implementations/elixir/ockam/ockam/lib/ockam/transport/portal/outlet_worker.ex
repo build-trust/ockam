@@ -62,7 +62,9 @@ defmodule Ockam.Transport.Portal.OutletWorker do
        |> Map.put(:protocol, protocol)
        |> Map.put(:peer, msg.return_route)
        |> Map.put(:connected, true)
-       |> Map.put(:tcp_wrapper, tcp_wrapper)}
+       |> Map.put(:tcp_wrapper, tcp_wrapper)
+       |> Map.put(:incoming_packet_counter, 0xFFFF)
+       |> Map.put(:outgoing_packet_counter, 0xFFFF)}
     else
       error ->
         Logger.error("Error starting outlet: #{inspect(options)} : #{inspect(error)}")
@@ -87,11 +89,20 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   @impl true
   def handle_info(
         {data_tag, socket, data},
-        %{peer: peer, protocol: %{data_tag: data_tag, inet_mod: inet_mod}} = state
+        %{
+          peer: peer,
+          protocol: %{data_tag: data_tag, inet_mod: inet_mod},
+          outgoing_packet_counter: packet_counter
+        } = state
       ) do
+    packet_counter = increment_packet_counter(packet_counter)
+
     :ok =
       Worker.route(
-        %Message{payload: TunnelProtocol.encode({:payload, data}), onward_route: peer},
+        %Message{
+          payload: TunnelProtocol.encode({:payload, {data, packet_counter}}),
+          onward_route: peer
+        },
         state
       )
 
@@ -146,12 +157,31 @@ defmodule Ockam.Transport.Portal.OutletWorker do
     do: {:stop, :normal, Map.put(state, :connected, false)}
 
   defp handle_protocol_msg(
-         %{protocol: %{send_mod: send_mod}, socket: socket, tcp_wrapper: tcp_wrapper} = state,
-         {:payload, data}
+         %{
+           protocol: %{send_mod: send_mod},
+           socket: socket,
+           tcp_wrapper: tcp_wrapper,
+           incoming_packet_counter: packet_counter
+         } = state,
+         {:payload, {data, msg_packet_counter}}
        ) do
-    :ok = tcp_wrapper.wrap_tcp_call(send_mod, :send, [socket, data])
+    if msg_packet_counter != :undefined do
+      packet_counter = increment_packet_counter(packet_counter)
 
-    {:ok, state}
+      if packet_counter != msg_packet_counter do
+        Logger.warning(
+          "Packet counter mismatch, expected #{packet_counter}, got #{msg_packet_counter}"
+        )
+
+        {:stop, :packet_counter_mismatch, state}
+      else
+        :ok = tcp_wrapper.wrap_tcp_call(send_mod, :send, [socket, data])
+        {:ok, Map.put(state, :incoming_packet_counter, packet_counter)}
+      end
+    else
+      :ok = tcp_wrapper.wrap_tcp_call(send_mod, :send, [socket, data])
+      {:ok, state}
+    end
   end
 
   defp maybe_upgrade_to_ssl(socket, false, _ssl_options, _timeout) do
@@ -161,5 +191,14 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   defp maybe_upgrade_to_ssl(socket, true, ssl_options, timeout) do
     ## TODO: insert_server_name_indication??
     :ssl.connect(socket, ssl_options, timeout)
+  end
+
+  defp increment_packet_counter(packet_counter) do
+    # 0xFFFF is the maximum value for a u16
+    if packet_counter == 0xFFFF do
+      0
+    else
+      packet_counter + 1
+    end
   end
 end
