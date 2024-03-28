@@ -1,5 +1,5 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalWorker, TcpInletOptions, TcpRegistry};
+use crate::{portal::TcpPortalWorker, HostnamePort, TcpInletOptions, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, Processor, Result, Route};
@@ -94,12 +94,12 @@ impl Processor for TcpInletListenProcessor {
             outlet_listener_route.next()?,
         );
 
-        let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
+        let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
         TcpPortalWorker::start_new_inlet(
             ctx,
             self.registry.clone(),
             stream,
-            peer,
+            HostnamePort::from_socket_addr(socket_addr)?,
             outlet_listener_route,
             addresses,
             self.options.incoming_access_control.clone(),

@@ -28,14 +28,17 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         .node_manager
         .create_outlet(
             context,
-            echo_server_handle.chosen_addr,
+            echo_server_handle.chosen_addr.clone(),
             Some(Address::from_string("outlet")),
             true,
             OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
         )
         .await?;
 
-    assert_eq!(outlet_status.socket_addr, echo_server_handle.chosen_addr);
+    assert_eq!(
+        outlet_status.socket_addr,
+        echo_server_handle.chosen_addr.to_socket_addr()?
+    );
     assert_eq!(outlet_status.worker_addr.address(), "outlet");
 
     let inlet_status = node_manager_handle
@@ -96,7 +99,7 @@ fn portal_node_goes_down_reconnect() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -160,7 +163,7 @@ fn portal_node_goes_down_reconnect() {
                 .node_manager
                 .create_outlet(
                     &third_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -232,7 +235,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -345,7 +348,7 @@ fn portal_heavy_load_exchanged() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -483,7 +486,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),

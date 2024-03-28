@@ -130,7 +130,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),

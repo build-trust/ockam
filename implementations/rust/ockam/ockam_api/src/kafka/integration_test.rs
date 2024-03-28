@@ -37,7 +37,7 @@ mod test {
     use ockam_multiaddr::proto::Service;
     use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
-    use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
+    use ockam_transport_tcp::{HostnamePort, TcpInletOptions, TcpOutletOptions};
 
     use crate::hop::Hop;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
@@ -147,7 +147,7 @@ mod test {
                 .tcp
                 .create_outlet(
                     "kafka_consumer_outlet",
-                    format!("127.0.0.1:{}", consumer_mock_kafka.port),
+                    HostnamePort::new("127.0.0.1", consumer_mock_kafka.port),
                     TcpOutletOptions::new(),
                 )
                 .await?;
@@ -167,7 +167,7 @@ mod test {
             .tcp
             .create_outlet(
                 "kafka_producer_outlet",
-                format!("127.0.0.1:{}", producer_mock_kafka.port),
+                HostnamePort::new("127.0.0.1", producer_mock_kafka.port),
                 TcpOutletOptions::new(),
             )
             .await?;
@@ -205,7 +205,7 @@ mod test {
             .tcp
             .create_outlet(
                 "kafka_consumer_outlet",
-                format!("127.0.0.1:{}", consumer_mock_kafka.port),
+                HostnamePort::new("127.0.0.1", consumer_mock_kafka.port),
                 TcpOutletOptions::new(),
             )
             .await?;

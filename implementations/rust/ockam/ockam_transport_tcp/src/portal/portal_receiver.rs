@@ -8,7 +8,8 @@ use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
-use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
+use tokio::io::AsyncRead;
+use tokio::io::AsyncReadExt;
 use tracing::{error, instrument, warn};
 
 /// A TCP Portal receiving message processor
@@ -16,20 +17,20 @@ use tracing::{error, instrument, warn};
 /// TCP Portal receiving message processor are created by
 /// `TcpPortalWorker` after a call is made to
 /// [`TcpPortalWorker::start_receiver`](crate::TcpPortalWorker::start_receiver)
-pub(crate) struct TcpPortalRecvProcessor {
+pub(crate) struct TcpPortalRecvProcessor<R> {
     registry: TcpRegistry,
     buf: Vec<u8>,
-    read_half: OwnedReadHalf,
+    read_half: R,
     sender_address: Address,
     onward_route: Route,
     payload_packet_counter: u16,
 }
 
-impl TcpPortalRecvProcessor {
+impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
     /// Create a new `TcpPortalRecvProcessor`
     pub fn new(
         registry: TcpRegistry,
-        read_half: OwnedReadHalf,
+        read_half: R,
         sender_address: Address,
         onward_route: Route,
     ) -> Self {
@@ -45,7 +46,7 @@ impl TcpPortalRecvProcessor {
 }
 
 #[async_trait]
-impl Processor for TcpPortalRecvProcessor {
+impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvProcessor<R> {
     type Context = Context;
 
     #[instrument(skip_all, name = "TcpPortalRecvProcessor::initialize")]

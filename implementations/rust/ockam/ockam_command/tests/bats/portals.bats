@@ -155,6 +155,17 @@ teardown() {
   run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
 
+@test "portals - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
+  port="$(random_port)"
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to google.com:443
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
+
+  run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
+}
+
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
   port="$(random_port)"
   run_success "$OCKAM" node create relay
