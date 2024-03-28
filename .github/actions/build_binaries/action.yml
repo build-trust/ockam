@@ -24,10 +24,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: dtolnay/rust-toolchain@78c6b5541adb5849f5d72d15da722aedb26327ca # Stable branch
-      with:
-        toolchain: ${{ inputs.toolchain }}
-        target: ${{ inputs.target }}
+    - shell: bash
+      run: |
+        # This will allow us update to rust version indicated in our rust-toolchain.toml file
+        rustup show
+        rustup target add ${{ inputs.target }}
 
     - shell: bash
       if: inputs.platform_operating_system == 'ubuntu-22.04'
