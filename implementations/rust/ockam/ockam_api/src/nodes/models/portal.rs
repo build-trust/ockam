@@ -10,6 +10,7 @@ use ockam::route;
 use ockam_abac::Expr;
 use ockam_core::{Address, IncomingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::HostnamePort;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ApiError;
@@ -136,7 +137,7 @@ impl CreateInlet {
 #[cbor(map)]
 pub struct CreateOutlet {
     /// The address the portal should connect or bind to
-    #[n(1)] pub socket_addr: SocketAddr,
+    #[n(1)] pub hostname_port: HostnamePort,
     /// The address the portal should listen to
     #[n(2)] pub worker_addr: Option<Address>,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
@@ -150,12 +151,12 @@ pub struct CreateOutlet {
 
 impl CreateOutlet {
     pub fn new(
-        socket_addr: SocketAddr,
+        hostname_port: HostnamePort,
         worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
-            socket_addr,
+            hostname_port,
             worker_addr,
             reachable_from_default_secure_channel,
             policy_expression: None,

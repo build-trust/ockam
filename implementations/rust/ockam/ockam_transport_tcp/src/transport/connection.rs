@@ -1,7 +1,9 @@
 use crate::transport::common::{resolve_peer, TcpConnection};
+use crate::transport::connect;
 use crate::workers::{Addresses, TcpRecvProcessor, TcpSendWorker};
 use crate::{TcpConnectionMode, TcpConnectionOptions, TcpTransport};
 use ockam_core::{Address, Result};
+use tracing::debug;
 
 impl TcpTransport {
     /// Establish an outgoing TCP connection.
@@ -21,10 +23,10 @@ impl TcpTransport {
         peer: impl Into<String>,
         options: TcpConnectionOptions,
     ) -> Result<TcpConnection> {
-        // Resolve peer address
-        let socket = resolve_peer(peer.into())?;
-
-        let (read_half, write_half) = TcpSendWorker::connect(socket).await?;
+        let peer = peer.into();
+        let socket = resolve_peer(peer.clone())?;
+        debug!("Connecting to {}", peer.clone());
+        let (read_half, write_half) = connect(socket).await?;
 
         let mode = TcpConnectionMode::Outgoing;
         let addresses = Addresses::generate(mode);

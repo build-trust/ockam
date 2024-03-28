@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::str::FromStr;
 
 use clap::Args;
 use colorful::Colorful;
@@ -16,10 +16,10 @@ use ockam_api::journeys::{JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FRO
 use ockam_api::nodes::service::portals::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
+use ockam_transport_tcp::HostnamePort;
 
 use crate::node::util::initialize_default_node;
 
-use crate::util::parsers::socket_addr_parser;
 use crate::{docs, fmt_info, fmt_ok, Command, CommandGlobalOpts};
 use crate::{fmt_log, terminal::color_primary};
 
@@ -29,13 +29,13 @@ const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 /// Create a TCP Outlet that runs adjacent to a TCP server
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// TCP address where your TCP server is running. Your Outlet will send raw TCP traffic to it
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", value_parser = socket_addr_parser)]
-    pub to: SocketAddr,
+    /// TCP address where your TCP server is running: domain:port. Your Outlet will send raw TCP traffic to it
+    #[arg(long, display_order = 900, id = "HOSTNAME_PORT", value_parser = HostnamePort::from_str)]
+    pub to: HostnamePort,
 
     /// Address of your TCP Outlet, which is part of a route that is used in other
     /// commands. This address must be unique. This address identifies the TCP Outlet
@@ -72,7 +72,7 @@ impl Command for CreateCommand {
         let send_req = async {
             let from = self.from.map(Address::from);
             let res = node
-                .create_outlet(ctx, &self.to, from.as_ref(), self.policy_expression)
+                .create_outlet(ctx, self.to.clone(), from.as_ref(), self.policy_expression)
                 .await?;
             *is_finished.lock().await = true;
             Ok(res)

@@ -1,7 +1,12 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
+use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
+use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
+use crate::transport::{connect, connect_tls};
+use crate::{
+    portal::TcpPortalRecvProcessor, HostnamePort, PortalInternalMessage, PortalMessage, TcpRegistry,
+};
 use core::time::Duration;
-use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
+use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddresses, AllowSourceAddress, Decodable, DenyAll,
     IncomingAccessControl, Mailbox, Mailboxes,
@@ -9,9 +14,10 @@ use ockam_core::{
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
+use tokio_native_tls::TlsStream;
 use tracing::{debug, info, instrument, trace, warn};
 
 /// Enumerate all `TcpPortalWorker` states
@@ -37,14 +43,25 @@ enum State {
 pub(crate) struct TcpPortalWorker {
     registry: TcpRegistry,
     state: State,
-    write_half: Option<OwnedWriteHalf>,
-    read_half: Option<OwnedReadHalf>,
-    peer: SocketAddr,
+    write_half: Option<WriteHalfMaybeTls>,
+    read_half: Option<ReadHalfMaybeTls>,
+    hostname_port: HostnamePort,
     addresses: Addresses,
     remote_route: Option<Route>,
     is_disconnecting: bool,
     portal_type: PortalType,
     last_received_packet_counter: u16,
+    is_tls: bool,
+}
+
+enum ReadHalfMaybeTls {
+    ReadHalfNoTls(OwnedReadHalf),
+    ReadHalfWithTls(ReadHalf<TlsStream<TcpStream>>),
+}
+
+enum WriteHalfMaybeTls {
+    WriteHalfNoTls(OwnedWriteHalf),
+    WriteHalfWithTls(WriteHalf<TlsStream<TcpStream>>),
 }
 
 impl TcpPortalWorker {
@@ -54,7 +71,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         registry: TcpRegistry,
         stream: TcpStream,
-        peer: SocketAddr,
+        hostname_port: HostnamePort,
         ping_route: Route,
         addresses: Addresses,
         access_control: Arc<dyn IncomingAccessControl>,
@@ -62,11 +79,10 @@ impl TcpPortalWorker {
         Self::start(
             ctx,
             registry,
-            peer,
+            hostname_port,
             State::SendPing { ping_route },
             Some(stream),
             addresses,
-            PortalType::Inlet,
             access_control,
         )
         .await
@@ -77,7 +93,7 @@ impl TcpPortalWorker {
     pub(super) async fn start_new_outlet(
         ctx: &Context,
         registry: TcpRegistry,
-        peer: SocketAddr,
+        hostname_port: HostnamePort,
         pong_route: Route,
         addresses: Addresses,
         access_control: Arc<dyn IncomingAccessControl>,
@@ -85,11 +101,10 @@ impl TcpPortalWorker {
         Self::start(
             ctx,
             registry,
-            peer,
+            hostname_port,
             State::SendPong { pong_route },
             None,
             addresses,
-            PortalType::Outlet,
             access_control,
         )
         .await
@@ -101,13 +116,17 @@ impl TcpPortalWorker {
     async fn start(
         ctx: &Context,
         registry: TcpRegistry,
-        peer: SocketAddr,
+        hostname_port: HostnamePort,
         state: State,
         stream: Option<TcpStream>,
         addresses: Addresses,
-        portal_type: PortalType,
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<()> {
+        let portal_type = if stream.is_some() {
+            PortalType::Inlet
+        } else {
+            PortalType::Outlet
+        };
         info!(
             "Creating new {:?} at internal: {}, remote: {}",
             portal_type.str(),
@@ -115,25 +134,31 @@ impl TcpPortalWorker {
             addresses.remote
         );
 
-        let (rx, tx) = match stream {
+        let (rx, tx, is_tls) = match stream {
+            // A TcpStream is provided in case of an inlet
             Some(s) => {
+                debug!("Connected to {} (with no TLS)", &hostname_port);
                 let (rx, tx) = s.into_split();
-                (Some(rx), Some(tx))
+                (Some(ReadHalfNoTls(rx)), Some(WriteHalfNoTls(tx)), false)
             }
-            None => (None, None),
+            // Otherwise we are starting an outlet and we need to check if the connection can be
+            // made with TLS
+            None => (None, None, connect_tls(&hostname_port).await.is_ok()),
         };
+        debug!("The {} supports TLS: {}", portal_type.str(), is_tls);
 
         let worker = Self {
             registry,
             state,
             write_half: tx,
             read_half: rx,
-            peer,
+            hostname_port,
             addresses: addresses.clone(),
             remote_route: None,
             is_disconnecting: false,
             portal_type,
             last_received_packet_counter: u16::MAX,
+            is_tls,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -173,27 +198,39 @@ impl TcpPortalWorker {
     #[instrument(skip_all)]
     async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.read_half.take() {
-            let next_hop = onward_route.next()?.clone();
-            let receiver = TcpPortalRecvProcessor::new(
-                self.registry.clone(),
-                rx,
-                self.addresses.internal.clone(),
-                onward_route,
-            );
-
-            ProcessorBuilder::new(receiver)
-                .with_address(self.addresses.receiver.clone())
-                .with_outgoing_access_control(AllowOnwardAddresses(vec![
-                    next_hop,
-                    self.addresses.internal.clone(),
-                ])) // Only sends messages to `onward_route` and Sender
-                .start(ctx)
-                .await?;
-
-            Ok(())
+            match rx {
+                ReadHalfNoTls(rx) => self.start_receive_processor(ctx, onward_route, rx).await,
+                ReadHalfWithTls(rx) => self.start_receive_processor(ctx, onward_route, rx).await,
+            }
         } else {
             Err(TransportError::PortalInvalidState)?
         }
+    }
+
+    /// Start a TcpPortalRecvProcessor using a specific AsyncRead implementation (either supporting TLS or not)
+    async fn start_receive_processor<R: AsyncRead + Unpin + Send + Sync + 'static>(
+        &mut self,
+        ctx: &Context,
+        onward_route: Route,
+        rx: R,
+    ) -> Result<()> {
+        let next_hop = onward_route.next()?.clone();
+        let receiver = TcpPortalRecvProcessor::new(
+            self.registry.clone(),
+            rx,
+            self.addresses.internal.clone(),
+            onward_route,
+        );
+
+        ProcessorBuilder::new(receiver)
+            .with_address(self.addresses.receiver.clone())
+            .with_outgoing_access_control(AllowOnwardAddresses(vec![
+                next_hop,
+                self.addresses.internal.clone(),
+            ])) // Only sends messages to `onward_route` and Sender
+            .start(ctx)
+            .await?;
+        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -299,12 +336,17 @@ impl TcpPortalWorker {
     #[instrument(skip_all)]
     async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
         if self.write_half.is_none() {
-            let stream = TcpStream::connect(self.peer)
-                .await
-                .map_err(TransportError::from)?;
-            let (rx, tx) = stream.into_split();
-            self.write_half = Some(tx);
-            self.read_half = Some(rx);
+            if self.is_tls {
+                debug!("Connect to {} via TLS", &self.hostname_port);
+                let (rx, tx) = connect_tls(&self.hostname_port).await?;
+                self.write_half = Some(WriteHalfWithTls(tx));
+                self.read_half = Some(ReadHalfWithTls(rx));
+            } else {
+                debug!("Connect to {}", self.hostname_port);
+                let (rx, tx) = connect(self.hostname_port.to_socket_addr()?).await?;
+                self.write_half = Some(WriteHalfNoTls(tx));
+                self.read_half = Some(ReadHalfNoTls(rx));
+            }
 
             // Respond to Inlet before starting the processor but
             // after the connection has been established
@@ -433,7 +475,7 @@ impl Worker for TcpPortalWorker {
                 }
             }
             State::SendPing { .. } | State::SendPong { .. } => {
-                return Err(TransportError::PortalInvalidState)?
+                return Err(TransportError::PortalInvalidState)?;
             }
         }
     }
@@ -470,16 +512,17 @@ impl TcpPortalWorker {
         // detects both missing or out of order packets
         self.check_packet_counter(ctx, packet_counter).await?;
         if let Some(tx) = &mut self.write_half {
-            match tx.write_all(payload).await {
-                Ok(()) => {}
-                Err(err) => {
-                    warn!(
-                        "Failed to send message to peer {} with error: {}",
-                        self.peer, err
-                    );
-                    self.start_disconnection(ctx, DisconnectionReason::FailedTx)
-                        .await?;
-                }
+            let result = match tx {
+                WriteHalfNoTls(tx) => tx.write_all(payload).await,
+                WriteHalfWithTls(tx) => tx.write_all(payload).await,
+            };
+            if let Err(err) = result {
+                warn!(
+                    "Failed to send message to peer {} with error: {}",
+                    self.hostname_port, err
+                );
+                self.start_disconnection(ctx, DisconnectionReason::FailedTx)
+                    .await?;
             }
         } else {
             return Err(TransportError::PortalInvalidState)?;

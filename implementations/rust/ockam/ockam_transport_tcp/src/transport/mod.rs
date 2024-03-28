@@ -1,10 +1,12 @@
 pub(crate) mod common;
 mod connection;
+mod hostname_port;
 mod lifecycle;
 mod listener;
 mod portals;
 
 pub use common::*;
+pub use hostname_port::*;
 
 pub use crate::portal::options::*;
 

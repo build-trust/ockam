@@ -7,6 +7,7 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::HostnamePort;
 
 use super::NodeManagerWorker;
 use crate::error::ApiError;
@@ -202,7 +203,7 @@ impl InMemoryNode {
         .await?;
         self.create_outlet(
             context,
-            bootstrap_server_addr,
+            HostnamePort::from_socket_addr(bootstrap_server_addr)?,
             Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
             false,
             OutletAccessControl::PolicyExpression(outlet_policy_expression.clone()),
@@ -405,7 +406,7 @@ impl NodeManager {
         if let Err(e) = self
             .create_outlet(
                 context,
-                bootstrap_server_addr,
+                HostnamePort::from_socket_addr(bootstrap_server_addr)?,
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,
                 OutletAccessControl::PolicyExpression(outlet_policy_expression),
