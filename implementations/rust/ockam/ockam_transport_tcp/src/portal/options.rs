@@ -62,6 +62,7 @@ impl Default for TcpInletOptions {
 pub struct TcpOutletOptions {
     pub(super) consumer: Vec<FlowControlId>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(super) tls: bool,
 }
 
 impl TcpOutletOptions {
@@ -70,6 +71,7 @@ impl TcpOutletOptions {
         Self {
             consumer: vec![],
             incoming_access_control: Arc::new(AllowAll),
+            tls: false,
         }
     }
 
@@ -88,6 +90,12 @@ impl TcpOutletOptions {
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Self {
         self.incoming_access_control = access_control;
+        self
+    }
+
+    /// Set TLS
+    pub fn with_tls(mut self, tls: bool) -> Self {
+        self.tls = tls;
         self
     }
 

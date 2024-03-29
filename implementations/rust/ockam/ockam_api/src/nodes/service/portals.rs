@@ -115,6 +115,7 @@ impl NodeManagerWorker {
             worker_addr,
             reachable_from_default_secure_channel,
             policy_expression,
+            tls,
         } = create_outlet;
 
         match self
@@ -122,6 +123,7 @@ impl NodeManagerWorker {
             .create_outlet(
                 ctx,
                 hostname_port,
+                tls,
                 worker_addr,
                 reachable_from_default_secure_channel,
                 OutletAccessControl::PolicyExpression(policy_expression),
@@ -180,6 +182,7 @@ impl NodeManager {
         &self,
         ctx: &Context,
         hostname_port: HostnamePort,
+        tls: bool,
         worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
         access_control: OutletAccessControl,
@@ -220,7 +223,9 @@ impl NodeManager {
         };
 
         let options = {
-            let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
+            let options = TcpOutletOptions::new()
+                .with_incoming_access_control(access_control)
+                .with_tls(tls);
             let options = if self.project_authority().is_none() {
                 options.as_consumer(&self.api_transport_flow_control_id)
             } else {
@@ -797,6 +802,7 @@ pub trait Outlets {
         &self,
         ctx: &Context,
         to: HostnamePort,
+        tls: bool,
         from: Option<&Address>,
         policy_expression: Option<Expr>,
     ) -> miette::Result<OutletStatus>;
@@ -804,15 +810,16 @@ pub trait Outlets {
 
 #[async_trait]
 impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = %to, from = ?from))]
+    #[instrument(skip_all, fields(to = % to, from = ? from))]
     async fn create_outlet(
         &self,
         ctx: &Context,
         to: HostnamePort,
+        tls: bool,
         from: Option<&Address>,
         policy_expression: Option<Expr>,
     ) -> miette::Result<OutletStatus> {
-        let mut payload = CreateOutlet::new(to, from.cloned(), true);
+        let mut payload = CreateOutlet::new(to, tls, from.cloned(), true);
         if let Some(policy_expression) = policy_expression {
             payload.set_policy_expression(policy_expression);
         }

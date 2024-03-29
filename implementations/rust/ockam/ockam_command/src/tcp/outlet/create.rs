@@ -37,6 +37,10 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "HOSTNAME_PORT", value_parser = HostnamePort::from_str)]
     pub to: HostnamePort,
 
+    /// If tls is set then the outlet will establish a TLS connection over TCP
+    #[arg(long, display_order = 900, id = "BOOLEAN")]
+    pub tls: bool,
+
     /// Address of your TCP Outlet, which is part of a route that is used in other
     /// commands. This address must be unique. This address identifies the TCP Outlet
     /// worker, on the node, on your local machine. Examples are `/service/my-outlet` or
@@ -72,7 +76,13 @@ impl Command for CreateCommand {
         let send_req = async {
             let from = self.from.map(Address::from);
             let res = node
-                .create_outlet(ctx, self.to.clone(), from.as_ref(), self.policy_expression)
+                .create_outlet(
+                    ctx,
+                    self.to.clone(),
+                    self.tls,
+                    from.as_ref(),
+                    self.policy_expression,
+                )
                 .await?;
             *is_finished.lock().await = true;
             Ok(res)
