@@ -132,12 +132,8 @@ impl Display for ExportingConfiguration {
 }
 
 /// Return true if tracing is enabled, as decided by the OCKAM_TRACING environment variable.
-///
-/// FOR NOW THE DEFAULT IS FALSE.
-/// TODO: set it to true after enough testing!
-///
 pub fn is_exporting_set() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT, false)
+    get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT, true)
 }
 
 /// Return ExportingEnabled::On if:
