@@ -50,6 +50,23 @@ impl Context {
     ///     ctx.start_worker("my-worker-address", MyWorker).await
     /// }
     /// ```
+    ///
+    /// Approximate flow of starting a worker:
+    ///
+    /// 1. StartWorker message -> Router
+    /// 2. First address is considered a primary_addr (main_addr)
+    /// 3. Check if router.map.address_records_map already has primary_addr
+    /// 4. AddressRecord is created and inserted in router.map
+    /// 5. Iterate over metadata:
+    ///     Check if it belongs to that record
+    ///     Set is_terminal true in router.map.address_metadata_map (if address is terminal)
+    ///     Insert attributes one by one
+    /// 6. For each address we insert pair (Address, primary_addr) into router.map.alias_map, including (primary_addr, primary_addr itself)
+    /// 7. WorkerRelay is spawned as a tokio task:
+    ///     WorkerRelay calls initialize
+    ///     WorkerRelay calls Worker::handle_message for each message until either
+    ///         stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
+    ///         there are no messages coming to that receiver (the sender side is dropped)
     pub async fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
     where
         W: Worker<Context = Context>,
@@ -121,6 +138,20 @@ impl Context {
     /// message events, consider using
     /// [`start_worker()`](Self::start_worker) instead!
     ///
+    /// Approximate flow of starting a processor:
+    ///
+    /// 1. StartProcessor message -> Router
+    /// 2. First address is considered a primary_addr (main_addr)
+    /// 3. Check if router.map.address_records_map already has primary_addr
+    /// 4. AddressRecord is created and inserted in router.map
+    /// 5. Iterate over metadata:
+    ///     Check if it belongs to that record
+    ///     Set is_terminal true in router.map.address_metadata_map (if address is terminal)
+    ///     Insert attributes one by one
+    /// 6. For each address we insert pair (Address, primary_addr) into router.map.alias_map, including (primary_addr, primary_addr itself)
+    /// 7. ProcessorRelay is spawned as a tokio task:
+    ///     ProcessorRelay calls Processor::initialize
+    ///     ProcessorRelay calls Processor::process until either false is returned or stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
     pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
@@ -162,11 +193,39 @@ impl Context {
     }
 
     /// Shut down a local worker by its primary address
+    ///
+    /// Approximate flow of stopping a worker:
+    ///
+    /// 1. StopWorker message -> Router
+    /// 2. Get AddressRecord
+    /// 3. Drop sender
+    /// 4. WorkerRelay calls Worker::shutdown
+    /// 5. StopAck message -> Router (from main_address)
+    /// 6. router.map.free_address(main_address) is called (given Router state is running):
+    ///     remote main_address from router.map.stopping (it's not their anyway, unless in was a cluster and node was shutting down)
+    ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
+    ///     Remove all alias in router.map.alias_map
+    ///     Remote all meta from router.map.address_metadata
     pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
         self.stop_address(addr.into(), AddressType::Worker).await
     }
 
     /// Shut down a local processor by its address
+    ///
+    /// Approximate flow of stopping a processor:
+    ///
+    /// 1. StopProcessor message -> Router
+    /// 2. Get AddressRecord
+    /// 3. Call AddressRecord::stop:
+    ///     Send CtrlSignal::InterruptStop to AddressRecord::ctrl_tx
+    ///     Set AddressRecord::state = AddressState::Stopping
+    /// 4. ProcessorRelay calls Processor::shutdown
+    /// 5. StopAck message -> Router (from main_address)
+    /// 6. router.map.free_address(main_address) is called (given Router state is running):
+    ///     remote main_address from router.map.stopping (it's not their anyways unless in was a cluster and node was shutting down)
+    ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
+    ///     Remove all alias in router.map.alias_map
+    ///     Remote all meta from router.map.address_metadata
     pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
         self.stop_address(addr.into(), AddressType::Processor).await
     }
