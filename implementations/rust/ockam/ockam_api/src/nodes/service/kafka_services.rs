@@ -142,13 +142,13 @@ impl NodeManagerWorker {
                 Err(Response::not_found_no_request(
                     &format!("Service at address '{address}' with kind {kind} not found"),
                 ))
-            },
+            }
             Ok(DeleteKafkaServiceResult::IncorrectKind { address, actual, expected }) => {
                 Err(Response::not_found_no_request(
                     &format!("Service at address '{address}' is not a kafka {expected}. A service of kind {actual} was found instead"),
                 ))
-            },
-            Err(e) => Err(Response::internal_error_no_request( &e.to_string())),
+            }
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 }
@@ -204,6 +204,7 @@ impl InMemoryNode {
         self.create_outlet(
             context,
             HostnamePort::from_socket_addr(bootstrap_server_addr)?,
+            false,
             Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
             false,
             OutletAccessControl::PolicyExpression(outlet_policy_expression.clone()),
@@ -407,6 +408,7 @@ impl NodeManager {
             .create_outlet(
                 context,
                 HostnamePort::from_socket_addr(bootstrap_server_addr)?,
+                false,
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,
                 OutletAccessControl::PolicyExpression(outlet_policy_expression),

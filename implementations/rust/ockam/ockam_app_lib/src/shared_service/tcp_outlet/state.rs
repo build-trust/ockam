@@ -57,6 +57,7 @@ impl AppState {
                     &context,
                     HostnamePort::from_socket_addr(tcp_outlet.socket_addr)
                         .expect("cannot parse the socket address as a hostname and port"),
+                    false,
                     Some(tcp_outlet.worker_addr.clone()),
                     true,
                     OutletAccessControl::IncomingAccessControl(access_control),

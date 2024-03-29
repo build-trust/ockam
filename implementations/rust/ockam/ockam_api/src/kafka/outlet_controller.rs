@@ -71,7 +71,7 @@ impl KafkaOutletController {
         policy_expression: Option<Expr>,
     ) -> Result<SocketAddr> {
         let hostname_port = HostnamePort::from_socket_addr(socket_address)?;
-        let mut payload = CreateOutlet::new(hostname_port, Some(worker_address), false);
+        let mut payload = CreateOutlet::new(hostname_port, false, Some(worker_address), false);
         if let Some(expr) = policy_expression {
             payload.set_policy_expression(expr);
         }

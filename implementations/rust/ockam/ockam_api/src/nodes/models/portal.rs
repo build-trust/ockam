@@ -138,25 +138,29 @@ impl CreateInlet {
 pub struct CreateOutlet {
     /// The address the portal should connect or bind to
     #[n(1)] pub hostname_port: HostnamePort,
+    /// If tls is true a TLS connection is established
+    #[n(2)] pub tls: bool,
     /// The address the portal should listen to
-    #[n(2)] pub worker_addr: Option<Address>,
+    #[n(3)] pub worker_addr: Option<Address>,
     /// Allow the outlet to be reachable from the default secure channel, useful when we want to
     /// tighten the flow control
-    #[n(3)] pub reachable_from_default_secure_channel: bool,
+    #[n(4)] pub reachable_from_default_secure_channel: bool,
     /// The expression for the access control policy for this outlet.
     /// If not set, the policy set for the [TCP outlet resource type](ockam_abac::ResourceType::TcpOutlet)
     /// will be used.
-    #[n(4)] pub policy_expression: Option<Expr>,
+    #[n(5)] pub policy_expression: Option<Expr>,
 }
 
 impl CreateOutlet {
     pub fn new(
         hostname_port: HostnamePort,
+        tls: bool,
         worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
     ) -> Self {
         Self {
             hostname_port,
+            tls,
             worker_addr,
             reachable_from_default_secure_channel,
             policy_expression: None,
@@ -249,7 +253,7 @@ impl OutletStatus {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletList {
-    #[n(1)] pub list: Vec<InletStatus>
+    #[n(1)] pub list: Vec<InletStatus>,
 }
 
 impl InletList {
@@ -263,7 +267,7 @@ impl InletList {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletList {
-    #[n(1)] pub list: Vec<OutletStatus>
+    #[n(1)] pub list: Vec<OutletStatus>,
 }
 
 impl OutletList {

@@ -30,6 +30,7 @@ impl AppState {
             .create_outlet(
                 &self.context(),
                 HostnamePort::from_socket_addr(socket_addr)?,
+                false,
                 Some(worker_addr.clone()),
                 true,
                 OutletAccessControl::IncomingAccessControl(

@@ -29,6 +29,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         .create_outlet(
             context,
             echo_server_handle.chosen_addr.clone(),
+            false,
             Some(Address::from_string("outlet")),
             true,
             OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -100,6 +101,7 @@ fn portal_node_goes_down_reconnect() {
                 .create_outlet(
                     &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
+                    false,
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -164,6 +166,7 @@ fn portal_node_goes_down_reconnect() {
                 .create_outlet(
                     &third_node.context,
                     echo_server_handle.chosen_addr.clone(),
+                    false,
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -236,6 +239,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 .create_outlet(
                     &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
+                    false,
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -349,6 +353,7 @@ fn portal_heavy_load_exchanged() {
                 .create_outlet(
                     &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
+                    false,
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
@@ -487,6 +492,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .create_outlet(
                     &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
+                    false,
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),

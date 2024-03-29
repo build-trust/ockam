@@ -212,14 +212,6 @@ pub(crate) async fn connect_tls(
     ReadHalf<TlsStream<TcpStream>>,
     WriteHalf<TlsStream<TcpStream>>,
 )> {
-    // Don't try to establish a TLS connection locally
-    if ["127.0.0.1", "localhost"].contains(&hostname_port.hostname().as_str()) {
-        return Err(Error::new(
-            Origin::Transport,
-            Kind::Io,
-            format!("Cannot connect using TLS to {hostname_port}"),
-        ));
-    };
     let socket_address = hostname_port.to_socket_addr()?;
     debug!(hostname_port = %hostname_port, addr = %socket_address, "Trying to connect using TLS");
 

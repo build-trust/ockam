@@ -80,6 +80,7 @@ impl TcpPortalWorker {
             ctx,
             registry,
             hostname_port,
+            false,
             State::SendPing { ping_route },
             Some(stream),
             addresses,
@@ -94,6 +95,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         registry: TcpRegistry,
         hostname_port: HostnamePort,
+        tls: bool,
         pong_route: Route,
         addresses: Addresses,
         access_control: Arc<dyn IncomingAccessControl>,
@@ -102,6 +104,7 @@ impl TcpPortalWorker {
             ctx,
             registry,
             hostname_port,
+            tls,
             State::SendPong { pong_route },
             None,
             addresses,
@@ -117,6 +120,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         registry: TcpRegistry,
         hostname_port: HostnamePort,
+        is_tls: bool,
         state: State,
         stream: Option<TcpStream>,
         addresses: Addresses,
@@ -134,16 +138,14 @@ impl TcpPortalWorker {
             addresses.remote
         );
 
-        let (rx, tx, is_tls) = match stream {
+        let (rx, tx) = match stream {
             // A TcpStream is provided in case of an inlet
             Some(s) => {
                 debug!("Connected to {} (with no TLS)", &hostname_port);
                 let (rx, tx) = s.into_split();
-                (Some(ReadHalfNoTls(rx)), Some(WriteHalfNoTls(tx)), false)
+                (Some(ReadHalfNoTls(rx)), Some(WriteHalfNoTls(tx)))
             }
-            // Otherwise we are starting an outlet and we need to check if the connection can be
-            // made with TLS
-            None => (None, None, connect_tls(&hostname_port).await.is_ok()),
+            None => (None, None),
         };
         debug!("The {} supports TLS: {}", portal_type.str(), is_tls);
 
