@@ -371,10 +371,10 @@ jobs:
           ref: ${{ github.event.inputs.release_branch }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@78c6b5541adb5849f5d72d15da722aedb26327ca # Stable branch
-        with:
-          toolchain: stable
-          target: ${{ matrix.job.target }}
+        run: |
+          # This will allow us update to rust version indicated in our rust-toolchain.toml file
+          rustup show
+          rustup target add ${{ matrix.job.target }}
 
       - name: Install Cross
         if: matrix.job.use-cross == true

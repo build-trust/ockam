@@ -288,12 +288,12 @@ jobs:
         build: [linux_armv7, macos_silicon]
         include:
         - build: linux_armv7
-          os: ubuntu-20.04
+          os: ubuntu-22.04
           toolchain: stable
           target: armv7-unknown-linux-musleabihf
           use-cross-build: true
         - build: macos_silicon
-          os: macos-13
+          os: macos-14
           toolchain: stable
           target: aarch64-apple-darwin
           use-cross-build: false
