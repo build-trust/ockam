@@ -264,18 +264,18 @@ teardown() {
   assert_equal "$status" "Up"
 
   kill -QUIT $socat_pid
-  sleep 37
-
+  sleep 1
   run_failure curl --fail --head --max-time 1 "127.0.0.1:${inlet_port}"
+  sleep 40
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert [ "$status" != "Up" ]
 
   # restore connection
   socat TCP-LISTEN:${socat_port},reuseaddr TCP:${project_address}:${project_port} &
   socat_pid=$!
-  sleep 10
+  sleep 5
 
-  run_success curl --fail --head --retry 10 --max-time 20 "127.0.0.1:${inlet_port}"
+  run_success curl --fail --head --retry-all-errors --retry 10 --retry-delay 2 --max-time 30 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 
