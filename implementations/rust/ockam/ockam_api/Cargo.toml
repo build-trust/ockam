@@ -55,7 +55,7 @@ opentelemetry-semantic-conventions = { version = "0.14.0" }
 opentelemetry_sdk = { version = "0.22.1", features = ["logs", "metrics", "trace", "rt-tokio", "rt-tokio-current-thread", "testing", "logs_level_enabled"], default-features = false }
 petname = { version = "2.0.0-beta.4", default-features = false, features = ["default-rng", "default-words"] }
 rand = "0.8"
-regex = "1.10.3"
+regex = "1.10.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
