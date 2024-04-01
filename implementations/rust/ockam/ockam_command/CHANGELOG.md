@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.120.0 - 2024-04-01
+
+### Added
+
+- Authority project admin credentials
+- `identity create` can import an identity
+- Improve output for `enroll` command
+- Add `project-member` subcommand
+- Flag to enable/disable enrollers-as-admins on authority
+- Add bats coverage for `node create ./config.yaml` command
+- Remove member argument from `project ticket` command
+- Create 3 separate credential retriever types
+- Introduce `disable_trust_context_id` argument for authority
+- Updated dependencies
+
+### Changed
+
+- Simplify `ProgressDisplay` to remove the mutex used to stop the message recv end
+
+### Fixed
+
+- Set variables defined in `node create` before parsing the config file
+- Fix routing and flow control for local kafka outlets
+
 ## 0.119.0 - 2024-03-25
 
 ### Added
