@@ -177,7 +177,7 @@ function ockam_crate_release() {
 
   # Crate release from the develop branch
   gh workflow run "$workflow_file_name" --ref "$branch" \
-    -F release_branch="$branch" -F git_tag="$GIT_TAG" -F ockam_publish_exclude_crates="$OCKAM_PUBLISH_EXCLUDE_CRATES" \
+    -F release_git_tag="$GIT_TAG" -F ockam_publish_exclude_crates="$OCKAM_PUBLISH_EXCLUDE_CRATES" \
     -F ockam_publish_recent_failure="$OCKAM_PUBLISH_RECENT_FAILURE" -R $OWNER/ockam >>$log
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
@@ -191,18 +191,6 @@ function release_ockam_binaries() {
 
   gh workflow run "$workflow_file_name" --ref "$branch" -F git_tag="$GIT_TAG" -F release_branch="$branch" -R $OWNER/ockam >>$log
   # Wait for workflow run
-  sleep 10
-  approve_and_watch_workflow_progress "ockam" "$workflow_file_name" "$branch"
-}
-
-function release_ockam_binaries_as_production() {
-  set -e
-  release_git_tag=$1
-  workflow_name="release-production.yml"
-  branch="develop"
-
-  gh workflow run $workflow_name --ref "$branch" -F git_tag="$release_git_tag" -R $OWNER/ockam >>$log
-
   sleep 10
   approve_and_watch_workflow_progress "ockam" "$workflow_file_name" "$branch"
 }
@@ -426,7 +414,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   # Make Ockam Github draft as latest
   if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
     echo "Releasing Ockam Github release"
-    release_ockam_binaries_as_production "$latest_tag_name"
+    gh release edit "$latest_tag_name" --latest=true --prerelease=false --draft=false -R "${OWNER}/ockam"
   fi
 
   # Release Ockam package
