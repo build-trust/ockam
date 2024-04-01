@@ -4181,7 +4181,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.119.0"
+version = "0.120.0"
 dependencies = [
  "arrayref",
  "dyn-clone",
@@ -4233,7 +4233,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.62.0"
+version = "0.63.0"
 dependencies = [
  "aws-config",
  "base64-url",
@@ -4308,7 +4308,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_app_lib"
-version = "0.119.0"
+version = "0.120.0"
 dependencies = [
  "cbindgen",
  "duct",
@@ -4334,7 +4334,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.119.0"
+version = "0.120.0"
 dependencies = [
  "arboard",
  "assert_cmd",
@@ -4619,7 +4619,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.53.0"
+version = "0.54.0"
 dependencies = [
  "bytes 1.5.0",
  "futures-util",
