@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.107.0 - 2024-04-01
+
+### Added
+
+- Backcompatible encoding/decoding optimizations
+- Add `project-member` subcommand
+- Support non-utf8 attributes in `Display` impl
+- Create 3 separate credential retriever types
+- Updated dependencies
+
 ## 0.106.0 - 2024-03-25
 
 ### Added
