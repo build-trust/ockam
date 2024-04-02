@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Args;
 
 use ockam::identity::{AttributesEntry, Identifier};
@@ -9,8 +10,7 @@ use ockam_multiaddr::MultiAddr;
 use super::{create_authority_client, get_project};
 use crate::output::Output;
 use crate::util::api::IdentityOpts;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, Command, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 
@@ -28,18 +28,11 @@ pub struct ListCommand {
     to: Option<MultiAddr>,
 }
 
-impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for ListCommand {
+    const NAME: &'static str = "project-member list";
 
-    pub fn name(&self) -> String {
-        "project-member add list".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let project = get_project(&opts.state, &self.to).await?;
 
         let node = InMemoryNode::start_with_project_name(

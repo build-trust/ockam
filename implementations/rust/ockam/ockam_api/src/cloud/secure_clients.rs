@@ -25,9 +25,6 @@ pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp
 /// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
 
-/// A default timeout
-pub const ORCHESTRATOR_RESTART_TIMEOUT: Duration = Duration::from_secs(180);
-
 /// Total time to wait for Orchestrator long-running operations to complete
 pub const ORCHESTRATOR_AWAIT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
@@ -140,8 +137,8 @@ impl NodeManager {
                 controller_route,
                 &controller_identifier,
                 caller_identifier,
-                timeout.unwrap_or(ORCHESTRATOR_RESTART_TIMEOUT),
-                timeout.unwrap_or(ORCHESTRATOR_RESTART_TIMEOUT),
+                timeout.unwrap_or(DEFAULT_TIMEOUT),
+                timeout.unwrap_or(DEFAULT_TIMEOUT),
             ),
         })
     }

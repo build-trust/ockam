@@ -17,9 +17,9 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
 use crate::output::{CredentialAndPurposeKeyDisplay, OutputFormat};
-use crate::util::api::{IdentityOpts, TrustOpts};
+use crate::util::api::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::value_parsers::parse_enrollment_ticket;
-use crate::{color_primary, docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Result};
+use crate::{color_primary, docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Error, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -45,17 +45,24 @@ pub struct EnrollCommand {
     /// Use Okta instead of an enrollment ticket
     #[arg(display_order = 900, long = "okta", group = "authentication_method")]
     pub okta: bool,
+
+    #[command(flatten)]
+    pub retry_opts: RetryOpts,
 }
 
 #[async_trait]
 impl Command for EnrollCommand {
     const NAME: &'static str = "project enroll";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
+    }
+
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if opts.global_args.output_format == OutputFormat::Json {
             return Err(miette::miette!(
                 "This command does not support JSON output. Please try running it again without '--output json'."
-            ));
+            ).into());
         }
 
         let identity = opts
@@ -87,7 +94,16 @@ impl Command for EnrollCommand {
                         .write_line(&fmt_ok!("Identity is already enrolled with the project"))?;
                     return Ok(());
                 }
-                _ => return Err(miette!("Failed to enroll identity with project")),
+                EnrollStatus::FailedNoStatus(msg) => {
+                    return Err(Error::Retry(miette!(
+                        "Failed to enroll identity with project. {msg}"
+                    )))
+                }
+                EnrollStatus::UnexpectedStatus(msg, status) => {
+                    return Err(Error::Retry(miette!(
+                        "Failed to enroll identity with project. {msg} {status}"
+                    )))
+                }
             }
         } else if self.okta {
             // Get auth0 token
@@ -102,11 +118,15 @@ impl Command for EnrollCommand {
             let token = auth0.get_token_interactively(&opts).await?;
             authority_node_client
                 .enroll_with_oidc_token_okta(ctx, token)
-                .await?;
+                .await
+                .map_err(Error::Retry)?;
         };
 
         // Issue credential
-        let credential = authority_node_client.issue_credential(ctx).await?;
+        let credential = authority_node_client
+            .issue_credential(ctx)
+            .await
+            .map_err(Error::Retry)?;
 
         // Get the project name to display to the user.
         let project_name = {

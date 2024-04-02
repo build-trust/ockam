@@ -20,6 +20,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::output::Output;
 use crate::terminal::OckamColor;
+use crate::util::api::RetryOpts;
 use crate::util::{colorize_connection_status, process_nodes_multiaddr};
 use crate::{docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Error, Result};
 use crate::{node::util::initialize_default_node, terminal::color_primary};
@@ -59,6 +60,9 @@ pub struct CreateCommand {
     /// By default, this information will be inferred from the `--at` argument.
     #[arg(long)]
     project_relay: bool,
+
+    #[command(flatten)]
+    retry_opts: RetryOpts,
 }
 
 pub fn default_at_addr() -> String {
@@ -69,7 +73,11 @@ pub fn default_at_addr() -> String {
 impl Command for CreateCommand {
     const NAME: &'static str = "relay create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
+    }
+
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
         let at = cmd.at();
@@ -95,7 +103,8 @@ impl Command for CreateCommand {
                     Some(cmd.relay_address.unwrap_or(alias)),
                     !cmd.project_relay,
                 )
-                .await?
+                .await
+                .map_err(Error::Retry)?
             };
             *is_finished.lock().await = true;
             Ok(relay_info)

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -14,9 +15,9 @@ use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
-use crate::fmt_ok;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::util::api::RetryOpts;
+use crate::{docs, CommandGlobalOpts, Error, Result};
+use crate::{fmt_ok, Command};
 use crate::{
     output::OutputFormat,
     util::api::{IdentityOpts, TrustOpts},
@@ -69,45 +70,26 @@ pub struct TicketCommand {
     /// Add the enroller role to your ticket. If you specify it, this flag is transformed into the attributes `--attribute ockam-role=enroller`. This role allows the Identity using the ticket to enroll other Identities into the Project, typically something that only admins can do
     #[arg(long = "enroller")]
     enroller: bool,
+
+    #[command(flatten)]
+    retry_opts: RetryOpts,
 }
 
-impl TicketCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
+#[async_trait]
+impl Command for TicketCommand {
+    const NAME: &'static str = "project ticket";
+
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
     }
 
-    pub fn name(&self) -> String {
-        "project ticket".into()
-    }
-
-    fn attributes(&self) -> Result<BTreeMap<String, String>> {
-        let mut attributes = BTreeMap::new();
-        for attr in &self.attributes {
-            let mut parts = attr.splitn(2, '=');
-            let key = parts.next().ok_or(miette!("key expected"))?;
-            let value = parts.next().ok_or(miette!("value expected)"))?;
-            attributes.insert(key.to_string(), value.to_string());
-        }
-        if let Some(relay_name) = self.allowed_relay_name.clone() {
-            attributes.insert(OCKAM_RELAY_ATTRIBUTE.to_string(), relay_name);
-        }
-        if self.enroller {
-            attributes.insert(
-                OCKAM_ROLE_ATTRIBUTE_KEY.to_string(),
-                OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE.to_string(),
-            );
-        }
-        Ok(attributes)
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         if opts.global_args.output_format == OutputFormat::Json {
             return Err(miette::miette!(
-            "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
-            Please try running it again without '--output json'."
-        ));
+                "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
+                Please try running it again without '--output json'."
+            )
+            .into());
         }
 
         let project = crate::project_member::get_project(&opts.state, &self.to).await?;
@@ -135,7 +117,8 @@ impl TicketCommand {
         // credential.
         let token = authority_node_client
             .create_token(ctx, attributes, self.expires_in, self.usage_count)
-            .await?;
+            .await
+            .map_err(Error::Retry)?;
 
         let ticket = EnrollmentTicket::new(token, Some(project.model().clone()));
         let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
@@ -153,5 +136,27 @@ impl TicketCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+impl TicketCommand {
+    fn attributes(&self) -> Result<BTreeMap<String, String>> {
+        let mut attributes = BTreeMap::new();
+        for attr in &self.attributes {
+            let mut parts = attr.splitn(2, '=');
+            let key = parts.next().ok_or(miette!("key expected"))?;
+            let value = parts.next().ok_or(miette!("value expected)"))?;
+            attributes.insert(key.to_string(), value.to_string());
+        }
+        if let Some(relay_name) = self.allowed_relay_name.clone() {
+            attributes.insert(OCKAM_RELAY_ATTRIBUTE.to_string(), relay_name);
+        }
+        if self.enroller {
+            attributes.insert(
+                OCKAM_ROLE_ATTRIBUTE_KEY.to_string(),
+                OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE.to_string(),
+            );
+        }
+        Ok(attributes)
     }
 }

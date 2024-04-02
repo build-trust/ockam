@@ -1,6 +1,7 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 use clap::Args;
 use miette::miette;
+use std::time::Duration;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 use regex::Regex;
@@ -12,10 +13,12 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::*;
 use ockam_core::api::Request;
 use ockam_core::api::ResponseHeader;
+use ockam_core::env::get_env;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
+use crate::util::duration::duration_parser;
 use crate::Result;
 
 ////////////// !== generators
@@ -158,6 +161,47 @@ pub struct TrustOpts {
     /// Expect credential manually saved to the storage
     #[arg(long)]
     pub credential_scope: Option<String>,
+}
+
+#[derive(Clone, Debug, Args, Default, PartialEq)]
+pub struct RetryOpts {
+    /// Number of times to retry the command
+    #[arg(hide = true, long)]
+    retry_count: Option<u32>,
+
+    /// Delay between retries
+    #[arg(hide = true, long, value_parser = duration_parser)]
+    pub retry_delay: Option<Duration>,
+}
+
+impl RetryOpts {
+    /// Get the number of times to retry the command
+    ///
+    /// If the value is not set, it will try to get the value from
+    /// the `OCKAM_COMMAND_RETRY_COUNT` environment variable
+    pub fn retry_count(&self) -> Option<u32> {
+        match self.retry_count {
+            Some(count) => Some(count),
+            None => get_env::<String>("OCKAM_COMMAND_RETRY_COUNT")
+                .ok()
+                .flatten()
+                .and_then(|v| v.parse().ok()),
+        }
+    }
+
+    /// Get the delay between retries
+    ///
+    /// If the value is not set, it will try to get the value from
+    /// the `OCKAM_COMMAND_RETRY_DELAY` environment variable
+    pub fn retry_delay(&self) -> Option<Duration> {
+        match self.retry_delay {
+            Some(delay) => Some(delay),
+            None => get_env::<String>("OCKAM_COMMAND_RETRY_DELAY")
+                .ok()
+                .flatten()
+                .and_then(|v| duration_parser(&v).ok()),
+        }
+    }
 }
 
 ////////////// !== validators
