@@ -1,5 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 
 use ockam::identity::Identifier;
 use ockam::Context;
@@ -10,7 +11,7 @@ use ockam_multiaddr::MultiAddr;
 use super::{create_authority_client, get_project};
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{color_primary, docs, fmt_err, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -30,7 +31,11 @@ pub struct DeleteCommand {
     to: Option<MultiAddr>,
 
     #[arg(value_name = "IDENTIFIER")]
-    member: Identifier,
+    member: Option<Identifier>,
+
+    /// Delete all members of the project except the default identity
+    #[arg(long, conflicts_with = "member")]
+    all: bool,
 }
 
 impl DeleteCommand {
@@ -45,6 +50,11 @@ impl DeleteCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let identity = opts
+            .state
+            .get_named_identity_or_default(&self.identity_opts.identity)
+            .await?;
+
         let project = get_project(&opts.state, &self.to).await?;
 
         let node = InMemoryNode::start_with_project_name(
@@ -57,14 +67,36 @@ impl DeleteCommand {
         let authority_node_client =
             create_authority_client(&node, &opts.state, &self.identity_opts, &project).await?;
 
-        authority_node_client
-            .delete_member(ctx, self.member.clone())
-            .await?;
-
-        opts.terminal.stdout().plain(fmt_ok!(
-            "Identifier {} is no longer a member of the Project. It won't be able to get a credential and access Project resources, like portals of other members",
-            self.member
-        ));
+        match (&self.member, self.all) {
+            (Some(member), _) => {
+                authority_node_client
+                    .delete_member(ctx, member.clone())
+                    .await?;
+                opts.terminal.stdout().plain(fmt_ok!(
+                    "Identifier {} is no longer a member of the Project. It won't be able to get a credential and access Project resources, like portals of other members",
+                    color_primary(member.to_string())
+                ));
+            }
+            (None, true) => {
+                if !opts
+                    .state
+                    .is_identity_enrolled(&Some(identity.name()))
+                    .await?
+                {
+                    return Err(miette!(fmt_err!(
+                        "You need to use an enrolled identity to delete all the members from a project."
+                    )));
+                }
+                authority_node_client
+                    .delete_all_members(ctx, identity.identifier())
+                    .await?;
+                opts.terminal.stdout().plain(fmt_ok!(
+                    "All identifiers except {} are no longer members of the Project.",
+                    color_primary(identity.identifier().to_string())
+                ));
+            }
+            _ => unreachable!(),
+        }
 
         Ok(())
     }

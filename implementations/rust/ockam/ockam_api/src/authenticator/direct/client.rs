@@ -22,6 +22,8 @@ pub trait Members {
 
     async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
 
+    async fn delete_all_members(&self, ctx: &Context, except: Identifier) -> miette::Result<()>;
+
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>>;
 
     async fn list_members(
@@ -55,6 +57,18 @@ impl Members for AuthorityNodeClient {
             .into_diagnostic()?
             .success()
             .into_diagnostic()
+    }
+
+    async fn delete_all_members(&self, ctx: &Context, except: Identifier) -> miette::Result<()> {
+        let member_ids = self.list_member_ids(ctx).await?;
+        for id in member_ids {
+            if id != except {
+                if let Err(e) = self.delete_member(ctx, id.clone()).await {
+                    warn!("Failed to delete member {}: {}", id, e);
+                }
+            }
+        }
+        Ok(())
     }
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>> {

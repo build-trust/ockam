@@ -118,17 +118,18 @@ impl Default for CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "node create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.has_name_arg() {
             if self.foreground {
-                self.foreground_mode(&ctx, opts).await
+                self.foreground_mode(&ctx, opts).await?;
             } else {
-                self.background_mode(&ctx, opts).await
+                self.background_mode(&ctx, opts).await?;
             }
         } else {
-            self.run_config(&ctx, &opts).await
+            self.run_config(&ctx, &opts).await?;
         }
+        Ok(())
     }
 
     #[instrument(skip_all)]

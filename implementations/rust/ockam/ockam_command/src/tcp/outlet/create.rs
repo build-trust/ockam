@@ -63,7 +63,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-outlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let node_name = node.node_name();

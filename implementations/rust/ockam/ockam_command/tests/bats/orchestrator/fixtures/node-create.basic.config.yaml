@@ -1,0 +1,8 @@
+relay: $RELAY_NAME
+
+tcp-outlet:
+  to: $SERVICE_PORT
+
+tcp-inlet:
+  from: $CLIENT_PORT
+  via: $RELAY_NAME
