@@ -1,6 +1,6 @@
 FROM docker.redpanda.com/redpandadata/redpanda:v23.1.13
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | bash
+RUN curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash -s
 ENV PATH="/var/lib/redpanda/.ockam/bin:$PATH"
 COPY --chown=redpanda:redpanda ./ockam.sh /var/lib/redpanda/ockam.sh
 RUN chmod +x /var/lib/redpanda/ockam.sh
