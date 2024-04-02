@@ -71,7 +71,7 @@ alloc = [
 storage = ["ockam_vault/storage", "sqlx", "tokio-retry"]
 
 [dependencies]
-async-trait = "0.1.78"
+async-trait = "0.1.79"
 cfg-if = "1.0.0"
 chrono = { version = "0.4.34", default-features = false }
 delegate = "0.12.0"
