@@ -75,7 +75,7 @@ where
     }
 
     async fn run(&self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
-        self.clone().async_run(ctx, opts.clone()).await
+        Ok(self.clone().async_run_with_retry(ctx, opts.clone()).await?)
     }
 }
 

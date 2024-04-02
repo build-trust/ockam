@@ -42,7 +42,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "identity create";
 
-    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let _progress_display = ProgressDisplay::start(&opts);
         let vault = match &self.vault {
             Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,

@@ -2,8 +2,8 @@ use crate::util::exitcode::{self, ExitCode};
 use crate::version::Version;
 use crate::{fmt_heading, fmt_log};
 use colorful::Colorful;
-use miette::miette;
 use miette::Diagnostic;
+use miette::{miette, Report};
 use std::fmt::{Debug, Formatter};
 
 pub type Result<T> = miette::Result<T, Error>;
@@ -78,6 +78,8 @@ pub enum Error {
         resource_name: String,
     },
     // ==== End 5xx Errors ====
+    #[error("{0}")]
+    Retry(Report),
 }
 
 impl Error {
@@ -110,6 +112,7 @@ impl Error {
             Error::Conflict { .. } => exitcode::SOFTWARE,
             Error::InternalError { exit_code, .. } => *exit_code,
             Error::Unavailable { .. } => exitcode::UNAVAILABLE,
+            Error::Retry { .. } => exitcode::SOFTWARE,
         }
     }
 }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 
@@ -8,9 +9,8 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
 use crate::project_member::{create_authority_client, create_member_attributes, get_project};
-use crate::util::api::IdentityOpts;
-use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::util::api::{IdentityOpts, RetryOpts};
+use crate::{docs, fmt_ok, Command, CommandGlobalOpts, Error};
 
 const LONG_ABOUT: &str = include_str!("./static/add/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/add/after_long_help.txt");
@@ -47,20 +47,20 @@ pub struct AddCommand {
     /// Add the enroller role. If you specify it, this flag is transformed into the attributes `--attribute ockam-role=enroller`. This role allows the Identity using the ticket to enroll other Identities into the Project, typically something that only admins can do
     #[arg(long = "enroller")]
     enroller: bool,
+
+    #[command(flatten)]
+    retry_opts: RetryOpts,
 }
 
-impl AddCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
+#[async_trait]
+impl Command for AddCommand {
+    const NAME: &'static str = "project-member add";
+
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
     }
 
-    pub fn name(&self) -> String {
-        "project-member add".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let project = get_project(&opts.state, &self.to).await?;
 
         let node = InMemoryNode::start_with_project_name(
@@ -83,7 +83,8 @@ impl AddCommand {
                     self.enroller,
                 )?,
             )
-            .await?;
+            .await
+            .map_err(Error::Retry)?;
 
         opts.terminal.stdout().plain(fmt_ok!(
             "Identifier {} is now a Project member. It can get a credential and access Project resources, like portals of other members",

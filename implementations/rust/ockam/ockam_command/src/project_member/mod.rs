@@ -1,5 +1,5 @@
 use crate::util::api::IdentityOpts;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
 use clap::Args;
 use clap::Subcommand;

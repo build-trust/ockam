@@ -109,7 +109,7 @@ impl EnrollCommand {
         force = % self.force,
         skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
     ))]
-    async fn run_impl(&self, ctx: &Context, mut opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
         if self.is_already_enrolled(&opts.state, &opts).await? {

@@ -1,0 +1,14 @@
+variables:
+  NODE_NAME: n1
+
+name: $NODE_NAME
+tcp-listener-address: 127.0.0.1:$NODE_PORT
+
+relay: $RELAY_NAME
+
+tcp-outlet:
+  to: $SERVICE_PORT
+
+tcp-inlet:
+  from: $CLIENT_PORT
+  via: $RELAY_NAME

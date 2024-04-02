@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Args;
 use miette::IntoDiagnostic;
 
@@ -10,9 +11,8 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::output::{Output, ProjectConfigCompact};
 use crate::terminal::PluralTerm;
-use crate::util::api::IdentityOpts;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::util::api::{IdentityOpts, RetryOpts};
+use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam_core::AsyncTryClone;
 
 use tracing::instrument;
@@ -35,26 +35,26 @@ pub struct ShowCommand {
 
     #[command(flatten)]
     pub identity_opts: IdentityOpts,
+
+    #[command(flatten)]
+    pub retry_opts: RetryOpts,
 }
 
-impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "project show";
+
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
     }
 
-    pub fn name(&self) -> String {
-        "project show".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ShowTui::run(
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(ShowTui::run(
             ctx.async_try_clone().await.into_diagnostic()?,
             opts,
             self.name.clone(),
         )
-        .await
+        .await?)
     }
 }
 
@@ -96,7 +96,8 @@ impl ShowCommandTui for ShowTui {
         Ok(self
             .node
             .get_admin_projects(&self.ctx)
-            .await?
+            .await
+            .map_err(Error::Retry)?
             .iter()
             .map(|p| p.name().to_string())
             .collect())
@@ -119,7 +120,11 @@ impl ShowCommandTui for ShowTui {
 
     #[instrument(skip_all)]
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let project = self.node.get_project_by_name(&self.ctx, item_name).await?;
+        let project = self
+            .node
+            .get_project_by_name(&self.ctx, item_name)
+            .await
+            .map_err(Error::Retry)?;
         let project_output = ProjectConfigCompact(project);
 
         self.terminal()

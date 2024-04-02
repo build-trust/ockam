@@ -1,6 +1,11 @@
 use async_trait::async_trait;
 use clap::Subcommand;
+use colorful::Colorful;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
+use tokio_retry::strategy::jitter;
+use tracing::warn;
 
 use ockam_api::CliState;
 use ockam_core::OpenTelemetryContext;
@@ -44,9 +49,11 @@ use crate::tcp::connection::TcpConnectionCommand;
 use crate::tcp::inlet::TcpInletCommand;
 use crate::tcp::listener::TcpListenerCommand;
 use crate::tcp::outlet::TcpOutletCommand;
+use crate::util::api::RetryOpts;
 use crate::util::async_cmd;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
+use crate::{fmt_log, fmt_warn, Error, Result};
 
 /// List of commands which can be executed with `ockam`
 #[derive(Clone, Debug, Subcommand)]
@@ -287,11 +294,61 @@ pub trait Command: Clone + Sized + Send + Sync + 'static {
         Self::NAME.into()
     }
 
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        None
+    }
+
     fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         async_cmd(Self::NAME, opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
+            self.async_run_with_retry(&ctx, opts).await
         })
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()>;
+    async fn async_run_with_retry(
+        self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        if let Some(retry_opts) = self.retry_opts() {
+            let (mut retry_count, retry_delay) =
+                match (retry_opts.retry_count(), retry_opts.retry_delay()) {
+                    (Some(count), Some(delay)) => (count, delay),
+                    (Some(count), None) => (count, Duration::from_secs(5)),
+                    (None, Some(delay)) => (3, delay),
+                    (None, None) => {
+                        self.async_run(ctx, opts).await?;
+                        return Ok(());
+                    }
+                };
+            let retry_delay_jitter = Duration::from_secs(2);
+            while retry_count > 0 {
+                let cmd = self.clone();
+                match cmd.async_run(ctx, opts.clone()).await {
+                    Ok(_) => break,
+                    Err(Error::Retry(inner)) => {
+                        retry_count -= 1;
+                        let delay = retry_delay.add(jitter(retry_delay_jitter));
+                        warn!(
+                            "Command failed, retrying in {} seconds: {inner:?}",
+                            delay.as_secs()
+                        );
+                        opts.terminal
+                            .write_line(&fmt_warn!("Command failed with error:"))?;
+                        opts.terminal.write_line(&fmt_log!("{inner:#}\n"))?;
+                        opts.terminal
+                            .write_line(&fmt_log!("Will retry in {} seconds", delay.as_secs()))?;
+                        tokio::time::sleep(delay).await;
+                        opts.terminal.write_line(&fmt_log!("Retrying...\n"))?;
+                    }
+                    Err(e) => return Err(e.into()),
+                }
+            }
+            Ok(())
+        } else {
+            self.async_run(ctx, opts).await?;
+            Ok(())
+        }
+    }
+
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()>;
 }

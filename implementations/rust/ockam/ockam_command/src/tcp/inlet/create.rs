@@ -115,7 +115,7 @@ fn default_to_addr() -> String {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-inlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
         opts.terminal.write_line(&fmt_log!(
