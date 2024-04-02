@@ -4646,6 +4646,7 @@ dependencies = [
  "ockam_transport_core",
  "opentelemetry",
  "rand",
+ "regex",
  "rustls-native-certs 0.7.0",
  "serde",
  "socket2 0.5.6",

@@ -2,4 +2,4 @@ FROM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf@sha256:dd17a0ad95a3fce9c152
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install --assume-yes libdbus-1-dev
+    apt-get install --assume-yes libdbus-1-dev pkg-config libssl-dev

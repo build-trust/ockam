@@ -59,7 +59,7 @@ async fn read_should_timeout(stream: &mut TcpStream) {
 }
 
 #[allow(non_snake_case)]
-#[ockam_macros::test(timeout = 5000000)]
+#[ockam_macros::test(timeout = 5000)]
 async fn portal__standard_flow__should_succeed(ctx: &mut Context) -> Result<()> {
     let payload1 = generate_binary();
     let payload2 = generate_binary();
