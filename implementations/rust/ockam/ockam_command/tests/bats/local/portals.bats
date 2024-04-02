@@ -250,7 +250,6 @@ teardown() {
 
 @test "portals - local portal, inlet credential expires" {
   inlet_port="$(random_port)"
-  node_port="$(random_port)"
 
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
@@ -267,7 +266,7 @@ teardown() {
   run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
 
   # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --credential-scope "test"
+  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --credential-scope "test"
 
   # issue and store a short-lived credential for alice
   alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 5s --encoding hex)
@@ -284,17 +283,15 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  # TODO: should be run_failure after we add outgoing access control
-  run_success curl -sS -m 30 --limit-rate 5M \
-    -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/$file_name" >/dev/null
+  run_failure curl -sS -m 20 --limit-rate 5M \
+    -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl -sf -m 30 -O "http://127.0.0.1:$inlet_port/$file_name"
+  run_failure curl -sf -m 20 -O "http://127.0.0.1:$inlet_port/.tmp/$file_name"
 }
 
 @test "portals - local portal, outlet credential expires" {
   inlet_port="$(random_port)"
-  node_port="$(random_port)"
 
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
@@ -311,7 +308,7 @@ teardown() {
   run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
 
   # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --tcp-listener-address "127.0.0.1:$node_port" --identity bob --authority-identity $authority_identity --credential-scope "test"
+  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --credential-scope "test"
 
   # issue and store a short-lived credential for alice
   alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --encoding hex)
@@ -328,9 +325,9 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_failure curl -sf -m 30 --limit-rate 5M -S \
-    -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/$file_name" >/dev/null
+  run_failure curl -sf -m 20 --limit-rate 5M -S \
+    -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl -sf -m 30 -O "http://127.0.0.1:$inlet_port/$file_name"
+  run_failure curl -sf -m 20 -O "http://127.0.0.1:$inlet_port/.tmp/$file_name"
 }
