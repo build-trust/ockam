@@ -1,4 +1,4 @@
-use crate::attribute_access_control::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
+use crate::abac::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
 use crate::policy::ResourceTypePolicy;
 use crate::{
     Action, Env, Expr, PolicyAccessControl, Resource, ResourceName, ResourcePoliciesRepository,
@@ -30,26 +30,26 @@ impl Policies {
     }
 
     #[instrument(skip_all, fields(resource = %resource, action = %action, env = %env, authority = %authority))]
-    pub async fn make_policy_access_control(
+    pub fn make_policy_access_control(
         &self,
         identities_attributes: Arc<IdentitiesAttributes>,
         resource: Resource,
         action: Action,
         env: Env,
         authority: Identifier,
-    ) -> Result<PolicyAccessControl> {
+    ) -> PolicyAccessControl {
         debug!(
             "set a policy access control for resource '{}' of type '{}' and action '{}'",
             &resource.resource_name, &resource.resource_type, &action
         );
-        Ok(PolicyAccessControl::new(
+        PolicyAccessControl::new(
             self.clone(),
             identities_attributes,
             authority,
             env,
             resource,
             action.clone(),
-        ))
+        )
     }
 
     pub async fn get_policies(&self) -> Result<(Vec<ResourcePolicy>, Vec<ResourceTypePolicy>)> {

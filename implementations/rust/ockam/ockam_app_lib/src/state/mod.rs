@@ -341,6 +341,11 @@ impl AppState {
         self.context.clone()
     }
 
+    /// Return Context without cloning
+    pub fn context_ref(&self) -> &Context {
+        &self.context
+    }
+
     /// Returns the list of projects
     pub fn projects(&self) -> Arc<RwLock<Vec<Project>>> {
         self.projects.clone()

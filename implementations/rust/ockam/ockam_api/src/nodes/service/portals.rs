@@ -205,10 +205,13 @@ impl NodeManager {
             ));
         }
 
-        let access_control = match access_control {
-            OutletAccessControl::IncomingAccessControl(iac) => iac,
+        let (incoming_ac, outgoing_ac) = match access_control {
+            OutletAccessControl::AccessControl((incoming_ac, outgoing_ac)) => {
+                (incoming_ac, outgoing_ac)
+            }
             OutletAccessControl::PolicyExpression(expression) => {
                 self.access_control(
+                    ctx,
                     self.project_authority(),
                     Resource::new(worker_addr.address(), ResourceType::TcpOutlet),
                     Action::HandleMessage,
@@ -219,7 +222,9 @@ impl NodeManager {
         };
 
         let options = {
-            let options = TcpOutletOptions::new().with_incoming_access_control(access_control);
+            let options = TcpOutletOptions::new()
+                .with_incoming_access_control(incoming_ac)
+                .with_outgoing_access_control(outgoing_ac);
             let options = if self.project_authority().is_none() {
                 options.as_consumer(&self.api_transport_flow_control_id)
             } else {
@@ -603,7 +608,7 @@ impl SessionReplacer for InletSessionReplacer {
         debug!(%self.outlet_addr, "creating new tcp inlet");
 
         // create the access_control
-        let access_control = {
+        let (incoming_ac, outgoing_ac) = {
             let authority = {
                 if let Some(p) = self.outlet_addr.first() {
                     if let Some(p) = p.cast::<ProjectProto>() {
@@ -629,6 +634,7 @@ impl SessionReplacer for InletSessionReplacer {
 
             self.node_manager
                 .access_control(
+                    &self.context,
                     authority,
                     self.resource.clone(),
                     Action::HandleMessage,
@@ -658,7 +664,9 @@ impl SessionReplacer for InletSessionReplacer {
                 connection_route,
                 self.suffix_route.clone()
             ];
-            let options = TcpInletOptions::new().with_incoming_access_control(access_control);
+            let options = TcpInletOptions::new()
+                .with_incoming_access_control(incoming_ac)
+                .with_outgoing_access_control(outgoing_ac);
 
             // Finally, attempt to create a new inlet using the new route:
             let inlet_address = self

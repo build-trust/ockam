@@ -22,7 +22,10 @@ use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
 use ockam_abac::{Action, Env, Expr, Resource};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{AllowAll, AsyncTryClone, IncomingAccessControl};
+use ockam_core::{
+    AllowAll, AsyncTryClone, CachedIncomingAccessControl, CachedOutgoingAccessControl,
+    IncomingAccessControl, OutgoingAccessControl,
+};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
@@ -159,11 +162,15 @@ impl NodeManager {
 impl NodeManager {
     pub(super) async fn access_control(
         &self,
+        ctx: &Context,
         authority: Option<Identifier>,
         resource: Resource,
         action: Action,
         expression: Option<Expr>,
-    ) -> ockam_core::Result<Arc<dyn IncomingAccessControl>> {
+    ) -> ockam_core::Result<(
+        Arc<dyn IncomingAccessControl>,
+        Arc<dyn OutgoingAccessControl>,
+    )> {
         let resource_name_str = resource.resource_name.as_str();
         let resource_type_str = resource.resource_type.to_string();
         let action_str = action.as_ref();
@@ -183,22 +190,25 @@ impl NodeManager {
             self.cli_state.store_resource(&resource).await?;
 
             // Create the policy access control
-            let policy_access_control = policies
-                .make_policy_access_control(
-                    self.cli_state.identities_attributes(),
-                    resource,
-                    action,
-                    env,
-                    authority,
-                )
-                .await?;
+            let policy_access_control = policies.make_policy_access_control(
+                self.cli_state.identities_attributes(),
+                resource,
+                action,
+                env,
+                authority,
+            );
+
+            let incoming_ac = policy_access_control.create_incoming();
+            let outgoing_ac = policy_access_control.create_outgoing(ctx).await?;
+
             cfg_if::cfg_if! {
                 if #[cfg(feature = "std")] {
-                    let cached_policy_access_control = ockam_core::access_control::CachedIncomingAccessControl::new(
-                        Box::new(policy_access_control));
-                    Ok(Arc::new(cached_policy_access_control))
+                    let incoming_ac = CachedIncomingAccessControl::new(Box::new(incoming_ac));
+                    let outgoing_ac = CachedOutgoingAccessControl::new(Box::new(outgoing_ac));
+
+                    Ok((Arc::new(incoming_ac), Arc::new(outgoing_ac)))
                 } else {
-                    Ok(Arc::new(policy_access_control))
+                    Ok((Arc::new(incoming_ac), Arc::new(outgoing_ac)))
                 }
             }
         } else {
@@ -208,7 +218,7 @@ impl NodeManager {
                 action = action_str,
                 "no policy access control set"
             }
-            Ok(Arc::new(AllowAll))
+            Ok((Arc::new(AllowAll), Arc::new(AllowAll)))
         }
     }
 }

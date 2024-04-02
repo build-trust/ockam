@@ -8,7 +8,7 @@ use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
 use ockam_abac::Expr;
-use ockam_core::{Address, IncomingAccessControl, Route};
+use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 
@@ -273,6 +273,11 @@ impl OutletList {
 
 #[derive(Debug)]
 pub enum OutletAccessControl {
-    IncomingAccessControl(Arc<dyn IncomingAccessControl>),
+    AccessControl(
+        (
+            Arc<dyn IncomingAccessControl>,
+            Arc<dyn OutgoingAccessControl>,
+        ),
+    ),
     PolicyExpression(Option<Expr>),
 }
