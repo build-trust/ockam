@@ -1,13 +1,12 @@
 use bytes::{Bytes, BytesMut};
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
-use ockam_abac::AbacAccessControl;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error, LocalInfo,
-    LocalMessage, NeutralMessage, Route, Routed, Worker,
+    route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error,
+    IncomingAccessControl, LocalInfo, LocalMessage, NeutralMessage, Route, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -306,7 +305,7 @@ impl KafkaPortalWorker {
         flow_controls: &FlowControls,
         secure_channel_flow_control_id: Option<FlowControlId>,
         spawner_flow_control_id: Option<FlowControlId>,
-        incoming_access_control: Arc<AbacAccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
     ) -> ockam_core::Result<Address> {
         let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
         let responses_worker_address = Address::random_tagged("KafkaPortalWorker.responses");

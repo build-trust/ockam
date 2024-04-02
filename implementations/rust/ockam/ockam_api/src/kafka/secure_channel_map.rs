@@ -4,7 +4,7 @@ use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse, Identifier,
     SecureChannelRegistryEntry, SecureChannels,
 };
-use ockam_abac::AbacAccessControl;
+use ockam_abac::IncomingAbac;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
@@ -173,7 +173,7 @@ struct InnerSecureChannelControllerImpl<F: RelayCreator> {
     topic_relay_set: HashSet<TopicPartition>,
     relay_creator: Option<F>,
     secure_channels: Arc<SecureChannels>,
-    access_control: AbacAccessControl,
+    access_control: IncomingAbac, // FIXME
 }
 
 impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
@@ -210,7 +210,8 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         relay_creator: Option<F>,
         authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<F> {
-        let access_control = AbacAccessControl::check_credential_only(
+        // FIXME
+        let access_control = IncomingAbac::check_credential_only(
             secure_channels.identities().identities_attributes(),
             authority_identifier,
         );
@@ -409,7 +410,8 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         if let Some(entry) = record {
             let authorized = inner
                 .access_control
-                .is_identity_authorized(entry.their_id().clone())
+                .abac()
+                .is_identity_authorized(entry.their_id(), inner.access_control.expression())
                 .await?;
 
             if authorized {
@@ -456,7 +458,8 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
 
         let authorized = inner
             .access_control
-            .is_identity_authorized(entry.their_id().clone())
+            .abac()
+            .is_identity_authorized(entry.their_id(), inner.access_control.expression())
             .await?;
 
         if authorized {

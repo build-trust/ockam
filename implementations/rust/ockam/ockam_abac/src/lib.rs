@@ -16,11 +16,12 @@ mod types;
 #[cfg(feature = "std")]
 mod parser;
 
-pub mod attribute_access_control;
 pub mod expr;
 pub mod resource;
 
-pub use attribute_access_control::AbacAccessControl;
+mod abac;
+pub use abac::*;
+
 pub use env::Env;
 pub use error::{EvalError, ParseError};
 pub use eval::eval;

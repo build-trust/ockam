@@ -31,7 +31,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             echo_server_handle.chosen_addr,
             Some(Address::from_string("outlet")),
             true,
-            OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+            OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
         )
         .await?;
 
@@ -99,7 +99,7 @@ fn portal_node_goes_down_reconnect() {
                     echo_server_handle.chosen_addr,
                     Some(Address::from_string("outlet")),
                     true,
-                    OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                 )
                 .await?;
 
@@ -163,7 +163,7 @@ fn portal_node_goes_down_reconnect() {
                     echo_server_handle.chosen_addr,
                     Some(Address::from_string("outlet")),
                     true,
-                    OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                 )
                 .await?;
 
@@ -235,7 +235,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     echo_server_handle.chosen_addr,
                     Some(Address::from_string("outlet")),
                     true,
-                    OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                 )
                 .await?;
 
@@ -348,7 +348,7 @@ fn portal_heavy_load_exchanged() {
                     echo_server_handle.chosen_addr,
                     Some(Address::from_string("outlet")),
                     true,
-                    OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                 )
                 .await?;
 
@@ -486,7 +486,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     echo_server_handle.chosen_addr,
                     Some(Address::from_string("outlet")),
                     true,
-                    OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                 )
                 .await?;
 

@@ -13,11 +13,9 @@ mod secure_channel_map;
 
 pub(crate) use inlet_controller::KafkaInletController;
 use ockam::identity::Identifier;
-use ockam_abac::attribute_access_control::{
-    ABAC_HAS_CREDENTIAL_KEY, ABAC_IDENTIFIER_KEY, SUBJECT_KEY,
-};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Expr;
+use ockam_abac::{ABAC_HAS_CREDENTIAL_KEY, ABAC_IDENTIFIER_KEY, SUBJECT_KEY};
 use ockam_core::Address;
 pub(crate) use outlet_service::prefix_relay::PrefixRelayService;
 pub(crate) use outlet_service::OutletManagerService;

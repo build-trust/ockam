@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tracing::{debug, error};
 
 #[cfg(test)]
@@ -50,6 +51,19 @@ impl AppState {
                 }
             };
 
+            let incoming_ac = access_control.create_incoming();
+            let outgoing_ac = match access_control.create_outgoing(self.context_ref()).await {
+                Ok(a) => a,
+                Err(e) => {
+                    error!(
+                        ?e,
+                        worker_addr = %tcp_outlet.worker_addr,
+                        "Failed to create access control"
+                    );
+                    continue;
+                }
+            };
+
             debug!(worker_addr = %tcp_outlet.worker_addr, "Restoring outlet");
             let _ = node_manager
                 .create_outlet(
@@ -57,7 +71,10 @@ impl AppState {
                     tcp_outlet.socket_addr,
                     Some(tcp_outlet.worker_addr.clone()),
                     true,
-                    OutletAccessControl::IncomingAccessControl(access_control),
+                    OutletAccessControl::AccessControl((
+                        Arc::new(incoming_ac),
+                        Arc::new(outgoing_ac),
+                    )),
                 )
                 .await
                 .map_err(|e| {
