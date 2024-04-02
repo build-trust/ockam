@@ -5,6 +5,7 @@ use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::OutletAccessControl;
 use ockam_core::Address;
 use ockam_transport_tcp::resolve_peer;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 /// The default host to use when creating a TCP outlet if the user doesn't specify one.
@@ -26,15 +27,19 @@ impl AppState {
             .wrap_err("Invalid service address")?
             .into();
         let node_manager = self.node_manager().await;
+        let ac = self
+            .create_invitations_access_control(worker_addr.clone())
+            .await?;
+
+        let incoming_ac = ac.create_incoming();
+        let outgoing_ac = ac.create_outgoing(self.context_ref()).await?;
         match node_manager
             .create_outlet(
                 &self.context(),
                 socket_addr,
                 Some(worker_addr.clone()),
                 true,
-                OutletAccessControl::IncomingAccessControl(
-                    self.create_invitations_access_control(worker_addr).await?,
-                ),
+                OutletAccessControl::AccessControl((Arc::new(incoming_ac), Arc::new(outgoing_ac))),
             )
             .await
         {

@@ -295,7 +295,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::attribute_access_control::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
+    use crate::abac::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
     use crate::{eval, Env, Expr};
 
     #[test]

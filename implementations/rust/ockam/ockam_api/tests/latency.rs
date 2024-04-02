@@ -133,7 +133,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     echo_server_handle.chosen_addr,
                     Some(Address::from_string("outlet")),
                     true,
-                    OutletAccessControl::IncomingAccessControl(Arc::new(AllowAll)),
+                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                 )
                 .await?;
 
