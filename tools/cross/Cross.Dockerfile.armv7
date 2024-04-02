@@ -1,5 +1,9 @@
 FROM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf@sha256:dd17a0ad95a3fce9c15230f60f8ed3bf6e60d81de260fbb9e457e4a49de8a43a
 
 ARG DEBIAN_FRONTEND=noninteractive
+RUN dpkg --add-architecture armhf
 RUN apt-get update && \
-    apt-get install --assume-yes libdbus-1-dev
+    apt-get install --assume-yes libdbus-1-dev tree pkg-config openssl libssl-dev libssl-dev:armhf
+RUN tree /usr/lib
+RUN dpkg -L openssl
+ENV OPENSSL_INCLUDE_DIR /usr/include/openssl

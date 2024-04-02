@@ -4646,6 +4646,7 @@ dependencies = [
  "ockam_transport_core",
  "opentelemetry",
  "rand",
+ "regex",
  "rustls-native-certs 0.7.0",
  "serde",
  "socket2 0.5.6",
@@ -4820,7 +4821,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.53",
+ "syn 2.0.58",
 ]
 
 [[package]]

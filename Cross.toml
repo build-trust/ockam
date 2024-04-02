@@ -1,0 +1,12 @@
+[target.armv7-unknown-linux-musleabihf]
+dockerfile = "./tools/cross/Cross.Dockerfile.armv7"
+
+[target.aarch64-unknown-linux-musl]
+dockerfile = "./tools/cross/Cross.Dockerfile.aarch64"
+
+#pre-build = [# additional commands to run prior to building the package
+#  "dpkg --add-architecture armhf",
+#  "apt update && apt --assume-yes install pkg-config tree openssl libssl-dev libssl-dev:armhf",
+#  "echo 'tree include'",
+#  "tree /usr/include",
+#]

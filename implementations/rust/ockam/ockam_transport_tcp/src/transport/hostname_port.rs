@@ -49,35 +49,37 @@ impl FromStr for HostnamePort {
 
     /// Return a hostname and port when separated by a :
     fn from_str(hostname_port: &str) -> ockam_core::Result<HostnamePort> {
-        let mut values = hostname_port.split(':').collect::<Vec<_>>();
-        values.reverse();
-        let mut values = values.iter();
-
-        match values.next() {
-            Some(port) => match port.parse::<u16>().ok() {
-                Some(port) => {
-                    let hostname = values.map(|v| v.to_string()).rev().collect::<Vec<_>>();
-                    let hostname = if hostname.is_empty()
-                        || (hostname.len() == 1 && hostname.join("").is_empty())
-                    {
-                        "127.0.0.1".to_string()
-                    } else {
-                        hostname.join(":")
-                    };
-                    Ok(HostnamePort { hostname, port })
-                }
-                None => Err(ockam_core::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
-                    format!("cannot read the port as an integer: {port}"),
-                ))?,
-            },
-            _ => Err(ockam_core::Error::new(
-                Origin::Api,
-                Kind::Serialization,
-                format!("cannot read the value as hostname:port {hostname_port}"),
-            ))?,
+        // edge case: only the port is given
+        if let Ok(port) = hostname_port.parse::<u16>() {
+            return Ok(HostnamePort::new("127.0.0.1", port));
         }
+
+        // otherwise check if brackets are present for an IP v6 address
+        let ip_regex = if hostname_port.contains('[') {
+            // we want to parse an IP v6 address as [hostname]:port where hostname does not contain [ or ]
+            regex::Regex::new(r"(\[[^\[\]].*\]):(\d+)").unwrap()
+        } else {
+            regex::Regex::new(r"^([^:]*):(\d+)$").unwrap()
+        };
+
+        // Attempt to match the regular expression
+        if let Some(captures) = ip_regex.captures(hostname_port) {
+            if let (Some(hostname), Some(port)) = (captures.get(1), captures.get(2)) {
+                if let Ok(port) = port.as_str().parse::<u16>() {
+                    let mut hostname = hostname.as_str().to_string();
+                    if hostname.is_empty() {
+                        hostname = "127.0.0.1".to_string()
+                    };
+                    return Ok(HostnamePort { hostname, port });
+                }
+            }
+        };
+
+        Err(ockam_core::Error::new(
+            Origin::Api,
+            Kind::Serialization,
+            format!("cannot read the value as hostname:port: {hostname_port}"),
+        ))
     }
 }
 
@@ -99,6 +101,10 @@ mod tests {
 
         let actual = HostnamePort::from_str("127.0.0.1:80")?;
         assert_eq!(actual, HostnamePort::new("127.0.0.1", 80));
+
+        // this is malformed address
+        let actual = HostnamePort::from_str("127.0.0.1:80:80").ok();
+        assert_eq!(actual, None);
 
         let actual = HostnamePort::from_str(":80")?;
         assert_eq!(actual, HostnamePort::new("127.0.0.1", 80));

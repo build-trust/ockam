@@ -34,11 +34,3 @@ inherits = "release"
 opt-level = 2
 [profile.dev.package.adler]
 opt-level = 1
-
-# Allows us build with cross across multiple platforms.
-[workspace.metadata.cross.build]
-# additional commands to run prior to building the package
-pre-build = [
-  "dpkg --add-architecture $CROSS_DEB_ARCH",
-  "apt-get update && apt-get --assume-yes install libssl-dev:$CROSS_DEB_ARCH",
-]
