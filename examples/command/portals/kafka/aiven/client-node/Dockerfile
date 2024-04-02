@@ -16,7 +16,7 @@ RUN mirror=$(curl --stderr /dev/null https://www.apache.org/dyn/closer.cgi\?as_j
   && rm -rf /tmp/* \
   && apk del --purge .build-deps
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | bash
+RUN curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash -s
 ENV PATH "/root/.ockam/bin:/sbin:/opt/kafka/bin/:$PATH"
 COPY ./consumer.sh /consumer.sh
 RUN chmod +x /consumer.sh
