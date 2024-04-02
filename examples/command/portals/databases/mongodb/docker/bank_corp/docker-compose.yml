@@ -1,0 +1,27 @@
+version: "3.8"
+
+# Create a dedicated and isolated virtual network for bank_corp.
+networks:
+  bank_corp:
+    driver: bridge
+
+services:
+  # Start mongodb.
+  mongodb:
+    image: mongo:latest
+    networks:
+      - bank_corp
+
+  # Start an ockam node.
+  #
+  # Read ../ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    depends_on: [mongodb]
+    build:
+      context: .
+      dockerfile: ../ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    networks:
+      - bank_corp
