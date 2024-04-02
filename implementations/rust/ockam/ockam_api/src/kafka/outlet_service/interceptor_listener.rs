@@ -4,9 +4,10 @@ use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::KAFKA_OUTLET_INTERCEPTOR_ADDRESS;
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{Any, Context, Result, Routed, Worker};
-use ockam_abac::{AbacAccessControl, Expr};
+use ockam_abac::Expr;
+use ockam_abac::IncomingAbac;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
-use ockam_core::Address;
+use ockam_core::{Address, IncomingAccessControl};
 use ockam_node::WorkerBuilder;
 use std::sync::Arc;
 
@@ -16,7 +17,7 @@ use std::sync::Arc;
 /// this implementation was created to allow local usage.
 pub(crate) struct OutletManagerService {
     outlet_controller: KafkaOutletController,
-    incoming_access_control: Arc<AbacAccessControl>,
+    incoming_access_control: Arc<dyn IncomingAccessControl>,
     spawner_flow_control_id: FlowControlId,
 }
 
@@ -41,10 +42,11 @@ impl OutletManagerService {
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
-        let abac = AbacAccessControl::check_credential_only(
+        let abac = IncomingAbac::check_credential_only(
             secure_channels.identities().identities_attributes(),
             authority_identifier,
         );
+        // TOOD: Should we add outgoing?
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(policy_expression),
             incoming_access_control: Arc::new(abac),

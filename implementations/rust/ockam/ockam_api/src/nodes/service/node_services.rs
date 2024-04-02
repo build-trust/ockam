@@ -194,8 +194,9 @@ impl NodeManager {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
 
-        let ac = self
+        let (incoming_ac, outgoing_ac) = self
             .access_control(
+                ctx,
                 self.project_authority(),
                 Resource::new(addr.address(), ResourceType::Echoer),
                 Action::HandleMessage,
@@ -205,7 +206,8 @@ impl NodeManager {
 
         WorkerBuilder::new(Echoer)
             .with_address(addr.clone())
-            .with_incoming_access_control_arc(ac)
+            .with_incoming_access_control_arc(incoming_ac)
+            .with_outgoing_access_control_arc(outgoing_ac)
             .start(ctx)
             .await?;
 

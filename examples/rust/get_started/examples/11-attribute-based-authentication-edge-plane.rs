@@ -1,5 +1,5 @@
 use hello_ockam::{create_token, import_project};
-use ockam::abac::AbacAccessControl;
+use ockam::abac::{IncomingAbac, OutgoingAbac};
 use ockam::identity::{
     identities, RemoteCredentialRetrieverCreator, RemoteCredentialRetrieverInfo, SecureChannelOptions,
     TrustMultiIdentifiersPolicy,
@@ -88,12 +88,20 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     ));
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control = AbacAccessControl::create(
+    let incoming_access_control = IncomingAbac::create_name_value(
         identities().await?.identities_attributes(),
         project.authority_identifier(),
         "component",
         "control",
     );
+    let outgoing_access_control = OutgoingAbac::create_name_value(
+        node.context(),
+        identities().await?.identities_attributes(),
+        project.authority_identifier(),
+        "component",
+        "control",
+    )
+    .await?;
 
     // 4. create a tcp inlet with the above policy
 
@@ -127,7 +135,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .create_inlet(
             "127.0.0.1:7000",
             outlet_route.clone(),
-            TcpInletOptions::new().with_incoming_access_control_impl(access_control),
+            TcpInletOptions::new()
+                .with_incoming_access_control_impl(incoming_access_control)
+                .with_outgoing_access_control_impl(outgoing_access_control),
         )
         .await?;
     println!("the inlet is {inlet:?}");

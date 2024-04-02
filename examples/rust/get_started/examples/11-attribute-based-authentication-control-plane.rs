@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use hello_ockam::{create_token, import_project};
-use ockam::abac::AbacAccessControl;
+use ockam::abac::{IncomingAbac, OutgoingAbac};
 use ockam::identity::{
     RemoteCredentialRetrieverCreator, RemoteCredentialRetrieverInfo, SecureChannelListenerOptions,
     SecureChannelOptions, TrustMultiIdentifiersPolicy,
@@ -88,18 +88,28 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     ));
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control = AbacAccessControl::create(
+    let incoming_access_control = IncomingAbac::create_name_value(
         node.identities_attributes(),
         project.authority_identifier(),
         "component",
         "edge",
     );
+    let outgoing_access_control = OutgoingAbac::create_name_value(
+        node.context(),
+        node.identities_attributes(),
+        project.authority_identifier(),
+        "component",
+        "edge",
+    )
+    .await?;
 
     // 4. create a tcp outlet with the above policy
     tcp.create_outlet(
         "outlet",
         "127.0.0.1:5000",
-        TcpOutletOptions::new().with_incoming_access_control_impl(access_control),
+        TcpOutletOptions::new()
+            .with_incoming_access_control_impl(incoming_access_control)
+            .with_outgoing_access_control_impl(outgoing_access_control),
     )
     .await?;
 
