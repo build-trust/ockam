@@ -1,0 +1,8 @@
+[build]
+build-std = false                              # do not build the std library. has precedence over xargo
+xargo = true                                   # enable the use of xargo by default
+zig = false                                    # do not use zig cc for the builds
+pre-build = [                                  # additional commands to run prior to building the package
+  "dpkg --add-architecture $CROSS_DEB_ARCH",
+  "apt update && apt --assume-yes install libssl-dev:$CROSS_DEB_ARCH",
+]
