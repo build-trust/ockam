@@ -15,7 +15,7 @@ source "$HOME/.ockam/env"
 # The `project enroll` command creates a new vault and generates a cryptographic identity with
 # private keys stored in that vault.
 #
-# The enrollment ticket includes routes and identitifiers for the project membership authority
+# The enrollment ticket includes routes and identifiers for the project membership authority
 # and the project’s node that offers the relay service.
 #
 # The enrollment ticket also includes an enrollment token. The project enroll command
@@ -34,9 +34,15 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # attribute postgres-inlet="true" to connect to TCP Portal Outlets on this node.
 #
 # Create a TCP Portal Outlet to postgres at - $POSTGRES_ADDRESS:5432.
-ockam node create
-ockam relay create postgres
-ockam policy create --resource tcp-outlet --expression '(= subject.postgres-inlet "true")'
-ockam tcp-outlet create --to "$POSTGRES_ADDRESS:5432"
+cat << EOF > outlet.yaml
+tcp-outlet:
+  to: "$POSTGRES_ADDRESS:5432"
+  allow: '(= subject.postgres-inlet "true")'
+
+relay: postgres
+EOF
+
+ockam node create outlet.yaml
+rm outlet.yaml
 
 EOS

@@ -15,7 +15,7 @@ source "$HOME/.ockam/env"
 # The `project enroll` command creates a new vault and generates a cryptographic identity with
 # private keys stored in that vault.
 #
-# The enrollment ticket includes routes and identitifiers for the project membership authority
+# The enrollment ticket includes routes and identifiers for the project membership authority
 # and the project’s node that offers the relay service.
 #
 # The enrollment ticket also includes an enrollment token. The project enroll command
@@ -32,8 +32,14 @@ ockam project enroll "$ENROLLMENT_TICKET"
 #
 # Create a TCP Portal Inlet to postgres.
 # This makes the remote postgres available on all localhost IPs at - 0.0.0.0:15432
-ockam node create
-ockam policy create --resource tcp-inlet --expression '(= subject.postgres-outlet "true")'
-ockam tcp-inlet create --from 0.0.0.0:15432 --via postgres
+cat << EOF > inlet.yaml
+tcp-inlet:
+  from: 0.0.0.0:15432
+  via: postgres
+  allow: '(= subject.postgres-outlet "true")'
+EOF
+
+ockam node create inlet.yaml
+rm inlet.yaml
 
 EOS

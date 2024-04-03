@@ -63,8 +63,8 @@ cleanup() {
 }
 
 # Check if Ockam Command is already installed and available in path.
-# If it's not, then install it.
-if ! type ockam &>/dev/null; then
+# If it's not, then install it (only if we are not cleaning up)
+if ! [ type ockam &>/dev/null ] && ! [ "$1" = "cleanup" ]; then
     curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
     source "$HOME/.ockam/env"
 fi
