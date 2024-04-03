@@ -1,13 +1,10 @@
 const { MongoClient } = require("mongodb");
 
-// Configuration to connect to the MongoDB database on - ockam:15432
+// Configuration to connect to the MongoDB database on - ockam:17017
 //
-// ockam:15432 is the inlet address of the tcp portal to MongoDB.
+// ockam:17017 is the inlet address of the tcp portal to MongoDB.
 // This inlet is local to analysis_corp, the MongoDB database is remote in bank_corp.
-const uri = "mongodb://ockam:15432/mydb"
-//const uri = "mongodb://localhost:27017/mydb"
-
-
+const uri = "mongodb://ockam:17017/mydb"
 
 // Attempt to connect to the database in a loop.
 //

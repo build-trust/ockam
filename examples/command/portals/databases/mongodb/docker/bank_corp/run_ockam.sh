@@ -30,7 +30,7 @@ echo "Enrolled!"
 # Create an access control policy that only allows project members that possesses a credential with
 # attribute mongodb-inlet="true" to connect to TCP Portal Outlets on this node.
 #
-# Create a TCP Portal Outlet to MongoDB at - mongodb:5432.
+# Create a TCP Portal Outlet to MongoDB at - mongodb:27017.
 ockam node create
 ockam relay create mongodb
 ockam policy create --resource tcp-outlet --expression '(= subject.mongodb-inlet "true")'
