@@ -24,10 +24,10 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # attribute mongodb-outlet="true" to connect to TCP Portal Inlets on this node.
 #
 # Create a TCP Portal Inlet to MongoDB.
-# This makes the remote MongoDB available on all localhost IPs at - 0.0.0.0:15432
+# This makes the remote MongoDB available on all localhost IPs at - 0.0.0.0:17017
 ockam node create
 ockam policy create --resource tcp-inlet --expression '(= subject.mongodb-outlet "true")'
-ockam tcp-inlet create --from 0.0.0.0:15432 --via mongodb
+ockam tcp-inlet create --from 0.0.0.0:17017 --via mongodb
 
 # Run the container forever.
 tail -f /dev/null
