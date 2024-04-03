@@ -19,13 +19,14 @@ run() {
     rtb_id=$(aws ec2 create-route-table --vpc-id "$vpc_id" --query 'RouteTable.RouteTableId')
     aws ec2 create-route --route-table-id "$rtb_id" --destination-cidr-block 0.0.0.0/0 --gateway-id "$gw_id"
 
-    az1=$(aws ec2 describe-availability-zones --query "AvailabilityZones[0].ZoneName")
+    # Create two subnets in two distinct availability zones
+    read az1 az2 <<< "$(aws ec2 describe-availability-zones --query "AvailabilityZones[0:2].ZoneName" --output text)"
+
     subnet1_id=$(aws ec2 create-subnet --vpc-id "$vpc_id" --cidr-block 10.0.0.0/25 \
         --availability-zone "$az1" --query 'Subnet.SubnetId')
     aws ec2 modify-subnet-attribute --subnet-id "$subnet1_id" --map-public-ip-on-launch
     aws ec2 associate-route-table --subnet-id "$subnet1_id" --route-table-id "$rtb_id"
 
-    az2=$(aws ec2 describe-availability-zones --query "AvailabilityZones[1].ZoneName")
     subnet2_id=$(aws ec2 create-subnet --vpc-id "$vpc_id" --cidr-block 10.0.0.128/25 \
         --availability-zone "$az2" --query 'Subnet.SubnetId')
     aws ec2 modify-subnet-attribute --subnet-id "$subnet2_id" --map-public-ip-on-launch
@@ -33,7 +34,7 @@ run() {
 
     # Create a security group to allow:
     #   - TCP egress to the Internet
-    #   - Postgess ingress only from withing our two subnets.
+    #   - Postgres ingress only from withing our two subnets.
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
         --description "Allow TCP egress and Postgres ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
