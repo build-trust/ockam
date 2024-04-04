@@ -6,7 +6,7 @@ async function run() {
       return;
     }
 
-    const query = "What is Ockam's Razor?";
+    const query = "What is Ockham's Razor?";
     console.log("Connected to the model.\n\n App: ", query);
     const queryResponse = await fetch("http://localhost:3000/query", {
       method: "POST",
@@ -20,7 +20,7 @@ async function run() {
     }
 
     const answer = await queryResponse.json();
-    console.log("Model: ", answer);
+    console.log(answer['answer']);
   } catch (error) {
     console.log("Error:", error.message);
   }

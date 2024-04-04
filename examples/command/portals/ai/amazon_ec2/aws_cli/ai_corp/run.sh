@@ -28,7 +28,7 @@ run() {
 
     # Create a security group to allow:
     #   - TCP egress to the Internet
-    #   - Postgess ingress only from withing our two subnets.
+    #   - SSH ingress only from withing our two subnets.
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
         --description "Allow TCP egress and SSH ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
@@ -43,6 +43,9 @@ run() {
 
     aws ec2 create-key-pair --key-name "${name}-key" --query 'KeyMaterial' > key.pem
     chmod 400 key.pem
+
+    # make sure that the current region supports the instance required to run the model
+    check_if_instance_type_available g5g.2xlarge
 
     sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data.sh
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type g5g.2xlarge \
@@ -64,8 +67,48 @@ run() {
             echo "Downloaded."
 
             npm install express node-llama-cpp
+
+            echo "Start the AI API"
             nohup node api.mjs &>output.log &
+            echo "AI API started"
 EOS
+}
+
+# This function checks if an instance type is available in the currently configured region
+# If not, then the list of all regions supporting that instance type are returned
+check_if_instance_type_available() {
+    instance_type=$1
+    current_region=$(get_configured_region)
+    instance_type_available="$(aws ec2 describe-instance-type-offerings \
+        --query "InstanceTypeOfferings[?InstanceType=='$instance_type']" --region $current_region --output text)"
+
+    if [[ -z "$instance_type_available" ]]; then
+        echo "The instance type $instance_type is not available in $current_region."
+        available_regions=""
+        all_regions="$(aws ec2 describe-regions --query 'Regions[*].RegionName' --output text)"
+        for region in $all_regions; do
+            instance_type_available="$(aws ec2 describe-instance-type-offerings \
+                --query "InstanceTypeOfferings[?InstanceType=='$instance_type'].Location" --region $region --output text)"
+            if [[ -n "$instance_type_available" ]]; then
+                available_regions="$available_regions, $region"
+            fi
+        done
+        echo "The instance type $instance_type is available in the following regions: $available_regions."
+        echo "Please log again to AWS with one of those regions."
+        exit 1;
+    fi
+}
+
+# Return the currently configured region
+get_configured_region() {
+    region=$(aws ec2 describe-availability-zones --query 'AvailabilityZones[0].[RegionName]')
+
+    # Check if we have a region value
+    if [[ -z "region" ]]; then
+        echo "No AWS region is configured or set in environment variables."
+        exit 1
+    fi
+    echo "region"
 }
 
 cleanup() {
