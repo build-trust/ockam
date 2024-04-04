@@ -1,12 +1,13 @@
 use crate::portal::addresses::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{Address, AllowAll, IncomingAccessControl};
+use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
 
 /// Trust Options for an Inlet
 #[derive(Debug)]
 pub struct TcpInletOptions {
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
 
 impl TcpInletOptions {
@@ -14,6 +15,7 @@ impl TcpInletOptions {
     pub fn new() -> Self {
         Self {
             incoming_access_control: Arc::new(AllowAll),
+            outgoing_access_control: Arc::new(AllowAll),
         }
     }
 
@@ -35,6 +37,24 @@ impl TcpInletOptions {
         self
     }
 
+    /// Set Outgoing Access Control
+    pub fn with_outgoing_access_control_impl(
+        mut self,
+        access_control: impl OutgoingAccessControl,
+    ) -> Self {
+        self.outgoing_access_control = Arc::new(access_control);
+        self
+    }
+
+    /// Set Outgoing Access Control
+    pub fn with_outgoing_access_control(
+        mut self,
+        access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Self {
+        self.outgoing_access_control = access_control;
+        self
+    }
+
     pub(super) fn setup_flow_control(
         &self,
         flow_controls: &FlowControls,
@@ -46,7 +66,7 @@ impl TcpInletOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(addresses.remote.clone(), &flow_control_id);
+            flow_controls.add_consumer(addresses.sender_remote.clone(), &flow_control_id);
         }
     }
 }
@@ -62,6 +82,7 @@ impl Default for TcpInletOptions {
 pub struct TcpOutletOptions {
     pub(super) consumer: Vec<FlowControlId>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
 
 impl TcpOutletOptions {
@@ -70,6 +91,7 @@ impl TcpOutletOptions {
         Self {
             consumer: vec![],
             incoming_access_control: Arc::new(AllowAll),
+            outgoing_access_control: Arc::new(AllowAll),
         }
     }
 
@@ -88,6 +110,24 @@ impl TcpOutletOptions {
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Self {
         self.incoming_access_control = access_control;
+        self
+    }
+
+    /// Set Outgoing Access Control
+    pub fn with_outgoing_access_control_impl(
+        mut self,
+        access_control: impl OutgoingAccessControl,
+    ) -> Self {
+        self.outgoing_access_control = Arc::new(access_control);
+        self
+    }
+
+    /// Set Outgoing Access Control
+    pub fn with_outgoing_access_control(
+        mut self,
+        access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Self {
+        self.outgoing_access_control = access_control;
         self
     }
 
@@ -123,7 +163,7 @@ impl TcpOutletOptions {
             .get_flow_control_with_producer(src_addr)
             .map(|x| x.flow_control_id().clone())
         {
-            flow_controls.add_consumer(addresses.remote.clone(), &producer_flow_control_id);
+            flow_controls.add_consumer(addresses.sender_remote.clone(), &producer_flow_control_id);
         }
     }
 }
