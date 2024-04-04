@@ -46,7 +46,7 @@ setup_python_server() {
     touch "$p"
 
     # Log server data to OCKAM_HOME_BASE
-    python3 -m http.server --bind 127.0.0.1 $PYTHON_SERVER_PORT &>./.tmp/python_server.log &
+    python3 -m uploadserver --bind 127.0.0.1 $PYTHON_SERVER_PORT &>./.tmp/python_server.log &
     pid="$!"
     echo "$pid" >"$p"
     popd || {
