@@ -1,6 +1,7 @@
 #!/bin/bash
 
 rm -rf "$HOME/.bats-tests"
+mkdir -p "$HOME/.bats-tests"
 
 export BATS_TEST_RETRIES=2
 export BATS_TEST_TIMEOUT=240
