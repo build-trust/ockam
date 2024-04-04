@@ -34,9 +34,15 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # attribute ai-inlet="true" to connect to TCP Portal Outlets on this node.
 #
 # Create a TCP Portal Outlet to ai at - localhost:3000.
-ockam node create
-ockam relay create ai
-ockam policy create --resource tcp-outlet --expression '(= subject.ai-inlet "true")'
-ockam tcp-outlet create --to localhost:3000
+cat << EOF > outlet.yaml
+tcp-outlet:
+  to: "localhost:3000"
+  allow: '(= subject.ai-inlet "true")'
+
+relay: ai
+EOF
+
+ockam node create outlet.yaml
+rm outlet.yaml
 
 EOS
