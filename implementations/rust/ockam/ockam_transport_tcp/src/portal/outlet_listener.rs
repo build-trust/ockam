@@ -97,10 +97,11 @@ impl Worker for TcpOutletListenWorker {
             return_route.clone(),
             addresses.clone(),
             self.options.incoming_access_control.clone(),
+            self.options.outgoing_access_control.clone(),
         )
         .await?;
 
-        debug!("Created Tcp Outlet at {}", addresses.remote);
+        debug!("Created Tcp Outlet at {}", addresses.sender_remote);
 
         Ok(())
     }

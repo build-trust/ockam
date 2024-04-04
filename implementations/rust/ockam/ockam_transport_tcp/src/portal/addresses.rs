@@ -1,7 +1,7 @@
 use ockam_core::Address;
 
 /// Enumerate all portal types
-#[derive(Debug, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub(super) enum PortalType {
     Inlet,
     Outlet,
@@ -17,23 +17,38 @@ impl PortalType {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct Addresses {
-    pub(super) internal: Address,
-    pub(super) remote: Address,
-    pub(super) receiver: Address,
+pub(crate) struct Addresses {
+    /// Used to receive messages from the corresponding receiver `receiver_internal` Address
+    pub(crate) sender_internal: Address,
+    /// Used to receive messages from the other side's Receiver
+    pub(crate) sender_remote: Address,
+    /// Used to send messages to the corresponding sender
+    pub(crate) receiver_internal: Address,
+    /// Used to send messages to the other side's Sender
+    pub(crate) receiver_remote: Address,
 }
 
 impl Addresses {
     pub(super) fn generate(portal_type: PortalType) -> Self {
         let type_name = portal_type.str();
-        let internal = Address::random_tagged(&format!("TcpPortalWorker.{}.internal", type_name));
-        let remote = Address::random_tagged(&format!("TcpPortalWorker.{}.remote", type_name));
-        let receiver = Address::random_tagged(&format!("TcpPortalRecvProcessor.{}", type_name));
+        let sender_internal =
+            Address::random_tagged(&format!("TcpPortalWorker.{}.sender_internal", type_name));
+        let sender_remote =
+            Address::random_tagged(&format!("TcpPortalWorker.{}.sender_remote", type_name));
+        let receiver_internal = Address::random_tagged(&format!(
+            "TcpPortalRecvProcessor.{}.receiver_internal",
+            type_name
+        ));
+        let receiver_remote = Address::random_tagged(&format!(
+            "TcpPortalRecvProcessor.{}.receiver_remote",
+            type_name
+        ));
 
         Self {
-            internal,
-            remote,
-            receiver,
+            sender_internal,
+            sender_remote,
+            receiver_internal,
+            receiver_remote,
         }
     }
 }
