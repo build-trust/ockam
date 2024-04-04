@@ -44,11 +44,13 @@ cargo build
 This will produce an `ockam` executable at `target/debug/ockam`.
 
 You can also typecheck the code, as you modify it, with:
+
 ```
 cargo watch -x check
 ```
 
 or, if you want to include the test code:
+
 ```
 cargo watch -x "check --tests"
 ```
@@ -73,6 +75,7 @@ cargo test
 ### Concurrent tests
 
 There is also a way to run all the tests concurrently, to run them faster, with `nextest`:
+
 ```
 cargo --config-file tools/nextest/.config/nextest.toml run --no-fail-fast
 ```
@@ -82,16 +85,19 @@ cargo --config-file tools/nextest/.config/nextest.toml run --no-fail-fast
 ### BATS tests
 
 The Ockam system tests are implemented using a command-line test tool: [bats](https://bats-core.readthedocs.io).
-Please consult [the `bats` installation instructions to install it on your system](https://bats-core.readthedocs.io/en/stable/installation.html).
+Please
+consult [the `bats` installation instructions to install it on your system](https://bats-core.readthedocs.io/en/stable/installation.html).
 
 Once `bats` is installed you can run the `bats` test suite with:
+
 ```
 # --jobs 4 run the tests concurrently using 4 threads
 bats implementations/rust/ockam/ockam_command/tests/bats --jobs 4
 ```
 
 The `implementations/rust/ockam/ockam_command/tests/bats` directory contains several tests files, covering different
-functionalities. You can specify which file you want to test and even add a filter for the subset of tests you want to run:
+functionalities. You can specify which file you want to test and even add a filter for the subset of tests you want to
+run:
 
 ```
 # run only the CRUD tests in the vault test suite
@@ -113,6 +119,7 @@ cargo fmt
 ```
 
 `clippy` is a Cargo plugin that can catch many common mistakes. You can run on the Ockam code with:
+
 ```
 cargo clippy --no-deps --all-targets -- -D warnings
 ```
@@ -130,7 +137,9 @@ cargo doc
 The `README.md` files for a given crate is generated from the documentation header in the top-level `lib.rs` file,
 using the `cargo readme` plugin.
 
-That plugin must be installed with `cargo install cargo-readme`. Then a `README` file in a given crate can be updated with:
+That plugin must be installed with `cargo install cargo-readme`. Then a `README` file in a given crate can be updated
+with:
+
 ```
 # update the README file for the ockam_identity crate
 cd implementations/rust/ockam_identity
@@ -208,37 +217,42 @@ cargo license --json | jq ".[] | .license" | sort | uniq
 
 # Using `make`
 
-Many `cargo` commands have an equivalent support using `make`. Here are a few examples, you can find more in [implementations/rust/Makefile](./Makefile):
+Many `cargo` commands have an equivalent support using `make`. Here are a few examples, you can find more
+in [implementations/rust/Makefile](./Makefile):
 
- Command                       | Description
- ------                        | -----------
- `make rust_clean`             | clean build files
- `make rust_build`             | build all crates
- `make rust_test`              | run the tests, using `cargo test`
- `make rust_nexttest`          | run the tests, using `cargo nextest`
- `make rust_bats`              | run the `bats` test suite
- `make rust_bats_vault`        | run the `bats` `vault` test suite
- `make rust_update_readmes`    | update the `README` files in all crates, based on the documentation header in `<crate>/src/lib.rs`
- `make rust_cargo_fmt`         | format the code
- `make rust_lint`              | run all the code lints
- `make rust_lint_clippy`       | run the clippy lints
- `make rust_lint_cargo_readme` | check that the README files are up to date
- `make rust_check_no_std`      | check that the `ockam` crate can be compiled with the `no_std` feature
+ Command                       | Description                                                                                                                       
+ -------------------------------|-----------------------------------------------------------------------------------------------------------------------------------
+ `make rust_clean`             | clean build files                                                                                                                 
+ `make rust_build`             | build all crates                                                                                                                  
+ `make rust_test`              | run the tests, using `cargo test`                                                                                                 
+ `make rust_nexttest`          | run the tests, using `cargo nextest`                                                                                              
+ `make rust_bats`              | run the `bats` test suite                                                                                                         
+ `make rust_bats_local_vault`  | run the local `bats` `vault` test suite (replace `local` with `orchestrator` or `serial` and `vault` with another bats file name. 
+ `make rust_update_readmes`    | update the `README` files in all crates, based on the documentation header in `<crate>/src/lib.rs`                                
+ `make rust_cargo_fmt`         | format the code                                                                                                                   
+ `make rust_lint`              | run all the code lints                                                                                                            
+ `make rust_lint_clippy`       | run the clippy lints                                                                                                              
+ `make rust_lint_cargo_readme` | check that the README files are up to date                                                                                        
+ `make rust_check_no_std`      | check that the `ockam` crate can be compiled with the `no_std` feature                                                            
 
 Note that these commands don't need to use the `rust_` prefix if you first `cd` into `implementations/rust`. Then you
 can directly call: `make build`, `make test`, etc...
 
 # Using `nix`
 
-Our [Nix](https://nixos.org) tooling can be found in `tools/nix` from the root path directory. This has the benefit to install *all* the tools
-needed to build, test and check the project. You first need to install `nix` by following the instructions [here](https://nixos.org/download#download-nix).
+Our [Nix](https://nixos.org) tooling can be found in `tools/nix` from the root path directory. This has the benefit to
+install *all* the tools
+needed to build, test and check the project. You first need to install `nix` by following the
+instructions [here](https://nixos.org/download#download-nix).
 
 Then you can run any `make` command in a `nix` environment. For example here is how you can run the tests:
+
 ```
 nix develop ./tools/nix#rust --command make rust_test
 ```
 
 There is also a `make` shortcut to run any command in a `nix` environment:
+
 ```
 # run the cargo tests
 make nix_rust_test
@@ -249,9 +263,12 @@ make nix_rust_bats
 
 # Using an IDE
 
-We recommend using [RustRover](https://www.jetbrains.com/rust) or VSCode with [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+We recommend using [RustRover](https://www.jetbrains.com/rust) or VSCode
+with [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 to benefit from code navigation, refactoring and automated formatting.
 
 [conduct]: https://github.com/build-trust/.github/blob/main/CODE_OF_CONDUCT.md
+
 [contributing]: https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md
+
 [rustup-manage-versions]: https://doc.rust-lang.org/nightly/edition-guide/rust-2018/rustup-for-managing-rust-versions.html#rustup-for-managing-rust-versions

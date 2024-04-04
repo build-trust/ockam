@@ -98,10 +98,10 @@ format:
 	cargo fmt --all
 
 bats:
-	bats $(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats --jobs 4
+	$(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats/run.sh
 
 bats_%:
-	bats $(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats/$*.bats --jobs 4
+	bats $(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats/$(subst _,/,$*).bats --jobs 8
 
 .PHONY:
 	build_docs build_examples build_packages build_release build_release_% build_% \
