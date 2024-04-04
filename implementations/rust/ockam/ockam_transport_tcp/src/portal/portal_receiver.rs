@@ -1,10 +1,11 @@
+use crate::portal::addresses::Addresses;
 use crate::portal::portal_message::MAX_PAYLOAD_SIZE;
 use crate::{PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{
     async_trait, Encodable, LocalMessage, OpenTelemetryContext, Route, OCKAM_TRACER_NAME,
 };
-use ockam_core::{route, Address, Processor, Result};
+use ockam_core::{route, Processor, Result};
 use ockam_node::Context;
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
@@ -20,7 +21,7 @@ pub(crate) struct TcpPortalRecvProcessor {
     registry: TcpRegistry,
     buf: Vec<u8>,
     read_half: OwnedReadHalf,
-    sender_address: Address,
+    addresses: Addresses,
     onward_route: Route,
     payload_packet_counter: u16,
 }
@@ -30,14 +31,14 @@ impl TcpPortalRecvProcessor {
     pub fn new(
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
-        sender_address: Address,
+        addresses: Addresses,
         onward_route: Route,
     ) -> Self {
         Self {
             registry,
             buf: Vec::with_capacity(MAX_PAYLOAD_SIZE),
             read_half,
-            sender_address,
+            addresses,
             onward_route,
             payload_packet_counter: 0,
         }
@@ -84,9 +85,10 @@ impl Processor for TcpPortalRecvProcessor {
             // Notify Sender that connection was closed
             ctx.set_tracing_context(tracing_context.clone());
             if let Err(err) = ctx
-                .send(
-                    route![self.sender_address.clone()],
+                .send_from_address(
+                    route![self.addresses.sender_internal.clone()],
                     PortalInternalMessage::Disconnect,
+                    self.addresses.receiver_internal.clone(),
                 )
                 .await
             {
@@ -96,12 +98,13 @@ impl Processor for TcpPortalRecvProcessor {
                 );
             }
 
-            ctx.forward(
+            ctx.forward_from_address(
                 LocalMessage::new()
                     .with_tracing_context(tracing_context.clone())
                     .with_onward_route(self.onward_route.clone())
-                    .with_return_route(route![self.sender_address.clone()])
+                    .with_return_route(route![self.addresses.sender_remote.clone()])
                     .with_payload(PortalMessage::Disconnect.encode()?),
+                self.addresses.receiver_remote.clone(),
             )
             .await?;
 
@@ -113,13 +116,14 @@ impl Processor for TcpPortalRecvProcessor {
             let msg = LocalMessage::new()
                 .with_tracing_context(tracing_context.clone())
                 .with_onward_route(self.onward_route.clone())
-                .with_return_route(route![self.sender_address.clone()])
+                .with_return_route(route![self.addresses.sender_remote.clone()])
                 .with_payload(
                     PortalMessage::Payload(chunk, Some(self.payload_packet_counter)).encode()?,
                 );
 
             self.payload_packet_counter += 1;
-            ctx.forward(msg).await?;
+            ctx.forward_from_address(msg, self.addresses.receiver_remote.clone())
+                .await?;
         }
 
         Ok(true)
