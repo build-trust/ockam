@@ -42,6 +42,9 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.inputs.release_git_tag }}
 
+      - name: Create A Temporary Branch To Perform Release
+        run: git checkout -B "$(date +%s)"
+
       - name: Publish Ockam Crates
         env:
           OCKAM_PUBLISH_TOKEN: '${{ secrets.CRATES_IO_PUBLISH_TOKEN }}'
