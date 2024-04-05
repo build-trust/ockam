@@ -31,10 +31,16 @@ echo "Enrolled!"
 # attribute mongodb-inlet="true" to connect to TCP Portal Outlets on this node.
 #
 # Create a TCP Portal Outlet to MongoDB at - mongodb:27017.
-ockam node create
-ockam relay create mongodb
-ockam policy create --resource tcp-outlet --expression '(= subject.mongodb-inlet "true")'
-ockam tcp-outlet create --to mongodb:27017
+cat << EOF > outlet.yaml
+tcp-outlet:
+  to: mongodb:27017
+  allow: '(= subject.mongodb-inlet "true")'
+
+relay: mongodb
+EOF
+
+ockam node create outlet.yaml
+rm outlet.yaml
 
 # Run the container forever.
 tail -f /dev/null
