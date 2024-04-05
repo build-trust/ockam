@@ -13,7 +13,7 @@ mod secure_channel_map;
 
 pub(crate) use inlet_controller::KafkaInletController;
 use ockam::identity::Identifier;
-use ockam_abac::expr::{eq, ident, str};
+use ockam_abac::expr::{eq, ident, or, str};
 use ockam_abac::Expr;
 use ockam_abac::{ABAC_HAS_CREDENTIAL_KEY, ABAC_IDENTIFIER_KEY, SUBJECT_KEY};
 use ockam_core::Address;
@@ -35,8 +35,11 @@ pub fn kafka_default_policy_expression() -> Expr {
 }
 
 pub fn kafka_policy_expression(project_identifier: &Identifier) -> Expr {
-    eq([
-        ident(format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY)),
-        str(project_identifier.to_string()),
+    or([
+        eq([
+            ident(format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY)),
+            str(project_identifier.to_string()),
+        ]),
+        kafka_default_policy_expression(),
     ])
 }

@@ -23,6 +23,7 @@ use crate::flow_control::FlowControlCommand;
 use crate::identity::IdentityCommand;
 use crate::kafka::consumer::KafkaConsumerCommand;
 use crate::kafka::direct::KafkaDirectCommand;
+use crate::kafka::inlet::KafkaInletCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
 use crate::kafka::producer::KafkaProducerCommand;
 use crate::lease::LeaseCommand;
@@ -81,7 +82,9 @@ pub enum OckamSubcommand {
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
 
+    KafkaInlet(KafkaInletCommand),
     KafkaOutlet(KafkaOutletCommand),
+
     KafkaConsumer(KafkaConsumerCommand),
     KafkaDirect(KafkaDirectCommand),
     KafkaProducer(KafkaProducerCommand),
@@ -135,6 +138,7 @@ impl OckamSubcommand {
             OckamSubcommand::TcpOutlet(c) => c.run(opts),
             OckamSubcommand::TcpInlet(c) => c.run(opts),
 
+            OckamSubcommand::KafkaInlet(c) => c.run(opts),
             OckamSubcommand::KafkaConsumer(c) => c.run(opts),
             OckamSubcommand::KafkaProducer(c) => c.run(opts),
             OckamSubcommand::KafkaDirect(c) => c.run(opts),
@@ -263,6 +267,7 @@ impl OckamSubcommand {
             OckamSubcommand::TcpConnection(c) => c.name(),
             OckamSubcommand::TcpOutlet(c) => c.name(),
             OckamSubcommand::TcpInlet(c) => c.name(),
+            OckamSubcommand::KafkaInlet(c) => c.name(),
             OckamSubcommand::KafkaOutlet(c) => c.name(),
             OckamSubcommand::KafkaConsumer(c) => c.name(),
             OckamSubcommand::KafkaDirect(c) => c.name(),

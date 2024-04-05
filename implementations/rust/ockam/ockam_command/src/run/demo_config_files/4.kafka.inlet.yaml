@@ -1,0 +1,6 @@
+ticket: kafka.ticket
+nodes: kafka_inlet_node
+
+kafka-inlet:
+  from: 127.0.0.1:9092
+  to: /dnsaddr/ockam-node/tcp/6000/secure/api

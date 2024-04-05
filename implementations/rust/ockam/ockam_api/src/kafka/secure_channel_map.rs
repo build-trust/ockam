@@ -90,7 +90,10 @@ impl NodeManagerRelayCreator {
         relay_service: MultiAddr,
         alias: String,
     ) -> Result<()> {
-        let is_rust = !relay_service.starts_with(Project::CODE);
+        let is_rust = {
+            // we might create a relay in the producer passing through a project relay
+            !(relay_service.starts_with(Project::CODE) && relay_service.len() == 1)
+        };
 
         let buffer: Vec<u8> = context
             .send_and_receive(

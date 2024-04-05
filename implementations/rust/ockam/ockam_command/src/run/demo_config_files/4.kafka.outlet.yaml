@@ -1,0 +1,5 @@
+ticket: kafka.ticket
+nodes: kafka
+
+kafka-outlet:
+  bootstrap-server: 127.0.0.1:9092

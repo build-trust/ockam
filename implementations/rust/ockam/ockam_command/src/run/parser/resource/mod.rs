@@ -1,4 +1,6 @@
 pub use identities::Identities;
+pub use kafka_inlet::KafkaInlet;
+pub use kafka_outlet::KafkaOutlet;
 pub use node::Node;
 pub use nodes::Nodes;
 pub use policies::Policies;
@@ -10,6 +12,8 @@ pub use traits::*;
 pub use vaults::Vaults;
 
 mod identities;
+mod kafka_inlet;
+mod kafka_outlet;
 mod node;
 mod nodes;
 mod policies;
