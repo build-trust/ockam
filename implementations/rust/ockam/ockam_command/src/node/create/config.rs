@@ -53,6 +53,10 @@ pub struct NodeConfig {
     #[serde(flatten)]
     pub tcp_inlets: TcpInlets,
     #[serde(flatten)]
+    pub kafka_inlet: KafkaInlet,
+    #[serde(flatten)]
+    pub kafka_outlet: KafkaOutlet,
+    #[serde(flatten)]
     pub relays: Relays,
 }
 
@@ -123,6 +127,8 @@ impl NodeConfig {
             self.policies.parse_commands(overrides)?.into(),
             self.tcp_outlets.parse_commands(overrides)?.into(),
             self.tcp_inlets.parse_commands(overrides)?.into(),
+            self.kafka_inlet.parse_commands(overrides)?.into(),
+            self.kafka_outlet.parse_commands(overrides)?.into(),
         ];
 
         // Run commands

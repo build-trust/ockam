@@ -34,6 +34,10 @@ pub struct Config {
     #[serde(flatten)]
     pub tcp_inlets: TcpInlets,
     #[serde(flatten)]
+    pub kafka_inlet: KafkaInlet,
+    #[serde(flatten)]
+    pub kafka_outlet: KafkaOutlet,
+    #[serde(flatten)]
     pub relays: Relays,
 }
 
@@ -65,6 +69,8 @@ impl Config {
             self.policies.parse_commands(overrides)?.into(),
             self.tcp_outlets.parse_commands(overrides)?.into(),
             self.tcp_inlets.parse_commands(overrides)?.into(),
+            self.kafka_inlet.parse_commands(overrides)?.into(),
+            self.kafka_outlet.parse_commands(overrides)?.into(),
         ];
 
         // Run commands
@@ -134,6 +140,16 @@ mod tests {
                 at: n
               ti2:
                 from: 6061
+
+            kafka-inlet:
+                from: 9092
+                at: n
+                to: /project/project_name
+                port-range: 1000-2000
+
+            kafka-outlet:
+                bootstrap-server: 192.168.1.1:9092
+                at: n
 
             relays:
               - r1
@@ -259,6 +275,28 @@ mod tests {
                     .collect::<BTreeMap<_, _>>(),
                 })),
             },
+            kafka_inlet: KafkaInlet {
+                kafka_inlet: Some(UnnamedResources::Single(Args {
+                    args: vec![
+                        ("from".to_string(), "9092".into()),
+                        ("at".to_string(), "n".into()),
+                        ("to".to_string(), "/project/project_name".into()),
+                        ("port-range".to_string(), "1000-2000".into()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                })),
+            },
+            kafka_outlet: KafkaOutlet {
+                kafka_outlet: Some(UnnamedResources::Single(Args {
+                    args: vec![
+                        ("bootstrap-server".to_string(), "192.168.1.1:9092".into()),
+                        ("at".to_string(), "n".into()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                })),
+            },
             relays: Relays {
                 relays: Some(ResourcesContainer::List(vec![
                     ResourceNameOrMap::Name("r1".to_string()),
@@ -303,6 +341,8 @@ mod tests {
             policies: Policies { policies: None },
             tcp_outlets: TcpOutlets { tcp_outlets: None },
             tcp_inlets: TcpInlets { tcp_inlets: None },
+            kafka_inlet: KafkaInlet { kafka_inlet: None },
+            kafka_outlet: KafkaOutlet { kafka_outlet: None },
             relays: Relays { relays: None },
         };
         assert_eq!(expected, parsed);

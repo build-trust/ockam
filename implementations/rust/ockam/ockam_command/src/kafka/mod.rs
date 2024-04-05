@@ -5,6 +5,7 @@ use ockam_multiaddr::MultiAddr;
 
 pub(crate) mod consumer;
 pub(crate) mod direct;
+pub(crate) mod inlet;
 pub(crate) mod outlet;
 pub(crate) mod producer;
 pub(crate) mod util;
@@ -20,6 +21,10 @@ fn kafka_default_outlet_addr() -> String {
 
 fn kafka_consumer_default_addr() -> String {
     DefaultAddress::KAFKA_CONSUMER.to_string()
+}
+
+fn kafka_inlet_default_addr() -> String {
+    DefaultAddress::KAFKA_INLET.to_string()
 }
 
 fn kafka_direct_default_addr() -> String {

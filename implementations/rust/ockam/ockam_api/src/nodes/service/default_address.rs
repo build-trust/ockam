@@ -14,6 +14,7 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
+    pub const KAFKA_INLET: &'static str = "kafka_inlet";
     pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
     pub const KAFKA_DIRECT: &'static str = "kafka_direct";
 

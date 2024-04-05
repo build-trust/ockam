@@ -1,33 +1,33 @@
-pub(crate) mod create;
-
-use self::create::CreateCommand;
-use crate::{Command, CommandGlobalOpts};
 use clap::{command, Args, Subcommand};
 
-/// Manage Kafka Outlets
+use crate::kafka::inlet::create::CreateCommand;
+use crate::{Command, CommandGlobalOpts};
+
+pub(crate) mod create;
+
+/// Manage Kafka Inlets
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
-pub struct KafkaOutletCommand {
+pub struct KafkaInletCommand {
     #[command(subcommand)]
-    pub(crate) subcommand: KafkaOutletSubcommand,
+    pub(crate) subcommand: KafkaInletSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
-pub enum KafkaOutletSubcommand {
+pub enum KafkaInletSubcommand {
     Create(CreateCommand),
 }
 
-impl KafkaOutletCommand {
+impl KafkaInletCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaOutletSubcommand::Create(c) => c.run(opts),
+            KafkaInletSubcommand::Create(c) => c.run(opts),
         }
     }
 
     pub fn name(&self) -> String {
         match &self.subcommand {
-            KafkaOutletSubcommand::Create(c) => c.name(),
+            KafkaInletSubcommand::Create(c) => c.name(),
         }
-        .to_string()
     }
 }

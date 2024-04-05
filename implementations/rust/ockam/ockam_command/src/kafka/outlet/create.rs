@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::net::SocketAddr;
 
 use clap::{command, Args};
@@ -13,39 +14,31 @@ use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
-use crate::util::async_cmd;
 use crate::{
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
     service::start::start_service_impl,
-    CommandGlobalOpts,
+    Command, CommandGlobalOpts,
 };
 
 /// Create a new Kafka Outlet
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[command(flatten)]
-    node_opts: NodeOpts,
+    pub node_opts: NodeOpts,
     /// The local address of the service
     #[arg(long, default_value_t = kafka_default_outlet_addr())]
-    addr: String,
+    pub addr: String,
     /// The address of the kafka bootstrap broker
     #[arg(long, default_value_t = kafka_default_outlet_server())]
-    bootstrap_server: SocketAddr,
+    pub bootstrap_server: SocketAddr,
 }
 
-impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "kafka-outlet create";
 
-    pub fn name(&self) -> String {
-        "create kafka outlet".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         opts.terminal
             .write_line(&fmt_log!("Creating KafkaOutlet service"))?;

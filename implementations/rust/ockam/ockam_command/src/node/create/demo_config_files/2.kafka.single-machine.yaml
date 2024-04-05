@@ -1,0 +1,8 @@
+name: kafka-portal
+
+kafka-inlet:
+  from: 127.0.0.1:19092
+  to: /secure/api
+
+kafka-outlet:
+  bootstrap-server: 127.0.0.1:9092
