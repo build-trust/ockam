@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mongodb-ockam-pod
+  labels:
+    app: mongodb-ockam
+spec:
+  containers:
+    # Start mongodb.
+    - name: mongodb
+      image: mongo
+
+    # Start an ockam node.
+    #
+    # Read ../ockam.dockerfile and run_ockam.sh to understand
+    # how the node is set up.
+    - name: ockam
+      image: ockam_node_bank_corp:v1
+      volumeMounts:
+        - name: ockam-node-enrollment-ticket-volume
+          mountPath: /etc/ockam/enrollment
+          readOnly: true
+
+  # Turn the enrollment ticket secret into a volume.
+  volumes:
+    - name: ockam-node-enrollment-ticket-volume
+      secret:
+        secretName: ockam-node-enrollment-ticket
