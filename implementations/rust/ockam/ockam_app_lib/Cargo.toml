@@ -32,7 +32,7 @@ duct = "0.13.7"
 futures = { version = "0.3.30", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
-minicbor = { version = "0.21.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.21.1", features = ["alloc", "derive"] }
 ockam = { path = "../ockam", version = "^0.120.0", features = ["software_vault"] }
 ockam_api = { path = "../ockam_api", version = "0.63.0", features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.105.0" }
