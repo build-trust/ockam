@@ -200,12 +200,10 @@ EOF
 # https://docs.ockam.io/guides/examples/basic-web-app
 # Please update the docs repository if this bats test is updated
 @test "use-case - basic web-app, single machine" {
-  MACHINE_A="$OCKAM_HOME"
-  export OCKAM_PG_PORT=$(random_port)
   relay_name=$(random_str)
+  export OCKAM_PG_PORT=$(random_port)
   run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT"
   run_success $OCKAM relay create "$relay_name"
-
   run_success $OCKAM tcp-inlet create --from $OCKAM_PG_PORT --via "$relay_name"
 
   # Kickstart webserver
@@ -214,21 +212,21 @@ EOF
   run_success start_python_server
 
   # Visit website
-  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 1 times"
 
   # Visit website second time
-  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 2 times"
 
   run_success kill_flask_server
 }
 
-@test "use-case - basic-web-app, multiple machines" {
-  MACHINE_A="$OCKAM_HOME"
+@test "use-case - basic web-app, multiple machines" {
   relay_name=$(random_str)
 
   # On machine A
+  MACHINE_A="$OCKAM_HOME"
   run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute component=db --relay ${relay_name} > ${MACHINE_A}/db.ticket"
   run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute component=web > ${MACHINE_A}/webapp.ticket"
 
@@ -253,9 +251,9 @@ EOF
   run_success start_python_server
 
   # Visit website
-  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 3 times"
   # Visit website second time
-  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 4 times"
 }

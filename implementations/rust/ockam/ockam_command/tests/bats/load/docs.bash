@@ -1,6 +1,8 @@
 #!/bin/bash
 
-export PG_PORT=5432
+if [[ -z $PG_PORT ]]; then
+  export PG_PORT=5432
+fi
 
 function skip_if_docs_tests_not_enabled() {
   # shellcheck disable=SC2031
@@ -10,7 +12,7 @@ function skip_if_docs_tests_not_enabled() {
 }
 
 start_python_server() {
-  if [[ "$BATS_TEST_DESCRIPTION" != *"basic-web-app"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"basic web-app"* ]]; then
     return
   fi
 
