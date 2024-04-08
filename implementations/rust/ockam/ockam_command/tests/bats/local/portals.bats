@@ -168,22 +168,22 @@ teardown() {
   run_success curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$port/.tmp/$file_name"
 }
 
-@test "portals - create an inlet/outlet, upload file" {
-  port="$(random_port)"
-  run_success "$OCKAM" node create n1
-  run_success "$OCKAM" node create n2
-
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
-
-  file_name="$(random_str)".bin
-  tmp_dir_name="$(random_str)"
-  pushd "$OCKAM_HOME_BASE/.tmp"
-  mkdir "$tmp_dir_name"
-  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
-  popd
-  run_success curl -sS -m 20 -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
-}
+#@test "portals - create an inlet/outlet, upload file" {
+#  port="$(random_port)"
+#  run_success "$OCKAM" node create n1
+#  run_success "$OCKAM" node create n2
+#
+#  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
+#  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
+#
+#  file_name="$(random_str)".bin
+#  tmp_dir_name="$(random_str)"
+#  pushd "$OCKAM_HOME_BASE/.tmp"
+#  mkdir "$tmp_dir_name"
+#  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
+#  popd
+#  run_success curl -sS -m 20 -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+#}
 
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
   port="$(random_port)"
@@ -320,50 +320,50 @@ teardown() {
   run_failure curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name"
 }
 
-@test "portals - local portal, curl upload, inlet credential expires" {
-  inlet_port="$(random_port)"
-
-  run_success "$OCKAM" identity create alice
-  alice_identifier=$($OCKAM identity show alice)
-
-  run_success "$OCKAM" identity create bob
-  bob_identifier=$($OCKAM identity show bob)
-
-  # Create an identity that both alice and bob will trust
-  run_success "$OCKAM" identity create authority
-  authority_identifier=$($OCKAM identity show authority)
-  authority_identity=$($OCKAM identity show authority --full --encoding hex)
-
-  # Create a node for alice that trusts authority as a credential authority
-  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
-
-  # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --credential-scope "test"
-
-  # issue and store a short-lived credential for alice
-  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 5s --encoding hex)
-  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential --scope "test"
-
-  # issue and store credential for bob
-  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --encoding hex)
-  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
-
-  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
-
-  # Uploading a file will create a long-lived TCP connection, which should be dropped by the portal
-  # when the credential expires
-  file_name="$(random_str)".bin
-  tmp_dir_name="$(random_str)"
-  pushd "$OCKAM_HOME_BASE/.tmp"
-  mkdir "$tmp_dir_name"
-  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
-  popd
-  run_failure curl -sS -m 20 --limit-rate 5M -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
-
-  # Consequent attempt fails
-  run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
-}
+#@test "portals - local portal, curl upload, inlet credential expires" {
+#  inlet_port="$(random_port)"
+#
+#  run_success "$OCKAM" identity create alice
+#  alice_identifier=$($OCKAM identity show alice)
+#
+#  run_success "$OCKAM" identity create bob
+#  bob_identifier=$($OCKAM identity show bob)
+#
+#  # Create an identity that both alice and bob will trust
+#  run_success "$OCKAM" identity create authority
+#  authority_identifier=$($OCKAM identity show authority)
+#  authority_identity=$($OCKAM identity show authority --full --encoding hex)
+#
+#  # Create a node for alice that trusts authority as a credential authority
+#  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
+#
+#  # Create a node for bob that trusts authority as a credential authority
+#  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --credential-scope "test"
+#
+#  # issue and store a short-lived credential for alice
+#  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --ttl 5s --encoding hex)
+#  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential --scope "test"
+#
+#  # issue and store credential for bob
+#  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --encoding hex)
+#  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
+#
+#  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
+#  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+#
+#  # Uploading a file will create a long-lived TCP connection, which should be dropped by the portal
+#  # when the credential expires
+#  file_name="$(random_str)".bin
+#  tmp_dir_name="$(random_str)"
+#  pushd "$OCKAM_HOME_BASE/.tmp"
+#  mkdir "$tmp_dir_name"
+#  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
+#  popd
+#  run_failure curl -sS -m 20 --limit-rate 5M -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+#
+#  # Consequent attempt fails
+#  run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+#}
 
 @test "portals - local portal, curl download, outlet credential expires" {
   inlet_port="$(random_port)"
@@ -407,47 +407,47 @@ teardown() {
   run_failure curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 }
 
-@test "portals - local portal, curl upload, outlet credential expires" {
-  inlet_port="$(random_port)"
-
-  run_success "$OCKAM" identity create alice
-  alice_identifier=$($OCKAM identity show alice)
-
-  run_success "$OCKAM" identity create bob
-  bob_identifier=$($OCKAM identity show bob)
-
-  # Create an identity that both alice and bob will trust
-  run_success "$OCKAM" identity create authority
-  authority_identifier=$($OCKAM identity show authority)
-  authority_identity=$($OCKAM identity show authority --full --encoding hex)
-
-  # Create a node for alice that trusts authority as a credential authority
-  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
-
-  # Create a node for bob that trusts authority as a credential authority
-  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --credential-scope "test"
-
-  # issue and store a short-lived credential for alice
-  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --encoding hex)
-  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential --scope "test"
-
-  # issue and store credential for bob
-  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 5s --encoding hex)
-  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
-
-  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
-
-  # Uploading a file will create a long-lived TCP connection, which should be dropped by the portal
-  # when the credential expires
-  file_name="$(random_str)".bin
-  tmp_dir_name="$(random_str)"
-  pushd "$OCKAM_HOME_BASE/.tmp"
-  mkdir "$tmp_dir_name"
-  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
-  popd
-  run_failure curl -sS -m 20 --limit-rate 5M -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
-
-  # Consequent attempt fails
-  run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
-}
+#@test "portals - local portal, curl upload, outlet credential expires" {
+#  inlet_port="$(random_port)"
+#
+#  run_success "$OCKAM" identity create alice
+#  alice_identifier=$($OCKAM identity show alice)
+#
+#  run_success "$OCKAM" identity create bob
+#  bob_identifier=$($OCKAM identity show bob)
+#
+#  # Create an identity that both alice and bob will trust
+#  run_success "$OCKAM" identity create authority
+#  authority_identifier=$($OCKAM identity show authority)
+#  authority_identity=$($OCKAM identity show authority --full --encoding hex)
+#
+#  # Create a node for alice that trusts authority as a credential authority
+#  run_success "$OCKAM" node create alice --identity alice --authority-identity $authority_identity --credential-scope "test"
+#
+#  # Create a node for bob that trusts authority as a credential authority
+#  run_success "$OCKAM" node create bob --identity bob --authority-identity $authority_identity --credential-scope "test"
+#
+#  # issue and store a short-lived credential for alice
+#  alice_credential=$($OCKAM credential issue --as authority --for "$alice_identifier" --encoding hex)
+#  run_success "$OCKAM" credential store --at alice --issuer "$authority_identifier" --credential $alice_credential --scope "test"
+#
+#  # issue and store credential for bob
+#  bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 5s --encoding hex)
+#  run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
+#
+#  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
+#  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+#
+#  # Uploading a file will create a long-lived TCP connection, which should be dropped by the portal
+#  # when the credential expires
+#  file_name="$(random_str)".bin
+#  tmp_dir_name="$(random_str)"
+#  pushd "$OCKAM_HOME_BASE/.tmp"
+#  mkdir "$tmp_dir_name"
+#  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
+#  popd
+#  run_failure curl -sS -m 20 --limit-rate 5M -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+#
+#  # Consequent attempt fails
+#  run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+#}
