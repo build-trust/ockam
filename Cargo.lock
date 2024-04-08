@@ -5019,9 +5019,9 @@ dependencies = [
 
 [[package]]
 name = "pic32-hal"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "534a8269a484d271f82d510e8f91ad8262c79c2cc392526f18980bb8483d4e53"
+checksum = "dfbd609e0e3a7fb6beb50880b235687671b2f8af7f52735edd15f64c9af911a9"
 dependencies = [
  "critical-section",
  "embedded-hal 0.2.7",
