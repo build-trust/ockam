@@ -91,9 +91,9 @@ teardown() {
 
   # Ensure that telegraf works without using Ockam route
   run_success curl -s \
-    -Ier "Authorization: Token $INFLUX_TOKEN" \
-    -Ier "Accept: application/csv" \
-    -Ier 'Content-type: application/vnd.flux' \
+    --header "Authorization: Token $INFLUX_TOKEN" \
+    --header "Accept: application/csv" \
+    --header 'Content-type: application/vnd.flux' \
     --data "from(bucket:\"$INFLUX_BUCKET\") |> range(start:-1m)" \
     "http://localhost:$INFLUX_PORT/api/v2/query?org=$INFLUX_ORG"
 
@@ -124,9 +124,9 @@ teardown() {
 
   # Ensure that telegraf works with using Ockam route
   run_success curl -s \
-    -Ier "Authorization: Token $INFLUX_TOKEN" \
-    -Ier "Accept: application/csv" \
-    -Ier 'Content-type: application/vnd.flux' \
+    --header "Authorization: Token $INFLUX_TOKEN" \
+    --header "Accept: application/csv" \
+    --header 'Content-type: application/vnd.flux' \
     --data "from(bucket:\"$INFLUX_BUCKET\") |> range(start:-1m)" \
     "http://localhost:$INFLUX_PORT/api/v2/query?org=$INFLUX_ORG"
 }
