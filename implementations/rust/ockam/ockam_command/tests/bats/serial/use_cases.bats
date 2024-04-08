@@ -36,7 +36,7 @@ teardown() {
 
   # Client
   run_success $OCKAM tcp-inlet create --from "$inlet_port"
-  run_success curl --fail --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 # https://docs.ockam.io/guides/examples/create-secure-communication-with-a-private-database-from-anywhere
@@ -65,16 +65,16 @@ teardown() {
     --tenant "$OKTA_TENANT" --client-id "$OKTA_CLIENT_ID" \
     --attribute email --attribute city --attribute department
 
-  run_success bash -c "$OCKAM project information --output json > project.json"
+  run_success bash -c "$OCKAM project information --output json > $ADMIN_HOME/project.json"
 
   # Generate enrollment tickets
-  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute application='Smart Factory' --attribute city='San Francisco' --relay m1 > m1.ticket"
-  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute application='Smart Factory' --attribute city='New York' --relay m2 > m2.ticket"
+  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute application='Smart Factory' --attribute city='San Francisco' --relay m1 > $ADMIN_HOME/m1.ticket"
+  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute application='Smart Factory' --attribute city='New York' --relay m2 > $ADMIN_HOME/m2.ticket"
 
   # Machine 1
   setup_home_dir
   run_success "$OCKAM" identity create m1
-  run_success "$OCKAM" project enroll m1.ticket --identity m1
+  run_success "$OCKAM" project enroll "$ADMIN_HOME/m1.ticket" --identity m1
   run_success "$OCKAM" node create m1 --identity m1
   run_success "$OCKAM" tcp-outlet create --at /node/m1 --to 127.0.0.1:$PYTHON_SERVER_PORT \
     --allow '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "San Francisco")))'
@@ -83,7 +83,7 @@ teardown() {
   # Machine 2
   setup_home_dir
   run_success "$OCKAM" identity create m2
-  run_success "$OCKAM" project enroll m2.ticket --identity m2
+  run_success "$OCKAM" project enroll "$ADMIN_HOME/m2.ticket" --identity m2
   run_success "$OCKAM" node create m2 --identity m2
   run_success "$OCKAM" tcp-outlet create --at /node/m2 --to 127.0.0.1:6000 \
     --allow '(or (= subject.application "Smart Factory") (and (= subject.department "Field Engineering") (= subject.city "New York")))'
@@ -91,18 +91,18 @@ teardown() {
 
   # Alice
   setup_home_dir
-  run_success "$OCKAM" project import --project-file project.json
+  run_success "$OCKAM" project import --project-file "$ADMIN_HOME/project.json"
   run_success "$OCKAM" project enroll --okta
   run_success "$OCKAM" node create alice
   run_success "$OCKAM" policy create --at alice --resource tcp-inlet
 
   # Alice request to access Machine 1 in San Francisco is allowed
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --via m1 --allow '(= subject.application "Smart Factory")'
-  run_success curl --fail --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 127.0.0.1:8000
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 127.0.0.1:8000
 
   # Alice request to access Machine 2 in New York is denied
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --via m2 --allow '(= subject.application "Smart Factory")'
-  run_failure curl --fail --head --max-time 3 127.0.0.1:9000
+  run_failure curl -sfI -m 3 127.0.0.1:9000
 }
 
 # https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka
@@ -214,11 +214,11 @@ EOF
   run_success start_python_server
 
   # Visit website
-  run_success curl --fail --max-time 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 1 times"
 
   # Visit website second time
-  run_success curl --fail --max-time 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 2 times"
 
   run_success kill_flask_server
@@ -253,9 +253,9 @@ EOF
   run_success start_python_server
 
   # Visit website
-  run_success curl --fail --max-time 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 3 times"
   # Visit website second time
-  run_success curl --fail --max-time 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -sf -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 4 times"
 }

@@ -152,7 +152,7 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
 
-  run_success curl --fail --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
@@ -167,7 +167,7 @@ teardown() {
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
     | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
 
-  run_success curl --fail --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 
   run_success "$OCKAM" secure-channel list --at green
   assert_output --partial "/service"
@@ -222,16 +222,16 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to /node/blue/secure/api/service/outlet
-  run_success curl --fail --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 
   run_success "$OCKAM" node delete blue --yes
-  run_failure curl --fail --head --max-time 3 "127.0.0.1:$port"
+  run_failure curl -sfI -m 3 "127.0.0.1:$port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
 
   sleep 20
-  run_success curl --fail --head --retry-connrefused --retry-delay 2 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 2 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - local inlet and outlet in reverse order" {
@@ -245,7 +245,7 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/n2 --to 127.0.0.1:$PYTHON_SERVER_PORT
 
   sleep 15
-  run_success curl --fail --head --retry-connrefused --retry-delay 2 --retry 10 --max-time 5 "127.0.0.1:${inlet_port}"
+  run_success curl -sfI --retry-connrefused --retry-delay 2 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
 }
 
 @test "portals - local portal, inlet credential expires" {
@@ -285,11 +285,11 @@ teardown() {
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
   # TODO: should be run_failure after we add outgoing access control
-  run_success curl --max-time 30 --limit-rate 5M -S \
+  run_success curl -sS -m 30 --limit-rate 5M \
     -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl --fail --max-time 30 -O "http://127.0.0.1:$inlet_port/$file_name"
+  run_failure curl -sf -m 30 -O "http://127.0.0.1:$inlet_port/$file_name"
 }
 
 @test "portals - local portal, outlet credential expires" {
@@ -328,9 +328,9 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_failure curl --fail --max-time 30 --limit-rate 5M -S \
+  run_failure curl -sf -m 30 --limit-rate 5M -S \
     -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl --fail --max-time 30 -O "http://127.0.0.1:$inlet_port/$file_name"
+  run_failure curl -sf -m 30 -O "http://127.0.0.1:$inlet_port/$file_name"
 }

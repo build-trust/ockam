@@ -1,4 +1,7 @@
 #!/bin/bash
+
+export PG_PORT=5432
+
 function skip_if_docs_tests_not_enabled() {
   # shellcheck disable=SC2031
   if [ -z "${DOCS_TESTS}" ]; then
@@ -10,8 +13,6 @@ start_python_server() {
   if [[ "$BATS_TEST_DESCRIPTION" != *"basic-web-app"* ]]; then
     return
   fi
-
-  export PG_PORT=5432
 
   pushd $OCKAM_HOME_BASE
 

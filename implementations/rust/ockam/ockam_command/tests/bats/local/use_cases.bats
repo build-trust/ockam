@@ -32,5 +32,5 @@ teardown() {
   run_success bash -c "$OCKAM secure-channel create --from /node/client_sidecar --to /node/relay/service/forward_to_server_sidecar/service/api \
               | $OCKAM tcp-inlet create --at /node/client_sidecar --from 127.0.0.1:$port --to -/service/outlet"
 
-  run_success curl --fail --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }

@@ -33,7 +33,8 @@ EOF
 
 @test "nodes - create with config, non-admin enrolling twice with the project doesn't return error" {
   # Admin: create enrollment ticket that can be reused a few times
-  ticket_path="$OCKAM_HOME/enrollment.ticket"
+  ADMIN_HOME_DIR="$OCKAM_HOME"
+  ticket_path="$ADMIN_HOME_DIR/enrollment.ticket"
   export RELAY_NAME=$(random_str)
   $OCKAM project ticket --usage-count 10 --relay $RELAY_NAME >"$ticket_path"
 
@@ -46,7 +47,7 @@ EOF
     --enrollment-ticket "$ticket_path" \
     --variable SERVICE_PORT="$PYTHON_SERVER_PORT" \
     --variable CLIENT_PORT="$port"
-  run_success curl --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 
   ## Second time it will skip the enrollment step and the node will be set up as expected
   run_success "$OCKAM" node delete --all -y
@@ -54,7 +55,7 @@ EOF
     --enrollment-ticket "$ticket_path" \
     --variable SERVICE_PORT="$PYTHON_SERVER_PORT" \
     --variable CLIENT_PORT="$port"
-  run_success curl --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "nodes - create with config, single machine, unnamed portal" {
@@ -72,7 +73,7 @@ EOF
   # tcp-listener-address set to expected port
   run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$port1/secure/api/service/echo"
   # portal is working: inlet -> relay -> outlet -> python server
-  run_success curl --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port2"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port2"
 }
 
 @test "nodes - create with config, single machine, named portal" {
@@ -90,7 +91,7 @@ EOF
   # tcp-listener-address set to expected port
   run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$port1/secure/api/service/echo"
   # portal is working: inlet -> relay -> outlet -> python server
-  run_success curl --head --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 "127.0.0.1:$port2"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port2"
 }
 
 @test "nodes - create with config, multiple machines" {
@@ -137,7 +138,7 @@ EOF
 
   # Test: SaaS service can be reached from Customer's inlet
   $OCKAM message send hi --to "/project/default/service/forward_to_to-$SAAS_RELAY_NAME/secure/api/service/echo"
-  run_success curl --fail --retry-connrefused --retry-delay 5 --retry 10 --max-time 5 --head "127.0.0.1:$CUSTOMER_INLET_PORT"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CUSTOMER_INLET_PORT"
 
   # Test: Customer node can be reached from SaaS's side
   export OCKAM_HOME="$SAAS_HOME_DIR"
