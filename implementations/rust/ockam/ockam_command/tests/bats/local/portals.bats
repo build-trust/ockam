@@ -165,7 +165,7 @@ teardown() {
 
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_success curl --max-time 20 -S -O "http://127.0.0.1:$port/.tmp/$file_name" >/dev/null
+  run_success curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$port/.tmp/$file_name"
 }
 
 @test "portals - create an inlet/outlet, upload file" {
@@ -182,7 +182,7 @@ teardown() {
   mkdir "$tmp_dir_name"
   dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
   popd
-  run_success curl --max-time 20 -O -S -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+  run_success curl -sS -m 20 -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 }
 
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
@@ -313,11 +313,11 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_failure curl -sS -m 20 --limit-rate 5M \
+  run_failure curl -sSf -m 20 --limit-rate 5M \
     -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl -sf -m 20 -O "http://127.0.0.1:$inlet_port/.tmp/$file_name"
+  run_failure curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name"
 }
 
 @test "portals - local portal, curl upload, inlet credential expires" {
@@ -359,10 +359,10 @@ teardown() {
   mkdir "$tmp_dir_name"
   dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
   popd
-  run_failure curl --max-time 20 --limit-rate 5M -O -S -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+  run_failure curl -sS -m 20 --limit-rate 5M -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 
   # Consequent attempt fails
-  run_failure curl --max-time 20 -O -S -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+  run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 }
 
 @test "portals - local portal, curl download, outlet credential expires" {
@@ -400,11 +400,11 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_failure curl -sf -m 20 --limit-rate 5M -S \
+  run_failure curl -sSf -m 20 --limit-rate 5M \
     -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl -sf -m 20 -O "http://127.0.0.1:$inlet_port/.tmp/$file_name"
+  run_failure curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 }
 
 @test "portals - local portal, curl upload, outlet credential expires" {
@@ -446,8 +446,8 @@ teardown() {
   mkdir "$tmp_dir_name"
   dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
   popd
-  run_failure curl --max-time 20 --limit-rate 5M -O -S -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+  run_failure curl -sS -m 20 --limit-rate 5M -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 
   # Consequent attempt fails
-  run_failure curl --max-time 20 -O -S -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+  run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 }
