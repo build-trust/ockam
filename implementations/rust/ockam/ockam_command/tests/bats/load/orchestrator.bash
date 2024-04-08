@@ -1,12 +1,5 @@
 #!/bin/bash
 
-function exit_if_orchestrator_tests_not_enabled() {
-  # shellcheck disable=SC2031
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    exit 0
-  fi
-}
-
 function skip_if_orchestrator_tests_not_enabled() {
   # shellcheck disable=SC2031
   if [ -z "${ORCHESTRATOR_TESTS}" ]; then

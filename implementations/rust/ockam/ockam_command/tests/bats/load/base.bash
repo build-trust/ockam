@@ -30,13 +30,13 @@ if [[ -z $BATS_LIB ]]; then
   # export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
 fi
 
+export PYTHON_SERVER_PORT=5000
+
 # Load bats extensions
 load_bats_ext() {
   load "$BATS_LIB/bats-support/load.bash"
   load "$BATS_LIB/bats-assert/load.bash"
 }
-
-export PYTHON_SERVER_PORT=5000
 
 setup_python_server() {
   p=$(python_pid_file_path)

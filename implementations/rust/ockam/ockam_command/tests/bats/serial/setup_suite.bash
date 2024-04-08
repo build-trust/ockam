@@ -6,7 +6,6 @@ setup_suite() {
 
   load ../load/base.bash
   load ../load/orchestrator.bash
-  exit_if_orchestrator_tests_not_enabled
 
   mkdir -p $OCKAM_HOME_BASE/.tmp
   setup_python_server
@@ -22,7 +21,6 @@ setup_suite() {
 teardown_suite() {
   load ../load/base.bash
   load ../load/orchestrator.bash
-  exit_if_orchestrator_tests_not_enabled
 
   teardown_python_server
   rm -rf $OCKAM_HOME_BASE/.tmp
