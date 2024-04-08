@@ -1,6 +1,8 @@
 #!/bin/bash
 
-export PG_PORT=5432
+if [[ -z $PG_PORT ]]; then
+  export PG_PORT=5432
+fi
 
 function skip_if_docs_tests_not_enabled() {
   # shellcheck disable=SC2031
@@ -10,11 +12,11 @@ function skip_if_docs_tests_not_enabled() {
 }
 
 start_python_server() {
-  if [[ "$BATS_TEST_DESCRIPTION" != *"basic-web-app"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"basic web-app"* ]]; then
     return
   fi
 
-  pushd $OCKAM_HOME_BASE
+  pushd $OCKAM_HOME_BASE/.tmp
 
   cat >main.py <<-EOM
 import os
@@ -47,11 +49,11 @@ EOM
 }
 
 kill_flask_server() {
-  if [[ "$BATS_TEST_DESCRIPTION" != *"basic-web-app"* ]]; then
+  if [[ "$BATS_TEST_DESCRIPTION" != *"basic web-app"* ]]; then
     return
   fi
 
-  pid=$(cat "${OCKAM_HOME_BASE}/flask.pid")
+  pid=$(cat "${OCKAM_HOME_BASE}/.tmp/flask.pid")
   kill -9 "$pid" || true
   wait "$pid" 2>/dev/null || true
 }
