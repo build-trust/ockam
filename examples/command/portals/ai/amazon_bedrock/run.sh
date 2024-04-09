@@ -9,7 +9,7 @@ set -e
 # The example uses AWS CLI to create these VPCs.
 #
 # You can read a detailed walkthrough of this example at:
-# https://docs.ockam.io/portals/ai/amazon_ec2
+# https://docs.ockam.io/portals/ai/amazon_bedrock
 
 run() {
     # Run `ockam enroll`.
@@ -64,7 +64,7 @@ cleanup() {
 
 # Check if Ockam Command is already installed and available in path.
 # If it's not, then install it (only if we are not cleaning up)
-if ! type ockam &>/dev/null && ! [[ "$1" = "cleanup" ]]; then
+if ! [ type ockam &>/dev/null ] && ! [ "$1" = "cleanup" ]; then
     curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
     source "$HOME/.ockam/env"
 fi

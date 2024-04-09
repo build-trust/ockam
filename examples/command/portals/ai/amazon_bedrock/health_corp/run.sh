@@ -11,7 +11,7 @@ run() {
     vpc_id=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId')
     aws ec2 create-tags --resources "$vpc_id" --tags "Key=Name,Value=${name}-vpc"
 
-    # Create and Internet Gateway and attach it to the VPC.
+    # Create an Internet Gateway and attach it to the VPC.
     gw_id=$(aws ec2 create-internet-gateway --query 'InternetGateway.InternetGatewayId')
     aws ec2 attach-internet-gateway --vpc-id "$vpc_id" --internet-gateway-id "$gw_id"
 
@@ -28,9 +28,9 @@ run() {
 
     # Create a security group to allow:
     #   - TCP egress to the Internet
-    #   - SSH ingress only from withing our two subnets.
+    #   - SSH ingress from the Internet
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
-        --description "Allow TCP egress and SSH ingress")
+        --description "Allow TCP egress and Postgres ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
     aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 22
 
@@ -38,17 +38,14 @@ run() {
     # CREATE INSTANCE
 
     ami_id=$(aws ec2 describe-images --owners 137112412989 --query "Images | sort_by(@, &CreationDate) | [-1].ImageId" \
-        --filters "Name=name,Values=al2023-ami-2023*" "Name=architecture,Values=arm64" \
+        --filters "Name=name,Values=al2023-ami-2023*" "Name=architecture,Values=x86_64" \
                   "Name=virtualization-type,Values=hvm" "Name=root-device-type,Values=ebs" )
 
     aws ec2 create-key-pair --key-name "${name}-key" --query 'KeyMaterial' > key.pem
     chmod 400 key.pem
 
-    # make sure that the current region supports the instance required to run the model
-    check_if_instance_type_available g5g.2xlarge
-
     sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data.sh
-    instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type g5g.2xlarge \
+    instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type c5n.large \
         --subnet-id "$subnet_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh --query 'Instances[0].InstanceId')
     aws ec2 create-tags --resources "$instance_id" --tags "Key=Name,Value=${name}-ec2-instance"
@@ -56,59 +53,12 @@ run() {
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
     rm -f user_data.sh
 
-    until scp -o StrictHostKeyChecking=no -i ./key.pem ./api.mjs "ec2-user@$ip:api.mjs"; do sleep 10; done
+    until scp -o StrictHostKeyChecking=no -i ./key.pem ./client.js "ec2-user@$ip:client.js"; do sleep 10; done
     ssh -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip" \
         'bash -s' << 'EOS'
             sudo yum update -y && sudo yum install nodejs -y
-
-            model=capybarahermes-2.5-mistral-7b.Q6_K.gguf
-            echo "Downloading Model: $model ..."
-            curl -#OL "https://huggingface.co/TheBloke/CapybaraHermes-2.5-Mistral-7B-GGUF/resolve/main/$model"
-            echo "Downloaded."
-
-            npm install express node-llama-cpp
-
-            echo "Start the AI API"
-            nohup node api.mjs &>output.log &
-            echo "AI API started"
+            node client.js
 EOS
-}
-
-# This function checks if an instance type is available in the currently configured region
-# If not, then the list of all regions supporting that instance type are returned
-check_if_instance_type_available() {
-    instance_type=$1
-    current_region=$(get_configured_region)
-    instance_type_available="$(aws ec2 describe-instance-type-offerings \
-        --query "InstanceTypeOfferings[?InstanceType=='$instance_type']" --region $current_region --output text)"
-
-    if [[ -z "$instance_type_available" ]]; then
-        echo "The instance type $instance_type is not available in $current_region."
-        available_regions=""
-        all_regions="$(aws ec2 describe-regions --query 'Regions[*].RegionName' --output text)"
-        for region in $all_regions; do
-            instance_type_available="$(aws ec2 describe-instance-type-offerings \
-                --query "InstanceTypeOfferings[?InstanceType=='$instance_type'].Location" --region $region --output text)"
-            if [[ -n "$instance_type_available" ]]; then
-                available_regions="$available_regions, $region"
-            fi
-        done
-        echo "The instance type $instance_type is available in the following regions: $available_regions."
-        echo "Please log again to AWS with one of those regions."
-        exit 1;
-    fi
-}
-
-# Return the currently configured region
-get_configured_region() {
-    region=$(aws ec2 describe-availability-zones --query 'AvailabilityZones[0].[RegionName]')
-
-    # Check if we have a region value
-    if [[ -z "$region" ]]; then
-        echo "No AWS region is configured or set in environment variables."
-        exit 1
-    fi
-    echo "$region"
 }
 
 cleanup() {
@@ -117,7 +67,7 @@ cleanup() {
 
     rm -f user_data.sh
     instance_ids=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${name}-ec2-instance" \
-        --query "Reservations[*].Instances[*].InstanceId")
+        --query "Reservations[].Instances[?State.Name!='terminated'].InstanceId[]")
     for i in $instance_ids; do
         aws ec2 terminate-instances --instance-ids "$i"
         aws ec2 wait instance-terminated --instance-ids "$i"
@@ -131,36 +81,25 @@ cleanup() {
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE NETWORK
 
-    vpc_ids=$(aws ec2 describe-vpcs \
-        --filters "Name=tag:Name,Values=${name}-vpc") \
-        --query 'Vpcs[*].VpcId'
+    vpc_ids=$(aws ec2 describe-vpcs --query 'Vpcs[*].VpcId' --filters "Name=tag:Name,Values=${name}-vpc")
 
     for vpc_id in $vpc_ids; do
-        internet_gateways=$(aws ec2 describe-internet-gateways \
-            --query "InternetGateways[*].InternetGatewayId" \
+        internet_gateways=$(aws ec2 describe-internet-gateways --query "InternetGateways[*].InternetGatewayId" \
             --filters Name=attachment.vpc-id,Values="$vpc_id")
         for i in $internet_gateways; do
             aws ec2 detach-internet-gateway --internet-gateway-id "$i" --vpc-id "$vpc_id"
             aws ec2 delete-internet-gateway --internet-gateway-id "$i"
         done
 
-        subnet_ids=$(aws ec2 describe-subnets --query "Subnets[*].SubnetId" \
-            --filters Name=vpc-id,Values="$vpc_id")
+        subnet_ids=$(aws ec2 describe-subnets --query "Subnets[*].SubnetId" --filters Name=vpc-id,Values="$vpc_id")
         for i in $subnet_ids; do aws ec2 delete-subnet --subnet-id "$i"; done
 
-        route_table_associations=$(aws ec2 describe-route-tables \
-            --filters Name=vpc-id,Values="$vpc_id" \
-            --query 'RouteTables[?length(Associations[?Main!=`true`]) > `0`].Associations[].RouteTableAssociationId')
-        for i in $route_table_associations; do aws ec2 disassociate-route-table --association-id "$i" || true; done
-
-        route_tables=$(aws ec2 describe-route-tables \
-            --filters Name=vpc-id,Values="$vpc_id" \
-            --query 'RouteTables[?length(Associations[?Main!=`true`]) > `0` || length(Associations) == `0`].RouteTableId')
+        route_tables=$(aws ec2 describe-route-tables  --filters Name=vpc-id,Values="$vpc_id" \
+                    --query 'RouteTables[?length(Associations[?Main!=`true`]) > `0` || length(Associations) == `0`].RouteTableId')
         for i in $route_tables; do aws ec2 delete-route-table --route-table-id "$i" || true; done
 
-        security_groups=$(aws ec2 describe-security-groups \
-            --filters Name=vpc-id,Values="$vpc_id" \
-            --query "SecurityGroups[?GroupName=='${name}-sg'].GroupId")
+        security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values="$vpc_id" \
+            --query "SecurityGroups[?!contains(GroupName, 'default')].[GroupId]")
         for i in $security_groups; do aws ec2 delete-security-group --group-id "$i"; done
 
         if aws ec2 describe-vpcs --vpc-ids "$vpc_id" &>/dev/null; then
@@ -175,7 +114,7 @@ export AWS_DEFAULT_OUTPUT="text";
 user=""
 command -v sha256sum &>/dev/null && user=$(aws sts get-caller-identity | sha256sum | cut -c 1-20)
 command -v shasum &>/dev/null && user=$(aws sts get-caller-identity | shasum -a 256 | cut -c 1-20)
-export name="ockam-ex-ai-ai-corp-$user"
+export name="ockam-ex-ai-bedrock-health-corp-$user"
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.

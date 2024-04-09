@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.549.0",
+    "express": "^4.19.2"
+  }
+}

@@ -1,0 +1,5 @@
+user_data.sh
+user_data1.sh
+*.pem
+node_modules
+package-lock.json
