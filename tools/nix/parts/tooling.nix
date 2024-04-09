@@ -6,10 +6,21 @@ _: {
     system,
     ...
   }: {
+    packages.uploadserver = pkgs.python311Packages.buildPythonPackage rec {
+      pname = "uploadserver";
+      version = "5.2.0"; # Use the actual version of uploadserver
+      src = pkgs.python311Packages.fetchPypi {
+        inherit pname version;
+        sha256 = "sha256-M2gHbyj7HAbe0nuQeV5fwuejend5/Ksb15oaUzQXUfU=";
+      };
+      doCheck = false; # Disable tests if necessary
+    };
+
     devShells.tooling = pkgs.mkShell {
       packages = with pkgs; [
         broot
         config.packages.bats
+        config.packages.uploadserver
         commitlint
         curl
         git
