@@ -104,11 +104,11 @@ get_configured_region() {
     region=$(aws ec2 describe-availability-zones --query 'AvailabilityZones[0].[RegionName]')
 
     # Check if we have a region value
-    if [[ -z "region" ]]; then
+    if [[ -z "$region" ]]; then
         echo "No AWS region is configured or set in environment variables."
         exit 1
     fi
-    echo "region"
+    echo "$region"
 }
 
 cleanup() {
@@ -144,12 +144,16 @@ cleanup() {
         subnet_ids=$(aws ec2 describe-subnets --query "Subnets[*].SubnetId" --filters Name=vpc-id,Values="$vpc_id")
         for i in $subnet_ids; do aws ec2 delete-subnet --subnet-id "$i"; done
 
-        route_tables=$(aws ec2 describe-route-tables  --filters Name=vpc-id,Values="$vpc_id" \
-            --query 'RouteTables[?length(Associations[?Main!=`true`]) > `0` || length(Associations) == `0`].RouteTableId')
+        route_table_associations=$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$vpc_id" \
+            --query 'RouteTables[?length(Associations[?Main!=`true`]) > `0`].Associations[].RouteTableAssociationId')
+        for i in $route_table_associations; do aws ec2 disassociate-route-table --association-id "$i" || true; done
+
+        route_tables=$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$vpc_id" \
+                                             --query 'RouteTables[?length(Associations[?Main!=`true`]) > `0` || length(Associations) == `0`].RouteTableId')
         for i in $route_tables; do aws ec2 delete-route-table --route-table-id "$i" || true; done
 
         security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values="$vpc_id" \
-            --query "SecurityGroups[?!contains(GroupName, 'default')].[GroupId]")
+            --query "SecurityGroups[?GroupName=='${name}-sg'].GroupId")
         for i in $security_groups; do aws ec2 delete-security-group --group-id "$i"; done
 
         if aws ec2 describe-vpcs --vpc-ids "$vpc_id" &>/dev/null; then
