@@ -1,3 +1,4 @@
+use colorful::Colorful;
 use minicbor::{Decode, Encode};
 
 use ockam::identity::Identifier;
@@ -6,7 +7,9 @@ use ockam::route;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
+use crate::colors::OckamColor;
 use crate::error::ApiError;
+use crate::output::{colorize_connection_status, Output};
 use crate::{route_to_multiaddr, ConnectionStatus};
 
 /// Request body when instructing a node to create a relay
@@ -176,5 +179,32 @@ impl RelayInfo {
         } else {
             Ok(None)
         }
+    }
+}
+
+impl Output for RelayInfo {
+    fn single(&self) -> crate::Result<String> {
+        Ok(r#"
+Relay:
+    "#
+        .to_owned()
+            + self.list()?.as_str())
+    }
+
+    fn list(&self) -> crate::Result<String> {
+        let output = format!(
+            r#"Alias: {alias}
+Status: {connection_status}
+Remote Address: {remote_address}"#,
+            alias = self.alias().color(OckamColor::PrimaryResource.color()),
+            connection_status = colorize_connection_status(self.connection_status()),
+            remote_address = self
+                .remote_address_ma()?
+                .map(|x| x.to_string())
+                .unwrap_or("N/A".into())
+                .color(OckamColor::PrimaryResource.color()),
+        );
+
+        Ok(output)
     }
 }

@@ -1,6 +1,6 @@
 use crate::util::parsers::socket_addr_parser;
 use miette::{miette, Context, IntoDiagnostic};
-use ockam_api::EnrollmentTicket;
+use ockam_api::cli_state::EnrollmentTicket;
 use std::str::FromStr;
 use url::Url;
 

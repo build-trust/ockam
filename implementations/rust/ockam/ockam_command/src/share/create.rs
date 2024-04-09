@@ -8,12 +8,12 @@ use tracing::debug;
 use ockam::Context;
 use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
-
+use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 

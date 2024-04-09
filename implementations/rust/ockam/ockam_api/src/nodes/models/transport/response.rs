@@ -1,5 +1,8 @@
+use crate::colors::OckamColor;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::service::ApiTransport;
+use crate::output::Output;
+use colorful::Colorful;
 use minicbor::{Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
@@ -7,6 +10,7 @@ use ockam_core::{Error, Result};
 use ockam_multiaddr::proto::Worker;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
+use std::fmt::Write;
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
@@ -113,6 +117,38 @@ impl From<TcpListener> for TransportStatus {
             processor_address: value.processor_address().to_string(),
             flow_control_id: value.flow_control_id().clone(),
         }
+    }
+}
+
+impl Output for TransportStatus {
+    fn single(&self) -> crate::Result<String> {
+        let mut output = String::new();
+
+        writeln!(
+            output,
+            "{} {}",
+            self.tt,
+            self.tm
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        writeln!(
+            output,
+            "Internal Address {}",
+            self.processor_address
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+
+        write!(
+            output,
+            "Socket Address {}",
+            self.socket_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+
+        Ok(output)
     }
 }
 

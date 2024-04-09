@@ -1,9 +1,11 @@
-use crate::util::async_cmd;
-use crate::{color, docs, fmt_info, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
-
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use ockam_api::colors::OckamColor;
+use ockam_api::{color, fmt_info, fmt_ok, fmt_warn};
+
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

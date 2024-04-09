@@ -1,8 +1,9 @@
 use indicatif::ProgressBar;
-use miette::miette;
-use miette::Context as _;
 use std::iter::Take;
 use std::time::Duration;
+
+use miette::miette;
+use miette::Context as _;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
@@ -13,7 +14,6 @@ use ockam_api::config::lookup::LookupMeta;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::service::relay::SecureChannelsCreation;
 use ockam_api::nodes::InMemoryNode;
-
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
 use ockam_multiaddr::{MultiAddr, Protocol};

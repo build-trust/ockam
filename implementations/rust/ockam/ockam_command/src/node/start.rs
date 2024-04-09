@@ -1,5 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::colors::OckamColor;
+use ockam_api::{fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn};
 
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_node::Context;
@@ -8,7 +10,7 @@ use crate::node::show::print_query_status;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
 use crate::util::async_cmd;
-use crate::{docs, fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, OckamColor};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

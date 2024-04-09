@@ -1,19 +1,12 @@
 use clap::Args;
-use colorful::Colorful;
 use miette::IntoDiagnostic;
-use std::fmt::Write;
-
 use ockam::Context;
 use ockam_api::cloud::lease_manager::models::influxdb::Token;
 use ockam_api::InfluxDbTokenLease;
-use time::format_description::well_known::Iso8601;
-use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::lease::create_project_client;
-use crate::output::Output;
-use crate::terminal::OckamColor;
 use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
@@ -77,36 +70,5 @@ impl ListCommand {
             .json(json)
             .write_line()?;
         Ok(())
-    }
-}
-
-impl Output for Token {
-    fn output(&self) -> crate::error::Result<String> {
-        let mut output = String::new();
-        let status = match self.status.as_str() {
-            "active" => self
-                .status
-                .to_uppercase()
-                .color(OckamColor::Success.color()),
-            _ => self
-                .status
-                .to_uppercase()
-                .color(OckamColor::Failure.color()),
-        };
-        let expires_at = {
-            PrimitiveDateTime::parse(&self.expires, &Iso8601::DEFAULT)?
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        };
-        let id = self
-            .id
-            .to_string()
-            .color(OckamColor::PrimaryResource.color());
-
-        writeln!(output, "Token {id}")?;
-        writeln!(output, "Expires {expires_at} {status}")?;
-        write!(output, "{}", self.token)?;
-
-        Ok(output)
     }
 }

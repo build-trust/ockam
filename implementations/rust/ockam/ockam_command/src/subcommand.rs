@@ -1,13 +1,14 @@
-use async_trait::async_trait;
-use clap::Subcommand;
-use colorful::Colorful;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
+
+use async_trait::async_trait;
+use clap::Subcommand;
+use colorful::Colorful;
 use tokio_retry::strategy::jitter;
 use tracing::warn;
 
-use ockam_api::CliState;
+use ockam_api::{fmt_log, fmt_warn, CliState};
 use ockam_core::OpenTelemetryContext;
 use ockam_node::Context;
 
@@ -53,7 +54,7 @@ use crate::util::api::RetryOpts;
 use crate::util::async_cmd;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
-use crate::{fmt_log, fmt_warn, Error, Result};
+use crate::{Error, Result};
 
 /// List of commands which can be executed with `ockam`
 #[derive(Clone, Debug, Subcommand)]

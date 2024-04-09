@@ -1,10 +1,12 @@
-use crate::util::exitcode::{self, ExitCode};
-use crate::version::Version;
-use crate::{fmt_heading, fmt_log};
+use std::fmt::{Debug, Formatter};
+
 use colorful::Colorful;
 use miette::Diagnostic;
 use miette::{miette, Report};
-use std::fmt::{Debug, Formatter};
+use ockam_api::{fmt_heading, fmt_log};
+
+use crate::util::exitcode::{self, ExitCode};
+use crate::version::Version;
 
 pub type Result<T> = miette::Result<T, Error>;
 
@@ -250,4 +252,3 @@ gen_from_impl!(ockam_api::error::ApiError, SOFTWARE);
 gen_from_impl!(ockam_multiaddr::Error, SOFTWARE);
 gen_from_impl!(miette::ErrReport, SOFTWARE);
 gen_from_impl!(time::error::Parse, DATAERR);
-gen_from_impl!(dialoguer::Error, DATAERR);

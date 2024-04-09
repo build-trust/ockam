@@ -1,4 +1,3 @@
-use crate::{docs, Command};
 use clap::{Args, Subcommand};
 
 pub use addon::AddonCommand;
@@ -12,7 +11,7 @@ pub use show::ShowCommand;
 pub use ticket::TicketCommand;
 pub use version::VersionCommand;
 
-use crate::CommandGlobalOpts;
+use crate::{docs, Command, CommandGlobalOpts};
 
 mod addon;
 mod create;

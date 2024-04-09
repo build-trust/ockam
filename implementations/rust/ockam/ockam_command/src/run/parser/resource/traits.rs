@@ -1,9 +1,12 @@
-use crate::{Command, CommandGlobalOpts};
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use clap::Args as ClapArgs;
 use miette::Result;
+
 use ockam_node::Context;
-use std::sync::Arc;
+
+use crate::{Command, CommandGlobalOpts};
 
 /// Implementations of this traits return a list of commands of a given type
 /// as if they had been read from arguments coming from the command line.

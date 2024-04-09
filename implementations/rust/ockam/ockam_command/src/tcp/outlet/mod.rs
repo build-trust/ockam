@@ -1,14 +1,16 @@
-pub mod create;
-mod delete;
-pub mod list;
-mod show;
-
-use crate::{docs, Command, CommandGlobalOpts};
 use clap::{Args, Subcommand};
+
 use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use show::ShowCommand;
+
+use crate::{docs, Command, CommandGlobalOpts};
+
+pub mod create;
+mod delete;
+pub mod list;
+mod show;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");

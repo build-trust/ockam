@@ -1,13 +1,14 @@
+use core::fmt::Write;
 use std::net::SocketAddr;
 
 use clap::Args;
 use console::Term;
-use core::fmt::Write;
 use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
 use ockam::Context;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{
     address::extract_address_value,
     nodes::models::portal::{OutletList, OutletStatus},
@@ -16,13 +17,13 @@ use ockam_core::api::Request;
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
-use crate::output::Output;
 use crate::tcp::util::alias_parser;
+use crate::{docs, CommandGlobalOpts};
+use ockam_api::output::Output;
+
 use crate::terminal::tui::ShowCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
-use crate::Result;
-use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -73,7 +74,7 @@ struct OutletInformation {
 }
 
 impl Output for OutletInformation {
-    fn output(&self) -> Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         let mut w = String::new();
         write!(w, "Outlet")?;
         write!(w, "\n  On Node: {}", self.node_name)?;
@@ -158,7 +159,7 @@ impl ShowCommandTui for ShowTui {
         };
         self.terminal()
             .stdout()
-            .plain(info.output()?)
+            .plain(info.single()?)
             .json(serde_json::json!(info))
             .write_line()?;
         Ok(())

@@ -1,14 +1,16 @@
-use crate::docs;
-use crate::OckamCommand;
-use clap::builder::NonEmptyStringValueParser;
-use clap::{Args, Command, CommandFactory};
-use once_cell::sync::Lazy;
-use regex::Regex;
 use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{cmp, env, io, str};
+
+use clap::builder::NonEmptyStringValueParser;
+use clap::{Args, Command, CommandFactory};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use tracing::error;
+
+use crate::docs;
+use crate::OckamCommand;
 
 /// Generate markdown files for all existing Ockam commands
 #[derive(Clone, Debug, Args)]

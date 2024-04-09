@@ -5,10 +5,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
-use crate::{
-    cli_state::{random_name, CliState, Result},
-    color_primary,
-};
+use crate::cli_state::{random_name, CliState, Result};
+use crate::colors::color_primary;
 
 /// The methods below allow the creation named identities.
 /// A NamedIdentity is an identity that is associated to a name in order to be more easily
@@ -256,16 +254,16 @@ impl CliState {
 
                 self.notify(format!(
                     "Generated a new Identity named {}.",
-                    color_primary(named_identity.name().as_ref())
+                    color_primary(named_identity.name())
                 ));
                 self.notify(format!(
                     "{} has Identifier {}",
-                    color_primary(named_identity.name().as_ref()),
-                    color_primary(named_identity.identifier().to_string().as_ref())
+                    color_primary(named_identity.name()),
+                    color_primary(named_identity.identifier().to_string())
                 ));
                 self.notify(format!(
                     "Marked {} as your default Identity, {}.\n",
-                    color_primary(named_identity.name().as_ref()),
+                    color_primary(named_identity.name()),
                     "on this machine".dim()
                 ));
                 Ok(named_identity)

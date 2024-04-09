@@ -1,5 +1,5 @@
 use miette::IntoDiagnostic;
-use ockam_api::journeys::{JourneyEvent, APPLICATION_EVENT_COMMAND};
+use ockam_api::cli_state::journeys::{JourneyEvent, APPLICATION_EVENT_COMMAND};
 use ockam_api::CliState;
 use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Executor;

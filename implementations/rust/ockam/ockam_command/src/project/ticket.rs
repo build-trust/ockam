@@ -1,10 +1,11 @@
-use async_trait::async_trait;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use tracing::debug;
 
 use ockam::Context;
 use ockam_api::authenticator::direct::{
@@ -12,18 +13,16 @@ use ockam_api::authenticator::direct::{
 };
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::OutputFormat;
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::RetryOpts;
-use crate::{docs, CommandGlobalOpts, Error, Result};
-use crate::{fmt_ok, Command};
-use crate::{
-    output::OutputFormat,
-    util::api::{IdentityOpts, TrustOpts},
-};
-use crate::{terminal::color_primary, util::duration::duration_parser};
-use tracing::debug;
+use crate::util::api::{IdentityOpts, TrustOpts};
+use crate::util::duration::duration_parser;
+use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");

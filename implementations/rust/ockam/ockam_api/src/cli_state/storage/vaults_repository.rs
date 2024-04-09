@@ -1,9 +1,8 @@
 use std::path::Path;
 
+use crate::cli_state::NamedVault;
 use ockam_core::async_trait;
 use ockam_core::Result;
-
-use crate::NamedVault;
 
 /// This trait allows vaults to be defined with a name and a path
 /// in order to make it possible to store identity keys in different databases on disk (or in a KMS)

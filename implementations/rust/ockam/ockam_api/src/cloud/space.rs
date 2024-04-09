@@ -1,6 +1,8 @@
+use colorful::Colorful;
 use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
 use serde::Serialize;
+use std::fmt::Write;
 
 use ockam_core::api::Request;
 use ockam_core::async_trait;
@@ -8,7 +10,9 @@ use ockam_node::Context;
 
 use crate::cloud::project::{Project, ProjectsOrchestratorApi};
 use crate::cloud::{ControllerClient, HasSecureClient};
+use crate::colors::OckamColor;
 use crate::nodes::InMemoryNode;
+use crate::output::{comma_separated, Output};
 
 const TARGET: &str = "ockam_api::cloud::space";
 
@@ -28,6 +32,38 @@ impl Space {
 
     pub fn space_name(&self) -> String {
         self.name.clone()
+    }
+}
+
+impl Output for Space {
+    fn single(&self) -> crate::Result<String> {
+        let mut w = String::new();
+        write!(w, "Space")?;
+        write!(w, "\n  Id: {}", self.id)?;
+        write!(w, "\n  Name: {}", self.name)?;
+        write!(w, "\n  Users: {}", comma_separated(&self.users))?;
+        Ok(w)
+    }
+
+    fn list(&self) -> crate::Result<String> {
+        let mut output = String::new();
+        writeln!(
+            output,
+            "Space {}",
+            self.name
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        writeln!(
+            output,
+            "Id {}",
+            self.id
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        write!(output, "{}", comma_separated(&self.users))?;
+
+        Ok(output)
     }
 }
 

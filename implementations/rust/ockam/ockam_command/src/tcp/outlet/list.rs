@@ -1,16 +1,18 @@
 use clap::Args;
+use colorful::Colorful;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_info;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use crate::node::NodeOpts;
+use crate::{docs, CommandGlobalOpts};
 use ockam_api::nodes::models::portal::OutletList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
 use crate::util::async_cmd;
-use crate::{docs, fmt_info, CommandGlobalOpts};
-use crate::{node::NodeOpts, terminal::color_primary};
-use colorful::Colorful;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");

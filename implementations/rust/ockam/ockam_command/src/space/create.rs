@@ -2,14 +2,15 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use crate::output::Output;
-use crate::util::api::{self, IdentityOpts};
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cli_state::random_name;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+
+use crate::util::api::{self, IdentityOpts};
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -76,7 +77,7 @@ impl CreateCommand {
 
         opts.terminal
             .stdout()
-            .plain(space.output()?)
+            .plain(space.single()?)
             .json(serde_json::json!(&space))
             .write_line()?;
         Ok(())

@@ -1,7 +1,4 @@
-mod create;
-mod delete;
-mod list;
-mod show;
+use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
@@ -9,7 +6,11 @@ pub(crate) use list::ListCommand;
 
 use crate::tcp::connection::show::ShowCommand;
 use crate::CommandGlobalOpts;
-use clap::{Args, Subcommand};
+
+mod create;
+mod delete;
+mod list;
+mod show;
 
 /// Manage TCP Connections
 #[derive(Args, Clone, Debug)]

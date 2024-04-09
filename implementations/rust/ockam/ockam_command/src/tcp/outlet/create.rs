@@ -1,7 +1,7 @@
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
@@ -9,19 +9,21 @@ use opentelemetry::trace::FutureExt;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_abac::Expr;
 use ockam_api::address::extract_address_value;
-use ockam_api::journeys::{JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO};
+use ockam_api::cli_state::journeys::{
+    JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
+};
+use ockam_api::colors::color_primary;
 use ockam_api::nodes::service::portals::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::{fmt_info, fmt_log, fmt_ok};
 use ockam_core::Address;
 
 use crate::node::util::initialize_default_node;
-
 use crate::util::parsers::socket_addr_parser;
-use crate::{docs, fmt_info, fmt_ok, Command, CommandGlobalOpts};
-use crate::{fmt_log, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -136,8 +138,9 @@ impl Command for CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

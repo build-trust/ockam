@@ -1,9 +1,4 @@
-mod create;
-mod delete;
-mod list;
-mod move_vault;
-mod show;
-mod util;
+use clap::{Args, Subcommand};
 
 pub use crate::vault::create::CreateCommand;
 use crate::vault::delete::DeleteCommand;
@@ -12,7 +7,12 @@ use crate::vault::move_vault::MoveCommand;
 use crate::vault::show::ShowCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
-use clap::{Args, Subcommand};
+mod create;
+mod delete;
+mod list;
+mod move_vault;
+mod show;
+mod util;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 

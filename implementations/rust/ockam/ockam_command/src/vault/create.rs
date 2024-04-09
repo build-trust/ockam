@@ -1,10 +1,13 @@
+use std::path::PathBuf;
+
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use ockam_node::Context;
-use std::path::PathBuf;
+use ockam_api::{fmt_info, fmt_ok};
 
-use crate::{docs, fmt_info, fmt_ok, Command, CommandGlobalOpts};
+use ockam_node::Context;
+
+use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -56,8 +59,9 @@ impl Command for CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

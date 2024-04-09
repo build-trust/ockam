@@ -11,19 +11,18 @@ use tracing::info;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::colors::{color_primary, OckamColor};
+
 use ockam_api::nodes::service::relay::Relays;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::CliState;
+use ockam_api::{fmt_log, fmt_ok, CliState};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::output::Output;
-use crate::terminal::OckamColor;
+use crate::node::util::initialize_default_node;
 use crate::util::api::RetryOpts;
-use crate::util::{colorize_connection_status, process_nodes_multiaddr};
-use crate::{docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Error, Result};
-use crate::{node::util::initialize_default_node, terminal::color_primary};
+use crate::util::process_nodes_multiaddr;
+use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -212,33 +211,6 @@ impl CreateCommand {
         } else {
             Ok(relay_name)
         }
-    }
-}
-
-impl Output for RelayInfo {
-    fn output(&self) -> Result<String> {
-        Ok(r#"
-Relay:
-    "#
-        .to_owned()
-            + self.list_output()?.as_str())
-    }
-
-    fn list_output(&self) -> Result<String> {
-        let output = format!(
-            r#"Alias: {alias}
-Status: {connection_status}
-Remote Address: {remote_address}"#,
-            alias = self.alias().color(OckamColor::PrimaryResource.color()),
-            connection_status = colorize_connection_status(self.connection_status()),
-            remote_address = self
-                .remote_address_ma()?
-                .map(|x| x.to_string())
-                .unwrap_or("N/A".into())
-                .color(OckamColor::PrimaryResource.color()),
-        );
-
-        Ok(output)
     }
 }
 

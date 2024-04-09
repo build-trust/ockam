@@ -1,14 +1,14 @@
 use std::fmt::Display;
 
 use colorful::Colorful;
+use serde::Serialize;
 
 use ockam_multiaddr::{
     proto::{DnsAddr, Node, Tcp},
     MultiAddr,
 };
-use serde::Serialize;
 
-use crate::output::Output;
+use ockam_api::output::Output;
 
 use super::{
     portal::{ShowInletStatus, ShowOutletStatus},
@@ -164,7 +164,7 @@ impl Display for ShowNodeResponse {
 }
 
 impl Output for ShowNodeResponse {
-    fn output(&self) -> crate::error::Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         Ok(self.to_string())
     }
 }

@@ -1,16 +1,17 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, WrapErr};
-use ockam_api::cloud::space::Spaces;
-use ockam_api::CliState;
 use tracing::error;
 
+use crate::CommandGlobalOpts;
+use ockam_api::cloud::space::Spaces;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::terminal::ConfirmResult;
+use ockam_api::{color, fmt_ok, CliState};
 use ockam_node::Context;
 
-use crate::terminal::ConfirmResult;
 use crate::util::async_cmd;
-use crate::{color, fmt_ok, CommandGlobalOpts, OckamColor};
 
 /// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]

@@ -1,13 +1,16 @@
-use crate::terminal::{color_primary, color_uri};
-use crate::{fmt_log, fmt_warn, CommandGlobalOpts};
+use std::env;
+
 use clap::crate_version;
 use colorful::Colorful;
 use miette::{miette, Error, IntoDiagnostic, Result, WrapErr};
-use ockam_core::env::get_env_with_default;
+use ockam_api::colors::{color_primary, color_uri};
+use ockam_api::{fmt_log, fmt_warn};
 use serde::Deserialize;
-use std::env;
 use tracing::{debug, warn};
 use url::Url;
+
+use crate::CommandGlobalOpts;
+use ockam_core::env::get_env_with_default;
 
 const RELEASE_TAG_NAME_PREFIX: &str = "ockam_v";
 
@@ -114,9 +117,10 @@ fn get_release_data() -> Result<Release> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::thread::sleep;
     use std::time::Duration;
+
+    use super::*;
 
     #[test]
     fn parse_release_from_json_response() {

@@ -1,6 +1,7 @@
+use serde::Serialize;
+
 use ockam_api::{addr_to_multiaddr, nodes::models::services::ServiceStatus};
 use ockam_multiaddr::MultiAddr;
-use serde::Serialize;
 
 /// Information to display of the services in the `ockam node show` command
 #[derive(Debug, Serialize)]

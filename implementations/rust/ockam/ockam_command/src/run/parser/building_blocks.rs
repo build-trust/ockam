@@ -1,8 +1,9 @@
+use std::collections::BTreeMap;
+use std::fmt::Display;
+
 use clap::Args as ClapArgs;
 use miette::{miette, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt::Display;
 
 /// This trait defines the methods used to convert a set of arguments that describe a section of
 /// the configuration file into a list of commands of the same kind.

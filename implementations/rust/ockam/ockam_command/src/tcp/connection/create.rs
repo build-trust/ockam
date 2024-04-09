@@ -7,11 +7,11 @@ use serde_json::json;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_api::nodes::{models, BackgroundNodeClient};
+use ockam_api::output::OutputFormat;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
 use crate::node::util::initialize_default_node;
-use crate::output::OutputFormat;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 

@@ -5,12 +5,13 @@ use colorful::Colorful;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
 use crate::project_member::{create_authority_client, create_member_attributes, get_project};
 use crate::util::api::{IdentityOpts, RetryOpts};
-use crate::{docs, fmt_ok, Command, CommandGlobalOpts, Error};
+use crate::{docs, Command, CommandGlobalOpts, Error};
 
 const LONG_ABOUT: &str = include_str!("./static/add/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/add/after_long_help.txt");

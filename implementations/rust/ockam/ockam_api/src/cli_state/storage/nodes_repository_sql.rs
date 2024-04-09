@@ -9,9 +9,8 @@ use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 
-use crate::cli_state::NodesRepository;
+use crate::cli_state::{NodeInfo, NodesRepository};
 use crate::config::lookup::InternetAddress;
-use crate::NodeInfo;
 
 #[derive(Clone)]
 pub struct NodesSqlxDatabase {
@@ -232,6 +231,7 @@ impl NodeRow {
 
 #[cfg(test)]
 mod test {
+    use crate::cli_state::NodeInfo;
     use ockam::identity::identities;
     use std::sync::Arc;
 

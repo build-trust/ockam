@@ -1,4 +1,4 @@
-use crate::journeys::Journey;
+use crate::cli_state::journeys::Journey;
 use chrono::{DateTime, Utc};
 use ockam_core::OpenTelemetryContext;
 use std::time::SystemTime;

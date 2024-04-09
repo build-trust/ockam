@@ -1,12 +1,14 @@
+use async_trait::async_trait;
+use miette::{miette, Result};
+use ockam_api::colors::color_primary;
+use serde::{Deserialize, Serialize};
+
 use crate::relay::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::ValuesOverrides;
-use crate::{color_primary, relay, Command, OckamSubcommand};
-use async_trait::async_trait;
-use miette::{miette, Result};
-use serde::{Deserialize, Serialize};
+use crate::{relay, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Relays {
@@ -48,8 +50,9 @@ impl CommandsParser<CreateCommand> for Relays {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use miette::IntoDiagnostic;
+
+    use super::*;
 
     #[test]
     fn single_relay_config() {

@@ -1,12 +1,14 @@
+use async_trait::async_trait;
+use miette::{miette, Result};
+use ockam_api::colors::color_primary;
+use serde::{Deserialize, Serialize};
+
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::ValuesOverrides;
 use crate::tcp::inlet::create::CreateCommand;
-use crate::{color_primary, tcp::inlet, Command, OckamSubcommand};
-use async_trait::async_trait;
-use miette::{miette, Result};
-use serde::{Deserialize, Serialize};
+use crate::{tcp::inlet, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TcpInlets {
@@ -49,9 +51,10 @@ impl CommandsParser<CreateCommand> for TcpInlets {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::net::SocketAddr;
     use std::str::FromStr;
+
+    use super::*;
 
     #[test]
     fn tcp_inlet_config() {

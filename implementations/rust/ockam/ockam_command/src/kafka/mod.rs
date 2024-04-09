@@ -1,6 +1,7 @@
+use std::{net::SocketAddr, str::FromStr};
+
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
-use std::{net::SocketAddr, str::FromStr};
 
 pub(crate) mod consumer;
 pub(crate) mod direct;

@@ -1,15 +1,13 @@
-pub(crate) mod config;
-pub(crate) mod list;
-pub(crate) mod start;
-pub(crate) mod util;
-
-pub(crate) use start::StartCommand;
-
-use crate::docs;
-use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 use list::ListCommand;
+pub(crate) use start::StartCommand;
+
+use crate::{docs, CommandGlobalOpts};
+
+pub(crate) mod config;
+pub(crate) mod list;
+pub(crate) mod start;
 
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide())]

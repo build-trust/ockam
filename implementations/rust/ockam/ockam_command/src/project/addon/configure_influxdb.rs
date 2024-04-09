@@ -8,11 +8,12 @@ use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cloud::addon::Addons;
 use ockam_api::cloud::project::models::InfluxDBTokenLeaseManagerConfig;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_influxdb/after_long_help.txt");

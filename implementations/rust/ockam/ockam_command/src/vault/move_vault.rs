@@ -1,9 +1,11 @@
-use clap::Args;
-use colorful::Colorful;
 use std::path::PathBuf;
 
+use clap::Args;
+use colorful::Colorful;
+use ockam_api::{fmt_err, fmt_info};
+
 use crate::util::async_cmd;
-use crate::{docs, fmt_err, fmt_info, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/move/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/move/after_long_help.txt");

@@ -24,9 +24,9 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, layer::SubscriberExt, registry};
 
+use crate::cli_state::journeys::APP_NAME;
 use ockam_node::Executor;
 
-use crate::journeys::APP_NAME;
 use crate::logs::tracing_guard::TracingGuard;
 use crate::logs::{ExportingConfiguration, GlobalErrorHandler, LoggingConfiguration};
 use crate::logs::{LogFormat, OckamSpanExporter};

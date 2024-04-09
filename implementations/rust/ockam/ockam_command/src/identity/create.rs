@@ -1,18 +1,19 @@
-use crate::progress_display::ProgressDisplay;
-use crate::terminal::OckamColor;
-use crate::{docs, fmt_log, fmt_ok, Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::IdentitiesVerification;
-use ockam_api::cli_state::random_name;
-use ockam_api::journeys::{JourneyEvent, IDENTIFIER, IDENTITY_NAME};
-use ockam_api::{color_primary, NamedVault};
+use ockam_api::cli_state::journeys::{JourneyEvent, IDENTIFIER, IDENTITY_NAME};
+use ockam_api::cli_state::{random_name, NamedVault};
+use ockam_api::colors::{color_primary, OckamColor};
+use ockam_api::terminal::notification::NotificationHandler;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_node::Context;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 use std::collections::HashMap;
+
+use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -45,7 +46,7 @@ impl Command for CreateCommand {
     const NAME: &'static str = "identity create";
 
     async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let _progress_display = ProgressDisplay::start(&opts);
+        let _progress_display = NotificationHandler::start(&opts.state, opts.terminal.clone());
         let vault = match &self.vault {
             Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
             None => opts.state.get_or_create_default_named_vault().await?,
@@ -142,8 +143,9 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

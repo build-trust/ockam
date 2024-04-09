@@ -1,7 +1,9 @@
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use clap::Subcommand;
+
 use create::CreateCommand;
+
+use crate::{docs, CommandGlobalOpts};
 
 mod create;
 

@@ -5,13 +5,15 @@ use miette::miette;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
+use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::{fmt_err, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
 use super::{create_authority_client, get_project};
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{color_primary, docs, fmt_err, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");

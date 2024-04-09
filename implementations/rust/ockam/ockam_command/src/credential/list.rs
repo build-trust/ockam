@@ -3,13 +3,14 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::identity::{CredentialSqlxDatabase, Identifier};
+use ockam_api::colors::OckamColor;
 
 use crate::credential::CredentialOutput;
 use crate::node::NodeOpts;
 use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
+use crate::CommandGlobalOpts;
 use crate::Result;
-use crate::{CommandGlobalOpts, OckamColor};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {

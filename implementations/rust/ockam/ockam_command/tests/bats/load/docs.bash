@@ -41,7 +41,7 @@ def hello_world():
   return "I've been visited {} times".format(id), 201
 EOM
 
-  flask --app main run -p "$FLASK_PORT" &>file.log &
+  flask --app main run -p "$FLASK_PORT" &>"$HOME/.bats-tests/flask_$FLASK_PORT.log" &
   pid="$!"
   echo "$pid" >"flask.pid"
   sleep 5

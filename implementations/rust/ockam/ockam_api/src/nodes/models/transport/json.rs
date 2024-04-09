@@ -1,7 +1,7 @@
 use crate::cli_state::CliStateError;
 use crate::config::lookup::InternetAddress;
 use crate::nodes::models::transport::{TransportMode, TransportType};
-use ockam_core::Result;
+use crate::Result;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
 use ockam_multiaddr::MultiAddr;
 

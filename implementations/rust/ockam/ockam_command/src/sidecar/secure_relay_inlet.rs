@@ -1,15 +1,18 @@
+use std::net::SocketAddr;
+
 use clap::Args;
 use colorful::Colorful;
 use indoc::formatdoc;
+use ockam_api::fmt_info;
+
+use crate::{docs, CommandGlobalOpts};
 use ockam_node::Context;
-use std::net::SocketAddr;
 
 use crate::run::parser::resource::ValuesOverrides;
 use crate::run::Config;
 use crate::tcp::inlet::create::default_from_addr;
 use crate::util::async_cmd;
 use crate::util::parsers::socket_addr_parser;
-use crate::{docs, fmt_info, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/secure_relay_inlet/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/secure_relay_inlet/after_long_help.txt");
@@ -121,12 +124,15 @@ impl SecureRelayInlet {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::str::FromStr;
+
+    use ockam_api::authenticator::one_time_code::OneTimeCode;
+    use ockam_api::cli_state::EnrollmentTicket;
+
     use crate::run::parser::config::ConfigParser;
     use crate::run::parser::resource::CommandsParser;
-    use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::EnrollmentTicket;
-    use std::str::FromStr;
+
+    use super::*;
 
     #[test]
     fn test_that_recipe_is_valid() {

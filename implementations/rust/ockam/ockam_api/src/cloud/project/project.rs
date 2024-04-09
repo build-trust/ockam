@@ -1,16 +1,20 @@
+use colorful::Colorful;
 use serde::{Serialize, Serializer};
+use std::fmt::Write;
 use std::str::FromStr;
 
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::project::models::ProjectModel;
 use crate::cloud::share::RoleInShare;
+use crate::colors::OckamColor;
+use crate::error::ApiError;
+use crate::output::Output;
+
 use ockam::identity::{Identifier, Identity, Vault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
-
-use crate::error::ApiError;
 
 pub(super) const TARGET: &str = "ockam_api::cloud::project";
 
@@ -226,6 +230,46 @@ impl Project {
 
     pub fn override_name(&mut self, new_name: String) {
         self.model.name = new_name;
+    }
+}
+
+impl Output for Project {
+    fn single(&self) -> crate::Result<String> {
+        let mut w = String::new();
+        write!(w, "Project")?;
+        write!(w, "\n  Id: {}", self.project_id())?;
+        write!(w, "\n  Name: {}", self.name())?;
+        write!(w, "\n  Project route: {}", self.project_multiaddr()?)?;
+        write!(
+            w,
+            "\n  Identity identifier: {}",
+            self.project_identifier()
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or_default()
+        )?;
+        write!(
+            w,
+            "\n  Version: {}",
+            self.model().version.as_deref().unwrap_or("N/A")
+        )?;
+        write!(w, "\n  Running: {}", self.model().running.unwrap_or(false))?;
+        Ok(w)
+    }
+
+    fn list(&self) -> crate::Result<String> {
+        let output = format!(
+            r#"Project {}
+Space {}"#,
+            self.name()
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.space_name()
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+        );
+
+        Ok(output)
     }
 }
 

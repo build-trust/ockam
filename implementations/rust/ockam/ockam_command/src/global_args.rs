@@ -1,8 +1,8 @@
 use clap::ArgAction;
 use clap::Args;
-use ockam_core::env::get_env_with_default;
+use ockam_api::output::OutputFormat;
 
-use crate::output::OutputFormat;
+use ockam_core::env::get_env_with_default;
 
 /// Those arguments are common to all commands
 #[derive(Debug, Clone, Args)]

@@ -280,13 +280,18 @@ pub fn try_multiaddr_to_addr(ma: &MultiAddr) -> Result<Address, Error> {
         .ok_or_else(|| ApiError::core(format!("could not convert {ma} to address")))
 }
 
-/// Try to convert an Ockam Route into a MultiAddr.
+/// Convert an Ockam Route into a MultiAddr.
 pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
+    try_route_to_multiaddr(r).ok()
+}
+
+/// Try to convert an Ockam Route into a MultiAddr.
+pub fn try_route_to_multiaddr(r: &Route) -> Result<MultiAddr, Error> {
     let mut ma = MultiAddr::default();
     for a in r.iter() {
-        ma.try_extend(&try_address_to_multiaddr(a).ok()?).ok()?
+        ma.try_extend(&try_address_to_multiaddr(a)?)?
     }
-    Some(ma)
+    Ok(ma)
 }
 
 /// Try to convert an Ockam Address to a MultiAddr.

@@ -3,16 +3,12 @@ use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cloud::project::ProjectsOrchestratorApi;
-
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::Output;
 
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::CommandGlobalOpts;
-use crate::{
-    docs,
-    output::{Output, ProjectConfigCompact},
-};
+use crate::{docs, output::ProjectConfigCompact, CommandGlobalOpts};
 
 /// Show project details
 #[derive(Clone, Debug, Args)]
@@ -43,7 +39,7 @@ impl InfoCommand {
         let info = ProjectConfigCompact(project);
         opts.terminal
             .stdout()
-            .plain(info.output()?)
+            .plain(info.single()?)
             .json(serde_json::to_string_pretty(&info).into_diagnostic()?)
             .write_line()?;
         Ok(())

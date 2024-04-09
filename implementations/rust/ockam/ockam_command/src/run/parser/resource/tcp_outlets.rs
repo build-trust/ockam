@@ -1,12 +1,14 @@
+use async_trait::async_trait;
+use miette::{miette, Result};
+use ockam_api::colors::color_primary;
+use serde::{Deserialize, Serialize};
+
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::ValuesOverrides;
 use crate::tcp::outlet::create::CreateCommand;
-use crate::{color_primary, tcp::outlet, Command, OckamSubcommand};
-use async_trait::async_trait;
-use miette::{miette, Result};
-use serde::{Deserialize, Serialize};
+use crate::{tcp::outlet, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TcpOutlets {
@@ -48,9 +50,10 @@ impl CommandsParser<CreateCommand> for TcpOutlets {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::net::SocketAddr;
     use std::str::FromStr;
+
+    use super::*;
 
     #[test]
     fn tcp_outlet_config() {

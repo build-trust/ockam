@@ -417,8 +417,8 @@ impl KafkaConfigRow {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{SpacesRepository, SpacesSqlxDatabase};
 
+    use crate::cli_state::{SpacesRepository, SpacesSqlxDatabase};
     use std::sync::Arc;
 
     #[tokio::test]

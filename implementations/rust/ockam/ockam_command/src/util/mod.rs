@@ -1,11 +1,11 @@
-use colorful::core::color_string::CString;
-use colorful::Colorful;
 use std::sync::Arc;
 use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
 };
 
+use colorful::core::color_string::CString;
+use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use opentelemetry::trace::FutureExt;
@@ -14,14 +14,15 @@ use tracing::{debug, error};
 
 use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::CliStateError;
+use ockam_api::colors::OckamColor;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
-use ockam_api::CliStateError;
 use ockam_api::ConnectionStatus;
 use ockam_core::{DenyAll, OpenTelemetryContext};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
-use crate::{CommandGlobalOpts, OckamColor, Result};
+use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
 pub mod duration;
@@ -213,13 +214,6 @@ pub async fn clean_nodes_multiaddr(
     Ok((new_ma, lookup_meta))
 }
 
-pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
-    data.iter()
-        .map(AsRef::as_ref)
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
 pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     let port = address.port();
     let ip = address.ip();
@@ -242,6 +236,7 @@ pub fn colorize_connection_status(status: ConnectionStatus) -> CString {
 
 #[cfg(test)]
 mod tests {
+
     use std::str::FromStr;
 
     use super::*;
@@ -314,12 +309,5 @@ mod tests {
             ctx.stop().await.into_diagnostic()?;
             Err(miette!("boom"))
         }
-    }
-
-    #[test]
-    fn test_comma_separated() {
-        let data = vec!["a", "b", "c"];
-        let result = comma_separated(&data);
-        assert_eq!(result, "a, b, c");
     }
 }

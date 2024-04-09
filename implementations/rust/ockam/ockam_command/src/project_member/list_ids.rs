@@ -8,9 +8,9 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
 use super::{create_authority_client, get_project};
-use crate::output::Output;
 use crate::util::api::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts, Result};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/list_ids/long_about.txt");
 
@@ -61,7 +61,7 @@ impl Command for ListIdsCommand {
 struct IdentifierOutput(Identifier);
 
 impl Output for IdentifierOutput {
-    fn output(&self) -> Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         Ok(self.0.to_string())
     }
 }

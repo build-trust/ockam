@@ -1,19 +1,18 @@
 use clap::{Args, Subcommand};
 
-use crate::CommandGlobalOpts;
-
-mod accept;
-mod create;
-mod list;
-mod output;
-mod service;
-mod show;
-
 pub use accept::AcceptCommand;
 pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use service::ServiceCreateCommand;
 pub use show::ShowCommand;
+
+use crate::CommandGlobalOpts;
+
+mod accept;
+mod create;
+mod list;
+mod service;
+mod show;
 
 /// Manage sharing invitations in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]

@@ -1,4 +1,4 @@
-use crate::journeys::{Journey, ProjectJourney};
+use crate::cli_state::journeys::{Journey, ProjectJourney};
 use chrono::{DateTime, Utc};
 use ockam_core::async_trait;
 use ockam_core::Result;

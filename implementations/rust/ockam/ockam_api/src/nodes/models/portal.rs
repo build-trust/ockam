@@ -1,9 +1,11 @@
 //! Inlets and outlet request/response types
 
+use colorful::Colorful;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::colors::{color_primary, OckamColor};
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
@@ -13,6 +15,7 @@ use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ApiError;
+use crate::output::Output;
 use crate::route_to_multiaddr;
 use crate::session::sessions::ConnectionStatus;
 
@@ -205,6 +208,65 @@ impl InletStatus {
     }
 }
 
+impl Output for InletStatus {
+    fn single(&self) -> crate::Result<String> {
+        let outlet = self
+            .outlet_route
+            .as_ref()
+            .and_then(Route::parse)
+            .and_then(|r| route_to_multiaddr(&r))
+            .map(|addr| addr.to_string())
+            .unwrap_or("N/A".to_string());
+
+        let output = format!(
+            r#"
+Inlet
+    Alias: {alias}
+    Status: {status}
+    TCP Address: {bind_addr}
+    Outlet Address: {outlet_route}
+    Outlet Destination: {outlet_addr}
+            "#,
+            alias = self
+                .alias
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            status = self
+                .status
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            bind_addr = self
+                .bind_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            outlet_route = outlet.color(OckamColor::PrimaryResource.color()),
+            outlet_addr = self.outlet_addr,
+        );
+
+        Ok(output)
+    }
+
+    fn list(&self) -> crate::Result<String> {
+        let output = format!(
+            r#"Inlet {}
+From {} to {}"#,
+            self.alias
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.bind_addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.outlet_route
+                .as_ref()
+                .map(|r| r.to_string())
+                .unwrap_or("N/A".to_string())
+                .color(OckamColor::PrimaryResource.color()),
+        );
+
+        Ok(output)
+    }
+}
+
 /// Response body when interacting with a portal endpoint
 #[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize, PartialEq)]
 #[rustfmt::skip]
@@ -240,6 +302,32 @@ impl OutletStatus {
                 .map_err(|_| ApiError::core("Invalid Worker Address")),
             None => Ok(self.worker_addr.to_string()),
         }
+    }
+}
+
+impl Output for OutletStatus {
+    fn single(&self) -> crate::Result<String> {
+        let output = format!(
+            r#"
+Outlet:
+    TCP Address:    {}
+    Worker Address: {}
+"#,
+            self.socket_addr,
+            self.worker_address()?
+        );
+
+        Ok(output)
+    }
+
+    fn list(&self) -> crate::Result<String> {
+        let output = format!(
+            r#"From address {} to TCP server {}"#,
+            color_primary(self.worker_address()?.to_string()),
+            color_primary(self.socket_addr.to_string()),
+        );
+
+        Ok(output)
     }
 }
 

@@ -1,5 +1,10 @@
 use std::net::SocketAddr;
 
+use clap::{command, Args};
+
+use ockam_api::port_range::PortRange;
+use ockam_multiaddr::MultiAddr;
+
 use crate::kafka::direct::command::{async_run, ArgOpts};
 use crate::kafka::util::make_brokers_port_range;
 use crate::util::async_cmd;
@@ -11,9 +16,6 @@ use crate::{
     util::parsers::socket_addr_parser,
     CommandGlobalOpts,
 };
-use clap::{command, Args};
-use ockam_api::port_range::PortRange;
-use ockam_multiaddr::MultiAddr;
 
 /// Create a new Kafka Direct Consumer
 #[derive(Clone, Debug, Args)]

@@ -1,9 +1,10 @@
+use serde::Serialize;
+
 use ockam_api::{
     addr_to_multiaddr, nodes::models::secure_channel::ShowSecureChannelListenerResponse,
 };
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
-use serde::Serialize;
 
 /// Information to display of the secure channel listeners in the `ockam node show` command
 #[derive(Debug, Serialize)]

@@ -1,9 +1,10 @@
-use console::Term;
-use miette::IntoDiagnostic;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 use std::process::Stdio;
+
+use console::Term;
+use miette::IntoDiagnostic;
 
 use ockam_core::env::get_env_with_default;
 

@@ -1,11 +1,13 @@
+use async_trait::async_trait;
+use miette::{miette, Result};
+use ockam_api::colors::color_primary;
+use serde::{Deserialize, Serialize};
+
 use crate::project::EnrollCommand;
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::ValuesOverrides;
-use crate::{color_primary, Command, OckamSubcommand};
-use async_trait::async_trait;
-use miette::{miette, Result};
-use serde::{Deserialize, Serialize};
+use crate::{Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProjectEnroll {
@@ -38,12 +40,15 @@ impl CommandsParser<EnrollCommand> for ProjectEnroll {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::EnrollmentTicket;
     use std::fs::File;
     use std::io::Write;
+
     use tempfile::tempdir;
+
+    use ockam_api::authenticator::one_time_code::OneTimeCode;
+    use ockam_api::cli_state::EnrollmentTicket;
+
+    use super::*;
 
     #[test]
     fn project_enroll_config() {

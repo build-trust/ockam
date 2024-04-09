@@ -7,6 +7,7 @@ use tracing::{debug, instrument};
 
 use ockam::{Address, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
+use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
@@ -14,9 +15,7 @@ use ockam_api::nodes::{
 };
 use ockam_core::{route, LOCAL};
 
-use crate::fmt_ok;
 use crate::node::CreateCommand;
-
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::{shutdown, CommandGlobalOpts};

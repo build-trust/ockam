@@ -4,10 +4,10 @@ use ockam::Context;
 use ockam_api::InfluxDbTokenLease;
 
 use crate::lease::create_project_client;
-use crate::output::Output;
 use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
+use ockam_api::output::Output;
 
 const HELP_DETAIL: &str = "";
 
@@ -48,7 +48,7 @@ impl ShowCommand {
 
         opts.terminal
             .stdout()
-            .plain(token.output()?)
+            .plain(token.single()?)
             .json(serde_json::json!(&token))
             .write_line()?;
 

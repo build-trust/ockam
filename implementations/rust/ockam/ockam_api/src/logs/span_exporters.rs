@@ -1,4 +1,4 @@
-use crate::journeys::{APPLICATION_EVENT_NODE_NAME, APPLICATION_EVENT_OCKAM_DEVELOPER};
+use crate::cli_state::journeys::{APPLICATION_EVENT_NODE_NAME, APPLICATION_EVENT_OCKAM_DEVELOPER};
 use futures::future::BoxFuture;
 use ockam_core::async_trait;
 use opentelemetry::KeyValue;

@@ -1,8 +1,9 @@
+use clap::Args;
+use miette::IntoDiagnostic;
+
 use crate::util::async_cmd;
 use crate::vault::util::VaultOutput;
 use crate::{docs, CommandGlobalOpts};
-use clap::Args;
-use miette::IntoDiagnostic;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

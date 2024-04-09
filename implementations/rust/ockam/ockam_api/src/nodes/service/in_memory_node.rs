@@ -11,10 +11,10 @@ use ockam_core::errcode::Kind;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpListenerOptions;
 
+use crate::cli_state::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
 use crate::cloud::ControllerClient;
-use crate::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::logs::CurrentSpan;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{

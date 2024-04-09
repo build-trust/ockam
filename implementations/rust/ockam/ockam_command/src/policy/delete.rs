@@ -1,19 +1,23 @@
+use std::str::FromStr;
+
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
 use miette::IntoDiagnostic;
-use std::str::FromStr;
 
+use crate::CommandGlobalOpts;
 use ockam::Context;
 use ockam_abac::{Action, ResourceType};
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::models::policies::ResourceTypeOrName;
 use ockam_api::nodes::{BackgroundNodeClient, Policies};
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
-use crate::terminal::{color_primary, PluralTerm};
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
-use crate::{fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {

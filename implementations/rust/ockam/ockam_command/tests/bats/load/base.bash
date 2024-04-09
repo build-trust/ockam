@@ -32,6 +32,8 @@ fi
 
 export PYTHON_SERVER_PORT=5000
 
+mkdir -p "$HOME/.bats-tests"
+
 # Load bats extensions
 load_bats_ext() {
   load "$BATS_LIB/bats-support/load.bash"
@@ -45,8 +47,8 @@ setup_python_server() {
     pushd $OCKAM_HOME_BASE
     touch "$p"
 
-    # Log server data to OCKAM_HOME_BASE
-    uploadserver --bind 127.0.0.1 $PYTHON_SERVER_PORT &>./.tmp/python_server.log &
+    # Log server data to bats-tests directory
+    uploadserver --bind 127.0.0.1 $PYTHON_SERVER_PORT &>"$HOME/.bats-tests/python_server.log" &
     pid="$!"
     echo "$pid" >"$p"
     popd || {
@@ -109,13 +111,13 @@ random_str() {
   echo "$(openssl rand -hex 4)"
 }
 
-# Returns a random port in the range 49152-65535
+# Returns a random port
 random_port() {
   port=0
   max_retries=10
   i=0
   while [[ $i -lt $max_retries ]]; do
-    port=$(shuf -i 10000-65535 -n 1)
+    port=$(shuf -i 10000-65535 -n 1 --random-source=/dev/urandom)
     netstat -latn -p tcp | grep $port >/dev/null
     if [[ $? == 1 ]]; then
       break

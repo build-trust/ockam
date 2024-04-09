@@ -1,20 +1,19 @@
 use clap::Args;
-
 use colorful::Colorful;
 use miette::IntoDiagnostic;
-use ockam::Context;
-use ockam_api::InfluxDbTokenLease;
 use time::format_description::well_known::Iso8601;
 use time::PrimitiveDateTime;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use ockam::Context;
+use ockam_api::colors::OckamColor;
+use ockam_api::{fmt_log, fmt_ok, InfluxDbTokenLease};
+
 use crate::lease::create_project_client;
-use crate::terminal::OckamColor;
 use crate::util::api::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
-use crate::{fmt_log, fmt_ok};
 
 const HELP_DETAIL: &str = "";
 

@@ -209,9 +209,9 @@ impl ProjectsOrchestratorApi for InMemoryNode {
 
 #[cfg(test)]
 mod tests {
+    use crate::cli_state::projects::Projects;
+    use crate::cli_state::ProjectsSqlxDatabase;
     use crate::cloud::project::models::ProjectModel;
-    use crate::projects::Projects;
-    use crate::ProjectsSqlxDatabase;
     use ockam::identity::{
         identities, ChangeHistoryRepository, ChangeHistorySqlxDatabase, IdentitiesVerification,
     };

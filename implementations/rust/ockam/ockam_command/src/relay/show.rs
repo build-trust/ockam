@@ -11,16 +11,18 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
+use crate::{docs, CommandGlobalOpts};
+use ockam_api::colors::OckamColor;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::ConnectionStatus;
 use ockam_core::AsyncTryClone;
 use serde::Serialize;
 
-use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
 use crate::util::colorize_connection_status;
-use crate::{docs, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
+use ockam_api::output::Output;
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -119,7 +121,7 @@ impl ShowCommandTui for ShowTui {
         let relay = RelayShowOutput::from(relay);
         self.terminal()
             .stdout()
-            .plain(relay.output()?)
+            .plain(relay.single()?)
             .machine(item_name)
             .json(serde_json::to_string(&relay).into_diagnostic()?)
             .write_line()?;
@@ -151,7 +153,7 @@ impl From<RelayInfo> for RelayShowOutput {
 }
 
 impl Output for RelayShowOutput {
-    fn output(&self) -> crate::error::Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"
         Relay:
@@ -179,7 +181,7 @@ impl Output for RelayShowOutput {
         ))
     }
 
-    fn list_output(&self) -> crate::error::Result<String> {
+    fn list(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"
             Alias: {alias}

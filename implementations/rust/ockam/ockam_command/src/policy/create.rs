@@ -1,19 +1,21 @@
+use std::str::FromStr;
+
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
-use std::str::FromStr;
 
 use ockam::Context;
 use ockam_abac::{Action, Expr, ResourceName, ResourceType};
+use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::policies::ResourceTypeOrName;
 use ockam_api::nodes::{BackgroundNodeClient, Policies};
+use ockam_api::{fmt_ok, fmt_warn};
+
+use crate::node::util::initialize_default_node;
+use crate::{Command, CommandGlobalOpts};
 
 use super::resource_type_parser;
-use crate::node::util::initialize_default_node;
-use crate::terminal::color_primary;
-
-use crate::{fmt_ok, fmt_warn, Command, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -73,8 +75,9 @@ impl Command for CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

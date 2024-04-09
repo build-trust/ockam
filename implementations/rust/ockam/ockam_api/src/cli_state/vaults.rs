@@ -1,4 +1,5 @@
 use colorful::Colorful;
+use std::fmt::Write;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
@@ -9,8 +10,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 
-use crate::cli_state::{random_name, CliState, Result};
-use crate::CliStateError;
+use crate::cli_state::{random_name, CliState, CliStateError, Result};
+use crate::output::Output;
 
 static DEFAULT_VAULT_NAME: &str = "default";
 
@@ -399,6 +400,22 @@ impl Display for NamedVault {
             }
         )?;
         Ok(())
+    }
+}
+
+impl Output for NamedVault {
+    fn single(&self) -> crate::Result<String> {
+        let mut output = String::new();
+        writeln!(output, "Name: {}", self.name())?;
+        writeln!(
+            output,
+            "Type: {}",
+            match self.is_kms() {
+                true => "AWS KMS",
+                false => "OCKAM",
+            }
+        )?;
+        Ok(output)
     }
 }
 

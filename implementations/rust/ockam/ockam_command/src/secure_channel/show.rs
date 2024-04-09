@@ -6,9 +6,9 @@ use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
-use crate::output::Output;
 use crate::util::async_cmd;
 use crate::{docs, util::api, CommandGlobalOpts};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -51,7 +51,7 @@ impl ShowCommand {
             node.ask(ctx, api::show_secure_channel(address)).await?;
         opts.terminal
             .stdout()
-            .plain(response.output()?)
+            .plain(response.single()?)
             .json(serde_json::to_string_pretty(&response).into_diagnostic()?)
             .write_line()?;
         Ok(())

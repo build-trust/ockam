@@ -2,17 +2,17 @@ use clap::Args;
 use colorful::Colorful;
 use indoc::formatdoc;
 use miette::IntoDiagnostic;
+use ockam_api::cli_state::NodeProcessStatus;
 use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam_api::cli_state::nodes::NodeInfo;
-use ockam_api::NodeProcessStatus;
+use ockam_api::colors::OckamColor;
 
-use crate::output::Output;
-use crate::terminal::OckamColor;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -143,7 +143,7 @@ impl NodeListOutput {
 }
 
 impl Output for NodeListOutput {
-    fn output(&self) -> Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         let (status, process) = match self.status {
             NodeProcessStatus::Running(pid) => (
                 "UP".color(OckamColor::Success.color()),

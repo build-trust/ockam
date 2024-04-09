@@ -1,16 +1,19 @@
-use crate::docs;
-use crate::OckamCommand;
+use std::fs::{create_dir_all, File};
+use std::io::{Error, Write};
+use std::path::{Path, PathBuf};
+use std::{env, str};
+
 use clap::builder::NonEmptyStringValueParser;
 use clap::{ArgAction, Args, Command, CommandFactory};
 use clap_mangen::Man;
 use flate2::{Compression, GzBuilder};
 use miette::IntoDiagnostic;
-use ockam_core::env::get_env_with_default;
-use std::fs::{create_dir_all, File};
-use std::io::{Error, Write};
-use std::path::{Path, PathBuf};
-use std::{env, str};
 use tracing::error;
+
+use ockam_core::env::get_env_with_default;
+
+use crate::docs;
+use crate::OckamCommand;
 
 /// Generate man pages for all existing Ockam commands
 #[derive(Clone, Debug, Args)]

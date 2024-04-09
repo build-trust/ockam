@@ -7,11 +7,11 @@ use tracing::trace;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
-use crate::terminal::OckamColor;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 

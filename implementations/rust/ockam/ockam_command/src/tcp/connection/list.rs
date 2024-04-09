@@ -1,20 +1,18 @@
-use std::fmt::Write;
-
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::colors::OckamColor;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam_api::nodes::models::transport::{TransportList, TransportStatus};
+use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
 use crate::node::NodeOpts;
-use crate::output::Output;
-use crate::terminal::OckamColor;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
+
+use crate::util::async_cmd;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
@@ -74,37 +72,5 @@ impl ListCommand {
         opts.terminal.stdout().plain(list).write_line()?;
 
         Ok(())
-    }
-}
-
-impl Output for TransportStatus {
-    fn output(&self) -> crate::Result<String> {
-        let mut output = String::new();
-
-        writeln!(
-            output,
-            "{} {}",
-            self.tt,
-            self.tm
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-        writeln!(
-            output,
-            "Internal Address {}",
-            self.processor_address
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-
-        write!(
-            output,
-            "Socket Address {}",
-            self.socket_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-
-        Ok(output)
     }
 }

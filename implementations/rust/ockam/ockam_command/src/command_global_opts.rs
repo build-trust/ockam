@@ -7,17 +7,18 @@ use tokio::runtime::Runtime;
 use tracing::{debug, info};
 use tracing_core::Level;
 
+use ockam_api::colors::color_primary;
 use ockam_api::logs::{
     crates_filter, logging_configuration, Colored, ExportingConfiguration, LoggingConfiguration,
     LoggingTracing, TracingGuard,
 };
-use ockam_api::CliState;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_api::{fmt_err, fmt_log, fmt_ok, CliState};
 
 use crate::subcommand::OckamSubcommand;
-use crate::terminal::color_primary;
 use crate::util::exitcode;
 use crate::version::Version;
-use crate::{fmt_err, fmt_log, fmt_ok, GlobalArgs, Terminal, TerminalStream};
+use crate::GlobalArgs;
 
 /// This struct contains the main structs used to implement commands:
 ///

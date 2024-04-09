@@ -1,13 +1,15 @@
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
+use ockam_api::terminal::{Terminal, TerminalStream};
 
-use crate::output::Output;
+use ockam_api::output::Output;
+
 use crate::terminal::tui::ShowCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
 use crate::vault::util::VaultOutput;
-use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -95,7 +97,7 @@ impl ShowCommandTui for ShowTui {
         let vault = VaultOutput::new(&self.opts.state.get_named_vault(item_name).await?);
         self.terminal()
             .stdout()
-            .plain(vault.output()?)
+            .plain(vault.single()?)
             .json(serde_json::to_string(&vault).into_diagnostic()?)
             .machine(vault.name())
             .write_line()?;

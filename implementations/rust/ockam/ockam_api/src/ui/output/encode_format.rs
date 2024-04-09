@@ -1,4 +1,4 @@
-use crate::output::output::Output;
+use super::Output;
 use crate::Result;
 use clap::ValueEnum;
 use miette::WrapErr;
@@ -21,7 +21,7 @@ impl EncodeFormat {
         T: Encode<()> + Output,
     {
         let o = match self {
-            EncodeFormat::Plain => e.output().wrap_err("Failed serialize output")?,
+            EncodeFormat::Plain => e.single().wrap_err("Failed serialize output")?,
             EncodeFormat::Hex => {
                 let bytes = minicbor::to_vec(e).expect("Unable to encode response");
                 hex::encode(bytes)

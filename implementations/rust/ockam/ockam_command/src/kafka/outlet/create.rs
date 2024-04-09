@@ -5,19 +5,19 @@ use colorful::Colorful;
 use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
 use crate::util::async_cmd;
 use crate::{
-    fmt_log, fmt_ok,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
     service::start::start_service_impl,
-    terminal::OckamColor,
     CommandGlobalOpts,
 };
 

@@ -1,10 +1,11 @@
-use crate::sidecar::secure_relay_inlet::SecureRelayInlet;
-use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
+
+use crate::sidecar::secure_relay_inlet::SecureRelayInlet;
+use crate::sidecar::secure_relay_outlet::SecureRelayOutlet;
+use crate::{docs, CommandGlobalOpts};
 
 mod secure_relay_inlet;
 mod secure_relay_outlet;
-use crate::sidecar::secure_relay_outlet::SecureRelayOutlet;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 

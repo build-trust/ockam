@@ -7,15 +7,15 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::route_to_multiaddr;
-use ockam_core::{route, Address};
+use ockam_core::{route, Address, Result};
 
-use crate::output::Output;
-use crate::terminal::OckamColor;
 use crate::util::async_cmd;
 use crate::{docs, util::api, CommandGlobalOpts};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -144,7 +144,7 @@ pub struct SecureChannelListOutput {
 }
 
 impl Output for SecureChannelListOutput {
-    fn output(&self) -> crate::Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         let mut output = String::new();
         writeln!(
             output,

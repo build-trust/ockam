@@ -5,7 +5,6 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::cloud::share::Invitations;
-
 use ockam_api::nodes::InMemoryNode;
 
 use crate::util::api::IdentityOpts;

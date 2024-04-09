@@ -1,21 +1,20 @@
 use async_trait::async_trait;
 use clap::Args;
 use miette::IntoDiagnostic;
-
-use crate::terminal::tui::ShowCommandTui;
+use tracing::instrument;
 
 use ockam::Context;
 use ockam_api::cloud::project::ProjectsOrchestratorApi;
-
 use ockam_api::nodes::InMemoryNode;
-
-use crate::output::{Output, ProjectConfigCompact};
-use crate::terminal::PluralTerm;
-use crate::util::api::{IdentityOpts, RetryOpts};
-use crate::{docs, Command, CommandGlobalOpts, Error};
+use ockam_api::output::Output;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 
-use tracing::instrument;
+use crate::output::ProjectConfigCompact;
+use crate::terminal::tui::ShowCommandTui;
+use crate::tui::PluralTerm;
+use crate::util::api::{IdentityOpts, RetryOpts};
+use crate::{docs, Command, CommandGlobalOpts, Error};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -89,7 +88,7 @@ impl ShowCommandTui for ShowTui {
     fn cmd_arg_item_name(&self) -> Option<String> {
         self.project_name.clone()
     }
-    fn terminal(&self) -> crate::Terminal<crate::TerminalStream<console::Term>> {
+    fn terminal(&self) -> Terminal<TerminalStream<console::Term>> {
         self.opts.terminal.clone()
     }
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
@@ -129,7 +128,7 @@ impl ShowCommandTui for ShowTui {
 
         self.terminal()
             .stdout()
-            .plain(project_output.output()?)
+            .plain(project_output.single()?)
             .json(serde_json::to_string_pretty(&project_output).into_diagnostic()?)
             .write_line()?;
         Ok(())

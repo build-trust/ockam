@@ -1,16 +1,19 @@
 use std::fmt::Display;
 
-use crate::identity::list::IdentityListOutput;
-use crate::output::{EncodeFormat, IdentifierDisplay, Output, VerifyingPublicKeyDisplay};
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
-use ockam::identity::verified_change::VerifiedChange;
-use ockam::identity::{Identifier, Identity};
-use ockam_api::NamedIdentity;
 use serde::Serialize;
 use serde_json::{json, to_string_pretty};
+
+use ockam::identity::verified_change::VerifiedChange;
+use ockam::identity::{Identifier, Identity};
+use ockam_api::cli_state::NamedIdentity;
+use ockam_api::output::{EncodeFormat, Output};
+
+use crate::identity::list::IdentityListOutput;
+use crate::output::{IdentifierDisplay, VerifyingPublicKeyDisplay};
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -207,7 +210,7 @@ impl Display for ShowIdentity {
 }
 
 impl Output for ShowIdentity {
-    fn output(&self) -> crate::error::Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         Ok(self.to_string())
     }
 }

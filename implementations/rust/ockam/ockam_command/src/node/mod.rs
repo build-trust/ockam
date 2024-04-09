@@ -1,5 +1,4 @@
 use clap::{Args, Subcommand};
-use ockam_api::address::extract_address_value;
 
 pub use create::CreateCommand;
 pub use create::*;
@@ -7,6 +6,7 @@ use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
+use ockam_api::address::extract_address_value;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
