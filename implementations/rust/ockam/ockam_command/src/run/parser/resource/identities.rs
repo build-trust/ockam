@@ -1,13 +1,14 @@
+use async_trait::async_trait;
+use miette::{miette, Result};
+use ockam_api::colors::color_primary;
+use serde::{Deserialize, Serialize};
+
 use crate::identity::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::{color_primary, identity, Command, OckamSubcommand};
-use async_trait::async_trait;
-use miette::{miette, Result};
-
 use crate::run::parser::resource::ValuesOverrides;
-use serde::{Deserialize, Serialize};
+use crate::{identity, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Identities {
@@ -41,8 +42,9 @@ impl CommandsParser<CreateCommand> for Identities {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use miette::IntoDiagnostic;
+
+    use super::*;
 
     #[test]
     fn single_identity_config() {

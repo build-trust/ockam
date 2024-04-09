@@ -4,6 +4,7 @@ use indoc::formatdoc;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -11,7 +12,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");

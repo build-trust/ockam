@@ -1,6 +1,7 @@
 use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 
 use ockam_core::api::Request;
 use ockam_core::async_trait;
@@ -9,6 +10,8 @@ use ockam_node::Context;
 use crate::cloud::operation::CreateOperationResponse;
 use crate::cloud::project::models::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
 use crate::cloud::{ControllerClient, HasSecureClient};
+use crate::output::Output;
+use crate::Result;
 
 const TARGET: &str = "ockam_api::cloud::addon";
 const API_SERVICE: &str = "projects";
@@ -23,6 +26,18 @@ pub struct Addon {
     pub description: String,
     #[n(3)]
     pub enabled: bool,
+}
+
+impl Output for Addon {
+    fn single(&self) -> Result<String> {
+        let mut w = String::new();
+        write!(w, "Addon:")?;
+        write!(w, "\n  Id: {}", self.id)?;
+        write!(w, "\n  Enabled: {}", self.enabled)?;
+        write!(w, "\n  Description: {}", self.description)?;
+        writeln!(w)?;
+        Ok(w)
+    }
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

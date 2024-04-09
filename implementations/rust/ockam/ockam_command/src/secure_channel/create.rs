@@ -4,15 +4,17 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
+use crate::{docs, CommandGlobalOpts};
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::DEFAULT_TIMEOUT;
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::route_to_multiaddr;
+use ockam_api::{fmt_log, fmt_ok, route_to_multiaddr};
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
@@ -21,10 +23,7 @@ use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
 use crate::util::api::IdentityOpts;
-use crate::util::{async_cmd, clean_nodes_multiaddr};
-use crate::{
-    docs, error::Error, fmt_log, fmt_ok, terminal::OckamColor, util::exitcode, CommandGlobalOpts,
-};
+use crate::util::{async_cmd, clean_nodes_multiaddr, exitcode};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -151,7 +150,7 @@ impl CreateCommand {
 
         let route = &route![secure_channel.to_string()];
         let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
-            Error::new(
+            crate::Error::new(
                 exitcode::PROTOCOL,
                 miette!("Failed to convert route {route} to multi-address"),
             )

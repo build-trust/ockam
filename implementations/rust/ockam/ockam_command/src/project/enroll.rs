@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
@@ -10,16 +10,19 @@ use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::project::models::OktaAuth0;
 use ockam_api::cloud::project::Project;
+use ockam_api::colors::color_primary;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::OutputFormat;
+use ockam_api::{fmt_log, fmt_ok};
 
 use crate::enroll::OidcServiceExt;
-use crate::output::{CredentialAndPurposeKeyDisplay, OutputFormat};
+use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::api::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::value_parsers::parse_enrollment_ticket;
-use crate::{color_primary, docs, fmt_log, fmt_ok, Command, CommandGlobalOpts, Error, Result};
+use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -192,8 +195,9 @@ impl EnrollCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

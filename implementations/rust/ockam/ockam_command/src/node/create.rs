@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use std::{path::PathBuf, str::FromStr};
 
+use async_trait::async_trait;
 use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
@@ -8,8 +8,7 @@ use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use tracing::instrument;
 
-use ockam_api::cli_state::random_name;
-use ockam_api::EnrollmentTicket;
+use ockam_api::cli_state::{random_name, EnrollmentTicket};
 use ockam_core::{opentelemetry_context_parser, AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 
@@ -193,8 +192,9 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

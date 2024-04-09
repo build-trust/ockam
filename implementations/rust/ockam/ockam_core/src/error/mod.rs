@@ -145,6 +145,19 @@ impl ErrorTrait for Error {
     }
 }
 
+impl From<core::fmt::Error> for Error {
+    #[cfg(feature = "std")]
+    #[track_caller]
+    fn from(e: core::fmt::Error) -> Self {
+        Error::new(code::Origin::Application, code::Kind::Invalid, e)
+    }
+    #[cfg(not(feature = "std"))]
+    #[track_caller]
+    fn from(_: core::fmt::Error) -> Self {
+        Error::new_without_cause(code::Origin::Application, code::Kind::Invalid)
+    }
+}
+
 impl From<strum::ParseError> for Error {
     #[cfg(feature = "std")]
     #[track_caller]

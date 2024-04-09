@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::*;
 
-use crate::journeys::{Journey, ProjectJourney};
-use crate::storage::journeys_repository::JourneysRepository;
+use crate::cli_state::journeys::{Journey, ProjectJourney};
+use crate::cli_state::JourneysRepository;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 use ockam_core::{async_trait, OpenTelemetryContext};
@@ -182,6 +182,8 @@ impl HostJourneyRow {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::cli_state::journeys::{Journey, ProjectJourney};
+    use crate::cli_state::JourneysRepository;
     use std::ops::{Add, Sub};
     use std::str::FromStr;
     use std::sync::Arc;

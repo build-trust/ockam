@@ -1,11 +1,13 @@
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
+use ockam_api::fmt_ok;
+use ockam_api::terminal::{Terminal, TerminalStream};
 
 use crate::terminal::tui::DeleteCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");

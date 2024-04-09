@@ -1,5 +1,3 @@
-use core::fmt::Write;
-
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use miette::{miette, IntoDiagnostic};
@@ -9,8 +7,8 @@ use ockam_api::cloud::subscription::{Subscription, Subscriptions};
 use ockam_api::cloud::ControllerClient;
 
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::Output;
 
-use crate::output::Output;
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -78,7 +76,7 @@ impl SubscriptionCommand {
                 )
                 .await?
                 {
-                    Some(subscription) => opts.terminal.write_line(&subscription.output()?)?,
+                    Some(subscription) => opts.terminal.write_line(&subscription.single()?)?,
                     None => opts
                         .terminal
                         .write_line("Please specify either a space id or a subscription id")?,
@@ -118,23 +116,5 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
                 .ok_or_else(|| miette!("no subscription found for space {}", space_id))?,
         )),
         _ => Ok(None),
-    }
-}
-
-impl Output for Subscription {
-    fn output(&self) -> Result<String> {
-        let mut w = String::new();
-        write!(w, "Subscription")?;
-        write!(w, "\n  Id: {}", self.id)?;
-        write!(w, "\n  Status: {}", self.status)?;
-        write!(
-            w,
-            "\n  Space id: {}",
-            self.space_id.clone().unwrap_or("N/A".to_string())
-        )?;
-        write!(w, "\n  Entitlements: {}", self.entitlements)?;
-        write!(w, "\n  Metadata: {}", self.metadata)?;
-        write!(w, "\n  Contact info: {}", self.contact_info)?;
-        Ok(w)
     }
 }

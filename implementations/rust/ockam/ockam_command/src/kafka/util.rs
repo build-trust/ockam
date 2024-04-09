@@ -3,19 +3,20 @@ use std::net::SocketAddr;
 use colorful::Colorful;
 use tokio::{sync::Mutex, try_join};
 
+use crate::CommandGlobalOpts;
 use ockam::Context;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::services::{StartKafkaRequest, StartServiceRequest};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::port_range::PortRange;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
 use crate::service::start::start_service_impl;
-use crate::terminal::OckamColor;
 use crate::util::process_nodes_multiaddr;
-use crate::{fmt_log, fmt_ok, CommandGlobalOpts};
 
 pub struct ArgOpts {
     pub endpoint: String,

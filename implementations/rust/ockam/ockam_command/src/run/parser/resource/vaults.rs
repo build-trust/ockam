@@ -1,13 +1,14 @@
+use async_trait::async_trait;
+use miette::{miette, Result};
+use ockam_api::colors::color_primary;
+use serde::{Deserialize, Serialize};
+
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
 use crate::run::parser::resource::traits::CommandsParser;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::vault::CreateCommand;
-use crate::{color_primary, vault, Command, OckamSubcommand};
-use async_trait::async_trait;
-use miette::{miette, Result};
-
 use crate::run::parser::resource::ValuesOverrides;
-use serde::{Deserialize, Serialize};
+use crate::vault::CreateCommand;
+use crate::{vault, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Vaults {
@@ -41,8 +42,9 @@ impl CommandsParser<CreateCommand> for Vaults {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use miette::IntoDiagnostic;
+
+    use super::*;
 
     #[test]
     fn single_vault_config() {

@@ -3,7 +3,6 @@ pub use enrollments::*;
 pub use error::*;
 pub use identities::*;
 pub use nodes::*;
-pub use notifications::*;
 pub use storage::*;
 pub use vaults::*;
 
@@ -15,7 +14,6 @@ pub mod identities;
 mod identities_attributes;
 pub mod journeys;
 pub mod nodes;
-pub mod notifications;
 pub mod policies;
 pub mod projects;
 pub mod repositories;

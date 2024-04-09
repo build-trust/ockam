@@ -7,10 +7,10 @@ use serde_json::json;
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::output::OutputFormat;
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
-use crate::output::OutputFormat;
 use crate::util::async_cmd;
 use crate::util::{api, exitcode};
 use crate::{docs, CommandGlobalOpts};

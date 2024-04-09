@@ -1,9 +1,9 @@
 use chrono::Utc;
-use ockam_api::journeys::{
+use ockam_api::cli_state::journeys::{
     JourneyEvent, APPLICATION_EVENT_TIMESTAMP, EVENT_DURATION, USER_EMAIL, USER_NAME,
 };
 use ockam_api::logs::{ExportingConfiguration, LoggingConfiguration, LoggingTracing};
-use ockam_api::{random_name, CliState};
+use ockam_api::CliState;
 use ockam_node::Executor;
 use opentelemetry::global;
 use opentelemetry::trace::{FutureExt, Tracer};
@@ -13,6 +13,7 @@ use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 use std::ops::Add;
 
+use ockam_api::cli_state::random_name;
 use tempfile::NamedTempFile;
 
 /// This test needs to be an integration test

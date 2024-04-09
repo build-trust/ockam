@@ -1,16 +1,17 @@
 use std::process::exit;
 
 use clap::Parser;
-
 use miette::IntoDiagnostic;
 
-use crate::{
-    add_command_error_event, fmt_log, has_help_flag, has_version_flag, pager,
-    replace_hyphen_with_stdin, util::exitcode, version::Version, ErrorReportHandler, OckamCommand,
-};
 use ockam_api::cli_state::CliState;
+use ockam_api::fmt_log;
 use ockam_api::logs::{
     crates_filter, logging_configuration, Colored, ExportingConfiguration, LoggingTracing,
+};
+
+use crate::{
+    add_command_error_event, has_help_flag, has_version_flag, pager, replace_hyphen_with_stdin,
+    util::exitcode, version::Version, ErrorReportHandler, OckamCommand,
 };
 
 /// Main method for running the `ockam` executable:

@@ -2,9 +2,8 @@ use colorful::Colorful;
 use indoc::formatdoc;
 
 use ockam_api::cli_state::vaults::NamedVault;
-
-use crate::output::Output;
-use crate::OckamColor;
+use ockam_api::colors::OckamColor;
+use ockam_api::output::Output;
 
 #[derive(serde::Serialize)]
 pub struct VaultOutput {
@@ -24,7 +23,7 @@ impl VaultOutput {
 }
 
 impl Output for VaultOutput {
-    fn output(&self) -> crate::error::Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"
             Vault:
@@ -50,7 +49,7 @@ impl Output for VaultOutput {
         ))
     }
 
-    fn list_output(&self) -> crate::error::Result<String> {
+    fn list(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"Name: {name}
             Type: {vault_type}

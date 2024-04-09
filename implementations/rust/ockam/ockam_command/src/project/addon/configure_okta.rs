@@ -14,12 +14,13 @@ use ockam_api::cloud::addon::Addons;
 use ockam_api::cloud::project::models::OktaConfig;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
+use ockam_api::fmt_ok;
 use ockam_api::minicbor_url::Url;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::project::addon::check_configuration_completion;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts, Result};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");

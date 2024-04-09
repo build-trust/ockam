@@ -1,7 +1,8 @@
-use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 
 use list::ListCommand;
+
+use crate::{docs, CommandGlobalOpts};
 
 mod list;
 

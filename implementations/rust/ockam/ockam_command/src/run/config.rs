@@ -1,10 +1,11 @@
+use serde::{Deserialize, Serialize};
+
+use ockam_node::Context;
+
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
 use crate::CommandGlobalOpts;
-
-use ockam_node::Context;
-use serde::{Deserialize, Serialize};
 
 /// Defines the high-level structure of the configuration file.
 ///
@@ -86,11 +87,13 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::run::parser::building_blocks::*;
-    use crate::run::parser::VersionValue;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
+
+    use crate::run::parser::building_blocks::*;
+    use crate::run::parser::VersionValue;
+
+    use super::*;
 
     #[test]
     fn parse_complete_config() {

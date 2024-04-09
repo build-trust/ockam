@@ -1,3 +1,5 @@
+use colorful::Colorful;
+
 use std::time::Duration;
 
 use minicbor::{Decode, Encode};
@@ -9,9 +11,11 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
 
+use crate::colors::OckamColor;
 use crate::error::ApiError;
 use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
-use crate::route_to_multiaddr;
+use crate::output::Output;
+use crate::{route_to_multiaddr, try_route_to_multiaddr};
 
 //Requests
 
@@ -137,6 +141,13 @@ impl CreateSecureChannelResponse {
     }
 }
 
+impl Output for CreateSecureChannelResponse {
+    fn single(&self) -> crate::Result<String> {
+        let addr = try_route_to_multiaddr(&route![self.addr.to_string()])?.to_string();
+        Ok(addr)
+    }
+}
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -192,6 +203,19 @@ impl ShowSecureChannelListenerResponse {
     }
 }
 
+impl Output for ShowSecureChannelListenerResponse {
+    fn single(&self) -> crate::Result<String> {
+        let addr = {
+            let channel_route = &route![self.addr.clone()];
+            let channel_multiaddr = try_route_to_multiaddr(channel_route)?;
+            channel_multiaddr.to_string()
+        }
+        .color(OckamColor::PrimaryResource.color());
+
+        Ok(format!("Address {addr}"))
+    }
+}
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -234,6 +258,35 @@ impl ShowSecureChannelResponse {
                 .unwrap_or(None),
             flow_control_id: info.map(|info| info.sc().flow_control_id().clone()),
         }
+    }
+}
+
+impl Output for ShowSecureChannelResponse {
+    fn single(&self) -> crate::Result<String> {
+        let s = match &self.channel {
+            Some(addr) => {
+                format!(
+                    "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
+                    "  •         At: ".light_magenta(),
+                    try_route_to_multiaddr(&route![addr.to_string()])?
+                        .to_string()
+                        .light_yellow(),
+                    "  •         To: ".light_magenta(),
+                    self.route.clone().unwrap().light_yellow(),
+                    "  • Authorized: ".light_magenta(),
+                    self.authorized_identifiers
+                        .as_ref()
+                        .unwrap_or(&vec!["none".to_string()])
+                        .iter()
+                        .map(|id| id.clone().light_yellow().to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n\t")
+                )
+            }
+            None => format!("{}", "Channel not found".red()),
+        };
+
+        Ok(s)
     }
 }
 

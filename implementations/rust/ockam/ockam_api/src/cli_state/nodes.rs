@@ -12,11 +12,10 @@ use ockam_core::Error;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpListener;
 
-use crate::cli_state::{random_name, Result};
+use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};
 use crate::cloud::project::Project;
 use crate::config::lookup::InternetAddress;
-use crate::NamedVault;
 
 /// The methods below support the creation and update of local nodes
 ///

@@ -1,6 +1,7 @@
+use crate::cli_state::random_name;
 use crate::nodes::models::relay::RelayInfo;
 use crate::session::sessions::{ReplacerOutputKind, Session};
-use crate::{random_name, DefaultAddress};
+use crate::DefaultAddress;
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam_core::compat::collections::BTreeMap;

@@ -1,14 +1,14 @@
-use crate::output::Output;
-use crate::terminal::OckamColor;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use std::fmt::Write;
 
 use clap::Args;
 use colorful::Colorful;
-
+use ockam_api::colors::OckamColor;
+use ockam_api::output::Output;
 use serde::Serialize;
 use serde_json::json;
-use std::fmt::Write;
+
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -80,7 +80,7 @@ impl IdentityListOutput {
 }
 
 impl Output for IdentityListOutput {
-    fn output(&self) -> crate::error::Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         let default = if self.is_default { "(default)" } else { "" };
         let mut output = String::new();
         writeln!(

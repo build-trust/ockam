@@ -1,7 +1,8 @@
 //! API shim to make it nicer to interact with the ockam messaging API
+use std::time::Duration;
+
 use clap::Args;
 use miette::miette;
-use std::time::Duration;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 use regex::Regex;

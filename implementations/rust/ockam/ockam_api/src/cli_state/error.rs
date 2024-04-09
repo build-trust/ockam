@@ -16,6 +16,10 @@ pub enum CliStateError {
 
     #[error(transparent)]
     #[diagnostic(code("OCK500"))]
+    Fmt(#[from] std::fmt::Error),
+
+    #[error(transparent)]
+    #[diagnostic(code("OCK500"))]
     Ockam(#[from] ockam_core::Error),
 
     #[error("A {resource} named {name} already exists")]
@@ -51,13 +55,10 @@ pub enum CliStateError {
         help("Please try running 'ockam reset' to reset your local configuration")
     )]
     InvalidVersion(String),
-}
 
-impl From<&str> for CliStateError {
-    #[track_caller]
-    fn from(e: &str) -> Self {
-        CliStateError::InvalidOperation(e.to_string())
-    }
+    #[diagnostic(code("OCK500"))]
+    #[error(transparent)]
+    Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl From<CliStateError> for ockam_core::Error {
@@ -73,3 +74,18 @@ impl From<CliStateError> for ockam_core::Error {
         }
     }
 }
+
+macro_rules! gen_from_impl {
+    ($t:ty) => {
+        impl From<$t> for CliStateError {
+            #[track_caller]
+            fn from(e: $t) -> Self {
+                CliStateError::Other(e.into())
+            }
+        }
+    };
+}
+
+gen_from_impl!(miette::Error);
+gen_from_impl!(&str);
+gen_from_impl!(dialoguer::Error);

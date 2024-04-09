@@ -1,14 +1,10 @@
-use core::fmt::Write;
-
 use clap::{Args, Subcommand};
 
-use ockam_api::cloud::addon::Addon;
 use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
 use crate::operation::util::check_for_operation_completion;
-use crate::output::Output;
 use crate::project::addon::configure_influxdb::AddonConfigureInfluxdbSubcommand;
 use crate::project::addon::configure_kafka::{
     AddonConfigureAivenSubcommand, AddonConfigureConfluentSubcommand,
@@ -102,18 +98,6 @@ impl ConfigureAddonCommand {
             ConfigureAddonCommand::Warpstream(c) => c.name(),
             ConfigureAddonCommand::Kafka(c) => c.name(),
         }
-    }
-}
-
-impl Output for Addon {
-    fn output(&self) -> Result<String> {
-        let mut w = String::new();
-        write!(w, "Addon:")?;
-        write!(w, "\n  Id: {}", self.id)?;
-        write!(w, "\n  Enabled: {}", self.enabled)?;
-        write!(w, "\n  Description: {}", self.description)?;
-        writeln!(w)?;
-        Ok(w)
     }
 }
 

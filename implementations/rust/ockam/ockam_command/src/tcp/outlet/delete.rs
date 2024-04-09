@@ -4,17 +4,21 @@ use console::Term;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::models::portal::OutletList;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
 use ockam_core::AsyncTryClone;
 
+use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
+use crate::{docs, CommandGlobalOpts};
+
 use crate::terminal::tui::DeleteCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts, Terminal, TerminalStream};
-use crate::{node::NodeOpts, terminal::color_primary};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");

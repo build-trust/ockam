@@ -1,7 +1,10 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 
 use crate::cloud::{ControllerClient, HasSecureClient};
+use crate::output::Output;
+
 use ockam_core::api::{Error, Reply, Request, Status};
 use ockam_core::{self, async_trait, Result};
 use ockam_node::Context;
@@ -65,6 +68,24 @@ pub struct Subscription {
     pub contact_info: String,
     #[n(7)]
     pub space_id: Option<String>,
+}
+
+impl Output for Subscription {
+    fn single(&self) -> crate::Result<String> {
+        let mut w = String::new();
+        write!(w, "Subscription")?;
+        write!(w, "\n  Id: {}", self.id)?;
+        write!(w, "\n  Status: {}", self.status)?;
+        write!(
+            w,
+            "\n  Space id: {}",
+            self.space_id.clone().unwrap_or("N/A".to_string())
+        )?;
+        write!(w, "\n  Entitlements: {}", self.entitlements)?;
+        write!(w, "\n  Metadata: {}", self.metadata)?;
+        write!(w, "\n  Contact info: {}", self.contact_info)?;
+        Ok(w)
+    }
 }
 
 #[async_trait]

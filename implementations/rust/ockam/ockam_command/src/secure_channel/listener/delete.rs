@@ -2,13 +2,14 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::models::secure_channel::DeleteSecureChannelListenerResponse;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::node::NodeOpts;
 use crate::util::{api, async_cmd};
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");

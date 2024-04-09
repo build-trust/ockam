@@ -1,8 +1,10 @@
-mod create;
+use clap::{command, Args, Subcommand};
+
+use crate::CommandGlobalOpts;
 
 use self::create::CreateCommand;
-use crate::CommandGlobalOpts;
-use clap::{command, Args, Subcommand};
+
+mod create;
 
 /// Manage Kafka Outlets
 #[derive(Clone, Debug, Args)]

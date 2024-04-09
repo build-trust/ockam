@@ -1,4 +1,4 @@
-use crate::journeys::{
+use crate::cli_state::journeys::{
     APPLICATION_EVENT_OCKAM_GIT_HASH, APPLICATION_EVENT_OCKAM_HOME, APPLICATION_EVENT_OCKAM_VERSION,
 };
 use crate::Version;

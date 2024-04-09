@@ -6,10 +6,9 @@ use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscriptions;
-
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::Output;
 
-use crate::output::Output;
 use crate::subscription::get_subscription_by_id_or_space_id;
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
@@ -160,7 +159,7 @@ impl SubscriptionCommand {
                     .activate_subscription(ctx, space.clone(), json)
                     .await
                     .into_diagnostic()?;
-                opts.terminal.write_line(&response.output()?)?
+                opts.terminal.write_line(&response.single()?)?
             }
             SubscriptionSubcommand::List => {
                 let response = controller
@@ -193,7 +192,7 @@ impl SubscriptionCommand {
                             .unsubscribe(ctx, subscription.id)
                             .await
                             .into_diagnostic()?;
-                        opts.terminal.write_line(&response.output()?)?
+                        opts.terminal.write_line(&response.single()?)?
                     }
                     None => opts
                         .terminal
@@ -224,7 +223,7 @@ impl SubscriptionCommand {
                                     .update_subscription_contact_info(ctx, subscription.id, json)
                                     .await
                                     .into_diagnostic()?;
-                                opts.terminal.write_line(&response.output()?)?
+                                opts.terminal.write_line(&response.single()?)?
                             }
                             None => opts.terminal.write_line(
                                 "Please specify either a space id or a subscription id",
@@ -253,7 +252,7 @@ impl SubscriptionCommand {
                                     )
                                     .await
                                     .into_diagnostic()?;
-                                opts.terminal.write_line(&response.output()?)?
+                                opts.terminal.write_line(&response.single()?)?
                             }
                             None => opts.terminal.write_line(
                                 "Please specify either a space id or a subscription id",

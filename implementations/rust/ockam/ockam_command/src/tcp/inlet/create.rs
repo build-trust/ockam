@@ -1,9 +1,9 @@
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
@@ -15,26 +15,27 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_abac::Expr;
 use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::CliState;
-use ockam_api::journeys::{
+use ockam_api::cli_state::journeys::{
     JourneyEvent, NODE_NAME, TCP_INLET_ALIAS, TCP_INLET_AT, TCP_INLET_CONNECTION_STATUS,
     TCP_INLET_FROM, TCP_INLET_TO,
 };
+use ockam_api::cli_state::{random_name, CliState};
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{random_name, ConnectionStatus};
+use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 
 use crate::node::util::initialize_default_node;
 use crate::tcp::util::alias_parser;
-use crate::terminal::OckamColor;
+use crate::{docs, Command, CommandGlobalOpts, Error};
+
 use crate::util::duration::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{find_available_port, port_is_free_guard, process_nodes_multiaddr};
-use crate::{docs, fmt_info, fmt_log, fmt_ok, fmt_warn, Command, CommandGlobalOpts, Error};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -355,11 +356,13 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::run::parser::resource::utils::parse_cmd_from_args;
     use ockam_api::cloud::project::models::ProjectModel;
     use ockam_api::cloud::project::Project;
     use ockam_api::nodes::InMemoryNode;
+
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+
+    use super::*;
 
     #[test]
     fn command_can_be_parsed_from_name() {

@@ -1,24 +1,26 @@
+use std::ops::Add;
+use std::time::Duration;
+
 use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
-use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
-use std::ops::Add;
-use std::time::Duration;
 use tokio_retry::strategy::FibonacciBackoff;
 use tracing::{info, trace, warn};
 
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
+use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 
 use crate::terminal::tui::ShowCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::{api, async_cmd};
-use crate::{docs, CommandGlobalOpts, Result, Terminal, TerminalStream};
+use crate::{docs, CommandGlobalOpts, Result};
 
 use super::models::portal::{ShowInletStatus, ShowOutletStatus};
 use super::models::secure_channel::ShowSecureChannelListener;

@@ -11,11 +11,12 @@ use ockam::identity::{
     ChangeHistoryRepository, ChangeHistorySqlxDatabase, CredentialsVerification, Identifier,
     PurposeKeyVerification,
 };
+use ockam_api::{fmt_err, fmt_log, fmt_ok};
 use ockam_vault::{SoftwareVaultForVerifyingSignatures, VaultForVerifyingSignatures};
 
 use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
-use crate::{fmt_err, fmt_log, fmt_ok, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct VerifyCommand {

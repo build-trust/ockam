@@ -1,22 +1,23 @@
+use std::collections::HashMap;
+
 use colorful::Colorful;
 use miette::miette;
-use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{debug, info, instrument};
 
 use ockam::Context;
-use ockam_api::journeys::{JourneyEvent, NODE_NAME};
+use ockam_api::cli_state::journeys::{JourneyEvent, NODE_NAME};
+use ockam_api::colors::OckamColor;
 use ockam_api::logs::CurrentSpan;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::{color, fmt_log, fmt_ok};
 use ockam_core::OpenTelemetryContext;
 
 use crate::node::show::is_node_up;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
-use crate::terminal::OckamColor;
 use crate::CommandGlobalOpts;
-use crate::{color, fmt_log, fmt_ok};
 
 impl CreateCommand {
     // Create a new node running in the background (i.e. another, new OS process)

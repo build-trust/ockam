@@ -1,9 +1,13 @@
+use crate::colors::OckamColor;
+use crate::output::Output;
+use crate::Result;
+use colorful::Colorful;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
-
 use serde::Serialize;
+use std::fmt::Write;
 
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -197,6 +201,32 @@ impl ServiceStatus {
     }
 }
 
+impl Output for ServiceStatus {
+    fn single(&self) -> Result<String> {
+        let mut output = String::new();
+
+        writeln!(
+            output,
+            "Service {}",
+            self.service_type
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+        write!(
+            output,
+            "Address {}{}",
+            "/service/"
+                .to_string()
+                .color(OckamColor::PrimaryResource.color()),
+            self.addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        )?;
+
+        Ok(output)
+    }
+}
+
 /// Response body for listing services
 #[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
@@ -208,5 +238,25 @@ pub struct ServiceList {
 impl ServiceList {
     pub fn new(list: Vec<ServiceStatus>) -> Self {
         Self { list }
+    }
+}
+
+impl Output for ServiceList {
+    fn single(&self) -> Result<String> {
+        if self.list.is_empty() {
+            return Ok("No services found".to_string());
+        }
+
+        let mut w = String::new();
+        write!(w, "Services:")?;
+
+        let services_list = self.list.clone();
+        for service in services_list {
+            write!(w, "\n  Service: ")?;
+            write!(w, "\n    Type: {}", service.service_type)?;
+            write!(w, "\n    Address: /service/{}", service.addr)?;
+        }
+
+        Ok(w)
     }
 }

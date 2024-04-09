@@ -1,5 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::fmt_err;
 
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::service::default_address::DefaultAddress;
@@ -9,7 +10,7 @@ use ockam_node::Context;
 
 use crate::node::NodeOpts;
 use crate::util::async_cmd;
-use crate::{docs, fmt_err, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");

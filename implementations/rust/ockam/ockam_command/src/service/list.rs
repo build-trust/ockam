@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
@@ -7,12 +5,11 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::nodes::models::services::{ServiceList, ServiceStatus};
+use ockam_api::colors::OckamColor;
+use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
-use crate::output::Output;
-use crate::terminal::OckamColor;
 use crate::util::{api, async_cmd};
 use crate::CommandGlobalOpts;
 
@@ -68,31 +65,5 @@ impl ListCommand {
             .write_line()?;
 
         Ok(())
-    }
-}
-
-impl Output for ServiceStatus {
-    fn output(&self) -> crate::Result<String> {
-        let mut output = String::new();
-
-        writeln!(
-            output,
-            "Service {}",
-            self.service_type
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-        write!(
-            output,
-            "Address {}{}",
-            "/service/"
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-
-        Ok(output)
     }
 }

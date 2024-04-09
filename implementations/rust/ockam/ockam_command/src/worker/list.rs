@@ -5,13 +5,13 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
+use ockam_api::colors::OckamColor;
+use ockam_api::nodes::models::workers::WorkerList;
 use ockam_api::nodes::BackgroundNodeClient;
 
-use crate::output::Output;
-use crate::terminal::OckamColor;
-use crate::util::{api, async_cmd};
 use crate::{docs, CommandGlobalOpts};
+
+use crate::util::{api, async_cmd};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -70,16 +70,5 @@ impl ListCommand {
         opts.terminal.stdout().plain(list).write_line()?;
 
         Ok(())
-    }
-}
-
-impl Output for WorkerStatus {
-    fn output(&self) -> crate::Result<String> {
-        Ok(format!(
-            "Worker {}",
-            self.addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))
     }
 }

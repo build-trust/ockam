@@ -289,23 +289,26 @@ pub enum Kind {
     /// failure to serialize).
     Serialization = 12,
 
-    /// Indicates some other I/O error.
-    ///
-    /// Specifics should be available on error payload.
-    // Internal note: Check if there's a more specific `Kind` before using this.
-    Io = 13,
+    /// Indicates a parsing error.
+    Parse = 13,
 
     /// Indicates some other I/O error.
     ///
     /// Specifics should be available on error payload.
     // Internal note: Check if there's a more specific `Kind` before using this.
-    Protocol = 14,
+    Io = 14,
+
+    /// Indicates some other I/O error.
+    ///
+    /// Specifics should be available on error payload.
+    // Internal note: Check if there's a more specific `Kind` before using this.
+    Protocol = 15,
 
     /// Indicates an error that
     ///
     /// Specifics should be available on error payload.
     // Internal note: Check if there's a more specific `Kind` before using this.
-    Other = 15,
+    Other = 16,
     // This is a `#[non_exhaustive]` enum — we're free to add more variants
     // here. Do not add any which contain payloads (it should stay a "C style
     // enum"). Payload information should be added to the error itself.
@@ -388,7 +391,8 @@ impl Kind {
             Io,
             Protocol,
             Serialization,
-            Other
+            Other,
+            Parse
         })
     }
 }

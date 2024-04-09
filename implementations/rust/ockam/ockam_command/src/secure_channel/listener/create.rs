@@ -2,17 +2,19 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 
+use crate::{docs, CommandGlobalOpts};
 use ockam::identity::Identifier;
 use ockam::Context;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use ockam_api::nodes::{BackgroundNodeClient, NODEMANAGER_ADDR};
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
 use crate::util::{api, async_cmd, exitcode};
-use crate::{docs, fmt_log, fmt_ok, terminal::OckamColor, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");

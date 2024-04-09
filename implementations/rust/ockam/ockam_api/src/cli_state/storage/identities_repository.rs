@@ -1,4 +1,4 @@
-use crate::NamedIdentity;
+use crate::cli_state::NamedIdentity;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::Result;

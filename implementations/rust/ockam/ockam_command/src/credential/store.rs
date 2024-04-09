@@ -6,15 +6,16 @@ use miette::miette;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use crate::CommandGlobalOpts;
 use ockam::identity::{CredentialRepository, CredentialSqlxDatabase, Identifier};
 use ockam::Context;
+use ockam_api::{fmt_log, fmt_ok};
 
 use crate::credential::verify::verify_credential;
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
 use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
-use crate::{fmt_log, fmt_ok, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {

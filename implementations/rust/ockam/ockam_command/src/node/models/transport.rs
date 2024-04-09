@@ -1,6 +1,7 @@
+use serde::Serialize;
+
 use ockam_api::nodes::models::transport::{TransportMode, TransportStatus, TransportType};
 use ockam_core::flow_control::FlowControlId;
-use serde::Serialize;
 
 /// Information to display of the transports in the `ockam node show` command
 #[derive(Debug, Serialize)]

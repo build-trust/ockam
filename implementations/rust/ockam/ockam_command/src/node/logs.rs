@@ -1,7 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::fmt_ok;
 
-use crate::fmt_ok;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 

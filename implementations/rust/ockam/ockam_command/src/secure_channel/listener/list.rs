@@ -1,20 +1,15 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+
 use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::nodes::models::secure_channel::{
-    ListSecureChannelListenerResponse, ShowSecureChannelListenerResponse,
-};
+use ockam_api::colors::OckamColor;
+use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::route_to_multiaddr;
-use ockam_core::route;
 
 use crate::node::NodeOpts;
-use crate::output::Output;
-use crate::terminal::OckamColor;
 use crate::util::{api, async_cmd};
 use crate::{docs, CommandGlobalOpts};
 
@@ -79,20 +74,5 @@ impl ListCommand {
         opts.terminal.stdout().plain(list).write_line()?;
 
         Ok(())
-    }
-}
-
-impl Output for ShowSecureChannelListenerResponse {
-    fn output(&self) -> crate::Result<String> {
-        let addr = {
-            let channel_route = &route![self.addr.clone()];
-            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(miette!(
-                "Failed to convert route {channel_route} to multi-address"
-            ))?;
-            channel_multiaddr.to_string()
-        }
-        .color(OckamColor::PrimaryResource.color());
-
-        Ok(format!("Address {addr}"))
     }
 }

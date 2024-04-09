@@ -44,11 +44,14 @@ mod schema;
 mod session;
 
 pub mod test_utils;
+mod ui;
 mod util;
 
-pub use cli_state::*;
+pub use cli_state::CliState;
+pub use error::*;
 pub use influxdb_token_lease::*;
 pub use nodes::service::default_address::*;
 pub use session::sessions::ConnectionStatus;
+pub use ui::*;
 pub use util::*;
 pub use version::*;

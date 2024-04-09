@@ -6,12 +6,11 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
-use crate::cli_state::CliState;
+use crate::cli_state::{CliState, EnrollmentStatus, ProjectsRepository};
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::models::ProjectModel;
 use crate::cloud::project::Project;
 use crate::cloud::share::RoleInShare;
-use crate::{EnrollmentStatus, ProjectsRepository};
 
 use super::Result;
 

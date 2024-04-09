@@ -1,13 +1,14 @@
 use colorful::Colorful;
 use miette::miette;
+
 use ockam_api::cloud::operation::Operations;
 use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::{fmt_log, fmt_para};
 use ockam_node::Context;
 
-use crate::terminal::OckamColor;
 use crate::CommandGlobalOpts;
-use crate::{fmt_log, fmt_para};
 
 pub async fn check_for_project_completion(
     opts: &CommandGlobalOpts,

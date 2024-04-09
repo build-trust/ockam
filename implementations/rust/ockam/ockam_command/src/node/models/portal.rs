@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
 
+use serde::Serialize;
+
 use ockam_api::{
     addr_to_multiaddr,
     nodes::models::portal::{InletStatus, OutletStatus},
@@ -7,7 +9,6 @@ use ockam_api::{
 };
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
-use serde::Serialize;
 
 /// Information to display of the inlets in the `ockam node show` command
 #[derive(Debug, Serialize)]

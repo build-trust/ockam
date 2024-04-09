@@ -1,11 +1,14 @@
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
+use ockam_api::terminal::{Terminal, TerminalStream};
 
 use crate::terminal::tui::DeleteCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::async_cmd;
-use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -94,7 +97,7 @@ impl DeleteCommandTui for DeleteTui {
             .stdout()
             .plain(fmt_ok!(
                 "The identity named {} has been deleted",
-                color!(item_name, OckamColor::PrimaryResource)
+                color_primary(item_name)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "name": item_name }))

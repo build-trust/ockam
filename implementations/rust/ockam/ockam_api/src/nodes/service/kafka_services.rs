@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 
+use crate::cli_state::random_name;
 use ockam::{Address, Context, Result};
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::net::SocketAddr;
@@ -26,7 +27,6 @@ use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::InMemoryNode;
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
-use crate::random_name;
 
 impl NodeManagerWorker {
     pub(super) async fn start_kafka_outlet_service(

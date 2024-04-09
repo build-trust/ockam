@@ -1,8 +1,8 @@
-use async_trait::async_trait;
 use std::borrow::Borrow;
 use std::io::stdin;
 
 use arboard::Clipboard;
+use async_trait::async_trait;
 use colorful::Colorful;
 use console::Term;
 use miette::{miette, IntoDiagnostic};
@@ -11,14 +11,12 @@ use tokio::time::{sleep, Duration};
 use tracing::{debug, instrument};
 
 use ockam_api::cloud::enroll::auth0::*;
+use ockam_api::colors::{color_email, color_uri, OckamColor};
 use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_api::{fmt_err, fmt_heading, fmt_log, fmt_ok};
 
-use crate::{
-    fmt_err, fmt_heading, fmt_log,
-    terminal::{color_email, color_uri},
-    CommandGlobalOpts, Result, Terminal, TerminalStream,
-};
-use crate::{fmt_ok, terminal::OckamColor};
+use crate::{CommandGlobalOpts, Result};
 
 #[async_trait]
 pub trait OidcServiceExt {

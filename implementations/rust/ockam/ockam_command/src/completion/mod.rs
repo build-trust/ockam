@@ -1,7 +1,9 @@
-use crate::{docs, OckamCommand};
+use std::io;
+
 use clap::{Args, CommandFactory};
 use clap_complete::{generate, Shell};
-use std::io;
+
+use crate::{docs, OckamCommand};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

@@ -4,13 +4,14 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
-use crate::terminal::OckamColor;
-use crate::util::{api, async_cmd};
 use crate::{docs, CommandGlobalOpts};
+
+use crate::util::{api, async_cmd};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");

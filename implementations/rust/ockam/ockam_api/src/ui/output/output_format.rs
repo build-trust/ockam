@@ -1,7 +1,6 @@
-use crate::output::output::Output;
+use super::Output;
 use crate::Result;
 use clap::ValueEnum;
-use miette::{Context, IntoDiagnostic};
 
 /// There are 2 available formats:
 ///
@@ -21,13 +20,10 @@ impl OutputFormat {
         T: Output + serde::Serialize,
     {
         let output = match self {
-            OutputFormat::Plain => t
-                .output()
-                .into_diagnostic()
-                .context("Failed to serialize output")?,
-            OutputFormat::Json => serde_json::to_string_pretty(t)
-                .into_diagnostic()
-                .context("Failed to serialize output")?,
+            OutputFormat::Plain => t.single()?,
+            OutputFormat::Json => {
+                serde_json::to_string_pretty(t).map_err(crate::ParseError::SerdeJson)?
+            }
         };
         println!("{output}");
         Ok(())

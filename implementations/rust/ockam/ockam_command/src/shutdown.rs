@@ -1,10 +1,11 @@
-use crate::{Terminal, TerminalStream};
-use colorful::Colorful;
-use console::Term;
 use std::io;
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+
+use colorful::Colorful;
+use console::Term;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::info;
 

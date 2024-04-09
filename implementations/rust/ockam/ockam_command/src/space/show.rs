@@ -2,17 +2,18 @@ use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
 
+use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 
-use crate::output::Output;
 use crate::terminal::tui::ShowCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts, Terminal, TerminalStream};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -113,7 +114,7 @@ impl ShowCommandTui for ShowTui {
         let space = self.node.get_space_by_name(&self.ctx, item_name).await?;
         self.terminal()
             .stdout()
-            .plain(space.output()?)
+            .plain(space.single()?)
             .json(serde_json::to_string(&space).into_diagnostic()?)
             .machine(&space.name)
             .write_line()?;

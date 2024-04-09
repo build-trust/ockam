@@ -6,13 +6,13 @@ use serde_json::json;
 pub(crate) use issue::IssueCommand;
 use ockam::identity::models::{CredentialAndPurposeKey, CredentialSchemaIdentifier};
 use ockam::identity::{Identifier, TimestampInSeconds};
+use ockam_api::output::Output;
 use ockam_core::compat::collections::HashMap;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
 use crate::credential::list::ListCommand;
 use crate::error::Error;
-use crate::output::Output;
 use crate::{CommandGlobalOpts, Result};
 
 pub(crate) mod issue;
@@ -118,7 +118,7 @@ impl CredentialOutput {
 }
 
 impl Output for CredentialOutput {
-    fn output(&self) -> Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         let is_verified = if self.is_verified {
             "✔︎".light_green()
         } else {

@@ -2,7 +2,6 @@ use ockam_api::logs::{
     global_error_handler_enabled, Colored, CratesFilter, ExportingConfiguration, LogFormat,
     LoggingConfiguration, LoggingEnabled, LoggingTracing,
 };
-use ockam_api::random_name;
 
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
@@ -15,6 +14,7 @@ use std::fs;
 
 use tempfile::NamedTempFile;
 
+use ockam_api::cli_state::random_name;
 use tracing::{error, info};
 use tracing_core::Level;
 

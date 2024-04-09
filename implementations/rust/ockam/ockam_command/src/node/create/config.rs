@@ -5,8 +5,8 @@ use crate::run::parser::resource::*;
 use crate::run::parser::Version;
 use crate::value_parsers::async_parse_path_or_url;
 use crate::CommandGlobalOpts;
-use ockam_api::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
-use ockam_api::random_name;
+use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
+use ockam_api::cli_state::random_name;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{instrument, Span};
@@ -125,9 +125,10 @@ impl NodeConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::EnrollmentTicket;
+    use ockam_api::cli_state::EnrollmentTicket;
+
+    use super::*;
 
     #[test]
     fn parse_demo_config_files() {

@@ -1,7 +1,14 @@
+use crate::colors::OckamColor;
+use crate::error::ParseError;
+use crate::output::Output;
+use crate::Result;
+use colorful::Colorful;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
+use time::format_description::well_known::Iso8601;
+use time::PrimitiveDateTime;
 
-// ======= TOKEN STRUCT =======
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cbor(map)]
 pub struct Token {
@@ -22,4 +29,36 @@ pub struct Token {
 
     #[cbor(n(6))]
     pub status: String,
+}
+
+impl Output for Token {
+    fn single(&self) -> Result<String> {
+        let mut output = String::new();
+        let status = match self.status.as_str() {
+            "active" => self
+                .status
+                .to_uppercase()
+                .color(OckamColor::Success.color()),
+            _ => self
+                .status
+                .to_uppercase()
+                .color(OckamColor::Failure.color()),
+        };
+        let expires_at = {
+            PrimitiveDateTime::parse(&self.expires, &Iso8601::DEFAULT)
+                .map_err(ParseError::Time)?
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        };
+        let id = self
+            .id
+            .to_string()
+            .color(OckamColor::PrimaryResource.color());
+
+        writeln!(output, "Token {id}")?;
+        writeln!(output, "Expires {expires_at} {status}")?;
+        write!(output, "{}", self.token)?;
+
+        Ok(output)
+    }
 }

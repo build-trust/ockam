@@ -6,12 +6,12 @@ use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_project_completion;
-use crate::output::Output;
 use crate::project::util::check_project_readiness;
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::util::parsers::validate_project_name;
 use crate::{docs, CommandGlobalOpts};
+use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -60,7 +60,7 @@ impl CreateCommand {
         let project = check_project_readiness(&opts, ctx, &node, project).await?;
         opts.terminal
             .stdout()
-            .plain(project.output()?)
+            .plain(project.single()?)
             .json(serde_json::json!(&project))
             .write_line()?;
         Ok(())

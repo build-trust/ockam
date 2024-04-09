@@ -6,37 +6,37 @@ use std::sync::Arc;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
+use r3bl_rs_utils_core::UnicodeString;
+use r3bl_tui::{
+    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
+};
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{error, info, instrument, warn};
 
 use ockam::Context;
+use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::cloud::ControllerClient;
+use ockam_api::colors::{color_primary, color_uri, OckamColor};
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
-use ockam_api::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::OutputFormat;
+use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::CliState;
+use ockam_api::{fmt_heading, fmt_log, fmt_ok, fmt_warn};
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
 use crate::operation::util::check_for_project_completion;
-use crate::output::OutputFormat;
-use crate::progress_display::ProgressDisplay;
 use crate::project::util::check_project_readiness;
-use crate::terminal::{color_primary, color_uri, OckamColor};
 use crate::util::async_cmd;
-use crate::{docs, fmt_heading, fmt_log, fmt_ok, fmt_warn, CommandGlobalOpts, Result};
-
-use r3bl_rs_utils_core::UnicodeString;
-use r3bl_tui::{
-    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
-};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -119,7 +119,7 @@ impl EnrollCommand {
         display_header(&opts);
 
         let identity = {
-            let _progress_display = ProgressDisplay::start(&opts);
+            let _progress_display = NotificationHandler::start(&opts.state, opts.terminal.clone());
             opts.state
                 .get_named_identity_or_default(&self.identity)
                 .await?

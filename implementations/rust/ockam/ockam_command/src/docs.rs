@@ -1,7 +1,7 @@
-use colorful::Colorful;
-use ockam_core::env::get_env_with_default;
-use once_cell::sync::Lazy;
 use std::time::Duration;
+
+use colorful::Colorful;
+use once_cell::sync::Lazy;
 use syntect::util::as_24_bit_terminal_escaped;
 use syntect::{
     easy::HighlightLines,
@@ -10,6 +10,8 @@ use syntect::{
     parsing::SyntaxSet,
     util::LinesWithEndings,
 };
+
+use ockam_core::env::get_env_with_default;
 
 const FOOTER: &str = "
 Learn More:

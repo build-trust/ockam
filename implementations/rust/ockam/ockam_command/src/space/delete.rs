@@ -3,16 +3,19 @@ use colorful::Colorful;
 use console::Term;
 use miette::IntoDiagnostic;
 
+use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_api::{color, fmt_ok};
 use ockam_core::AsyncTryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
-use crate::terminal::PluralTerm;
+use crate::tui::PluralTerm;
 use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{color, docs, fmt_ok, CommandGlobalOpts, OckamColor, Terminal, TerminalStream};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");

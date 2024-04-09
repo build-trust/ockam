@@ -1,12 +1,13 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::fmt_ok;
 
 use ockam_api::nodes::{models, BackgroundNodeClient};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, node::NodeOpts, CommandGlobalOpts};
+use crate::{docs, node::NodeOpts, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 

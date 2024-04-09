@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use clap::{Args, Subcommand};
 use miette::miette;
+
 use ockam_abac::ResourceType;
-use std::str::FromStr;
 
 pub use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;

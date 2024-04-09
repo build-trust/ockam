@@ -1,10 +1,10 @@
-use crate::terminal::PluralTerm;
-use crate::{color, fmt_info, fmt_warn, OckamColor, Terminal, TerminalStream};
 use colorful::Colorful;
 use console::Term;
 use miette::{miette, IntoDiagnostic};
 
-use super::color_primary;
+use ockam_api::colors::color_primary;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_api::{fmt_info, fmt_warn};
 
 #[ockam_core::async_trait]
 pub trait ShowCommandTui {
@@ -42,7 +42,7 @@ pub trait ShowCommandTui {
                 return Err(miette!(
                     "The {} {} was not found",
                     Self::ITEM_NAME.singular(),
-                    color!(item_name, OckamColor::PrimaryResource)
+                    color_primary(item_name)
                 ));
             }
             self.show_single(&item_name).await?;
@@ -100,7 +100,7 @@ pub trait ShowCommandTui {
     }
 }
 
-pub fn get_opt_node_name_message(node_name: Option<&str>) -> String {
+fn get_opt_node_name_message(node_name: Option<&str>) -> String {
     if let Some(node_name) = node_name {
         format!(" on node {}", color_primary(node_name))
     } else {
@@ -127,7 +127,7 @@ pub trait DeleteCommandTui {
                     .plain(fmt_warn!(
                         "Failed to delete {} {}",
                         Self::ITEM_NAME.singular(),
-                        color!(item_name, OckamColor::PrimaryResource)
+                        color_primary(item_name)
                     ))
                     .write_line()?;
             }
@@ -242,5 +242,47 @@ pub trait DeleteCommandTui {
             }
         }
         Ok(())
+    }
+}
+
+pub enum PluralTerm {
+    Vault,
+    Identity,
+    Node,
+    Relay,
+    Space,
+    Project,
+    Inlet,
+    Outlet,
+    Policy,
+}
+
+impl PluralTerm {
+    fn singular(&self) -> &'static str {
+        match self {
+            PluralTerm::Vault => "vault",
+            PluralTerm::Identity => "identity",
+            PluralTerm::Node => "node",
+            PluralTerm::Relay => "relay",
+            PluralTerm::Space => "space",
+            PluralTerm::Project => "project",
+            PluralTerm::Inlet => "inlet",
+            PluralTerm::Outlet => "outlet",
+            PluralTerm::Policy => "policy",
+        }
+    }
+
+    fn plural(&self) -> &'static str {
+        match self {
+            PluralTerm::Vault => "vaults",
+            PluralTerm::Identity => "identities",
+            PluralTerm::Node => "nodes",
+            PluralTerm::Relay => "relays",
+            PluralTerm::Space => "spaces",
+            PluralTerm::Project => "projects",
+            PluralTerm::Inlet => "inlets",
+            PluralTerm::Outlet => "outlets",
+            PluralTerm::Policy => "policies",
+        }
     }
 }

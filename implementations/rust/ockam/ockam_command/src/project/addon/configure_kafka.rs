@@ -1,26 +1,26 @@
+use clap::builder::NonEmptyStringValueParser;
+use clap::Args;
+use colorful::Colorful;
+
+pub use aiven::AddonConfigureAivenSubcommand;
+pub use confluent::AddonConfigureConfluentSubcommand;
+pub use instaclustr::AddonConfigureInstaclustrSubcommand;
+use ockam::Context;
+use ockam_api::cloud::addon::{Addons, KafkaConfig};
+use ockam_api::fmt_ok;
+use ockam_api::nodes::InMemoryNode;
+pub use redpanda::AddonConfigureRedpandaSubcommand;
+pub use warpstream::AddonConfigureWarpstreamSubcommand;
+
+use crate::project::addon::check_configuration_completion;
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts};
+
 pub mod aiven;
 pub mod confluent;
 pub mod instaclustr;
 pub mod redpanda;
 pub mod warpstream;
-
-use clap::builder::NonEmptyStringValueParser;
-use clap::Args;
-use colorful::Colorful;
-
-use ockam::Context;
-use ockam_api::cloud::addon::{Addons, KafkaConfig};
-use ockam_api::nodes::InMemoryNode;
-
-use crate::project::addon::check_configuration_completion;
-use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
-
-pub use aiven::AddonConfigureAivenSubcommand;
-pub use confluent::AddonConfigureConfluentSubcommand;
-pub use instaclustr::AddonConfigureInstaclustrSubcommand;
-pub use redpanda::AddonConfigureRedpandaSubcommand;
-pub use warpstream::AddonConfigureWarpstreamSubcommand;
 
 const LONG_ABOUT: &str = include_str!("./static/configure_kafka/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/configure_kafka/after_long_help.txt");

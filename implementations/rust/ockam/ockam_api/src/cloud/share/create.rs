@@ -1,7 +1,7 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam_core::Result;
+use crate::Result;
 
 use crate::cli_state::{CliState, EnrollmentTicket};
 use crate::cloud::email_address::EmailAddress;

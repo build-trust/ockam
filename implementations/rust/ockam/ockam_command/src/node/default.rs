@@ -1,9 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use ockam_api::fmt_ok;
 
 use crate::util::async_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");

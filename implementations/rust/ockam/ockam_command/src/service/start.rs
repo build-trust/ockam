@@ -3,16 +3,16 @@ use colorful::Colorful;
 use miette::miette;
 use minicbor::Encode;
 
+use crate::{CommandGlobalOpts, Result};
 use ockam::Context;
+use ockam_api::colors::OckamColor;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::{fmt_ok, fmt_warn};
 use ockam_core::api::Request;
 
 use crate::node::NodeOpts;
-use crate::terminal::OckamColor;
 use crate::util::{api, async_cmd};
-use crate::{fmt_ok, CommandGlobalOpts};
-use crate::{fmt_warn, Result};
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]

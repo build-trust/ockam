@@ -1,12 +1,12 @@
-use std::{fmt::Display, str::FromStr};
-
 use crate::address::extract_address_value;
 use crate::cli_state::EnrollmentTicket;
 use crate::cloud::email_address::EmailAddress;
 use crate::error::ApiError;
+use crate::output::Output;
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
+use std::{fmt::Display, str::FromStr};
 use time::format_description::well_known::iso8601::Iso8601;
 use time::OffsetDateTime;
 
@@ -109,6 +109,15 @@ impl ReceivedInvitation {
     }
 }
 
+impl Output for ReceivedInvitation {
+    fn single(&self) -> crate::Result<String> {
+        Ok(format!(
+            "{}\n  scope: {} target_id: {} (expires {})",
+            self.id, self.scope, self.target_id, self.expires_at
+        ))
+    }
+}
+
 #[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
@@ -128,6 +137,15 @@ pub struct SentInvitation {
 impl SentInvitation {
     pub fn is_expired(&self) -> ockam_core::Result<bool> {
         is_expired(&self.expires_at)
+    }
+}
+
+impl Output for SentInvitation {
+    fn single(&self) -> crate::Result<String> {
+        Ok(format!(
+            "{}\n  scope: {} target_id: {} (expires {}) for: {:?}",
+            self.id, self.scope, self.target_id, self.expires_at, self.recipient_email,
+        ))
     }
 }
 

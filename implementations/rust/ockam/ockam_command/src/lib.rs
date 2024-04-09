@@ -16,6 +16,16 @@
 //!     ```bash
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
+pub use arguments::*;
+pub use command::*;
+pub use command_events::*;
+pub use command_global_opts::*;
+pub use error::*;
+pub use global_args::*;
+pub use pager::*;
+pub use subcommand::*;
+pub use terminal::*;
+
 mod admin;
 mod arguments;
 mod authority;
@@ -42,7 +52,6 @@ mod operation;
 mod output;
 pub mod pager;
 mod policy;
-mod progress_display;
 mod project;
 mod project_member;
 mod relay;
@@ -66,13 +75,3 @@ pub mod value_parsers;
 mod vault;
 mod version;
 mod worker;
-
-pub use arguments::*;
-pub use command::*;
-pub use command_events::*;
-pub use command_global_opts::*;
-pub use error::*;
-pub use global_args::*;
-pub use pager::*;
-pub use subcommand::*;
-pub use terminal::*;

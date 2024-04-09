@@ -3,11 +3,13 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
+use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{color_primary, util::api::IdentityOpts};
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/version/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/version/after_long_help.txt");

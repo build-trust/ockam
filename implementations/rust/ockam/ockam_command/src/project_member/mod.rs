@@ -1,12 +1,13 @@
-use crate::util::api::IdentityOpts;
-use crate::{docs, Command, CommandGlobalOpts};
-use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
+use std::collections::BTreeMap;
+
 use clap::Args;
 use clap::Subcommand;
+use miette::miette;
+
+use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
 use delete::DeleteCommand;
 use list::ListCommand;
 use list_ids::ListIdsCommand;
-use miette::miette;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
@@ -15,7 +16,9 @@ use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::nodes::NodeManager;
 use ockam_api::CliState;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
-use std::collections::BTreeMap;
+
+use crate::util::api::IdentityOpts;
+use crate::{docs, Command, CommandGlobalOpts};
 
 mod add;
 mod delete;

@@ -34,13 +34,17 @@ base64-url = "2.0.2"
 bytes = { version = "1.6.0", default-features = false, features = ["serde"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4" }
+clap = { version = "4.5", default-features = false, features = ["derive"] }
 colorful = "0.2"
+colors-transform = "0.2"
+dialoguer = "0.11"
 either = { version = "1.10.0", default-features = false }
 fs2 = { version = "0.4.3" }
 futures = { version = "0.3.30", features = [] }
 gethostname = "0.4.3"
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
+indicatif = "0.17"
 itertools = "0.12.1"
 kafka-protocol = "0.10"
 miette = "7"
@@ -54,6 +58,10 @@ opentelemetry-otlp = { version = "0.15.0", features = ["logs", "metrics", "trace
 opentelemetry-semantic-conventions = { version = "0.14.0" }
 opentelemetry_sdk = { version = "0.22.1", features = ["logs", "metrics", "trace", "rt-tokio", "rt-tokio-current-thread", "testing", "logs_level_enabled"], default-features = false }
 petname = { version = "2.0.0-beta.4", default-features = false, features = ["default-rng", "default-words"] }
+r3bl_ansi_color = "0.6"
+r3bl_rs_utils_core = "0.9"
+r3bl_tui = "0.5"
+r3bl_tuify = "0.1"
 rand = "0.8"
 regex = "1.10.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
@@ -61,6 +69,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
 sha2 = "0.10.8"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
+strip-ansi-escapes = "0.2"
 sysinfo = "0.30"
 thiserror = "1.0"
 time = { version = "0.3.35", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }

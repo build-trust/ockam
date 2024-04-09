@@ -7,10 +7,11 @@ use ockam_api::authenticator::direct::Members;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
-use super::{create_authority_client, get_project};
-use crate::output::Output;
 use crate::util::api::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts, Result};
+use ockam_api::output::Output;
+
+use super::{create_authority_client, get_project};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 
@@ -61,7 +62,7 @@ impl Command for ListCommand {
 struct MemberOutput(Identifier, AttributesEntry);
 
 impl Output for MemberOutput {
-    fn output(&self) -> Result<String> {
+    fn single(&self) -> ockam_api::Result<String> {
         Ok(format!("{}: {}", self.0, self.1))
     }
 }

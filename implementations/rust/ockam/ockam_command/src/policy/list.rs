@@ -1,20 +1,16 @@
-use std::fmt::Write;
-
 use clap::Args;
 use miette::IntoDiagnostic;
-
 use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_abac::{ResourcePolicy, ResourceTypePolicy};
+
+use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::policies::ResourceTypeOrName;
 use ockam_api::nodes::{BackgroundNodeClient, Policies};
 
-use crate::output::Output;
-use crate::terminal::color_primary;
 use crate::util::async_cmd;
-use crate::{CommandGlobalOpts, Result};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -100,39 +96,5 @@ impl ListCommand {
             .write_line()?;
 
         Ok(())
-    }
-}
-
-impl Output for ResourceTypePolicy {
-    fn output(&self) -> Result<String> {
-        let mut output = String::new();
-        writeln!(
-            output,
-            "Resource type: {}",
-            color_primary(&self.resource_type)
-        )?;
-        write!(
-            output,
-            "Expression: {}",
-            color_primary(self.expression.to_string())
-        )?;
-        Ok(output)
-    }
-}
-
-impl Output for ResourcePolicy {
-    fn output(&self) -> Result<String> {
-        let mut output = String::new();
-        writeln!(
-            output,
-            "Resource name: {}",
-            color_primary(self.resource_name.to_string())
-        )?;
-        write!(
-            output,
-            "Expression: {}",
-            color_primary(self.expression.to_string())
-        )?;
-        Ok(output)
     }
 }

@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use colorful::{Colorful, RGB};
 use rand::random;
 
 use cli_state::error::Result;
@@ -12,7 +11,7 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use crate::cli_state::{self, CliStateError};
 use crate::logs::ExportingEnabled;
-use crate::Notification;
+use crate::terminal::notification::Notification;
 
 /// Maximum number of notifications present in the channel
 const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
@@ -49,13 +48,6 @@ pub struct CliState {
     /// Broadcast channel to be notified of major events during a process supported by the
     /// CliState API
     notifications: Sender<Notification>,
-}
-
-pub fn color_primary(text: &str) -> String {
-    // This is a copy of `OckamColor::PrimaryResource` which is the `ockam_command` crate.
-    // #4FDAB8 is rgb(79,218,184).
-    let color = RGB::new(79, 218, 184);
-    text.color(color).to_string()
 }
 
 impl CliState {

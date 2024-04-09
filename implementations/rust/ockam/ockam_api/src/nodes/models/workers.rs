@@ -1,3 +1,7 @@
+use crate::colors::OckamColor;
+use crate::output::Output;
+use crate::Result;
+use colorful::Colorful;
 use minicbor::{Decode, Encode};
 
 #[derive(Debug, Clone, Decode, Encode)]
@@ -10,6 +14,17 @@ pub struct WorkerStatus {
 impl WorkerStatus {
     pub fn new(addr: impl Into<String>) -> Self {
         Self { addr: addr.into() }
+    }
+}
+
+impl Output for WorkerStatus {
+    fn single(&self) -> Result<String> {
+        Ok(format!(
+            "Worker {}",
+            self.addr
+                .to_string()
+                .color(OckamColor::PrimaryResource.color())
+        ))
     }
 }
 

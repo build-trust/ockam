@@ -35,7 +35,7 @@ impl OckamColor {
         }
     }
 
-    pub fn color(&self) -> colorful::RGB {
+    pub fn color(&self) -> RGB {
         let rgb = Rgb::from_hex_str(self.value()).expect("Invalid hex string");
 
         RGB::new(

@@ -1,6 +1,7 @@
-use crate::run::parser::Variables;
 use miette::IntoDiagnostic;
 use serde::Deserialize;
+
+use crate::run::parser::Variables;
 
 pub trait ConfigParser<'de>: Deserialize<'de> {
     /// Parse variables section and resolve them

@@ -1,7 +1,8 @@
-use crate::{OckamCommand, OckamSubcommand};
 use clap::Parser;
 use miette::IntoDiagnostic;
 use once_cell::sync::Lazy;
+
+use crate::{OckamCommand, OckamSubcommand};
 
 static BINARY_PATH: Lazy<String> = Lazy::new(|| {
     std::env::args()
