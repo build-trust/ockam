@@ -3,7 +3,6 @@ use std::process::exit;
 use clap::Parser;
 
 use miette::IntoDiagnostic;
-use tracing_core::Level;
 
 use crate::{
     add_command_error_event, fmt_log, has_help_flag, has_version_flag, pager,
@@ -44,7 +43,7 @@ pub fn run() -> miette::Result<()> {
                     .join(" ");
 
                 let logging_configuration = logging_configuration(
-                    Some(Level::TRACE),
+                    None,
                     Colored::On,
                     None,
                     crates_filter().into_diagnostic()?,
