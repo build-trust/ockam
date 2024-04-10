@@ -5,17 +5,27 @@ use crate::run::parser::resource::*;
 use crate::run::parser::Version;
 use crate::value_parsers::async_parse_path_or_url;
 use crate::CommandGlobalOpts;
+use ockam_api::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::random_name;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, Span};
 
 impl CreateCommand {
+    #[instrument(skip_all, fields(app.event.command.configuration_file))]
     pub async fn run_config(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         let contents = async_parse_path_or_url(&self.name).await?;
         // Set environment variables from the cli command args
         for (key, value) in &self.variables {
             std::env::set_var(key, value);
         }
+
+        // Record the provided file
+        Span::current().record(
+            APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
+            &contents,
+        );
+
         let mut config = NodeConfig::new(&contents)?;
         let node_name = config.merge(self)?;
         config.run(ctx, opts.clone(), &node_name).await?;

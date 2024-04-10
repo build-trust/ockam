@@ -10,7 +10,9 @@ use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
+use ockam_api::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use std::path::PathBuf;
+use tracing::{instrument, Span};
 
 /// Create nodes given a declarative configuration file
 #[derive(Clone, Debug, Args)]
@@ -42,6 +44,7 @@ impl RunCommand {
         "run".to_string()
     }
 
+    #[instrument(skip_all, fields(app.event.command.configuration_file))]
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let contents = match &self.inline {
             Some(contents) => contents.to_string(),
@@ -74,6 +77,11 @@ impl RunCommand {
                 std::fs::read_to_string(path).into_diagnostic()?
             }
         };
+        // Record the provided file
+        Span::current().record(
+            APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
+            &contents,
+        );
         Config::parse_and_run(ctx, opts, ValuesOverrides::default(), &contents).await
     }
 }

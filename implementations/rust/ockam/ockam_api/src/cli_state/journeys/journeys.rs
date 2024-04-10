@@ -43,6 +43,8 @@ pub const APPLICATION_EVENT_SPAN_ID: &Key = &Key::from_static_str("app.event.spa
 pub const APPLICATION_EVENT_TIMESTAMP: &Key = &Key::from_static_str("app.event.timestamp");
 pub const APPLICATION_EVENT_ERROR_MESSAGE: &Key = &Key::from_static_str("app.event.error_message");
 pub const APPLICATION_EVENT_COMMAND: &Key = &Key::from_static_str("app.event.command");
+pub const APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE: &Key =
+    &Key::from_static_str("app.event.command.configuration_file");
 pub const APPLICATION_EVENT_OCKAM_HOME: &Key = &Key::from_static_str("app.event.ockam_home");
 pub const APPLICATION_EVENT_OCKAM_VERSION: &Key = &Key::from_static_str("app.event.ockam_version");
 pub const APPLICATION_EVENT_OCKAM_GIT_HASH: &Key =
