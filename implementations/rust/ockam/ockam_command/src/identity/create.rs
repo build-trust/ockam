@@ -8,9 +8,11 @@ use miette::IntoDiagnostic;
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::IdentitiesVerification;
 use ockam_api::cli_state::random_name;
+use ockam_api::journeys::{JourneyEvent, IDENTIFIER, IDENTITY_NAME};
 use ockam_api::{color_primary, NamedVault};
 use ockam_node::Context;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
+use std::collections::HashMap;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -72,6 +74,12 @@ impl CreateCommand {
             }
         };
         let identifier = identity.identifier().to_string();
+        let mut attributes = HashMap::new();
+        attributes.insert(IDENTIFIER, identifier.clone());
+        attributes.insert(IDENTITY_NAME, self.name.clone());
+        opts.state
+            .add_journey_event(JourneyEvent::IdentityCreated, attributes)
+            .await?;
 
         opts.terminal
             .stdout()
@@ -112,6 +120,13 @@ impl CreateCommand {
         .into_diagnostic()?;
         opts.state
             .store_named_identity(&identifier, &self.name, &vault.name())
+            .await?;
+
+        let mut attributes = HashMap::new();
+        attributes.insert(IDENTIFIER, identifier.to_string());
+        attributes.insert(IDENTITY_NAME, self.name.clone());
+        opts.state
+            .add_journey_event(JourneyEvent::IdentityCreated, attributes)
             .await?;
 
         opts.terminal

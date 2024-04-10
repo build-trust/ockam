@@ -19,6 +19,8 @@ pub const TCP_INLET_CONNECTION_STATUS: &Key =
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JourneyEvent {
     Enrolled,
+    IdentityCreated,
+    IdentityImported,
     NodeCreated,
     TcpInletCreated,
     TcpOutletCreated,
@@ -50,6 +52,8 @@ impl Display for JourneyEvent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             JourneyEvent::Enrolled => f.write_str("✅ enrolled"),
+            JourneyEvent::IdentityCreated => f.write_str("✅ identity created"),
+            JourneyEvent::IdentityImported => f.write_str("✅ identity imported"),
             JourneyEvent::NodeCreated => f.write_str("✅ node created"),
             JourneyEvent::TcpInletCreated => f.write_str("✅ tcp inlet created"),
             JourneyEvent::TcpOutletCreated => f.write_str("✅ tcp outlet created"),

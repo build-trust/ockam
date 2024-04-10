@@ -18,6 +18,8 @@ pub const USER_NAME: &Key = &Key::from_static_str("app.user_name");
 pub const USER_EMAIL: &Key = &Key::from_static_str("app.user_email");
 pub const APP_NAME: &Key = &Key::from_static_str("app.name");
 pub const NODE_NAME: &Key = &Key::from_static_str("app.node_name");
+pub const IDENTIFIER: &Key = &Key::from_static_str("app.identifier");
+pub const IDENTITY_NAME: &Key = &Key::from_static_str("app.identity_name");
 
 pub const APPLICATION_EVENT_HOST: &Key = &Key::from_static_str("app.event.host");
 pub const APPLICATION_EVENT_SPACE_ID: &Key = &Key::from_static_str("app.event.space.id");
