@@ -6,12 +6,7 @@ use cfg_if::cfg_if;
     not(feature = "disable_default_noise_protocol")
 ))]
 cfg_if! {
-    // only linux-gnu amd64 and armv8 are supported
-    // without recompiling the bindings
-    if #[cfg(all(
-        any(target_arch="x86_64", target_arch="aarch64"),
-        target_os="linux",
-        target_env="gnu"))] {
+    if #[cfg(feature = "aws-lc")] {
         mod aes_aws_lc;
         use aes_aws_lc::make_aes;
     } else {

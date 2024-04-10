@@ -385,12 +385,12 @@ jobs:
           set -ex
 
           if [[ '${{ matrix.job.use-cross }}' == 'true' ]]; then
-            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release
+            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release -F ockam_vault/aws-lc
             exit
           fi
 
           rustup target add ${{ matrix.job.target }}
-          cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release
+          cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release -F ockam_vault/aws-lc
 
       - name: List
         run: |

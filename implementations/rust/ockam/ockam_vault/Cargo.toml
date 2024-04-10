@@ -30,12 +30,14 @@ disable_default_noise_protocol = []
 OCKAM_XX_25519_AES256_GCM_SHA256 = []
 OCKAM_XX_25519_AES128_GCM_SHA256 = []
 OCKAM_XX_25519_ChaChaPolyBLAKE2s = []
+aws-lc = ["dep:aws-lc-rs"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
   "ockam_macros/std",
   "ockam_node/std",
+  "aes-gcm/std",
   "ed25519-dalek/std",
   "rand/std",
   "rand/std_rng",
@@ -68,13 +70,10 @@ alloc = [
 
 storage = ["ockam_node/storage", "sqlx"]
 
-# AWS LC provides binaries only for x86_64 and aarch64
-[target.'cfg(all(any(target_arch="x86_64", target_arch="aarch64"),target_os="linux",target_env="gnu"))'.dependencies]
-aws-lc-rs = { version = "1.6", default-features = false, features = ["non-fips"] }
-
 [dependencies]
-aes-gcm = { version = "0.10", default-features = false, features = ["aes"], optional = true }
+aes-gcm = { version = "0.10", default-features = false, features = ["aes", "zeroize"] }
 arrayref = "0.3"
+aws-lc-rs = { version = "1.6", default-features = false, features = ["non-fips", "bindgen"], optional = true }
 cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }
 hex = { version = "0.4", default-features = false }

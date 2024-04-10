@@ -13,7 +13,7 @@ fi
 set -e
 
 if [ -z "${OCKAM}" ]; then
-  RUSTFLAGS="-C force-frame-pointers=yes" cargo build --profile profiling -p ockam_command
+  RUSTFLAGS="-C force-frame-pointers=yes" cargo build --profile profiling -p ockam_command  -F ockam_vault/aws-lc
   OCKAM=target/profiling/ockam
 fi
 
