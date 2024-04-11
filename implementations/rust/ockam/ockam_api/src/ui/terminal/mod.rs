@@ -356,8 +356,12 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
 
 // Extensions
 impl<W: TerminalWriter + Debug> Terminal<W> {
+    pub fn can_use_progress_spinner(&self) -> bool {
+        !self.quiet && self.stderr.is_tty()
+    }
+
     pub fn progress_spinner(&self) -> Option<ProgressBar> {
-        if self.quiet || !self.stderr.is_tty() {
+        if !self.can_use_progress_spinner() {
             return None;
         }
         let ticker = [

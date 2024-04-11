@@ -80,13 +80,24 @@ impl CliState {
         self.database.set_node_name(node_name.as_ref());
     }
 
-    pub fn subscribe(&self) -> Receiver<Notification> {
+    pub fn subscribe_to_notifications(&self) -> Receiver<Notification> {
         self.notifications.subscribe()
     }
 
-    // 00: make the notification arg a ref
-    pub fn notify(&self, notification: Notification) {
-        info!(notification);
+    pub fn notify_message(&self, message: impl Into<String>) {
+        self.notify(Notification::message(message));
+    }
+
+    pub fn notify_progress_set(&self, message: impl Into<String>) {
+        self.notify(Notification::progress_set(message));
+    }
+
+    pub fn notify_progress_finish(&self, message: impl Into<Option<String>>) {
+        self.notify(Notification::progress_finish(message));
+    }
+
+    fn notify(&self, notification: Notification) {
+        debug!("{:?}", notification.contents());
         let _ = self.notifications.send(notification);
     }
 }

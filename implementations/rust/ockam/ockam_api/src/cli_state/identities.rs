@@ -7,6 +7,7 @@ use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
 use crate::cli_state::{random_name, CliState, Result};
 use crate::colors::color_primary;
+use crate::{fmt_log, fmt_ok};
 
 /// The methods below allow the creation named identities.
 /// A NamedIdentity is an identity that is associated to a name in order to be more easily
@@ -246,22 +247,22 @@ impl CliState {
             Some(named_identity) => Ok(named_identity),
             // Create a new default identity.
             None => {
-                let message =
-                    "There is no default Identity on this machine, generating one...\n".to_string();
-                self.notify(message.clone());
+                self.notify_message(fmt_log!(
+                    "There is no default Identity on this machine, generating one...\n"
+                ));
 
                 let named_identity = self.create_identity_with_name(&random_name()).await?;
 
-                self.notify(format!(
+                self.notify_message(fmt_ok!(
                     "Generated a new Identity named {}.",
                     color_primary(named_identity.name())
                 ));
-                self.notify(format!(
+                self.notify_message(fmt_log!(
                     "{} has Identifier {}",
                     color_primary(named_identity.name()),
                     color_primary(named_identity.identifier().to_string())
                 ));
-                self.notify(format!(
+                self.notify_message(fmt_ok!(
                     "Marked {} as your default Identity, {}.\n",
                     color_primary(named_identity.name()),
                     "on this machine".dim()
