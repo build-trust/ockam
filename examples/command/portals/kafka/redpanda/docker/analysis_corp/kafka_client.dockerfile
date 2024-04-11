@@ -1,6 +1,7 @@
 FROM alpine:3
 
-ENV KAFKA_VERSION 3.5.0
+# Install Kafka client
+ENV KAFKA_VERSION 3.7.0
 ENV SCALA_VERSION 2.13
 
 RUN apk add --update --no-cache curl
@@ -15,11 +16,13 @@ RUN mirror=$(curl --stderr /dev/null https://www.apache.org/dyn/closer.cgi\?as_j
   && chown -R kafka: /opt/kafka \
   && rm -rf /tmp/* \
   && apk del --purge .build-deps
+ENV PATH "/sbin:/opt/kafka/bin/:$PATH"
 
+# Install Ockam
 RUN curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash -s
-ENV PATH "/root/.ockam/bin:/sbin:/opt/kafka/bin/:$PATH"
-COPY ./consumer.sh /consumer.sh
-RUN chmod +x /consumer.sh
-COPY ./producer.sh /producer.sh
-RUN chmod +x /producer.sh
+ENV PATH "/root/.ockam/bin:$PATH"
 
+# Copy the script that will be used as entrypoint
+COPY run_ockam.sh /run_ockam.sh
+RUN chmod +x /run_ockam.sh
+ENTRYPOINT ["/run_ockam.sh"]
