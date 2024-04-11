@@ -113,7 +113,7 @@ tracing = { version = "0.1", default-features = false }
 tracing-core = { version = "0.1.32", default-features = false }
 tracing-opentelemetry = "0.23.0"
 url = "2.4.1"
-which = "6.0.0"
+which = "6.0.1"
 
 [dev-dependencies]
 assert_cmd = "2"
