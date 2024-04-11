@@ -1,0 +1,21 @@
+---
+version: "3.7"
+networks:
+  analysis_corp:
+      driver: bridge
+services:
+  # Start a consumer node with ockam.
+  #
+  # Read kafka_client.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  consumer:
+    build:
+      context: .
+      dockerfile: kafka_client.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    command:
+      - -c
+      - kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092
+    networks:
+      - analysis_corp
