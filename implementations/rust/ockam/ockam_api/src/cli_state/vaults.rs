@@ -12,6 +12,7 @@ use ockam_vault_aws::AwsSigningVault;
 
 use crate::cli_state::{random_name, CliState, CliStateError, Result};
 use crate::output::Output;
+use crate::{fmt_log, fmt_ok};
 
 static DEFAULT_VAULT_NAME: &str = "default";
 
@@ -148,18 +149,21 @@ impl CliState {
             return Ok(existing_vault);
         }
 
-        self.notify("We need a Vault to store Identity secrets.".to_string());
-        self.notify("There is no default Vault on this machine, creating one...".to_string());
+        self.notify_message(fmt_log!("We need a Vault to store Identity secrets."));
+        self.notify_message(fmt_log!(
+            "There is no default Vault on this machine, creating one..."
+        ));
         let named_vault = self
             .create_a_vault(&Some(vault_name.to_string()), &None, false)
             .await?;
-        self.notify("Created a new Vault on your disk.".to_string());
+        self.notify_message(fmt_ok!("Created a new Vault on your disk."));
         if is_default {
-            self.notify(format!(
+            self.notify_message(fmt_ok!(
                 "Marked this new vault as your default Vault, {}.\n",
                 "on this machine".dim()
             ));
         }
+
         Ok(named_vault)
     }
 
