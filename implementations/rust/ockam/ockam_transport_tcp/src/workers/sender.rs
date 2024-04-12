@@ -1,7 +1,5 @@
 use crate::workers::Addresses;
 use crate::{TcpConnectionMode, TcpRegistry, TcpSenderInfo};
-use cfg_if::cfg_if;
-use core::time::Duration;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
@@ -10,14 +8,12 @@ use ockam_core::{
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_core::{encode_transport_message, TransportError};
 
+use ockam_transport_core::encode_transport_message;
 use serde::{Deserialize, Serialize};
-use socket2::{SockRef, TcpKeepalive};
 use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
-use tracing::{debug, info, instrument, trace, warn};
+use tokio::net::tcp::OwnedWriteHalf;
+use tracing::{info, instrument, trace, warn};
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -118,38 +114,6 @@ impl TcpSendWorker {
             .await?;
 
         Ok(())
-    }
-
-    #[instrument(skip_all, name = "TcpSendWorker::connect")]
-    pub(crate) async fn connect(
-        socket_address: SocketAddr,
-    ) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
-        debug!(addr = %socket_address, "Connecting");
-        let connection = match TcpStream::connect(socket_address).await {
-            Ok(c) => {
-                debug!(addr = %socket_address, "Connected");
-                c
-            }
-            Err(e) => {
-                debug!(addr = %socket_address, err = %e, "Failed to connect");
-                return Err(TransportError::from(e))?;
-            }
-        };
-
-        let mut keepalive = TcpKeepalive::new()
-            .with_time(Duration::from_secs(300))
-            .with_interval(Duration::from_secs(75));
-
-        cfg_if! {
-            if #[cfg(unix)] {
-               keepalive = keepalive.with_retries(2);
-            }
-        }
-
-        let socket = SockRef::from(&connection);
-        socket.set_tcp_keepalive(&keepalive).unwrap();
-
-        Ok(connection.into_split())
     }
 }
 

@@ -93,7 +93,7 @@ root
     ├── create tcp transport
     ├── TcpListenProcessor::start
     ├── create tcp transport
-    ├── TcpSendWorker::connect
+    ├── connect
     ├── TcpSendWorker::start
     ├── TcpRecvProcessor::start
     └── MessageSender::handle_message
@@ -190,7 +190,7 @@ root
     ├── create tcp transport
     ├── TcpListenProcessor::start
     ├── create tcp transport
-    ├── TcpSendWorker::connect
+    ├── connect
     ├── TcpSendWorker::start
     ├── TcpRecvProcessor::start
     ├── TcpSendWorker::handle_message

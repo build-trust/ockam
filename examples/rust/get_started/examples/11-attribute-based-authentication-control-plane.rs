@@ -14,6 +14,7 @@ use ockam_api::nodes::NodeManager;
 use ockam_api::{multiaddr_to_route, multiaddr_to_transport_route};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::HostnamePort;
 
 /// This node supports a "control" server on which several "edge" devices can connect
 ///
@@ -106,7 +107,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4. create a tcp outlet with the above policy
     tcp.create_outlet(
         "outlet",
-        "127.0.0.1:5000",
+        HostnamePort::new("127.0.0.1", 5000),
         TcpOutletOptions::new()
             .with_incoming_access_control_impl(incoming_access_control)
             .with_outgoing_access_control_impl(outgoing_access_control),

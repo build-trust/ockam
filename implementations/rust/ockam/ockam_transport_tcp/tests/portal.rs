@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -7,7 +8,8 @@ use ockam_core::compat::rand::random;
 use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::{
-    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
+    HostnamePort, TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions,
+    TcpTransport,
 };
 
 const LENGTH: usize = 32;
@@ -18,7 +20,9 @@ async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let bind_address = listener.local_addr().unwrap().to_string();
-        tcp.create_outlet("outlet", bind_address.clone(), TcpOutletOptions::new())
+        let hostname_port = HostnamePort::from_str(&bind_address)?;
+
+        tcp.create_outlet("outlet", hostname_port, TcpOutletOptions::new())
             .await?;
         listener
     };
@@ -136,7 +140,7 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
     let bind_address = listener.local_addr().unwrap().to_string();
     tcp.create_outlet(
         "outlet",
-        bind_address.clone(),
+        HostnamePort::from_str(&bind_address)?,
         TcpOutletOptions::new().as_consumer(&outlet_flow_control_id),
     )
     .await?;
@@ -191,7 +195,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
 
     tcp.create_outlet(
         "outlet_invalid",
-        bind_address.clone(),
+        HostnamePort::from_str(&bind_address)?,
         TcpOutletOptions::new(),
     )
     .await?;

@@ -17,7 +17,6 @@ use ockam_multiaddr::MultiAddr;
 /// In order for the result to be reliable, use the --profile release
 /// flag when running the tests.
 /// `cargo test --test latency --release -- --ignored --show-output`
-
 #[ignore]
 #[test]
 pub fn measure_message_latency_two_nodes() {
@@ -130,7 +129,8 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr,
+                    echo_server_handle.chosen_addr.clone(),
+                    false,
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),

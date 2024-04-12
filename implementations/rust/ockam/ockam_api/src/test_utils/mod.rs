@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use crate::config::lookup::InternetAddress;
 use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
 use ockam_node::{Context, NodeBuilder};
@@ -18,7 +19,7 @@ use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::SecureChannels;
 use ockam::Result;
 use ockam_core::AsyncTryClone;
-use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
+use ockam_transport_tcp::{HostnamePort, TcpListenerOptions, TcpTransport};
 
 use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
 use crate::cli_state::{random_name, CliState};
@@ -127,8 +128,9 @@ pub async fn start_manager_for_tests(
     Ok(handle)
 }
 
+#[derive(Debug, Clone)]
 pub struct EchoServerHandle {
-    pub chosen_addr: SocketAddr,
+    pub chosen_addr: HostnamePort,
     close: Arc<AtomicBool>,
 }
 
@@ -189,7 +191,10 @@ pub async fn start_tcp_echo_server() -> EchoServerHandle {
         });
     }
 
-    EchoServerHandle { chosen_addr, close }
+    EchoServerHandle {
+        chosen_addr: HostnamePort::from_socket_addr(chosen_addr).unwrap(),
+        close,
+    }
 }
 
 pub struct TestNode {

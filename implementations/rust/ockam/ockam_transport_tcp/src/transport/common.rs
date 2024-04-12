@@ -1,11 +1,22 @@
-use crate::TcpConnectionMode;
+use crate::{HostnamePort, TcpConnectionMode};
+use cfg_if::cfg_if;
 use core::fmt;
 use core::fmt::Formatter;
+use native_tls::Certificate;
+use native_tls::TlsConnector as NativeTlsConnector;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{Address, Result};
+use ockam_core::{Address, Error, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
+use socket2::{SockRef, TcpKeepalive};
+use std::time::Duration;
+use tokio::io::{ReadHalf, WriteHalf};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::net::TcpStream;
+use tokio_native_tls::TlsStream;
+use tracing::{debug, instrument};
 
 /// Result of [`TcpTransport::connect`] call.
 #[derive(Clone, Debug)]
@@ -152,6 +163,108 @@ pub fn resolve_peer(peer: String) -> Result<SocketAddr> {
 
 pub(super) fn parse_socket_addr(s: &str) -> Result<SocketAddr> {
     Ok(s.parse().map_err(|_| TransportError::InvalidAddress)?)
+}
+
+/// Connect to a socket address via a regular TcpStream
+#[instrument(skip_all)]
+pub(crate) async fn connect(socket_address: SocketAddr) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
+    Ok(create_tcp_stream(socket_address).await?.into_split())
+}
+
+/// Create a TCP stream to a given socket address
+pub(crate) async fn create_tcp_stream(socket_address: SocketAddr) -> Result<TcpStream> {
+    debug!(addr = %socket_address, "Connecting");
+    let connection = match TcpStream::connect(socket_address).await {
+        Ok(c) => {
+            debug!(addr = %socket_address, "Connected");
+            c
+        }
+        Err(e) => {
+            debug!(addr = %socket_address, err = %e, "Failed to connect");
+            return Err(TransportError::from(e))?;
+        }
+    };
+
+    let mut keepalive = TcpKeepalive::new()
+        .with_time(Duration::from_secs(300))
+        .with_interval(Duration::from_secs(75));
+
+    cfg_if! {
+        if #[cfg(unix)] {
+           keepalive = keepalive.with_retries(2);
+        }
+    }
+
+    let socket = SockRef::from(&connection);
+    socket
+        .set_tcp_keepalive(&keepalive)
+        .map_err(TransportError::from)?;
+
+    Ok(connection)
+}
+
+/// Connect to a socket address via a TlsStream
+#[allow(clippy::type_complexity)]
+#[instrument(skip_all)]
+pub(crate) async fn connect_tls(
+    hostname_port: &HostnamePort,
+) -> Result<(
+    ReadHalf<TlsStream<TcpStream>>,
+    WriteHalf<TlsStream<TcpStream>>,
+)> {
+    let socket_address = hostname_port.to_socket_addr()?;
+    debug!(hostname_port = %hostname_port, addr = %socket_address, "Trying to connect using TLS");
+
+    // create a tcp stream
+    let connection = create_tcp_stream(socket_address).await?;
+
+    // create a TLS connector
+    let tls_connector = create_tls_connector().await?;
+
+    // Connect using TLS over TCP
+    let tls_stream = tls_connector
+        .connect(&hostname_port.hostname(), connection)
+        .await
+        .map_err(|e| {
+            Error::new(
+                Origin::Transport,
+                Kind::Io,
+                format!("Cannot connect using TLS to {hostname_port}: {e:?}"),
+            )
+        })?;
+    debug!("Connected using TLS to {hostname_port}");
+    Ok(tokio::io::split(tls_stream))
+}
+
+/// Create a TLS connector using the system certificates
+pub(crate) async fn create_tls_connector() -> Result<tokio_native_tls::TlsConnector> {
+    let mut native_tls_connector = NativeTlsConnector::builder();
+
+    let certificates = rustls_native_certs::load_native_certs().map_err(|e| {
+        Error::new(
+            Origin::Transport,
+            Kind::Io,
+            format!("Cannot load the native certificates: {e:?}"),
+        )
+    })?;
+    debug!("there are {} certificates", certificates.len());
+
+    for certificate in certificates {
+        match Certificate::from_der(certificate.as_ref()) {
+            Ok(certificate) => {
+                native_tls_connector.add_root_certificate(certificate);
+            }
+            Err(e) => debug!("Cannot build create a certificate from a root system DER: {e:?}"),
+        }
+    }
+    let native_tls_connector = native_tls_connector.build().map_err(|e| {
+        Error::new(
+            Origin::Transport,
+            Kind::Io,
+            format!("Cannot build a native TLS connector: {e:?}"),
+        )
+    })?;
+    Ok(tokio_native_tls::TlsConnector::from(native_tls_connector))
 }
 
 #[cfg(test)]

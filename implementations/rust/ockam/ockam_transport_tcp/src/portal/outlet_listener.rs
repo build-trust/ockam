@@ -1,9 +1,8 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
+use crate::{portal::TcpPortalWorker, HostnamePort, PortalMessage, TcpOutletOptions, TcpRegistry};
 use ockam_core::{async_trait, Address, DenyAll, NeutralMessage, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
-use std::net::SocketAddr;
 use tracing::{debug, instrument};
 
 /// A TCP Portal Outlet listen worker
@@ -13,16 +12,16 @@ use tracing::{debug, instrument};
 /// [`TcpTransport::create_outlet`](crate::TcpTransport::create_outlet).
 pub(crate) struct TcpOutletListenWorker {
     registry: TcpRegistry,
-    peer: SocketAddr,
+    hostname_port: HostnamePort,
     options: TcpOutletOptions,
 }
 
 impl TcpOutletListenWorker {
     /// Create a new `TcpOutletListenWorker`
-    fn new(registry: TcpRegistry, peer: SocketAddr, options: TcpOutletOptions) -> Self {
+    fn new(registry: TcpRegistry, hostname_port: HostnamePort, options: TcpOutletOptions) -> Self {
         Self {
             registry,
-            peer,
+            hostname_port,
             options,
         }
     }
@@ -32,14 +31,14 @@ impl TcpOutletListenWorker {
         ctx: &Context,
         registry: TcpRegistry,
         address: Address,
-        peer: SocketAddr,
+        hostname_port: HostnamePort,
         options: TcpOutletOptions,
     ) -> Result<()> {
         let access_control = options.incoming_access_control.clone();
 
         options.setup_flow_control_for_outlet_listener(ctx.flow_controls(), &address);
 
-        let worker = Self::new(registry, peer, options);
+        let worker = Self::new(registry, hostname_port, options);
         WorkerBuilder::new(worker)
             .with_address(address)
             .with_incoming_access_control_arc(access_control)
@@ -93,7 +92,8 @@ impl Worker for TcpOutletListenWorker {
         TcpPortalWorker::start_new_outlet(
             ctx,
             self.registry.clone(),
-            self.peer,
+            self.hostname_port.clone(),
+            self.options.tls,
             return_route.clone(),
             addresses.clone(),
             self.options.incoming_access_control.clone(),

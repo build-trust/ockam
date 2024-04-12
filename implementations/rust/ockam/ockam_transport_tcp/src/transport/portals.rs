@@ -1,6 +1,8 @@
 use crate::portal::TcpInletListenProcessor;
-use crate::transport::common::{parse_socket_addr, resolve_peer};
-use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
+use crate::transport::common::parse_socket_addr;
+use crate::{
+    portal::TcpOutletListenWorker, HostnamePort, TcpInletOptions, TcpOutletOptions, TcpTransport,
+};
 use core::fmt::Debug;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
@@ -24,7 +26,7 @@ impl TcpTransport {
     /// # tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ?bind_addr.clone().into(), outlet_route = ?outlet_route.clone()))]
+    #[instrument(skip(self), fields(address = ? bind_addr.clone().into(), outlet_route = ? outlet_route.clone()))]
     pub async fn create_inlet(
         &self,
         bind_addr: impl Into<String> + Clone + Debug,
@@ -56,7 +58,7 @@ impl TcpTransport {
     /// tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ?addr.clone().into()))]
+    #[instrument(skip(self), fields(address = ? addr.clone().into()))]
     pub async fn stop_inlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
         self.ctx.stop_processor(addr).await?;
 
@@ -70,30 +72,29 @@ impl TcpTransport {
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
+    /// use ockam_transport_tcp::{HostnamePort, TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", "localhost:9000", TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ?address.clone().into(), peer = ?peer.clone().into()))]
+    #[instrument(skip(self), fields(address = ? address.clone().into(), peer = ? hostname_port.clone()))]
     pub async fn create_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
-        peer: impl Into<String> + Clone,
+        hostname_port: HostnamePort,
         options: TcpOutletOptions,
     ) -> Result<()> {
-        // Resolve peer address
-        let peer_addr = resolve_peer(peer.into())?;
+        // Resolve peer address as a socket address
         TcpOutletListenWorker::start(
             &self.ctx,
             self.registry.clone(),
             address.into(),
-            peer_addr,
+            hostname_port,
             options,
         )
         .await?;
@@ -106,29 +107,35 @@ impl TcpTransport {
     pub async fn create_tcp_outlet(
         &self,
         address: Address,
-        peer: SocketAddr,
+        hostname_port: HostnamePort,
         options: TcpOutletOptions,
     ) -> Result<()> {
-        TcpOutletListenWorker::start(&self.ctx, self.registry.clone(), address, peer, options)
-            .await?;
+        TcpOutletListenWorker::start(
+            &self.ctx,
+            self.registry.clone(),
+            address,
+            hostname_port,
+            options,
+        )
+        .await?;
 
         Ok(())
     }
 
     /// Stop outlet at addr
     /// ```rust
-    /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
+    /// use ockam_transport_tcp::{HostnamePort, TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// const TARGET_PEER: &str = "127.0.0.1:5000";
+    /// let target_peer = HostnamePort::new("127.0.0.1", 5000);
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", TARGET_PEER, TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", target_peer, TcpOutletOptions::new()).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = %addr.clone().into()))]
+    #[instrument(skip(self), fields(address = % addr.clone().into()))]
     pub async fn stop_outlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
         self.ctx.stop_worker(addr).await?;
         Ok(())
