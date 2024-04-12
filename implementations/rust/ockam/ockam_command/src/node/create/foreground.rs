@@ -1,24 +1,27 @@
+use std::io;
+use std::io::Read;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use tokio::time::{sleep, Duration};
-use tracing::{debug, instrument};
+use tracing::{debug, info, instrument};
 
 use ockam::{Address, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
-use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
+use ockam_api::{fmt_ok, fmt_warn};
 use ockam_core::{route, LOCAL};
 
 use crate::node::CreateCommand;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::{shutdown, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 impl CreateCommand {
     #[instrument(skip_all, fields(node_name = self.name))]
@@ -116,23 +119,60 @@ impl CreateCommand {
             }
         }
 
-        // Create a channel for communicating back to the main thread
+        self.wait_for_exit_signal(ctx, opts).await
+    }
+
+    /// Wait until it receives a CTRL+C, EOF or a signal to exit
+    pub async fn wait_for_exit_signal(
+        &self,
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+    ) -> miette::Result<()> {
         let (tx, mut rx) = tokio::sync::mpsc::channel(2);
-        shutdown::wait(
-            opts.terminal.clone(),
-            self.exit_on_eof,
-            opts.global_args.quiet,
-            tx,
-            &mut rx,
-        )
-        .await?;
 
+        // Register a handler for SIGINT, SIGTERM, SIGHUP
+        {
+            let tx = tx.clone();
+            let terminal = opts.terminal.clone();
+            // To avoid handling multiple CTRL+C signals at the same time
+            let flag = Arc::new(AtomicBool::new(true));
+            ctrlc::set_handler(move || {
+                if flag.load(std::sync::atomic::Ordering::Relaxed) {
+                    let _ = tx.blocking_send(());
+                    info!("Ctrl+C signal received");
+                    if !opts.global_args.quiet {
+                        let _ = terminal.write_line(fmt_warn!("Ctrl+C signal received"));
+                    }
+                    flag.store(false, std::sync::atomic::Ordering::Relaxed);
+                }
+            })
+            .expect("Error setting Ctrl+C handler");
+        }
+
+        if self.exit_on_eof {
+            // Spawn a thread to monitor STDIN for EOF
+            {
+                let tx = tx.clone();
+                let terminal = opts.terminal.clone();
+                std::thread::spawn(move || {
+                    let mut buffer = Vec::new();
+                    let mut handle = io::stdin().lock();
+                    if handle.read_to_end(&mut buffer).is_ok() {
+                        let _ = tx.blocking_send(());
+                        info!("EOF received");
+                        let _ = terminal.write_line(fmt_warn!("EOF received"));
+                    }
+                });
+            }
+        }
+
+        // Wait for signal SIGINT, SIGTERM, SIGHUP or EOF; or for the tx to be closed.
+        rx.recv().await;
+
+        // Clean up and exit
         opts.shutdown();
-
-        // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
-        let _ = opts.state.stop_node(&node_name, true).await;
-        ctx.stop().await.into_diagnostic()?;
-
+        let _ = opts.state.stop_node(&self.name, true).await;
+        let _ = ctx.stop().await;
         opts.terminal
             .write_line(fmt_ok!("Node stopped successfully"))?;
 
