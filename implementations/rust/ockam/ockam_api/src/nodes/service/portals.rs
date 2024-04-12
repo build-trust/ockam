@@ -15,7 +15,7 @@ use ockam_core::{async_trait, route, AsyncTryClone, Route};
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
+use ockam_transport_tcp::{HostnamePort, TcpInletOptions, TcpOutletOptions};
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
@@ -111,17 +111,19 @@ impl NodeManagerWorker {
         create_outlet: CreateOutlet,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         let CreateOutlet {
-            socket_addr,
+            hostname_port,
             worker_addr,
             reachable_from_default_secure_channel,
             policy_expression,
+            tls,
         } = create_outlet;
 
         match self
             .node_manager
             .create_outlet(
                 ctx,
-                socket_addr,
+                hostname_port,
+                tls,
                 worker_addr,
                 reachable_from_default_secure_channel,
                 OutletAccessControl::PolicyExpression(policy_expression),
@@ -179,7 +181,8 @@ impl NodeManager {
     pub async fn create_outlet(
         &self,
         ctx: &Context,
-        socket_addr: SocketAddr,
+        hostname_port: HostnamePort,
+        tls: bool,
         worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
         access_control: OutletAccessControl,
@@ -190,9 +193,10 @@ impl NodeManager {
             .generate_worker_addr(worker_addr)
             .await;
 
+        let socket_addr = hostname_port.to_socket_addr()?;
         info!(
             "Handling request to create outlet portal at {:?} with worker {:?}",
-            socket_addr, worker_addr
+            &socket_addr, worker_addr
         );
 
         // Check registry for a duplicated key
@@ -224,7 +228,8 @@ impl NodeManager {
         let options = {
             let options = TcpOutletOptions::new()
                 .with_incoming_access_control(incoming_ac)
-                .with_outgoing_access_control(outgoing_ac);
+                .with_outgoing_access_control(outgoing_ac)
+                .with_tls(tls);
             let options = if self.project_authority().is_none() {
                 options.as_consumer(&self.api_transport_flow_control_id)
             } else {
@@ -247,7 +252,7 @@ impl NodeManager {
 
         let res = self
             .tcp_transport
-            .create_tcp_outlet(worker_addr.clone(), socket_addr, options)
+            .create_tcp_outlet(worker_addr.clone(), hostname_port, options)
             .await;
 
         Ok(match res {
@@ -803,7 +808,8 @@ pub trait Outlets {
     async fn create_outlet(
         &self,
         ctx: &Context,
-        to: &SocketAddr,
+        to: HostnamePort,
+        tls: bool,
         from: Option<&Address>,
         policy_expression: Option<Expr>,
     ) -> miette::Result<OutletStatus>;
@@ -811,15 +817,16 @@ pub trait Outlets {
 
 #[async_trait]
 impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = %to, from = ?from))]
+    #[instrument(skip_all, fields(to = % to, from = ? from))]
     async fn create_outlet(
         &self,
         ctx: &Context,
-        to: &SocketAddr,
+        to: HostnamePort,
+        tls: bool,
         from: Option<&Address>,
         policy_expression: Option<Expr>,
     ) -> miette::Result<OutletStatus> {
-        let mut payload = CreateOutlet::new(*to, from.cloned(), true);
+        let mut payload = CreateOutlet::new(to, tls, from.cloned(), true);
         if let Some(policy_expression) = policy_expression {
             payload.set_policy_expression(policy_expression);
         }

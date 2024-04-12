@@ -11,6 +11,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
 use ockam_core::{Address, Result};
 use ockam_node::Context;
+use ockam_transport_tcp::HostnamePort;
 use std::net::SocketAddr;
 
 type BrokerId = i32;
@@ -69,7 +70,8 @@ impl KafkaOutletController {
         worker_address: Address,
         policy_expression: Option<Expr>,
     ) -> Result<SocketAddr> {
-        let mut payload = CreateOutlet::new(socket_address, Some(worker_address), false);
+        let hostname_port = HostnamePort::from_socket_addr(socket_address)?;
+        let mut payload = CreateOutlet::new(hostname_port, false, Some(worker_address), false);
         if let Some(expr) = policy_expression {
             payload.set_policy_expression(expr);
         }

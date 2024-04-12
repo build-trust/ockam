@@ -1,4 +1,6 @@
 use ockam::{node, route, Context, Result, TcpInletOptions, TcpOutletOptions, TcpTransportExtension};
+use ockam_transport_tcp::HostnamePort;
+use std::str::FromStr;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -23,8 +25,12 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, TcpOutletOptions::new())
-        .await?;
+    tcp.create_outlet(
+        "outlet",
+        HostnamePort::from_str(&outlet_target)?,
+        TcpOutletOptions::new(),
+    )
+    .await?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001

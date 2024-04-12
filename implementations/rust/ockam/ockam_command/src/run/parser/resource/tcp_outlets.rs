@@ -50,10 +50,8 @@ impl CommandsParser<CreateCommand> for TcpOutlets {
 
 #[cfg(test)]
 mod tests {
-    use std::net::SocketAddr;
-    use std::str::FromStr;
-
     use super::*;
+    use ockam_transport_tcp::HostnamePort;
 
     #[test]
     fn tcp_outlet_config() {
@@ -70,10 +68,10 @@ mod tests {
         let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].from.clone().unwrap(), "to1");
-        assert_eq!(cmds[0].to, SocketAddr::from_str("127.0.0.1:6060").unwrap());
+        assert_eq!(cmds[0].to, HostnamePort::new("127.0.0.1", 6060));
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
         assert_eq!(cmds[1].from.clone().unwrap(), "my_outlet");
-        assert_eq!(cmds[1].to, SocketAddr::from_str("127.0.0.1:6061").unwrap());
+        assert_eq!(cmds[1].to, HostnamePort::new("127.0.0.1", 6061));
         assert!(cmds[1].at.is_none());
     }
 }

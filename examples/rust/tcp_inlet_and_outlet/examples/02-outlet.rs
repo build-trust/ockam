@@ -1,4 +1,6 @@
 use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions, TcpTransportExtension};
+use ockam_transport_tcp::HostnamePort;
+use std::str::FromStr;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -27,7 +29,7 @@ async fn main(ctx: Context) -> Result<()> {
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
     tcp.create_outlet(
         "outlet",
-        outlet_target,
+        HostnamePort::from_str(&outlet_target)?,
         TcpOutletOptions::new().as_consumer(&tcp_listener_options.spawner_flow_control_id()),
     )
     .await?;
