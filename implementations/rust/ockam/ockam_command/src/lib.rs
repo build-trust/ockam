@@ -61,7 +61,6 @@ mod secure_channel;
 mod service;
 #[cfg(feature = "orchestrator")]
 mod share;
-pub mod shutdown;
 mod sidecar;
 mod space;
 mod status;

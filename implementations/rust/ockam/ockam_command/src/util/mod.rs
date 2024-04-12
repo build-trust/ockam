@@ -29,17 +29,6 @@ pub mod duration;
 pub mod exitcode;
 pub mod parsers;
 
-/// A simple wrapper for shutting down the local embedded node (for
-/// the client side of the CLI).  Swallows errors and turns them into
-/// eprintln logs.
-///
-/// TODO: We may want to change this behaviour in the future.
-pub async fn stop_node(ctx: Context) {
-    if let Err(e) = ctx.stop().await {
-        eprintln!("an error occurred while shutting down local node: {e}");
-    }
-}
-
 pub fn local_cmd(res: miette::Result<()>) -> miette::Result<()> {
     if let Err(error) = &res {
         // Note: error! is also called in command_event.rs::add_command_error_event()
@@ -54,7 +43,7 @@ where
     Fut: core::future::Future<Output = miette::Result<()>> + Send + 'static,
 {
     debug!("running '{}' asynchronously", command_name);
-    let res = embedded_node(opts.clone(), |ctx| {
+    let res = embedded_node(opts, |ctx| {
         async move { f(ctx).await }.with_context(OpenTelemetryContext::current_context())
     });
     local_cmd(res)
@@ -82,7 +71,7 @@ where
                 .await
                 .expect("Embedded node child ctx can't be created");
             let r = f(child_ctx).await;
-            stop_node(ctx).await;
+            let _ = ctx.stop().await;
             r
         }
         .with_context(OpenTelemetryContext::current_context()),

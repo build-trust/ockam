@@ -13,7 +13,7 @@ use tracing::{instrument, Span};
 
 impl CreateCommand {
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
-    pub async fn run_config(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let contents = async_parse_path_or_url(&self.name).await?;
         // Set environment variables from the cli command args
         for (key, value) in &self.variables {
@@ -27,8 +27,13 @@ impl CreateCommand {
         );
 
         let mut config = NodeConfig::new(&contents)?;
-        let node_name = config.merge(self)?;
-        config.run(ctx, opts.clone(), &node_name).await?;
+        let node_name = config.merge(&self)?;
+        config.run(ctx, &opts, &node_name).await?;
+
+        if self.foreground {
+            self.wait_for_exit_signal(ctx, opts).await?;
+        }
+
         Ok(())
     }
 }
@@ -59,8 +64,8 @@ impl NodeConfig {
     }
 
     /// Merge the arguments of the node defined in the config with the arguments from the
-    /// "create" command, giving precedence to the config values.
-    fn merge(&mut self, cli_args: CreateCommand) -> miette::Result<String> {
+    /// "create" command, giving precedence to the config values. Returns the node name.
+    fn merge(&mut self, cli_args: &CreateCommand) -> miette::Result<String> {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
         for (key, value) in &cli_args.variables {
@@ -84,13 +89,18 @@ impl NodeConfig {
             self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.exit_on_eof));
         }
         if self.node.tcp_listener_address.is_none() {
-            self.node.tcp_listener_address = Some(ArgValue::String(cli_args.tcp_listener_address));
+            self.node.tcp_listener_address =
+                Some(ArgValue::String(cli_args.tcp_listener_address.clone()));
         }
         if self.node.identity.is_none() {
-            self.node.identity = cli_args.identity.map(ArgValue::String);
+            self.node.identity = cli_args.identity.clone().map(ArgValue::String);
         }
         if self.node.project.is_none() {
-            self.node.project = cli_args.trust_opts.project_name.map(ArgValue::String);
+            self.node.project = cli_args
+                .trust_opts
+                .project_name
+                .clone()
+                .map(ArgValue::String);
         }
 
         let node_name = self.node.name.as_ref().unwrap().to_string();
@@ -100,7 +110,7 @@ impl NodeConfig {
     pub async fn run(
         self,
         ctx: &Context,
-        opts: CommandGlobalOpts,
+        opts: &CommandGlobalOpts,
         node_name: &str,
     ) -> miette::Result<()> {
         let overrides = &ValuesOverrides::default().with_override_node_name(node_name);
@@ -117,7 +127,7 @@ impl NodeConfig {
 
         // Run commands
         for cmd in commands {
-            cmd.run(ctx, &opts).await?
+            cmd.run(ctx, opts).await?
         }
         Ok(())
     }
@@ -162,7 +172,7 @@ mod tests {
 
         // No node config, cli args should be used
         let mut config = NodeConfig::parse("").unwrap();
-        let node_name = config.merge(cli_args.clone()).unwrap();
+        let node_name = config.merge(&cli_args).unwrap();
         let node = config
             .node
             .parse_commands(&ValuesOverrides::default())
@@ -185,7 +195,7 @@ mod tests {
         "#,
         )
         .unwrap();
-        let node_name = config.merge(cli_args).unwrap();
+        let node_name = config.merge(&cli_args).unwrap();
         let node = config
             .node
             .parse_commands(&ValuesOverrides::default())
