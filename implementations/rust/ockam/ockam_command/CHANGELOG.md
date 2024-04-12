@@ -4,19 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.121.0 - 2024-04-08
+## 0.121.0 - 2024-04-12
 
 ### Added
 
+- Add a attribute with the content of a node configuration file
+- Add a user journey event when an identity has been created or imported
+- Support `foreground` flag when creating a node with a config file
+- Added kafka-inlet command and relative config side
 - Updated dependencies
 
 ### Changed
 
 - Organize bats tests in different suites
+- Move terminal code from command to api
 
 ### Fixed
 
 - Kms identity can be used in regular api nodes
+- Don't show logs on parse errors logging is not enabled
 
 ## 0.120.0 - 2024-04-01
 
