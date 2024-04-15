@@ -5,7 +5,7 @@ use crate::{
 };
 use core::fmt::Debug;
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Address, Error, Result, Route};
 use tracing::instrument;
 
 impl TcpTransport {
@@ -78,23 +78,26 @@ impl TcpTransport {
     /// # async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", "localhost:9000", TcpOutletOptions::new()).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? address.clone().into(), peer = ? hostname_port.clone()))]
+    #[instrument(skip(self), fields(address = ? address.clone().into(), peer))]
     pub async fn create_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
-        hostname_port: HostnamePort,
+        hostname_port: impl TryInto<HostnamePort, Error = Error> + Clone + Debug,
         options: TcpOutletOptions,
     ) -> Result<()> {
-        // Resolve peer address as a socket address
+        // Resolve peer address as a host name and port
+        let peer = hostname_port.try_into()?;
+        tracing::Span::current().record("peer", peer.to_string());
+
         TcpOutletListenWorker::start(
             &self.ctx,
             self.registry.clone(),
             address.into(),
-            hostname_port,
+            peer,
             options,
         )
         .await?;
@@ -128,10 +131,9 @@ impl TcpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let target_peer = HostnamePort::new("127.0.0.1", 5000);
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", target_peer, TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", "127.0.0.1:5000", TcpOutletOptions::new()).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
