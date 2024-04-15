@@ -44,6 +44,22 @@ impl HostnamePort {
     }
 }
 
+impl TryFrom<String> for HostnamePort {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: String) -> ockam_core::Result<Self> {
+        FromStr::from_str(value.as_str())
+    }
+}
+
+impl TryFrom<&str> for HostnamePort {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: &str) -> ockam_core::Result<Self> {
+        FromStr::from_str(value)
+    }
+}
+
 impl FromStr for HostnamePort {
     type Err = ockam_core::Error;
 
