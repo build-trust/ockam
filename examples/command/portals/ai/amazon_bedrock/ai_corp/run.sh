@@ -3,6 +3,7 @@ set -ex
 
 run() {
     enrollment_ticket="$1"
+    check_bedrock_availability
 
     # ----------------------------------------------------------------------------------------------------------------
     # CREATE NETWORK
@@ -83,6 +84,35 @@ run() {
             nohup node api.mjs &>output.log &
             echo "AI API started"
 EOS
+}
+
+check_bedrock_availability() {
+    supported_regions=$(aws ssm get-parameters-by-path \
+        --path /aws/service/global-infrastructure/services/bedrock/regions --output json | \
+        jq -r '.Parameters[].Value')
+
+    configured_region=$(get_configured_region)
+
+    # Check if the configured region is in the list of supported regions
+    if echo "${supported_regions}" | grep -q "${configured_region}"; then
+        echo "Amazon Bedrock is available in the ${configured_region} region. Proceeding..."
+    else
+        echo "Amazon Bedrock is not available in ${configured_region} region "
+        echo "Please use one of the supported regions for this example to run:"
+        echo "${supported_regions}"
+        exit 1
+    fi
+}
+
+get_configured_region() {
+    region=$(aws ec2 describe-availability-zones --query 'AvailabilityZones[0].[RegionName]' --output text)
+
+    # Check if we have a region value
+    if [[ -z "${region}" ]]; then
+        echo "No AWS region is configured or set in environment variables."
+        exit 1
+    fi
+    echo "${region}"
 }
 
 cleanup() {
