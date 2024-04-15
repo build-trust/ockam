@@ -4,4 +4,43 @@ $ ockam node create
 
 # To create a new node with a specific name
 $ ockam node create n
+
+# To create a new node with a configuration file
+$ ockam node create config.yaml
+
+# To create a new node with an inline configuration
+$ ockam node create --node-config "{name: n1, tcp-outlet: {db-outlet: {to: '127.0.0.1:5432'}}}"
+
+An example of a configuration file is:
+
+# variables can be used and overridden with environment variables
+variables:
+  NODE_PORT: 3333
+  SERVICE_PORT: 5000
+  CLIENT_PORT: 15000
+
+# name of the node
+name: n1
+
+# TCP listener address for the node
+tcp-listener-address: 127.0.0.1:$NODE_PORT
+
+# This creates a relay named default
+# by running the ockam relay create command
+relay: default
+
+# List of outlets
+tcp-outlet:
+  # Name of the outlet
+  db-outlet:
+    # Arguments to the ockam tcp-outlet create command
+    to: $SERVICE_PORT
+
+# List of outlets
+tcp-inlet:
+  # Name of the inlet
+  web-inlet:
+    # Arguments to the ockam tcp-outlet create command
+    from: $CLIENT_PORT
+
 ```

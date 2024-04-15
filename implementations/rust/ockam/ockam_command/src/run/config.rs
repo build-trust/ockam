@@ -53,41 +53,37 @@ impl Config {
     ///
     /// For more details about the parsing, see the [parser](crate::run::parser) module.
     /// You can also check examples of valid configuration files in the demo folder of this module.
-    pub async fn run(
-        self,
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        overrides: &ValuesOverrides,
-    ) -> miette::Result<()> {
-        // Build commands and return validation errors before running any command.
-        let commands: Vec<ParsedCommands> = vec![
-            self.vaults.parse_commands(overrides)?.into(),
-            self.identities.parse_commands(overrides)?.into(),
-            self.project_enroll.parse_commands(overrides)?.into(),
-            self.nodes.parse_commands(overrides)?.into(),
-            self.relays.parse_commands(overrides)?.into(),
-            self.policies.parse_commands(overrides)?.into(),
-            self.tcp_outlets.parse_commands(overrides)?.into(),
-            self.tcp_inlets.parse_commands(overrides)?.into(),
-            self.kafka_inlet.parse_commands(overrides)?.into(),
-            self.kafka_outlet.parse_commands(overrides)?.into(),
-        ];
-
-        // Run commands
-        for cmd in commands {
+    pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        // Parse commands and run them
+        for cmd in self.parse_commands()? {
             cmd.run(ctx, opts).await?
         }
         Ok(())
     }
 
+    // Build commands and return validation errors
+    pub fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
+        Ok(vec![
+            self.vaults.parse_commands()?.into(),
+            self.identities.parse_commands()?.into(),
+            self.project_enroll.parse_commands()?.into(),
+            self.nodes.parse_commands()?.into(),
+            self.relays.parse_commands(&None)?.into(),
+            self.policies.parse_commands()?.into(),
+            self.tcp_outlets.parse_commands(&None)?.into(),
+            self.tcp_inlets.parse_commands(&None)?.into(),
+            self.kafka_inlet.parse_commands(&None)?.into(),
+            self.kafka_outlet.parse_commands(&None)?.into(),
+        ])
+    }
+
     pub async fn parse_and_run(
         ctx: &Context,
         opts: CommandGlobalOpts,
-        overrides: ValuesOverrides,
         contents: &str,
     ) -> miette::Result<()> {
         let config = Config::parse(&Config::resolve(contents)?)?;
-        config.run(ctx, &opts, &overrides).await
+        config.run(ctx, &opts).await
     }
 }
 

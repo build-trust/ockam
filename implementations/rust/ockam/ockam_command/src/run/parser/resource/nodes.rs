@@ -1,13 +1,11 @@
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::node::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::{node, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,11 +26,8 @@ impl Nodes {
             color_primary(CreateCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<CreateCommand> for Nodes {
-    fn parse_commands(self, _overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+    pub fn parse_commands(self) -> Result<Vec<CreateCommand>> {
         match self.nodes {
             Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
@@ -50,7 +45,7 @@ mod tests {
     fn single_node_config() {
         let test = |c: &str| {
             let parsed: Nodes = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+            let cmds = parsed.parse_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.name, "n1");
@@ -81,7 +76,7 @@ mod tests {
     fn multiple_node_config() {
         let test = |c: &str| {
             let parsed: Nodes = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+            let cmds = parsed.parse_commands().unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].name, "n1");
             assert_eq!(cmds[1].name, "n2");
