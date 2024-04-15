@@ -1,10 +1,8 @@
 use crate::kafka::inlet::create::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, UnnamedResources};
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::{kafka::inlet, Command, OckamSubcommand};
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
@@ -28,17 +26,16 @@ impl KafkaInlet {
             color_primary(CreateCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<CreateCommand> for KafkaInlet {
-    fn parse_commands(self, overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+    pub fn parse_commands(self, default_node_name: &Option<String>) -> Result<Vec<CreateCommand>> {
         match self.kafka_inlet {
             Some(c) => {
                 let mut cmds = c.into_commands(Self::get_subcommand)?;
-                if let Some(node_name) = overrides.override_node_name.as_ref() {
+                if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
-                        cmd.node_opts.at_node = Some(node_name.clone())
+                        if cmd.node_opts.at_node.is_none() {
+                            cmd.node_opts.at_node = Some(node_name.clone())
+                        }
                     }
                 }
                 Ok(cmds)
@@ -65,7 +62,10 @@ mod tests {
               at: node_name
         "#;
         let parsed: KafkaInlet = serde_yaml::from_str(named).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let default_node_name = "n1".to_string();
+        let cmds = parsed
+            .parse_commands(&Some(default_node_name.clone()))
+            .unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].from,
@@ -75,7 +75,7 @@ mod tests {
             cmds[0].to.as_ref().unwrap(),
             &MultiAddr::from_string("/project/default").unwrap(),
         );
-        assert_eq!(cmds[0].node_opts.at_node.as_ref().unwrap(), "node_name");
+        assert_eq!(cmds[0].node_opts.at_node, Some("node_name".to_string()));
 
         let unnamed = r#"
             kafka-inlet:
@@ -83,7 +83,9 @@ mod tests {
               consumer: /dnsaddr/kafka-outlet.local/tcp/5000
         "#;
         let parsed: KafkaInlet = serde_yaml::from_str(unnamed).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let cmds = parsed
+            .parse_commands(&Some(default_node_name.clone()))
+            .unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].bootstrap_server.as_ref().unwrap(),
@@ -93,6 +95,6 @@ mod tests {
             cmds[0].consumer.as_ref().unwrap(),
             &MultiAddr::from_string("/dnsaddr/kafka-outlet.local/tcp/5000").unwrap(),
         );
-        assert!(cmds[0].node_opts.at_node.is_none());
+        assert_eq!(cmds[0].node_opts.at_node, Some(default_node_name));
     }
 }

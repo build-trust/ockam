@@ -1,22 +1,11 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use clap::Args as ClapArgs;
 use miette::Result;
 
 use ockam_node::Context;
 
 use crate::{Command, CommandGlobalOpts};
-
-/// Implementations of this traits return a list of commands of a given type
-/// as if they had been read from arguments coming from the command line.
-#[async_trait]
-pub trait CommandsParser<C>: Clone
-where
-    C: ClapArgs,
-{
-    fn parse_commands(self, overrides: &ValuesOverrides) -> Result<Vec<C>>;
-}
 
 /// List of parsed commands
 /// Each command can be validated then executed
@@ -93,17 +82,5 @@ impl ParsedCommand for EmptyParsedCommand {
 
     async fn is_valid(&self, _ctx: &Context, _opts: &CommandGlobalOpts) -> Result<bool> {
         Ok(false)
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ValuesOverrides {
-    pub override_node_name: Option<String>,
-}
-
-impl ValuesOverrides {
-    pub fn with_override_node_name(mut self, node_name: &str) -> Self {
-        self.override_node_name = Some(node_name.to_string());
-        self
     }
 }

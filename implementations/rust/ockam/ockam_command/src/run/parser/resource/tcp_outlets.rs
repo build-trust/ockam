@@ -1,12 +1,10 @@
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::tcp::outlet::create::CreateCommand;
 use crate::{tcp::outlet, Command, OckamSubcommand};
 
@@ -28,17 +26,16 @@ impl TcpOutlets {
             color_primary(CreateCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<CreateCommand> for TcpOutlets {
-    fn parse_commands(self, overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+    pub fn parse_commands(self, default_node_name: &Option<String>) -> Result<Vec<CreateCommand>> {
         match self.tcp_outlets {
             Some(c) => {
                 let mut cmds = c.into_commands_with_name_arg(Self::get_subcommand, Some("from"))?;
-                if let Some(node_name) = overrides.override_node_name.as_ref() {
+                if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
-                        cmd.at = Some(node_name.clone())
+                        if cmd.at.is_none() {
+                            cmd.at = Some(node_name.clone())
+                        }
                     }
                 }
                 Ok(cmds)
@@ -65,13 +62,16 @@ mod tests {
                 from: my_outlet
         "#;
         let parsed: TcpOutlets = serde_yaml::from_str(config).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let default_node_name = "n1".to_string();
+        let cmds = parsed
+            .parse_commands(&Some(default_node_name.clone()))
+            .unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].from.clone().unwrap(), "to1");
         assert_eq!(cmds[0].to, HostnamePort::new("127.0.0.1", 6060));
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
         assert_eq!(cmds[1].from.clone().unwrap(), "my_outlet");
         assert_eq!(cmds[1].to, HostnamePort::new("127.0.0.1", 6061));
-        assert!(cmds[1].at.is_none());
+        assert_eq!(cmds[1].at, Some(default_node_name));
     }
 }

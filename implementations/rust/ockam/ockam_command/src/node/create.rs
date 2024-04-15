@@ -38,6 +38,10 @@ pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = random_name())]
     pub name: String,
 
+    /// Inline node configuration
+    #[arg(long, value_name = "YAML")]
+    pub node_config: Option<String>,
+
     /// Run the node in foreground.
     #[arg(display_order = 900, long, short)]
     pub foreground: bool,
@@ -99,6 +103,7 @@ impl Default for CreateCommand {
         Self {
             skip_is_running_check: false,
             name: random_name(),
+            node_config: None,
             exit_on_eof: false,
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
             foreground: false,
@@ -146,12 +151,12 @@ impl Command for CreateCommand {
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.has_name_arg() {
             if self.foreground {
-                self.foreground_mode(&ctx, opts).await?;
+                self.foreground_mode(&ctx, opts).await?
             } else {
-                self.background_mode(&ctx, opts).await?;
+                self.background_mode(&ctx, opts).await?
             }
         } else {
-            self.run_config(&ctx, opts).await?;
+            self.run_config(&ctx, opts).await?
         }
         Ok(())
     }
@@ -173,8 +178,11 @@ impl CreateCommand {
     }
 
     // Return true if the `name` argument is a node name, false if it's a config file path or URL
+    // Or if the node configuration was provided inline
     fn has_name_arg(&self) -> bool {
-        is_url(&self.name).is_none() && std::fs::metadata(&self.name).is_err()
+        is_url(&self.name).is_none()
+            && std::fs::metadata(&self.name).is_err()
+            && self.node_config.is_none()
     }
 }
 

@@ -1,13 +1,11 @@
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::relay::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::{relay, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,17 +26,16 @@ impl Relays {
             color_primary(CreateCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<CreateCommand> for Relays {
-    fn parse_commands(self, overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+    pub fn parse_commands(self, default_node_name: &Option<String>) -> Result<Vec<CreateCommand>> {
         match self.relays {
             Some(c) => {
                 let mut cmds = c.into_commands(Self::get_subcommand)?;
-                if let Some(node_name) = overrides.override_node_name.as_ref() {
+                if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
-                        cmd.to = Some(node_name.clone());
+                        if cmd.to.is_none() {
+                            cmd.to = Some(node_name.clone());
+                        }
                     }
                 };
                 Ok(cmds)
@@ -58,10 +55,18 @@ mod tests {
     fn single_relay_config() {
         let test = |c: &str| {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+            let default_node_name = "n1".to_string();
+            let cmds = parsed
+                .parse_commands(&Some(default_node_name.clone()))
+                .unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.relay_name, "r1");
+
+            // if the 'to' value has not been explicitly set, use the default node name
+            if cmd.to != Some("outlet-node".to_string()) {
+                assert_eq!(cmd.to, Some(default_node_name));
+            }
         };
 
         // Name only
@@ -81,6 +86,7 @@ mod tests {
             relays:
               r1:
                 at: /project/default
+                to: outlet-node
         "#;
         test(config);
     }
@@ -89,10 +95,16 @@ mod tests {
     fn multiple_relay_config() {
         let test = |c: &str| {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+            let default_node_name = "n1".to_string();
+            let cmds = parsed
+                .parse_commands(&Some(default_node_name.clone()))
+                .unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].relay_name, "r1");
+            assert_eq!(cmds[0].to, Some(default_node_name.clone()));
+
             assert_eq!(cmds[1].relay_name, "r2");
+            assert_eq!(cmds[1].to, Some(default_node_name));
         };
 
         // Name only

@@ -1,13 +1,11 @@
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::policy::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, UnnamedResources};
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::{policy, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,11 +26,8 @@ impl Policies {
             color_primary(CreateCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<CreateCommand> for Policies {
-    fn parse_commands(self, _overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+    pub fn parse_commands(self) -> Result<Vec<CreateCommand>> {
         match self.policies {
             Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
@@ -53,7 +48,7 @@ mod tests {
               expression: (= subject.component "c1")
         "#;
         let parsed: Policies = serde_yaml::from_str(config).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let cmds = parsed.parse_commands().unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
         assert_eq!(cmds[0].resource.as_ref().unwrap().as_str(), "r1");
@@ -78,7 +73,7 @@ mod tests {
                 expression: (= subject.component "c3")
         "#;
         let parsed: Policies = serde_yaml::from_str(config).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let cmds = parsed.parse_commands().unwrap();
         assert_eq!(cmds.len(), 3);
 
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");

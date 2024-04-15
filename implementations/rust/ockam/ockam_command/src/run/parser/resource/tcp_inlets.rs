@@ -1,12 +1,10 @@
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::tcp::inlet::create::CreateCommand;
 use crate::{tcp::inlet, Command, OckamSubcommand};
 
@@ -28,18 +26,17 @@ impl TcpInlets {
             color_primary(CreateCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<CreateCommand> for TcpInlets {
-    fn parse_commands(self, overrides: &ValuesOverrides) -> Result<Vec<CreateCommand>> {
+    pub fn parse_commands(self, default_node_name: &Option<String>) -> Result<Vec<CreateCommand>> {
         match self.tcp_inlets {
             Some(c) => {
                 let mut cmds =
                     c.into_commands_with_name_arg(Self::get_subcommand, Some("alias"))?;
-                if let Some(node_name) = overrides.override_node_name.as_ref() {
+                if let Some(node_name) = default_node_name.as_ref() {
                     for cmd in cmds.iter_mut() {
-                        cmd.at = Some(node_name.clone())
+                        if cmd.at.is_none() {
+                            cmd.at = Some(node_name.clone())
+                        }
                     }
                 }
                 Ok(cmds)
@@ -68,7 +65,10 @@ mod tests {
                 alias: my_inlet
         "#;
         let parsed: TcpInlets = serde_yaml::from_str(named).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let default_node_name = "n1".to_string();
+        let cmds = parsed
+            .parse_commands(&Some(default_node_name.clone()))
+            .unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].alias, "ti1");
         assert_eq!(
@@ -81,7 +81,7 @@ mod tests {
             cmds[1].from,
             SocketAddr::from_str("127.0.0.1:6061").unwrap()
         );
-        assert!(cmds[1].at.is_none());
+        assert_eq!(cmds[1].at, Some(default_node_name.clone()));
 
         let unnamed = r#"
             tcp_inlets:
@@ -90,7 +90,9 @@ mod tests {
               - from: '6061'
         "#;
         let parsed: TcpInlets = serde_yaml::from_str(unnamed).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let cmds = parsed
+            .parse_commands(&Some(default_node_name.clone()))
+            .unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(
             cmds[0].from,
@@ -101,6 +103,6 @@ mod tests {
             cmds[1].from,
             SocketAddr::from_str("127.0.0.1:6061").unwrap()
         );
-        assert!(cmds[1].at.is_none());
+        assert_eq!(cmds[1].at, Some(default_node_name));
     }
 }

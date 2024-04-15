@@ -6,29 +6,17 @@ use crate::run::parser::Version;
 use crate::value_parsers::async_parse_path_or_url;
 use crate::CommandGlobalOpts;
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
-use ockam_api::cli_state::random_name;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{instrument, Span};
 
 impl CreateCommand {
-    #[instrument(skip_all, fields(app.event.command.configuration_file))]
+    /// Run the creation of a node using a node configuration
+    #[instrument(skip_all)]
     pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let contents = async_parse_path_or_url(&self.name).await?;
-        // Set environment variables from the cli command args
-        for (key, value) in &self.variables {
-            std::env::set_var(key, value);
-        }
-
-        // Record the provided file
-        Span::current().record(
-            APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
-            &contents,
-        );
-
-        let mut config = NodeConfig::new(&contents)?;
-        let node_name = config.merge(&self)?;
-        config.run(ctx, &opts, &node_name).await?;
+        let mut node_config = self.get_node_config().await?;
+        node_config.merge(&self)?;
+        node_config.run(ctx, &opts).await?;
 
         if self.foreground {
             self.wait_for_exit_signal(ctx, opts).await?;
@@ -36,9 +24,34 @@ impl CreateCommand {
 
         Ok(())
     }
+
+    /// Try to read the self.name field as either:
+    ///  - a URL to a configuration file
+    ///  - a local path to a configuration file
+    ///  - an inline configuration
+    #[instrument(skip_all, fields(app.event.command.configuration_file))]
+    pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
+        let contents = match self.node_config.clone() {
+            Some(contents) => contents,
+            None => async_parse_path_or_url(&self.name).await?,
+        };
+        // Set environment variables from the cli command args
+        // This needs to be done before parsing the configuration
+        for (key, value) in &self.variables {
+            std::env::set_var(key, value);
+        }
+        // Parse the configuration
+        let node_config = NodeConfig::new(&contents)?;
+        // Record the configuration contents if the node configuration was successfully parsed
+        Span::current().record(
+            APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
+            &contents.to_string(),
+        );
+        Ok(node_config)
+    }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct NodeConfig {
     #[serde(flatten)]
     pub version: Version,
@@ -68,8 +81,8 @@ impl NodeConfig {
     }
 
     /// Merge the arguments of the node defined in the config with the arguments from the
-    /// "create" command, giving precedence to the config values. Returns the node name.
-    fn merge(&mut self, cli_args: &CreateCommand) -> miette::Result<String> {
+    /// "create" command, giving precedence to the config values.
+    fn merge(&mut self, cli_args: &CreateCommand) -> miette::Result<()> {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
         for (key, value) in &cli_args.variables {
@@ -83,9 +96,6 @@ impl NodeConfig {
         }
 
         // Merge the node arguments from the config with the cli command args.
-        if self.node.name.is_none() {
-            self.node.name = Some(ArgValue::String(random_name()));
-        }
         if self.node.skip_is_running_check.is_none() {
             self.node.skip_is_running_check = Some(ArgValue::Bool(cli_args.skip_is_running_check));
         }
@@ -106,36 +116,30 @@ impl NodeConfig {
                 .clone()
                 .map(ArgValue::String);
         }
-
-        let node_name = self.node.name.as_ref().unwrap().to_string();
-        Ok(node_name)
+        Ok(())
     }
 
-    pub async fn run(
-        self,
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        node_name: &str,
-    ) -> miette::Result<()> {
-        let overrides = &ValuesOverrides::default().with_override_node_name(node_name);
-
-        // Build commands and return validation errors before running any command.
-        let commands: Vec<ParsedCommands> = vec![
-            self.project_enroll.parse_commands(overrides)?.into(),
-            self.node.parse_commands(overrides)?.into(),
-            self.relays.parse_commands(overrides)?.into(),
-            self.policies.parse_commands(overrides)?.into(),
-            self.tcp_outlets.parse_commands(overrides)?.into(),
-            self.tcp_inlets.parse_commands(overrides)?.into(),
-            self.kafka_inlet.parse_commands(overrides)?.into(),
-            self.kafka_outlet.parse_commands(overrides)?.into(),
-        ];
-
-        // Run commands
-        for cmd in commands {
+    pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        // Parse then run commands
+        for cmd in self.parse_commands()? {
             cmd.run(ctx, opts).await?
         }
         Ok(())
+    }
+
+    /// Build commands and return validation errors if any
+    pub fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
+        let node_name = self.node.name();
+        Ok(vec![
+            self.project_enroll.parse_commands()?.into(),
+            self.node.parse_commands()?.into(),
+            self.relays.parse_commands(&node_name)?.into(),
+            self.policies.parse_commands()?.into(),
+            self.tcp_outlets.parse_commands(&node_name)?.into(),
+            self.tcp_inlets.parse_commands(&node_name)?.into(),
+            self.kafka_inlet.parse_commands(&node_name)?.into(),
+            self.kafka_outlet.parse_commands(&node_name)?.into(),
+        ])
     }
 }
 
@@ -178,14 +182,8 @@ mod tests {
 
         // No node config, cli args should be used
         let mut config = NodeConfig::parse("").unwrap();
-        let node_name = config.merge(&cli_args).unwrap();
-        let node = config
-            .node
-            .parse_commands(&ValuesOverrides::default())
-            .unwrap()
-            .pop()
-            .unwrap();
-        assert_eq!(node_name, node.name);
+        config.merge(&cli_args).unwrap();
+        let node = config.node.parse_commands().unwrap().pop().unwrap();
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
             config.project_enroll.ticket,
@@ -201,15 +199,9 @@ mod tests {
         "#,
         )
         .unwrap();
-        let node_name = config.merge(&cli_args).unwrap();
-        let node = config
-            .node
-            .parse_commands(&ValuesOverrides::default())
-            .unwrap()
-            .pop()
-            .unwrap();
-        assert_eq!(node_name, node.name);
-        assert_eq!(node_name, "n1");
+        config.merge(&cli_args).unwrap();
+        let node = config.node.parse_commands().unwrap().pop().unwrap();
+        assert_eq!(node.name, "n1");
         assert_eq!(node.tcp_listener_address, "127.0.0.1:5555".to_string());
         assert_eq!(
             config.project_enroll.ticket,

@@ -1,12 +1,10 @@
-use async_trait::async_trait;
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::project::EnrollCommand;
-use crate::run::parser::resource::traits::CommandsParser;
+
 use crate::run::parser::resource::utils::parse_cmd_from_args;
-use crate::run::parser::resource::ValuesOverrides;
 use crate::{Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -26,11 +24,8 @@ impl ProjectEnroll {
             color_primary(EnrollCommand::NAME)
         )))
     }
-}
 
-#[async_trait]
-impl CommandsParser<EnrollCommand> for ProjectEnroll {
-    fn parse_commands(self, _overrides: &ValuesOverrides) -> Result<Vec<EnrollCommand>> {
+    pub fn parse_commands(self) -> Result<Vec<EnrollCommand>> {
         match self.ticket {
             Some(path_or_contents) => Ok(vec![Self::get_subcommand(&[path_or_contents])?]),
             None => Ok(vec![]),
@@ -58,7 +53,7 @@ mod tests {
         // As contents
         let config = format!("ticket: {enrollment_ticket_hex}");
         let parsed: ProjectEnroll = serde_yaml::from_str(&config).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let cmds = parsed.parse_commands().unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),
@@ -72,7 +67,7 @@ mod tests {
         file.write_all(enrollment_ticket_hex.as_bytes()).unwrap();
         let config = format!("ticket: {}", file_path.to_str().unwrap());
         let parsed: ProjectEnroll = serde_yaml::from_str(&config).unwrap();
-        let cmds = parsed.parse_commands(&ValuesOverrides::default()).unwrap();
+        let cmds = parsed.parse_commands().unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),

@@ -8,7 +8,6 @@ use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE
 use std::path::PathBuf;
 use tracing::{instrument, Span};
 
-use crate::run::parser::resource::ValuesOverrides;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -83,6 +82,6 @@ impl RunCommand {
             APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
             &contents,
         );
-        Config::parse_and_run(ctx, opts, ValuesOverrides::default(), &contents).await
+        Config::parse_and_run(ctx, opts, &contents).await
     }
 }

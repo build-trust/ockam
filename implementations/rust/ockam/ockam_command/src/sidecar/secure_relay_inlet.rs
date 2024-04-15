@@ -8,7 +8,6 @@ use ockam_api::fmt_info;
 use crate::{docs, CommandGlobalOpts};
 use ockam_node::Context;
 
-use crate::run::parser::resource::ValuesOverrides;
 use crate::run::Config;
 use crate::tcp::inlet::create::default_from_addr;
 use crate::util::async_cmd;
@@ -92,7 +91,7 @@ impl SecureRelayInlet {
             recipe.as_str().dark_gray()
         ))?;
 
-        Config::parse_and_run(ctx, opts, ValuesOverrides::default(), &recipe).await
+        Config::parse_and_run(ctx, opts, &recipe).await
     }
 
     fn create_config_recipe(&self) -> String {
@@ -130,7 +129,6 @@ mod tests {
     use ockam_api::cli_state::EnrollmentTicket;
 
     use crate::run::parser::config::ConfigParser;
-    use crate::run::parser::resource::CommandsParser;
 
     use super::*;
 
@@ -150,8 +148,7 @@ mod tests {
         };
         let config_recipe = cmd.create_config_recipe();
         let config = Config::parse(config_recipe.as_str()).unwrap();
-        let overrides = ValuesOverrides::default();
-        config.project_enroll.parse_commands(&overrides).unwrap();
-        config.tcp_inlets.parse_commands(&overrides).unwrap();
+        config.project_enroll.parse_commands().unwrap();
+        config.tcp_inlets.parse_commands(&None).unwrap();
     }
 }
