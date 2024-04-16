@@ -18,7 +18,14 @@ services:
       - application_team
     command:
       - -c
-      - kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092
+      - (
+          while :; do
+            kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --max-messages 1;
+            if [ "$?" == "0" ]; then
+              echo "The example run was successful 🥳";
+            fi;
+          done
+        )
   producer:
     build:
       context: .
@@ -31,11 +38,13 @@ services:
       - -c
       - (
           sleep 10;
+          COUNTER=0;
           while :; do
             sleep 10;
-            echo 'The example run was successful 🥳' | kafka-console-producer.sh
+            COUNTER=$(($${COUNTER}+1));
+            echo -n "Message number $${COUNTER}" | kafka-console-producer.sh
               --topic demo
               --bootstrap-server 127.0.0.1:9092
               --producer-property request.timeout.ms=30000;
-            done
+          done
         )
