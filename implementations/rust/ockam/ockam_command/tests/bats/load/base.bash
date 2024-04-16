@@ -24,6 +24,7 @@ if [ ! -d "$OCKAM_HOME_BASE" ]; then
   echo "Ockam CLI directory $OCKAM_HOME_BASE does not exist. Creating..." >&3
   mkdir -p "$OCKAM_HOME_BASE"
 fi
+mkdir -p "$OCKAM_HOME_BASE/.tmp"
 
 if [[ -z $BATS_LIB ]]; then
   export BATS_LIB=$(brew --prefix)/lib # macos

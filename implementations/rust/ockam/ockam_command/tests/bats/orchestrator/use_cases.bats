@@ -68,7 +68,7 @@ teardown() {
   $OCKAM identity create edge_identity
   $OCKAM project enroll "$ADMIN_HOME/edge.ticket" --identity edge_identity
   $OCKAM node create edge_plane1 --identity edge_identity
-  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "127.0.0.1:$port_1" \
+  $OCKAM tcp-inlet create --at /node/edge_plane1 --from "$port_1" \
     --via "$relay_name" --allow '(= subject.component "control")'
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port_1"
 
@@ -76,7 +76,7 @@ teardown() {
   $OCKAM identity create x_identity
   $OCKAM project enroll "$ADMIN_HOME/x.ticket" --identity x_identity
   $OCKAM node create x --identity x_identity
-  $OCKAM tcp-inlet create --at /node/x --from "127.0.0.1:$port_2" \
+  $OCKAM tcp-inlet create --at /node/x --from "$port_2" \
     --via "$relay_name" --allow '(= subject.component "control")'
   run curl -sfI -m 5 "127.0.0.1:$port_2"
   assert_failure 28 # timeout error
@@ -116,7 +116,7 @@ teardown() {
   run_success "$OCKAM" identity create telegraf
   run_success "$OCKAM" project enroll "${ADMIN_HOME}/telegraf.ticket" --identity telegraf
   run_success "$OCKAM" node create telegraf --identity telegraf
-  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "127.0.0.1:${INFLUX_PORT}" \
+  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "${INFLUX_PORT}" \
     --via $relay_name --allow '(= subject.component "influxdb")'
 
   run_success kill_telegraf_instance

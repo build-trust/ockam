@@ -17,6 +17,12 @@ Linux:
 npm install -g bats bats-support bats-assert
 ```
 
+Additionally, you need to install the `uploadserver` python package:
+
+```bash
+pip install uploadserver
+```
+
 ### How to format the tests scripts
 
 We use the `shfmt` tool, which can be download from https://github.com/mvdan/sh.

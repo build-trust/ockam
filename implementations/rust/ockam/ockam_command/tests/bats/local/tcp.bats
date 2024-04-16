@@ -17,7 +17,6 @@ teardown() {
 @test "tcp connection - CRUD" {
   port="$(random_port)"
   addr="127.0.0.1:$port"
-
   run_success "$OCKAM" node create n1 --tcp-listener-address "$addr"
 
   # Create tcp-connection and check output
@@ -41,12 +40,11 @@ teardown() {
 }
 
 @test "tcp listener - CRUD" {
-  port="$(random_port)"
-  addr="127.0.0.1:$port"
-
   run_success "$OCKAM" node create n1
 
   # Create tcp-listener and check output
+  port="$(random_port)"
+  addr="127.0.0.1:$port"
   run_success "$OCKAM" tcp-listener create "$addr" --at n1
   assert_output --regexp '/dnsaddr/localhost/tcp/[[:digit:]]+'
 
@@ -69,7 +67,6 @@ teardown() {
 @test "tcp - create a tcp connection and then delete it" {
   port="$(random_port)"
   addr="127.0.0.1:$port"
-
   run_success "$OCKAM" node create n1 --tcp-listener-address "$addr"
   run_success "$OCKAM" tcp-connection create --from n1 --to "$addr" --output json
 }

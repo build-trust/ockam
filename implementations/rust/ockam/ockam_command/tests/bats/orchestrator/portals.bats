@@ -54,7 +54,7 @@ teardown() {
   run_success "$OCKAM" relay create "$relay_name" --to /node/blue
 
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --via "$relay_name"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$port" --via "$relay_name"
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
@@ -88,7 +88,7 @@ teardown() {
   assert_output --partial "forward_to_$relay_name"
 
   port="$(random_port)"
-  run_success $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --via $relay_name
+  run_success $OCKAM tcp-inlet create --at /node/green --from $port --via $relay_name
 
   # Green can't establish secure channel with blue, because it didn't exchange credential with it.
   run_failure curl -sfI -m 3 "127.0.0.1:$port"
@@ -121,7 +121,7 @@ teardown() {
   run_success "$OCKAM" relay create "$relay_name" --to /node/blue
   assert_output --partial "forward_to_$relay_name"
 
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$port" --via "$relay_name"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$port" --via "$relay_name"
   # Green can't establish secure channel with blue, because it isn't a member
   run_failure curl -sfI -m 3 "127.0.0.1:$port"
 }
@@ -158,7 +158,7 @@ teardown() {
   assert_output --partial "forward_to_$relay_name"
 
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$relay_name/service/api \
-              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
+              | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
@@ -191,7 +191,7 @@ teardown() {
   assert_output --partial "forward_to_$relay_name"
 
   run_success "$OCKAM" tcp-inlet create --at /node/green \
-    --from "127.0.0.1:$port" --via "$relay_name" --allow '(= subject.app "app1")'
+    --from "$port" --via "$relay_name" --allow '(= subject.app "app1")'
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
@@ -225,10 +225,10 @@ teardown() {
   run_success "$OCKAM" node create blue
   sleep 1
   run_success "$OCKAM" relay create "${relay_name}" --to /node/blue
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "127.0.0.1:$PYTHON_SERVER_PORT"
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT"
 
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:${port}" \
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "${port}" \
     --to "/project/default/service/forward_to_${relay_name}/secure/api/service/outlet"
 
   # generate 10MB of random data
@@ -260,7 +260,7 @@ teardown() {
     --at "/ip4/127.0.0.1/tcp/${socat_port}/secure/api"
 
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:${inlet_port}" \
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "${inlet_port}" \
     --via "${relay_name}"
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
