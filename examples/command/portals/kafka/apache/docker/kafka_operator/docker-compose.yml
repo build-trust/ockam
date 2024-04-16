@@ -1,0 +1,39 @@
+# docker-compose.yml
+version: "3.8"
+
+# Create a dedicated and isolated virtual network for kafka_operator.
+networks:
+  kafka_operator:
+    driver: bridge
+
+services:
+  kafka:
+    image: 'bitnami/kafka:latest'
+    networks:
+      - kafka_operator
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+
+  # Start an ockam node.
+  #
+  # Read ../kafka_ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    depends_on: [kafka]
+    build:
+      context: .
+      dockerfile: ../kafka_ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    networks:
+      - kafka_operator
+
+volumes:
+  kafka-volume:
+  zookeeper-volume:
