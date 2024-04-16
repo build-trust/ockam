@@ -7,7 +7,6 @@ setup_suite() {
   load ../load/base.bash
   load ../load/orchestrator.bash
 
-  mkdir -p $OCKAM_HOME_BASE/.tmp
   setup_python_server
   get_project_data
 

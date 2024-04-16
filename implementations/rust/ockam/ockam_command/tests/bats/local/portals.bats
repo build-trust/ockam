@@ -39,17 +39,17 @@ teardown() {
 }
 
 @test "portals - tcp inlet CRUD" {
-  outlet_port="$(random_port)"
-  inlet_port="$(random_port)"
 
   # Create nodes for inlet/outlet pair
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
   # Create inlet/outlet pair
+  outlet_port="$(random_port)"
   run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$outlet_port"
   assert_output --partial "/service/outlet"
 
+  inlet_port="$(random_port)"
   run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet --alias "test-inlet"
   run_success $OCKAM tcp-inlet create --at /node/n2 --from 6102 --to /node/n1/service/outlet
 
@@ -68,20 +68,20 @@ teardown() {
 }
 
 @test "portals - tcp outlet CRUD" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
 
-  only_port="$(random_port)"
   run_success "$OCKAM" node create n2
 
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port"
+  port_1="$(random_port)"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port_1"
   assert_output --partial "/service/outlet"
 
-  run_success $OCKAM tcp-outlet create --at /node/n2 --to $only_port
+  port_2="$(random_port)"
+  run_success $OCKAM tcp-outlet create --at /node/n2 --to $port_2
 
   run_success $OCKAM tcp-outlet show outlet --at /node/n1
   assert_output --partial "\"worker_addr\":\"/service/outlet\""
-  assert_output --partial "\"socket_addr\":\"127.0.0.1:$port\""
+  assert_output --partial "\"socket_addr\":\"127.0.0.1:$port_1\""
 
   run_success $OCKAM tcp-outlet delete "outlet" --yes
 
@@ -91,11 +91,11 @@ teardown() {
 }
 
 @test "portals - list inlets on a node" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias tcp-inlet-2
+  port="$(random_port)"
+  run_success $OCKAM tcp-inlet create --at /node/n2 --from $port --to /node/n1/service/outlet --alias tcp-inlet-2
   sleep 1
 
   run_success $OCKAM tcp-inlet list --at /node/n2
@@ -104,10 +104,10 @@ teardown() {
 }
 
 @test "portals - list outlets on a node" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
 
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port"
+  port="$(random_port)"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "$port"
   assert_output --partial "/service/outlet"
 
   run_success $OCKAM tcp-outlet list --at /node/n1
@@ -116,11 +116,11 @@ teardown() {
 }
 
 @test "portals - show a tcp inlet" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$port --to /node/n1/service/outlet --alias "test-inlet"
+  port="$(random_port)"
+  run_success $OCKAM tcp-inlet create --at /node/n2 --from $port --to /node/n1/service/outlet --alias "test-inlet"
   sleep 1
 
   run_success $OCKAM tcp-inlet show "test-inlet" --at /node/n2
@@ -131,10 +131,10 @@ teardown() {
 }
 
 @test "portals - show a tcp outlet" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
 
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port"
+  port="$(random_port)"
+  run_success $OCKAM tcp-outlet create --at /node/n1 --to "$port"
   assert_output --partial "/service/outlet"
 
   run_success $OCKAM tcp-outlet show "outlet"
@@ -145,23 +145,23 @@ teardown() {
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - create an inlet/outlet, download file" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
@@ -169,12 +169,12 @@ teardown() {
 }
 
 @test "portals - create an inlet/outlet, upload file" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
   file_name="$(random_str)".bin
   tmp_dir_name="$(random_str)"
@@ -186,28 +186,28 @@ teardown() {
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
-  port="$(random_port)"
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
   run_success "$OCKAM" tcp-outlet create --at /node/n1 --to google.com:443
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "127.0.0.1:$port" --to /node/n1/service/outlet
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
   # This test does not pass on CI
   # run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
 }
 
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
-  port="$(random_port)"
   run_success "$OCKAM" node create relay
   run_success "$OCKAM" node create blue
 
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT"
   run_success "$OCKAM" relay create blue --at /node/relay --to /node/blue
 
   run_success "$OCKAM" node create green
+  port="$(random_port)"
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
-    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:$port --to -/service/outlet"
+    | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 
@@ -215,84 +215,73 @@ teardown() {
   assert_output --partial "/service"
 }
 
-@test "portals - fail to create two TCP outlets with the same address" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
-
-  o="$(random_str)"
-  port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port" --from "$o"
+@test "portals - fail to create two TCP outlets with the same worker address" {
+  run_success "$OCKAM" node create n
 
   port="$(random_port)"
-  run_failure "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port" --from "$o"
+  run_success "$OCKAM" tcp-outlet create --at n --to "$port" --from o
+  port="$(random_port)"
+  run_failure "$OCKAM" tcp-outlet create --at n --to "$port" --from o
 }
 
 @test "portals - fail to create two TCP inlets with the same alias" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
+  run_success "$OCKAM" node create n
 
   port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port"
-
-  i="$(random_str)"
-  port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet" --alias "$i"
+  run_success "$OCKAM" tcp-outlet create --at n --to "$port"
 
   port="$(random_port)"
-  run_failure "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet" --alias "$i"
+  run_success "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet" --alias i
+  port="$(random_port)"
+  run_failure "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet" --alias i
 }
 
-@test "portals - fail to create two TCP inlets at the same address" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
-
-  o="$(random_str)"
-  port="$(random_port)"
-  run_success "$OCKAM" tcp-outlet create --at "$n" --to "127.0.0.1:$port" --from "$o"
+@test "portals - fail to create two TCP inlets at the same socket address" {
+  run_success "$OCKAM" node create n
 
   port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet"
+  run_success "$OCKAM" tcp-outlet create --at n --to "$port" --from o
 
-  run_failure "$OCKAM" tcp-inlet create --at "$n" --from "127.0.0.1:$port" --to "/node/$n/service/outlet"
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet"
+
+  run_failure "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet"
 }
 
 @test "portals - local inlet and outlet, removing and re-creating the outlet" {
   node_port="$(random_port)"
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT"
 
-  inlet_port="$(random_port)"
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "127.0.0.1:$inlet_port" --to /node/blue/secure/api/service/outlet
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --to /node/blue/secure/api/service/outlet
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node delete blue --yes
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
-  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT"
 
   sleep 15
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 @test "portals - local inlet and outlet in reverse order" {
-  inlet_port="$(random_port)"
-  node_port="$(random_port)"
-
   run_success "$OCKAM" node create n1
-  run_success "$OCKAM" tcp-inlet create --at /node/n1 --from "127.0.0.1:${inlet_port}" --to "/ip4/127.0.0.1/tcp/${node_port}/service/outlet"
+  node_port="$(random_port)"
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n1 --from "${inlet_port}" --to "/ip4/127.0.0.1/tcp/${node_port}/service/outlet"
 
   run_success "$OCKAM" node create n2 --tcp-listener-address "127.0.0.1:${node_port}"
-  run_success "$OCKAM" tcp-outlet create --at /node/n2 --to 127.0.0.1:$PYTHON_SERVER_PORT
+  run_success "$OCKAM" tcp-outlet create --at /node/n2 --to "$PYTHON_SERVER_PORT"
 
   sleep 15
-  run_success curl -sfI --retry-connrefused --retry-delay 2 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
 }
 
 @test "portals - local portal, curl download, inlet credential expires" {
-  inlet_port="$(random_port)"
-
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -318,8 +307,9 @@ teardown() {
   bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --encoding hex)
   run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
 
-  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/bob --to "$PYTHON_SERVER_PORT"
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "$inlet_port" --to /node/bob/secure/api/service/outlet
 
   # Downloading a file will create a long-lived TCP connection, which should be dropped by the portal
   # when the credential expires
@@ -333,8 +323,6 @@ teardown() {
 }
 
 @test "portals - local portal, curl upload, inlet credential expires" {
-  inlet_port="$(random_port)"
-
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -360,8 +348,9 @@ teardown() {
   bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --encoding hex)
   run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
 
-  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/bob --to "$PYTHON_SERVER_PORT"
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "$inlet_port" --to /node/bob/secure/api/service/outlet
 
   # Uploading a file will create a long-lived TCP connection, which should be dropped by the portal
   # when the credential expires
@@ -378,8 +367,6 @@ teardown() {
 }
 
 @test "portals - local portal, curl download, outlet credential expires" {
-  inlet_port="$(random_port)"
-
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -405,8 +392,9 @@ teardown() {
   bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 5s --encoding hex)
   run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
 
-  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:$PYTHON_SERVER_PORT
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/bob --to "$PYTHON_SERVER_PORT"
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "$inlet_port" --to /node/bob/secure/api/service/outlet
 
   # Downloading a file will create a long-lived TCP connection, which should be dropped by the portal
   # when the credential expires
@@ -420,8 +408,6 @@ teardown() {
 }
 
 @test "portals - local portal, curl upload, outlet credential expires" {
-  inlet_port="$(random_port)"
-
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -447,8 +433,9 @@ teardown() {
   bob_credential=$($OCKAM credential issue --as authority --for "$bob_identifier" --ttl 5s --encoding hex)
   run_success "$OCKAM" credential store --at bob --issuer "$authority_identifier" --credential $bob_credential --scope "test"
 
-  run_success "$OCKAM" tcp-outlet create --at /node/bob --to 127.0.0.1:5000
-  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "127.0.0.1:$inlet_port" --to /node/bob/secure/api/service/outlet
+  run_success "$OCKAM" tcp-outlet create --at /node/bob --to "$PYTHON_SERVER_PORT"
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/alice --from "$inlet_port" --to /node/bob/secure/api/service/outlet
 
   # Uploading a file will create a long-lived TCP connection, which should be dropped by the portal
   # when the credential expires

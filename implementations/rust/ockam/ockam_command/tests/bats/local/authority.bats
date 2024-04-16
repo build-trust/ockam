@@ -15,11 +15,10 @@ teardown() {
 # ===== TESTS
 
 @test "authority - an authority node must be shown as UP even if its tcp listener cannot be accessed" {
-  port="$(random_port)"
-
   run_success "$OCKAM" identity create authority
   authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
   trusted="{}"
+  port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   run_success "$OCKAM" node show authority
   assert_output --partial "\"is_up\": true"
@@ -27,7 +26,6 @@ teardown() {
 
 @test "authority - an authority identity is created by default for the authority node" {
   port="$(random_port)"
-
   trusted="{}"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   run_success "$OCKAM" identity show authority
@@ -35,15 +33,12 @@ teardown() {
 
 @test "authority - an authority identity is created by default for the authority node - with a given name" {
   port="$(random_port)"
-
   trusted="{}"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --identity ockam
   run_success "$OCKAM" identity show ockam
 }
 
 @test "authority - standalone authority, admin, enrollers, members" {
-  port="$(random_port)"
-
   run "$OCKAM" identity create authority
 
   # Authority will trust project-admin credentials issued by this other identity (Account Authority)
@@ -75,6 +70,7 @@ teardown() {
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   trusted="{\"$m1_identifier\": {\"sample_attr\": \"sample_val\"} }"
+  port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full --enforce-admin-checks
   sleep 2 # wait for authority to start TCP listener
 
@@ -139,8 +135,6 @@ EOF
 }
 
 @test "authority - enrollment ticket ttl" {
-  port="$(random_port)"
-
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
   #m3 will be added through enrollment token
@@ -151,6 +145,7 @@ EOF
 
   # Start the authority node.
   trusted="{\"$enroller_identifier\": {\"ockam-role\": \"enroller\"}}"
+  port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   sleep 1 # wait for authority to start TCP listener
 
@@ -187,8 +182,6 @@ EOF
 }
 
 @test "authority - legacy enrollers as admins" {
-  port="$(random_port)"
-
   run "$OCKAM" identity create authority
 
   # Authority will trust project-admin credentials issued by this other identity (Account Authority)
@@ -210,6 +203,7 @@ EOF
   trusted="{\"$m1_identifier\": {\"ockam-role\": \"enroller\", \"sample_attr\": \"sample_val\"} }"
 
   # Authority in legacy mode, with enrollers as admins
+  port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --no-direct-authentication --account-authority $account_authority_full
   sleep 2 # wait for authority to start TCP listener
 
@@ -245,8 +239,6 @@ EOF
 }
 
 @test "local authority - test api commands" {
-  port="$(random_port)"
-
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
 
@@ -260,6 +252,7 @@ EOF
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
   # For the first test we start the node with no direct authentication service nor token enrollment
   trusted="{\"$enroller_identifier\": {\"ockam-role\": \"enroller\"}}"
+  port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   sleep 1 # wait for authority to start TCP listener
 

@@ -37,10 +37,9 @@ force_kill_node() {
 }
 
 @test "node - create with name" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
+  run_success "$OCKAM" node create n
 
-  run_success "$OCKAM" node show "$n"
+  run_success "$OCKAM" node show n
   assert_output --partial "/dnsaddr/localhost/tcp/"
   assert_output --partial "/service/api"
   assert_output --partial "/service/uppercase"
@@ -55,100 +54,89 @@ force_kill_node() {
 }
 
 @test "node - is restarted with default services" {
-  n="$(random_str)"
   # Create node, check that it has one of the default services running
-  run_success "$OCKAM" node create "$n"
-  assert_output --partial "Node ${n} created successfully"
+  run_success "$OCKAM" node create n
+  assert_output --partial "Node n created successfully"
 
   # Stop node, restart it, and check that the service is up again
-  $OCKAM node stop "$n"
-  run_success "$OCKAM" node start "$n"
+  $OCKAM node stop n
+  run_success "$OCKAM" node start n
   assert_output --partial "/service/echo"
 }
 
 @test "node - fail to create two background nodes with the same name" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
-  run_failure "$OCKAM" node create "$n"
+  run_success "$OCKAM" node create n
+  run_failure "$OCKAM" node create n
 }
 
 @test "node - can recreate a background node after it was gracefully stopped" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
-  run_success "$OCKAM" node stop "$n"
+  run_success "$OCKAM" node create n
+  run_success "$OCKAM" node stop n
   # Recreate node
-  run_success "$OCKAM" node create "$n"
+  run_success "$OCKAM" node create n
 }
 
 @test "node - can recreate a background node after it was killed" {
   # This test emulates the situation where a node is killed by the OS
   # on a restart or a shutdown. The node should be able to restart without errors.
-  n="$(random_str)"
-  run_success "$OCKAM" node create "$n"
+  run_success "$OCKAM" node create n
 
-  force_kill_node "$n"
+  force_kill_node n
 
   # Recreate node
-  run_success "$OCKAM" node create "$n"
+  run_success "$OCKAM" node create n
 }
 
 @test "node - fail to create node when not existing identity is passed" {
-  i=$(random_str)
-
   # Background node
-  run_failure "$OCKAM" node create --identity "$i"
+  run_failure "$OCKAM" node create --identity i
   # Foreground node
-  run_failure "$OCKAM" node create -f --identity "$i"
+  run_failure "$OCKAM" node create -f --identity i
 }
 
 @test "node - fail to create two foreground nodes with the same name" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create $n -f &
+  run_success "$OCKAM" node create n -f &
   sleep 1
-  run_success "$OCKAM" node show "$n"
-  run_failure "$OCKAM" node create "$n" -f
+  run_success "$OCKAM" node show n
+  run_failure "$OCKAM" node create n -f
 }
 
 @test "node - can recreate a foreground node after it was killed" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create $n -f &
+  run_success "$OCKAM" node create n -f &
   sleep 1
-  run_success "$OCKAM" node show "$n"
+  run_success "$OCKAM" node show n
 
-  force_kill_node "$n"
+  force_kill_node n
 
   # Recreate node
-  run_success "$OCKAM" node create $n -f &
+  run_success "$OCKAM" node create n -f &
   sleep 1
-  run_success "$OCKAM" node show "$n"
+  run_success "$OCKAM" node show n
 }
 
 @test "node - can recreate a foreground node after it was gracefully stopped" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create $n -f &
+  run_success "$OCKAM" node create n -f &
   sleep 1
-  run_success "$OCKAM" node show "$n"
+  run_success "$OCKAM" node show n
 
-  run_success "$OCKAM" node stop "$n"
+  run_success "$OCKAM" node stop n
 
   # Recreate node
-  run_success "$OCKAM" node create $n -f &
+  run_success "$OCKAM" node create n -f &
   sleep 1
-  run_success "$OCKAM" node show "$n"
+  run_success "$OCKAM" node show n
 }
 
 @test "node - background node logs to file" {
   QUIET=0
-  n="$(random_str)"
-  run_success "$OCKAM" node create $n
-  run_success ls -l "$OCKAM_HOME/nodes/$n"
+  run_success "$OCKAM" node create n
+  run_success ls -l "$OCKAM_HOME/nodes/n"
   assert_output --partial "stdout"
 }
 
 @test "node - foreground node logs to stdout only" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create $n -vv -f &
+  run_success "$OCKAM" node create n -vv -f &
   sleep 1
   # It should even create the node directory
-  run_failure ls -l "$OCKAM_HOME/nodes/$n"
+  run_failure ls -l "$OCKAM_HOME/nodes/n"
 }
