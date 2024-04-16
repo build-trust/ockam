@@ -19,12 +19,26 @@ services:
     command:
       - -c
       - (
-          while :; do
+          sleep 10;
+          echo "";
+          echo "Messages sent from the producer will appear shortly.";
+          echo "It may require up to a few of minutes for the messages to appear.";
+          echo "=======================================================================";
+          echo "Press Ctrl+C to stop the container at any time, then execute "\
+          "'./run.sh cleanup' to remove all containers.";
+          echo "";
+          first=1;
+          for n in {1..3}; do
             kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --max-messages 1;
-            if [ "$?" == "0" ]; then
+            if [ "$?" == "0" ] && [ "$$first" == "1" ]; then
               echo "The example run was successful 🥳";
+              first=0;
             fi;
-          done
+          done;
+          echo "=======================================================================";
+          echo "Open the console at http://127.0.0.1:8080 to see the encryted messages.";
+          echo "=======================================================================";
+          tail -f /dev/null;
         )
   producer:
     build:
@@ -37,14 +51,13 @@ services:
     command:
       - -c
       - (
-          sleep 10;
-          COUNTER=0;
-          while :; do
-            sleep 10;
-            COUNTER=$(($${COUNTER}+1));
-            echo -n "Message number $${COUNTER}" | kafka-console-producer.sh
+          sleep 5;
+          for counter in {1..5}; do
+            sleep 5;
+            echo -n "Message number $${counter}" | kafka-console-producer.sh
               --topic demo
               --bootstrap-server 127.0.0.1:9092
               --producer-property request.timeout.ms=30000;
-          done
+          done;
+          tail -f /dev/null
         )

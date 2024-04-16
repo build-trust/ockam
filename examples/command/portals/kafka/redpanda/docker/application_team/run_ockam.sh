@@ -15,24 +15,16 @@ kafka-inlet:
   to: /project/default/service/forward_to_redpanda/secure/api
 EOF
 
-# optional, reduces warnings in the log
-sleep 10
+# optional, reduces warnings in the log and order the output
+if echo "$@" | grep kafka-console-producer.sh; then
+  sleep 17;
+else
+  sleep 10;
+fi;
 
 set -x
 ockam node create ./ockam.yaml
-
 set +x
-echo ""
-echo "======================================================================="
-echo "Open the console at http://127.0.0.1:8080 to see the encryted messages."
-echo "======================================================================="
-echo "Messages sent from the producer will appear shortly."
-echo "It may require up to a few of minutes for the messages to appear."
-echo "======================================================================="
-echo "Press Ctrl+C to stop the container at any time, then execute "\
-      "'./run.sh cleanup' to remove all containers."
-echo ""
-set -x
 
 # Execute the command specified in 'docker-compose.yml'
 bash "$@"

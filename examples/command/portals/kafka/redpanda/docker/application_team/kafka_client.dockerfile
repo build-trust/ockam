@@ -5,7 +5,7 @@ ENV KAFKA_VERSION 3.7.0
 ENV SCALA_VERSION 2.13
 
 RUN apk add --update --no-cache curl
-RUN apk add --no-cache openjdk17-jre bash bind-tools
+RUN apk add --no-cache openjdk17-jre bash bind-tools grep
 RUN apk add --no-cache -t .build-deps curl ca-certificates jq
 RUN mkdir -p /opt
 RUN mirror=$(curl --stderr /dev/null https://www.apache.org/dyn/closer.cgi\?as_json\=1 | jq -r '.preferred') \
