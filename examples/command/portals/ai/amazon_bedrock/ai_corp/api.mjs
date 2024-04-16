@@ -4,12 +4,10 @@ import {
     BedrockRuntimeClient,
     InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
+import {AWS_REGION, MODEL_ID} from './constants.mjs';
 
 const app = express();
 app.use(express.json());
-
-const AWS_REGION = "us-east-1";
-const MODEL_ID = "amazon.titan-text-lite-v1";
 
 app.get("/status", (req, res) => {
     res.json({status: "running"});

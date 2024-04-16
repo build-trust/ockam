@@ -3,3 +3,4 @@ user_data1.sh
 *.pem
 node_modules
 package-lock.json
+package.json

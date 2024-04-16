@@ -70,7 +70,7 @@ if ! [ type ockam &>/dev/null ] && ! [ "$1" = "cleanup" ]; then
 fi
 
 # Check that tools we need are installed.
-for c in aws curl; do
+for c in aws curl node; do
     if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
 
