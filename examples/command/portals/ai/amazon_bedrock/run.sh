@@ -36,7 +36,7 @@ run() {
     ai_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 60m \
         --attribute "ai-outlet=true" --relay ai)
 
-    # Create an enrollment ticket to enroll the identity used by an ockam node that will run adjacent to the postgres
+    # Create an enrollment ticket to enroll the identity used by an ockam node that will run adjacent to the bedrock
     # client app in health_corp_ticket's network.
     #
     # The identity that enrolls with the generated ticket will be given a project membership credential in which the
@@ -70,7 +70,7 @@ if ! [ type ockam &>/dev/null ] && ! [ "$1" = "cleanup" ]; then
 fi
 
 # Check that tools we need are installed.
-for c in aws curl node; do
+for c in aws curl node npm; do
     if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
 

@@ -3,4 +3,6 @@ user_data1.sh
 *.pem
 node_modules
 package-lock.json
+ai_corp/package.json
 package.json
+
