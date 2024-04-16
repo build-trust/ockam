@@ -104,6 +104,7 @@ check_model_availability() {
     fi
 
     # check if the model access has been granted
+    npm install @aws-sdk/client-bedrock-runtime
     node ./check-model-availability.mjs
     if [ $? -eq 0 ]; then
         echo "The amazon.titan-text-lite-v1 model is accessible"
