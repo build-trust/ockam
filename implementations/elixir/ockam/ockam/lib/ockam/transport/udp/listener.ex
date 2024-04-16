@@ -64,7 +64,8 @@ defmodule Ockam.Transport.UDP.Listener do
 
   @doc false
   @impl true
-  # The 2 bytes heading indicating the size is necessary on TCP streams,  but is not neccesary on UDP where we map 1 ockam msg per udp datagram
+  # The 2 bytes heading indicating the size is necessary on TCP streams,
+  # but is not neccesary on UDP where we map 1 ockam msg per udp datagram
   # However, rust implementation is adding and expecting it to be there, it's done here as well.
   def handle_info({:udp, socket, from_ip, from_port, <<length::size(16), packet::binary>>}, state)
       when byte_size(packet) == length do
