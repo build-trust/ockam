@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -ex
-
 run() {
     enrollment_ticket="$1"
-    check_bedrock_availability
+    check_model_availability
 
     # ----------------------------------------------------------------------------------------------------------------
     # CREATE NETWORK
@@ -75,6 +74,7 @@ run() {
     rm -f user_data.sh
 
     until scp -o StrictHostKeyChecking=no -i ./key.pem ./api.mjs "ec2-user@$ip:api.mjs"; do sleep 10; done
+    until scp -o StrictHostKeyChecking=no -i ./key.pem ./constants.mjs "ec2-user@$ip:constants.mjs"; do sleep 10; done
     ssh -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip" \
         'bash -s' << 'EOS'
             sudo yum update -y && sudo yum install nodejs -y
@@ -86,7 +86,7 @@ run() {
 EOS
 }
 
-check_bedrock_availability() {
+check_model_availability() {
     supported_regions=$(aws ssm get-parameters-by-path \
         --path /aws/service/global-infrastructure/services/bedrock/regions --output json | \
         jq -r '.Parameters[].Value')
@@ -101,6 +101,15 @@ check_bedrock_availability() {
         echo "Please use one of the supported regions for this example to run:"
         echo "${supported_regions}"
         exit 1
+    fi
+
+    # check if the model access has been granted
+    node ./check-model-availability.mjs
+    if [ $? -eq 0 ]; then
+        echo "The amazon.titan-text-lite-v1 model is accessible"
+    else
+        echo "The amazon.titan-text-lite-v1 model is not accessible."
+        echo "Please go to https://${configured_region}.console.aws.amazon.com/bedrock/home?region=${configured_region}#/modelaccess to request an access to that model."
     fi
 }
 
