@@ -1,0 +1,41 @@
+---
+version: "3.7"
+networks:
+  application_team:
+      driver: bridge
+services:
+  # Start a consumer node with ockam.
+  #
+  # Read kafka_client.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  consumer:
+    build:
+      context: .
+      dockerfile: kafka_client.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092
+  producer:
+    build:
+      context: .
+      dockerfile: kafka_client.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - (
+          sleep 10;
+          while :; do
+            sleep 10;
+            echo 'The example run was successful 🥳' | kafka-console-producer.sh
+              --topic demo
+              --bootstrap-server 127.0.0.1:9092
+              --producer-property request.timeout.ms=30000;
+            done
+        )

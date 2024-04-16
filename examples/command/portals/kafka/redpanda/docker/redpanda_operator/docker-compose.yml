@@ -1,13 +1,24 @@
 ---
 version: "3.7"
 networks:
-  bank_corp:
+  redpanda_operator:
       driver: bridge
 services:
-  redpanda:
+  # Start an ockam node.
+  #
+  # Read ../ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    depends_on: [redpanda]
     build:
       context: .
-      dockerfile: redpanda.dockerfile
+      dockerfile: ../ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+    networks:
+      - redpanda_operator
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.1.13
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
     command:
@@ -36,7 +47,7 @@ services:
       # enable logs for debugging.
       - --default-log-level=debug
     networks:
-      - bank_corp
+      - redpanda_operator
     ports:
       - 18081:18081
       - 18082:18082
@@ -46,7 +57,7 @@ services:
     container_name: redpanda-console
     image: docker.redpanda.com/redpandadata/console:v2.2.4
     networks:
-      - bank_corp
+      - redpanda_operator
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:
