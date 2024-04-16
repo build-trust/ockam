@@ -16,7 +16,7 @@ Ockam.SecureChannel.create_listener(identity: identity,
                                     address: "secure_channel_listener",
                                     encryption_options: [static_keypair: keypair, static_key_attestation: attestation])
 
-# Start the TCP Transport Add-on for Ockam Routing and a TCP listener on port 4000.
+# Start the UDP Transport Add-on for Ockam Routing and a UDP listener on port 4000.
 {:ok, _} = Ockam.Transport.UDP.start(port: 4000)
 
 Process.sleep(:infinity)
