@@ -29,41 +29,42 @@ run() {
     ockam enroll
 
     # Create an enrollment ticket to enroll the identity used by an ockam node that will run
-    # adjacent to the Redpanda server in bank_corp's network.
+    # adjacent to the Redpanda server in redpanda_operator's network.
     #
     # The identity that enrolls with the generated ticket will be given a cryptographically
     # attestest project membership credential issue by the membership authority.
     #
     # The identity will also allowed to create a relay in the project at the address `redpanda`.
-    bank_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay redpanda)
+    redpanda_operator_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay redpanda)
 
     # Create an enrollment ticket to enroll the identity used by an ockam node that will run
-    # adjacent to the Redpanda client app in analysis_corp's network.
+    # adjacent to the Redpanda client app in application_team's network.
     #
     # The identity that enrolls with the generated ticket will be given a cryptographically
     # attestest project membership credential issue by the membership authority.
-    analysis_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay '*')
+    application_team_consumer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay '*')
+    application_team_producer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay '*')
 
-    # Invoke `docker-compose up` in the directory that has bank_corp's configuration.
+    # Invoke `docker-compose up` in the directory that has redpanda_operator's configuration.
     # Pass the above enrollment ticket as an environment variable.
     #
-    # Read bank_corp/docker-compose.yml to understand the parts that are provisioned
-    # in bank_corp's virtual private network.
-    echo; pushd bank_corp; ENROLLMENT_TICKET="$bank_corp_ticket" docker compose up -d; popd
+    # Read redpanda_operator/docker-compose.yml to understand the parts that are provisioned
+    # in redpanda_operator's virtual private network.
+    echo; pushd redpanda_operator; ENROLLMENT_TICKET="$redpanda_operator_ticket" docker compose up -d; popd
 
-    # Invoke `docker-compose up` in the directory that has analysis_corp's configuration.
+    # Invoke `docker-compose up` in the directory that has application_team's configuration.
     # Pass the above enrollment ticket as an environment variable.
     #
-    # Read analysis_corp/docker-compose.yml to understand the parts that are provisioned
-    # in analysis_corp's virtual private network.
-    echo; pushd analysis_corp; ENROLLMENT_TICKET="$analysis_corp_ticket" docker compose up; popd
+    # Read application_team/docker-compose.yml to understand the parts that are provisioned
+    # in application_team's virtual private network.
+    echo; pushd application_team; PRODUCER_ENROLLMENT_TICKET="$application_team_producer_ticket" CONSUMER_ENROLLMENT_TICKET="$application_team_consumer_ticket" docker compose up; popd
 }
 
 # Cleanup after the example - `./run.sh cleanup`
 # Remove all containers and images pulled or created by docker compose.
 cleanup() {
-    pushd bank_corp; docker compose down --rmi all --remove-orphans; popd
-    pushd analysis_corp; docker compose down --rmi all --remove-orphans; popd
+    pushd redpanda_operator; docker compose down --rmi all --remove-orphans; popd
+    pushd application_team; docker compose down --rmi all --remove-orphans; popd
 }
 
 # Check if Ockam Command is already installed and available in path.
