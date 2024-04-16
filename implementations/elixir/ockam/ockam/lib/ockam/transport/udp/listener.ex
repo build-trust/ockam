@@ -64,9 +64,11 @@ defmodule Ockam.Transport.UDP.Listener do
 
   @doc false
   @impl true
-  def handle_info({:udp, _socket, _from_ip, _from_port, _packet} = udp_message, state) do
-    ## TODO: use from_ip and from_port to route messages back
-    case decode_and_send_to_router(udp_message, state) do
+  # The 2 bytes heading indicating the size is neccesary on TCP streams,  but is not neccesary on UDP where we map 1 ockam msg per udp datagram
+  # However, rust implementation is adding and expecting it to be there, it's done here as well.
+  def handle_info({:udp, socket, from_ip, from_port, <<length::size(16), packet::binary>>}, state)
+      when byte_size(packet) == length do
+    case decode_and_send_to_router({:udp, socket, from_ip, from_port, packet}, state) do
       {:ok, state} ->
         {:noreply, state}
 
@@ -103,6 +105,7 @@ defmodule Ockam.Transport.UDP.Listener do
         end
 
       {:error, reason} ->
+        Logger.error("Error processing udp packet: #{inspect(reason)}")
         {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
     end
   end
@@ -112,7 +115,13 @@ defmodule Ockam.Transport.UDP.Listener do
 
     with {:ok, destination, message} <- pick_destination_and_set_onward_route(message),
          {:ok, encoded_message} <- Wire.encode(message),
-         :ok <- :gen_udp.send(socket, destination.ip, destination.port, encoded_message) do
+         :ok <-
+           :gen_udp.send(
+             socket,
+             destination.ip,
+             destination.port,
+             <<byte_size(encoded_message)::size(16), encoded_message::binary>>
+           ) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_encoded_and_sent"})
       {:ok, state}
     else
