@@ -1,0 +1,62 @@
+version: "3.8"
+networks:
+  application_team:
+    driver: bridge
+services:
+  # Start a consumer and producer node with ockam.
+  #
+  # Read kafka_ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  consumer:
+    build:
+      context: .
+      dockerfile: ../kafka_ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
+    command:
+      - -c
+      - (
+          sleep 10;
+          echo "";
+          echo "Messages sent from the producer will appear shortly.";
+          echo "It may require few minutes for the messages to appear.";
+          echo "=======================================================================";
+          echo "Press Ctrl+C to stop the container at any time, then execute "\
+          "'./run.sh cleanup' to remove all containers.";
+          echo "";
+          first=1;
+          for n in {1..3}; do
+            kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --max-messages 1;
+            if [ "$?" == "0" ] && [ "$$first" == "1" ]; then
+              echo "The example run was successful 🥳";
+              first=0;
+            fi;
+          done;
+
+          echo "Messages sent successfully, please Ctrl+C to exit";
+          tail -f /dev/null;
+        )
+    networks:
+      - application_team
+
+  producer:
+    build:
+      context: .
+      dockerfile: ../kafka_ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - (
+          sleep 5;
+          for counter in {1..5}; do
+            sleep 10;
+            echo -n "Message number $${counter}" | kafka-console-producer.sh
+              --topic demo
+              --bootstrap-server 127.0.0.1:9092
+              --producer-property request.timeout.ms=30000;
+          done;
+          tail -f /dev/null
+        )
