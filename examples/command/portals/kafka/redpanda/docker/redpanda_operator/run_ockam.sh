@@ -8,8 +8,8 @@ cat <<EOF > ./ockam.yaml
 name: redpanda_outlet_node
 ticket: ${ENROLLMENT_TICKET}
 
-# This node will be reachable in the project named
-# 'redpanda'.
+# This node will be reachable in the project
+# using the address 'forward_to_redpanda'.
 relay: redpanda
 
 # Declare a Kafka Outlet, with a local destination.
