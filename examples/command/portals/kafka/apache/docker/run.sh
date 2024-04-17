@@ -4,8 +4,8 @@ set -e
 # This script, `./run.sh ...` is invoked on a developer’s work machine.
 #
 # This hands-on example uses Ockam to create an end-to-end encrypted portal to Kafka.
-# We connect a kafka client in one virtual private network with a Kafka event streamer
-# in another virtual private network.
+# We connect a kafka producer and consumer in one virtual private network with a Kafka
+# event streamer in another virtual private network.
 #
 # The example uses docker and docker compose to create these virtual networks.
 #

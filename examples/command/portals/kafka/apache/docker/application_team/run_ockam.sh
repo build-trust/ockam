@@ -15,7 +15,6 @@ kafka-inlet:
   to: /project/default/service/forward_to_kafka/secure/api
 EOF
 
-# optional, reduces warnings in the log
 # optional, reduces warnings in the log and order the output
 if echo "$@" | grep kafka-console-producer.sh; then
   sleep 17;
