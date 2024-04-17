@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use miette::IntoDiagnostic;
 use miette::{miette, Context as _};
 use rand::random;
+use tracing::info;
 
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
@@ -64,6 +65,11 @@ pub async fn initialize_default_node(
 /// A utility function to spawn a new node into foreground mode
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
+    info!(
+        "preparing to spawn a new node with name {} in the background",
+        &cmd.name
+    );
+
     let CreateCommand {
         skip_is_running_check,
         name,
@@ -139,11 +145,13 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
 
     args.push(name.to_owned());
 
-    run_ockam(args).await
+    run_ockam(args, opts.global_args.quiet).await
 }
 
 /// Run the ockam command line with specific arguments
-pub async fn run_ockam(args: Vec<String>) -> miette::Result<()> {
+pub async fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<()> {
+    info!("spawning a new process");
+
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
@@ -152,13 +160,27 @@ pub async fn run_ockam(args: Vec<String>) -> miette::Result<()> {
             .unwrap()
             .into()
     });
+
+    let stdio = || {
+        if quiet {
+            // If we're running in quiet mode, we don't need to propagate
+            // the stdout/stderr to the child process
+            Stdio::null()
+        } else {
+            // Otherwise, we need to inherit the stdout/stderr of the parent process
+            // to see the output written in the child process
+            Stdio::inherit()
+        }
+    };
+
     Command::new(ockam_exe)
         .args(args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(stdio())
+        .stderr(stdio())
         .stdin(Stdio::null())
         .spawn()
         .into_diagnostic()
         .context("failed to spawn node")?;
+
     Ok(())
 }

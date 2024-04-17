@@ -127,8 +127,8 @@ impl NodeConfig {
 
     pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         // Parse then run commands
-        for cmd in self.parse_commands()? {
-            cmd.run(ctx, opts).await?
+        for section in self.parse_commands()? {
+            section.run(ctx, opts).await?
         }
         Ok(())
     }

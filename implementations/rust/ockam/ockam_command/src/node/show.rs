@@ -222,16 +222,16 @@ pub async fn print_query_status(
 /// allow a node time to start up and become ready.
 pub async fn is_node_up(
     ctx: &Context,
-    node_client: &mut BackgroundNodeClient,
+    node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
-    let node_name = node_client.node_name();
-    if !is_node_accessible(ctx, node_client, wait_until_ready).await? {
-        warn!(%node_name, "the node is not accessible in time");
+    let node_name = node.node_name();
+    if !is_node_accessible(ctx, node, wait_until_ready).await? {
+        warn!(%node_name, "the node was not accessible in time");
         return Ok(false);
     }
-    if !is_node_ready(ctx, node_client, wait_until_ready).await? {
-        warn!(%node_name, "the node is not ready in time");
+    if !is_node_ready(ctx, node, wait_until_ready).await? {
+        warn!(%node_name, "the node was not ready in time");
         return Ok(false);
     }
     Ok(true)
@@ -240,19 +240,19 @@ pub async fn is_node_up(
 /// Return true if the node is accessible via TCP
 async fn is_node_accessible(
     ctx: &Context,
-    node_client: &mut BackgroundNodeClient,
+    node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
     let retries = FibonacciBackoff::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
 
-    let node_name = node_client.node_name();
+    let node_name = node.node_name();
 
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
         if total_time >= IS_NODE_ACCESSIBLE_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
             return Ok(false);
         };
-        if node_client.is_accessible(ctx).await.is_ok() {
+        if node.is_accessible(ctx).await.is_ok() {
             trace!(%node_name, "node is accessible");
             return Ok(true);
         }
@@ -266,12 +266,12 @@ async fn is_node_accessible(
 /// Return true if the node has been initialized and is ready to accept requests
 async fn is_node_ready(
     ctx: &Context,
-    node_client: &mut BackgroundNodeClient,
+    node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
     let retries = FibonacciBackoff::from_millis(IS_NODE_READY_TIME_BETWEEN_CHECKS_MS);
 
-    let node_name = node_client.node_name();
+    let node_name = node.node_name();
     let now = std::time::Instant::now();
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
@@ -280,7 +280,7 @@ async fn is_node_ready(
         };
         // Test if node is ready
         // If the node is down, we expect it won't reply and the timeout will trigger the next loop
-        let result = node_client
+        let result = node
             .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), timeout_duration)
             .await;
         if let Ok(node_status) = result {

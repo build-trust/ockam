@@ -46,7 +46,7 @@ impl Command for CreateCommand {
     const NAME: &'static str = "identity create";
 
     async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let _progress_display = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
         let vault = match &self.vault {
             Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
             None => opts.state.get_or_create_default_named_vault().await?,

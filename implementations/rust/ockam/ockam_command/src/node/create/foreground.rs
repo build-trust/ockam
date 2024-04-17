@@ -10,12 +10,14 @@ use tracing::{debug, info, instrument};
 
 use ockam::{Address, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
+use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
-use ockam_api::{fmt_ok, fmt_warn};
+use ockam_api::terminal::notification::NotificationHandler;
+use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_core::{route, LOCAL};
 
 use crate::node::CreateCommand;
@@ -30,10 +32,12 @@ impl CreateCommand {
         ctx: &Context,
         opts: CommandGlobalOpts,
     ) -> miette::Result<()> {
-        self.guard_node_is_not_already_running(&opts).await?;
-
         let node_name = self.name.clone();
-        debug!("create node {node_name} in foreground mode");
+        debug!(%node_name, "creating node in foreground mode");
+        opts.terminal.write_line(&fmt_log!(
+            "Creating Node {}...\n",
+            color_primary(&node_name)
+        ))?;
 
         if opts
             .state
@@ -46,16 +50,29 @@ impl CreateCommand {
             return Err(miette!("Node {} is already running", &node_name));
         };
 
+        let trust_options = opts
+            .state
+            .retrieve_trust_options(
+                &self.trust_opts.project_name,
+                &self.trust_opts.authority_identity,
+                &self.trust_opts.authority_route,
+                &self.trust_opts.credential_scope,
+            )
+            .await
+            .into_diagnostic()?;
+
+        // Create TCP transport
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let tcp_listener = tcp
             .listen(&self.tcp_listener_address, TcpListenerOptions::new())
             .await
             .into_diagnostic()?;
-
-        debug!(
-            "set the node {node_name} listener address to {:?}",
+        debug!(%node_name,
+            "listener address set to {:?}",
             tcp_listener.socket_address()
         );
+
+        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
 
         // Set node_name so that node can isolate its data in the storage from other nodes
         let mut state = opts.state.clone();
@@ -69,18 +86,7 @@ impl CreateCommand {
                 Some(&tcp_listener),
             )
             .await?;
-        debug!("created node {node_info:?}");
-
-        let trust_options = opts
-            .state
-            .retrieve_trust_options(
-                &self.trust_opts.project_name,
-                &self.trust_opts.authority_identity,
-                &self.trust_opts.authority_route,
-                &self.trust_opts.credential_scope,
-            )
-            .await
-            .into_diagnostic()?;
+        debug!(%node_name, "node info persisted {node_info:?}");
 
         let node_man = InMemoryNode::new(
             ctx,
@@ -95,13 +101,15 @@ impl CreateCommand {
         )
         .await
         .into_diagnostic()?;
-        let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
+        debug!(%node_name, "in-memory node created");
 
+        let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
         ctx.flow_controls()
             .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await
             .into_diagnostic()?;
+        debug!(%node_name, "node manager worker started");
 
         if let Some(config) = &self.launch_config {
             if start_services(ctx, config).await.is_err() {
@@ -119,6 +127,23 @@ impl CreateCommand {
             }
         }
 
+        opts.terminal
+            .clone()
+            .stdout()
+            .plain(fmt_ok!(
+                "Node {} created successfully",
+                color_primary(&self.name)
+            ))
+            .write_line()?;
+        if node_info.is_default() {
+            opts.terminal.write_line(fmt_ok!(
+                "Marked {} as your default Node, {}",
+                color_primary(node_name),
+                "on this machine".dim()
+            ))?;
+        }
+
+        drop(_notification_handler);
         self.wait_for_exit_signal(ctx, opts).await
     }
 
@@ -136,11 +161,12 @@ impl CreateCommand {
             let terminal = opts.terminal.clone();
             // To avoid handling multiple CTRL+C signals at the same time
             let flag = Arc::new(AtomicBool::new(true));
+            let is_child_process = self.child_process;
             ctrlc::set_handler(move || {
                 if flag.load(std::sync::atomic::Ordering::Relaxed) {
                     let _ = tx.blocking_send(());
                     info!("Ctrl+C signal received");
-                    if !opts.global_args.quiet {
+                    if !is_child_process {
                         let _ = terminal.write_line(fmt_warn!("Ctrl+C signal received"));
                     }
                     flag.store(false, std::sync::atomic::Ordering::Relaxed);
@@ -166,6 +192,14 @@ impl CreateCommand {
             }
         }
 
+        debug!(node_name = %self.name, "waiting for exit signal");
+
+        if !self.child_process {
+            opts.terminal
+                .write_line("")?
+                .write_line(&fmt_log!("Waiting for exit signal...\n"))?;
+        }
+
         // Wait for signal SIGINT, SIGTERM, SIGHUP or EOF; or for the tx to be closed.
         rx.recv().await;
 
@@ -173,8 +207,10 @@ impl CreateCommand {
         opts.shutdown();
         let _ = opts.state.stop_node(&self.name, true).await;
         let _ = ctx.stop().await;
-        opts.terminal
-            .write_line(fmt_ok!("Node stopped successfully"))?;
+        if !self.child_process {
+            opts.terminal
+                .write_line(fmt_ok!("Node stopped successfully"))?;
+        }
 
         Ok(())
     }

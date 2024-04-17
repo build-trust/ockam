@@ -14,7 +14,7 @@ const REPORTING_CHANNEL_POLL_DELAY: Duration = Duration::from_millis(100);
 #[derive(Debug, Clone, PartialEq)]
 pub enum Notification {
     Message(String),
-    ProgressSet(String),
+    Progress(String),
     ProgressFinish(Option<String>),
 }
 
@@ -22,7 +22,7 @@ impl Notification {
     pub fn contents(&self) -> Option<&str> {
         match self {
             Notification::Message(contents) => Some(contents),
-            Notification::ProgressSet(contents) => Some(contents),
+            Notification::Progress(contents) => Some(contents),
             Notification::ProgressFinish(contents) => contents.as_deref(),
         }
     }
@@ -31,8 +31,8 @@ impl Notification {
         Self::Message(contents.into())
     }
 
-    pub fn progress_set(contents: impl Into<String>) -> Self {
-        Self::ProgressSet(contents.into())
+    pub fn progress(contents: impl Into<String>) -> Self {
+        Self::Progress(contents.into())
     }
 
     pub fn progress_finish(contents: impl Into<Option<String>>) -> Self {
@@ -108,7 +108,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
             Notification::Message(contents) => {
                 let _ = self.terminal.write_line(contents);
             }
-            Notification::ProgressSet(contents) => {
+            Notification::Progress(contents) => {
                 if self.terminal.can_use_progress_spinner() {
                     if self.progress_bar.is_none() {
                         self.progress_bar = self.terminal.progress_spinner();

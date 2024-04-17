@@ -153,8 +153,8 @@ fn exporting_enabled(
             Ok(ExportingEnabled::On)
         } else {
             if !quiet {
-                println!("Exporting OpenTelemetry events is disabled because the OpenTelemetry collector endpoint at {} cannot be reached after {}ms", endpoint, connection_check_timeout.as_millis());
-                println!("You can disable the export of OpenTelemetry events with: `export OCKAM_OPENTELEMETRY_EXPORT=false` to avoid this connection check.");
+                eprintln!("Exporting OpenTelemetry events is disabled because the OpenTelemetry collector endpoint at {} cannot be reached after {}ms", endpoint, connection_check_timeout.as_millis());
+                eprintln!("You can disable the export of OpenTelemetry events with: `export OCKAM_OPENTELEMETRY_EXPORT=false` to avoid this connection check.");
             }
             Ok(ExportingEnabled::Off)
         }

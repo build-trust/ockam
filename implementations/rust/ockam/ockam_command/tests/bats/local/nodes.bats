@@ -56,7 +56,6 @@ force_kill_node() {
 @test "node - is restarted with default services" {
   # Create node, check that it has one of the default services running
   run_success "$OCKAM" node create n
-  assert_output --partial "Node n created successfully"
 
   # Stop node, restart it, and check that the service is up again
   $OCKAM node stop n
@@ -128,7 +127,6 @@ force_kill_node() {
 }
 
 @test "node - background node logs to file" {
-  QUIET=0
   run_success "$OCKAM" node create n
   run_success ls -l "$OCKAM_HOME/nodes/n"
   assert_output --partial "stdout"
@@ -142,9 +140,10 @@ force_kill_node() {
 }
 
 @test "node - create a node with an inline configuration" {
-  n="$(random_str)"
-  run_success "$OCKAM" node create --node-config "{name: $n, tcp-outlets: {db-outlet: {to: '127.0.0.1:5432', at: $n}}}"
-  assert_output --partial "Node ${n} created successfully"
+  run_success "$OCKAM" node create --node-config "{name: n, tcp-outlets: {db-outlet: {to: 5432, at: n}}}"
+  run_success $OCKAM node show n --output json
+  assert_output --partial "\"name\": \"n\""
+  assert_output --partial "127.0.0.1:5432"
 }
 
 @test "node - create two nodes with the same inline configuration" {

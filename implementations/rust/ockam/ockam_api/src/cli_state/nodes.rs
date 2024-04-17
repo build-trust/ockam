@@ -18,7 +18,6 @@ use crate::cloud::project::Project;
 use crate::config::lookup::InternetAddress;
 
 /// The methods below support the creation and update of local nodes
-///
 impl CliState {
     /// Create a node, with some optional associated values, and start it
     #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()))]
@@ -32,17 +31,17 @@ impl CliState {
         let mut node = self
             .create_node_with_optional_values(node_name, identity_name, project_name)
             .await?;
-        let pid = process::id();
-        self.set_node_pid(node_name, pid).await?;
-        node = node.set_pid(pid);
-
+        if node.pid.is_none() {
+            let pid = process::id();
+            self.set_node_pid(node_name, pid).await?;
+            node = node.set_pid(pid);
+        }
         if let Some(tcp_listener) = tcp_listener {
             let address = (*tcp_listener.socket_address()).into();
             self.set_tcp_listener_address(&node.name(), &address)
                 .await?;
             node = node.set_tcp_listener_address(address)
         }
-
         Ok(node)
     }
 
@@ -226,10 +225,10 @@ impl CliState {
         node_name: &str,
         address: &InternetAddress,
     ) -> Result<()> {
-        Ok(self
-            .nodes_repository()
+        self.nodes_repository()
             .set_tcp_listener_address(node_name, address)
-            .await?)
+            .await?;
+        Ok(())
     }
 
     /// Specify that a node is an authority node
@@ -347,9 +346,12 @@ impl CliState {
         identifier: &Identifier,
     ) -> Result<NodeInfo> {
         let repository = self.nodes_repository();
+
         let is_default = repository.is_default_node(node_name).await?
             || repository.get_nodes().await?.is_empty();
+
         let tcp_listener_address = repository.get_tcp_listener_address(node_name).await?;
+
         let node_info = NodeInfo::new(
             node_name.to_string(),
             identifier.clone(),

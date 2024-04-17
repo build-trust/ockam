@@ -202,7 +202,7 @@ impl CreateCommand {
         }
         args.push(self.node_name.to_string());
 
-        run_ockam(args).await
+        run_ockam(args, opts.global_args.quiet).await
     }
 }
 

@@ -288,6 +288,10 @@ impl NodeManager {
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
     ) -> ockam_core::Result<Self> {
+        let mut cli_state = general_options.cli_state;
+        let node_name = general_options.node_name.clone();
+        cli_state.set_node_name(&node_name);
+
         debug!("create transports");
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
@@ -296,22 +300,14 @@ impl NodeManager {
             transport_options.api_transport_flow_control_id.clone(),
         );
 
-        let mut cli_state = general_options.cli_state;
-        cli_state.set_node_name(general_options.node_name.clone());
-
-        let secure_channels = cli_state
-            .secure_channels(&general_options.node_name)
-            .await?;
+        let secure_channels = cli_state.secure_channels(&node_name).await?;
 
         let registry = Arc::new(Registry::default());
         debug!("start the medic");
         let medic_handle = MedicHandle::start_medic(ctx, registry.clone()).await?;
 
         debug!("retrieve the node identifier");
-        let node_identifier = cli_state
-            .get_node(&general_options.node_name)
-            .await?
-            .identifier();
+        let node_identifier = cli_state.get_node(&node_name).await?.identifier();
 
         debug!("create default resource type policies");
         cli_state
@@ -377,7 +373,7 @@ impl NodeManager {
 
         let mut s = Self {
             cli_state,
-            node_name: general_options.node_name,
+            node_name,
             node_identifier,
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
@@ -388,7 +384,7 @@ impl NodeManager {
             medic_handle,
         };
 
-        debug!("retrieve the node identifier");
+        debug!("initializing services");
         s.initialize_services(ctx, general_options.start_default_services)
             .await?;
         info!("created a node manager for the node: {}", s.node_name);

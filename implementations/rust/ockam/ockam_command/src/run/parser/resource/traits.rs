@@ -32,6 +32,8 @@ impl ParsedCommands {
         for cmd in self.commands.into_iter() {
             if cmd.is_valid(ctx, opts).await? {
                 cmd.run(ctx, opts).await?;
+                // Newline between commands
+                opts.terminal.write_line("")?;
             }
         }
         Ok(())
