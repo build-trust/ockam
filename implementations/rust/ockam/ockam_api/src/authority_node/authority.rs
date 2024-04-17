@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use tracing::info;
@@ -8,9 +9,10 @@ use crate::authenticator::enrollment_tokens::{
     EnrollmentTokenAcceptorWorker, EnrollmentTokenIssuerWorker,
 };
 use crate::authenticator::{
-    AuthorityEnrollmentTokenRepository, AuthorityEnrollmentTokenSqlxDatabase,
+    AuthorityEnrollmentTokenRepository, AuthorityEnrollmentTokenSqlxDatabase, AuthorityMember,
     AuthorityMembersRepository, AuthorityMembersSqlxDatabase,
 };
+use ockam::identity::utils::now;
 use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
@@ -281,6 +283,29 @@ impl Authority {
             .add_consumer(address, secure_channel_flow_control_id);
 
         ctx.start_worker(address, Echoer).await
+    }
+
+    /// Add a member directly to storage, without additional validation
+    /// This is used during the authority start-up to add an identity for exporting traces
+    pub async fn add_member(
+        &self,
+        identifier: &Identifier,
+        attributes: &BTreeMap<String, String>,
+    ) -> Result<()> {
+        let attrs = attributes
+            .iter()
+            .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
+            .collect();
+
+        self.members
+            .add_member(AuthorityMember::new(
+                identifier.clone(),
+                attrs,
+                self.identifier.clone(),
+                now()?,
+                false,
+            ))
+            .await
     }
 }
 
