@@ -53,12 +53,12 @@ pub struct CreateCommand {
 
     /// TCP listener address
     #[arg(
-        display_order = 900,
-        long,
-        short,
-        id = "SOCKET_ADDRESS",
-        default_value = "127.0.0.1:4000",
-        value_parser = internet_address_parser
+    display_order = 900,
+    long,
+    short,
+    id = "SOCKET_ADDRESS",
+    default_value = "127.0.0.1:4000",
+    value_parser = internet_address_parser
     )]
     tcp_listener_address: InternetAddress,
 
@@ -329,7 +329,7 @@ impl CreateCommand {
             disable_trust_context_id: self.disable_trust_context_id,
         };
 
-        authority_node::start_node(ctx, &configuration)
+        authority_node::start_node(ctx, &opts.state, &configuration)
             .await
             .into_diagnostic()?;
 

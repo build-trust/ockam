@@ -1,5 +1,4 @@
-use crate::common::common::default_configuration;
-use ockam_api::authority_node;
+use crate::common::common::{default_configuration, start_authority_node};
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::{Address, Result};
 use ockam_node::Context;
@@ -9,8 +8,7 @@ mod common;
 #[ockam_macros::test]
 async fn authority_starts_with_default_configuration(ctx: &mut Context) -> Result<()> {
     let configuration = default_configuration().await?;
-
-    authority_node::start_node(ctx, &configuration).await?;
+    start_authority_node(ctx, &configuration).await?;
 
     let workers = ctx.list_workers().await?;
 
@@ -27,10 +25,8 @@ async fn authority_starts_with_default_configuration(ctx: &mut Context) -> Resul
 #[ockam_macros::test]
 async fn authority_starts_direct_authenticator(ctx: &mut Context) -> Result<()> {
     let mut configuration = default_configuration().await?;
-
     configuration.no_direct_authentication = false;
-
-    authority_node::start_node(ctx, &configuration).await?;
+    start_authority_node(ctx, &configuration).await?;
 
     let workers = ctx.list_workers().await?;
 
@@ -47,10 +43,8 @@ async fn authority_starts_direct_authenticator(ctx: &mut Context) -> Result<()> 
 #[ockam_macros::test]
 async fn authority_starts_enrollment_token(ctx: &mut Context) -> Result<()> {
     let mut configuration = default_configuration().await?;
-
     configuration.no_token_enrollment = false;
-
-    authority_node::start_node(ctx, &configuration).await?;
+    start_authority_node(ctx, &configuration).await?;
 
     let workers = ctx.list_workers().await?;
 

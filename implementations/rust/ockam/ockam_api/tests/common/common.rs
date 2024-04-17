@@ -132,7 +132,7 @@ pub async fn start_authority(
         "common.rs about to call authority::start_node with {:?}",
         configuration.account_authority.is_some()
     );
-    authority_node::start_node(ctx, &configuration).await?;
+    start_authority_node(ctx, &configuration).await?;
 
     Ok(AuthorityInfo {
         authority_identifier: configuration.identifier.clone(),
@@ -157,4 +157,8 @@ pub fn change_client_identifier(
         client.request_timeout(),
     );
     AuthorityNodeClient::new(client)
+}
+
+pub async fn start_authority_node(ctx: &Context, configuration: &Configuration) -> Result<()> {
+    authority_node::start_node(ctx, &ockam_api::CliState::test().await?, &configuration).await
 }
