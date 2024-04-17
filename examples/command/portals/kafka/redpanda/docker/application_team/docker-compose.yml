@@ -29,7 +29,10 @@ services:
           echo "";
           kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --max-messages 8;
           if [ "$?" == "0" ]; then
+            echo "";
             echo "The example run was successful 🥳";
+            echo "The consumer was able to decrypt messages, Redpanda only saw encrypted messages";
+            echo "";
           fi;
           echo "=======================================================================";
           echo "Open the console at http://127.0.0.1:8080 to see the encryted messages.";
