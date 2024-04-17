@@ -8,7 +8,7 @@ kafka_host=$(dig +short kafka)
 cat <<EOF > ./ockam.yaml
 name: kafka_outlet_node
 ticket: ${ENROLLMENT_TICKET}
-# This node will be reachable in the project named kafka.
+# This node will be reachable in the project using the address 'forward_to_kafka'.
 relay: kafka
 # Declare a Kafka Outlet, with a local destination.
 kafka-outlet:
