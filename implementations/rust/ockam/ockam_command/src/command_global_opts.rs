@@ -139,10 +139,6 @@ impl CommandGlobalOpts {
         cmd: &OckamSubcommand,
         is_tty: bool,
     ) -> miette::Result<LoggingConfiguration> {
-        if global_args.quiet {
-            return LoggingConfiguration::off().into_diagnostic();
-        };
-
         let log_path = cmd.log_path();
         let crates = crates_filter().into_diagnostic()?;
         if cmd.is_background_node() {

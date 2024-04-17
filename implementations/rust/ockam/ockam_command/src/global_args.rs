@@ -18,7 +18,7 @@ pub struct GlobalArgs {
     )]
     help: Option<bool>,
 
-    /// Do not print any log messages and disable confirmation prompts. This is useful for scripting and automation, where you don't want the process to block on stdin
+    /// Do not print any log messages to stderr and disable confirmation prompts. This is useful for scripting and automation, where you don't want the process to block on stdin
     #[arg(global = true, long, short, default_value_t = quiet_default_value())]
     pub quiet: bool,
 

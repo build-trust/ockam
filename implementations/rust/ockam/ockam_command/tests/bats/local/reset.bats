@@ -25,7 +25,7 @@ teardown() {
 
   # create some state in the OCKAM_HOME directory
   refute_output --partial "nodes"
-  QUIET=0 "$OCKAM" node create -vv
+  run_success "$OCKAM" node create -vv
   run_success ls "$OCKAM_HOME"
   assert_output --partial "database.sqlite3"
   assert_output --partial "application_database.sqlite3"
