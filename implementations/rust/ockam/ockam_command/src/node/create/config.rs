@@ -6,6 +6,7 @@ use crate::run::parser::Version;
 use crate::value_parsers::async_parse_path_or_url;
 use crate::CommandGlobalOpts;
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
+use ockam_api::cli_state::random_name;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{instrument, Span};
@@ -87,6 +88,11 @@ impl NodeConfig {
         // to override the duplicate entries from the config file.
         for (key, value) in &cli_args.variables {
             std::env::set_var(key, value);
+        }
+
+        // Use a random name for the node if none has been specified
+        if self.node.name.is_none() {
+            self.node.name = Some(ArgValue::String(random_name()));
         }
 
         // Set the enrollment ticket from the cli command

@@ -155,7 +155,18 @@ force_kill_node() {
 
 @test "node - create a node with an inline configuration" {
   n="$(random_str)"
-  # Create node, check that it has one of the default services running
   run_success "$OCKAM" node create --node-config "{name: $n, tcp-outlets: {db-outlet: {to: '127.0.0.1:5432', at: $n}}}"
   assert_output --partial "Node ${n} created successfully"
+}
+
+@test "node - create two nodes with the same inline configuration" {
+  run_success "$OCKAM" node create --node-config "{tcp-outlets: {to: 8080}}"
+  run_success "$OCKAM" node create --node-config "{tcp-outlets: {to: 8080}}"
+
+  # each node must have its own outlet
+  node_names="$($OCKAM node list --output json | jq -r 'map(.node_name) | join(" ")')"
+  for node_name in $node_names; do
+    run_success $OCKAM node show $node_name --output json
+    assert_output --partial 8080
+  done
 }
