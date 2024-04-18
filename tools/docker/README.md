@@ -48,21 +48,6 @@ Run the healthcheck:
 docker run --rm -it ockam-healthcheck:latest
 ```
 
-## Ockam
-
-```
-docker build \
-  --tag ockam:latest \
-  --tag ghcr.io/build-trust/ockam:latest \
-  --file tools/docker/ockam/Dockerfile .
-```
-
-Run Ockam binary:
-
-```
-docker run --rm -it ockam:latest --help
-```
-
 ## Verifying Ockam Images
 All Ockam images are signed by [cosign](https://github.com/sigstore/cosign), you can verify our images using the commands below with our [public key](https://github.com/build-trust/ockam/blob/main/tools/docker/cosign.pub)
 
