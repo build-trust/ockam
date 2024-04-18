@@ -20,7 +20,7 @@ use ockam::identity::{
 };
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
-use ockam_abac::{Action, Env, Expr, Resource};
+use ockam_abac::{Action, Env, Expr, Policies, Resource, Resources};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     AllowAll, AsyncTryClone, CachedIncomingAccessControl, CachedOutgoingAccessControl,
@@ -181,17 +181,17 @@ impl NodeManager {
             env.put("action.id", str(action_str));
 
             // Store policy for the given resource and action
-            let policies = self.cli_state.policies();
+            let policies = self.policies();
             if let Some(expression) = expression {
                 policies
                     .store_policy_for_resource_name(&resource.resource_name, &action, &expression)
                     .await?;
             }
-            self.cli_state.store_resource(&resource).await?;
+            self.resources().store_resource(&resource).await?;
 
             // Create the policy access control
             let policy_access_control = policies.make_policy_access_control(
-                self.cli_state.identities_attributes(),
+                self.cli_state.identities_attributes(&self.node_name),
                 resource,
                 action,
                 env,
@@ -220,6 +220,14 @@ impl NodeManager {
             }
             Ok((Arc::new(AllowAll), Arc::new(AllowAll)))
         }
+    }
+
+    pub fn policies(&self) -> Policies {
+        self.cli_state.policies(&self.node_name)
+    }
+
+    pub fn resources(&self) -> Resources {
+        self.cli_state.resources(&self.node_name)
     }
 }
 
@@ -288,9 +296,8 @@ impl NodeManager {
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
     ) -> ockam_core::Result<Self> {
-        let mut cli_state = general_options.cli_state;
+        let cli_state = general_options.cli_state;
         let node_name = general_options.node_name.clone();
-        cli_state.set_node_name(&node_name);
 
         debug!("create transports");
         let api_transport_id = random_alias();
@@ -311,7 +318,7 @@ impl NodeManager {
 
         debug!("create default resource type policies");
         cli_state
-            .policies()
+            .policies(&general_options.node_name)
             .store_default_resource_type_policies()
             .await?;
 

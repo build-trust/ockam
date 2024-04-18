@@ -15,27 +15,25 @@ use crate::{AttributesEntry, IdentityAttributesRepository, TimestampInSeconds};
 #[derive(Clone)]
 pub struct IdentityAttributesSqlxDatabase {
     database: SqlxDatabase,
+    node_name: String,
 }
 
 impl IdentityAttributesSqlxDatabase {
     /// Create a new database
-    pub fn new(database: SqlxDatabase) -> Self {
+    pub fn new(database: SqlxDatabase, node_name: &str) -> Self {
         debug!("create a repository for identity attributes");
-        Self { database }
+        Self {
+            database,
+            node_name: node_name.to_string(),
+        }
     }
 
     /// Create a new in-memory database
     pub async fn create() -> Result<Self> {
         Ok(Self::new(
             SqlxDatabase::in_memory("identity attributes").await?,
+            "default",
         ))
-    }
-
-    /// Create a new in-memory database, passing a node name to isolate data between nodes where needed
-    pub async fn create_with_node_name(node_name: &str) -> Result<Self> {
-        let mut db = SqlxDatabase::in_memory("identity attributes").await?;
-        db.set_node_name(node_name);
-        Ok(Self::new(db))
     }
 }
 
@@ -51,7 +49,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             )
             .bind(identity.to_sql())
             .bind(attested_by.to_sql())
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -68,7 +66,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             .bind(entry.added_at().to_sql())
             .bind(entry.expires_at().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()))
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -76,7 +74,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
         let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
             .bind(now.to_sql())
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 }
@@ -128,7 +126,6 @@ impl IdentityAttributesRow {
 #[cfg(test)]
 mod tests {
     use ockam_core::compat::collections::BTreeMap;
-    use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
     use std::ops::Add;
 
@@ -253,8 +250,6 @@ mod tests {
     }
 
     async fn create_repository() -> Result<Arc<dyn IdentityAttributesRepository>> {
-        Ok(Arc::new(
-            IdentityAttributesSqlxDatabase::create_with_node_name(&random_string()).await?,
-        ))
+        Ok(Arc::new(IdentityAttributesSqlxDatabase::create().await?))
     }
 }

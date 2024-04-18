@@ -9,7 +9,7 @@ impl CliState {
     pub async fn secure_channels(&self, node_name: &str) -> Result<Arc<SecureChannels>> {
         debug!("create the secure channels service");
         let vault = self.get_node_vault(node_name).await?.vault().await?;
-        let identities = Identities::create(self.database())
+        let identities = Identities::create_with_node(self.database(), node_name)
             .with_vault(vault)
             .build();
         Ok(SecureChannels::from_identities(identities))

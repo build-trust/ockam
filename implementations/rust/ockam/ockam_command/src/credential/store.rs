@@ -58,11 +58,9 @@ impl StoreCommand {
             .get_node_or_default(&self.node_opts.at_node)
             .await?
             .name();
-        let mut state = opts.state.clone();
-        state.set_node_name(node_name);
-
+        let state = opts.state.clone();
         let database = state.database();
-        let storage = CredentialSqlxDatabase::new(database);
+        let storage = CredentialSqlxDatabase::new(database, &node_name);
 
         opts.terminal
             .write_line(&fmt_log!("Storing credential...\n"))?;

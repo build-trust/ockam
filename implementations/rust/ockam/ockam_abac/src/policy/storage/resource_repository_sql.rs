@@ -11,18 +11,25 @@ use crate::{Resource, ResourceName, ResourceType, ResourcesRepository};
 #[derive(Clone)]
 pub struct ResourcesSqlxDatabase {
     database: SqlxDatabase,
+    node_name: String,
 }
 
 impl ResourcesSqlxDatabase {
     /// Create a new database for resources
-    pub fn new(database: SqlxDatabase) -> Self {
+    pub fn new(database: SqlxDatabase, node_name: &str) -> Self {
         debug!("create a repository for resources");
-        Self { database }
+        Self {
+            database,
+            node_name: node_name.to_string(),
+        }
     }
 
     /// Create a new in-memory database for resources
     pub async fn create() -> Result<Self> {
-        Ok(Self::new(SqlxDatabase::in_memory("resources").await?))
+        Ok(Self::new(
+            SqlxDatabase::in_memory("resources").await?,
+            "default",
+        ))
     }
 }
 
@@ -35,7 +42,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
         )
         .bind(resource.resource_name.to_sql())
         .bind(resource.resource_type.to_sql())
-        .bind(self.database.node_name()?.to_sql());
+        .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -45,7 +52,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             FROM resource
             WHERE node_name=$1 and resource_name=$2"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_name.to_sql());
         let row: Option<ResourceRow> = query
             .fetch_optional(&*self.database.pool)
@@ -61,7 +68,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             r#"DELETE FROM resource
             WHERE node_name=? and resource_name=?"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
 
@@ -69,7 +76,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             r#"DELETE FROM resource_policy
             WHERE node_name=? and resource_name=?"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
 

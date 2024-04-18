@@ -405,7 +405,7 @@ impl NodeManager {
 impl NodeManager {
     /// Build a SecureChannels struct for a specific vault
     pub(crate) async fn build_secure_channels(&self, vault: Vault) -> Result<Arc<SecureChannels>> {
-        let identities = Identities::create(self.cli_state.database())
+        let identities = Identities::create_with_node(self.cli_state.database(), &self.node_name)
             .with_vault(vault)
             .build();
         Ok(Arc::new(SecureChannels::new(

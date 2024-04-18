@@ -95,8 +95,7 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let mut cli_state = CliState::with_default_dir()?;
-        cli_state.set_node_name(NODE_NAME);
+        let cli_state = CliState::with_default_dir()?;
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
         let (context, mut executor) = NodeBuilder::new()
             .no_logging()

@@ -13,25 +13,25 @@ use crate::{CredentialRepository, TimestampInSeconds};
 #[derive(Clone)]
 pub struct CredentialSqlxDatabase {
     database: SqlxDatabase,
+    node_name: String,
 }
 
 impl CredentialSqlxDatabase {
     /// Create a new database
-    pub fn new(database: SqlxDatabase) -> Self {
+    pub fn new(database: SqlxDatabase, node_name: &str) -> Self {
         debug!("create a repository for credentials");
-        Self { database }
+        Self {
+            database,
+            node_name: node_name.to_string(),
+        }
     }
 
     /// Create a new in-memory database
     pub async fn create() -> Result<Self> {
-        Ok(Self::new(SqlxDatabase::in_memory("credential").await?))
-    }
-
-    /// Create a new in-memory database, passing a node name to isolate data between nodes where needed
-    pub async fn create_with_node_name(node_name: &str) -> Result<Self> {
-        let mut db = SqlxDatabase::in_memory("credential").await?;
-        db.set_node_name(node_name);
-        Ok(Self::new(db))
+        Ok(Self::new(
+            SqlxDatabase::in_memory("credential").await?,
+            "default",
+        ))
     }
 }
 
@@ -39,7 +39,7 @@ impl CredentialSqlxDatabase {
     /// Return all cached credentials for the given node
     pub async fn get_all(&self) -> Result<Vec<(CredentialAndPurposeKey, String)>> {
         let query = query_as("SELECT credential, scope FROM credential WHERE node_name=?")
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
 
         let cached_credential: Vec<CachedCredentialAndScopeRow> =
             query.fetch_all(&*self.database.pool).await.into_core()?;
@@ -70,7 +70,7 @@ impl CredentialRepository for CredentialSqlxDatabase {
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
             .bind(scope.to_sql())
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
         let cached_credential: Option<CachedCredentialRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -94,7 +94,7 @@ impl CredentialRepository for CredentialSqlxDatabase {
             .bind(scope.to_sql())
             .bind(credential.encode_as_cbor_bytes()?.to_sql())
             .bind(expires_at.to_sql())
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -103,7 +103,7 @@ impl CredentialRepository for CredentialSqlxDatabase {
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
             .bind(scope.to_sql())
-            .bind(self.database.node_name()?.to_sql());
+            .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 }
@@ -137,7 +137,6 @@ impl CachedCredentialAndScopeRow {
 
 #[cfg(test)]
 mod tests {
-    use ockam_core::compat::rand::random_string;
     use ockam_core::compat::sync::Arc;
     use std::time::Duration;
 
@@ -149,8 +148,7 @@ mod tests {
     #[tokio::test]
     async fn test_cached_credential_repository() -> Result<()> {
         let scope = "test".to_string();
-        let repository =
-            Arc::new(CredentialSqlxDatabase::create_with_node_name(&random_string()).await?);
+        let repository = Arc::new(CredentialSqlxDatabase::create().await?);
 
         let all = repository.get_all().await?;
         assert_eq!(all.len(), 0);

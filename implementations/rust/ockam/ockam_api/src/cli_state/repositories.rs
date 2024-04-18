@@ -1,6 +1,8 @@
 use ockam::identity::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
-use ockam::identity::{ChangeHistoryRepository, ChangeHistorySqlxDatabase};
-use ockam_abac::{ResourcesRepository, ResourcesSqlxDatabase};
+use ockam::identity::{
+    ChangeHistoryRepository, ChangeHistorySqlxDatabase, CredentialRepository,
+    CredentialSqlxDatabase,
+};
 use ockam_core::compat::sync::Arc;
 use ockam_vault::storage::{SecretsRepository, SecretsSqlxDatabase};
 
@@ -46,10 +48,6 @@ impl CliState {
         Arc::new(ProjectsSqlxDatabase::new(self.database()))
     }
 
-    pub(super) fn resources_repository(&self) -> Arc<dyn ResourcesRepository> {
-        Arc::new(ResourcesSqlxDatabase::new(self.database()))
-    }
-
     pub(super) fn spaces_repository(&self) -> Arc<dyn SpacesRepository> {
         Arc::new(SpacesSqlxDatabase::new(self.database()))
     }
@@ -60,5 +58,9 @@ impl CliState {
 
     pub(super) fn user_journey_repository(&self) -> Arc<dyn JourneysRepository> {
         Arc::new(JourneysSqlxDatabase::new(self.application_database()))
+    }
+
+    pub fn cached_credentials_repository(&self, node_name: &str) -> Arc<dyn CredentialRepository> {
+        Arc::new(CredentialSqlxDatabase::new(self.database(), node_name))
     }
 }
