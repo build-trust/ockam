@@ -76,10 +76,6 @@ impl CliState {
         Self::make_application_database_path(&self.dir)
     }
 
-    pub fn set_node_name(&mut self, node_name: impl AsRef<str>) {
-        self.database.set_node_name(node_name.as_ref());
-    }
-
     pub fn subscribe_to_notifications(&self) -> Receiver<Notification> {
         self.notifications.subscribe()
     }

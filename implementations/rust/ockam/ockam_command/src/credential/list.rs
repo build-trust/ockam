@@ -42,11 +42,8 @@ impl ListCommand {
             Some(name) => name,
             None => opts.state.get_default_node().await?.name(),
         };
-        let mut opts = opts.clone();
-        opts.state.set_node_name(&node_name);
-
         let database = opts.state.database();
-        let storage = CredentialSqlxDatabase::new(database);
+        let storage = CredentialSqlxDatabase::new(database, &node_name);
 
         let credentials = storage.get_all().await.into_diagnostic()?;
 

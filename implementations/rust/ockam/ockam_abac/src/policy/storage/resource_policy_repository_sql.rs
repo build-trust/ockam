@@ -12,19 +12,24 @@ use crate::{Action, Expr, ResourceName, ResourcePoliciesRepository, ResourcePoli
 #[derive(Clone)]
 pub struct ResourcePolicySqlxDatabase {
     database: SqlxDatabase,
+    node_name: String,
 }
 
 impl ResourcePolicySqlxDatabase {
     /// Create a new database for resource policies
-    pub fn new(database: SqlxDatabase) -> Self {
+    pub fn new(database: SqlxDatabase, node_name: &str) -> Self {
         debug!("create a repository for resource policies");
-        Self { database }
+        Self {
+            database,
+            node_name: node_name.to_string(),
+        }
     }
 
     /// Create a new in-memory database for policies
     pub async fn create() -> Result<Self> {
         Ok(Self::new(
             SqlxDatabase::in_memory("resource_policies").await?,
+            "default",
         ))
     }
 }
@@ -44,7 +49,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         .bind(resource_name.to_sql())
         .bind(action.to_sql())
         .bind(expression.to_string().to_sql())
-        .bind(self.database.node_name()?.to_sql());
+        .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -58,7 +63,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             FROM resource_policy
             WHERE node_name=$1 and resource_name=$2 and action=$3"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_name.to_sql())
         .bind(action.to_sql());
         let row: Option<PolicyRow> = query
@@ -74,7 +79,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             FROM resource_policy
             WHERE node_name=$1"#,
         )
-        .bind(self.database.node_name()?.to_sql());
+        .bind(self.node_name.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -90,7 +95,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             FROM resource_policy
             WHERE node_name=$1 and resource_name=$2"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_name.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
@@ -103,7 +108,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             r#"DELETE FROM resource_policy
             WHERE node_name=? and resource_name=? and action=?"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_name.to_sql())
         .bind(action.to_sql());
         query.execute(&*self.database.pool).await.void()

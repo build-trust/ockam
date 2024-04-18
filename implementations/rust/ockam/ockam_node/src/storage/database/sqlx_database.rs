@@ -27,8 +27,6 @@ use ockam_core::{Error, Result};
 pub struct SqlxDatabase {
     /// Pool of connections to the database
     pub pool: Arc<SqlitePool>,
-    /// Node name to isolate data between nodes where needed
-    pub node_name: Option<String>,
 }
 
 impl Debug for SqlxDatabase {
@@ -48,7 +46,7 @@ impl Deref for SqlxDatabase {
 impl SqlxDatabase {
     /// Constructor for a database persisted on disk
     pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_impl(path, Some(NodeMigrationSet), None).await
+        Self::create_impl(path, Some(NodeMigrationSet)).await
     }
 
     /// Constructor for a database persisted on disk, with a specific schema / migration
@@ -56,23 +54,17 @@ impl SqlxDatabase {
         path: impl AsRef<Path>,
         migration_set: impl MigrationSet,
     ) -> Result<Self> {
-        Self::create_impl(path, Some(migration_set), None).await
+        Self::create_impl(path, Some(migration_set)).await
     }
 
     /// Constructor for a database persisted on disk without migration
     pub async fn create_no_migration(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_impl(path, None::<NodeMigrationSet>, None).await
-    }
-
-    /// Constructor for a database persisted on disk, passing a node name to isolate data between nodes where needed
-    pub async fn create_with_node_name(path: impl AsRef<Path>, node_name: &str) -> Result<Self> {
-        Self::create_impl(path, Some(NodeMigrationSet), Some(node_name.to_string())).await
+        Self::create_impl(path, None::<NodeMigrationSet>).await
     }
 
     async fn create_impl(
         path: impl AsRef<Path>,
         migration_set: Option<impl MigrationSet>,
-        node_name: Option<String>,
     ) -> Result<Self> {
         path.as_ref()
             .parent()
@@ -88,7 +80,7 @@ impl SqlxDatabase {
             .take(10); // limit to 10 retries
 
         let db = Retry::spawn(retry_strategy, || async {
-            Self::create_at(path.as_ref(), node_name.clone()).await
+            Self::create_at(path.as_ref()).await
         })
         .await?;
 
@@ -125,17 +117,15 @@ impl SqlxDatabase {
         // FIXME: We should be careful if we run multiple nodes in one process
         let db = SqlxDatabase {
             pool: Arc::new(pool),
-            node_name: Some("in_memory".to_string()),
         };
         Ok(db)
     }
 
-    async fn create_at(path: &Path, node_name: Option<String>) -> Result<Self> {
+    async fn create_at(path: &Path) -> Result<Self> {
         // Creates database file if it doesn't exist
         let pool = Self::create_connection_pool(path).await?;
         Ok(SqlxDatabase {
             pool: Arc::new(pool),
-            node_name,
         })
     }
 
@@ -160,22 +150,6 @@ impl SqlxDatabase {
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)
-    }
-
-    /// Set the node name
-    pub fn set_node_name(&mut self, node_name: &str) {
-        self.node_name = Some(node_name.to_string());
-    }
-
-    /// Return the node name
-    pub fn node_name(&self) -> Result<String> {
-        self.node_name.clone().ok_or_else(|| {
-            Error::new(
-                Origin::Application,
-                Kind::Internal,
-                "The node name is not set",
-            )
-        })
     }
 
     /// Map a sqlx error into an ockam error

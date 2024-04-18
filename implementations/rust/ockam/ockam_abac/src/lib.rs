@@ -26,7 +26,9 @@ pub use env::Env;
 pub use error::{EvalError, ParseError};
 pub use eval::eval;
 pub use expr::Expr;
-pub use policy::{storage::*, Policies, PolicyAccessControl, ResourcePolicy, ResourceTypePolicy};
+pub use policy::{
+    storage::*, Policies, PolicyAccessControl, ResourcePolicy, ResourceTypePolicy, Resources,
+};
 pub use resource::{Resource, ResourceType};
 pub use types::{Action, ResourceName, Subject};
 

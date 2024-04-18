@@ -157,14 +157,23 @@ impl Identities {
     /// Return a builder for identities with a specific database
     #[cfg(feature = "storage")]
     pub fn create(database: SqlxDatabase) -> IdentitiesBuilder {
+        Self::create_with_node(database, "default")
+    }
+
+    /// Return a builder for identities with a specific database
+    #[cfg(feature = "storage")]
+    pub fn create_with_node(database: SqlxDatabase, node_name: &str) -> IdentitiesBuilder {
         IdentitiesBuilder {
             vault: Vault::create_with_database(database.clone()),
             change_history_repository: Arc::new(ChangeHistorySqlxDatabase::new(database.clone())),
             identity_attributes_repository: Arc::new(IdentityAttributesSqlxDatabase::new(
                 database.clone(),
+                node_name,
             )),
             purpose_keys_repository: Arc::new(PurposeKeysSqlxDatabase::new(database.clone())),
-            cached_credentials_repository: Arc::new(CredentialSqlxDatabase::new(database)),
+            cached_credentials_repository: Arc::new(CredentialSqlxDatabase::new(
+                database, node_name,
+            )),
         }
     }
 }

@@ -92,8 +92,7 @@ impl CreateCommand {
         let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
 
         // Set node_name so that node can isolate its data in the storage from other nodes
-        let mut state = opts.state.clone();
-        state.set_node_name(&node_name);
+        let state = opts.state.clone();
 
         let node_info = state
             .start_node_with_optional_values(

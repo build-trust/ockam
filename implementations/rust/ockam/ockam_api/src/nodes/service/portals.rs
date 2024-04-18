@@ -285,7 +285,7 @@ impl NodeManager {
         if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr).await {
             debug!(%worker_addr, "Successfully removed outlet from node registry");
 
-            self.cli_state
+            self.resources()
                 .delete_resource(&worker_addr.address().into())
                 .await?;
 
@@ -455,7 +455,7 @@ impl NodeManager {
         if let Some(inlet_to_delete) = self.registry.inlets.remove(alias).await {
             debug!(%alias, "Successfully removed inlet from node registry");
             inlet_to_delete.session.close().await?;
-            self.cli_state.delete_resource(&alias.into()).await?;
+            self.resources().delete_resource(&alias.into()).await?;
             Ok(InletStatus::new(
                 inlet_to_delete.bind_addr,
                 None,

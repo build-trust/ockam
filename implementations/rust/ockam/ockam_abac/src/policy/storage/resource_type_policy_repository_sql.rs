@@ -13,19 +13,24 @@ use crate::{Action, Expr, ResourceType, ResourceTypePoliciesRepository};
 #[derive(Clone)]
 pub struct ResourceTypePolicySqlxDatabase {
     database: SqlxDatabase,
+    node_name: String,
 }
 
 impl ResourceTypePolicySqlxDatabase {
     /// Create a new database for resource type policies
-    pub fn new(database: SqlxDatabase) -> Self {
+    pub fn new(database: SqlxDatabase, node_name: &str) -> Self {
         debug!("create a repository for resource type policies");
-        Self { database }
+        Self {
+            database,
+            node_name: node_name.to_string(),
+        }
     }
 
     /// Create a new in-memory database for policies
     pub async fn create() -> Result<Self> {
         Ok(Self::new(
             SqlxDatabase::in_memory("resource_type_policies").await?,
+            "default",
         ))
     }
 }
@@ -45,7 +50,7 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
         .bind(resource_type.to_sql())
         .bind(action.to_sql())
         .bind(expression.to_string().to_sql())
-        .bind(self.database.node_name()?.to_sql());
+        .bind(self.node_name.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -59,7 +64,7 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
             FROM resource_type_policy
             WHERE node_name=$1 and resource_type=$2 and action=$3"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_type.to_sql())
         .bind(action.to_sql());
         let row: Option<PolicyRow> = query
@@ -74,7 +79,7 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
             r#"SELECT resource_type, action, expression
             FROM resource_type_policy where node_name=$1"#,
         )
-        .bind(self.database.node_name()?.to_sql());
+        .bind(self.node_name.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -89,7 +94,7 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
             r#"SELECT resource_type, action, expression
             FROM resource_type_policy where node_name=$1 and resource_type=$2"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_type.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
@@ -102,7 +107,7 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
             r#"DELETE FROM resource_type_policy
             WHERE node_name=? and resource_type=? and action=?"#,
         )
-        .bind(self.database.node_name()?.to_sql())
+        .bind(self.node_name.to_sql())
         .bind(resource_type.to_sql())
         .bind(action.to_sql());
         query.execute(&*self.database.pool).await.void()

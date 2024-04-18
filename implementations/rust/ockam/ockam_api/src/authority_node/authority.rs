@@ -65,14 +65,13 @@ impl Authority {
         // create the database
         let database_path = &configuration.database_path;
         Self::create_ockam_directory_if_necessary(database_path)?;
-        let database = SqlxDatabase::create_with_node_name(database_path, "authority").await?;
-
+        let database = SqlxDatabase::create(database_path).await?;
         let members = Arc::new(AuthorityMembersSqlxDatabase::new(database.clone()));
         let tokens = Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(database.clone()));
 
         Self::bootstrap_repository(members.clone(), configuration).await?;
 
-        let identities = Identities::create(database).build();
+        let identities = Identities::create_with_node(database, "authority").build();
 
         let secure_channels = SecureChannels::from_identities(identities.clone());
 

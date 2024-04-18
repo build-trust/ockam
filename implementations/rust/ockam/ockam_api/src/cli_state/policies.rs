@@ -3,10 +3,13 @@ use ockam_abac::{Policies, ResourcePolicySqlxDatabase, ResourceTypePolicySqlxDat
 use std::sync::Arc;
 
 impl CliState {
-    pub fn policies(&self) -> Policies {
+    pub fn policies(&self, node_name: &str) -> Policies {
         Policies::new(
-            Arc::new(ResourcePolicySqlxDatabase::new(self.database())),
-            Arc::new(ResourceTypePolicySqlxDatabase::new(self.database())),
+            Arc::new(ResourcePolicySqlxDatabase::new(self.database(), node_name)),
+            Arc::new(ResourceTypePolicySqlxDatabase::new(
+                self.database(),
+                node_name,
+            )),
         )
     }
 }

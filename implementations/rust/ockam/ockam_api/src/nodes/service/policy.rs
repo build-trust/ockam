@@ -70,14 +70,12 @@ impl NodeManager {
         let action = Action::from_str(action)?;
         match resource {
             ResourceTypeOrName::Type(resource_type) => {
-                self.cli_state
-                    .policies()
+                self.policies()
                     .store_policy_for_resource_type(&resource_type, &action, &expression)
                     .await
             }
             ResourceTypeOrName::Name(resource_name) => {
-                self.cli_state
-                    .policies()
+                self.policies()
                     .store_policy_for_resource_name(&resource_name, &action, &expression)
                     .await
             }
@@ -93,13 +91,11 @@ impl NodeManager {
         let action = Action::from_str(action)?;
         Ok(match resource {
             ResourceTypeOrName::Type(resource_type) => self
-                .cli_state
                 .policies()
                 .get_policy_for_resource_type(&resource_type, &action)
                 .await?
                 .map(|p| p.into()),
             ResourceTypeOrName::Name(resource_name) => self
-                .cli_state
                 .policies()
                 .get_policy_for_resource_name(&resource_name, &action)
                 .await?
@@ -112,7 +108,6 @@ impl NodeManager {
             Some(resource) => match resource {
                 ResourceTypeOrName::Type(resource_type) => {
                     let resource_type_policies = self
-                        .cli_state
                         .policies()
                         .get_policies_for_resource_type(&resource_type)
                         .await?;
@@ -120,7 +115,6 @@ impl NodeManager {
                 }
                 ResourceTypeOrName::Name(resource_name) => {
                     let resource_policies = self
-                        .cli_state
                         .policies()
                         .get_policies_for_resource_name(&resource_name)
                         .await?;
@@ -129,7 +123,7 @@ impl NodeManager {
             },
             None => {
                 let (resource_policies, resource_type_policies) =
-                    self.cli_state.policies().get_policies().await?;
+                    self.policies().get_policies().await?;
                 Ok(PoliciesList::new(resource_policies, resource_type_policies))
             }
         }
@@ -139,14 +133,12 @@ impl NodeManager {
         let action = Action::from_str(action)?;
         match resource {
             ResourceTypeOrName::Type(resource_type) => {
-                self.cli_state
-                    .policies()
+                self.policies()
                     .delete_policy_for_resource_type(&resource_type, &action)
                     .await
             }
             ResourceTypeOrName::Name(resource_name) => {
-                self.cli_state
-                    .policies()
+                self.policies()
                     .delete_policy_for_resource_name(&resource_name, &action)
                     .await
             }

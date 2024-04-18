@@ -28,8 +28,8 @@ pub async fn identities() -> Result<Arc<Identities>> {
 
 /// Return identities backed by a specific database
 #[cfg(feature = "storage")]
-pub fn create(database: SqlxDatabase) -> Arc<Identities> {
-    Identities::create(database).build()
+pub fn create(database: SqlxDatabase, node_name: &str) -> Arc<Identities> {
+    Identities::create_with_node(database, node_name).build()
 }
 
 impl IdentitiesBuilder {
