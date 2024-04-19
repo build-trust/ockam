@@ -8,16 +8,18 @@ use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use tracing::instrument;
 
-use ockam_api::cli_state::{random_name, EnrollmentTicket};
+use ockam_api::cli_state::random_name;
 use ockam_core::{opentelemetry_context_parser, AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 
+use crate::node::create::config::ConfigArgs;
+use crate::node::foreground::ForegroundArgs;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
 use crate::util::api::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::{async_cmd, local_cmd};
-use crate::value_parsers::{is_url, parse_enrollment_ticket, parse_key_val};
+use crate::value_parsers::is_url;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 
 pub mod background;
@@ -34,28 +36,25 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Name of the node or path to a config file.
-    #[arg(hide_default_value = true, default_value_t = random_name())]
+    /// Name of the node or a configuration to set up the node.
+    /// The configuration can be either a path to a local file or a URL.
+    #[arg(value_name = "NAME_OR_CONFIG", hide_default_value = true, default_value_t = random_name())]
     pub name: String,
 
-    /// Inline node configuration
-    #[arg(long, value_name = "YAML")]
-    pub node_config: Option<String>,
+    #[command(flatten)]
+    pub config_args: ConfigArgs,
 
-    /// Run the node in foreground.
-    #[arg(display_order = 900, long, short)]
-    pub foreground: bool,
+    #[command(flatten)]
+    pub foreground_args: ForegroundArgs,
 
-    /// Skip the check if such node is already running.
-    /// Useful for kubernetes when the pid is the same on each run.
+    /// Use this flag to not raise an error if the node is already running.
+    /// This can be useful in environments where the PID is constant (e.g., kubernetes).
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     pub skip_is_running_check: bool,
 
-    /// Watch stdin for EOF
-    #[arg(display_order = 900, long, short)]
-    pub exit_on_eof: bool,
-
-    /// TCP listener address
+    /// The address to bind the TCP listener to.
+    /// Once the node is created, its services can be accessed via this address.
+    /// By default, it binds to 127.0.0.1:0 to assign a random free port.
     #[arg(
         display_order = 900,
         long,
@@ -65,19 +64,17 @@ pub struct CreateCommand {
     )]
     pub tcp_listener_address: String,
 
-    /// `node create` started a child process to run this node in foreground.
-    #[arg(long, hide = true)]
-    pub child_process: bool,
-
-    /// JSON config to setup a foreground node
-    ///
-    /// This argument is currently ignored on background nodes.  Node
-    /// configuration is run asynchronously and may take several
+    /// A configuration in JSON format to set up the node services.
+    /// Node configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[arg(long, hide = true, value_parser = parse_launch_config)]
+    #[arg(hide = true, long, value_parser = parse_launch_config)]
     pub launch_config: Option<Config>,
 
-    /// Name of the Identity that the node will use
+    /// The name of an existing Ockam Identity that this node will use.
+    /// You can use `ockam identity list` to get a list of existing Identities.
+    /// To create a new Identity, use `ockam identity create`.
+    /// If you don't specify an Identity name, and you don't have a default Identity, this command
+    /// will create a default Identity for you and save it locally in the default Vault
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     pub identity: Option<String>,
 
@@ -85,16 +82,8 @@ pub struct CreateCommand {
     pub trust_opts: TrustOpts,
 
     /// Serialized opentelemetry context
-    #[arg(long, hide = true, value_parser = opentelemetry_context_parser)]
+    #[arg(hide = true, long, value_parser = opentelemetry_context_parser)]
     pub opentelemetry_context: Option<OpenTelemetryContext>,
-
-    /// Path, URL or inlined hex-encoded enrollment ticket
-    #[arg(long, value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
-    pub enrollment_ticket: Option<EnrollmentTicket>,
-
-    /// Key-value pairs defining environment variables used by the config file.
-    #[arg(long = "variable", value_name = "VARIABLE", value_parser = parse_key_val::<String, String>)]
-    pub variables: Vec<(String, String)>,
 }
 
 impl Default for CreateCommand {
@@ -103,17 +92,21 @@ impl Default for CreateCommand {
         Self {
             skip_is_running_check: false,
             name: random_name(),
-            node_config: None,
-            exit_on_eof: false,
+            config_args: ConfigArgs {
+                node_config: None,
+                enrollment_ticket: None,
+                variables: vec![],
+            },
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
-            foreground: false,
-            child_process: false,
             launch_config: None,
             identity: None,
             trust_opts: node_manager_defaults.trust_opts,
             opentelemetry_context: None,
-            enrollment_ticket: None,
-            variables: vec![],
+            foreground_args: ForegroundArgs {
+                foreground: false,
+                exit_on_eof: false,
+                child_process: false,
+            },
         }
     }
 }
@@ -124,9 +117,10 @@ impl Command for CreateCommand {
 
     #[instrument(skip_all)]
     fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        self.parse_args()?;
         if self.has_name_arg() {
-            if self.foreground {
-                if self.child_process {
+            if self.foreground_args.foreground {
+                if self.foreground_args.child_process {
                     opentelemetry::Context::current()
                         .span()
                         .set_attribute(KeyValue::new("background", "true"));
@@ -148,9 +142,10 @@ impl Command for CreateCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        self.parse_args()?;
         let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.has_name_arg() {
-            if self.foreground {
+            if self.foreground_args.foreground {
                 self.foreground_mode(&ctx, opts).await?
             } else {
                 self.background_mode(&ctx, opts).await?
@@ -167,7 +162,7 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
-        if !self.child_process {
+        if !self.foreground_args.child_process {
             if let Ok(node) = opts.state.get_node(&self.name).await {
                 if node.is_running() {
                     return Err(miette!("Node {} is already running", &self.name));
@@ -182,7 +177,22 @@ impl CreateCommand {
     fn has_name_arg(&self) -> bool {
         is_url(&self.name).is_none()
             && std::fs::metadata(&self.name).is_err()
-            && self.node_config.is_none()
+            && self.config_args.node_config.is_none()
+    }
+
+    fn parse_args(&self) -> miette::Result<()> {
+        // return error if there are duplicated variables
+        let mut variables = std::collections::HashMap::new();
+        for (key, value) in self.config_args.variables.iter() {
+            if variables.contains_key(key) {
+                return Err(miette!(
+                    "The variable with key '{key}' is duplicated\n\
+                Remove the duplicated variable or provide unique keys for each variable"
+                ));
+            }
+            variables.insert(key.clone(), value.clone());
+        }
+        Ok(())
     }
 }
 

@@ -48,11 +48,11 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// The name of an existing Ockam Identity that you wish to enroll. You can use `ockam
-    /// identity list` to get a list of existing Identities. To create a new Identity, use
-    /// `ockam identity create`. If you don't specify an Identity, and you don't have a
-    /// default Identity, this command will create a default Identity for you and save it
-    /// locally in a default Vault
+    /// The name of an existing Ockam Identity that you wish to enroll.
+    /// You can use `ockam identity list` to get a list of existing Identities.
+    /// To create a new Identity, use `ockam identity create`.
+    /// If you don't specify an Identity name, and you don't have a default Identity, this command
+    /// will create a default Identity for you and save it locally in the default Vault
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
     pub identity: Option<String>,
 

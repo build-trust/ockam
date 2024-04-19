@@ -3,14 +3,35 @@ use crate::run::parser::building_blocks::ArgValue;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
-use crate::value_parsers::async_parse_path_or_url;
+use crate::value_parsers::{async_parse_path_or_url, parse_enrollment_ticket, parse_key_val};
 use crate::CommandGlobalOpts;
+use clap::Args;
 use miette::miette;
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
-use ockam_api::cli_state::random_name;
+use ockam_api::cli_state::{random_name, EnrollmentTicket};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{instrument, Span};
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct ConfigArgs {
+    /// Inline node configuration
+    #[arg(long, value_name = "YAML")]
+    pub node_config: Option<String>,
+
+    /// A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node.
+    /// When passed, the identity will be given a project membership credential.
+    /// Check the `project ticket` command for more information about enrollment tickets.
+    #[arg(long, value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
+    pub enrollment_ticket: Option<EnrollmentTicket>,
+
+    /// Key-value pairs defining environment variables used in the Node configuration.
+    /// The variables passed here will have precedence over global environment variables.
+    /// This argument can be used multiple times, each time adding a new key-value pair.
+    /// Example: `--variable KEY1=VALUE1 --variable KEY2=VALUE2`
+    #[arg(long = "variable", value_name = "VARIABLE", value_parser = parse_key_val::<String, String>)]
+    pub variables: Vec<(String, String)>,
+}
 
 impl CreateCommand {
     /// Run the creation of a node using a node configuration
@@ -20,7 +41,7 @@ impl CreateCommand {
         node_config.merge(&self)?;
         node_config.run(ctx, &opts).await?;
 
-        if self.foreground {
+        if self.foreground_args.foreground {
             self.wait_for_exit_signal(ctx, opts).await?;
         }
 
@@ -33,13 +54,13 @@ impl CreateCommand {
     ///  - an inline configuration
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
-        let contents = match self.node_config.clone() {
+        let contents = match self.config_args.node_config.clone() {
             Some(contents) => contents,
             None => async_parse_path_or_url(&self.name).await?,
         };
         // Set environment variables from the cli command args
         // This needs to be done before parsing the configuration
-        for (key, value) in &self.variables {
+        for (key, value) in &self.config_args.variables {
             if value.is_empty() {
                 return Err(miette!("Empty value for variable '{key}'"));
             }
@@ -90,7 +111,7 @@ impl NodeConfig {
     fn merge(&mut self, cli_args: &CreateCommand) -> miette::Result<()> {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
-        for (key, value) in &cli_args.variables {
+        for (key, value) in &cli_args.config_args.variables {
             if value.is_empty() {
                 return Err(miette!("Empty value for variable '{key}'"));
             }
@@ -104,7 +125,7 @@ impl NodeConfig {
 
         // Set the enrollment ticket from the cli command
         // overriding the one from the config file.
-        if let Some(ticket) = &cli_args.enrollment_ticket {
+        if let Some(ticket) = &cli_args.config_args.enrollment_ticket {
             self.project_enroll.ticket = Some(ticket.hex_encoded()?);
         }
 
@@ -113,7 +134,7 @@ impl NodeConfig {
             self.node.skip_is_running_check = Some(ArgValue::Bool(cli_args.skip_is_running_check));
         }
         if self.node.exit_on_eof.is_none() {
-            self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.exit_on_eof));
+            self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.foreground_args.exit_on_eof));
         }
         if self.node.tcp_listener_address.is_none() {
             self.node.tcp_listener_address =
@@ -189,7 +210,10 @@ mod tests {
 
         let cli_args = CreateCommand {
             tcp_listener_address: "127.0.0.1:1234".to_string(),
-            enrollment_ticket: Some(enrollment_ticket.clone()),
+            config_args: ConfigArgs {
+                enrollment_ticket: Some(enrollment_ticket.clone()),
+                ..Default::default()
+            },
             ..Default::default()
         };
 

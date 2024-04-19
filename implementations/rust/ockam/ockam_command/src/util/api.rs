@@ -148,7 +148,7 @@ pub struct IdentityOpts {
 #[derive(Clone, Debug, Args, Default, PartialEq)]
 pub struct TrustOpts {
     /// Project name to use for the command
-    #[arg(global = true, long = "project", value_name = "PROJECT_NAME")]
+    #[arg(long = "project", value_name = "PROJECT_NAME")]
     pub project_name: Option<String>,
 
     /// Hex encoded Identity

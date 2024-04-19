@@ -28,7 +28,7 @@ impl CreateCommand {
         CurrentSpan::set_attribute(NODE_NAME, node_name.as_str());
 
         // Early checks
-        if self.child_process {
+        if self.foreground_args.child_process {
             return Err(miette!(
                 "Cannot create a background node from another background node"
             ));
