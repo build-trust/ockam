@@ -1,5 +1,7 @@
 use crate::abac::Abac;
-use crate::policy::{IncomingPolicyAccessControl, OutgoingPolicyAccessControl};
+use crate::policy::{
+    IncomingPolicyAccessControl, ManualPolicyAccessControl, OutgoingPolicyAccessControl,
+};
 use crate::{Action, Env, Policies, Resource};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
@@ -74,5 +76,11 @@ impl PolicyAccessControl {
             ctx,
             policy_access_control: self.clone(),
         })
+    }
+
+    pub fn create_manual(&self) -> ManualPolicyAccessControl {
+        ManualPolicyAccessControl {
+            policy_access_control: self.clone(),
+        }
     }
 }

@@ -28,6 +28,7 @@ impl OutletManagerService {
         authority_identifier: Identifier,
         default_secure_channel_listener_flow_control_id: FlowControlId,
         policy_expression: Option<PolicyExpression>,
+        tls: bool,
     ) -> Result<()> {
         let flow_controls = context.flow_controls();
 
@@ -42,14 +43,23 @@ impl OutletManagerService {
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
-        let abac = IncomingAbac::check_credential_only(
-            secure_channels.identities().identities_attributes(),
-            authority_identifier,
-        );
+        let incoming_access_control = if let Some(policy_expression) = policy_expression.clone() {
+            IncomingAbac::create(
+                secure_channels.identities().identities_attributes(),
+                authority_identifier,
+                policy_expression.into(),
+            )
+        } else {
+            IncomingAbac::check_credential_only(
+                secure_channels.identities().identities_attributes(),
+                authority_identifier,
+            )
+        };
+
         // TOOD: Should we add outgoing?
         let worker = OutletManagerService {
-            outlet_controller: KafkaOutletController::new(policy_expression),
-            incoming_access_control: Arc::new(abac),
+            outlet_controller: KafkaOutletController::new(policy_expression, tls),
+            incoming_access_control: Arc::new(incoming_access_control),
             spawner_flow_control_id: spawner_flow_control_id.clone(),
         };
 

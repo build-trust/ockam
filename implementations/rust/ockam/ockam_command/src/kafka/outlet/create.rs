@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use std::net::SocketAddr;
 
 use clap::{command, Args};
 use colorful::Colorful;
 use tokio::{sync::Mutex, try_join};
 
 use ockam::Context;
+use ockam_abac::PolicyExpression;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
@@ -31,7 +31,16 @@ pub struct CreateCommand {
     pub addr: String,
     /// The address of the kafka bootstrap broker
     #[arg(long, default_value_t = kafka_default_outlet_server())]
-    pub bootstrap_server: SocketAddr,
+    pub bootstrap_server: String,
+    /// If tls is set then the outlet will establish a TLS connection over TCP
+    #[arg(long, id = "BOOLEAN")]
+    pub tls: bool,
+    /// Policy expression that will be used for access control to the Kafka Outlet.
+    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
+    #[arg(hide = true, long = "allow", id = "EXPRESSION")]
+    pub policy_expression: Option<PolicyExpression>,
 }
 
 #[async_trait]
@@ -44,7 +53,11 @@ impl Command for CreateCommand {
             .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
         let is_finished = Mutex::new(false);
         let send_req = async {
-            let payload = StartKafkaOutletRequest::new(self.bootstrap_server);
+            let payload = StartKafkaOutletRequest::new(
+                self.bootstrap_server.clone(),
+                self.tls,
+                self.policy_expression,
+            );
             let payload = StartServiceRequest::new(payload, &self.addr);
             let req = Request::post("/node/services/kafka_outlet").body(payload);
             let node =

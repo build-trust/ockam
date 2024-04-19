@@ -47,6 +47,9 @@ impl CreateCommand {
             consumer_relay: None,
             publishing_relay: None,
             avoid_publishing: false,
+            inlet_policy_expression: None,
+            consumer_policy_expression: None,
+            producer_policy_expression: None,
         }
         .run(opts)
     }

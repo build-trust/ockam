@@ -4,6 +4,7 @@ use crate::output::Output;
 
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
 use minicbor::{Decode, Encode};
+use ockam_abac::PolicyExpression;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
@@ -56,18 +57,34 @@ impl DeleteServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
-    #[n(1)] bootstrap_server_addr: SocketAddr,
+    #[n(1)] bootstrap_server_addr: String,
+    #[n(2)] tls: bool,
+    #[n(3)] policy_expression: Option<PolicyExpression>,
 }
 
 impl StartKafkaOutletRequest {
-    pub fn new(bootstrap_server_addr: SocketAddr) -> Self {
+    pub fn new(
+        bootstrap_server_addr: String,
+        tls: bool,
+        policy_expression: Option<PolicyExpression>,
+    ) -> Self {
         Self {
             bootstrap_server_addr,
+            tls,
+            policy_expression,
         }
     }
 
-    pub fn bootstrap_server_addr(&self) -> SocketAddr {
-        self.bootstrap_server_addr
+    pub fn bootstrap_server_addr(&self) -> String {
+        self.bootstrap_server_addr.clone()
+    }
+
+    pub fn tls(&self) -> bool {
+        self.tls
+    }
+
+    pub fn policy_expression(&self) -> Option<PolicyExpression> {
+        self.policy_expression.clone()
     }
 }
 
@@ -80,15 +97,22 @@ pub struct StartKafkaInletRequest {
     #[n(3)] kafka_outlet_route: MultiAddr,
     #[n(4)] consumer_resolution: ConsumerResolution,
     #[n(5)] consumer_publishing: ConsumerPublishing,
+    #[n(6)] inlet_policy_expression: Option<PolicyExpression>,
+    #[n(7)] consumer_policy_expression: Option<PolicyExpression>,
+    #[n(8)] producer_policy_expression: Option<PolicyExpression>,
 }
 
 impl StartKafkaInletRequest {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         bind_address: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
         kafka_outlet_route: MultiAddr,
         consumer_resolution: ConsumerResolution,
         consumer_publishing: ConsumerPublishing,
+        inlet_policy_expression: Option<PolicyExpression>,
+        consumer_policy_expression: Option<PolicyExpression>,
+        producer_policy_expression: Option<PolicyExpression>,
     ) -> Self {
         Self {
             bind_address,
@@ -96,6 +120,9 @@ impl StartKafkaInletRequest {
             kafka_outlet_route,
             consumer_resolution,
             consumer_publishing,
+            inlet_policy_expression,
+            consumer_policy_expression,
+            producer_policy_expression,
         }
     }
 
@@ -116,7 +143,20 @@ impl StartKafkaInletRequest {
     pub fn consumer_publishing(&self) -> ConsumerPublishing {
         self.consumer_publishing.clone()
     }
+
+    pub fn inlet_policy_expression(&self) -> Option<PolicyExpression> {
+        self.inlet_policy_expression.clone()
+    }
+
+    pub fn consumer_policy_expression(&self) -> Option<PolicyExpression> {
+        self.consumer_policy_expression.clone()
+    }
+
+    pub fn producer_policy_expression(&self) -> Option<PolicyExpression> {
+        self.producer_policy_expression.clone()
+    }
 }
+
 /// Request body when instructing a node to start an Uppercase service
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]

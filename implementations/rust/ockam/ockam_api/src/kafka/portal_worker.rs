@@ -463,6 +463,11 @@ mod test {
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
     use ockam::MessageReceiveOptions;
+    use ockam_abac::{
+        Action, Env, Policies, Resource, ResourcePolicySqlxDatabase, ResourceType,
+        ResourceTypePolicySqlxDatabase,
+    };
+    use ockam_node::database::SqlxDatabase;
 
     const TEST_MAX_KAFKA_MESSAGE_SIZE: u32 = 128 * 1024;
     const TEST_KAFKA_API_VERSION: i16 = 13;
@@ -745,13 +750,46 @@ mod test {
             "I0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         )
         .unwrap();
-
         let secure_channels = secure_channels().await.unwrap();
+
+        let database = SqlxDatabase::in_memory("kafka").await.unwrap();
+        let policies = Policies::new(
+            Arc::new(ResourcePolicySqlxDatabase::new(
+                database.clone(),
+                "kafka_test",
+            )),
+            Arc::new(ResourceTypePolicySqlxDatabase::new(
+                database.clone(),
+                "kafka_test",
+            )),
+        );
+
+        let consumer_manual_policy = policies
+            .make_policy_access_control(
+                secure_channels.identities().identities_attributes(),
+                Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+                Action::HandleMessage,
+                Env::new(),
+                authority_identifier.clone(),
+            )
+            .create_manual();
+
+        let producer_manual_policy = policies
+            .make_policy_access_control(
+                secure_channels.identities().identities_attributes(),
+                Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+                Action::HandleMessage,
+                Env::new(),
+                authority_identifier.clone(),
+            )
+            .create_manual();
+
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerResolution::ViaRelay(MultiAddr::default()),
             ConsumerPublishing::None,
-            authority_identifier,
+            consumer_manual_policy,
+            producer_manual_policy,
         )
         .into_trait();
 
@@ -808,11 +846,34 @@ mod test {
             .project_authority()
             .unwrap();
 
+        let consumer_manual_policy = handle
+            .node_manager
+            .policy_access_control(
+                project_authority.clone(),
+                Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+                Action::HandleMessage,
+                None,
+            )
+            .await?
+            .create_manual();
+
+        let producer_manual_policy = handle
+            .node_manager
+            .policy_access_control(
+                project_authority.clone(),
+                Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+                Action::HandleMessage,
+                None,
+            )
+            .await?
+            .create_manual();
+
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handle.secure_channels.clone(),
             ConsumerResolution::ViaRelay(MultiAddr::default()),
             ConsumerPublishing::None,
-            project_authority,
+            consumer_manual_policy,
+            producer_manual_policy,
         )
         .into_trait();
 
