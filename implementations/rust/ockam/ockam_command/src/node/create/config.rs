@@ -5,6 +5,7 @@ use crate::run::parser::resource::*;
 use crate::run::parser::Version;
 use crate::value_parsers::async_parse_path_or_url;
 use crate::CommandGlobalOpts;
+use miette::miette;
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::cli_state::random_name;
 use ockam_node::Context;
@@ -39,6 +40,9 @@ impl CreateCommand {
         // Set environment variables from the cli command args
         // This needs to be done before parsing the configuration
         for (key, value) in &self.variables {
+            if value.is_empty() {
+                return Err(miette!("Empty value for variable '{key}'"));
+            }
             std::env::set_var(key, value);
         }
         // Parse the configuration
@@ -87,6 +91,9 @@ impl NodeConfig {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
         for (key, value) in &cli_args.variables {
+            if value.is_empty() {
+                return Err(miette!("Empty value for variable '{key}'"));
+            }
             std::env::set_var(key, value);
         }
 

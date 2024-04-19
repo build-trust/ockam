@@ -22,7 +22,7 @@ impl Variables {
             .map(|c| c.to_string())
             .map_err(|e| {
                 miette!(
-                    "Failed to resolve variable {}: {}",
+                    "Failed to resolve variable '{}': {}",
                     color_primary(&e.var_name),
                     e.cause
                 )
@@ -40,6 +40,9 @@ impl Variables {
                     continue;
                 }
                 let v = v.to_string();
+                if v.is_empty() {
+                    return Err(miette!("Empty value for variable '{k}'"));
+                }
                 std::env::set_var(k, v);
             }
         }
