@@ -157,3 +157,8 @@ force_kill_node() {
     assert_output --partial 8080
   done
 }
+
+@test "node - return error if passed variable has no value" {
+  run_failure "$OCKAM" node create --node-config "{name: n}" --variable MY_VAR=
+  assert_output --partial "Empty value for variable 'MY_VAR'"
+}
