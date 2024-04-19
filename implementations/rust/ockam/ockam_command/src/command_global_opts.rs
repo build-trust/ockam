@@ -49,7 +49,7 @@ impl CommandGlobalOpts {
     ) -> miette::Result<Self> {
         let terminal = Terminal::from(global_args);
         let logging_configuration =
-            Self::make_logging_configuration(global_args, cmd, terminal.is_tty())?;
+            Self::make_logging_configuration(global_args, cmd, terminal.clone().stdout().is_tty())?;
         let tracing_configuration = Self::make_tracing_configuration(global_args, cmd)?;
         let tracing_guard =
             Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);
