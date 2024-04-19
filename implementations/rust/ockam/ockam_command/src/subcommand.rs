@@ -185,7 +185,7 @@ impl OckamSubcommand {
     pub fn is_background_node(&self) -> bool {
         match self {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
-                NodeSubcommand::Create(cmd) => cmd.child_process,
+                NodeSubcommand::Create(cmd) => cmd.foreground_args.child_process,
                 _ => false,
             },
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
@@ -200,7 +200,7 @@ impl OckamSubcommand {
         match self {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
                 NodeSubcommand::Create(cmd) => {
-                    if cmd.child_process {
+                    if cmd.foreground_args.child_process {
                         Some(cmd.name.clone())
                     } else {
                         None
@@ -226,7 +226,7 @@ impl OckamSubcommand {
         match self {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
                 NodeSubcommand::Create(cmd) => {
-                    if cmd.child_process || !cmd.foreground {
+                    if cmd.foreground_args.child_process || !cmd.foreground_args.foreground {
                         CliState::default_node_dir(&cmd.name).ok()
                     } else {
                         None

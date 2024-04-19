@@ -14,7 +14,7 @@ where
 {
     let pos = s
         .find('=')
-        .ok_or_else(|| miette!("invalid KEY=value: no `=` found in `{s}`"))?;
+        .ok_or_else(|| miette!("invalid key=value pair: no `=` found in `{s}`"))?;
     Ok((
         s[..pos].parse().into_diagnostic()?,
         s[pos + 1..].parse().into_diagnostic()?,
