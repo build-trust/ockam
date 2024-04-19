@@ -23,6 +23,7 @@ type BrokerId = i32;
 pub(crate) struct KafkaOutletController {
     inner: Arc<Mutex<KafkaOutletMapInner>>,
     policy_expression: Option<PolicyExpression>,
+    tls: bool,
 }
 
 #[derive(Debug)]
@@ -31,12 +32,16 @@ struct KafkaOutletMapInner {
 }
 
 impl KafkaOutletController {
-    pub(crate) fn new(policy_expression: Option<PolicyExpression>) -> KafkaOutletController {
+    pub(crate) fn new(
+        policy_expression: Option<PolicyExpression>,
+        tls: bool,
+    ) -> KafkaOutletController {
         Self {
             inner: Arc::new(Mutex::new(KafkaOutletMapInner {
                 broker_map: HashMap::new(),
             })),
             policy_expression,
+            tls,
         }
     }
 
@@ -57,6 +62,7 @@ impl KafkaOutletController {
                 socket_addr,
                 kafka_outlet_address(broker_id),
                 self.policy_expression.clone(),
+                self.tls,
             )
             .await?;
             inner.broker_map.insert(broker_id, socket_address);
@@ -69,9 +75,10 @@ impl KafkaOutletController {
         socket_address: SocketAddr,
         worker_address: Address,
         policy_expression: Option<PolicyExpression>,
+        tls: bool,
     ) -> Result<SocketAddr> {
         let hostname_port = HostnamePort::from_socket_addr(socket_address)?;
-        let mut payload = CreateOutlet::new(hostname_port, false, Some(worker_address), false);
+        let mut payload = CreateOutlet::new(hostname_port, tls, Some(worker_address), false);
         if let Some(expr) = policy_expression {
             payload.set_policy_expression(expr);
         }

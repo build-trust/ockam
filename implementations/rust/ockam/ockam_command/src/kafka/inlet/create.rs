@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use clap::{command, Args};
 use colorful::Colorful;
+use ockam_abac::PolicyExpression;
 use ockam_api::colors::OckamColor;
 use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
 use ockam_api::nodes::models::services::{StartKafkaInletRequest, StartServiceRequest};
@@ -69,6 +70,24 @@ pub struct CreateCommand {
     /// referenced by the producer.
     #[arg(long, name = "avoid-publishing", conflicts_with = "publishing-relay")]
     pub avoid_publishing: bool,
+    /// Policy expression that will be used for access control to the Kafka Inlet.
+    /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
+    #[arg(hide = true, long = "allow", id = "INLET-EXPRESSION")]
+    pub inlet_policy_expression: Option<PolicyExpression>,
+    /// Policy expression that will be used for access control to the Kafka Consumer.
+    /// If you don't provide it, the policy set for the "kafka-consumer" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type kafka-consumer`.
+    #[arg(hide = true, long = "allow-consumer", id = "CONSUMER-EXPRESSION")]
+    pub consumer_policy_expression: Option<PolicyExpression>,
+    /// Policy expression that will be used for access control to the Kafka Producer.
+    /// If you don't provide it, the policy set for the "kafka-producer" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type kafka-producer`.
+    #[arg(hide = true, long = "allow-producer", id = "PRODUCER-EXPRESSION")]
+    pub producer_policy_expression: Option<PolicyExpression>,
 }
 
 #[async_trait]
@@ -119,6 +138,9 @@ impl Command for CreateCommand {
                     to,
                     consumer_resolution,
                     consumer_publishing,
+                    self.inlet_policy_expression,
+                    self.consumer_policy_expression,
+                    self.producer_policy_expression,
                 );
                 let payload = StartServiceRequest::new(payload, &addr);
                 let req = Request::post("/node/services/kafka_inlet").body(payload);

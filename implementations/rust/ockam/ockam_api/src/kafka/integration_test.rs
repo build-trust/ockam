@@ -30,6 +30,7 @@ mod test {
 
     use ockam::compat::tokio::io::DuplexStream;
     use ockam::Context;
+    use ockam_abac::{Action, Resource, ResourceType};
     use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
     use ockam_core::route;
@@ -76,11 +77,35 @@ mod test {
             .node_manager
             .project_authority()
             .unwrap();
+
+        let consumer_manual_policy = handler
+            .node_manager
+            .policy_access_control(
+                project_authority.clone(),
+                Resource::new(listener_address.address(), ResourceType::KafkaConsumer),
+                Action::HandleMessage,
+                None,
+            )
+            .await?
+            .create_manual();
+
+        let producer_manual_policy = handler
+            .node_manager
+            .policy_access_control(
+                project_authority.clone(),
+                Resource::new(listener_address.address(), ResourceType::KafkaProducer),
+                Action::HandleMessage,
+                None,
+            )
+            .await?
+            .create_manual();
+
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
             ConsumerResolution::ViaRelay(MultiAddr::try_from("/service/api")?),
             Some(HopRelayCreator {}),
-            project_authority,
+            consumer_manual_policy,
+            producer_manual_policy,
         );
 
         let mut interceptor_multiaddr = MultiAddr::default();

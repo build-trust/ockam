@@ -45,6 +45,12 @@ pub enum ResourceType {
     #[n(3)]
     #[strum(serialize = "echoer")]
     Echoer,
+    #[n(4)]
+    #[strum(serialize = "kafka-consumer")]
+    KafkaConsumer,
+    #[n(5)]
+    #[strum(serialize = "kafka-producer")]
+    KafkaProducer,
 }
 
 impl ResourceType {

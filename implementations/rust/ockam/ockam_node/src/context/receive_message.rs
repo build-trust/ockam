@@ -79,8 +79,13 @@ impl Context {
             if !self.mailboxes.is_incoming_authorized(&relay_msg).await? {
                 warn!(
                     "Message received from {} for {} did not pass incoming access control",
-                    relay_msg.return_route(),
+                    relay_msg.source(),
                     relay_msg.destination()
+                );
+                debug!(
+                    "Message return_route: {:?} onward_route: {:?}",
+                    relay_msg.return_route(),
+                    relay_msg.onward_route()
                 );
                 continue;
             }
