@@ -15,6 +15,9 @@ pub struct Node {
     pub name: Option<ArgValue>,
     #[serde(alias = "skip-is-running-check")]
     pub skip_is_running_check: Option<ArgValue>,
+    pub foreground: Option<ArgValue>,
+    #[serde(alias = "child-process")]
+    pub child_process: Option<ArgValue>,
     #[serde(alias = "exit-on-eof")]
     pub exit_on_eof: Option<ArgValue>,
     #[serde(alias = "tcp-listener-address")]
@@ -59,6 +62,12 @@ impl Node {
         }
         if let Some(skip_is_running_check) = self.skip_is_running_check {
             args.insert("skip-is-running-check".to_string(), skip_is_running_check);
+        }
+        if let Some(foreground) = self.foreground {
+            args.insert("foreground".to_string(), foreground);
+        }
+        if let Some(child_process) = self.child_process {
+            args.insert("child-process".to_string(), child_process);
         }
         if let Some(exit_on_eof) = self.exit_on_eof {
             args.insert("exit-on-eof".to_string(), exit_on_eof);

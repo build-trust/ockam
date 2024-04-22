@@ -6,12 +6,17 @@ use crate::run::parser::Version;
 use crate::value_parsers::{async_parse_path_or_url, parse_enrollment_ticket, parse_key_val};
 use crate::CommandGlobalOpts;
 use clap::Args;
-use miette::miette;
+use colorful::Colorful;
+use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::cli_state::{random_name, EnrollmentTicket};
+use ockam_api::fmt_err;
+use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
-use tracing::{instrument, Span};
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::Retry;
+use tracing::{error, instrument, Span};
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct ConfigArgs {
@@ -39,13 +44,12 @@ impl CreateCommand {
     pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let mut node_config = self.get_node_config().await?;
         node_config.merge(&self)?;
-        node_config.run(ctx, &opts).await?;
 
         if self.foreground_args.foreground {
-            self.wait_for_exit_signal(ctx, opts).await?;
+            node_config.run_foreground(ctx, &opts).await
+        } else {
+            node_config.run(ctx, &opts).await
         }
-
-        Ok(())
     }
 
     /// Try to read the self.name field as either:
@@ -133,6 +137,12 @@ impl NodeConfig {
         if self.node.skip_is_running_check.is_none() {
             self.node.skip_is_running_check = Some(ArgValue::Bool(cli_args.skip_is_running_check));
         }
+        if self.node.foreground.is_none() {
+            self.node.foreground = Some(ArgValue::Bool(cli_args.foreground_args.foreground));
+        }
+        if self.node.child_process.is_none() {
+            self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.foreground_args.child_process));
+        }
         if self.node.exit_on_eof.is_none() {
             self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.foreground_args.exit_on_eof));
         }
@@ -161,16 +171,58 @@ impl NodeConfig {
         Ok(())
     }
 
+    pub async fn run_foreground(
+        self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        let node: ParsedCommands = self.node.clone().parse_commands()?.into();
+        let node_name = self.node.name();
+        let other_sections: Vec<ParsedCommands> = vec![
+            self.project_enroll.parse_commands()?.into(),
+            self.policies.parse_commands()?.into(),
+            self.tcp_outlets.parse_commands(&node_name)?.into(),
+            self.tcp_inlets.parse_commands(&node_name)?.into(),
+            self.kafka_inlet.parse_commands(&node_name)?.into(),
+            self.kafka_outlet.parse_commands(&node_name)?.into(),
+            self.relays.parse_commands(&node_name)?.into(),
+        ];
+        let ctx_clone = ctx.async_try_clone().await.into_diagnostic()?;
+        let opts_clone = opts.clone();
+        tokio::spawn(async { Self::run_sections(ctx_clone, opts_clone, other_sections).await });
+        node.run(ctx, opts).await?;
+        Ok(())
+    }
+
+    async fn run_sections(
+        ctx: Context,
+        opts: CommandGlobalOpts,
+        sections: Vec<ParsedCommands>,
+    ) -> miette::Result<()> {
+        for cmds in sections {
+            let retry_strategy = FixedInterval::from_millis(500).take(25);
+            if let Err(e) =
+                Retry::spawn(retry_strategy, || async { cmds.run(&ctx, &opts).await }).await
+            {
+                error!("Command failed: {e:?}");
+                let _ = opts
+                    .terminal
+                    .write_line(&fmt_err!("Command failed with error: {e:?}"));
+            }
+        }
+        Ok(())
+    }
+
     /// Build commands and return validation errors if any
-    pub fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
+    fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
         let node_name = self.node.name();
         Ok(vec![
             self.project_enroll.parse_commands()?.into(),
             self.node.parse_commands()?.into(),
             self.relays.parse_commands(&node_name)?.into(),
             self.policies.parse_commands()?.into(),
-            self.tcp_outlets.parse_commands(&node_name)?.into(),
             self.tcp_inlets.parse_commands(&node_name)?.into(),
+            self.tcp_outlets.parse_commands(&node_name)?.into(),
             self.kafka_inlet.parse_commands(&node_name)?.into(),
             self.kafka_outlet.parse_commands(&node_name)?.into(),
         ])

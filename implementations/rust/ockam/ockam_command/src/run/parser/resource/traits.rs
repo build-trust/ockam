@@ -28,8 +28,8 @@ impl ParsedCommands {
     }
 
     /// Validate and run each command
-    pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
-        for cmd in self.commands.into_iter() {
+    pub async fn run(&self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
+        for cmd in self.commands.iter() {
             if cmd.is_valid(ctx, opts).await? {
                 cmd.run(ctx, opts).await?;
                 // Newline between commands
