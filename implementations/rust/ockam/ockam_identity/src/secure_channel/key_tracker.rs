@@ -3,7 +3,7 @@ use ockam_vault::AeadSecretKeyHandle;
 use tracing::{trace, warn};
 use tracing_attributes::instrument;
 
-use crate::IdentityError;
+use crate::{IdentityError, Nonce};
 
 pub(crate) struct KeyTracker {
     pub(crate) current_key: AeadSecretKeyHandle,
@@ -40,7 +40,7 @@ impl KeyTracker {
     ///      - if it the previous nonce but is not set
     ///      - we reached the maximum number of rekeyings
     #[instrument(skip_all)]
-    pub(crate) fn get_key(&self, nonce: u64) -> Result<Option<AeadSecretKeyHandle>> {
+    pub(crate) fn get_key(&self, nonce: Nonce) -> Result<Option<AeadSecretKeyHandle>> {
         trace!(
             "The current number of rekeys is {}, the rekey interval is {}",
             self.number_of_rekeys,
@@ -58,8 +58,8 @@ impl KeyTracker {
             return Err(IdentityError::InvalidNonce)?;
         };
 
-        if nonce >= current_interval_start {
-            let nonce_age = nonce - current_interval_start;
+        if nonce.value() >= current_interval_start {
+            let nonce_age = nonce.value() - current_interval_start;
             // if the nonce falls in the current interval return the current key
             if nonce_age < self.renewal_interval {
                 Ok(Some(self.current_key.clone()))
@@ -75,7 +75,7 @@ impl KeyTracker {
                 Err(IdentityError::InvalidNonce)?
             }
         // else return the previous key (if there is one) if the nonce is not too old
-        } else if current_interval_start - nonce <= self.renewal_interval {
+        } else if current_interval_start - nonce.value() <= self.renewal_interval {
             if let Some(previous) = self.previous_key.clone() {
                 Ok(Some(previous))
             } else {
@@ -116,6 +116,7 @@ impl KeyTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::MAX_NONCE;
     use ockam_vault::{Aes256GcmSecretKeyHandle, HandleToSecret};
 
     #[test]
@@ -124,21 +125,21 @@ mod tests {
         let handle = AeadSecretKeyHandle(Aes256GcmSecretKeyHandle(HandleToSecret::new(handle)));
         let key_tracker = KeyTracker::new(handle.clone(), 10);
 
-        assert_eq!(key_tracker.get_key(0).unwrap(), Some(handle.clone()));
-        assert_eq!(key_tracker.get_key(5).unwrap(), Some(handle.clone()));
-        assert_eq!(key_tracker.get_key(9).unwrap(), Some(handle));
+        assert_eq!(key_tracker.get_key(0.into()).unwrap(), Some(handle.clone()));
+        assert_eq!(key_tracker.get_key(5.into()).unwrap(), Some(handle.clone()));
+        assert_eq!(key_tracker.get_key(9.into()).unwrap(), Some(handle));
         assert_eq!(
-            key_tracker.get_key(10).unwrap(),
+            key_tracker.get_key(10.into()).unwrap(),
             None,
             "the next key must be created"
         );
         assert_eq!(
-            key_tracker.get_key(20).ok(),
+            key_tracker.get_key(20.into()).ok(),
             None,
             "this nonce is too far in the future"
         );
         assert_eq!(
-            key_tracker.get_key(u64::MAX).ok(),
+            key_tracker.get_key(MAX_NONCE).ok(),
             None,
             "this nonce is too far in the future"
         );
@@ -161,38 +162,44 @@ mod tests {
         };
 
         assert_eq!(
-            key_tracker.get_key(0).ok(),
+            key_tracker.get_key(0.into()).ok(),
             None,
             "this nonce is too far in the past"
         );
         assert_eq!(
-            key_tracker.get_key(30).ok(),
+            key_tracker.get_key(30.into()).ok(),
             None,
             "this nonce is too far in the past"
         );
         assert_eq!(
-            key_tracker.get_key(39).ok(),
+            key_tracker.get_key(39.into()).ok(),
             None,
             "this nonce is too far in the past"
         );
         assert_eq!(
-            key_tracker.get_key(40).unwrap(),
+            key_tracker.get_key(40.into()).unwrap(),
             Some(previous_handle.clone())
         );
         assert_eq!(
-            key_tracker.get_key(45).unwrap(),
+            key_tracker.get_key(45.into()).unwrap(),
             Some(previous_handle.clone())
         );
-        assert_eq!(key_tracker.get_key(49).unwrap(), Some(previous_handle));
-        assert_eq!(key_tracker.get_key(50).unwrap(), Some(handle.clone()));
-        assert_eq!(key_tracker.get_key(59).unwrap(), Some(handle));
         assert_eq!(
-            key_tracker.get_key(60).unwrap(),
+            key_tracker.get_key(49.into()).unwrap(),
+            Some(previous_handle)
+        );
+        assert_eq!(
+            key_tracker.get_key(50.into()).unwrap(),
+            Some(handle.clone())
+        );
+        assert_eq!(key_tracker.get_key(59.into()).unwrap(), Some(handle));
+        assert_eq!(
+            key_tracker.get_key(60.into()).unwrap(),
             None,
             "the next key must be created"
         );
         assert_eq!(
-            key_tracker.get_key(u64::MAX).ok(),
+            key_tracker.get_key(MAX_NONCE).ok(),
             None,
             "this nonce is too far in the future"
         );
@@ -215,7 +222,7 @@ mod tests {
         };
 
         assert_eq!(
-            key_tracker.get_key(0).ok(),
+            key_tracker.get_key(0.into()).ok(),
             None,
             "we reached the last interval already. The channel needs to be recreated"
         );

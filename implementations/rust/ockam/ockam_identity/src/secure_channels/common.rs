@@ -1,21 +1,25 @@
+use crate::secure_channel::{Addresses, RemoteRoute};
+use crate::SecureChannelOptions;
 use core::fmt;
 use core::fmt::Formatter;
 use minicbor::{Decode, Encode};
-use ockam_core::flow_control::FlowControlId;
-use ockam_core::Address;
+use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::{route, Address, Result, Route};
 use serde::Serialize;
 
 /// Result of [`super::SecureChannels::create_secure_channel()`] call.
 #[derive(Debug, Clone)]
 pub struct SecureChannel {
-    encryptor_address: Address,
-    encryptor_api_address: Address,
+    flow_controls: FlowControls,
+    encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
+    addresses: Addresses,
     flow_control_id: FlowControlId,
 }
 
 impl From<SecureChannel> for Address {
     fn from(value: SecureChannel) -> Self {
-        value.encryptor_address
+        value.addresses.encryptor
     }
 }
 
@@ -24,28 +28,30 @@ impl fmt::Display for SecureChannel {
         write!(
             f,
             "Encryptor: {}, FlowId: {}",
-            self.encryptor_address, self.flow_control_id
+            self.addresses.encryptor, self.flow_control_id
         )
     }
 }
 
 impl SecureChannel {
     /// Constructor.
-    pub fn new(
-        encryptor_address: Address,
-        encryptor_api_address: Address,
+    pub(crate) fn new(
+        flow_controls: FlowControls,
+        encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
+        addresses: Addresses,
         flow_control_id: FlowControlId,
     ) -> Self {
         Self {
-            encryptor_address,
-            encryptor_api_address,
+            flow_controls,
+            encryptor_remote_route,
+            addresses,
             flow_control_id,
         }
     }
     /// [`Address`] of the corresponding`EncryptorWorker` Worker that can be used in a route
     /// to encrypt and send a message to the other party
     pub fn encryptor_address(&self) -> &Address {
-        &self.encryptor_address
+        &self.addresses.encryptor
     }
     /// Freshly generated [`FlowControlId`]
     pub fn flow_control_id(&self) -> &FlowControlId {
@@ -54,7 +60,37 @@ impl SecureChannel {
     /// API [`Address`] of the corresponding`EncryptorWorker` Worker that can be used to encrypt
     /// a message without sending it
     pub fn encryptor_api_address(&self) -> &Address {
-        &self.encryptor_api_address
+        &self.addresses.encryptor_api
+    }
+    /// Update route to the node on the other side in case transport changes happened
+    pub fn update_remote_node_route(&self, new_route: Route) -> Result<()> {
+        // TODO: Maybe we also need to send a dummy message so that the other side is immediately
+        //  notified about the new route (maybe we even need to ack that). But for now it's fine
+        //  as it is
+
+        let next = new_route.next().ok().cloned();
+
+        let mut remote_route = self.encryptor_remote_route.write().unwrap();
+
+        let old_route = remote_route.clone();
+
+        let their_decryptor_address = old_route.route.recipient()?;
+        let new_route = route![new_route, their_decryptor_address];
+
+        remote_route.route = new_route;
+
+        if let Some(next) = next {
+            // TODO: might be useful to disable the old route eventually?
+            //  Not clear if it's mandatory, but certainly will cause problems with messages that will
+            //  arrive late through the old route
+            SecureChannelOptions::setup_flow_control_consumer(
+                &self.flow_controls,
+                &self.addresses,
+                &next,
+            );
+        }
+
+        Ok(())
     }
 }
 

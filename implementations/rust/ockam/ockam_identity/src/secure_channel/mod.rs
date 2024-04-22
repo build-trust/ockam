@@ -10,6 +10,7 @@ mod key_tracker;
 mod listener;
 mod local_info;
 mod message;
+mod nonce;
 mod nonce_tracker;
 mod options;
 mod registry;
@@ -21,10 +22,12 @@ pub mod trust_policy;
 pub use access_control::*;
 pub(crate) use addresses::*;
 pub use api::*;
+pub(crate) use encryptor_worker::*;
 pub(crate) use handshake::*;
 pub(crate) use listener::*;
 pub use local_info::*;
 pub use message::*;
+pub use nonce::*;
 pub use options::*;
 pub use registry::*;
 pub(crate) use role::*;
@@ -47,7 +50,7 @@ mod tests {
             let msg = vec![n];
             let mut ciphertext = Vec::new();
             encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
-            assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
+            assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap().0);
         }
     }
 
@@ -62,7 +65,7 @@ mod tests {
             if n % 3 == 0 {
                 // Two out of three packets are lost, but the ones that do reach the decryptor are
                 // decrypted ok.
-                assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
+                assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap().0);
             }
         }
     }
@@ -88,7 +91,7 @@ mod tests {
         // Displaced up to 8 from the expected order, it is in the accepted window so all
         // must be decrypted ok.
         for (plaintext, ciphertext) in all_msgs.iter() {
-            assert_eq!(plaintext, &decryptor.decrypt(ciphertext).await.unwrap());
+            assert_eq!(plaintext, &decryptor.decrypt(ciphertext).await.unwrap().0);
         }
         // Repeated nonces are detected
         for (_plaintext, ciphertext) in all_msgs.iter() {
@@ -98,7 +101,7 @@ mod tests {
         let mut ciphertext = Vec::new();
         encryptor.encrypt(&mut ciphertext, &msg).await.unwrap();
         // Good messages continue to be decrypted ok
-        assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
+        assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap().0);
     }
 
     #[tokio::test]
@@ -124,7 +127,7 @@ mod tests {
             assert!(decryptor.decrypt(&bad_nonce_msg).await.is_err());
             // These invalid packets don't affect the decryptor state
             // FIXME: fix the implementation so this test pass.
-            assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap());
+            assert_eq!(msg, decryptor.decrypt(&ciphertext).await.unwrap().0);
         }
     }
 
@@ -143,7 +146,7 @@ mod tests {
         let key_on_v2 = vault2.convert_secret_buffer_to_aead_key(key_on_v2).await?;
 
         Ok((
-            Encryptor::new(key_on_v1, 0, vault1),
+            Encryptor::new(key_on_v1, 0.into(), vault1),
             Decryptor::new(key_on_v2, vault2),
         ))
     }

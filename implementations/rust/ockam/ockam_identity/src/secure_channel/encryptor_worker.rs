@@ -4,10 +4,10 @@ use tracing::{debug, error, info, warn};
 use tracing_attributes::instrument;
 
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Decodable, Error, LocalMessage, Route};
+use ockam_core::{async_trait, route, Decodable, Error, LocalMessage, Route};
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
 
@@ -16,12 +16,36 @@ use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
 use crate::{
-    ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError,
+    ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError, Nonce,
     PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
 };
 
+/// Wrap last received (during successful decryption) nonce and current route to the remote in a
+/// struct to allow shared access to it. That allows updating it either by calling
+/// [`SecureChannel::update_remote_node_route`] on the initiator side, or when we receive a message
+/// with an updated `return_route` on the responder side.
+/// The route points to the decryptor on the other side.
+#[derive(Debug, Clone)]
+pub(crate) struct RemoteRoute {
+    pub(crate) route: Route,
+    pub(crate) last_nonce: Nonce,
+}
+
+impl RemoteRoute {
+    pub fn create() -> Arc<RwLock<Self>> {
+        Arc::new(RwLock::new(Self {
+            route: route![],
+            last_nonce: 0.into(),
+        }))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct SecureChannelSharedState {
+    /// Route to the decryptor on the other side. Can be updated from the initiator side by calling
+    /// [`SecureChannel::update_remote_node_route`] or will be updated under the hood for responder
+    /// side upon receiving a message with an updated `return_route`
+    pub(crate) remote_route: Arc<RwLock<RemoteRoute>>,
     /// Allows Decryptor to flag that we're closing the channel because we received a Close message from the other side,
     /// therefore, we don't need to send that message again to the other side
     pub(crate) should_send_close: Arc<AtomicBool>,
@@ -30,7 +54,6 @@ pub(crate) struct SecureChannelSharedState {
 pub(crate) struct EncryptorWorker {
     role: &'static str, // For debug purposes only
     addresses: Addresses,
-    remote_route: Route,
     encryptor: Encryptor,
     my_identifier: Identifier,
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
@@ -44,7 +67,6 @@ impl EncryptorWorker {
     pub fn new(
         role: &'static str,
         addresses: Addresses,
-        remote_route: Route,
         encryptor: Encryptor,
         my_identifier: Identifier,
         change_history_repository: Arc<dyn ChangeHistoryRepository>,
@@ -55,7 +77,6 @@ impl EncryptorWorker {
         Self {
             role,
             addresses,
-            remote_route,
             encryptor,
             my_identifier,
             change_history_repository,
@@ -201,10 +222,11 @@ impl EncryptorWorker {
             buffer
         };
 
+        let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Decryptor doesn't need the return_route since it has `self.remote_route` as well
         let msg = LocalMessage::new()
             .with_payload(payload)
-            .with_onward_route(self.remote_route.clone());
+            .with_onward_route(remote_route);
 
         // Send the message to the decryptor on the other side
         ctx.forward_from_address(msg, self.addresses.encryptor.clone())
@@ -275,13 +297,10 @@ impl EncryptorWorker {
             self.addresses.encryptor
         );
 
+        let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Send the message to the decryptor on the other side
-        ctx.send_from_address(
-            self.remote_route.clone(),
-            msg,
-            self.addresses.encryptor.clone(),
-        )
-        .await?;
+        ctx.send_from_address(remote_route, msg, self.addresses.encryptor.clone())
+            .await?;
 
         self.last_presented_credential = Some(credential);
 
@@ -294,13 +313,10 @@ impl EncryptorWorker {
         // Encrypt the message
         let msg = self.encrypt(ctx, msg).await?;
 
+        let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Send the message to the decryptor on the other side
-        ctx.send_from_address(
-            self.remote_route.clone(),
-            msg,
-            self.addresses.encryptor.clone(),
-        )
-        .await?;
+        ctx.send_from_address(remote_route, msg, self.addresses.encryptor.clone())
+            .await?;
 
         Ok(())
     }

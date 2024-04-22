@@ -34,10 +34,6 @@ impl fmt::Debug for SecureChannelOptions {
     }
 }
 
-pub(crate) struct SecureChannelAccessControl {
-    pub(crate) decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-}
-
 impl SecureChannelOptions {
     /// Mark this Secure Channel Decryptor as a Producer with a random [`FlowControlId`]
     #[allow(clippy::new_without_default)]
@@ -95,12 +91,24 @@ impl SecureChannelOptions {
 }
 
 impl SecureChannelOptions {
-    pub(crate) fn setup_flow_control(
-        &self,
+    pub(crate) fn setup_flow_control_producer(
+        flow_control_id: &FlowControlId,
+        flow_controls: &FlowControls,
+        addresses: &Addresses,
+    ) {
+        flow_controls.add_producer(
+            addresses.decryptor_internal.clone(),
+            flow_control_id,
+            None,
+            vec![addresses.encryptor.clone()],
+        );
+    }
+
+    pub(crate) fn setup_flow_control_consumer(
         flow_controls: &FlowControls,
         addresses: &Addresses,
         next: &Address,
-    ) -> Result<()> {
+    ) {
         if let Some(flow_control_id) = flow_controls
             .find_flow_control_with_producer_address(next)
             .map(|x| x.flow_control_id().clone())
@@ -108,30 +116,29 @@ impl SecureChannelOptions {
             // Allow a sender with corresponding flow_control_id send messages to this address
             flow_controls.add_consumer(addresses.decryptor_remote.clone(), &flow_control_id);
         }
-
-        flow_controls.add_producer(
-            addresses.decryptor_internal.clone(),
-            &self.flow_control_id,
-            None,
-            vec![addresses.encryptor.clone()],
-        );
-
-        Ok(())
     }
 
-    pub(crate) fn create_access_control(
+    pub(crate) fn setup_flow_control(
         &self,
         flow_controls: &FlowControls,
-    ) -> SecureChannelAccessControl {
+        addresses: &Addresses,
+        next: &Address,
+    ) {
+        Self::setup_flow_control_consumer(flow_controls, addresses, next);
+        Self::setup_flow_control_producer(&self.flow_control_id, flow_controls, addresses);
+    }
+
+    pub(crate) fn create_decryptor_outgoing_access_control(
+        &self,
+        flow_controls: &FlowControls,
+    ) -> Arc<dyn OutgoingAccessControl> {
         let ac = FlowControlOutgoingAccessControl::new(
             flow_controls,
             self.flow_control_id.clone(),
             None,
         );
 
-        SecureChannelAccessControl {
-            decryptor_outgoing_access_control: Arc::new(ac),
-        }
+        Arc::new(ac)
     }
 }
 
@@ -229,22 +236,23 @@ impl SecureChannelListenerOptions {
     pub(crate) fn setup_flow_control_for_channel(
         &self,
         flow_controls: &FlowControls,
+        listener_address: &Address,
         addresses: &Addresses,
-        src_addr: &Address,
     ) -> FlowControlId {
-        // Check if the Worker that send us this message is a Producer
-        // If yes - decryptor will be added to that flow_control to be able to receive further messages
-        // from that Producer
-        if let Some(producer_flow_control_id) = flow_controls
-            .get_flow_control_with_producer(src_addr)
-            .map(|x| x.flow_control_id().clone())
-        {
-            // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(
-                addresses.decryptor_remote.clone(),
-                &producer_flow_control_id,
-            );
+        // Add decryptor as consumer for the same ids as the listener, so that even if the initiator
+        // updates the route - decryptor is still reachable
+        for id in flow_controls.get_flow_control_ids_for_consumer(listener_address) {
+            flow_controls.add_consumer(addresses.decryptor_remote.clone(), &id);
         }
+
+        // TODO: What if we added a listener as a consumer for new FlowControlIds, should existing
+        //  secure channels be accessible through these new ids?
+        //  Consider following flow:
+        //   1. You have a secure channel listener listener1 accessible from a tcp listener tcp1.
+        //   2. A secure channel sc1 is established
+        //   3. You start TcpListener tcp2
+        //   4. You make existing listener1 accessible from tcp2
+        //  Should sc1 now be accessible from tcp2? In current implementation it won't be. That's something to consider
 
         let flow_control_id = FlowControls::generate_flow_control_id();
         flow_controls.add_producer(
@@ -257,19 +265,17 @@ impl SecureChannelListenerOptions {
         flow_control_id
     }
 
-    pub(crate) fn create_access_control(
+    pub(crate) fn create_decryptor_outgoing_access_control(
         &self,
         flow_controls: &FlowControls,
         flow_control_id: FlowControlId,
-    ) -> SecureChannelAccessControl {
+    ) -> Arc<dyn OutgoingAccessControl> {
         let ac = FlowControlOutgoingAccessControl::new(
             flow_controls,
             flow_control_id,
             Some(self.flow_control_id.clone()),
         );
 
-        SecureChannelAccessControl {
-            decryptor_outgoing_access_control: Arc::new(ac),
-        }
+        Arc::new(ac)
     }
 }

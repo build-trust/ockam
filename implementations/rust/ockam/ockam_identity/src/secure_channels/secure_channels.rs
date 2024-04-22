@@ -7,7 +7,7 @@ use crate::identities::Identities;
 use crate::models::Identifier;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
-    Addresses, Role, SecureChannelListenerOptions, SecureChannelListenerWorker,
+    Addresses, RemoteRoute, Role, SecureChannelListenerOptions, SecureChannelListenerWorker,
     SecureChannelOptions, SecureChannelRegistry,
 };
 #[cfg(feature = "storage")]
@@ -102,8 +102,9 @@ impl SecureChannels {
 
         let route = route.into();
         let next = route.next()?;
-        options.setup_flow_control(ctx.flow_controls(), &addresses, next)?;
-        let access_control = options.create_access_control(ctx.flow_controls());
+        options.setup_flow_control(ctx.flow_controls(), &addresses, next);
+        let decryptor_outgoing_access_control =
+            options.create_decryptor_outgoing_access_control(ctx.flow_controls());
 
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
@@ -122,6 +123,7 @@ impl SecureChannels {
             None => None,
         };
 
+        let encryptor_remote_route = RemoteRoute::create();
         HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
@@ -129,18 +131,20 @@ impl SecureChannels {
             identifier.clone(),
             purpose_key,
             options.trust_policy,
-            access_control.decryptor_outgoing_access_control,
+            decryptor_outgoing_access_control,
             credential_retriever,
             options.authority,
             Some(route),
             Some(options.timeout),
             Role::Initiator,
+            encryptor_remote_route.clone(),
         )
         .await?;
 
         Ok(SecureChannel::new(
-            addresses.encryptor,
-            addresses.encryptor_api,
+            ctx.flow_controls().clone(),
+            encryptor_remote_route,
+            addresses,
             flow_control_id,
         ))
     }
