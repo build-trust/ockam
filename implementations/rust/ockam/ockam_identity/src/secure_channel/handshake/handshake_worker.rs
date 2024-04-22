@@ -1,14 +1,14 @@
-use alloc::sync::Arc;
 use core::sync::atomic::AtomicBool;
 use core::time::Duration;
 use ockam_core::compat::string::ToString;
+use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
     AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
     Routed,
 };
-use ockam_core::{AllowOnwardAddress, Result, Worker};
+use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, error, info};
@@ -17,7 +17,9 @@ use tracing_attributes::instrument;
 use crate::models::Identifier;
 use crate::secure_channel::decryptor::DecryptorHandler;
 use crate::secure_channel::encryptor::Encryptor;
-use crate::secure_channel::encryptor_worker::{EncryptorWorker, SecureChannelSharedState};
+use crate::secure_channel::encryptor_worker::{
+    EncryptorWorker, RemoteRoute, SecureChannelSharedState,
+};
 use crate::secure_channel::handshake::handshake_state_machine::Action::SendMessage;
 use crate::secure_channel::handshake::handshake_state_machine::Event::{
     Initialize, ReceivedMessage,
@@ -135,6 +137,7 @@ impl HandshakeWorker {
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
+        encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
     ) -> Result<()> {
         let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
@@ -176,6 +179,7 @@ impl HandshakeWorker {
 
         let shared_state = SecureChannelSharedState {
             should_send_close: Arc::new(AtomicBool::new(true)),
+            remote_route: encryptor_remote_route,
         };
         let worker = Self {
             secure_channels,
@@ -343,7 +347,7 @@ impl HandshakeWorker {
         let decryptor = DecryptorHandler::new(
             self.secure_channels.identities.clone(),
             self.authority.clone(),
-            self.role.str(),
+            self.role,
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
             self.secure_channels.identities.vault().secure_channel_vault,
@@ -353,13 +357,13 @@ impl HandshakeWorker {
 
         // create a separate encryptor worker which will be started independently
         {
+            self.shared_state.remote_route.write().unwrap().route = self.remote_route()?;
             let encryptor = EncryptorWorker::new(
                 self.role.str(),
                 self.addresses.clone(),
-                self.remote_route()?,
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
-                    0,
+                    0.into(),
                     self.secure_channels.identities.vault().secure_channel_vault,
                 ),
                 self.identifier.clone(),
@@ -369,11 +373,10 @@ impl HandshakeWorker {
                 self.shared_state.clone(),
             );
 
-            let next_hop = self.remote_route()?.next()?.clone();
             let main_mailbox = Mailbox::new(
                 self.addresses.encryptor.clone(),
                 Arc::new(AllowAll),
-                Arc::new(AllowOnwardAddress(next_hop)),
+                Arc::new(AllowAll),
             );
             let api_mailbox = Mailbox::new(
                 self.addresses.encryptor_api.clone(),

@@ -5,6 +5,7 @@ use ockam_node::Context;
 
 use crate::models::Identifier;
 use crate::secure_channel::addresses::Addresses;
+use crate::secure_channel::encryptor_worker::RemoteRoute;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
 use crate::secure_channel::role::Role;
@@ -59,12 +60,12 @@ impl Worker for SecureChannelListenerWorker {
         let addresses = Addresses::generate(Role::Responder);
         let flow_control_id = self.options.setup_flow_control_for_channel(
             ctx.flow_controls(),
+            ctx.address_ref(),
             &addresses,
-            &message.src_addr(),
         );
-        let access_control = self
+        let decryptor_outgoing_access_control = self
             .options
-            .create_access_control(ctx.flow_controls(), flow_control_id);
+            .create_decryptor_outgoing_access_control(ctx.flow_controls(), flow_control_id);
 
         // TODO: Allow manual PurposeKey management
         let purpose_key = self
@@ -93,12 +94,13 @@ impl Worker for SecureChannelListenerWorker {
             self.identifier.clone(),
             purpose_key,
             self.options.trust_policy.clone(),
-            access_control.decryptor_outgoing_access_control,
+            decryptor_outgoing_access_control,
             credential_retriever,
             self.options.authority.clone(),
             None,
             None,
             Role::Responder,
+            RemoteRoute::create(),
         )
         .await?;
 
