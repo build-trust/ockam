@@ -35,15 +35,15 @@ run() {
     # attestest project membership credential issue by the membership authority.
     #
     # The identity will also allowed to create a relay in the project at the address `redpanda`.
-    redpanda_operator_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay redpanda)
+    redpanda_operator_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay redpanda --attribute 'kafka-outlet=true')
 
     # Create an enrollment ticket to enroll the identity used by an ockam node that will run
     # adjacent to the Redpanda client app in application_team's network.
     #
     # The identity that enrolls with the generated ticket will be given a cryptographically
     # attestest project membership credential issue by the membership authority.
-    application_team_consumer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay '*')
-    application_team_producer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --relay '*')
+    application_team_consumer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --attribute 'kafka-consumer=true' --attribute 'kafka-producer=false' )
+    application_team_producer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --attribute 'kafka-consumer=false' --attribute 'kafka-producer=true' )
 
     # Invoke `docker-compose up` in the directory that has redpanda_operator's configuration.
     # Pass the above enrollment ticket as an environment variable.

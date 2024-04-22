@@ -3,7 +3,6 @@ set -ex
 
 # This script is used as an entrypoint to a docker container built using ../ockam.dockerfile.
 # Create an Ockam node from this `ockam.yaml` descriptor file.
-redpanda_address=$(dig +short redpanda)
 cat <<EOF > ./ockam.yaml
 name: redpanda_outlet_node
 ticket: ${ENROLLMENT_TICKET}
@@ -14,7 +13,8 @@ relay: redpanda
 
 # Declare a Kafka Outlet, with a local destination.
 kafka-outlet:
-  bootstrap-server: ${redpanda_address}:9092
+  bootstrap-server: redpanda:9092
+  allow: '(or (= subject.kafka-consumer "true") (= subject.kafka-producer "true"))'
 EOF
 
 # Create the Ockam node in foreground mode.

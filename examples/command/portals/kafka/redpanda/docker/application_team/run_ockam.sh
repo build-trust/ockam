@@ -13,6 +13,9 @@ ticket: ${ENROLLMENT_TICKET}
 kafka-inlet:
   from: 127.0.0.1:9092
   to: /project/default/service/forward_to_redpanda/secure/api
+  allow: '(= subject.kafka-outlet "true")'
+  allow-consumer: '(= subject.kafka-consumer "true")'
+  allow-producer: '(= subject.kafka-producer "true")'
 EOF
 
 # optional, reduces warnings in the log and order the output
