@@ -3,6 +3,7 @@ use clap::Args;
 use colorful::Colorful;
 use console::Term;
 use ockam_api::fmt_ok;
+use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::{Terminal, TerminalStream};
 
 use crate::terminal::tui::DeleteCommandTui;
@@ -59,6 +60,7 @@ pub struct DeleteTui {
 
 impl DeleteTui {
     pub async fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
+        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
         let tui = Self { opts, cmd };
         tui.delete().await
     }

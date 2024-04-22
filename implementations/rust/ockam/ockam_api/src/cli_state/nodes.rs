@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::process;
 
 use nix::errno::Errno;
+use nix::sys::signal;
 use serde::Serialize;
 use sysinfo::{Pid, ProcessStatus, System};
 
@@ -15,6 +16,7 @@ use ockam_transport_tcp::TcpListener;
 use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};
 use crate::cloud::project::Project;
+use crate::colors::color_primary;
 use crate::config::lookup::InternetAddress;
 
 /// The methods below support the creation and update of local nodes
@@ -177,7 +179,6 @@ impl CliState {
     pub async fn stop_node(&self, node_name: &str, force: bool) -> Result<()> {
         let node = self.get_node(node_name).await?;
         self.nodes_repository().set_no_node_pid(node_name).await?;
-
         if let Some(pid) = node.pid() {
             // avoid killing the current process, return successfully instead.
             // this is useful when we need to stop all the nodes, for example
@@ -185,30 +186,59 @@ impl CliState {
             if pid == process::id() {
                 return Ok(());
             }
-            nix::sys::signal::kill(
-                nix::unistd::Pid::from_raw(pid as i32),
-                if force {
-                    nix::sys::signal::Signal::SIGKILL
-                } else {
-                    nix::sys::signal::Signal::SIGTERM
-                },
-            )
-            .or_else(|e| {
-                if e == Errno::ESRCH {
-                    tracing::warn!(node = %node.name(), %pid, "No such process");
-                    Ok(())
-                } else {
-                    Err(e)
+
+            // kill process
+            let pid = nix::unistd::Pid::from_raw(pid as i32);
+            let kill_signal = if force {
+                signal::Signal::SIGKILL
+            } else {
+                signal::Signal::SIGTERM
+            };
+            signal::kill(pid, kill_signal)
+                .or_else(|e| {
+                    if e == Errno::ESRCH {
+                        tracing::warn!(node = %node.name(), %pid, "No such process");
+                        Ok(())
+                    } else {
+                        Err(e)
+                    }
+                })
+                .map_err(|e| {
+                    CliStateError::Io(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("failed to stop PID `{pid}` with error `{e}`"),
+                    ))
+                })?;
+            debug!(name = %node.name(), %pid, "sent stop signal to node process");
+
+            // wait until the node has fully stopped
+            let mut attempts = 0;
+            let max_attempts = 50; // 5 seconds max
+            let timeout = std::time::Duration::from_millis(100);
+            let mut sys = System::new();
+            let pid = Pid::from_u32(pid.as_raw() as u32);
+            loop {
+                sys.refresh_processes();
+                if sys.process(pid).is_none() {
+                    info!(name = %node.name(), %pid, "node process exited");
+                    break;
                 }
-            })
-            .map_err(|e| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("failed to stop PID `{pid}` with error `{e}`"),
-                ))
-            })?;
+                if attempts > max_attempts {
+                    warn!(name = %node.name(), %pid, "node process did not exit");
+                    break;
+                }
+                // notify the user that the node is stopping if it takes too long
+                if attempts == 5 {
+                    self.notify_progress(format!(
+                        "Waiting for node {} to stop",
+                        color_primary(node_name)
+                    ));
+                }
+                attempts += 1;
+                tokio::time::sleep(timeout).await;
+            }
         }
-        info!(name = %node.name(), "node process killed");
+
         Ok(())
     }
 
