@@ -23,11 +23,12 @@ TCP Transport for the Ockam Routing Protocol.
 """
 
 [features]
-default = ["std"]
+default = ["std", "ring"]
 std = ["ockam_macros/std", "ockam_transport_core/std", "opentelemetry"]
 no_std = ["ockam_macros/no_std", "ockam_transport_core/no_std"]
 alloc = []
 aws-lc = ["tokio-rustls/aws-lc-rs"]
+ring = ["tokio-rustls/ring"]
 
 [dependencies]
 cfg-if = "1.0.0"
@@ -44,5 +45,5 @@ rustls-native-certs = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = { version = "0.5.6", features = ["all"] }
 tokio = { version = "1.37", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
-tokio-rustls = "0.26"
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12"] }
 tracing = { version = "0.1", default-features = false }

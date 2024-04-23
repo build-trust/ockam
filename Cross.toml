@@ -2,5 +2,5 @@
 pre-build = [ # additional commands to run prior to building the package
   "apt update",
   # libclang-dev is required when building with `aws-lc` feature
-  "apt --assume-yes install libclang-dev || true",
+  "apt -y --no-install-recommends install libclang-dev clang",
 ]

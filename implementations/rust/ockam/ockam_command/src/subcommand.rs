@@ -257,6 +257,7 @@ impl OckamSubcommand {
             OckamSubcommand::ProjectMember(c) => c.name(),
             OckamSubcommand::Sidecar(c) => c.name(),
             OckamSubcommand::Admin(c) => c.name(),
+            #[cfg(feature = "orchestrator")]
             OckamSubcommand::Share(c) => c.name(),
             OckamSubcommand::Subscription(c) => c.name(),
             OckamSubcommand::Worker(c) => c.name(),

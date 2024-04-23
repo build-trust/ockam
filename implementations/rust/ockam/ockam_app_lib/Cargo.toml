@@ -22,10 +22,16 @@ license = "Apache-2.0"
 publish = true
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_app_lib"
 description = "Ockam's desktop application library"
+
 [lib]
 name = "ockam_app_lib"
 crate-type = ["staticlib"]
 path = "src/lib.rs"
+
+[features]
+default = ["rust-crypto"]
+aws-lc = ["ockam_api/aws-lc", "ockam_transport_tcp/aws-lc"]
+rust-crypto = ["ockam_api/rust-crypto", "ockam_transport_tcp/ring"]
 
 [dependencies]
 duct = "0.13.7"
@@ -34,10 +40,10 @@ hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.24.0", features = ["alloc", "derive"] }
 ockam = { path = "../ockam", version = "^0.122.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.65.0", features = ["std"] }
+ockam_api = { path = "../ockam_api", version = "0.65.0", default-features = false, features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.107.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.51.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.112.0" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.112.0", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite", "migrate"] }
