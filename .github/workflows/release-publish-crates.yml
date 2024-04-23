@@ -37,7 +37,7 @@ jobs:
     name: "Publish Crates To Crates IO"
     steps:
       - name: Checkout Ockam
-        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.release_git_tag }}
