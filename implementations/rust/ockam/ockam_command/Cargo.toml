@@ -125,3 +125,4 @@ time = { version = "0.3", default-features = false, features = ["std", "local-of
 [features]
 default = ["orchestrator"]
 orchestrator = []
+aws-lc = ["ockam_vault/aws-lc", "ockam_transport_tcp/aws-lc"]

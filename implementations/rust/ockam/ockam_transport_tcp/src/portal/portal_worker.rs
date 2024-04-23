@@ -16,7 +16,7 @@ use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tokio_native_tls::TlsStream;
+use tokio_rustls::TlsStream;
 use tracing::{debug, info, instrument, trace, warn};
 
 /// Enumerate all `TcpPortalWorker` states

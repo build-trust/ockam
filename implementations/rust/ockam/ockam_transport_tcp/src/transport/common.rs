@@ -2,8 +2,6 @@ use crate::{HostnamePort, TcpConnectionMode};
 use cfg_if::cfg_if;
 use core::fmt;
 use core::fmt::Formatter;
-use native_tls::Certificate;
-use native_tls::TlsConnector as NativeTlsConnector;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
@@ -11,11 +9,14 @@ use ockam_core::{Address, Error, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use socket2::{SockRef, TcpKeepalive};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tokio_native_tls::TlsStream;
+use tokio_rustls::rustls::pki_types::ServerName;
+use tokio_rustls::rustls::{ClientConfig, RootCertStore};
+use tokio_rustls::{TlsConnector, TlsStream};
 use tracing::{debug, instrument};
 
 /// Result of [`TcpTransport::connect`] call.
@@ -221,9 +222,18 @@ pub(crate) async fn connect_tls(
     // create a TLS connector
     let tls_connector = create_tls_connector().await?;
 
+    // parse destination hostname
+    let hostname = ServerName::try_from(hostname_port.hostname()).map_err(|e| {
+        Error::new(
+            Origin::Transport,
+            Kind::Io,
+            format!("Cannot create a ServerName from {hostname_port}: {e:?}"),
+        )
+    })?;
+
     // Connect using TLS over TCP
-    let tls_stream = tls_connector
-        .connect(&hostname_port.hostname(), connection)
+    let client_tls_stream = tls_connector
+        .connect(hostname, connection)
         .await
         .map_err(|e| {
             Error::new(
@@ -233,13 +243,12 @@ pub(crate) async fn connect_tls(
             )
         })?;
     debug!("Connected using TLS to {hostname_port}");
-    Ok(tokio::io::split(tls_stream))
+
+    Ok(tokio::io::split(TlsStream::from(client_tls_stream)))
 }
 
 /// Create a TLS connector using the system certificates
-pub(crate) async fn create_tls_connector() -> Result<tokio_native_tls::TlsConnector> {
-    let mut native_tls_connector = NativeTlsConnector::builder();
-
+pub(crate) async fn create_tls_connector() -> Result<TlsConnector> {
     let certificates = rustls_native_certs::load_native_certs().map_err(|e| {
         Error::new(
             Origin::Transport,
@@ -249,22 +258,14 @@ pub(crate) async fn create_tls_connector() -> Result<tokio_native_tls::TlsConnec
     })?;
     debug!("there are {} certificates", certificates.len());
 
-    for certificate in certificates {
-        match Certificate::from_der(certificate.as_ref()) {
-            Ok(certificate) => {
-                native_tls_connector.add_root_certificate(certificate);
-            }
-            Err(e) => debug!("Cannot build create a certificate from a root system DER: {e:?}"),
-        }
-    }
-    let native_tls_connector = native_tls_connector.build().map_err(|e| {
-        Error::new(
-            Origin::Transport,
-            Kind::Io,
-            format!("Cannot build a native TLS connector: {e:?}"),
-        )
-    })?;
-    Ok(tokio_native_tls::TlsConnector::from(native_tls_connector))
+    let mut root_cert_store = RootCertStore::empty();
+    root_cert_store.add_parsable_certificates(certificates);
+
+    let config = ClientConfig::builder()
+        .with_root_certificates(root_cert_store)
+        .with_no_client_auth();
+
+    Ok(TlsConnector::from(Arc::new(config)))
 }
 
 #[cfg(test)]
