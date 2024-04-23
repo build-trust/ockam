@@ -1,16 +1,6 @@
-[target.armv7-unknown-linux-musleabihf]
-image = "rustembedded/cross:armv7-unknown-linux-musleabihf-0.1.16"
-
-[target.x86_64-unknown-linux-musl]
-image = "rustembedded/cross:x86_64-unknown-linux-musl-0.1.16"
-
-[target.aarch64-unknown-linux-musl]
-image = "rustembedded/cross:aarch64-unknown-linux-musl-0.1.16"
-
 [build]
 pre-build = [ # additional commands to run prior to building the package
-  "dpkg --add-architecture $CROSS_DEB_ARCH",
-  # Cross runs the pre-build command for all target and libssl-dev:$CROSS_DEB_ARCH
-  # install fails for musl archs, so we fall back to using just the musl:0.1.16 of cross
-  "apt update && apt --assume-yes install libdbus-1-dev:$CROSS_DEB_ARCH libssl-dev:$CROSS_DEB_ARCH || exit 0",
+  "apt update",
+  # libclang-dev is required when building with `aws-lc` feature
+  "apt --assume-yes install libclang-dev || true",
 ]

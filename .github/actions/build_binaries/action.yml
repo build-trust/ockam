@@ -37,11 +37,9 @@ runs:
         use_cross_build=${{ inputs.use_cross_build }}
         if [[ $use_cross_build == true ]]; then
           cargo install --version 0.2.5 cross
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libclang-dev
         else
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool musl-tools
+          sudo apt-get install -y --no-install-recommends libclang-dev xz-utils liblz4-tool musl-tools
         fi
 
     ## TODO Cache for faster build for different targets
@@ -57,9 +55,9 @@ runs:
         fi
 
         if [[ $use_cross_build == "true" ]]; then
-          cross build --bin ockam --target ${{ inputs.target }} --release -F ockam_vault/aws-lc
+          cross build --bin ockam --target ${{ inputs.target }} --release -F ockam_command/aws-lc
         else
-          cargo build --bin ockam --target ${{ inputs.target }} --release -F ockam_vault/aws-lc
+          cargo build --bin ockam --target ${{ inputs.target }} --release -F ockam_command/aws-lc
         fi
 
         cp target/${{ inputs.target }}/release/ockam target/${{ inputs.target }}/release/ockam_command
@@ -79,9 +77,9 @@ runs:
 
           # first we build the rust library, cross compiling if needed
           if [[ $use_cross_build == "true" ]]; then
-            cross build -p ockam_app_lib --target ${{ inputs.target }} --release -F ockam_vault/aws-lc
+            cross build -p ockam_app_lib --target ${{ inputs.target }} --release -F ockam_command/aws-lc
           else
-            cargo build -p ockam_app_lib --target ${{ inputs.target }} --release -F ockam_vault/aws-lc
+            cargo build -p ockam_app_lib --target ${{ inputs.target }} --release -F ockam_command/aws-lc
           fi
 
           # copy the ockam_app_lib and ockam binary in target/release/ where xcode is expecting them
