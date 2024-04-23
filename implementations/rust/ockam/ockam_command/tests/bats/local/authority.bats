@@ -21,7 +21,7 @@ teardown() {
   port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   run_success "$OCKAM" node show authority
-  assert_output --partial "\"is_up\": true"
+  assert_output --partial "\"status\": \"Up\""
 }
 
 @test "authority - an authority identity is created by default for the authority node" {

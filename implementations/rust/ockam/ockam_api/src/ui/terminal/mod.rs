@@ -4,6 +4,8 @@ pub mod background;
 pub mod notification;
 pub mod term;
 
+pub use fmt::{ICON_PADDING, PADDING};
+
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::io::Write;

@@ -78,6 +78,18 @@ pub fn color_primary_alt(input: impl AsRef<str>) -> String {
     colored_output
 }
 
+pub fn color_ok(input: impl AsRef<str>) -> CString {
+    input.as_ref().color(OckamColor::FmtOKBackground.color())
+}
+
+pub fn color_warn(input: impl AsRef<str>) -> CString {
+    input.as_ref().color(OckamColor::FmtWARNBackground.color())
+}
+
+pub fn color_error(input: impl AsRef<str>) -> CString {
+    input.as_ref().color(OckamColor::FmtERRORBackground.color())
+}
+
 pub fn color_email(input: impl AsRef<str>) -> CString {
     input.as_ref().color(OckamColor::PrimaryResource.color())
 }

@@ -8,6 +8,7 @@ use ockam::remote::RemoteRelayInfo;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
+use crate::colors::{color_error, color_ok, color_warn};
 use crate::error::ApiError;
 use ockam_core::compat::rand;
 use ockam_core::{async_trait, Address, Error, Route};
@@ -115,9 +116,9 @@ impl Default for SessionStatus {
 impl fmt::Display for ConnectionStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            ConnectionStatus::Down => write!(f, "down"),
-            ConnectionStatus::Degraded => write!(f, "degraded"),
-            ConnectionStatus::Up => write!(f, "up"),
+            ConnectionStatus::Down => write!(f, "{}", color_error("DOWN")),
+            ConnectionStatus::Degraded => write!(f, "{}", color_warn("DEGRADED")),
+            ConnectionStatus::Up => write!(f, "{}", color_ok("UP")),
         }
     }
 }
@@ -126,7 +127,7 @@ impl TryFrom<String> for ConnectionStatus {
     type Error = ApiError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
+        match value.to_lowercase().as_str() {
             "down" => Ok(ConnectionStatus::Down),
             "degraded" => Ok(ConnectionStatus::Degraded),
             "up" => Ok(ConnectionStatus::Up),

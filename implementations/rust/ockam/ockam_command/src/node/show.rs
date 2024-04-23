@@ -123,12 +123,12 @@ impl ShowCommandTui for ShowTui {
         let mut node =
             BackgroundNodeClient::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
                 .await?;
-        print_query_status(&self.opts, &self.ctx, &mut node, false).await?;
+        print_node_status(&self.opts, &self.ctx, &mut node, false).await?;
         Ok(())
     }
 }
 
-pub async fn print_query_status(
+pub async fn print_node_status(
     opts: &CommandGlobalOpts,
     ctx: &Context,
     node: &mut BackgroundNodeClient,
@@ -154,7 +154,7 @@ pub async fn print_query_status(
             is_authority_node,
             node_info.tcp_listener_port(),
             node_info.pid(),
-        )
+        )?
     } else {
         let mut show_node = ShowNodeResponse::new(
             node_info.is_default(),
@@ -162,13 +162,13 @@ pub async fn print_query_status(
             true,
             node_info.tcp_listener_port(),
             node_info.pid(),
-        );
+        )?;
         // Get list of services for the node
         let services: ServiceList = node.ask(ctx, api::list_services()).await?;
         show_node.services = services
             .list
             .into_iter()
-            .map(ShowServiceStatus::from)
+            .filter_map(|i| ShowServiceStatus::try_from(i).ok())
             .collect();
 
         // Get list of TCP listeners for node
@@ -185,7 +185,7 @@ pub async fn print_query_status(
         show_node.secure_channel_listeners = listeners
             .list
             .into_iter()
-            .map(ShowSecureChannelListener::from)
+            .filter_map(|i| ShowSecureChannelListener::try_from(i).ok())
             .collect();
 
         // Get list of inlets
@@ -197,7 +197,7 @@ pub async fn print_query_status(
         show_node.outlets = outlets
             .list
             .into_iter()
-            .map(ShowOutletStatus::from)
+            .filter_map(|i| ShowOutletStatus::try_from(i).ok())
             .collect();
 
         show_node

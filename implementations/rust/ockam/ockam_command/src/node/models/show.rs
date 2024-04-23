@@ -1,14 +1,17 @@
 use std::fmt::Display;
 
-use colorful::Colorful;
+use ockam_api::colors::{color_primary, color_warn};
+use ockam_api::ConnectionStatus;
 use serde::Serialize;
 
 use ockam_multiaddr::{
-    proto::{DnsAddr, Node, Tcp},
+    proto::{DnsAddr, Tcp},
     MultiAddr,
 };
 
 use ockam_api::output::Output;
+use ockam_api::terminal::fmt;
+use ockam_multiaddr::proto::Node;
 
 use super::{
     portal::{ShowInletStatus, ShowOutletStatus},
@@ -16,13 +19,14 @@ use super::{
     services::ShowServiceStatus,
     transport::ShowTransportStatus,
 };
+use crate::Result;
 
 /// Information to display in the `ockam node show` command
 #[derive(Debug, Serialize)]
 pub struct ShowNodeResponse {
     pub is_default: bool,
     pub name: String,
-    pub is_up: bool,
+    pub status: ConnectionStatus,
     pub node_pid: Option<u32>,
     pub route: RouteToNode,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -35,8 +39,7 @@ pub struct ShowNodeResponse {
 }
 #[derive(Debug, Serialize)]
 pub struct RouteToNode {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub short: Option<MultiAddr>,
+    pub short: MultiAddr,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verbose: Option<MultiAddr>,
 }
@@ -48,24 +51,29 @@ impl ShowNodeResponse {
         is_up: bool,
         node_port: Option<u16>,
         node_pid: Option<u32>,
-    ) -> ShowNodeResponse {
-        let mut m = MultiAddr::default();
-        let short = m.push_back(Node::new(name)).ok().map(|_| m);
-
-        let verbose = node_port.and_then(|port| {
+    ) -> Result<ShowNodeResponse> {
+        let short = {
             let mut m = MultiAddr::default();
-            if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(port)).is_ok()
-            {
-                Some(m)
-            } else {
-                None
-            }
-        });
+            m.push_back(Node::new(name))?;
+            m
+        };
+        let verbose = if let Some(port) = node_port {
+            let mut m = MultiAddr::default();
+            m.push_back(DnsAddr::new("localhost"))?;
+            m.push_back(Tcp::new(port))?;
+            Some(m)
+        } else {
+            None
+        };
 
-        ShowNodeResponse {
+        Ok(ShowNodeResponse {
             is_default,
             name: name.to_owned(),
-            is_up,
+            status: if is_up {
+                ConnectionStatus::Up
+            } else {
+                ConnectionStatus::Down
+            },
             node_pid,
             route: RouteToNode { short, verbose },
             identity: None,
@@ -74,88 +82,127 @@ impl ShowNodeResponse {
             inlets: Default::default(),
             outlets: Default::default(),
             services: Default::default(),
-        }
+        })
     }
 }
 
 impl Display for ShowNodeResponse {
     fn fmt(&self, buffer: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(buffer, "Node:")?;
-
+        let indent = "  ";
+        write!(buffer, "{}{}", fmt::PADDING, color_primary(&self.name))?;
         if self.is_default {
-            writeln!(buffer, "  Name: {} (default)", self.name)?;
-        } else {
-            writeln!(buffer, "  Name: {}", self.name)?;
+            write!(buffer, " (default)")?;
         }
+        writeln!(buffer, ":")?;
 
-        writeln!(
+        write!(
             buffer,
-            "  Status: {}",
-            match self.is_up {
-                true => "UP".light_green(),
-                false => "DOWN".light_red(),
-            }
+            "{}{}The node is {}",
+            fmt::PADDING,
+            indent,
+            self.status
         )?;
-
         if let Some(node_pid) = self.node_pid {
-            writeln!(buffer, "  PID: {}", node_pid)?;
+            write!(buffer, ", with PID {}", node_pid)?;
         }
+        writeln!(buffer)?;
 
-        writeln!(buffer, "  Route To Node:")?;
-        if let Some(short) = &self.route.short {
-            writeln!(buffer, "    Short: {short}")?;
-        }
+        write!(
+            buffer,
+            "{}{}With route {}",
+            fmt::PADDING,
+            indent,
+            color_primary(self.route.short.to_string())
+        )?;
         if let Some(verbose) = &self.route.verbose {
-            writeln!(buffer, "    Verbose: {verbose}")?;
+            write!(buffer, " or {}", color_primary(verbose.to_string()))?;
         }
+        writeln!(buffer)?;
 
         if let Some(identity) = &self.identity {
-            writeln!(buffer, "  Identity: {}", identity)?;
+            writeln!(buffer, "{}{}Identity: {}", fmt::PADDING, indent, identity)?;
         }
 
-        writeln!(buffer, "  Transports:")?;
-        for e in &self.transports {
-            writeln!(buffer, "    Transport:")?;
-            writeln!(buffer, "      Type: {}", &e.tt)?;
-            writeln!(buffer, "      Mode: {}", &e.mode)?;
-            writeln!(buffer, "      Socket: {}", &e.socket)?;
-            writeln!(buffer, "      Worker: {}", &e.worker)?;
-            writeln!(buffer, "      FlowControlId: {}", &e.flow_control)?;
-        }
-
-        writeln!(buffer, "  Secure Channel Listeners:")?;
-        for e in &self.secure_channel_listeners {
-            writeln!(buffer, "    Listener:")?;
-            if let Some(ma) = &e.address {
-                writeln!(buffer, "      Address: {ma}")?;
-            }
-            writeln!(buffer, "      FlowControlId: {}", &e.flow_control)?;
-        }
-
-        writeln!(buffer, "  Inlets:")?;
-        for e in &self.inlets {
-            writeln!(buffer, "    Inlet:")?;
-            writeln!(buffer, "      Listen Address: {}", e.listen_address)?;
-            if let Some(r) = &e.route_to_outlet {
-                writeln!(buffer, "      Route To Outlet: {r}")?;
+        if self.transports.is_empty() {
+            writeln!(buffer, "{}{}No Transports", fmt::PADDING, indent)?;
+        } else {
+            writeln!(buffer, "{}{}Transports:", fmt::PADDING, indent)?;
+            for t in &self.transports {
+                writeln!(
+                    buffer,
+                    "{}{}{}, {} at {}",
+                    fmt::PADDING,
+                    indent.repeat(2),
+                    t.tt,
+                    t.mode,
+                    color_primary(&t.socket)
+                )?;
             }
         }
 
-        writeln!(buffer, "  Outlets:")?;
-        for e in &self.outlets {
-            writeln!(buffer, "    Outlet:")?;
-            writeln!(buffer, "      Forward Address: {}", e.forward_address)?;
-            if let Some(ma) = &e.address {
-                writeln!(buffer, "      Address: {ma}")?;
+        if self.secure_channel_listeners.is_empty() {
+            writeln!(buffer, "{}{}No Secure Channels", fmt::PADDING, indent)?;
+        } else {
+            writeln!(buffer, "{}{}Secure Channels:", fmt::PADDING, indent)?;
+            for s in &self.secure_channel_listeners {
+                writeln!(
+                    buffer,
+                    "{}{}Listener at {}",
+                    fmt::PADDING,
+                    indent.repeat(2),
+                    color_primary(&s.address.to_string())
+                )?;
             }
         }
 
-        writeln!(buffer, "  Services:")?;
-        for e in &self.services {
-            writeln!(buffer, "    Service:")?;
-            writeln!(buffer, "      Type: {}", e.service_type)?;
-            if let Some(ma) = &e.address {
-                writeln!(buffer, "      Address: {ma}")?;
+        if self.inlets.is_empty() && self.outlets.is_empty() {
+            writeln!(buffer, "{}{}No Portals", fmt::PADDING, indent)?;
+        } else {
+            writeln!(buffer, "{}{}Portals:", fmt::PADDING, indent)?;
+            for i in &self.inlets {
+                write!(
+                    buffer,
+                    "{}{}Inlet at {} is {}",
+                    fmt::PADDING,
+                    indent.repeat(2),
+                    color_primary(&i.listen_address),
+                    i.status,
+                )?;
+                if let Some(r) = &i.route_to_outlet {
+                    writeln!(
+                        buffer,
+                        " with route to outlet {}",
+                        color_primary(r.to_string())
+                    )?;
+                } else {
+                    writeln!(buffer)?;
+                }
+            }
+
+            for o in &self.outlets {
+                writeln!(
+                    buffer,
+                    "{}{}Outlet {} at {}",
+                    fmt::PADDING,
+                    indent.repeat(2),
+                    color_primary(o.address.to_string()),
+                    color_primary(&o.forward_address.to_string()),
+                )?;
+            }
+        }
+        if self.services.is_empty() {
+            writeln!(buffer, "{}{}No Services", fmt::PADDING, indent)?;
+        } else {
+            writeln!(buffer, "{}{}Services:", fmt::PADDING, indent)?;
+            for s in &self.services {
+                writeln!(
+                    buffer,
+                    "{}{}{} service at {}",
+                    fmt::PADDING,
+                    indent.repeat(2),
+                    color_warn(&s.service_type),
+                    color_primary(&s.address.to_string())
+                )?;
             }
         }
 

@@ -1,24 +1,23 @@
 use serde::Serialize;
 
+use crate::Error;
 use ockam_api::{
-    addr_to_multiaddr, nodes::models::secure_channel::ShowSecureChannelListenerResponse,
+    nodes::models::secure_channel::ShowSecureChannelListenerResponse, try_address_to_multiaddr,
 };
-use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
 /// Information to display of the secure channel listeners in the `ockam node show` command
 #[derive(Debug, Serialize)]
 pub struct ShowSecureChannelListener {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub address: Option<MultiAddr>,
-    pub flow_control: FlowControlId,
+    pub address: MultiAddr,
 }
 
-impl From<ShowSecureChannelListenerResponse> for ShowSecureChannelListener {
-    fn from(value: ShowSecureChannelListenerResponse) -> Self {
-        Self {
-            address: addr_to_multiaddr(value.addr),
-            flow_control: value.flow_control_id,
-        }
+impl TryFrom<ShowSecureChannelListenerResponse> for ShowSecureChannelListener {
+    type Error = Error;
+
+    fn try_from(value: ShowSecureChannelListenerResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            address: try_address_to_multiaddr(&value.addr)?,
+        })
     }
 }

@@ -73,12 +73,9 @@ impl Address {
     /// let tcp_worker: Address = Address::from_string("1#carol");
     /// ```
     pub fn from_string<S: Into<String>>(s: S) -> Self {
-        match s.into().parse::<Address>() {
-            Ok(a) => a,
-            Err(e) => {
-                panic!("Invalid address string {}", e)
-            }
-        }
+        s.into()
+            .parse::<Address>()
+            .unwrap_or_else(|e| panic!("Invalid address string {e}"))
     }
 
     /// Get the string value of this address without the address type
