@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.65.0 - 2024-04-23
+
+### Added
+
+- Support https for outlets
+- Export opentelemetry traces by default
+- Make the api for creating outlets more flexible
+- Support progress_bar in command notifications
+- Improve output of `node create` command
+- Scope some repositories to a given node name
+- When deleting a node, wait for node's process to finish
+- Updated dependencies
+
+### Fixed
+
+- Set the global error handler even if logging is off
+
+### Removed
+
+- Removed an empty file
+
 ## 0.64.0 - 2024-04-12
 
 ### Added
