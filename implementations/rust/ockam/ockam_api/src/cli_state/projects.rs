@@ -50,9 +50,7 @@ impl Projects {
                 .await?;
         }
 
-        self.projects_repository
-            .store_project(project.model())
-            .await?;
+        self.store_project_model(project.model()).await?;
 
         // If there is no previous default project set this project as the default
         let default_project = self.projects_repository.get_default_project().await?;
@@ -63,6 +61,20 @@ impl Projects {
         };
 
         Ok(project)
+    }
+
+    #[instrument(skip_all, fields(project_id = project.id))]
+    pub async fn store_project_model(&self, project: &ProjectModel) -> Result<()> {
+        self.projects_repository.store_project(project).await?;
+
+        // If there is no previous default project set this project as the default
+        let default_project = self.projects_repository.get_default_project().await?;
+        if default_project.is_none() {
+            self.projects_repository
+                .set_default_project(&project.id)
+                .await?
+        };
+        Ok(())
     }
 
     #[instrument(skip_all, fields(project_id = project_id))]
