@@ -29,7 +29,7 @@ pub async fn default_configuration() -> Result<Configuration> {
         identifier: "I4dba4b2e53b2ed95967b3bab350b6c9ad9c624e5a1b2c3d4e5f6a6b5c4d3e2f1"
             .try_into()?,
         database_path,
-        project_identifier: "123456".to_string(),
+        project_id: "123456".to_string(),
         tcp_listener_address: InternetAddress::new(&format!("127.0.0.1:{}", port)).unwrap(),
         secure_channel_listener_name: None,
         authenticator_name: None,
@@ -91,7 +91,7 @@ pub async fn start_authority(
         .credentials()
         .credentials_creation();
     let admin_attrs = AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
-        .with_attribute("project", configuration.project_identifier.clone())
+        .with_attribute("project", configuration.project_id.clone())
         .build();
     let mut admins = vec![];
     for _ in 0..number_of_admins {

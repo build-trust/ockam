@@ -21,8 +21,8 @@ pub struct Configuration {
     /// path where the database should be stored
     pub database_path: PathBuf,
 
-    /// Project identifier on the Orchestrator node
-    pub project_identifier: String,
+    /// Project id on the Orchestrator node
+    pub project_id: String,
 
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
     pub tcp_listener_address: InternetAddress,
@@ -65,9 +65,9 @@ impl Configuration {
         self.identifier.clone()
     }
 
-    /// Return the project identifier as bytes
-    pub(crate) fn project_identifier(&self) -> String {
-        self.project_identifier.clone()
+    /// Return the project id as bytes
+    pub(crate) fn project_id(&self) -> String {
+        self.project_id.clone()
     }
 
     /// Return the address for the TCP listener

@@ -1,18 +1,25 @@
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 use clap::Args;
+use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
+use tokio::fs::read_to_string;
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::Retry;
+use tracing::{error, info};
 
 use ockam::identity::utils::now;
 use ockam::identity::{Identifier, Identity, TimestampInSeconds, Vault};
 use ockam::Context;
 use ockam_api::authenticator::{PreTrustedIdentities, PreTrustedIdentity};
-use ockam_api::authority_node;
-use ockam_api::authority_node::OktaConfiguration;
+use ockam_api::authority_node::{Authority, OktaConfiguration};
+use ockam_api::cloud::project::models::ProjectModel;
 use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::service::default_address::DefaultAddress;
+use ockam_api::{authority_node, fmt_err};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
@@ -66,9 +73,18 @@ pub struct CreateCommand {
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
 
-    /// Identifier of the project associated to this authority node on the Orchestrator
-    #[arg(long, value_name = "PROJECT_IDENTIFIER")]
-    project_identifier: String,
+    /// Id of the project associated to this authority node on the Orchestrator
+    #[arg(long, value_name = "PROJECT_ID")]
+    project_id: String,
+
+    /// Path to a file containing the identifier used by the project
+    #[arg(long, value_name = "PROJECT_IDENTIFIER_FIEL")]
+    project_identifier_file: String,
+
+    /// MultiAddr for accessing the project. If provided, then default project data is stored in the authority
+    /// node database
+    #[arg(long, value_name = "MULTI_ADDR")]
+    project_access_route: Option<String>,
 
     /// List of the trusted identities, and corresponding attributes to be preload in the attributes storage.
     /// Format: {"identifier1": {"attribute1": "value1", "attribute2": "value12"}, ...}
@@ -148,8 +164,10 @@ impl CreateCommand {
             "--child-process".to_string(),
             "--tcp-listener-address".to_string(),
             self.tcp_listener_address.to_string(),
-            "--project-identifier".to_string(),
-            self.project_identifier.clone(),
+            "--project-id".to_string(),
+            self.project_id.clone(),
+            "--project-identifier-file".to_string(),
+            self.project_identifier_file.clone(),
             "--trusted-identities".to_string(),
             self.trusted_identities.to_string(),
         ];
@@ -313,10 +331,50 @@ impl CreateCommand {
             None => None,
         };
 
+        // Create an identity for exporting opentelemetry traces
+        let exporter = "ockam-opentelemetry-exporter";
+        let exporter_identity = match opts.state.get_named_identity(&exporter).await {
+            Ok(exporter) => exporter,
+            Err(_) => opts.state.create_identity_with_name(&exporter).await?,
+        };
+
+        // Create a default project in the database. That project information is used by the
+        // ockam-opentelemetry-exporter to create a relay
+        let mut attributes = BTreeMap::new();
+        if let Some(project_access_route) = self.project_access_route.clone() {
+            let authority_identity = opts.state.get_identity(&node.identifier()).await?;
+            let authority_port = self.tcp_listener_address.port();
+            let project_identifier = self.read_project_identifier(&opts).await?;
+            let project = ProjectModel {
+                id: self.project_id.clone(),
+                name: "default".to_string(),
+                access_route: project_access_route,
+                project_change_history: None,
+                identity: Some(project_identifier.clone()),
+                authority_access_route: Some(format!(
+                    "/dnsaddr/127.0.0.1/tcp/{}/service/api",
+                    authority_port
+                )),
+                authority_identity: Some(authority_identity.export_as_string().into_diagnostic()?),
+                running: Some(true),
+                space_name: "default".to_string(),
+                space_id: "1".to_string(),
+                okta_config: None,
+                kafka_config: None,
+                version: None,
+                operation_id: None,
+                users: vec![],
+                user_roles: vec![],
+            };
+            opts.state.projects().store_project_model(&project).await?;
+            attributes.insert("ockam-relay".to_string(), "ockam-opentelemetry".to_string());
+            attributes.insert("trust_context_id".to_string(), self.project_id.clone());
+        }
+
         let configuration = authority_node::Configuration {
             identifier: node.identifier(),
             database_path: opts.state.database_path(),
-            project_identifier: self.project_identifier.clone(),
+            project_id: self.project_id.clone(),
             tcp_listener_address: self.tcp_listener_address.clone(),
             secure_channel_listener_name: None,
             authenticator_name: None,
@@ -329,7 +387,18 @@ impl CreateCommand {
             disable_trust_context_id: self.disable_trust_context_id,
         };
 
-        authority_node::start_node(ctx, &opts.state, &configuration)
+        // create the authority identity
+        // or retrieve it from disk if the node has already been started before
+        // The trusted identities in the configuration are used to pre-populate an attribute storage
+        // containing those identities and their attributes
+        let authority = Authority::create(&configuration).await.into_diagnostic()?;
+        authority
+            .add_member(&exporter_identity.identifier(), &attributes)
+            .await
+            .into_diagnostic()?;
+        info!("added the ockam-opentelemetry-exporter ({}) identity as a member with the permission to create a relay named ockam-opentelemetry", exporter_identity.identifier());
+
+        authority_node::start_node(ctx, &configuration, authority)
             .await
             .into_diagnostic()?;
 
@@ -351,6 +420,40 @@ impl CreateCommand {
             }
         }
         Ok(())
+    }
+
+    async fn read_project_identifier(
+        &self,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<Identifier> {
+        let retry_strategy = FixedInterval::from_millis(5000).take(25);
+        let identifier_string = match Retry::spawn(retry_strategy, || async {
+            read_to_string(self.project_identifier_file.clone()).await
+        })
+        .await
+        {
+            Err(e) => {
+                error!("Command failed: {e:?}");
+                let _ = opts
+                    .terminal
+                    .write_line(&fmt_err!("Command failed with error: {e:?}"));
+                return Err(e).into_diagnostic();
+            }
+            Ok(identifier_string) => identifier_string,
+        };
+
+        match Identifier::from_str(&identifier_string) {
+            Err(e) => {
+                let _ = opts.terminal.write_line(&fmt_err!(
+                    "cannot read the project identity identifier: {e:?}"
+                ));
+                Err(e).into_diagnostic()
+            }
+            Ok(identifier) => {
+                info!(identifier=%identifier, "retrieved the project identity identifier");
+                Ok(identifier)
+            }
+        }
     }
 }
 
