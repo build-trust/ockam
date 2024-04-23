@@ -1,0 +1,32 @@
+---
+version: "3.7"
+networks:
+  instaclustr_operator:
+      driver: bridge
+services:
+  # Start an ockam node.
+  #
+  # Read ../ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  ockam:
+    build:
+      context: .
+      dockerfile: ../ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
+      INSTACLUSTER_ADDRESS: ${BOOTSTRAPSERVER}:9092
+    networks:
+      - instaclustr_operator
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: instaclustr-ui
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: DemoKafkaCluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${BOOTSTRAPSERVER}:9092
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: SCRAM-SHA-256
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="myKafkaUser" password="myPassword1.";
+    networks:
+      - instaclustr_operator
