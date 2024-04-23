@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.122.0 - 2024-04-23
+
+### Added
+
+- Support https for outlets
+- Add the possibility to pass a node configuration inline
+- Improve output of `node create` command
+- `node create` raises an error if a passed variable has no value
+- Scope some repositories to a given node name
+- When deleting a node, wait for node's process to finish
+- Updated dependencies
+
+### Fixed
+
+- Make sure to flush all events before shutting down
+- Make sure that creating two nodes with the same configuration works ok
+- Foreground nodes write all logs to stdout
+
 ## 0.121.0 - 2024-04-12
 
 ### Added
