@@ -6,7 +6,7 @@ use ockam_api::{fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_node::Context;
 
-use crate::node::show::print_query_status;
+use crate::node::show::print_node_status;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
 use crate::util::async_cmd;
@@ -125,7 +125,7 @@ async fn start_single_node(
     }
 
     let mut node: BackgroundNodeClient = run_node(node_name, ctx, &opts).await?;
-    print_query_status(&opts, ctx, &mut node, true).await?;
+    print_node_status(&opts, ctx, &mut node, true).await?;
     Ok(())
 }
 

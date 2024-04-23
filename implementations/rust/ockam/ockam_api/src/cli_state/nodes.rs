@@ -264,7 +264,6 @@ impl CliState {
     /// Specify that a node is an authority node
     /// This is used to display the node status since if the node TCP listener is not accessible
     /// without a secure channel
-    #[instrument(skip_all)]
     #[instrument(skip_all, fields(node_name = node_name))]
     pub async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         Ok(self
