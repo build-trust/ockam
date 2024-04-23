@@ -20,7 +20,7 @@ check:
 	cargo check --locked
 check_no_std:
 	cargo --version
-	cargo check --locked --target thumbv7em-none-eabihf -p ockam --no-default-features --features 'no_std alloc software_vault'
+	cargo check --locked --target thumbv7em-none-eabihf -p ockam --no-default-features --features 'no_std alloc software_vault rust-crypto'
 	# no_std example project
 	cd $(ROOT_DIR)/examples/rust/no_std
 	cargo check --example hello

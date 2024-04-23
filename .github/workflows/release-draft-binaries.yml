@@ -380,17 +380,28 @@ jobs:
         if: matrix.job.use-cross == true
         run: cargo install --version 0.2.4 cross
 
+      - shell: bash
+        if: inputs.platform_operating_system == 'ubuntu-22.04'
+        run: |
+          set -x
+          use_cross_build=${{ inputs.use_cross_build }}
+          if [[ $use_cross_build != true ]]; then
+            sudo apt update
+            sudo apt -y --no-install-recommends install libclang-dev clang
+          fi
+
       - name: Build NIFs
         run: |
           set -ex
 
           if [[ '${{ matrix.job.use-cross }}' == 'true' ]]; then
-            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release -F ockam_vault/aws-lc
+            # When building using cross use rust crypto (slower) since the cross image doesn't have an up-to-date libclang
+            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release --no-default-features -F rust-aes
             exit
           fi
 
           rustup target add ${{ matrix.job.target }}
-          cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release -F ockam_vault/aws-lc
+          cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release  --no-default-features -F aws-lc
 
       - name: List
         run: |
