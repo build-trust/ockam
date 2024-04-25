@@ -131,9 +131,9 @@ where
                         // An error occurred -- log and continue
                         Err(e) => {
                             #[cfg(feature = "debugger")]
-                            error!("Error encountered during '{}' message handling: {:?}", address, e);
+                            trace!("Error encountered during '{}' message handling: {:?}", address, e);
                             #[cfg(not(feature = "debugger"))]
-                            error!("Error encountered during '{}' message handling: {}", address, e);
+                            trace!("Error encountered during '{}' message handling: {}", address, e);
                         }
                     }
                 },
