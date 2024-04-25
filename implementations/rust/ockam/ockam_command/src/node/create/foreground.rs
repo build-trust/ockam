@@ -64,8 +64,11 @@ impl CreateCommand {
             .map(|n| n.is_running())
             .unwrap_or(false)
         {
-            return Err(miette!("Node {} is already running", &node_name));
-        };
+            return Err(miette!(
+                "Node {} is already running",
+                color_primary(&node_name)
+            ));
+        }
 
         let trust_options = opts
             .state

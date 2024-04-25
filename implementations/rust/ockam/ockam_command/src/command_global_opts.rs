@@ -47,9 +47,15 @@ impl CommandGlobalOpts {
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
     ) -> miette::Result<Self> {
-        let terminal = Terminal::from(global_args);
         let logging_configuration =
-            Self::make_logging_configuration(global_args, cmd, terminal.clone().stdout().is_tty())?;
+            Self::make_logging_configuration(global_args, cmd, Term::stdout().is_term())?;
+        let terminal = Terminal::new(
+            logging_configuration.is_enabled(),
+            global_args.quiet,
+            global_args.no_color,
+            global_args.no_input,
+            global_args.output_format.clone(),
+        );
         let tracing_configuration = Self::make_tracing_configuration(global_args, cmd)?;
         let tracing_guard =
             Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);
@@ -207,25 +213,6 @@ impl CommandGlobalOpts {
             tracing_guard.force_flush();
             tracing_guard.shutdown();
         };
-    }
-}
-
-#[cfg(test)]
-impl CommandGlobalOpts {
-    pub fn new_for_test(global_args: GlobalArgs, state: CliState) -> Self {
-        let terminal = Terminal::new(
-            global_args.quiet,
-            global_args.no_color,
-            global_args.no_input,
-            global_args.output_format.clone(),
-        );
-        Self {
-            global_args,
-            state,
-            terminal,
-            rt: Arc::new(Runtime::new().expect("cannot initialize the tokio runtime")),
-            tracing_guard: None,
-        }
     }
 }
 

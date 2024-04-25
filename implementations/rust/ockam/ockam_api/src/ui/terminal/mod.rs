@@ -31,6 +31,7 @@ use tracing::warn;
 pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
+    logging_enabled: bool,
     quiet: bool,
     no_input: bool,
     output_format: OutputFormat,
@@ -42,6 +43,21 @@ pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
 impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
     pub fn is_quiet(&self) -> bool {
         self.quiet
+    }
+
+    pub fn set_logging_enabled(&mut self, logging_enabled: bool) {
+        self.logging_enabled = logging_enabled;
+    }
+
+    fn log_msg(&self, msg: impl AsRef<str>) {
+        if !self.logging_enabled {
+            return;
+        }
+        let msg = strip_ansi_escapes::strip_str(msg.as_ref());
+        let msg = msg.trim().trim_start_matches(['✔', '✗', '>', '!']).trim();
+        if !msg.is_empty() {
+            info!("{msg}");
+        }
     }
 }
 
@@ -79,7 +95,13 @@ pub trait TerminalWriter: Clone {
 
 // Core functions
 impl<W: TerminalWriter + Debug> Terminal<W> {
-    pub fn new(quiet: bool, no_color: bool, no_input: bool, output_format: OutputFormat) -> Self {
+    pub fn new(
+        logging_enabled: bool,
+        quiet: bool,
+        no_color: bool,
+        no_input: bool,
+        output_format: OutputFormat,
+    ) -> Self {
         let no_color = Self::should_disable_color(no_color);
         let no_input = Self::should_disable_user_input(no_input);
         let stdout = W::stdout(no_color);
@@ -88,6 +110,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         Self {
             stdout,
             stderr,
+            logging_enabled,
             quiet,
             no_input,
             output_format,
@@ -97,12 +120,8 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         }
     }
 
-    pub fn is_tty(&self) -> bool {
-        self.stderr.is_tty()
-    }
-
-    pub fn quiet() -> Self {
-        Self::new(true, false, false, OutputFormat::Plain)
+    pub fn quiet(logging_enabled: bool) -> Self {
+        Self::new(logging_enabled, true, false, false, OutputFormat::Plain)
     }
 
     /// Prompt the user for a confirmation.
@@ -197,27 +216,43 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
 
 // Logging mode
 impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
+    pub fn is_tty(&self) -> bool {
+        self.stderr.is_tty()
+    }
+
     pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
-        self.stderr.clone().write(msg)
+        if self.logging_enabled {
+            self.log_msg(msg);
+        } else {
+            self.stderr.clone().write(msg)?;
+        }
+        Ok(())
     }
 
     pub fn rewrite(&self, msg: impl AsRef<str>) -> Result<()> {
         if self.quiet {
             return Ok(());
         }
-        self.stderr.clone().rewrite(msg)
+        if self.logging_enabled {
+            self.log_msg(msg);
+        } else {
+            self.stderr.clone().rewrite(msg)?;
+        }
+        Ok(())
     }
 
     pub fn write_line(&self, msg: impl AsRef<str>) -> Result<&Self> {
         if self.quiet {
             return Ok(self);
         }
-        self.stderr
-            .write_line(msg)
-            .map_err(|e| miette!("Unable to write to stderr, {e}"))?;
+        if self.logging_enabled {
+            self.log_msg(msg);
+        } else {
+            self.stderr.write_line(msg)?;
+        }
         Ok(self)
     }
 
@@ -275,6 +310,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
         Terminal {
             stdout: self.stdout,
             stderr: self.stderr,
+            logging_enabled: self.logging_enabled,
             quiet: self.quiet,
             no_input: self.no_input,
             output_format: self.output_format,
@@ -351,14 +387,19 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
                 }
             },
         };
-        self.stdout.write_line(msg)
+        if self.logging_enabled {
+            self.log_msg(msg);
+        } else {
+            self.stdout.write_line(msg)?;
+        }
+        Ok(())
     }
 }
 
 // Extensions
 impl<W: TerminalWriter + Debug> Terminal<W> {
     pub fn can_use_progress_spinner(&self) -> bool {
-        !self.quiet && self.stderr.is_tty()
+        !self.logging_enabled && !self.quiet && self.stderr.is_tty()
     }
 
     pub fn progress_spinner(&self) -> Option<ProgressBar> {
