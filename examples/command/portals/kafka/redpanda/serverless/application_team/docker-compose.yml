@@ -1,0 +1,80 @@
+---
+version: "3.7"
+networks:
+  application_team:
+      driver: bridge
+services:
+  # Start a consumer node with ockam.
+  #
+  # Read kafka_client.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  consumer:
+    build:
+      context: .
+      dockerfile: kafka_client.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
+      REDPANDA_ADDRESS: ${REDPANDA_ADDRESS:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - (
+          echo "${CONFIG:-}" > /tmp/consumer.properties;
+          sleep 10;
+          echo "";
+          echo "Messages sent from producers will appear shortly.";
+          echo "It may take a couple of minutes for the first message to appear.";
+          echo "=======================================================================";
+          echo "Press Ctrl+C to stop the container at any time, then execute "\
+          "'./run.sh cleanup' to remove all containers.";
+          echo "";
+          kafka-console-consumer.sh
+                  --topic demo
+                  --bootstrap-server 127.0.0.1:9092
+                  --max-messages 8
+                  --consumer.config /tmp/consumer.properties;
+          if [ "$?" == "0" ]; then
+            echo "";
+            echo "The example run was successful 🥳";
+            echo "The consumer was able to decrypt messages, Redpanda only saw encrypted messages";
+            echo "";
+          fi;
+          echo "==============================================================================";
+          echo "Open the console at https://cloud.redpanda.com/ to see the encrypted messages.";
+          echo "==============================================================================";
+          tail -f /dev/null;
+        )
+  producer:
+    build:
+      context: .
+      dockerfile: kafka_client.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
+      REDPANDA_ADDRESS: ${REDPANDA_ADDRESS:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - (
+          echo "${CONFIG:-}" > /tmp/producer.properties;
+          MESSAGES=(
+            "Message - 🔥"
+            "Message - 🌟"
+            "Message - 🚀"
+            "Message - 🐷"
+            "Message - 🦁"
+            "Message - 🦊"
+            "Message - 🐰"
+            "Message - 🐮"
+          );
+          sleep 10;
+          for n in {0..7}; do
+            sleep 2;
+            echo -n $${MESSAGES[n]} | kafka-console-producer.sh
+              --topic demo
+              --bootstrap-server 127.0.0.1:9092
+              --producer.config /tmp/producer.properties;
+          done;
+          tail -f /dev/null
+        )
