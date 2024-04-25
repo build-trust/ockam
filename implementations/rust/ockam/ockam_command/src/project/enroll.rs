@@ -1,11 +1,13 @@
+use std::fmt::Write;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
 use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 
+use ockam::identity::models::CredentialData;
 use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::project::models::OktaAuth0;
@@ -15,11 +17,11 @@ use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::output::OutputFormat;
+use ockam_api::output::{human_readable_time, OutputFormat};
+use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
 
 use crate::enroll::OidcServiceExt;
-use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::api::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::value_parsers::parse_enrollment_ticket;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
@@ -129,7 +131,10 @@ impl Command for EnrollCommand {
         let credential = authority_node_client
             .issue_credential(ctx)
             .await
-            .map_err(Error::Retry)?;
+            .map_err(Error::Retry)?
+            .get_credential_data()
+            .into_diagnostic()
+            .wrap_err("Failed to decode the credential received from the project authority")?;
 
         // Get the project name to display to the user.
         let project_name = {
@@ -141,25 +146,10 @@ impl Command for EnrollCommand {
             project.name().to_string()
         };
 
-        // Display success message to stderr.
-        opts.terminal.write_line(&fmt_ok!(
-            "Successfully enrolled identity to the {} project.",
-            color_primary(project_name)
-        ))?;
-        opts.terminal.write_line(&fmt_log!(
-            "{}.",
-            "The identity has the following credential in this project"
-        ))?;
-        opts.terminal.write_line(&fmt_log!(
-            "{}.",
-            "The attributes below are attested by the project's membership authority"
-        ))?;
+        // Output
+        let plain = self.plain_output(&identity.name(), &project_name, &credential)?;
+        opts.terminal.clone().stdout().plain(plain).write_line()?;
 
-        // Output the credential and purpose keys to stdout.
-        opts.terminal
-            .stdout()
-            .plain(CredentialAndPurposeKeyDisplay(credential))
-            .write_line()?;
         Ok(())
     }
 }
@@ -190,6 +180,63 @@ impl EnrollCommand {
         };
 
         Ok(project)
+    }
+
+    fn plain_output(
+        &self,
+        identity_name: &str,
+        project_name: &str,
+        credential: &CredentialData,
+    ) -> Result<String> {
+        let mut buf = String::new();
+        writeln!(
+            buf,
+            "{}",
+            fmt_ok!(
+                "Successfully enrolled identity {} to the {} project.\n",
+                color_primary(identity_name),
+                color_primary(project_name)
+            )
+        )?;
+
+        writeln!(
+            buf,
+            "{}",
+            fmt_log!("The identity has a credential in this project")
+        )?;
+        writeln!(
+            buf,
+            "{}",
+            fmt_log!(
+                "created at {} that expires at {}\n",
+                color_primary(human_readable_time(credential.created_at)),
+                color_primary(human_readable_time(credential.expires_at))
+            )
+        )?;
+
+        if !credential.subject_attributes.map.is_empty() {
+            writeln!(
+                buf,
+                "{}",
+                fmt_log!(
+                    "The following attributes are attested by the project's membership authority:"
+                )
+            )?;
+            for (k, v) in credential.subject_attributes.map.iter() {
+                let k = std::str::from_utf8(k).unwrap_or("**binary**");
+                let v = std::str::from_utf8(v).unwrap_or("**binary**");
+                writeln!(
+                    buf,
+                    "{}",
+                    fmt_log!(
+                        "{}{}",
+                        fmt::INDENTATION,
+                        color_primary(format!("\"{k}={v}\""))
+                    )
+                )?;
+            }
+        }
+        Ok(buf)
     }
 }
 
