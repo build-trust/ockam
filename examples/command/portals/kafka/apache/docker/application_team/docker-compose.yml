@@ -13,6 +13,7 @@ services:
       dockerfile: ../kafka_ockam.dockerfile
     environment:
       ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-}
     command:
       - -c
       - (
@@ -40,6 +41,7 @@ services:
       dockerfile: ../kafka_ockam.dockerfile
     environment:
       ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-}
     networks:
       - application_team
     command:
