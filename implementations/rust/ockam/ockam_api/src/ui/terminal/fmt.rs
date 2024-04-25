@@ -1,5 +1,9 @@
+/// Left padding for all terminal output
 pub const PADDING: &str = "     ";
+/// Left padding for all terminal output that starts with an icon
 pub const ICON_PADDING: &str = "   ";
+/// A two-space indentation for nested terminal output
+pub const INDENTATION: &str = "  ";
 
 #[macro_export]
 macro_rules! fmt_log {

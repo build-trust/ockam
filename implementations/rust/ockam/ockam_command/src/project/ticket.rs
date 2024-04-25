@@ -14,9 +14,9 @@ use ockam_api::authenticator::direct::{
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::colors::color_primary;
-use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::OutputFormat;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::RetryOpts;
@@ -122,9 +122,10 @@ impl Command for TicketCommand {
         let ticket = EnrollmentTicket::new(token, Some(project.model().clone()));
         let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
 
-        opts.terminal.write_line(&fmt_ok!(
-            "{}: {}",
-            "Created enrollment ticket. You can use it to enroll another machine using",
+        opts.terminal
+            .write_line(fmt_ok!("Created enrollment ticket."))?;
+        opts.terminal.write_line(fmt_log!(
+            "You can use it to enroll another machine using: {}",
             color_primary("ockam project enroll")
         ))?;
 

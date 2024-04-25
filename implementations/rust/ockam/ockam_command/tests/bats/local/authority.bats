@@ -98,8 +98,8 @@ EOF
   run_success $OCKAM project import --project-file $OCKAM_HOME/project.json
 
   run_success "$OCKAM" project enroll --identity admin
-  assert_output --partial '"ockam-relay": "*"'
-  assert_output --partial "$admin_identifier"
+  assert_output --partial "ockam-relay=*"
+  assert_output --partial "admin"
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
   run_success "$OCKAM" project enroll --identity m1

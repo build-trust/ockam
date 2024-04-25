@@ -88,7 +88,6 @@ impl ShowNodeResponse {
 
 impl Display for ShowNodeResponse {
     fn fmt(&self, buffer: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let indent = "  ";
         write!(buffer, "{}{}", fmt::PADDING, color_primary(&self.name))?;
         if self.is_default {
             write!(buffer, " (default)")?;
@@ -99,7 +98,7 @@ impl Display for ShowNodeResponse {
             buffer,
             "{}{}The node is {}",
             fmt::PADDING,
-            indent,
+            fmt::INDENTATION,
             self.status
         )?;
         if let Some(node_pid) = self.node_pid {
@@ -111,7 +110,7 @@ impl Display for ShowNodeResponse {
             buffer,
             "{}{}With route {}",
             fmt::PADDING,
-            indent,
+            fmt::INDENTATION,
             color_primary(self.route.short.to_string())
         )?;
         if let Some(verbose) = &self.route.verbose {
@@ -120,19 +119,25 @@ impl Display for ShowNodeResponse {
         writeln!(buffer)?;
 
         if let Some(identity) = &self.identity {
-            writeln!(buffer, "{}{}Identity: {}", fmt::PADDING, indent, identity)?;
+            writeln!(
+                buffer,
+                "{}{}Identity: {}",
+                fmt::PADDING,
+                fmt::INDENTATION,
+                identity
+            )?;
         }
 
         if self.transports.is_empty() {
-            writeln!(buffer, "{}{}No Transports", fmt::PADDING, indent)?;
+            writeln!(buffer, "{}{}No Transports", fmt::PADDING, fmt::INDENTATION)?;
         } else {
-            writeln!(buffer, "{}{}Transports:", fmt::PADDING, indent)?;
+            writeln!(buffer, "{}{}Transports:", fmt::PADDING, fmt::INDENTATION)?;
             for t in &self.transports {
                 writeln!(
                     buffer,
                     "{}{}{}, {} at {}",
                     fmt::PADDING,
-                    indent.repeat(2),
+                    fmt::INDENTATION.repeat(2),
                     t.tt,
                     t.mode,
                     color_primary(&t.socket)
@@ -141,30 +146,40 @@ impl Display for ShowNodeResponse {
         }
 
         if self.secure_channel_listeners.is_empty() {
-            writeln!(buffer, "{}{}No Secure Channels", fmt::PADDING, indent)?;
+            writeln!(
+                buffer,
+                "{}{}No Secure Channels",
+                fmt::PADDING,
+                fmt::INDENTATION
+            )?;
         } else {
-            writeln!(buffer, "{}{}Secure Channels:", fmt::PADDING, indent)?;
+            writeln!(
+                buffer,
+                "{}{}Secure Channels:",
+                fmt::PADDING,
+                fmt::INDENTATION
+            )?;
             for s in &self.secure_channel_listeners {
                 writeln!(
                     buffer,
                     "{}{}Listener at {}",
                     fmt::PADDING,
-                    indent.repeat(2),
+                    fmt::INDENTATION.repeat(2),
                     color_primary(&s.address.to_string())
                 )?;
             }
         }
 
         if self.inlets.is_empty() && self.outlets.is_empty() {
-            writeln!(buffer, "{}{}No Portals", fmt::PADDING, indent)?;
+            writeln!(buffer, "{}{}No Portals", fmt::PADDING, fmt::INDENTATION)?;
         } else {
-            writeln!(buffer, "{}{}Portals:", fmt::PADDING, indent)?;
+            writeln!(buffer, "{}{}Portals:", fmt::PADDING, fmt::INDENTATION)?;
             for i in &self.inlets {
                 write!(
                     buffer,
                     "{}{}Inlet at {} is {}",
                     fmt::PADDING,
-                    indent.repeat(2),
+                    fmt::INDENTATION.repeat(2),
                     color_primary(&i.listen_address),
                     i.status,
                 )?;
@@ -184,22 +199,22 @@ impl Display for ShowNodeResponse {
                     buffer,
                     "{}{}Outlet {} at {}",
                     fmt::PADDING,
-                    indent.repeat(2),
+                    fmt::INDENTATION.repeat(2),
                     color_primary(o.address.to_string()),
                     color_primary(&o.forward_address.to_string()),
                 )?;
             }
         }
         if self.services.is_empty() {
-            writeln!(buffer, "{}{}No Services", fmt::PADDING, indent)?;
+            writeln!(buffer, "{}{}No Services", fmt::PADDING, fmt::INDENTATION)?;
         } else {
-            writeln!(buffer, "{}{}Services:", fmt::PADDING, indent)?;
+            writeln!(buffer, "{}{}Services:", fmt::PADDING, fmt::INDENTATION)?;
             for s in &self.services {
                 writeln!(
                     buffer,
                     "{}{}{} service at {}",
                     fmt::PADDING,
-                    indent.repeat(2),
+                    fmt::INDENTATION.repeat(2),
                     color_warn(&s.service_type),
                     color_primary(&s.address.to_string())
                 )?;
