@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
 
       - name: Check spelling
         uses: crate-ci/typos@f2c1f08a7b3c1b96050cb786baaa2a94797bdb7d

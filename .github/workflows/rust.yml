@@ -66,7 +66,7 @@ jobs:
         shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -110,7 +110,7 @@ jobs:
         shell: nix develop ./tools/nix#rust${{matrix.build_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -151,7 +151,7 @@ jobs:
           - stable
           - nightly
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -192,7 +192,7 @@ jobs:
       run:
         shell: nix develop ./tools/nix#${{matrix.nix_toolchain }} --keep CI --ignore-environment --command bash {0}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
@@ -229,13 +229,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout ockam cli repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.ockam_command_cli_version != '' && inputs.ockam_command_cli_version || inputs.commit_sha  }}
           path: ockam_cli
 
       - name: Checkout ockam bats repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam_bats
@@ -300,7 +300,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.commit_sha }}
 

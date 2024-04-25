@@ -57,12 +57,12 @@ jobs:
 
     steps:
       # Run ockam example code against a different version of ockam library
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam_examples
 
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.ockam_crate_version_to_test_with_docs_examples }}
           path: ockam_library
@@ -98,13 +98,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Ockam Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.commit_sha }}
           path: ockam
 
       - name: Checkout Ockam Documentation Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
         with:
           ref: ${{ inputs.ockam_docs_ref == '' && 'develop' || inputs.ockam_docs_ref }}
           repository: build-trust/ockam-documentation
