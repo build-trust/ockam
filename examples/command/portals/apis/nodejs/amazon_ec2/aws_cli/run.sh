@@ -8,7 +8,7 @@ set -e
 #
 # The example uses AWS CLI to create these VPCs.
 #
-# You can read a detailed walkthough of this example at:
+# You can read a detailed walkthrough of this example at:
 # https://docs.ockam.io/portals/apis/nodejs/amazon_ec2
 
 run() {
