@@ -63,7 +63,7 @@ impl CliState {
                 NodeManagerCredentialRetrieverOptions::None,
             );
 
-            info!(
+            debug!(
                     "TrustOptions configured: Authority: {}. Credentials retrieved from Remote Authority: {}",
                     authority_identifier, authority_multiaddr
                 );
@@ -82,7 +82,7 @@ impl CliState {
                 NodeManagerCredentialRetrieverOptions::None,
             );
 
-            info!(
+            debug!(
                 "TrustOptions configured: Authority: {}. Expect credentials in cache",
                 authority_identifier
             );
@@ -97,7 +97,7 @@ impl CliState {
             NodeManagerCredentialRetrieverOptions::None,
         );
 
-        info!(
+        debug!(
             "TrustOptions configured: Authority: {}. Only verifying credentials",
             authority_identifier
         );
@@ -165,7 +165,7 @@ impl CliState {
             account_admin_retriever,
         );
 
-        info!(
+        debug!(
             "TrustOptions configured: Authority: {}. Credentials retrieved from project: {}",
             authority_identifier, authority_multiaddr
         );
@@ -219,7 +219,7 @@ impl CliState {
         let project = match project {
             Some(project) => project,
             None => {
-                info!("TrustOptions configured: No Authority. No Credentials");
+                debug!("TrustOptions configured: No Authority. No Credentials");
                 return Ok(NodeManagerTrustOptions::new(
                     NodeManagerCredentialRetrieverOptions::None,
                     NodeManagerCredentialRetrieverOptions::None,

@@ -11,6 +11,7 @@ use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 
 use crate::cli_state::{random_name, CliState, CliStateError, Result};
+use crate::colors::color_primary;
 use crate::output::Output;
 use crate::{fmt_log, fmt_ok};
 
@@ -149,18 +150,22 @@ impl CliState {
             return Ok(existing_vault);
         }
 
-        self.notify_message(fmt_log!("We need a Vault to store Identity secrets."));
+        self.notify_message(fmt_log!(
+            "This Identity needs a Vault to store its secrets."
+        ));
         self.notify_message(fmt_log!(
             "There is no default Vault on this machine, creating one..."
         ));
         let named_vault = self
             .create_a_vault(&Some(vault_name.to_string()), &None, false)
             .await?;
-        self.notify_message(fmt_ok!("Created a new Vault on your disk."));
+        self.notify_message(fmt_ok!(
+            "Created a new Vault named {} on your disk.",
+            color_primary(vault_name)
+        ));
         if is_default {
             self.notify_message(fmt_ok!(
-                "Marked this new vault as your default Vault, {}.\n",
-                "on this machine".dim()
+                "Marked this new Vault as your default Vault, on this machine.\n"
             ));
         }
 

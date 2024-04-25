@@ -8,7 +8,7 @@ use ockam_node::WorkerBuilder;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
-use crate::nodes::models::base::NodeStatus;
+use crate::nodes::models::node::NodeStatus;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest,
     StartUppercaseServiceRequest,
@@ -85,11 +85,8 @@ impl NodeManagerWorker {
     }
 
     #[instrument(skip_all)]
-    pub(super) async fn get_node_status(
-        &self,
-        context: &Context,
-    ) -> Result<Response<NodeStatus>, Response<Error>> {
-        match self.node_manager.get_node_status(context).await {
+    pub(super) async fn get_node_status(&self) -> Result<Response<NodeStatus>, Response<Error>> {
+        match self.node_manager.get_node_status().await {
             Ok(node_status) => Ok(Response::ok().body(node_status)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
@@ -176,10 +173,14 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.uppercase_services.contains_key(&addr).await {
-            return Err(ApiError::core("Uppercase service exists at this address"));
+            return Err(ApiError::core(format!(
+                "uppercase service already exists at {addr}"
+            )));
         }
 
         ctx.start_worker(addr.clone(), Uppercase).await?;
+
+        info!("uppercase service was initialized at {addr}");
 
         self.registry
             .uppercase_services
@@ -191,7 +192,9 @@ impl NodeManager {
 
     pub(super) async fn start_echoer_service(&self, ctx: &Context, addr: Address) -> Result<()> {
         if self.registry.echoer_services.contains_key(&addr).await {
-            return Err(ApiError::core("Echoer service exists at this address"));
+            return Err(ApiError::core(format!(
+                "echoer service already exists at {addr}"
+            )));
         }
 
         let (incoming_ac, outgoing_ac) = self
@@ -211,6 +214,8 @@ impl NodeManager {
             .start(ctx)
             .await?;
 
+        info!("echoer service was initialized at {addr}");
+
         self.registry
             .echoer_services
             .insert(addr, Default::default())
@@ -221,13 +226,17 @@ impl NodeManager {
 
     pub(super) async fn start_hop_service(&self, ctx: &Context, addr: Address) -> Result<()> {
         if self.registry.hop_services.contains_key(&addr).await {
-            return Err(ApiError::core("Hop service exists at this address"));
+            return Err(ApiError::core(format!(
+                "hop service already exists at {addr}"
+            )));
         }
 
         ctx.flow_controls()
             .add_consumer(addr.clone(), &self.api_transport_flow_control_id);
 
         ctx.start_worker(addr.clone(), Hop).await?;
+
+        info!("hop service was initialized at {addr}");
 
         self.registry
             .hop_services
@@ -237,12 +246,8 @@ impl NodeManager {
         Ok(())
     }
 
-    pub async fn get_node_status(&self, ctx: &Context) -> Result<NodeStatus> {
-        Ok(NodeStatus::new(
-            self.node_name.clone(),
-            "Running",
-            ctx.list_workers().await?.len() as u32,
-            std::process::id() as i32,
-        ))
+    pub async fn get_node_status(&self) -> Result<NodeStatus> {
+        let node = self.cli_state.get_node(&self.node_name).await?;
+        Ok(NodeStatus::from(&node))
     }
 }

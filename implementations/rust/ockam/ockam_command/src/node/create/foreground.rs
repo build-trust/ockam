@@ -50,19 +50,16 @@ impl CreateCommand {
         opts: CommandGlobalOpts,
     ) -> miette::Result<()> {
         let node_name = self.name.clone();
-        debug!(%node_name, "creating node in foreground mode");
-        opts.terminal.write_line(&fmt_log!(
-            "Creating Node {}...\n",
-            color_primary(&node_name)
-        ))?;
+        debug!("creating node in foreground mode");
 
-        if opts
-            .state
-            .get_node(&node_name)
-            .await
-            .ok()
-            .map(|n| n.is_running())
-            .unwrap_or(false)
+        if !self.skip_is_running_check
+            && opts
+                .state
+                .get_node(&node_name)
+                .await
+                .ok()
+                .map(|n| n.is_running())
+                .unwrap_or(false)
         {
             return Err(miette!(
                 "Node {} is already running",
@@ -87,10 +84,7 @@ impl CreateCommand {
             .listen(&self.tcp_listener_address, TcpListenerOptions::new())
             .await
             .into_diagnostic()?;
-        debug!(%node_name,
-            "listener address set to {:?}",
-            tcp_listener.socket_address()
-        );
+        info!("TCP listener at {}", tcp_listener.socket_address());
 
         let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
 
@@ -105,7 +99,7 @@ impl CreateCommand {
                 Some(&tcp_listener),
             )
             .await?;
-        debug!(%node_name, "node info persisted {node_info:?}");
+        debug!("node info persisted {node_info:?}");
 
         let node_man = InMemoryNode::new(
             ctx,
@@ -120,7 +114,7 @@ impl CreateCommand {
         )
         .await
         .into_diagnostic()?;
-        debug!(%node_name, "in-memory node created");
+        debug!("in-memory node created");
 
         let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
         ctx.flow_controls()
@@ -128,7 +122,7 @@ impl CreateCommand {
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await
             .into_diagnostic()?;
-        debug!(%node_name, "node manager worker started");
+        debug!("node manager worker started");
 
         if self.start_services(ctx, &opts).await.is_err() {
             //TODO: Process should terminate on any error during its setup phase,
@@ -144,20 +138,12 @@ impl CreateCommand {
             return Err(miette!("Failed to start services"));
         }
 
-        opts.terminal
-            .clone()
-            .stdout()
-            .plain(fmt_ok!(
-                "Node {} created successfully",
-                color_primary(&self.name)
-            ))
-            .write_line()?;
-        if node_info.is_default() {
-            opts.terminal.write_line(fmt_ok!(
-                "Marked {} as your default Node, {}",
-                color_primary(node_name),
-                "on this machine".dim()
-            ))?;
+        if !self.foreground_args.child_process {
+            opts.terminal
+                .clone()
+                .stdout()
+                .plain(self.plain_output(&opts, &node_name).await?)
+                .write_line()?;
         }
 
         drop(_notification_handler);
@@ -209,12 +195,12 @@ impl CreateCommand {
             }
         }
 
-        debug!(node_name = %self.name, "waiting for exit signal");
+        debug!("waiting for exit signal");
 
         if !self.foreground_args.child_process {
-            opts.terminal
-                .write_line("")?
-                .write_line(&fmt_log!("Waiting for exit signal...\n"))?;
+            opts.terminal.write_line(&fmt_log!(
+                "To exit and stop the Node, please press Ctrl+C\n"
+            ))?;
         }
 
         // Wait for signal SIGINT, SIGTERM, SIGHUP or EOF; or for the tx to be closed.

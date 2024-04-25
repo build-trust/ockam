@@ -461,9 +461,8 @@ async fn get_user_space(
         }
     };
     opts.terminal.write_line(&fmt_ok!(
-        "Marked {} as your default Space, {}.\n",
-        color_primary(space.name.clone()),
-        "on this machine".dim()
+        "Marked {} as your default Space, on this machine.\n",
+        color_primary(space.name.clone())
     ))?;
 
     opts.terminal.write_line(fmt_log!("This Space does not have a Subscription attached to it."))?
@@ -559,8 +558,7 @@ async fn get_user_project(
         .await?;
 
     opts.terminal.write_line(&fmt_ok!(
-        "Marked this new Project as your default Project, {}.",
-        "on this machine".dim()
+        "Marked this new Project as your default Project, on this machine."
     ))?;
     Ok(Some(project))
 }

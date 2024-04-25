@@ -10,6 +10,7 @@ use ockam::Context;
 use ockam_api::authenticator::{PreTrustedIdentities, PreTrustedIdentity};
 use ockam_api::authority_node;
 use ockam_api::authority_node::OktaConfiguration;
+use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::compat::collections::BTreeMap;
@@ -342,7 +343,10 @@ impl CreateCommand {
         if !self.child_process {
             if let Ok(node) = opts.state.get_node(&self.node_name).await {
                 if node.is_running() {
-                    return Err(miette!("Node {} is already running", &self.node_name));
+                    return Err(miette!(
+                        "Node {} is already running",
+                        color_primary(&self.node_name)
+                    ));
                 }
             }
         }

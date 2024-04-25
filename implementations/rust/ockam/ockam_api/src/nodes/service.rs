@@ -2,9 +2,8 @@
 
 use minicbor::Encode;
 
-use ockam::{Address, Result};
+use ockam::Result;
 use ockam_core::api::{RequestHeader, Response};
-use ockam_core::compat::string::String;
 
 pub(crate) mod background_node_client;
 pub mod default_address;
@@ -30,12 +29,6 @@ pub use trust::*;
 pub use worker::*;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
-
-/// Generate a new alias for some user created extension
-#[inline]
-fn random_alias() -> String {
-    Address::random_local().without_type().to_owned()
-}
 
 /// Append the request header to the Response and encode in vector format
 pub(crate) fn encode_response<T: Encode<()>>(

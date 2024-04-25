@@ -7,12 +7,12 @@ use tracing::warn;
 
 use ockam::identity::{Identifier, TimestampInSeconds};
 use ockam::Context;
-use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment};
+use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment, NodeInfo};
 use ockam_api::cloud::project::models::OrchestratorVersionInfo;
-use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
-use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
+use ockam_api::nodes::models::node::NodeStatus;
+use ockam_api::nodes::InMemoryNode;
 
-use crate::util::{api, async_cmd, duration::duration_parser};
+use crate::util::{async_cmd, duration::duration_parser};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
@@ -41,20 +41,19 @@ impl StatusCommand {
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let identities_details = get_identities_details(&opts, self.all).await?;
-        let nodes_details = get_nodes_details(ctx, &opts).await?;
-
-        let node = InMemoryNode::start(ctx, &opts.state)
-            .await?
-            .with_timeout(self.timeout);
-        let controller = node.create_controller().await?;
-        let orchestrator_version = controller
-            .get_orchestrator_version_info(ctx)
-            .await
-            .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
-            .unwrap_or_default();
-
-        let status =
-            StatusData::from_parts(orchestrator_version, identities_details, nodes_details)?;
+        let nodes = opts.state.get_nodes().await?;
+        let orchestrator_version = {
+            let node = InMemoryNode::start(ctx, &opts.state)
+                .await?
+                .with_timeout(self.timeout);
+            let controller = node.create_controller().await?;
+            controller
+                .get_orchestrator_version_info(ctx)
+                .await
+                .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
+                .unwrap_or_default()
+        };
+        let status = StatusData::from_parts(orchestrator_version, identities_details, nodes)?;
         opts.terminal
             .stdout()
             .plain(build_plain_output(self, &status).await?)
@@ -62,39 +61,6 @@ impl StatusCommand {
             .write_line()?;
         Ok(())
     }
-}
-
-async fn get_nodes_details(ctx: &Context, opts: &CommandGlobalOpts) -> Result<Vec<NodeDetails>> {
-    let mut node_details: Vec<NodeDetails> = vec![];
-
-    let nodes = opts.state.get_nodes().await?;
-    if nodes.is_empty() {
-        return Ok(node_details);
-    }
-    let default_node_name = opts.state.get_default_node().await?.name();
-    let mut node_client =
-        BackgroundNodeClient::create_to_node(ctx, &opts.state, &default_node_name).await?;
-    node_client.set_timeout_mut(Duration::from_millis(200));
-
-    for node in nodes {
-        node_client.set_node_name(&node.name());
-        let node_infos = NodeDetails {
-            identifier: node.identifier(),
-            name: node.name(),
-            status: get_node_status(ctx, &node_client).await?,
-        };
-        node_details.push(node_infos);
-    }
-
-    Ok(node_details)
-}
-
-async fn get_node_status(ctx: &Context, node: &BackgroundNodeClient) -> Result<String> {
-    let node_status_model: miette::Result<NodeStatusModel> =
-        node.ask(ctx, api::query_status()).await;
-    Ok(node_status_model
-        .map(|m| m.status)
-        .unwrap_or("Stopped".to_string()))
 }
 
 async fn get_identities_details(
@@ -154,7 +120,7 @@ async fn build_plain_output(cmd: &StatusCommand, status: &StatusData) -> Result<
             for (n_idx, node) in i.nodes.iter().enumerate() {
                 writeln!(plain, "{:4}Node[{}]:", "", n_idx)?;
                 writeln!(plain, "{:6}Name: {}", "", node.name)?;
-                writeln!(plain, "{:6}Status: {}", "", node.status)?;
+                writeln!(plain, "{:6}Status: {:?}", "", node.status)?;
             }
         }
     }
@@ -172,23 +138,28 @@ impl StatusData {
     fn from_parts(
         orchestrator_version: OrchestratorVersionInfo,
         identities_details: Vec<IdentityEnrollment>,
-        mut nodes_details: Vec<NodeDetails>,
+        nodes: Vec<NodeInfo>,
     ) -> Result<Self> {
         let mut identities = vec![];
         for identity in identities_details.into_iter() {
-            let mut identity_status = IdentityWithLinkedNodes {
+            let identity_status = IdentityWithLinkedNodes {
                 identifier: identity.identifier().clone(),
                 name: identity.name().clone(),
                 is_default: identity.is_default(),
                 enrolled_at: identity
                     .enrolled_at()
                     .map(|o| TimestampInSeconds::from(o.unix_timestamp() as u64)),
-                nodes: vec![],
+                nodes: nodes
+                    .iter()
+                    .filter_map(|node| {
+                        if node.identifier() == identity.identifier().clone() {
+                            Some(NodeStatus::from(node))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
             };
-            nodes_details.retain(|nd| nd.identifier == identity_status.identifier());
-            if !nodes_details.is_empty() {
-                identity_status.nodes = nodes_details.clone();
-            }
             identities.push(identity_status);
         }
         Ok(Self {
@@ -204,7 +175,7 @@ struct IdentityWithLinkedNodes {
     name: Option<String>,
     is_default: bool,
     enrolled_at: Option<TimestampInSeconds>,
-    nodes: Vec<NodeDetails>,
+    nodes: Vec<NodeStatus>,
 }
 
 impl IdentityWithLinkedNodes {
@@ -223,16 +194,4 @@ impl IdentityWithLinkedNodes {
     fn is_enrolled(&self) -> bool {
         self.enrolled_at.is_some()
     }
-
-    #[allow(unused)]
-    fn nodes(&self) -> &Vec<NodeDetails> {
-        &self.nodes
-    }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-pub struct NodeDetails {
-    identifier: Identifier,
-    name: String,
-    status: String,
 }

@@ -62,7 +62,8 @@ pub async fn initialize_default_node(
     Ok(())
 }
 
-/// A utility function to spawn a new node into foreground mode
+/// Construct the argument list and re-execute the ockam
+/// CLI in foreground mode to start the newly created node
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<()> {
     info!(

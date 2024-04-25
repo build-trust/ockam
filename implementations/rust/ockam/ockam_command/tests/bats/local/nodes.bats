@@ -142,7 +142,7 @@ force_kill_node() {
 @test "node - create a node with an inline configuration" {
   run_success "$OCKAM" node create --node-config "{name: n, tcp-outlets: {db-outlet: {to: 5432, at: n}}}"
   run_success $OCKAM node show n --output json
-  assert_output --partial "\"name\": \"n\""
+  assert_output --partial "\"name\":\"n\""
   assert_output --partial "127.0.0.1:5432"
 }
 

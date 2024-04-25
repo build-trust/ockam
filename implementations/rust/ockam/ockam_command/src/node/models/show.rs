@@ -84,6 +84,10 @@ impl ShowNodeResponse {
             services: Default::default(),
         })
     }
+
+    pub fn is_up(&self) -> bool {
+        self.status == ConnectionStatus::Up
+    }
 }
 
 impl Display for ShowNodeResponse {

@@ -341,6 +341,8 @@ impl NodeManager {
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
             .await?;
 
+        info!("Secure channel listener was initialized at {address}");
+
         self.registry
             .secure_channel_listeners
             .insert(
