@@ -40,58 +40,52 @@ EOF
 
   # User: try to enroll the same identity twice
   setup_home_dir
-  port=$(random_port)
+  export CLIENT_PORT=$(random_port)
 
   ## First time it works
   run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.basic.config.yaml" \
     --enrollment-ticket "$ticket_path" \
-    --variable SERVICE_PORT="$PYTHON_SERVER_PORT" \
-    --variable CLIENT_PORT="$port"
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+    --variable SERVICE_PORT="$PYTHON_SERVER_PORT"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 
   ## Second time it will skip the enrollment step and the node will be set up as expected
   run_success "$OCKAM" node delete --all -y
   run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.basic.config.yaml" \
     --enrollment-ticket "$ticket_path" \
-    --variable SERVICE_PORT="$PYTHON_SERVER_PORT" \
-    --variable CLIENT_PORT="$port"
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+    --variable SERVICE_PORT="$PYTHON_SERVER_PORT"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
 
 @test "nodes - create with config, single machine, unnamed portal" {
   export RELAY_NAME=$(random_str)
-  port1=$(random_port)
-  port2=$(random_port)
+  export NODE_PORT=$(random_port)
+  export CLIENT_PORT=$(random_port)
 
   run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.1.unnamed-portal.config.yaml" \
-    --variable NODE_PORT="$port1" \
-    --variable SERVICE_PORT="$PYTHON_SERVER_PORT" \
-    --variable CLIENT_PORT="$port2"
+    --variable SERVICE_PORT="$PYTHON_SERVER_PORT"
 
   # node created with expected name
   run_success "$OCKAM" message send --timeout 5 hello --to "/node/n1/secure/api/service/echo"
   # tcp-listener-address set to expected port
-  run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$port1/secure/api/service/echo"
+  run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$NODE_PORT/secure/api/service/echo"
   # portal is working: inlet -> relay -> outlet -> python server
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port2"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
 
 @test "nodes - create with config, single machine, named portal" {
   export RELAY_NAME=$(random_str)
-  port1=$(random_port)
-  port2=$(random_port)
-  export NODE_PORT="$port1"
+  export CLIENT_PORT=$(random_port)
+  export NODE_PORT=$(random_port)
 
   run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.2.named-portal.config.yaml" \
-    --variable SERVICE_PORT="$PYTHON_SERVER_PORT" \
-    --variable CLIENT_PORT="$port2"
+    --variable SERVICE_PORT="$PYTHON_SERVER_PORT"
 
   # node created with expected name
   run_success "$OCKAM" message send --timeout 5 hello --to "/node/n1/secure/api/service/echo"
   # tcp-listener-address set to expected port
-  run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$port1/secure/api/service/echo"
+  run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$NODE_PORT/secure/api/service/echo"
   # portal is working: inlet -> relay -> outlet -> python server
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port2"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
 
 @test "nodes - create with config, multiple machines" {
