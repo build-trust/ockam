@@ -78,14 +78,14 @@ macro_rules! fmt_list {
 #[macro_export]
 macro_rules! fmt_heading {
     ($input:expr) => {
-        format!("{}{}\n{} {}",
+        format!("{}{}\n{}{}",
         $crate::terminal::ICON_PADDING,
         "─".repeat(85).dim().light_gray(),
         $crate::terminal::PADDING,
         format!($input))
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{}{}\n{} {}",
+        format!("{}{}\n{}{}",
         $crate::terminal::ICON_PADDING,
         "─".repeat(85).dim().light_gray(),
         $crate::terminal::PADDING,

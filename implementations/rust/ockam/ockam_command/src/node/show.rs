@@ -4,10 +4,12 @@ use std::time::Duration;
 use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
+use ockam_api::cli_state::NodeProcessStatus;
+use ockam_api::CliState;
 use tokio_retry::strategy::FibonacciBackoff;
 use tracing::{info, trace, warn};
 
-use ockam_api::nodes::models::base::NodeStatus;
+use ockam_api::nodes::models::node::NodeStatus;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
 use ockam_api::nodes::models::services::ServiceList;
@@ -123,21 +125,25 @@ impl ShowCommandTui for ShowTui {
         let mut node =
             BackgroundNodeClient::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
                 .await?;
-        print_node_status(&self.opts, &self.ctx, &mut node, false).await?;
+        let node_status = get_node_status(&self.ctx, &self.opts.state, &mut node, false).await?;
+        self.opts
+            .terminal
+            .clone()
+            .stdout()
+            .plain(&node_status)
+            .json(serde_json::to_string(&node_status).into_diagnostic()?)
+            .write_line()?;
         Ok(())
     }
 }
 
-pub async fn print_node_status(
-    opts: &CommandGlobalOpts,
+pub async fn get_node_status(
     ctx: &Context,
+    cli_state: &CliState,
     node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
-) -> miette::Result<()> {
-    let cli_state = opts.state.clone();
+) -> miette::Result<ShowNodeResponse> {
     let node_name = node.node_name();
-    let node_info = cli_state.get_node(&node_name).await?;
-
     let show_node = if !is_node_up(ctx, node, wait_until_ready).await? {
         // it is expected to not be able to open an arbitrary TCP connection on an authority node
         // so in that case we display an UP status
@@ -147,7 +153,7 @@ pub async fn print_node_status(
             .ok()
             .map(|n| n.is_authority_node())
             .unwrap_or(false);
-
+        let node_info = cli_state.get_node(&node_name).await?;
         ShowNodeResponse::new(
             node_info.is_default(),
             &node_name,
@@ -156,6 +162,7 @@ pub async fn print_node_status(
             node_info.pid(),
         )?
     } else {
+        let node_info = cli_state.get_node(&node_name).await?;
         let mut show_node = ShowNodeResponse::new(
             node_info.is_default(),
             &node_name,
@@ -202,15 +209,7 @@ pub async fn print_node_status(
 
         show_node
     };
-
-    opts.terminal
-        .clone()
-        .stdout()
-        .plain(&show_node)
-        .json(serde_json::to_string_pretty(&show_node).into_diagnostic()?)
-        .write_line()?;
-
-    Ok(())
+    Ok(show_node)
 }
 
 /// Send message(s) to a node to determine if it is 'up' and
@@ -243,10 +242,8 @@ async fn is_node_accessible(
     node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
-    let retries = FibonacciBackoff::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
-
     let node_name = node.node_name();
-
+    let retries = FibonacciBackoff::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
         if total_time >= IS_NODE_ACCESSIBLE_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
@@ -269,9 +266,8 @@ async fn is_node_ready(
     node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
-    let retries = FibonacciBackoff::from_millis(IS_NODE_READY_TIME_BETWEEN_CHECKS_MS);
-
     let node_name = node.node_name();
+    let retries = FibonacciBackoff::from_millis(IS_NODE_READY_TIME_BETWEEN_CHECKS_MS);
     let now = std::time::Instant::now();
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
@@ -284,9 +280,16 @@ async fn is_node_ready(
             .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), timeout_duration)
             .await;
         if let Ok(node_status) = result {
-            let elapsed = now.elapsed();
-            info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
-            return Ok(true);
+            match node_status.status {
+                NodeProcessStatus::Running(_) => {
+                    let elapsed = now.elapsed();
+                    info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
+                    return Ok(true);
+                }
+                _ => {
+                    trace!(%node_name, "node is initializing");
+                }
+            }
         } else {
             trace!(%node_name, "node is initializing");
         }

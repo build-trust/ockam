@@ -263,9 +263,8 @@ impl CliState {
                     color_primary(named_identity.identifier().to_string())
                 ));
                 self.notify_message(fmt_ok!(
-                    "Marked {} as your default Identity, {}.\n",
-                    color_primary(named_identity.name()),
-                    "on this machine".dim()
+                    "Marked {} as your default Identity, on this machine.\n",
+                    color_primary(named_identity.name())
                 ));
                 Ok(named_identity)
             }

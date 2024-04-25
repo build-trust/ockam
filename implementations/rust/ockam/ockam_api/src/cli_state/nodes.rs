@@ -1,9 +1,10 @@
+use minicbor::{Decode, Encode};
 use std::path::PathBuf;
 use std::process;
 
 use nix::errno::Errno;
 use nix::sys::signal;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, ProcessStatus, System};
 
 use ockam::identity::utils::now;
@@ -436,11 +437,14 @@ impl CliState {
     }
 }
 
-#[derive(Serialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Decode, Encode)]
 #[serde(rename_all = "lowercase", tag = "status", content = "pid")]
 pub enum NodeProcessStatus {
-    Running(u32),
-    Zombie(u32),
+    #[n(0)]
+    Running(#[n(0)] u32),
+    #[n(1)]
+    Zombie(#[n(0)] u32),
+    #[n(2)]
     Stopped,
 }
 

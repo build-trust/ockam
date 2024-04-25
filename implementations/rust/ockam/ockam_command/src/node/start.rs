@@ -1,12 +1,13 @@
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use ockam_api::colors::OckamColor;
 use ockam_api::{fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn};
 
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_node::Context;
 
-use crate::node::show::print_node_status;
+use crate::node::show::get_node_status;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
 use crate::util::async_cmd;
@@ -125,7 +126,12 @@ async fn start_single_node(
     }
 
     let mut node: BackgroundNodeClient = run_node(node_name, ctx, &opts).await?;
-    print_node_status(&opts, ctx, &mut node, true).await?;
+    let node_status = get_node_status(ctx, &opts.state, &mut node, true).await?;
+    opts.terminal
+        .stdout()
+        .plain(&node_status)
+        .json(serde_json::to_string(&node_status).into_diagnostic()?)
+        .write_line()?;
     Ok(())
 }
 

@@ -31,7 +31,7 @@ use tracing::warn;
 pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
-    logging_enabled: bool,
+    pub logging_enabled: bool,
     quiet: bool,
     no_input: bool,
     output_format: OutputFormat,
@@ -43,10 +43,6 @@ pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
 impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
     pub fn is_quiet(&self) -> bool {
         self.quiet
-    }
-
-    pub fn set_logging_enabled(&mut self, logging_enabled: bool) {
-        self.logging_enabled = logging_enabled;
     }
 
     fn log_msg(&self, msg: impl AsRef<str>) {

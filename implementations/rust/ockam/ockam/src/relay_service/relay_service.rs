@@ -31,11 +31,13 @@ impl RelayService {
         let s = Self { options };
 
         WorkerBuilder::new(s)
-            .with_address(address)
+            .with_address(address.clone())
             .with_incoming_access_control_arc(service_incoming_access_control)
             .with_outgoing_access_control(DenyAll)
             .start(ctx)
             .await?;
+
+        info!("Relay service started at {address}");
 
         Ok(())
     }

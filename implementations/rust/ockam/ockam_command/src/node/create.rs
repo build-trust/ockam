@@ -1,7 +1,9 @@
+use std::fmt::Write;
 use std::{path::PathBuf, str::FromStr};
 
 use async_trait::async_trait;
 use clap::Args;
+use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use opentelemetry::trace::TraceContextExt;
@@ -9,6 +11,8 @@ use opentelemetry::KeyValue;
 use tracing::instrument;
 
 use ockam_api::cli_state::random_name;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_core::{opentelemetry_context_parser, AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 
@@ -158,20 +162,6 @@ impl Command for CreateCommand {
 }
 
 impl CreateCommand {
-    pub async fn guard_node_is_not_already_running(
-        &self,
-        opts: &CommandGlobalOpts,
-    ) -> miette::Result<()> {
-        if !self.foreground_args.child_process {
-            if let Ok(node) = opts.state.get_node(&self.name).await {
-                if node.is_running() {
-                    return Err(miette!("Node {} is already running", &self.name));
-                }
-            }
-        }
-        Ok(())
-    }
-
     // Return true if the `name` argument is a node name, false if it's a config file path or URL
     // Or if the node configuration was provided inline
     fn has_name_arg(&self) -> bool {
@@ -193,6 +183,26 @@ impl CreateCommand {
             variables.insert(key.clone(), value.clone());
         }
         Ok(())
+    }
+
+    async fn plain_output(&self, opts: &CommandGlobalOpts, node_name: &str) -> Result<String> {
+        let mut buf = String::new();
+        writeln!(
+            buf,
+            "{}",
+            fmt_ok!("Created a new Node named {}", color_primary(node_name))
+        )?;
+        if opts.state.get_node(node_name).await?.is_default() {
+            writeln!(
+                buf,
+                "{}",
+                fmt_ok!(
+                    "Marked {} as your default Node, on this machine",
+                    color_primary(node_name)
+                )
+            )?;
+        }
+        Ok(buf)
     }
 }
 

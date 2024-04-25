@@ -8,8 +8,7 @@ use crate::nodes::models::portal::{OutletList, OutletStatus};
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::registry::Registry;
 use crate::nodes::service::{
-    random_alias, CredentialRetrieverCreators, NodeManagerCredentialRetrieverOptions,
-    NodeManagerTrustOptions,
+    CredentialRetrieverCreators, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
 };
 use crate::session::MedicHandle;
 use crate::{CliState, DefaultAddress};
@@ -29,7 +28,6 @@ use ockam_core::{
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
-use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -53,241 +51,6 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    pub fn identifier(&self) -> Identifier {
-        self.node_identifier.clone()
-    }
-
-    pub(crate) async fn get_identifier_by_name(
-        &self,
-        identity_name: Option<String>,
-    ) -> ockam_core::Result<Identifier> {
-        if let Some(name) = identity_name {
-            Ok(self.cli_state.get_identifier_by_name(name.as_ref()).await?)
-        } else {
-            Ok(self.identifier())
-        }
-    }
-
-    pub fn credential_retriever_creators(&self) -> CredentialRetrieverCreators {
-        self.credential_retriever_creators.clone()
-    }
-
-    pub fn project_authority(&self) -> Option<Identifier> {
-        self.project_authority.clone()
-    }
-
-    pub fn node_name(&self) -> String {
-        self.node_name.clone()
-    }
-
-    pub fn tcp_transport(&self) -> &TcpTransport {
-        &self.tcp_transport
-    }
-
-    pub async fn list_outlets(&self) -> OutletList {
-        OutletList::new(
-            self.registry
-                .outlets
-                .entries()
-                .await
-                .iter()
-                .map(|(_, info)| {
-                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), None)
-                })
-                .collect(),
-        )
-    }
-
-    /// Delete the current node data
-    pub async fn delete_node(&self) -> ockam_core::Result<()> {
-        self.cli_state.remove_node(&self.node_name).await?;
-        Ok(())
-    }
-}
-
-impl NodeManager {
-    pub async fn create_authority_client(
-        &self,
-        project: &Project,
-        caller_identity_name: Option<String>,
-    ) -> miette::Result<AuthorityNodeClient> {
-        let caller_identifier = self
-            .get_identifier_by_name(caller_identity_name)
-            .await
-            .into_diagnostic()?;
-
-        let is_project_admin = self
-            .cli_state
-            .is_project_admin(&caller_identifier, project)
-            .await
-            .into_diagnostic()?;
-
-        let credential_retriever_creator = if is_project_admin {
-            self.credential_retriever_creators.project_admin.clone()
-        } else {
-            None
-        };
-
-        self.make_authority_node_client(
-            &project.authority_identifier().into_diagnostic()?,
-            project.authority_multiaddr().into_diagnostic()?,
-            &caller_identifier,
-            credential_retriever_creator,
-        )
-        .await
-        .into_diagnostic()
-    }
-
-    pub async fn create_project_client(
-        &self,
-        project_identifier: &Identifier,
-        project_multiaddr: &MultiAddr,
-        caller_identity_name: Option<String>,
-        credentials_enabled: CredentialsEnabled,
-    ) -> miette::Result<ProjectNodeClient> {
-        self.make_project_node_client(
-            project_identifier,
-            project_multiaddr,
-            &self
-                .get_identifier_by_name(caller_identity_name)
-                .await
-                .into_diagnostic()?,
-            credentials_enabled,
-        )
-        .await
-        .into_diagnostic()
-    }
-}
-
-impl NodeManager {
-    pub(super) async fn access_control(
-        &self,
-        ctx: &Context,
-        authority: Option<Identifier>,
-        resource: Resource,
-        action: Action,
-        expression: Option<Expr>,
-    ) -> ockam_core::Result<(
-        Arc<dyn IncomingAccessControl>,
-        Arc<dyn OutgoingAccessControl>,
-    )> {
-        let resource_name_str = resource.resource_name.as_str();
-        let resource_type_str = resource.resource_type.to_string();
-        let action_str = action.as_ref();
-        if let Some(authority) = authority {
-            // Populate environment with known attributes:
-            let mut env = Env::new();
-            env.put("resource.id", str(resource_name_str));
-            env.put("action.id", str(action_str));
-
-            // Store policy for the given resource and action
-            let policies = self.policies();
-            if let Some(expression) = expression {
-                policies
-                    .store_policy_for_resource_name(&resource.resource_name, &action, &expression)
-                    .await?;
-            }
-            self.resources().store_resource(&resource).await?;
-
-            // Create the policy access control
-            let policy_access_control = policies.make_policy_access_control(
-                self.cli_state.identities_attributes(&self.node_name),
-                resource,
-                action,
-                env,
-                authority,
-            );
-
-            let incoming_ac = policy_access_control.create_incoming();
-            let outgoing_ac = policy_access_control.create_outgoing(ctx).await?;
-
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "std")] {
-                    let incoming_ac = CachedIncomingAccessControl::new(Box::new(incoming_ac));
-                    let outgoing_ac = CachedOutgoingAccessControl::new(Box::new(outgoing_ac));
-
-                    Ok((Arc::new(incoming_ac), Arc::new(outgoing_ac)))
-                } else {
-                    Ok((Arc::new(incoming_ac), Arc::new(outgoing_ac)))
-                }
-            }
-        } else {
-            warn! {
-                resource_name = resource_name_str,
-                resource_type = resource_type_str,
-                action = action_str,
-                "no policy access control set"
-            }
-            Ok((Arc::new(AllowAll), Arc::new(AllowAll)))
-        }
-    }
-
-    pub fn policies(&self) -> Policies {
-        self.cli_state.policies(&self.node_name)
-    }
-
-    pub fn resources(&self) -> Resources {
-        self.cli_state.resources(&self.node_name)
-    }
-}
-
-#[derive(Debug)]
-pub struct NodeManagerGeneralOptions {
-    pub(super) cli_state: CliState,
-    pub(super) node_name: String,
-    pub(super) start_default_services: bool,
-    pub(super) persistent: bool,
-}
-
-impl NodeManagerGeneralOptions {
-    pub fn new(
-        cli_state: CliState,
-        node_name: String,
-        start_default_services: bool,
-        persistent: bool,
-    ) -> Self {
-        Self {
-            cli_state,
-            node_name,
-            start_default_services,
-            persistent,
-        }
-    }
-}
-
-#[derive(Clone)]
-/// Transport to build connection
-pub struct ApiTransport {
-    /// Type of transport being requested
-    pub tt: TransportType,
-    /// Mode of transport being requested
-    pub tm: TransportMode,
-    /// Socket address
-    pub socket_address: SocketAddr,
-    /// Worker address
-    pub worker_address: String,
-    /// Processor address
-    pub processor_address: String,
-    /// FlowControlId
-    pub flow_control_id: FlowControlId,
-}
-
-#[derive(Debug)]
-pub struct NodeManagerTransportOptions {
-    api_transport_flow_control_id: FlowControlId,
-    tcp_transport: TcpTransport,
-}
-
-impl NodeManagerTransportOptions {
-    pub fn new(api_transport_flow_control_id: FlowControlId, tcp_transport: TcpTransport) -> Self {
-        Self {
-            api_transport_flow_control_id,
-            tcp_transport,
-        }
-    }
-}
-
-impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     #[instrument(name = "create_node_manager", skip_all, fields(node_name = general_options.node_name))]
     pub async fn create(
@@ -298,16 +61,6 @@ impl NodeManager {
     ) -> ockam_core::Result<Self> {
         let cli_state = general_options.cli_state;
         let node_name = general_options.node_name.clone();
-
-        debug!("create transports");
-        let api_transport_id = random_alias();
-        let mut transports = BTreeMap::new();
-        transports.insert(
-            api_transport_id.clone(),
-            transport_options.api_transport_flow_control_id.clone(),
-        );
-
-        let secure_channels = cli_state.secure_channels(&node_name).await?;
 
         let registry = Arc::new(Registry::default());
         debug!("start the medic");
@@ -321,6 +74,8 @@ impl NodeManager {
             .policies(&general_options.node_name)
             .store_default_resource_type_policies()
             .await?;
+
+        let secure_channels = cli_state.secure_channels(&node_name).await?;
 
         let project_member_credential_retriever_creator: Option<
             Arc<dyn CredentialRetrieverCreator>,
@@ -507,5 +262,234 @@ impl NodeManager {
             project.project_multiaddr()?.clone(),
             project.project_identifier()?,
         ))
+    }
+
+    pub fn identifier(&self) -> Identifier {
+        self.node_identifier.clone()
+    }
+
+    pub(crate) async fn get_identifier_by_name(
+        &self,
+        identity_name: Option<String>,
+    ) -> ockam_core::Result<Identifier> {
+        if let Some(name) = identity_name {
+            Ok(self.cli_state.get_identifier_by_name(name.as_ref()).await?)
+        } else {
+            Ok(self.identifier())
+        }
+    }
+
+    pub fn credential_retriever_creators(&self) -> CredentialRetrieverCreators {
+        self.credential_retriever_creators.clone()
+    }
+
+    pub fn project_authority(&self) -> Option<Identifier> {
+        self.project_authority.clone()
+    }
+
+    pub fn node_name(&self) -> String {
+        self.node_name.clone()
+    }
+
+    pub fn tcp_transport(&self) -> &TcpTransport {
+        &self.tcp_transport
+    }
+
+    pub async fn list_outlets(&self) -> OutletList {
+        OutletList::new(
+            self.registry
+                .outlets
+                .entries()
+                .await
+                .iter()
+                .map(|(_, info)| {
+                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), None)
+                })
+                .collect(),
+        )
+    }
+
+    /// Delete the current node data
+    pub async fn delete_node(&self) -> ockam_core::Result<()> {
+        self.cli_state.remove_node(&self.node_name).await?;
+        Ok(())
+    }
+
+    pub async fn create_authority_client(
+        &self,
+        project: &Project,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<AuthorityNodeClient> {
+        let caller_identifier = self
+            .get_identifier_by_name(caller_identity_name)
+            .await
+            .into_diagnostic()?;
+
+        let is_project_admin = self
+            .cli_state
+            .is_project_admin(&caller_identifier, project)
+            .await
+            .into_diagnostic()?;
+
+        let credential_retriever_creator = if is_project_admin {
+            self.credential_retriever_creators.project_admin.clone()
+        } else {
+            None
+        };
+
+        self.make_authority_node_client(
+            &project.authority_identifier().into_diagnostic()?,
+            project.authority_multiaddr().into_diagnostic()?,
+            &caller_identifier,
+            credential_retriever_creator,
+        )
+        .await
+        .into_diagnostic()
+    }
+
+    pub async fn create_project_client(
+        &self,
+        project_identifier: &Identifier,
+        project_multiaddr: &MultiAddr,
+        caller_identity_name: Option<String>,
+        credentials_enabled: CredentialsEnabled,
+    ) -> miette::Result<ProjectNodeClient> {
+        self.make_project_node_client(
+            project_identifier,
+            project_multiaddr,
+            &self
+                .get_identifier_by_name(caller_identity_name)
+                .await
+                .into_diagnostic()?,
+            credentials_enabled,
+        )
+        .await
+        .into_diagnostic()
+    }
+
+    pub(super) async fn access_control(
+        &self,
+        ctx: &Context,
+        authority: Option<Identifier>,
+        resource: Resource,
+        action: Action,
+        expression: Option<Expr>,
+    ) -> ockam_core::Result<(
+        Arc<dyn IncomingAccessControl>,
+        Arc<dyn OutgoingAccessControl>,
+    )> {
+        let resource_name_str = resource.resource_name.as_str();
+        let resource_type_str = resource.resource_type.to_string();
+        let action_str = action.as_ref();
+        if let Some(authority) = authority {
+            // Populate environment with known attributes:
+            let mut env = Env::new();
+            env.put("resource.id", str(resource_name_str));
+            env.put("action.id", str(action_str));
+
+            // Store policy for the given resource and action
+            let policies = self.policies();
+            if let Some(expression) = expression {
+                policies
+                    .store_policy_for_resource_name(&resource.resource_name, &action, &expression)
+                    .await?;
+            }
+            self.resources().store_resource(&resource).await?;
+
+            // Create the policy access control
+            let policy_access_control = policies.make_policy_access_control(
+                self.cli_state.identities_attributes(&self.node_name),
+                resource,
+                action,
+                env,
+                authority,
+            );
+
+            let incoming_ac = policy_access_control.create_incoming();
+            let outgoing_ac = policy_access_control.create_outgoing(ctx).await?;
+
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "std")] {
+                    let incoming_ac = CachedIncomingAccessControl::new(Box::new(incoming_ac));
+                    let outgoing_ac = CachedOutgoingAccessControl::new(Box::new(outgoing_ac));
+
+                    Ok((Arc::new(incoming_ac), Arc::new(outgoing_ac)))
+                } else {
+                    Ok((Arc::new(incoming_ac), Arc::new(outgoing_ac)))
+                }
+            }
+        } else {
+            warn! {
+                resource_name = resource_name_str,
+                resource_type = resource_type_str,
+                action = action_str,
+                "no policy access control set"
+            }
+            Ok((Arc::new(AllowAll), Arc::new(AllowAll)))
+        }
+    }
+
+    pub fn policies(&self) -> Policies {
+        self.cli_state.policies(&self.node_name)
+    }
+
+    pub fn resources(&self) -> Resources {
+        self.cli_state.resources(&self.node_name)
+    }
+}
+
+#[derive(Debug)]
+pub struct NodeManagerGeneralOptions {
+    pub(super) cli_state: CliState,
+    pub(super) node_name: String,
+    pub(super) start_default_services: bool,
+    pub(super) persistent: bool,
+}
+
+impl NodeManagerGeneralOptions {
+    pub fn new(
+        cli_state: CliState,
+        node_name: String,
+        start_default_services: bool,
+        persistent: bool,
+    ) -> Self {
+        Self {
+            cli_state,
+            node_name,
+            start_default_services,
+            persistent,
+        }
+    }
+}
+
+#[derive(Clone)]
+/// Transport to build connection
+pub struct ApiTransport {
+    /// Type of transport being requested
+    pub tt: TransportType,
+    /// Mode of transport being requested
+    pub tm: TransportMode,
+    /// Socket address
+    pub socket_address: SocketAddr,
+    /// Worker address
+    pub worker_address: String,
+    /// Processor address
+    pub processor_address: String,
+    /// FlowControlId
+    pub flow_control_id: FlowControlId,
+}
+
+#[derive(Debug)]
+pub struct NodeManagerTransportOptions {
+    api_transport_flow_control_id: FlowControlId,
+    tcp_transport: TcpTransport,
+}
+
+impl NodeManagerTransportOptions {
+    pub fn new(api_transport_flow_control_id: FlowControlId, tcp_transport: TcpTransport) -> Self {
+        Self {
+            api_transport_flow_control_id,
+            tcp_transport,
+        }
     }
 }
