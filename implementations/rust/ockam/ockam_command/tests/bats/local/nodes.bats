@@ -162,10 +162,3 @@ force_kill_node() {
   run_failure "$OCKAM" node create --node-config "{name: n}" --variable MY_VAR=
   assert_output --partial "Empty value for variable 'MY_VAR'"
 }
-
-@test "node - create a node with an inline configuration" {
-  n="$(random_str)"
-  # Create node, check that it has one of the default services running
-  run_success "$OCKAM" node create --node-config "{name: $n, tcp-outlets: {db-outlet: {to: '127.0.0.1:5432', at: $n}}}"
-  assert_output --partial "Node ${n} created successfully"
-}

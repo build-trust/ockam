@@ -242,11 +242,9 @@ impl CommonStateMachine {
         their_identifier: &Identifier,
         credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
+        debug!("verifying {} credentials", credentials.len());
         if let Some(authority) = &authority {
-            debug!(
-                "Got an Authority to check the credentials. There are {} credentials to check",
-                credentials.len()
-            );
+            debug!("Got an Authority to check the credentials");
             for credential in &credentials {
                 let result = identities
                     .credentials()
@@ -264,6 +262,12 @@ impl CommonStateMachine {
                     return Err(IdentityError::SecureChannelVerificationFailedIncorrectCredential)?;
                 }
             }
+            if credentials.is_empty() {
+                debug!(
+                    "no credentials were received from the authority {} for {}",
+                    authority, their_identifier
+                );
+            };
         } else if !credentials.is_empty() {
             warn!("credentials were presented, but Authority is missing");
             // we cannot validate credentials without an Authority

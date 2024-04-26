@@ -88,7 +88,7 @@ impl Authority {
                     .await?;
                 Some(AccountAuthorityInfo::new(
                     acc_authority_identifier,
-                    configuration.project_id(),
+                    configuration.project_identifier(),
                     configuration.enforce_admin_checks,
                 ))
             } else {
@@ -232,7 +232,7 @@ impl Authority {
             self.secure_channels.identities().identities_attributes(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
-            configuration.project_id(),
+            configuration.project_identifier(),
             ttl,
             self.account_authority.clone(),
             configuration.disable_trust_context_id,
