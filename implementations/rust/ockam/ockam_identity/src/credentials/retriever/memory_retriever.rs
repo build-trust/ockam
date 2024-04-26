@@ -1,6 +1,7 @@
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, Result};
+use tracing::trace;
 
 use crate::models::CredentialAndPurposeKey;
 use crate::{CredentialRetriever, CredentialRetrieverCreator, Identifier};
@@ -20,6 +21,7 @@ impl MemoryCredentialRetriever {
 #[async_trait]
 impl CredentialRetriever for MemoryCredentialRetriever {
     async fn initialize(&self) -> Result<()> {
+        trace!("using a memory credential retriever");
         Ok(())
     }
 

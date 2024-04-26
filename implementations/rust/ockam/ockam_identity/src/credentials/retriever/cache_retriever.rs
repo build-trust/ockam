@@ -9,7 +9,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 /// Credential is considered already expired if it expires in less than this gap to account for a machine with a
 /// wrong time
@@ -115,6 +115,7 @@ impl CredentialRetrieverCreator for CachedCredentialRetrieverCreator {
 #[async_trait]
 impl CredentialRetriever for CachedCredentialRetriever {
     async fn initialize(&self) -> Result<()> {
+        trace!("using a cached credential retriever");
         Ok(())
     }
 

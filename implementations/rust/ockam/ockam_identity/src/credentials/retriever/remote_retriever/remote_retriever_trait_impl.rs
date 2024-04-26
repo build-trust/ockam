@@ -29,6 +29,13 @@ impl CredentialRetriever for RemoteCredentialRetriever {
         let now = now()?;
         // Check if it's still valid
         if last_presented_credential.expires_at > now + self.timing_options.clock_skew_gap {
+            debug!(
+                "The last presented credential is still valid, with attributes {:?}",
+                last_presented_credential
+                    .credential
+                    .get_credential_data()?
+                    .subject_attributes
+            );
             // Valid, let's return it
             return Ok(last_presented_credential.credential);
         }

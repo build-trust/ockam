@@ -5,6 +5,7 @@ defmodule Ockam.Credential.AttributeStorageETS do
   init() should be called once by the controlling process to create a table
   """
   alias Ockam.Credential.AttributeSet
+  require Logger
 
   @table __MODULE__
 
@@ -80,6 +81,8 @@ defmodule Ockam.Credential.AttributeStorageETS do
   """
   @spec put_attribute_set(identity_id(), AttributeSet.t()) :: :ok | {:error, any()}
   def put_attribute_set(id, attribute_set) do
+    Logger.debug("saving attributes #{inspect(attribute_set)} for identity #{inspect(id)}")
+
     with_table(fn ->
       true = :ets.insert(@table, {id, attribute_set})
       :ok
