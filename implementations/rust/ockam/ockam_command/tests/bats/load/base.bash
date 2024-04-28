@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Disable logging so it doesn't interfere in the CLI input/output
-export OCKAM_LOGGING=false
-
 # Disable the opentelemetry export to improve performances
 export OCKAM_OPENTELEMETRY_EXPORT=false
 
