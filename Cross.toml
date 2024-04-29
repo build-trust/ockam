@@ -3,5 +3,10 @@
 pre-build = [
   "apt update",
   # libclang-dev is required when building with `aws-lc` feature
-  "DEBIAN_FRONTEND=noninteractive apt -y --no-install-recommends install libclang-dev clang",
+  # we need the external llvm repository to cross compile for linux-gnu-unknown/amd64
+  "DEBIAN_FRONTEND=noninteractive apt -y --no-install-recommends install cmake apt-transport-https libclang-dev clang",
+  "echo deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial main > /etc/apt/llvm.list",
+  "curl --proto '=https' --tlsv1.2 -sSfL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -",
+  "apt update",
+  "DEBIAN_FRONTEND=noninteractive apt -y --no-install-recommends install libclang-8-dev",
 ]

@@ -1,0 +1,22 @@
+[package]
+name = "stress-test"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+readme = "README.md"
+
+[features]
+default = ["rust-crypto"]
+aws-lc = ["ockam/aws-lc"]
+rust-crypto = ["ockam/rust-crypto"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive", "cargo"] }
+ockam = { path = "../../implementations/rust/ockam/ockam" }
+ockam_api = { path = "../../implementations/rust/ockam/ockam_api" }
+ockam_core = { path = "../../implementations/rust/ockam/ockam_core" }
+ockam_multiaddr = { path = "../../implementations/rust/ockam/ockam_multiaddr" }
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+toml = { version = "0.8", default-features = false, features = ["parse"] }

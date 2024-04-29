@@ -6962,6 +6962,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceb97b7225c713c2fd4db0153cb6b3cab244eb37900c3f634ed4d43310d8c34"
 
 [[package]]
+name = "stress-test"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "ockam",
+ "ockam_api",
+ "ockam_core",
+ "ockam_multiaddr",
+ "rand",
+ "serde",
+ "toml 0.8.12",
+]
+
+[[package]]
 name = "stringprep"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -499,6 +499,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | serde_bare | MIT, Apache-2.0 | https://crates.io/crates/serde_bare |
 | serde_derive | MIT, Apache-2.0 | https://crates.io/crates/serde_derive |
 | serde_json | MIT, Apache-2.0 | https://crates.io/crates/serde_json |
+| serde_spanned | MIT, Apache-2.0 | https://crates.io/crates/serde_spanned |
 | serde_urlencoded | MIT, Apache-2.0 | https://crates.io/crates/serde_urlencoded |
 | sha1 | MIT, Apache-2.0 | https://crates.io/crates/sha1 |
 | sha1_smol | BSD-3-Clause | https://crates.io/crates/sha1_smol |
@@ -582,6 +583,9 @@ This file contains attributions for any 3rd-party open source code used in this 
 | tokio-tungstenite | MIT | https://crates.io/crates/tokio-tungstenite |
 | tokio-util | MIT | https://crates.io/crates/tokio-util |
 | toml | MIT, Apache-2.0 | https://crates.io/crates/toml |
+| toml | MIT, Apache-2.0 | https://crates.io/crates/toml |
+| toml_datetime | MIT, Apache-2.0 | https://crates.io/crates/toml_datetime |
+| toml_edit | MIT, Apache-2.0 | https://crates.io/crates/toml_edit |
 | tonic | MIT | https://crates.io/crates/tonic |
 | tower | MIT | https://crates.io/crates/tower |
 | tower-layer | MIT | https://crates.io/crates/tower-layer |
