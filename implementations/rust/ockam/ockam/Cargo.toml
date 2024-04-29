@@ -50,6 +50,7 @@ std = [
   "ockam_vault/std",
   "ockam_identity/std",
   "ockam_transport_tcp?/std",
+  "ockam_transport_core/std",
   "ockam_abac/std",
   "rand/default",
   "serde/std",
@@ -61,6 +62,7 @@ no_std = [
   "ockam_core/no_std",
   "ockam_node/no_std",
   "ockam_macros/no_std",
+  "ockam_transport_core/no_std",
   "ockam_vault/no_std",
   "ockam_identity/no_std",
   "ockam_abac/no_std",
@@ -70,6 +72,7 @@ no_std = [
 alloc = [
   "ockam_core/alloc",
   "ockam_node/alloc",
+  "ockam_transport_core/alloc",
   "ockam_vault/alloc",
   "ockam_identity/alloc",
   "serde/alloc",
@@ -93,6 +96,7 @@ ockam_core = { path = "../ockam_core", version = "^0.109.0", default-features = 
 ockam_identity = { path = "../ockam_identity", version = "^0.111.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.116.0", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.82.0", default-features = false }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.114.0", default-features = false, optional = true }
 ockam_vault = { path = "../ockam_vault", version = "^0.109.0", default_features = false, optional = true }
 rand = { version = "0.8", default-features = false }
