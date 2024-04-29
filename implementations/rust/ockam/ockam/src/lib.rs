@@ -88,6 +88,11 @@ pub use ockam_transport_tcp::{
 };
 pub use relay_service::{RelayService, RelayServiceOptions};
 
+/// Transport
+pub mod transport {
+    pub use ockam_transport_core::Transport;
+}
+
 // ---
 
 // ---
