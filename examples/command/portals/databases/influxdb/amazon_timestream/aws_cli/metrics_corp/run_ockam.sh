@@ -6,6 +6,21 @@ cd /home/ec2-user
 sudo -u ec2-user bash << 'EOS'
 set -ex
 
+# Install InfluxDB client
+curl -OL# https://download.influxdata.com/influxdb/releases/influxdb2-client-2.7.5-linux-amd64.tar.gz
+tar xvf influxdb2-client-2.7.5-linux-amd64.tar.gz
+
+# Configure the client and wait until it can connect with the database
+./influx config create --active --config-name test --org "metrics_corp" --username-password "admin:YourSecurePassword" \
+    --host-url "https://$INFLUXDB_ADDRESS:8086"
+while ! ./influx ping; do sleep 10; done
+
+# Create a new bucket to store metrics
+./influx bucket create --name metrics
+
+# Generate an influxdb auth token
+./influx auth create --all-access --json | jq -r .token > token.txt
+
 # Install Ockam Command
 curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
 source "$HOME/.ockam/env"

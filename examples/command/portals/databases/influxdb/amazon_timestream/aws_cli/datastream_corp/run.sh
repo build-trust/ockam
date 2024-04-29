@@ -26,13 +26,13 @@ run() {
     aws ec2 modify-subnet-attribute --subnet-id "$subnet_id" --map-public-ip-on-launch
     aws ec2 associate-route-table --subnet-id "$subnet_id" --route-table-id "$rtb_id"
 
-    # Create a security group to allow:
-    #   - TCP egress to the Internet
-    #   - SSH ingress from the Internet
-    my_ip=$(curl -s https://checkip.amazonaws.com)
+    # Create a security group to allow TCP egress to the Internet.
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
-        --description "Allow TCP egress and Postgres ingress")
+        --description "Allow TCP egress and InfluxDB ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
+
+    # Allow SSH from the machine where this script is running, so we can provision instances.
+    my_ip=$(curl -s https://checkip.amazonaws.com)
     aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "${my_ip}/32" --protocol tcp --port 22
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -53,25 +53,24 @@ run() {
     aws ec2 wait instance-running --instance-ids "$instance_id"
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
     rm -f user_data.sh
-    until scp -o StrictHostKeyChecking=no -i ./key.pem ./run_app.mjs "ec2-user@$ip:run_app.mjs"; do sleep 10; done
+
+    until scp -o StrictHostKeyChecking=no -i ./key.pem ./app.mjs "ec2-user@$ip:app.mjs"; do sleep 10; done
+    scp -o StrictHostKeyChecking=no -i ./key.pem ./token.txt "ec2-user@$ip:token.txt"
     ssh -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip" \
         'bash -s' << 'EOS'
           sudo yum update -y && sudo yum install nodejs -y
+          echo "update-notifier=false" >> ~/.npmrc
           npm install @influxdata/influxdb-client
-          # Checking for npm updates and upgrading if a new version is available
-          npm_version=$(npm -v)
-          new_version="10.5.2"
-          if [ "$npm_version" != "$new_version" ]; then
-            echo "Updating npm from $npm_version to $new_version..."
-            sudo npm install -g npm@$new_version
-          fi
+
           echo "Waiting for 60 seconds before starting the nodejs app..."
           sleep 60
-          node run_app.mjs
+          export INFLUX_TOKEN=$(cat token.txt)
+          node app.mjs
 EOS
 }
 
 cleanup() {
+
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
@@ -85,8 +84,8 @@ cleanup() {
     if aws ec2 describe-key-pairs --key-names "${name}-key" &>/dev/null; then
         aws ec2 delete-key-pair --key-name "${name}-key"
     fi
-    rm -f key.pem
-    rm -f run_app.mjs
+    rm -f key.pem token.txt
+
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE NETWORK
 
@@ -123,7 +122,7 @@ export AWS_DEFAULT_OUTPUT="text";
 user=""
 command -v sha256sum &>/dev/null && user=$(aws sts get-caller-identity | sha256sum | cut -c 1-20)
 command -v shasum &>/dev/null && user=$(aws sts get-caller-identity | shasum -a 256 | cut -c 1-20)
-export name="ockam-ex-datastream-corp-$user"
+export name="ockam-ex-ts-ds-$user"
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.

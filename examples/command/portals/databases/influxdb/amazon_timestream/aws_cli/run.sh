@@ -71,7 +71,7 @@ if ! type ockam &>/dev/null; then
 fi
 
 # Check that tools we need are installed.
-for c in aws curl influx jq; do
+for c in aws curl; do
     if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
 
