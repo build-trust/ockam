@@ -55,7 +55,7 @@ run() {
         --organization "metrics_corp" --bucket "metrics_corp_bucket" \
         --username "admin" --password "YourSecurePassword" --tags "Key=Name,Value=${name}-db"
 
-    echo "Waiting for the timestream-influxdb instance to be available (this can take several minutes)..."
+    echo "Waiting for the timestream-influxdb instance to be available (this takes around 10 minutes)..."
     while ! aws timestream-influxdb list-db-instances \
         --query "items[?name=='${name}-db'].{Status: status}" | grep -q "AVAILABLE"; do
         sleep 60
@@ -109,7 +109,7 @@ cleanup() {
     db_instance_ids=$(aws timestream-influxdb list-db-instances --query "items[?name=='${name}-db'].{id: id}")
     for i in $db_instance_ids; do
         aws timestream-influxdb delete-db-instance --identifier "$i"
-        echo "Waiting for the timestream-influxdb instance be deleted (this can take several minutes)..."
+        echo "Waiting for the timestream-influxdb instance be deleted (this takes around 10 minutes)..."
         while aws timestream-influxdb get-db-instance --identifier "$i" &>/dev/null; do sleep 60; done
     done
 

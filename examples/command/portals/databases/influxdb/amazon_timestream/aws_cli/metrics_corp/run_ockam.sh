@@ -13,7 +13,7 @@ tar xvf influxdb2-client-2.7.5-linux-amd64.tar.gz
 # Configure the client and wait until it can connect with the database
 ./influx config create --active --config-name test --org "metrics_corp" --username-password "admin:YourSecurePassword" \
     --host-url "https://$INFLUXDB_ADDRESS:8086"
-while ! ./influx ping; do sleep 10; done
+while ! ./influx bucket list; do sleep 10; done
 
 # Create a new bucket to store metrics
 ./influx bucket create --name metrics
