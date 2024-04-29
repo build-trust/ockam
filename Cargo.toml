@@ -8,6 +8,7 @@ members = [
   "implementations/rust/ockam/*",
   "tools/docs/example_blocks",
   "tools/docs/example_test_helper",
+  "tools/stress-test",
 ]
 
 # Coverage profile for generating code coverage with grcov.
