@@ -61,6 +61,7 @@ jobs:
           - cargo_clippy
           - cargo_deny
           - cargo_toml_files
+          - cargo_machete
     defaults:
       run:
         shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}

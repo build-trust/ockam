@@ -56,6 +56,8 @@ lint_cargo_deny:
 	cargo deny --all-features check licenses advisories --config=$(ROOT_DIR)/tools/cargo-deny/deny.toml
 lint_cargo_clippy:
 	cargo clippy --no-deps --all-targets -- -D warnings
+lint_cargo_machete:
+	cargo machete
 lint_cargo_toml_files:
 	dprint check --config $(ROOT_DIR)/tools/dprint/dprint.json
 lint_cargo_readme:
@@ -103,12 +105,9 @@ bats:
 bats_%:
 	bats $(ROOT_DIR)/implementations/rust/ockam/ockam_command/tests/bats/$(subst _,/,$*).bats --jobs 8
 
-.PHONY:
-	build_docs build_examples build_packages build_release build_release_% build_% \
-	cargo_fmt \
-	check check_no_std check_cargo_update \
-	test test_% nextest nextest_%\
-	lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_toml_files lint_cargo_readme lint_cargo_readme_% lint_cargo_toml_files \
-	clean clean_% very_clean format \
-	update_readmes \
-	bats bats_%
+.PHONY: build_docs build_examples build_packages build_release build_release_% build_%
+.PHONY: cargo_fmt check check_no_std check_cargo_update
+.PHONY: test test_% nextest nextest_%
+.PHONY: lint lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy lint_cargo_toml_files lint_cargo_readme lint_cargo_readme_% lint_cargo_machete
+.PHONY: clean clean_% very_clean format
+.PHONY: update_readmes bats bats_%
