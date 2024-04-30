@@ -110,7 +110,7 @@ impl ReceivedInvitation {
 }
 
 impl Output for ReceivedInvitation {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         Ok(format!(
             "{}\n  scope: {} target_id: {} (expires {})",
             self.id, self.scope, self.target_id, self.expires_at
@@ -141,7 +141,7 @@ impl SentInvitation {
 }
 
 impl Output for SentInvitation {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         Ok(format!(
             "{}\n  scope: {} target_id: {} (expires {}) for: {:?}",
             self.id, self.scope, self.target_id, self.expires_at, self.recipient_email,

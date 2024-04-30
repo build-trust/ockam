@@ -71,7 +71,7 @@ pub struct Subscription {
 }
 
 impl Output for Subscription {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let mut w = String::new();
         write!(w, "Subscription")?;
         write!(w, "\n  Id: {}", self.id)?;

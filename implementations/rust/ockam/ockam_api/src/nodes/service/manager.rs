@@ -4,7 +4,7 @@ use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
 };
-use crate::nodes::models::portal::{OutletList, OutletStatus};
+use crate::nodes::models::portal::OutletStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::registry::Registry;
 use crate::nodes::service::{
@@ -295,18 +295,14 @@ impl NodeManager {
         &self.tcp_transport
     }
 
-    pub async fn list_outlets(&self) -> OutletList {
-        OutletList::new(
-            self.registry
-                .outlets
-                .entries()
-                .await
-                .iter()
-                .map(|(_, info)| {
-                    OutletStatus::new(info.socket_addr, info.worker_addr.clone(), None)
-                })
-                .collect(),
-        )
+    pub async fn list_outlets(&self) -> Vec<OutletStatus> {
+        self.registry
+            .outlets
+            .entries()
+            .await
+            .iter()
+            .map(|(_, info)| OutletStatus::new(info.socket_addr, info.worker_addr.clone(), None))
+            .collect()
     }
 
     /// Delete the current node data

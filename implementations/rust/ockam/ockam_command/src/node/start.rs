@@ -5,9 +5,10 @@ use ockam_api::colors::OckamColor;
 use ockam_api::{fmt_err, fmt_info, fmt_log, fmt_ok, fmt_warn};
 
 use ockam_api::nodes::BackgroundNodeClient;
+
 use ockam_node::Context;
 
-use crate::node::show::get_node_status;
+use crate::node::show::get_node_resources;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
 use crate::util::async_cmd;
@@ -126,7 +127,7 @@ async fn start_single_node(
     }
 
     let mut node: BackgroundNodeClient = run_node(node_name, ctx, &opts).await?;
-    let node_status = get_node_status(ctx, &opts.state, &mut node, true).await?;
+    let node_status = get_node_resources(ctx, &opts.state, &mut node, true).await?;
     opts.terminal
         .stdout()
         .plain(&node_status)

@@ -210,7 +210,7 @@ impl Display for ShowIdentity {
 }
 
 impl Output for ShowIdentity {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(self.to_string())
     }
 }

@@ -84,7 +84,7 @@ where
 {
     fn encode(self) -> Result<Encoded> {
         // Serializing directly to allow better serialization
-        // inlining for a mesurable performance improvement.
+        // inlining for a measurable performance improvement.
         let mut vec = Vec::new();
         let mut serializer = Serializer::new(VecWrite::new(&mut vec));
         self.serialize(&mut serializer)?;

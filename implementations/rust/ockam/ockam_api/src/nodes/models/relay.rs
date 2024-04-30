@@ -183,15 +183,15 @@ impl RelayInfo {
 }
 
 impl Output for RelayInfo {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         Ok(r#"
 Relay:
     "#
         .to_owned()
-            + self.list()?.as_str())
+            + self.as_list_item()?.as_str())
     }
 
-    fn list(&self) -> crate::Result<String> {
+    fn as_list_item(&self) -> crate::Result<String> {
         let output = format!(
             r#"Alias: {alias}
 Status: {connection_status}

@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use colorful::Colorful;
 use miette::Diagnostic;
 use miette::{miette, Report};
-use ockam_api::{fmt_heading, fmt_log};
+use ockam_api::{fmt_heading, fmt_log, fmt_separator};
 
 use crate::util::exitcode::{self, ExitCode};
 use crate::version::Version;
@@ -168,7 +168,7 @@ impl miette::ReportHandler for ErrorReportHandler {
             return Debug::fmt(error, f);
         }
 
-        writeln!(f, "\n{}\n", fmt_heading!("{}", "Error:".red()))?;
+        writeln!(f, "\n{}\n", fmt_heading!("Error:".red()))?;
 
         // Try to extract the source message from the error, and disregard the rest. If
         // possible replace the new lines w/ fmt_log! outputs.
@@ -219,7 +219,7 @@ impl miette::ReportHandler for ErrorReportHandler {
             )
         )?;
 
-        write!(f, "\n{}", fmt_heading!("{}", ""))?;
+        writeln!(f, "{}", fmt_separator!())?;
 
         Ok(())
     }

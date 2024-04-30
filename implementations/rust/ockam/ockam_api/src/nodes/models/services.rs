@@ -1,13 +1,13 @@
-use crate::colors::OckamColor;
+use crate::colors::{color_primary, color_warn};
+
 use crate::output::Output;
-use crate::Result;
-use colorful::Colorful;
+
 use minicbor::{Decode, Encode};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
-use std::fmt::Write;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -189,6 +189,7 @@ impl StartHopServiceRequest {
 #[cbor(map)]
 pub struct ServiceStatus {
     #[n(2)] pub addr: String,
+    #[serde(rename = "type")]
     #[n(3)] pub service_type: String,
 }
 
@@ -201,62 +202,19 @@ impl ServiceStatus {
     }
 }
 
-impl Output for ServiceStatus {
-    fn single(&self) -> Result<String> {
-        let mut output = String::new();
-
-        writeln!(
-            output,
-            "Service {}",
-            self.service_type
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
+impl Display for ServiceStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
-            output,
-            "Address {}{}",
-            "/service/"
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-
-        Ok(output)
+            f,
+            "{} service at {}",
+            color_warn(&self.service_type),
+            color_primary(&self.addr)
+        )
     }
 }
 
-/// Response body for listing services
-#[derive(Debug, Clone, Serialize, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ServiceList {
-    #[n(1)] pub list: Vec<ServiceStatus>
-}
-
-impl ServiceList {
-    pub fn new(list: Vec<ServiceStatus>) -> Self {
-        Self { list }
-    }
-}
-
-impl Output for ServiceList {
-    fn single(&self) -> Result<String> {
-        if self.list.is_empty() {
-            return Ok("No services found".to_string());
-        }
-
-        let mut w = String::new();
-        write!(w, "Services:")?;
-
-        let services_list = self.list.clone();
-        for service in services_list {
-            write!(w, "\n  Service: ")?;
-            write!(w, "\n    Type: {}", service.service_type)?;
-            write!(w, "\n    Address: /service/{}", service.addr)?;
-        }
-
-        Ok(w)
+impl Output for ServiceStatus {
+    fn item(&self) -> crate::Result<String> {
+        Ok(format!("{}", self))
     }
 }

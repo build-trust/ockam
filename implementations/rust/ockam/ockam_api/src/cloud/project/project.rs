@@ -234,7 +234,7 @@ impl Project {
 }
 
 impl Output for Project {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let mut w = String::new();
         write!(w, "Project")?;
         write!(w, "\n  Id: {}", self.project_id())?;
@@ -257,7 +257,7 @@ impl Output for Project {
         Ok(w)
     }
 
-    fn list(&self) -> crate::Result<String> {
+    fn as_list_item(&self) -> crate::Result<String> {
         let output = format!(
             r#"Project {}
 Space {}"#,

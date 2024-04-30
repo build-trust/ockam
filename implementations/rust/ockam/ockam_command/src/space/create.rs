@@ -77,7 +77,7 @@ impl CreateCommand {
 
         opts.terminal
             .stdout()
-            .plain(space.single()?)
+            .plain(space.item()?)
             .json(serde_json::json!(&space))
             .write_line()?;
         Ok(())

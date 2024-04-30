@@ -131,7 +131,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
 #[derive(FromRow)]
 pub struct EnrollmentRow {
     identifier: String,
-    name: Option<String>,
+    name: String,
     email: Option<String>,
     is_default: bool,
     enrolled_at: Option<i64>,
@@ -149,9 +149,9 @@ impl EnrollmentRow {
         Ok(IdentityEnrollment::new(
             identifier,
             self.name.clone(),
-            email,
             self.is_default,
             self.enrolled_at(),
+            email,
         ))
     }
 
@@ -194,7 +194,7 @@ mod tests {
         // retrieve only the enrolled identities
         let result = repository.get_enrolled_identities().await?;
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].email(), &Some(email));
+        assert_eq!(result[0].status().email(), Some(email).as_ref());
 
         // the first identity must be seen as enrolled
         let result = repository.is_identity_enrolled("identity1").await?;

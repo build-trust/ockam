@@ -7,19 +7,17 @@ use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
 
 use super::{NodeManager, NodeManagerWorker};
 use crate::nodes::models::transport::{
-    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportList, TransportStatus,
+    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportStatus,
 };
 
 impl NodeManager {
-    fn get_tcp_connections(&self) -> TransportList {
-        TransportList::new(
-            self.tcp_transport
-                .registry()
-                .get_all_sender_workers()
-                .into_iter()
-                .map(TransportStatus::from)
-                .collect(),
-        )
+    fn get_tcp_connections(&self) -> Vec<TransportStatus> {
+        self.tcp_transport
+            .registry()
+            .get_all_sender_workers()
+            .into_iter()
+            .map(TransportStatus::from)
+            .collect()
     }
 
     fn get_tcp_connection(&self, address: String) -> Option<TransportStatus> {
@@ -27,15 +25,13 @@ impl NodeManager {
         Some(sender.into())
     }
 
-    fn get_tcp_listeners(&self) -> TransportList {
-        TransportList::new(
-            self.tcp_transport
-                .registry()
-                .get_all_listeners()
-                .into_iter()
-                .map(TransportStatus::from)
-                .collect(),
-        )
+    pub(crate) fn get_tcp_listeners(&self) -> Vec<TransportStatus> {
+        self.tcp_transport
+            .registry()
+            .get_all_listeners()
+            .into_iter()
+            .map(TransportStatus::from)
+            .collect()
     }
 
     fn get_tcp_listener(&self, address: String) -> Option<TransportStatus> {
@@ -105,7 +101,10 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn get_tcp_connections(&self, req: &RequestHeader) -> Response<TransportList> {
+    pub(super) async fn get_tcp_connections(
+        &self,
+        req: &RequestHeader,
+    ) -> Response<Vec<TransportStatus>> {
         Response::ok()
             .with_headers(req)
             .body(self.node_manager.get_tcp_connections())
@@ -124,7 +123,10 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn get_tcp_listeners(&self, req: &RequestHeader) -> Response<TransportList> {
+    pub(super) async fn get_tcp_listeners(
+        &self,
+        req: &RequestHeader,
+    ) -> Response<Vec<TransportStatus>> {
         Response::ok()
             .with_headers(req)
             .body(self.node_manager.get_tcp_listeners())

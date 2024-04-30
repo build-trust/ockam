@@ -144,7 +144,7 @@ pub struct SecureChannelListOutput {
 }
 
 impl Output for SecureChannelListOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         let mut output = String::new();
         writeln!(
             output,

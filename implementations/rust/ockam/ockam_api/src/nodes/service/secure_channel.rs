@@ -20,14 +20,13 @@ use crate::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::CreateSecureChannelRequest;
 use crate::nodes::models::secure_channel::DeleteSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::DeleteSecureChannelRequest;
-use crate::nodes::models::secure_channel::ListSecureChannelListenerResponse;
 use crate::nodes::models::secure_channel::ShowSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::ShowSecureChannelRequest;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelResponse, DeleteSecureChannelListenerResponse, DeleteSecureChannelResponse,
-    ShowSecureChannelListenerResponse, ShowSecureChannelResponse,
+    ShowSecureChannelResponse,
 };
-use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
+use crate::nodes::registry::SecureChannelInfo;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{NodeManager, NodeManagerWorker};
 
@@ -143,24 +142,15 @@ impl NodeManagerWorker {
     pub async fn show_secure_channel_listener(
         &self,
         show_secure_channel_listener: ShowSecureChannelListenerRequest,
-    ) -> Result<Response<ShowSecureChannelListenerResponse>, Response<Error>> {
+    ) -> Result<Response<SecureChannelListener>, Response<Error>> {
         let ShowSecureChannelListenerRequest { addr } = show_secure_channel_listener;
-        let response = self
-            .node_manager
-            .get_secure_channel_listener(&addr)
-            .await
-            .map(|secure_channel_info| {
-                Response::ok().body(ShowSecureChannelListenerResponse::new(&secure_channel_info))
-            })?;
-        Ok(response)
+        Ok(Response::ok().body(self.node_manager.get_secure_channel_listener(&addr).await?))
     }
 
     pub async fn list_secure_channel_listener(
         &self,
-    ) -> Result<Response<ListSecureChannelListenerResponse>, Response<Error>> {
-        Ok(Response::ok().body(ListSecureChannelListenerResponse::new(
-            self.node_manager.list_secure_channel_listeners().await,
-        )))
+    ) -> Result<Response<Vec<SecureChannelListener>>, Response<Error>> {
+        Ok(Response::ok().body(self.node_manager.list_secure_channel_listeners().await))
     }
 }
 
@@ -345,10 +335,7 @@ impl NodeManager {
 
         self.registry
             .secure_channel_listeners
-            .insert(
-                address.clone(),
-                SecureChannelListenerInfo::new(listener.clone()),
-            )
+            .insert(address.clone(), listener.clone())
             .await;
 
         // TODO: Clean
@@ -368,7 +355,7 @@ impl NodeManager {
         &self,
         ctx: &Context,
         addr: &Address,
-    ) -> Result<SecureChannelListenerInfo> {
+    ) -> Result<SecureChannelListener> {
         debug!("deleting secure channel listener: {addr}");
         ctx.stop_worker(addr.clone()).await?;
         self.registry
@@ -385,7 +372,7 @@ impl NodeManager {
     pub async fn get_secure_channel_listener(
         &self,
         addr: &Address,
-    ) -> Result<SecureChannelListenerInfo> {
+    ) -> Result<SecureChannelListener> {
         debug!(%addr, "On show secure channel listener");
         self.registry
             .secure_channel_listeners
@@ -398,7 +385,7 @@ impl NodeManager {
             ))
     }
 
-    pub async fn list_secure_channel_listeners(&self) -> Vec<SecureChannelListenerInfo> {
+    pub async fn list_secure_channel_listeners(&self) -> Vec<SecureChannelListener> {
         let registry = &self.registry.secure_channel_listeners;
         registry.values().await
     }

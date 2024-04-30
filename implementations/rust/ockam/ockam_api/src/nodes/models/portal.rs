@@ -1,11 +1,10 @@
 //! Inlets and outlet request/response types
 
-use colorful::Colorful;
+use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::colors::{color_primary, OckamColor};
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
@@ -15,10 +14,12 @@ use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::HostnamePort;
 use serde::{Deserialize, Serialize};
 
+use crate::colors::color_primary;
 use crate::error::ApiError;
+
 use crate::output::Output;
-use crate::route_to_multiaddr;
 use crate::session::sessions::ConnectionStatus;
+use crate::{route_to_multiaddr, try_address_to_multiaddr};
 
 /// Request body to create an inlet
 #[derive(Clone, Debug, Decode, Encode)]
@@ -176,7 +177,7 @@ impl CreateOutlet {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize)]
+#[derive(Clone, Debug, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {
@@ -213,62 +214,29 @@ impl InletStatus {
     }
 }
 
-impl Output for InletStatus {
-    fn single(&self) -> crate::Result<String> {
-        let outlet = self
+impl Display for InletStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Inlet at {} is {}",
+            color_primary(&self.bind_addr),
+            self.status,
+        )?;
+        if let Some(r) = self
             .outlet_route
             .as_ref()
             .and_then(Route::parse)
             .and_then(|r| route_to_multiaddr(&r))
-            .map(|addr| addr.to_string())
-            .unwrap_or("N/A".to_string());
-
-        let output = format!(
-            r#"
-Inlet
-    Alias: {alias}
-    Status: {status}
-    TCP Address: {bind_addr}
-    Outlet Address: {outlet_route}
-    Outlet Destination: {outlet_addr}
-            "#,
-            alias = self
-                .alias
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            status = self
-                .status
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            bind_addr = self
-                .bind_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            outlet_route = outlet.color(OckamColor::PrimaryResource.color()),
-            outlet_addr = self.outlet_addr,
-        );
-
-        Ok(output)
+        {
+            write!(f, " with route to outlet {}", color_primary(r.to_string()))?;
+        }
+        Ok(())
     }
+}
 
-    fn list(&self) -> crate::Result<String> {
-        let output = format!(
-            r#"Inlet {}
-From {} to {}"#,
-            self.alias
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.bind_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.outlet_route
-                .as_ref()
-                .map(|r| r.to_string())
-                .unwrap_or("N/A".to_string())
-                .color(OckamColor::PrimaryResource.color()),
-        );
-
-        Ok(output)
+impl Output for InletStatus {
+    fn item(&self) -> crate::Result<String> {
+        Ok(format!("{}", self))
     }
 }
 
@@ -310,57 +278,24 @@ impl OutletStatus {
     }
 }
 
-impl Output for OutletStatus {
-    fn single(&self) -> crate::Result<String> {
-        let output = format!(
-            r#"
-Outlet:
-    TCP Address:    {}
-    Worker Address: {}
-"#,
-            self.socket_addr,
-            self.worker_address()?
-        );
-
-        Ok(output)
-    }
-
-    fn list(&self) -> crate::Result<String> {
-        let output = format!(
-            r#"From address {} to TCP server {}"#,
-            color_primary(self.worker_address()?.to_string()),
+impl Display for OutletStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Outlet {} at {}",
+            color_primary(
+                try_address_to_multiaddr(&self.worker_addr)
+                    .map_err(|_| std::fmt::Error)?
+                    .to_string()
+            ),
             color_primary(self.socket_addr.to_string()),
-        );
-
-        Ok(output)
+        )
     }
 }
 
-/// Response body when returning a list of Inlets
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct InletList {
-    #[n(1)] pub list: Vec<InletStatus>,
-}
-
-impl InletList {
-    pub fn new(list: Vec<InletStatus>) -> Self {
-        Self { list }
-    }
-}
-
-/// Response body when returning a list of Outlets
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct OutletList {
-    #[n(1)] pub list: Vec<OutletStatus>,
-}
-
-impl OutletList {
-    pub fn new(list: Vec<OutletStatus>) -> Self {
-        Self { list }
+impl Output for OutletStatus {
+    fn item(&self) -> Result<String, ApiError> {
+        Ok(format!("{}", &self))
     }
 }
 

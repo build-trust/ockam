@@ -82,18 +82,29 @@ macro_rules! fmt_list {
 #[macro_export]
 macro_rules! fmt_heading {
     ($input:expr) => {
-        format!("{}{}\n{}{}",
-        $crate::terminal::ICON_PADDING,
-        "─".repeat(85).dim().light_gray(),
+        format!("\n{}{}\n{}{}",
         $crate::terminal::PADDING,
-        format!($input))
+        format!("{}", $input),
+        $crate::terminal::PADDING,
+        "─".repeat(85).dim().light_gray())
     };
     ($input:expr, $($args:expr),+) => {
-        format!("{}{}\n{}{}",
-        $crate::terminal::ICON_PADDING,
-        "─".repeat(85).dim().light_gray(),
+        format!("\n{}{}\n{}{}",
         $crate::terminal::PADDING,
-        format!($input, $($args),+))
+        format!($input, $($args),+),
+        $crate::terminal::PADDING,
+        "─".repeat(85).dim().light_gray())
+    };
+}
+
+#[macro_export]
+macro_rules! fmt_separator {
+    () => {
+        format!(
+            "\n{}{}",
+            $crate::terminal::PADDING,
+            "─".repeat(85).dim().light_gray()
+        )
     };
 }
 

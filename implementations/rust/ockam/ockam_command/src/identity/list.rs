@@ -80,7 +80,7 @@ impl IdentityListOutput {
 }
 
 impl Output for IdentityListOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         let default = if self.is_default { "(default)" } else { "" };
         let mut output = String::new();
         writeln!(

@@ -23,7 +23,7 @@ impl VaultOutput {
 }
 
 impl Output for VaultOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"
             Vault:
@@ -49,7 +49,7 @@ impl Output for VaultOutput {
         ))
     }
 
-    fn list(&self) -> ockam_api::Result<String> {
+    fn as_list_item(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"Name: {name}
             Type: {vault_type}

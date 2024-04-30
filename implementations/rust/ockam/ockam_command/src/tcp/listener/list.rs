@@ -5,7 +5,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::transport::TransportList;
+use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
@@ -42,7 +42,7 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_transports = async {
-            let transports: TransportList = node.ask(ctx, api::list_tcp_listeners()).await?;
+            let transports: Vec<TransportStatus> = node.ask(ctx, api::list_tcp_listeners()).await?;
             *is_finished.lock().await = true;
             Ok(transports)
         };
@@ -59,7 +59,7 @@ impl ListCommand {
         let (transports, _) = try_join!(get_transports, progress_output)?;
 
         let list = opts.terminal.build_list(
-            &transports.list,
+            &transports,
             &format!("TCP Listeners on {}", node.node_name()),
             &format!(
                 "No TCP Listeners found on {}",

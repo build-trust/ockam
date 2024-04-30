@@ -9,10 +9,7 @@ use serde::Serialize;
 use ockam::Context;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_api::{
-    address::extract_address_value,
-    nodes::models::portal::{OutletList, OutletStatus},
-};
+use ockam_api::{address::extract_address_value, nodes::models::portal::OutletStatus};
 use ockam_core::api::Request;
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
@@ -74,7 +71,7 @@ struct OutletInformation {
 }
 
 impl Output for OutletInformation {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         let mut w = String::new();
         write!(w, "Outlet")?;
         write!(w, "\n  On Node: {}", self.node_name)?;
@@ -135,12 +132,11 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let outlets: OutletList = self
+        let outlets: Vec<OutletStatus> = self
             .node
             .ask(&self.ctx, Request::get("/node/outlet"))
             .await?;
         let items_names: Vec<String> = outlets
-            .list
             .into_iter()
             .map(|outlet| outlet.worker_addr.address().to_string())
             .collect();
@@ -159,7 +155,7 @@ impl ShowCommandTui for ShowTui {
         };
         self.terminal()
             .stdout()
-            .plain(info.single()?)
+            .plain(info.item()?)
             .json(serde_json::json!(info))
             .write_line()?;
         Ok(())

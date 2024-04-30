@@ -9,7 +9,6 @@ use ockam_core::api::Request;
 use crate::node::NodeOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
-use ockam_api::output::Output;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -48,7 +47,7 @@ impl ShowCommand {
             .await?;
         opts.terminal
             .stdout()
-            .plain(transport_status.single()?)
+            .plain(&transport_status)
             .json(serde_json::to_string(&transport_status).into_diagnostic()?)
             .write_line()?;
         Ok(())

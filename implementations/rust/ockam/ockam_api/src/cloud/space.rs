@@ -36,7 +36,7 @@ impl Space {
 }
 
 impl Output for Space {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let mut w = String::new();
         write!(w, "Space")?;
         write!(w, "\n  Id: {}", self.id)?;
@@ -45,7 +45,7 @@ impl Output for Space {
         Ok(w)
     }
 
-    fn list(&self) -> crate::Result<String> {
+    fn as_list_item(&self) -> crate::Result<String> {
         let mut output = String::new();
         writeln!(
             output,

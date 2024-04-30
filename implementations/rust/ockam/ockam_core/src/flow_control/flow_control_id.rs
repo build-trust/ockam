@@ -7,7 +7,7 @@ use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// Unique random identifier of a Flow Control
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Decode, Encode)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct FlowControlId {
@@ -20,6 +20,25 @@ impl FlowControlId {
         Self {
             id: str.to_string(),
         }
+    }
+}
+
+impl Serialize for FlowControlId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.id.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for FlowControlId {
+    fn deserialize<D>(deserializer: D) -> Result<FlowControlId, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let id = String::deserialize(deserializer)?;
+        Ok(FlowControlId { id })
     }
 }
 

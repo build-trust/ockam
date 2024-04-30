@@ -196,7 +196,6 @@ impl AppState {
         let outlets = node_manager.list_outlets().await;
 
         let outlet_socket_addr = outlets
-            .list
             .iter()
             .find(|o| &o.worker_addr == outlet_worker_addr)
             .map(|o| o.socket_addr.to_string());

@@ -1,19 +1,16 @@
+use async_trait::async_trait;
 use std::ops::Add;
 use std::time::Duration;
 
 use clap::Args;
 use console::Term;
 use miette::IntoDiagnostic;
-use ockam_api::cli_state::NodeProcessStatus;
+
 use ockam_api::CliState;
 use tokio_retry::strategy::FibonacciBackoff;
 use tracing::{info, trace, warn};
 
-use ockam_api::nodes::models::node::NodeStatus;
-use ockam_api::nodes::models::portal::{InletList, OutletList};
-use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
-use ockam_api::nodes::models::services::ServiceList;
-use ockam_api::nodes::models::transport::TransportList;
+use ockam_api::nodes::models::node::{NodeResources, NodeStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
@@ -21,14 +18,8 @@ use ockam_node::Context;
 
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::{api, async_cmd};
-use crate::{docs, CommandGlobalOpts, Result};
-
-use super::models::portal::{ShowInletStatus, ShowOutletStatus};
-use super::models::secure_channel::ShowSecureChannelListener;
-use super::models::services::ShowServiceStatus;
-use super::models::show::ShowNodeResponse;
-use super::models::transport::ShowTransportStatus;
+use crate::util::api;
+use crate::{docs, Command, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -52,19 +43,12 @@ pub struct ShowCommand {
     node_name: Option<String>,
 }
 
-impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "node show";
 
-    pub fn name(&self) -> String {
-        "node show".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ShowTui::run(ctx, opts, self.node_name.clone()).await
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        Ok(ShowTui::run(ctx, opts, self.node_name.clone()).await?)
     }
 }
 
@@ -125,91 +109,35 @@ impl ShowCommandTui for ShowTui {
         let mut node =
             BackgroundNodeClient::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
                 .await?;
-        let node_status = get_node_status(&self.ctx, &self.opts.state, &mut node, false).await?;
+        let node_resources =
+            get_node_resources(&self.ctx, &self.opts.state, &mut node, false).await?;
         self.opts
             .terminal
             .clone()
             .stdout()
-            .plain(&node_status)
-            .json(serde_json::to_string(&node_status).into_diagnostic()?)
+            .plain(&node_resources)
+            .json(serde_json::to_string(&node_resources).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }
 }
 
-pub async fn get_node_status(
+pub async fn get_node_resources(
     ctx: &Context,
     cli_state: &CliState,
     node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
-) -> miette::Result<ShowNodeResponse> {
+) -> miette::Result<NodeResources> {
     let node_name = node.node_name();
-    let show_node = if !is_node_up(ctx, node, wait_until_ready).await? {
-        // it is expected to not be able to open an arbitrary TCP connection on an authority node
-        // so in that case we display an UP status
-        let is_authority_node = cli_state
-            .get_node(&node_name)
-            .await
-            .ok()
-            .map(|n| n.is_authority_node())
-            .unwrap_or(false);
-        let node_info = cli_state.get_node(&node_name).await?;
-        ShowNodeResponse::new(
-            node_info.is_default(),
-            &node_name,
-            is_authority_node,
-            node_info.tcp_listener_port(),
-            node_info.pid(),
-        )?
+    if is_node_up(ctx, node, wait_until_ready).await? {
+        Ok(node.ask(ctx, api::get_node_resources()).await?)
     } else {
         let node_info = cli_state.get_node(&node_name).await?;
-        let mut show_node = ShowNodeResponse::new(
-            node_info.is_default(),
-            &node_name,
-            true,
-            node_info.tcp_listener_port(),
-            node_info.pid(),
-        )?;
-        // Get list of services for the node
-        let services: ServiceList = node.ask(ctx, api::list_services()).await?;
-        show_node.services = services
-            .list
-            .into_iter()
-            .filter_map(|i| ShowServiceStatus::try_from(i).ok())
-            .collect();
-
-        // Get list of TCP listeners for node
-        let transports: TransportList = node.ask(ctx, api::list_tcp_listeners()).await?;
-        show_node.transports = transports
-            .list
-            .into_iter()
-            .map(ShowTransportStatus::from)
-            .collect();
-
-        // Get list of Secure Channel Listeners
-        let listeners: ListSecureChannelListenerResponse =
-            node.ask(ctx, api::list_secure_channel_listener()).await?;
-        show_node.secure_channel_listeners = listeners
-            .list
-            .into_iter()
-            .filter_map(|i| ShowSecureChannelListener::try_from(i).ok())
-            .collect();
-
-        // Get list of inlets
-        let inlets: InletList = node.ask(ctx, api::list_inlets()).await?;
-        show_node.inlets = inlets.list.into_iter().map(ShowInletStatus::from).collect();
-
-        // Get list of outlets
-        let outlets: OutletList = node.ask(ctx, api::list_outlets()).await?;
-        show_node.outlets = outlets
-            .list
-            .into_iter()
-            .filter_map(|i| ShowOutletStatus::try_from(i).ok())
-            .collect();
-
-        show_node
-    };
-    Ok(show_node)
+        let identity = cli_state
+            .get_named_identity_by_identifier(&node_info.identifier())
+            .await?;
+        NodeResources::empty(node_info, identity.name()).into_diagnostic()
+    }
 }
 
 /// Send message(s) to a node to determine if it is 'up' and
@@ -280,15 +208,12 @@ async fn is_node_ready(
             .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), timeout_duration)
             .await;
         if let Ok(node_status) = result {
-            match node_status.status {
-                NodeProcessStatus::Running(_) => {
-                    let elapsed = now.elapsed();
-                    info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
-                    return Ok(true);
-                }
-                _ => {
-                    trace!(%node_name, "node is initializing");
-                }
+            if node_status.status.is_running() {
+                let elapsed = now.elapsed();
+                info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
+                return Ok(true);
+            } else {
+                trace!(%node_name, "node is initializing");
             }
         } else {
             trace!(%node_name, "node is initializing");

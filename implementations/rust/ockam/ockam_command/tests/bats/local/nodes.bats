@@ -18,7 +18,7 @@ force_kill_node() {
   max_retries=5
   i=0
   while [[ $i -lt $max_retries ]]; do
-    pid="$($OCKAM node show $1 --output json | jq .node_pid)"
+    pid="$($OCKAM node show $1 --output json | jq .pid)"
     run kill -9 $pid
     # Killing a node created without `-f` leaves the
     # process in a defunct state when running within Docker.
@@ -40,9 +40,9 @@ force_kill_node() {
   run_success "$OCKAM" node create n
 
   run_success "$OCKAM" node show n
+  assert_output --partial "\"name\":\"n\""
   assert_output --partial "/dnsaddr/localhost/tcp/"
-  assert_output --partial "/service/api"
-  assert_output --partial "/service/uppercase"
+  assert_output --partial "\"addr\":\"uppercase\""
 }
 
 @test "node - start services" {
@@ -60,7 +60,7 @@ force_kill_node() {
   # Stop node, restart it, and check that the service is up again
   $OCKAM node stop n
   run_success "$OCKAM" node start n
-  assert_output --partial "/service/echo"
+  assert_output --partial "\"addr\":\"echo\""
 }
 
 @test "node - fail to create two background nodes with the same name" {

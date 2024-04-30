@@ -1,47 +1,41 @@
-use std::fmt::Write;
+use async_trait::async_trait;
+use std::fmt::Display;
 use std::time::Duration;
 
 use clap::Args;
+use colorful::Colorful;
 use miette::IntoDiagnostic;
+use serde::Serialize;
 use tracing::warn;
 
-use ockam::identity::{Identifier, TimestampInSeconds};
 use ockam::Context;
-use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment, NodeInfo};
+use ockam_api::cli_state::{EnrollmentFilter, IdentityEnrollment};
 use ockam_api::cloud::project::models::OrchestratorVersionInfo;
-use ockam_api::nodes::models::node::NodeStatus;
-use ockam_api::nodes::InMemoryNode;
+use ockam_api::colors::color_primary;
+use ockam_api::nodes::models::node::NodeResources;
+use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
+use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
 
-use crate::util::{async_cmd, duration::duration_parser};
-use crate::CommandGlobalOpts;
+use crate::node::show::get_node_resources;
+use crate::util::duration::duration_parser;
 use crate::Result;
+use crate::{Command, CommandGlobalOpts};
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
 pub struct StatusCommand {
-    /// Show status for all identities; default: enrolled only
-    #[arg(long, short)]
-    all: bool,
-
     /// Override the default timeout
     #[arg(long, default_value = "5", value_parser = duration_parser)]
     timeout: Duration,
 }
 
-impl StatusCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for StatusCommand {
+    const NAME: &'static str = "status";
 
-    pub fn name(&self) -> String {
-        "status".to_string()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let identities_details = get_identities_details(&opts, self.all).await?;
-        let nodes = opts.state.get_nodes().await?;
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        let identities_details = self.get_identities_details(&opts).await?;
+        let nodes = self.get_nodes_resources(ctx, &opts).await?;
         let orchestrator_version = {
             let node = InMemoryNode::start(ctx, &opts.state)
                 .await?
@@ -56,142 +50,124 @@ impl StatusCommand {
         let status = StatusData::from_parts(orchestrator_version, identities_details, nodes)?;
         opts.terminal
             .stdout()
-            .plain(build_plain_output(self, &status).await?)
+            .plain(&status)
             .json(serde_json::to_string(&status).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }
 }
 
-async fn get_identities_details(
-    opts: &CommandGlobalOpts,
-    all: bool,
-) -> Result<Vec<IdentityEnrollment>> {
-    let enrollment_status = if all {
-        EnrollmentStatus::Any
-    } else {
-        EnrollmentStatus::Enrolled
-    };
-    Ok(opts
-        .state
-        .get_identity_enrollments(enrollment_status)
-        .await?)
-}
-
-async fn build_plain_output(cmd: &StatusCommand, status: &StatusData) -> Result<String> {
-    let mut plain = String::new();
-    writeln!(
-        plain,
-        "Controller version: {}",
-        status.orchestrator_version.version()
-    )?;
-    writeln!(
-        plain,
-        "Project version: {}",
-        status.orchestrator_version.project_version()
-    )?;
-    if status.identities.is_empty() {
-        if cmd.all {
-            writeln!(plain, "No identities found")?;
-        } else {
-            writeln!(
-                &mut plain,
-                "No enrolled identities could be found. \
-                Try passing the `--all` argument to see all identities, and not just the enrolled ones. \
-                Also consider running `ockam enroll` to enroll an identity.",
-            )?;
-        }
-        return Ok(plain);
-    };
-
-    for (i_idx, i) in status.identities.iter().enumerate() {
-        writeln!(plain, "Identity[{i_idx}]")?;
-        if i.is_default() {
-            writeln!(plain, "{:2}Default: yes", "")?;
-        }
-        if let Some(name) = i.name() {
-            writeln!(&mut plain, "{:2}Name: {}", "", name)?;
-        }
-        writeln!(plain, "{:2}Identifier: {}", "", i.identifier())?;
-        writeln!(plain, "{:2}Enrolled: {}", "", i.is_enrolled())?;
-
-        if !i.nodes.is_empty() {
-            writeln!(plain, "{:2}Linked Nodes:", "")?;
-            for (n_idx, node) in i.nodes.iter().enumerate() {
-                writeln!(plain, "{:4}Node[{}]:", "", n_idx)?;
-                writeln!(plain, "{:6}Name: {}", "", node.name)?;
-                writeln!(plain, "{:6}Status: {:?}", "", node.status)?;
-            }
-        }
+impl StatusCommand {
+    async fn get_identities_details(
+        &self,
+        opts: &CommandGlobalOpts,
+    ) -> Result<Vec<IdentityEnrollment>> {
+        Ok(opts
+            .state
+            .get_identity_enrollments(EnrollmentFilter::Any)
+            .await?)
     }
-    Ok(plain)
+
+    async fn get_nodes_resources(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+    ) -> Result<Vec<NodeResources>> {
+        let mut nodes_resources = vec![];
+        let pb = opts.terminal.progress_spinner();
+        let nodes = opts.state.get_nodes().await?;
+        for node in nodes {
+            if let Some(ref pb) = pb {
+                pb.set_message(format!("Retrieving node {}...", node.name()));
+            }
+            let mut node =
+                BackgroundNodeClient::create(ctx, &opts.state, &Some(node.name())).await?;
+            nodes_resources.push(get_node_resources(ctx, &opts.state, &mut node, false).await?);
+        }
+        if let Some(ref pb) = pb {
+            pb.finish_and_clear();
+        }
+        Ok(nodes_resources)
+    }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Serialize)]
 struct StatusData {
     #[serde(flatten)]
     orchestrator_version: OrchestratorVersionInfo,
-    identities: Vec<IdentityWithLinkedNodes>,
+    identities: Vec<IdentityEnrollment>,
+    nodes: Vec<NodeResources>,
 }
 
 impl StatusData {
     fn from_parts(
         orchestrator_version: OrchestratorVersionInfo,
-        identities_details: Vec<IdentityEnrollment>,
-        nodes: Vec<NodeInfo>,
+        identities: Vec<IdentityEnrollment>,
+        nodes: Vec<NodeResources>,
     ) -> Result<Self> {
-        let mut identities = vec![];
-        for identity in identities_details.into_iter() {
-            let identity_status = IdentityWithLinkedNodes {
-                identifier: identity.identifier().clone(),
-                name: identity.name().clone(),
-                is_default: identity.is_default(),
-                enrolled_at: identity
-                    .enrolled_at()
-                    .map(|o| TimestampInSeconds::from(o.unix_timestamp() as u64)),
-                nodes: nodes
-                    .iter()
-                    .filter_map(|node| {
-                        if node.identifier() == identity.identifier().clone() {
-                            Some(NodeStatus::from(node))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect(),
-            };
-            identities.push(identity_status);
-        }
         Ok(Self {
             orchestrator_version,
             identities,
+            nodes,
         })
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct IdentityWithLinkedNodes {
-    identifier: Identifier,
-    name: Option<String>,
-    is_default: bool,
-    enrolled_at: Option<TimestampInSeconds>,
-    nodes: Vec<NodeStatus>,
-}
+impl Display for StatusData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{}",
+            fmt_log!(
+                "Controller version: {}",
+                color_primary(self.orchestrator_version.version())
+            )
+        )?;
+        writeln!(
+            f,
+            "{}",
+            fmt_log!(
+                "Project version: {}",
+                color_primary(self.orchestrator_version.project_version())
+            )
+        )?;
 
-impl IdentityWithLinkedNodes {
-    fn identifier(&self) -> Identifier {
-        self.identifier.clone()
-    }
+        if self.identities.is_empty() {
+            writeln!(f, "{}", fmt_separator!())?;
+            writeln!(f, "{}", fmt_warn!("No identities found"))?;
+            writeln!(
+                f,
+                "{}",
+                fmt_log!("Consider running `ockam enroll` to enroll an identity.")
+            )?;
+        } else {
+            writeln!(f, "{}", fmt_heading!("Identities"))?;
+            for (idx, i) in self.identities.iter().enumerate() {
+                if idx > 0 {
+                    writeln!(f)?;
+                }
+                write!(f, "{}", i)?;
+            }
+        }
 
-    fn name(&self) -> Option<String> {
-        self.name.clone()
-    }
+        if self.nodes.is_empty() {
+            writeln!(f, "{}", fmt_separator!())?;
+            writeln!(f, "{}", fmt_warn!("No nodes found"))?;
+            writeln!(
+                f,
+                "{}",
+                fmt_log!("Consider running `ockam node create` to create your first node.")
+            )?;
+        } else {
+            writeln!(f, "{}", fmt_heading!("Nodes"))?;
+            for (idx, node) in self.nodes.iter().enumerate() {
+                if idx > 0 {
+                    writeln!(f)?;
+                }
+                write!(f, "{}", node)?;
+            }
+        }
 
-    fn is_default(&self) -> bool {
-        self.is_default
-    }
-
-    fn is_enrolled(&self) -> bool {
-        self.enrolled_at.is_some()
+        Ok(())
     }
 }

@@ -29,7 +29,7 @@ pub struct Addon {
 }
 
 impl Output for Addon {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Addon:")?;
         write!(w, "\n  Id: {}", self.id)?;

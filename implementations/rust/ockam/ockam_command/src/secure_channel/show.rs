@@ -51,7 +51,7 @@ impl ShowCommand {
             node.ask(ctx, api::show_secure_channel(address)).await?;
         opts.terminal
             .stdout()
-            .plain(response.single()?)
+            .plain(response.item()?)
             .json(serde_json::to_string_pretty(&response).into_diagnostic()?)
             .write_line()?;
         Ok(())

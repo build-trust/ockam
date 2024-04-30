@@ -57,6 +57,7 @@ impl NodeManagerWorker {
         let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             (Get, ["node"]) => encode_response(req, self.get_node_status().await)?,
+            (Get, ["node", "resources"]) => encode_response(req, self.get_node_resources().await)?,
 
             // ==*== Tcp Connection ==*==
             (Get, ["node", "tcp", "connection"]) => self.get_tcp_connections(req).await.to_vec()?,

@@ -31,41 +31,41 @@ use std::fmt::Write;
 /// }
 ///
 /// impl Output for MyType {
-///     fn single(&self) -> Result<String> {
+///     fn item(&self) -> Result<String> {
 ///         Ok(self.to_string())
 ///     }
 /// }
 /// ```
 pub trait Output {
-    fn single(&self) -> Result<String>;
+    fn item(&self) -> Result<String>;
 
-    fn list(&self) -> Result<String> {
-        self.single()
+    fn as_list_item(&self) -> Result<String> {
+        self.item()
     }
 }
 
 impl Output for String {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         Ok(self.clone())
     }
 }
 
 impl Output for &str {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         Ok(self.to_string())
     }
 }
 
 impl Output for Vec<u8> {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         Ok(hex::encode(self))
     }
 }
 
 impl<T: Output> Output for Reply<T> {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         match self {
-            Reply::Successful(t) => t.single(),
+            Reply::Successful(t) => t.item(),
             Reply::Failed(e, status) => {
                 let mut output = String::new();
                 if let Some(m) = e.message() {

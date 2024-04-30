@@ -76,7 +76,7 @@ impl SubscriptionCommand {
                 )
                 .await?
                 {
-                    Some(subscription) => opts.terminal.write_line(&subscription.single()?)?,
+                    Some(subscription) => opts.terminal.write_line(&subscription.item()?)?,
                     None => opts
                         .terminal
                         .write_line("Please specify either a space id or a subscription id")?,

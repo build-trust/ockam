@@ -14,7 +14,7 @@ use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::colors::{color_email, color_uri, OckamColor};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_api::{fmt_err, fmt_heading, fmt_log, fmt_ok};
+use ockam_api::{fmt_err, fmt_log, fmt_ok};
 
 use crate::{CommandGlobalOpts, Result};
 
@@ -69,7 +69,7 @@ impl OidcServiceExt for OidcService {
         }
         // Otherwise, write the instructions at stderr as normal
         else {
-            opts.terminal.write_line(&fmt_heading!(
+            opts.terminal.write_line(&fmt_log!(
                 "Please sign into your Ockam Account to activate this machine:\n"
             ))?;
 

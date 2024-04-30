@@ -292,7 +292,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
 
         // Display items with alternating colors
         for item in items {
-            let item = item.list()?;
+            let item = item.as_list_item()?;
             item.split('\n').for_each(|line| {
                 let _ = writeln!(output, "{}", &fmt_list!("{line}"));
             });

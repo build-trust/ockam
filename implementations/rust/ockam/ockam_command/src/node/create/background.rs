@@ -11,7 +11,7 @@ use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_log, fmt_warn};
 use ockam_core::OpenTelemetryContext;
 
-use crate::node::show::get_node_status;
+use crate::node::show::get_node_resources;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
 use crate::CommandGlobalOpts;
@@ -66,7 +66,7 @@ impl CreateCommand {
         };
         cmd_with_trace_context.spawn_background_node(&opts).await?;
         let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name).await?;
-        let node_status = get_node_status(ctx, &opts.state, &mut node, true).await?;
+        let node_resources = get_node_resources(ctx, &opts.state, &mut node, true).await?;
         opts.state
             .add_journey_event(
                 JourneyEvent::NodeCreated,
@@ -75,7 +75,7 @@ impl CreateCommand {
             .await?;
 
         // Output
-        if !node_status.is_up() {
+        if !node_resources.status.is_running() {
             opts.terminal.write_line(fmt_warn!(
                 "Node was {} created but is not reachable",
                 color_primary(&node_name)
@@ -87,7 +87,7 @@ impl CreateCommand {
             .stdout()
             .plain(self.plain_output(&opts, &node_name).await?)
             .machine(&node_name)
-            .json(serde_json::to_string(&node_status).into_diagnostic()?)
+            .json(serde_json::to_string(&node_resources).into_diagnostic()?)
             .write_line()?;
 
         opts.terminal

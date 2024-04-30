@@ -5,7 +5,7 @@ use ockam_abac::{ResourcePolicy, ResourceTypePolicy};
 use std::fmt::Write;
 
 impl Output for ResourceTypePolicy {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let mut output = String::new();
         writeln!(
             output,
@@ -22,7 +22,7 @@ impl Output for ResourceTypePolicy {
 }
 
 impl Output for ResourcePolicy {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let mut output = String::new();
         writeln!(
             output,

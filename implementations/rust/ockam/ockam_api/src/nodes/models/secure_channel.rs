@@ -6,14 +6,14 @@ use minicbor::{Decode, Encode};
 use serde::Serialize;
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::{Identifier, SecureChannel, DEFAULT_TIMEOUT};
+use ockam::identity::{Identifier, SecureChannel, SecureChannelListener, DEFAULT_TIMEOUT};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
 
-use crate::colors::OckamColor;
+use crate::colors::color_primary;
 use crate::error::ApiError;
-use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
+use crate::nodes::registry::SecureChannelInfo;
 use crate::output::Output;
 use crate::{route_to_multiaddr, try_route_to_multiaddr};
 
@@ -142,7 +142,7 @@ impl CreateSecureChannelResponse {
 }
 
 impl Output for CreateSecureChannelResponse {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let addr = try_route_to_multiaddr(&route![self.addr.to_string()])?.to_string();
         Ok(addr)
     }
@@ -185,34 +185,14 @@ impl DeleteSecureChannelListenerResponse {
     }
 }
 
-/// Response body to show a Secure Channel Listener
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ShowSecureChannelListenerResponse {
-    #[n(1)] pub addr: Address,
-    #[n(2)] pub flow_control_id: FlowControlId,
-}
-
-impl ShowSecureChannelListenerResponse {
-    pub(crate) fn new(info: &SecureChannelListenerInfo) -> Self {
-        Self {
-            addr: info.listener().address().to_string().into(),
-            flow_control_id: info.listener().flow_control_id().clone(),
-        }
-    }
-}
-
-impl Output for ShowSecureChannelListenerResponse {
-    fn single(&self) -> crate::Result<String> {
+impl Output for SecureChannelListener {
+    fn item(&self) -> crate::Result<String> {
         let addr = {
-            let channel_route = &route![self.addr.clone()];
-            let channel_multiaddr = try_route_to_multiaddr(channel_route)?;
+            let channel_route = route![self.address().clone()];
+            let channel_multiaddr = try_route_to_multiaddr(&channel_route)?;
             channel_multiaddr.to_string()
-        }
-        .color(OckamColor::PrimaryResource.color());
-
-        Ok(format!("Address {addr}"))
+        };
+        Ok(format!("Listener at {}", color_primary(addr)))
     }
 }
 
@@ -262,7 +242,7 @@ impl ShowSecureChannelResponse {
 }
 
 impl Output for ShowSecureChannelResponse {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let s = match &self.channel {
             Some(addr) => {
                 format!(
@@ -287,22 +267,5 @@ impl Output for ShowSecureChannelResponse {
         };
 
         Ok(s)
-    }
-}
-
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ListSecureChannelListenerResponse {
-    #[n(1)] pub list: Vec<ShowSecureChannelListenerResponse>,
-}
-
-impl ListSecureChannelListenerResponse {
-    pub fn new(list: Vec<SecureChannelListenerInfo>) -> Self {
-        let list = list
-            .iter()
-            .map(ShowSecureChannelListenerResponse::new)
-            .collect();
-        Self { list }
     }
 }

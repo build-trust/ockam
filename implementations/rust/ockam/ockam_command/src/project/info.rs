@@ -39,7 +39,7 @@ impl InfoCommand {
         let info = ProjectConfigCompact(project);
         opts.terminal
             .stdout()
-            .plain(info.single()?)
+            .plain(info.item()?)
             .json(serde_json::to_string_pretty(&info).into_diagnostic()?)
             .write_line()?;
         Ok(())

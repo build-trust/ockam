@@ -118,7 +118,7 @@ impl CredentialOutput {
 }
 
 impl Output for CredentialOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         let is_verified = if self.is_verified {
             "✔︎".light_green()
         } else {

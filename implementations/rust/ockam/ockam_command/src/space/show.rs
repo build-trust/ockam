@@ -114,7 +114,7 @@ impl ShowCommandTui for ShowTui {
         let space = self.node.get_space_by_name(&self.ctx, item_name).await?;
         self.terminal()
             .stdout()
-            .plain(space.single()?)
+            .plain(space.item()?)
             .json(serde_json::to_string(&space).into_diagnostic()?)
             .machine(&space.name)
             .write_line()?;

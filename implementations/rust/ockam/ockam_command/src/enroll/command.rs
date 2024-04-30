@@ -28,8 +28,8 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::OutputFormat;
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::CliState;
-use ockam_api::{fmt_heading, fmt_log, fmt_ok, fmt_warn};
+use ockam_api::{fmt_log, fmt_ok, fmt_warn};
+use ockam_api::{fmt_separator, CliState};
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
@@ -348,7 +348,7 @@ async fn retrieve_user_space_and_project(
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
 ) -> miette::Result<Project> {
-    opts.terminal.write_line(fmt_heading!(""))?;
+    opts.terminal.write_line(fmt_separator!())?;
     let space = get_user_space(opts, ctx, node, skip_orchestrator_resources_creation)
         .await
         .wrap_err("Unable to retrieve and set a Space as default")?
@@ -366,7 +366,7 @@ async fn retrieve_user_space_and_project(
         color_primary(&space.name)
     ))?
     .ok_or(miette!("No Project was found"))?;
-    opts.terminal.write_line(fmt_heading!(""))?;
+    opts.terminal.write_line(fmt_separator!())?;
     Ok(project)
 }
 

@@ -1,8 +1,7 @@
-use crate::colors::OckamColor;
+use crate::colors::color_primary;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::service::ApiTransport;
 use crate::output::Output;
-use colorful::Colorful;
 use minicbor::{Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
@@ -10,7 +9,7 @@ use ockam_core::{Error, Result};
 use ockam_multiaddr::proto::Worker;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
-use std::fmt::Write;
+use std::fmt::{Display, Formatter};
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
@@ -19,8 +18,10 @@ use std::net::SocketAddrV4;
 #[cbor(map)]
 pub struct TransportStatus {
     /// The type of transport to create
+    #[serde(rename = "type")]
     #[n(1)] pub tt: TransportType,
     /// The mode the transport should operate in
+    #[serde(rename = "mode")]
     #[n(2)] pub tm: TransportMode,
     /// Corresponding socket address
     #[n(3)] pub socket_addr: String,
@@ -120,48 +121,21 @@ impl From<TcpListener> for TransportStatus {
     }
 }
 
-impl Output for TransportStatus {
-    fn single(&self) -> crate::Result<String> {
-        let mut output = String::new();
-
-        writeln!(
-            output,
-            "{} {}",
-            self.tt,
-            self.tm
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-        writeln!(
-            output,
-            "Internal Address {}",
-            self.processor_address
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-
+impl Display for TransportStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
-            output,
-            "Socket Address {}",
-            self.socket_addr
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            f,
+            "{}, {} at {}",
+            self.tt,
+            self.tm,
+            color_primary(&self.socket_addr)
         )?;
-
-        Ok(output)
+        Ok(())
     }
 }
 
-/// Response body when interacting with a transport
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct TransportList {
-    #[n(1)] pub list: Vec<TransportStatus>
-}
-
-impl TransportList {
-    pub fn new(list: Vec<TransportStatus>) -> Self {
-        Self { list }
+impl Output for TransportStatus {
+    fn item(&self) -> crate::Result<String> {
+        Ok(format!("{}", self))
     }
 }

@@ -143,7 +143,7 @@ impl NodeListOutput {
 }
 
 impl Output for NodeListOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         let (status, process) = match self.status {
             NodeProcessStatus::Running(pid) => (
                 "UP".color(OckamColor::Success.color()),
