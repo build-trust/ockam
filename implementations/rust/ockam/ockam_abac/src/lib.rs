@@ -20,6 +20,8 @@ pub mod expr;
 pub mod resource;
 
 mod abac;
+mod boolean_expr;
+
 pub use abac::*;
 
 pub use env::Env;
