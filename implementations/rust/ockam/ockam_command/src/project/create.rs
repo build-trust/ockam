@@ -60,7 +60,7 @@ impl CreateCommand {
         let project = check_project_readiness(&opts, ctx, &node, project).await?;
         opts.terminal
             .stdout()
-            .plain(project.single()?)
+            .plain(project.item()?)
             .json(serde_json::json!(&project))
             .write_line()?;
         Ok(())

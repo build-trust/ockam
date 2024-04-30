@@ -62,7 +62,7 @@ impl Command for ListCommand {
 struct MemberOutput(Identifier, AttributesEntry);
 
 impl Output for MemberOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(format!("{}: {}", self.0, self.1))
     }
 }

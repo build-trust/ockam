@@ -48,7 +48,7 @@ impl ShowCommand {
 
         opts.terminal
             .stdout()
-            .plain(token.single()?)
+            .plain(token.item()?)
             .json(serde_json::json!(&token))
             .write_line()?;
 

@@ -121,7 +121,7 @@ impl ShowCommandTui for ShowTui {
         let relay = RelayShowOutput::from(relay);
         self.terminal()
             .stdout()
-            .plain(relay.single()?)
+            .plain(relay.item()?)
             .machine(item_name)
             .json(serde_json::to_string(&relay).into_diagnostic()?)
             .write_line()?;
@@ -153,7 +153,7 @@ impl From<RelayInfo> for RelayShowOutput {
 }
 
 impl Output for RelayShowOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"
         Relay:
@@ -181,7 +181,7 @@ impl Output for RelayShowOutput {
         ))
     }
 
-    fn list(&self) -> ockam_api::Result<String> {
+    fn as_list_item(&self) -> ockam_api::Result<String> {
         Ok(formatdoc!(
             r#"
             Alias: {alias}

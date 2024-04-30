@@ -20,7 +20,7 @@ impl OutputFormat {
         T: Output + serde::Serialize,
     {
         let output = match self {
-            OutputFormat::Plain => t.single()?,
+            OutputFormat::Plain => t.item()?,
             OutputFormat::Json => {
                 serde_json::to_string_pretty(t).map_err(crate::ParseError::SerdeJson)?
             }

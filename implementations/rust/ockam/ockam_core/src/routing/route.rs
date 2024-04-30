@@ -524,7 +524,7 @@ mod tests {
     use crate::{route, Address, Encodable, Error, Route};
 
     #[test]
-    fn encode_and_maually_decode_route() {
+    fn encode_and_manually_decode_route() {
         let route = route!["alice", "bob"];
         let encoded = route.clone().encode().unwrap();
         let decoded = Route::manual_decode(&encoded, &mut 0).unwrap();

@@ -3,13 +3,16 @@ use std::fmt::{Display, Formatter};
 use time::OffsetDateTime;
 
 use crate::authenticator::one_time_code::OneTimeCode;
-use ockam::identity::Identifier;
+use ockam::identity::{Identifier, TimestampInSeconds};
 
 use crate::cli_state::Result;
 use crate::cli_state::{CliState, CliStateError};
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::models::ProjectModel;
+use crate::colors::{color_ok, color_primary, color_warn};
 use crate::error::ApiError;
+use crate::output::human_readable_time;
+use crate::terminal::fmt;
 
 /// The following CliState methods help keeping track of
 ///
@@ -63,15 +66,15 @@ impl CliState {
     ///
     ///  - all the currently enrolled entities
     ///  - all the known identities and their corresponding enrollment state
-    #[instrument(skip_all, fields(enrollment_status = %enrollment_status))]
+    #[instrument(skip_all, fields(filter = %filter))]
     pub async fn get_identity_enrollments(
         &self,
-        enrollment_status: EnrollmentStatus,
+        filter: EnrollmentFilter,
     ) -> Result<Vec<IdentityEnrollment>> {
         let repository = self.enrollment_repository();
-        match enrollment_status {
-            EnrollmentStatus::Enrolled => Ok(repository.get_enrolled_identities().await?),
-            EnrollmentStatus::Any => Ok(repository.get_all_identities_enrollments().await?),
+        match filter {
+            EnrollmentFilter::Enrolled => Ok(repository.get_enrolled_identities().await?),
+            EnrollmentFilter::Any => Ok(repository.get_all_identities_enrollments().await?),
         }
     }
 
@@ -105,71 +108,133 @@ impl CliState {
 }
 
 #[derive(Debug)]
-pub enum EnrollmentStatus {
+pub enum EnrollmentFilter {
     Enrolled,
     Any,
 }
 
-impl Display for EnrollmentStatus {
+impl Display for EnrollmentFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            EnrollmentStatus::Enrolled => f.write_str("enrolled"),
-            EnrollmentStatus::Any => f.write_str("any"),
+            EnrollmentFilter::Enrolled => f.write_str("enrolled"),
+            EnrollmentFilter::Any => f.write_str("any"),
         }
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub enum EnrollmentStatus {
+    Enrolled {
+        at: TimestampInSeconds,
+        email: Option<EmailAddress>,
+    },
+    NotEnrolled,
+}
+
+impl EnrollmentStatus {
+    pub fn is_enrolled(&self) -> bool {
+        matches!(self, EnrollmentStatus::Enrolled { .. })
+    }
+
+    pub fn email(&self) -> Option<&EmailAddress> {
+        match self {
+            EnrollmentStatus::Enrolled { email, .. } => email.as_ref(),
+            EnrollmentStatus::NotEnrolled => None,
+        }
+    }
+}
+
+#[derive(Serialize)]
 pub struct IdentityEnrollment {
     identifier: Identifier,
-    name: Option<String>,
-    email: Option<EmailAddress>,
+    name: String,
     is_default: bool,
-    enrolled_at: Option<OffsetDateTime>,
+    status: EnrollmentStatus,
 }
 
 impl IdentityEnrollment {
     pub fn new(
         identifier: Identifier,
-        name: Option<String>,
-        email: Option<EmailAddress>,
+        name: String,
         is_default: bool,
         enrolled_at: Option<OffsetDateTime>,
+        email: Option<EmailAddress>,
     ) -> Self {
+        let status = match enrolled_at {
+            Some(enrolled_at) => EnrollmentStatus::Enrolled {
+                at: TimestampInSeconds::from(enrolled_at.unix_timestamp() as u64),
+                email,
+            },
+            None => EnrollmentStatus::NotEnrolled,
+        };
         Self {
             identifier,
             name,
-            email,
             is_default,
-            enrolled_at,
+            status,
         }
     }
     pub fn identifier(&self) -> &Identifier {
         &self.identifier
     }
 
-    #[allow(dead_code)]
-    pub fn name(&self) -> &Option<String> {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    #[allow(dead_code)]
-    pub fn email(&self) -> &Option<EmailAddress> {
-        &self.email
-    }
-
-    #[allow(dead_code)]
-    pub fn is_enrolled(&self) -> bool {
-        self.enrolled_at.is_some()
-    }
-
-    #[allow(dead_code)]
     pub fn is_default(&self) -> bool {
         self.is_default
     }
 
-    #[allow(dead_code)]
-    pub fn enrolled_at(&self) -> Option<OffsetDateTime> {
-        self.enrolled_at
+    pub fn status(&self) -> &EnrollmentStatus {
+        &self.status
+    }
+}
+
+impl Display for IdentityEnrollment {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", fmt::PADDING, color_primary(self.name()))?;
+        if self.is_default {
+            write!(f, " (default)")?;
+        }
+        writeln!(f, ":")?;
+
+        writeln!(
+            f,
+            "{}{}With Identifier {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            color_primary(self.identifier().to_string())
+        )?;
+
+        match &self.status {
+            EnrollmentStatus::Enrolled { at, email } => {
+                write!(
+                    f,
+                    "{}{}Was {} at {}",
+                    fmt::PADDING,
+                    fmt::INDENTATION,
+                    color_ok("enrolled"),
+                    color_primary(human_readable_time(*at))
+                )?;
+                if let Some(email) = email {
+                    writeln!(f, " with email {}", color_primary(email.to_string()))?;
+                } else {
+                    writeln!(f)?;
+                }
+            }
+            EnrollmentStatus::NotEnrolled => {
+                writeln!(
+                    f,
+                    "{}{}Is {}",
+                    fmt::PADDING,
+                    fmt::INDENTATION,
+                    color_warn("not enrolled")
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }
 

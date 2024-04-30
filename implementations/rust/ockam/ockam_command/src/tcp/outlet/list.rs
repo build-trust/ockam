@@ -7,7 +7,7 @@ use tokio::try_join;
 
 use crate::node::NodeOpts;
 use crate::{docs, CommandGlobalOpts};
-use ockam_api::nodes::models::portal::OutletList;
+use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -47,7 +47,7 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {
-            let res: OutletList = node.ask(ctx, Request::get("/node/outlet")).await?;
+            let res: Vec<OutletStatus> = node.ask(ctx, Request::get("/node/outlet")).await?;
             *is_finished.lock().await = true;
             Ok(res)
         };
@@ -68,10 +68,10 @@ impl ListCommand {
                 "No TCP Outlets found on node {}",
                 color_primary(node.node_name())
             );
-            match outlets.list.is_empty() {
+            match outlets.is_empty() {
                 true => empty_message,
                 false => opts.terminal.build_list(
-                    &outlets.list,
+                    &outlets,
                     &format!("TCP Outlets on node {}", color_primary(node.node_name())),
                     &empty_message,
                 )?,
@@ -79,7 +79,6 @@ impl ListCommand {
         };
 
         let json: Vec<_> = outlets
-            .list
             .iter()
             .map(|outlet| {
                 Ok(serde_json::json!({

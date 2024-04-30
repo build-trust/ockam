@@ -18,7 +18,7 @@ impl WorkerStatus {
 }
 
 impl Output for WorkerStatus {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         Ok(format!(
             "Worker {}",
             self.addr

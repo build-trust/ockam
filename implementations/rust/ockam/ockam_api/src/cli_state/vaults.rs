@@ -413,7 +413,7 @@ impl Display for NamedVault {
 }
 
 impl Output for NamedVault {
-    fn single(&self) -> crate::Result<String> {
+    fn item(&self) -> crate::Result<String> {
         let mut output = String::new();
         writeln!(output, "Name: {}", self.name())?;
         writeln!(

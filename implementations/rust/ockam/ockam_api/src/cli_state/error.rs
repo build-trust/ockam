@@ -75,6 +75,13 @@ impl From<CliStateError> for ockam_core::Error {
     }
 }
 
+impl From<ockam_multiaddr::Error> for CliStateError {
+    #[track_caller]
+    fn from(e: ockam_multiaddr::Error) -> Self {
+        e.into()
+    }
+}
+
 macro_rules! gen_from_impl {
     ($t:ty) => {
         impl From<$t> for CliStateError {

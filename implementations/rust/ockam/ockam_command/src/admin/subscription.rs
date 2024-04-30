@@ -159,7 +159,7 @@ impl SubscriptionCommand {
                     .activate_subscription(ctx, space.clone(), json)
                     .await
                     .into_diagnostic()?;
-                opts.terminal.write_line(&response.single()?)?
+                opts.terminal.write_line(&response.item()?)?
             }
             SubscriptionSubcommand::List => {
                 let response = controller
@@ -192,7 +192,7 @@ impl SubscriptionCommand {
                             .unsubscribe(ctx, subscription.id)
                             .await
                             .into_diagnostic()?;
-                        opts.terminal.write_line(&response.single()?)?
+                        opts.terminal.write_line(&response.item()?)?
                     }
                     None => opts
                         .terminal
@@ -223,7 +223,7 @@ impl SubscriptionCommand {
                                     .update_subscription_contact_info(ctx, subscription.id, json)
                                     .await
                                     .into_diagnostic()?;
-                                opts.terminal.write_line(&response.single()?)?
+                                opts.terminal.write_line(&response.item()?)?
                             }
                             None => opts.terminal.write_line(
                                 "Please specify either a space id or a subscription id",
@@ -252,7 +252,7 @@ impl SubscriptionCommand {
                                     )
                                     .await
                                     .into_diagnostic()?;
-                                opts.terminal.write_line(&response.single()?)?
+                                opts.terminal.write_line(&response.item()?)?
                             }
                             None => opts.terminal.write_line(
                                 "Please specify either a space id or a subscription id",

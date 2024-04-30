@@ -1,7 +1,9 @@
 use core::fmt;
 use core::fmt::Formatter;
+use minicbor::{Decode, Encode};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Address;
+use serde::Serialize;
 
 /// Result of [`super::SecureChannels::create_secure_channel()`] call.
 #[derive(Debug, Clone)]
@@ -57,10 +59,12 @@ impl SecureChannel {
 }
 
 /// Result of [`super::SecureChannels::create_secure_channel_listener()`] call.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub struct SecureChannelListener {
-    address: Address,
-    flow_control_id: FlowControlId,
+    #[n(1)] address: Address,
+    #[n(2)] flow_control_id: FlowControlId,
 }
 
 impl fmt::Display for SecureChannelListener {

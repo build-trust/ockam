@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use ockam_api::fmt_err;
 
-use ockam_api::nodes::models::services::ServiceList;
+use ockam_api::nodes::models::services::ServiceStatus;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
@@ -39,13 +39,13 @@ impl ListCommand {
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
-        let services: ServiceList = node
+        let services: Vec<ServiceStatus> = node
             .ask(
                 ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_DIRECT)),
             )
             .await?;
-        if services.list.is_empty() {
+        if services.is_empty() {
             opts.terminal
                 .stdout()
                 .plain(fmt_err!("No Kafka Direct Client found on this node"))
@@ -53,7 +53,7 @@ impl ListCommand {
         } else {
             let mut buf = String::new();
             buf.push_str("Kafka Direct Clients:\n");
-            for service in services.list {
+            for service in services {
                 buf.push_str(&format!("{:2}Address: {}\n", "", service.addr));
             }
             opts.terminal.stdout().plain(buf).write_line()?;

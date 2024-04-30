@@ -1,16 +1,19 @@
 use minicbor::{Decode, Encode};
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::process;
 
 use nix::errno::Errno;
+
 use nix::sys::signal;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sysinfo::{Pid, ProcessStatus, System};
 
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
+use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpListener;
 
@@ -19,6 +22,8 @@ use crate::cli_state::{CliState, CliStateError};
 use crate::cloud::project::Project;
 use crate::colors::color_primary;
 use crate::config::lookup::InternetAddress;
+
+use crate::ConnectionStatus;
 
 /// The methods below support the creation and update of local nodes
 impl CliState {
@@ -437,7 +442,7 @@ impl CliState {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Decode, Encode)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Decode, Encode)]
 #[serde(rename_all = "lowercase", tag = "status", content = "pid")]
 pub enum NodeProcessStatus {
     #[n(0)]
@@ -446,6 +451,32 @@ pub enum NodeProcessStatus {
     Zombie(#[n(0)] u32),
     #[n(2)]
     Stopped,
+}
+
+impl NodeProcessStatus {
+    pub fn is_running(&self) -> bool {
+        matches!(self, NodeProcessStatus::Running(_))
+    }
+}
+
+impl Display for NodeProcessStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let status = match self {
+            NodeProcessStatus::Running(_) => ConnectionStatus::Up,
+            NodeProcessStatus::Zombie(_) => ConnectionStatus::Down,
+            NodeProcessStatus::Stopped => ConnectionStatus::Down,
+        };
+        let pid = match self {
+            NodeProcessStatus::Running(pid) => Some(pid),
+            NodeProcessStatus::Zombie(pid) => Some(pid),
+            NodeProcessStatus::Stopped => None,
+        };
+        write!(f, "The node is {status}")?;
+        if let Some(pid) = pid {
+            write!(f, ", with PID {pid}")?;
+        }
+        Ok(())
+    }
 }
 
 /// This struct contains all the data associated to a node
@@ -568,6 +599,23 @@ impl NodeInfo {
             }
         } else {
             NodeProcessStatus::Stopped
+        }
+    }
+
+    pub fn route(&self) -> Result<MultiAddr> {
+        let mut m = MultiAddr::default();
+        m.push_back(Node::new(&self.name))?;
+        Ok(m)
+    }
+
+    pub fn verbose_route(&self) -> Result<Option<MultiAddr>> {
+        if let Some(port) = self.tcp_listener_port() {
+            let mut m = MultiAddr::default();
+            m.push_back(DnsAddr::new("localhost"))?;
+            m.push_back(Tcp::new(port))?;
+            Ok(Some(m))
+        } else {
+            Ok(None)
         }
     }
 }

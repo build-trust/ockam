@@ -1,12 +1,13 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
 use miette::IntoDiagnostic;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::portal::InletList;
+use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -19,7 +20,6 @@ use crate::tcp::util::alias_parser;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -44,24 +44,17 @@ pub struct DeleteCommand {
     all: bool,
 }
 
-impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for DeleteCommand {
+    const NAME: &'static str = "tcp-inlet delete";
 
-    pub fn name(&self) -> String {
-        "tcp-inlet delete".into()
-    }
-
-    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        DeleteTui::run(
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(DeleteTui::run(
             ctx.async_try_clone().await.into_diagnostic()?,
             opts,
             self.clone(),
         )
-        .await
+        .await?)
     }
 }
 
@@ -110,11 +103,11 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: InletList = self
+        let inlets: Vec<InletStatus> = self
             .node
             .ask(&self.ctx, Request::get("/node/inlet"))
             .await?;
-        let names = inlets.list.into_iter().map(|i| i.alias).collect();
+        let names = inlets.into_iter().map(|i| i.alias).collect();
         Ok(names)
     }
 

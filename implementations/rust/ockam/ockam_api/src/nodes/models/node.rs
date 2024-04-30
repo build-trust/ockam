@@ -1,12 +1,22 @@
 //! Nodemanager API types
 
 use crate::cli_state::{NodeInfo, NodeProcessStatus};
+use crate::colors::color_primary;
+use crate::nodes::models::portal::{InletStatus, OutletStatus};
+use crate::nodes::models::services::ServiceStatus;
+use crate::nodes::models::transport::TransportStatus;
+use crate::output::Output;
+use crate::terminal::fmt;
 use minicbor::{Decode, Encode};
-use ockam::identity::Identifier;
-use serde::{Deserialize, Serialize};
+use ockam::identity::{Identifier, SecureChannelListener};
+use ockam_core::Result;
+use ockam_multiaddr::MultiAddr;
+use serde::Serialize;
+
+use std::fmt::{Display, Formatter};
 
 /// Response body for a node status request
-#[derive(Debug, Clone, Serialize, Deserialize, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct NodeStatus {
@@ -32,5 +42,157 @@ impl From<&NodeInfo> for NodeStatus {
             identifier: node.identifier(),
             status: node.status(),
         }
+    }
+}
+
+#[derive(Debug, Serialize, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct NodeResources {
+    #[n(1)] pub name: String,
+    #[n(2)] pub identity_name: String,
+    #[n(3)] pub is_default: bool,
+    #[serde(flatten)]
+    #[n(4)] pub status: NodeProcessStatus,
+    #[n(5)] pub route: RouteToNode,
+    #[n(6)] pub transports: Vec<TransportStatus>,
+    #[n(7)] pub secure_channel_listeners: Vec<SecureChannelListener>,
+    #[n(8)] pub inlets: Vec<InletStatus>,
+    #[n(9)] pub outlets: Vec<OutletStatus>,
+    #[n(10)] pub services: Vec<ServiceStatus>,
+}
+
+impl NodeResources {
+    pub fn from_parts(
+        node: NodeInfo,
+        identity_name: String,
+        transports: Vec<TransportStatus>,
+        listeners: Vec<SecureChannelListener>,
+        inlets: Vec<InletStatus>,
+        outlets: Vec<OutletStatus>,
+        services: Vec<ServiceStatus>,
+    ) -> Result<Self> {
+        Ok(Self {
+            name: node.name(),
+            identity_name,
+            is_default: node.is_default(),
+            status: node.status(),
+            route: RouteToNode {
+                short: node.route()?,
+                verbose: node.verbose_route()?,
+            },
+            transports,
+            secure_channel_listeners: listeners,
+            inlets,
+            outlets,
+            services,
+        })
+    }
+
+    pub fn empty(node: NodeInfo, identity_name: String) -> Result<Self> {
+        Ok(Self {
+            name: node.name(),
+            identity_name,
+            is_default: node.is_default(),
+            status: node.status(),
+            route: RouteToNode {
+                short: node.route()?,
+                verbose: node.verbose_route()?,
+            },
+            transports: vec![],
+            secure_channel_listeners: vec![],
+            inlets: vec![],
+            outlets: vec![],
+            services: vec![],
+        })
+    }
+}
+
+impl Display for NodeResources {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", fmt::PADDING, color_primary(&self.name))?;
+        if self.is_default {
+            write!(f, " (default)")?;
+        }
+        writeln!(f, ":")?;
+
+        writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION, self.status)?;
+        writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION, self.route)?;
+
+        writeln!(
+            f,
+            "{}{}Identity: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            color_primary(&self.identity_name)
+        )?;
+
+        if self.transports.is_empty() {
+            writeln!(f, "{}{}No Transports", fmt::PADDING, fmt::INDENTATION)?;
+        } else {
+            writeln!(f, "{}{}Transports:", fmt::PADDING, fmt::INDENTATION)?;
+            for t in &self.transports {
+                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), t)?;
+            }
+        }
+
+        if self.secure_channel_listeners.is_empty() {
+            writeln!(f, "{}{}No Secure Channels", fmt::PADDING, fmt::INDENTATION)?;
+        } else {
+            writeln!(f, "{}{}Secure Channels:", fmt::PADDING, fmt::INDENTATION)?;
+            for s in &self.secure_channel_listeners {
+                writeln!(
+                    f,
+                    "{}{}{}",
+                    fmt::PADDING,
+                    fmt::INDENTATION.repeat(2),
+                    s.item().map_err(|_| std::fmt::Error)?
+                )?;
+            }
+        }
+
+        if self.inlets.is_empty() && self.outlets.is_empty() {
+            writeln!(f, "{}{}No Portals", fmt::PADDING, fmt::INDENTATION)?;
+        } else {
+            writeln!(f, "{}{}Portals:", fmt::PADDING, fmt::INDENTATION)?;
+            for i in &self.inlets {
+                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), i)?;
+            }
+
+            for o in &self.outlets {
+                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), o)?;
+            }
+        }
+
+        if self.services.is_empty() {
+            writeln!(f, "{}{}No Services", fmt::PADDING, fmt::INDENTATION)?;
+        } else {
+            writeln!(f, "{}{}Services:", fmt::PADDING, fmt::INDENTATION)?;
+            for s in &self.services {
+                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), s)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct RouteToNode {
+    #[n(1)] pub short: MultiAddr,
+    #[n(2)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verbose: Option<MultiAddr>,
+}
+
+impl Display for RouteToNode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "With route {}", color_primary(self.short.to_string()))?;
+        if let Some(verbose) = &self.verbose {
+            write!(f, " or {}", color_primary(verbose.to_string()))?;
+        }
+        Ok(())
     }
 }

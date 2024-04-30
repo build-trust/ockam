@@ -6,7 +6,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
-use crate::cli_state::{CliState, EnrollmentStatus, ProjectsRepository};
+use crate::cli_state::{CliState, EnrollmentFilter, ProjectsRepository};
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::models::ProjectModel;
 use crate::cloud::project::Project;
@@ -172,14 +172,14 @@ impl CliState {
         project: &Project,
     ) -> Result<bool> {
         let enrolled = self
-            .get_identity_enrollments(EnrollmentStatus::Enrolled)
+            .get_identity_enrollments(EnrollmentFilter::Enrolled)
             .await?;
 
         let emails: Vec<EmailAddress> = enrolled
             .iter()
             .flat_map(|x| {
                 if x.identifier() == caller_identifier {
-                    x.email().clone()
+                    x.status().email().cloned()
                 } else {
                     None
                 }

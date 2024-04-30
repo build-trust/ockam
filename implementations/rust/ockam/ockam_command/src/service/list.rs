@@ -6,7 +6,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::services::ServiceList;
+use ockam_api::nodes::models::services::ServiceStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
@@ -36,7 +36,7 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_services = async {
-            let services: ServiceList = node.ask(ctx, api::list_services()).await?;
+            let services: Vec<ServiceStatus> = node.ask(ctx, api::list_services()).await?;
             *is_finished.lock().await = true;
             Ok(services)
         };
@@ -53,11 +53,11 @@ impl ListCommand {
         let (services, _) = try_join!(get_services, progress_output)?;
 
         let plain = opts.terminal.build_list(
-            &services.list,
+            &services,
             &format!("Services on {}", node.node_name()),
             &format!("No services found on {}", node.node_name()),
         )?;
-        let json = serde_json::to_string_pretty(&services.list).into_diagnostic()?;
+        let json = serde_json::to_string_pretty(&services).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)

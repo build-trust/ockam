@@ -21,7 +21,7 @@ impl EncodeFormat {
         T: Encode<()> + Output,
     {
         let o = match self {
-            EncodeFormat::Plain => e.single().wrap_err("Failed serialize output")?,
+            EncodeFormat::Plain => e.item().wrap_err("Failed serialize output")?,
             EncodeFormat::Hex => {
                 let bytes = minicbor::to_vec(e).expect("Unable to encode response");
                 hex::encode(bytes)

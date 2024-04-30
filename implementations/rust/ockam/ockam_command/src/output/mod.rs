@@ -22,7 +22,7 @@ use ockam_vault::{
 pub struct ProjectConfigCompact(pub Project);
 
 impl Output for ProjectConfigCompact {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         let pi = self.0.project_identifier()?.to_string();
         let ar = self
             .0
@@ -224,7 +224,7 @@ impl fmt::Display for PurposeKeyDisplay {
 pub struct CredentialAndPurposeKeyDisplay(#[n(0)] pub CredentialAndPurposeKey);
 
 impl Output for CredentialAndPurposeKeyDisplay {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(format!("{}", self))
     }
 }
@@ -257,7 +257,7 @@ impl fmt::Display for IdentifierDisplay {
 }
 
 impl Output for IdentifierDisplay {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(self.to_string())
     }
 }
@@ -301,7 +301,7 @@ impl fmt::Display for IdentityDisplay {
 }
 
 impl Output for IdentityDisplay {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(format!("{}", self))
     }
 }

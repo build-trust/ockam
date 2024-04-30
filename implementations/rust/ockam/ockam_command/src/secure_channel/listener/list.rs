@@ -4,9 +4,9 @@ use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
+use ockam::identity::SecureChannelListener;
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::secure_channel::ListSecureChannelListenerResponse;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
@@ -46,7 +46,7 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_listeners = async {
-            let listeners: ListSecureChannelListenerResponse =
+            let listeners: Vec<SecureChannelListener> =
                 node.ask(ctx, api::list_secure_channel_listener()).await?;
             *is_finished.lock().await = true;
             Ok(listeners)
@@ -64,7 +64,7 @@ impl ListCommand {
         let (secure_channel_listeners, _) = try_join!(get_listeners, progress_output)?;
 
         let list = opts.terminal.build_list(
-            &secure_channel_listeners.list,
+            &secure_channel_listeners,
             &format!("Secure Channel Listeners at Node {}", node.node_name()),
             &format!(
                 "No secure channel listeners found at node {}.",

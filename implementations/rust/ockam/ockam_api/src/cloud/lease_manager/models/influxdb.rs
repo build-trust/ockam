@@ -32,7 +32,7 @@ pub struct Token {
 }
 
 impl Output for Token {
-    fn single(&self) -> Result<String> {
+    fn item(&self) -> Result<String> {
         let mut output = String::new();
         let status = match self.status.as_str() {
             "active" => self

@@ -20,8 +20,7 @@ use ockam_transport_tcp::{HostnamePort, TcpInletOptions, TcpOutletOptions};
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletAccessControl, OutletList,
-    OutletStatus,
+    CreateInlet, CreateOutlet, InletStatus, OutletAccessControl, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::default_address::DefaultAddress;
@@ -36,7 +35,7 @@ use super::{NodeManager, NodeManagerWorker};
 
 /// INLETS
 impl NodeManagerWorker {
-    pub(super) async fn get_inlets(&self) -> Result<Response<InletList>, Response<Error>> {
+    pub(super) async fn get_inlets(&self) -> Result<Response<Vec<InletStatus>>, Response<Error>> {
         let inlets = self.node_manager.list_inlets().await;
         Ok(Response::ok().body(inlets))
     }
@@ -166,7 +165,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn get_outlets(&self, req: &RequestHeader) -> Response<OutletList> {
+    pub(super) async fn get_outlets(&self, req: &RequestHeader) -> Response<Vec<OutletStatus>> {
         Response::ok()
             .with_headers(req)
             .body(self.node_manager.list_outlets().await)
@@ -510,43 +509,41 @@ impl NodeManager {
         }
     }
 
-    pub async fn list_inlets(&self) -> InletList {
-        InletList::new(
-            self.registry
-                .inlets
-                .entries()
-                .await
-                .iter()
-                .map(|(alias, info)| {
-                    if let Some(status) = info.session.status().as_ref() {
-                        match &status.kind {
-                            ReplacerOutputKind::Inlet(status) => InletStatus::new(
-                                &info.bind_addr,
-                                status.worker.address().to_string(),
-                                alias,
-                                None,
-                                status.route.to_string(),
-                                status.connection_status,
-                                info.outlet_addr.to_string(),
-                            ),
-                            _ => {
-                                panic!("Unexpected outcome: {:?}", status.kind)
-                            }
-                        }
-                    } else {
-                        InletStatus::new(
+    pub async fn list_inlets(&self) -> Vec<InletStatus> {
+        self.registry
+            .inlets
+            .entries()
+            .await
+            .iter()
+            .map(|(alias, info)| {
+                if let Some(status) = info.session.status().as_ref() {
+                    match &status.kind {
+                        ReplacerOutputKind::Inlet(status) => InletStatus::new(
                             &info.bind_addr,
-                            None,
+                            status.worker.address().to_string(),
                             alias,
                             None,
-                            None,
-                            ConnectionStatus::Down,
+                            status.route.to_string(),
+                            status.connection_status,
                             info.outlet_addr.to_string(),
-                        )
+                        ),
+                        _ => {
+                            panic!("Unexpected outcome: {:?}", status.kind)
+                        }
                     }
-                })
-                .collect(),
-        )
+                } else {
+                    InletStatus::new(
+                        &info.bind_addr,
+                        None,
+                        alias,
+                        None,
+                        None,
+                        ConnectionStatus::Down,
+                        info.outlet_addr.to_string(),
+                    )
+                }
+            })
+            .collect()
     }
 }
 

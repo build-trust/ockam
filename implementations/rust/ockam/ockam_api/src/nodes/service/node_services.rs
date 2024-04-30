@@ -8,10 +8,9 @@ use ockam_node::WorkerBuilder;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
-use crate::nodes::models::node::NodeStatus;
+use crate::nodes::models::node::{NodeResources, NodeStatus};
 use crate::nodes::models::services::{
-    ServiceList, ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartUppercaseServiceRequest,
+    ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest, StartUppercaseServiceRequest,
 };
 use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::service::default_address::DefaultAddress;
@@ -69,24 +68,33 @@ impl NodeManagerWorker {
     pub(super) async fn list_services_of_type(
         &self,
         service_type: &str,
-    ) -> Result<Response<ServiceList>, Response<Error>> {
+    ) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
         match self.node_manager.list_services_of_type(service_type).await {
-            Ok(Either::Left(services)) => Ok(Response::ok().body(ServiceList::new(services))),
+            Ok(Either::Left(services)) => Ok(Response::ok().body(services)),
             Ok(Either::Right(message)) => Err(Response::bad_request_no_request(&message)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
-    pub(super) async fn list_services(&self) -> Result<Response<ServiceList>, Response<Error>> {
-        match self.node_manager.list_services().await {
-            Ok(services) => Ok(Response::ok().body(ServiceList::new(services))),
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-        }
+    pub(super) async fn list_services(
+        &self,
+    ) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
+        Ok(Response::ok().body(self.node_manager.list_services().await))
     }
 
     #[instrument(skip_all)]
     pub(super) async fn get_node_status(&self) -> Result<Response<NodeStatus>, Response<Error>> {
         match self.node_manager.get_node_status().await {
+            Ok(node_status) => Ok(Response::ok().body(node_status)),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
+        }
+    }
+
+    #[instrument(skip_all)]
+    pub(super) async fn get_node_resources(
+        &self,
+    ) -> Result<Response<NodeResources>, Response<Error>> {
+        match self.node_manager.get_node_resources().await {
             Ok(node_status) => Ok(Response::ok().body(node_status)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
@@ -103,7 +111,7 @@ impl NodeManager {
                 "the service {service_type} is not a valid service"
             )));
         };
-        let services = self.list_services().await?;
+        let services = self.list_services().await;
         Ok(Either::Left(
             services
                 .into_iter()
@@ -112,7 +120,7 @@ impl NodeManager {
         ))
     }
 
-    pub async fn list_services(&self) -> Result<Vec<ServiceStatus>> {
+    pub async fn list_services(&self) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
         self.registry
             .uppercase_services
@@ -163,8 +171,7 @@ impl NodeManager {
                     },
                 ))
             });
-
-        Ok(list)
+        list
     }
 
     pub(super) async fn start_uppercase_service_impl(
@@ -249,5 +256,27 @@ impl NodeManager {
     pub async fn get_node_status(&self) -> Result<NodeStatus> {
         let node = self.cli_state.get_node(&self.node_name).await?;
         Ok(NodeStatus::from(&node))
+    }
+
+    pub async fn get_node_resources(&self) -> Result<NodeResources> {
+        let node = self.cli_state.get_node(&self.node_name).await?;
+        let identity = self
+            .cli_state
+            .get_named_identity_by_identifier(&self.node_identifier)
+            .await?;
+        let transports = self.get_tcp_listeners();
+        let listeners = self.list_secure_channel_listeners().await;
+        let inlets = self.list_inlets().await;
+        let outlets = self.list_outlets().await;
+        let services = self.list_services().await;
+        NodeResources::from_parts(
+            node,
+            identity.name(),
+            transports,
+            listeners,
+            inlets,
+            outlets,
+            services,
+        )
     }
 }

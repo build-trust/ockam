@@ -97,7 +97,7 @@ impl ShowCommandTui for ShowTui {
         let vault = VaultOutput::new(&self.opts.state.get_named_vault(item_name).await?);
         self.terminal()
             .stdout()
-            .plain(vault.single()?)
+            .plain(vault.item()?)
             .json(serde_json::to_string(&vault).into_diagnostic()?)
             .machine(vault.name())
             .write_line()?;

@@ -61,7 +61,7 @@ impl Command for ListIdsCommand {
 struct IdentifierOutput(Identifier);
 
 impl Output for IdentifierOutput {
-    fn single(&self) -> ockam_api::Result<String> {
+    fn item(&self) -> ockam_api::Result<String> {
         Ok(self.0.to_string())
     }
 }

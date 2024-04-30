@@ -81,21 +81,6 @@ impl SecureChannelInfo {
     }
 }
 
-#[derive(Clone)]
-pub struct SecureChannelListenerInfo {
-    listener: SecureChannelListener,
-}
-
-impl SecureChannelListenerInfo {
-    pub fn new(listener: SecureChannelListener) -> Self {
-        Self { listener }
-    }
-
-    pub fn listener(&self) -> &SecureChannelListener {
-        &self.listener
-    }
-}
-
 #[derive(Default, Clone)]
 pub(crate) struct OktaIdentityProviderServiceInfo {}
 
@@ -217,7 +202,7 @@ impl From<RegistryRelayInfo> for RelayInfo {
 #[derive(Default)]
 pub(crate) struct Registry {
     pub(crate) secure_channels: SecureChannelRegistry,
-    pub(crate) secure_channel_listeners: RegistryOf<Address, SecureChannelListenerInfo>,
+    pub(crate) secure_channel_listeners: RegistryOf<Address, SecureChannelListener>,
     pub(crate) uppercase_services: RegistryOf<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,

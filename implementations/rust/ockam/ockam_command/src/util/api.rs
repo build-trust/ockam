@@ -29,6 +29,10 @@ pub(crate) fn query_status() -> Request<()> {
     Request::get("/node")
 }
 
+pub(crate) fn get_node_resources() -> Request<()> {
+    Request::get("/node/resources")
+}
+
 /// Construct a request to query node tcp listeners
 pub(crate) fn list_tcp_listeners() -> Request<()> {
     Request::get("/node/tcp/listener")
@@ -37,16 +41,6 @@ pub(crate) fn list_tcp_listeners() -> Request<()> {
 /// Construct a request to print a list of services for the given node
 pub(crate) fn list_services() -> Request<()> {
     Request::get("/node/services")
-}
-
-/// Construct a request to print a list of inlets for the given node
-pub(crate) fn list_inlets() -> Request<()> {
-    Request::get("/node/inlet")
-}
-
-/// Construct a request to print a list of outlets for the given node
-pub(crate) fn list_outlets() -> Request<()> {
-    Request::get("/node/outlet")
 }
 
 /// Construct a request builder to list all secure channels on the given node

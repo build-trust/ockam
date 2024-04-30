@@ -5,7 +5,7 @@ use ockam_api::colors::OckamColor;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam_api::nodes::models::portal::InletList;
+use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -44,7 +44,7 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_inlets = async {
-            let inlets: InletList = node.ask(ctx, Request::get("/node/inlet")).await?;
+            let inlets: Vec<InletStatus> = node.ask(ctx, Request::get("/node/inlet")).await?;
             *is_finished.lock().await = true;
             Ok(inlets)
         };
@@ -61,11 +61,11 @@ impl ListCommand {
         let (inlets, _) = try_join!(get_inlets, progress_output)?;
 
         let plain = opts.terminal.build_list(
-            &inlets.list,
+            &inlets,
             "Inlets",
             &format!("No TCP Inlets found on {}", node.node_name()),
         )?;
-        let json = serde_json::to_string_pretty(&inlets.list).into_diagnostic()?;
+        let json = serde_json::to_string(&inlets).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)
