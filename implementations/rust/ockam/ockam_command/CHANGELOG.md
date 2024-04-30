@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.123.0 - 2024-04-30
+
+### Added
+
+- Improve output of `node show` command
+- Added `aes-gcm` feature and changed how `aws-lc` is propagated
+- If logging is enabled, command output will be redirected to the logs
+- Improve output of `node create` command
+- Add the possibility to start a node in foreground mode with a configuration
+- Updated dependencies
+
 ## 0.122.0 - 2024-04-23
 
 ### Added
