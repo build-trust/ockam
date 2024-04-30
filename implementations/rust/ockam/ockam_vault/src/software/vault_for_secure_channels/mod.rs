@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 
-#[cfg(not(any(feature = "aws-lc", feature = "rust-aes",)))]
-compile_error! {"One feature must be enabled: \"aws-lc\" or \"rust-aes\""}
+#[cfg(not(any(feature = "aws-lc", feature = "rust-crypto",)))]
+compile_error! {"One feature must be enabled: \"aws-lc\" or \"rust-crypto\""}
 
 #[cfg(any(
     feature = "OCKAM_XX_25519_AES128_GCM_SHA256",

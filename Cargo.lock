@@ -4344,6 +4344,7 @@ dependencies = [
  "ockam_executor",
  "ockam_identity",
  "ockam_node",
+ "ockam_vault",
  "once_cell",
  "quickcheck",
  "rand",
