@@ -25,13 +25,13 @@ crate-type = ["rlib"]
 path = "src/lib.rs"
 
 [features]
-default = ["std", "storage", "rust-aes"]
+default = ["std", "storage", "rust-crypto"]
 disable_default_noise_protocol = []
 OCKAM_XX_25519_AES256_GCM_SHA256 = []
 OCKAM_XX_25519_AES128_GCM_SHA256 = []
 OCKAM_XX_25519_ChaChaPolyBLAKE2s = []
 aws-lc = ["dep:aws-lc-rs"]
-rust-aes = ["dep:aes-gcm"]
+rust-crypto = ["dep:aes-gcm"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.

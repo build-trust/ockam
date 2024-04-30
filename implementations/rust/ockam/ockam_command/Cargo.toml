@@ -126,4 +126,4 @@ time = { version = "0.3", default-features = false, features = ["std", "local-of
 default = ["orchestrator", "rust-crypto"]
 orchestrator = []
 aws-lc = ["ockam_vault/aws-lc", "ockam_transport_tcp/aws-lc", "ockam_api/aws-lc"]
-rust-crypto = ["ockam_vault/rust-aes", "ockam_transport_tcp/ring", "ockam_api/rust-crypto"]
+rust-crypto = ["ockam_vault/rust-crypto", "ockam_transport_tcp/ring", "ockam_api/rust-crypto"]

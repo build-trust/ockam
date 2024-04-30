@@ -396,7 +396,7 @@ jobs:
 
           if [[ '${{ matrix.job.use-cross }}' == 'true' ]]; then
             # When building using cross use rust crypto (slower) since the cross image doesn't have an up-to-date libclang
-            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release --no-default-features -F rust-aes
+            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release --no-default-features -F rust-crypto
             exit
           fi
 

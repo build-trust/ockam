@@ -15,9 +15,9 @@ crate-type = ["cdylib"]
 path = "src/lib.rs"
 
 [features]
-default = ["rust-aes"]
+default = ["rust-crypto"]
 aws-lc = ["ockam_vault/aws-lc"]
-rust-aes = ["ockam_vault/rust-aes"]
+rust-crypto = ["ockam_vault/rust-crypto"]
 
 [dependencies]
 hex = { version = "0.4", default-features = false }

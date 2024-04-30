@@ -25,7 +25,7 @@ crate-type = ["rlib"]
 path = "src/lib.rs"
 
 [features]
-default = ["std", "rust-aes"]
+default = ["std", "rust-crypto"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -53,7 +53,7 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "ockam_vault/alloc"]
 # Feature: "credentials-sso" enables support for sso on aws-config
 credentials-sso = ["aws-config/sso"]
 aws-lc = ["ockam_vault/aws-lc"]
-rust-aes = ["ockam_vault/rust-aes"]
+rust-crypto = ["ockam_vault/rust-crypto"]
 
 [dependencies]
 aws-config = { version = "1.2.1", default-features = false, features = ["rustls", "rt-tokio"] }
