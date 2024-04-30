@@ -1063,7 +1063,7 @@ dependencies = [
  "bitflags 2.4.2",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "lazy_static",
  "lazycell",
  "log",
@@ -3723,7 +3723,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.4",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -4517,7 +4517,7 @@ dependencies = [
  "rand",
  "regex",
  "reqwest",
- "rustls 0.22.4",
+ "rustls 0.23.5",
  "rustls-native-certs 0.7.0",
  "rustls-pki-types",
  "semver 1.0.22",
@@ -5112,7 +5112,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc5d5297bd7916479f7145aa39a301f4aba00a6ad18bd230e0695607d7df7a8d"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "rand",
@@ -7839,7 +7839,7 @@ dependencies = [
  "errno",
  "js-sys",
  "libc",
- "rustix 0.38.31",
+ "rustix 0.37.27",
  "wasi",
  "wasm-bindgen",
  "winapi",
