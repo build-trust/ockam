@@ -3,7 +3,7 @@ use crate::nodes::models::portal::{CreateOutlet, OutletStatus};
 use crate::nodes::NODEMANAGER_ADDR;
 use minicbor::Decoder;
 use ockam::compat::tokio::sync::Mutex;
-use ockam_abac::Expr;
+use ockam_abac::PolicyExpression;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
@@ -22,7 +22,7 @@ type BrokerId = i32;
 #[derive(Debug, Clone)]
 pub(crate) struct KafkaOutletController {
     inner: Arc<Mutex<KafkaOutletMapInner>>,
-    policy_expression: Option<Expr>,
+    policy_expression: Option<PolicyExpression>,
 }
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ struct KafkaOutletMapInner {
 }
 
 impl KafkaOutletController {
-    pub(crate) fn new(policy_expression: Option<Expr>) -> KafkaOutletController {
+    pub(crate) fn new(policy_expression: Option<PolicyExpression>) -> KafkaOutletController {
         Self {
             inner: Arc::new(Mutex::new(KafkaOutletMapInner {
                 broker_map: HashMap::new(),
@@ -68,7 +68,7 @@ impl KafkaOutletController {
         context: &Context,
         socket_address: SocketAddr,
         worker_address: Address,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
     ) -> Result<SocketAddr> {
         let hostname_port = HostnamePort::from_socket_addr(socket_address)?;
         let mut payload = CreateOutlet::new(hostname_port, false, Some(worker_address), false);

@@ -2,8 +2,9 @@ use crate::database::migrations::migration_20240111100001_add_authority_tables::
 use crate::database::migrations::migration_20240111100002_delete_trust_context::PolicyTrustContextId;
 use crate::database::migrations::migration_20240212100000_split_policies::SplitPolicies;
 use crate::database::migrations::node_migrations::migration_20231231100000_node_name_identity_attributes::NodeNameIdentityAttributes;
-use ockam_core::Result;
 use crate::database::migration_20240313100000_remove_orphan_resources::RemoveOrphanResources;
+use crate::database::migration_20240503100000_update_policy_expressions::UpdatePolicyExpressions;
+use ockam_core::Result;
 
 use crate::database::migrations::migration_set::MigrationSet;
 use crate::database::migrations::{Migrator, RustMigration};
@@ -20,6 +21,7 @@ impl MigrationSet for NodeMigrationSet {
             Box::new(PolicyTrustContextId),
             Box::new(SplitPolicies),
             Box::new(RemoveOrphanResources),
+            Box::new(UpdatePolicyExpressions),
         ];
         let mut migrator = migrate!("./src/storage/database/migrations/node_migrations/sql")?;
         migrator.set_rust_migrations(rust_migrations)?;

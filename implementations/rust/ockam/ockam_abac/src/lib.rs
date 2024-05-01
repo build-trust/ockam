@@ -21,9 +21,11 @@ pub mod resource;
 
 mod abac;
 mod boolean_expr;
+mod policy_expr;
 
 pub use abac::*;
 
+pub use boolean_expr::*;
 pub use env::Env;
 pub use error::{EvalError, ParseError};
 pub use eval::eval;
@@ -31,6 +33,7 @@ pub use expr::Expr;
 pub use policy::{
     storage::*, Policies, PolicyAccessControl, ResourcePolicy, ResourceTypePolicy, Resources,
 };
+pub use policy_expr::*;
 pub use resource::{Resource, ResourceType};
 pub use types::{Action, ResourceName, Subject};
 

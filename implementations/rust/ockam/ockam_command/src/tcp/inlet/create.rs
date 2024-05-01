@@ -13,7 +13,7 @@ use tracing::trace;
 
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_abac::Expr;
+use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::journeys::{
     JourneyEvent, NODE_NAME, TCP_INLET_ALIAS, TCP_INLET_AT, TCP_INLET_CONNECTION_STATUS,
@@ -84,7 +84,7 @@ pub struct CreateCommand {
     ///
     /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
     #[arg(hide = true, long = "allow", display_order = 900, id = "EXPRESSION")]
-    pub policy_expression: Option<Expr>,
+    pub policy_expression: Option<PolicyExpression>,
 
     /// Time to wait for the outlet to be available.
     #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]

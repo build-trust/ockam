@@ -12,7 +12,7 @@ use tokio::try_join;
 use crate::node::util::initialize_default_node;
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
-use ockam_abac::Expr;
+use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
@@ -61,7 +61,7 @@ pub struct CreateCommand {
     ///
     /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
     #[arg(hide = true, long = "allow", display_order = 904, id = "EXPRESSION")]
-    pub policy_expression: Option<Expr>,
+    pub policy_expression: Option<PolicyExpression>,
 }
 
 #[async_trait]

@@ -2,6 +2,7 @@ use std::net::IpAddr;
 
 use crate::cli_state::random_name;
 use ockam::{Address, Context, Result};
+use ockam_abac::PolicyExpression::FullExpression;
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::rand::random_string;
@@ -192,6 +193,7 @@ impl InMemoryNode {
                 }
             }
         };
+        let outlet_policy_expression = outlet_policy_expression.map(FullExpression);
 
         OutletManagerService::create(
             context,
@@ -207,7 +209,7 @@ impl InMemoryNode {
             false,
             Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
             false,
-            OutletAccessControl::PolicyExpression(outlet_policy_expression.clone()),
+            OutletAccessControl::WithPolicyExpression(outlet_policy_expression.clone()),
         )
         .await?;
 
@@ -310,6 +312,7 @@ impl InMemoryNode {
         } else {
             Some(kafka_default_policy_expression())
         };
+        let inlet_policy_expression = inlet_policy_expression.map(FullExpression);
 
         let inlet_controller = KafkaInletController::new(
             outlet_node_multiaddr.clone(),
@@ -411,7 +414,7 @@ impl NodeManager {
                 false,
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,
-                OutletAccessControl::PolicyExpression(outlet_policy_expression),
+                OutletAccessControl::WithPolicyExpression(outlet_policy_expression),
             )
             .await
         {

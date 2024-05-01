@@ -1,5 +1,7 @@
 use minicbor::{Decode, Encode};
-use ockam_abac::{Action, Expr, ResourceName, ResourcePolicy, ResourceType, ResourceTypePolicy};
+use ockam_abac::{
+    Action, Expr, PolicyExpression, ResourceName, ResourcePolicy, ResourceType, ResourceTypePolicy,
+};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use serde::Serialize;
@@ -11,11 +13,11 @@ use std::str::FromStr;
 #[cbor(map)]
 pub struct SetPolicyRequest {
     #[n(1)] pub resource: ResourceTypeOrName,
-    #[n(2)] pub expression: Expr,
+    #[n(2)] pub expression: PolicyExpression,
 }
 
 impl SetPolicyRequest {
-    pub fn new(resource: ResourceTypeOrName, expression: Expr) -> Self {
+    pub fn new(resource: ResourceTypeOrName, expression: PolicyExpression) -> Self {
         Self {
             resource,
             expression,

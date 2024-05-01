@@ -19,6 +19,10 @@ fn ident_pattern() -> &'static Regex {
     })
 }
 
+pub const OPERATORS: [&str; 10] = [
+    "and", "or", "not", "if", "<", ">", "=", "!=", "member?", "exists?",
+];
+
 #[rustfmt::skip]
 pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
     /// A stack operation.
@@ -169,12 +173,32 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
         }
     }
 
-    match vals.len() {
-        0 => Ok(None),
-        1 => Ok(Some(vals.remove(0))),
+    let expression = match vals.len() {
+        0 => None,
+        1 => Some(vals.remove(0)),
         _ => {
             vals.reverse();
-            Ok(Some(Expr::List(vals)))
+            Some(Expr::List(vals))
         }
+    };
+    match expression {
+        Some(e) => if is_operation(&e) {
+            Ok(Some(e))
+        } else {
+            Err(ParseError::message(format!("The first identifier of the expression: `{s}` must be an operation. The available operations are: {}", OPERATORS.join(", "))))
+        },
+        None => Ok(None),
+    }
+}
+
+/// Return true if this expression starts with an operation
+fn is_operation(expression: &Expr) -> bool {
+    match expression {
+        Expr::Ident(name) => OPERATORS.contains(&name.as_str()),
+        Expr::List(vs) => match vs.first() {
+            Some(v) => is_operation(v),
+            None => false,
+        },
+        _ => false,
     }
 }

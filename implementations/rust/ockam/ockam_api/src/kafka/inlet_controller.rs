@@ -3,7 +3,7 @@ use minicbor::Decoder;
 use ockam_core::compat::net::IpAddr;
 
 use ockam::compat::tokio::sync::Mutex;
-use ockam_abac::Expr;
+use ockam_abac::PolicyExpression;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::net::SocketAddr;
@@ -28,7 +28,7 @@ type BrokerId = i32;
 #[derive(Debug, Clone)]
 pub(crate) struct KafkaInletController {
     inner: Arc<Mutex<KafkaInletMapInner>>,
-    policy_expression: Option<Expr>,
+    policy_expression: Option<PolicyExpression>,
 }
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl KafkaInletController {
         remote_interceptor_route: Route,
         bind_ip: IpAddr,
         port_range: PortRange,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
     ) -> KafkaInletController {
         Self {
             inner: Arc::new(Mutex::new(KafkaInletMapInner {
@@ -119,7 +119,7 @@ impl KafkaInletController {
         to: MultiAddr,
         prefix: Route,
         suffix: Route,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
     ) -> Result<SocketAddr> {
         let mut payload = CreateInlet::to_node(
             socket_address.to_string(),

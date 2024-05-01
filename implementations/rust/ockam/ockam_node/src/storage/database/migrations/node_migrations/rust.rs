@@ -10,3 +10,5 @@ pub mod migration_20240111100002_delete_trust_context;
 pub mod migration_20240212100000_split_policies;
 /// This migration removes orphan resources
 pub mod migration_20240313100000_remove_orphan_resources;
+/// This migration updates the policy expressions so that they start with an operator
+pub mod migration_20240503100000_update_policy_expressions;

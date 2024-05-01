@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
+use ockam::abac::PolicyExpression::FullExpression;
 use tracing::{debug, error, info, warn};
 
 use ockam_api::address::get_free_address;
@@ -218,7 +219,7 @@ impl AppState {
                     .into_diagnostic()?,
                 &inlet_alias,
                 &None,
-                &Some(expr),
+                &Some(FullExpression(expr)),
                 Duration::from_secs(5),
                 true,
             )

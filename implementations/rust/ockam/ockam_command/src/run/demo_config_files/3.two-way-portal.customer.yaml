@@ -11,9 +11,9 @@ relays: $CUSTOMER
 tcp-outlets:
   from: $NAME_OF_SERVICE
   to: $ADDRESS_OF_SERVICE
-  allow: '(= subject.from-saas "inlet")'
+  allow: 'inlet'
 
 tcp-inlets:
   from: $ADDRESS_OF_INLET_TO_SAAS
   via: saas
-  allow: '(= subject.to-saas "outlet")'
+  allow: 'outlet'
