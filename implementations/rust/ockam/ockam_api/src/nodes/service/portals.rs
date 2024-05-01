@@ -8,7 +8,7 @@ use tokio::time::timeout;
 use crate::address::get_free_address_for;
 use ockam::identity::Identifier;
 use ockam::{Address, Result};
-use ockam_abac::{Action, Expr, Resource, ResourceType};
+use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, AsyncTryClone, Route};
@@ -125,7 +125,7 @@ impl NodeManagerWorker {
                 tls,
                 worker_addr,
                 reachable_from_default_secure_channel,
-                OutletAccessControl::PolicyExpression(policy_expression),
+                OutletAccessControl::WithPolicyExpression(policy_expression),
             )
             .await
         {
@@ -212,7 +212,7 @@ impl NodeManager {
             OutletAccessControl::AccessControl((incoming_ac, outgoing_ac)) => {
                 (incoming_ac, outgoing_ac)
             }
-            OutletAccessControl::PolicyExpression(expression) => {
+            OutletAccessControl::WithPolicyExpression(expression) => {
                 self.access_control(
                     ctx,
                     self.project_authority(),
@@ -331,7 +331,7 @@ impl NodeManager {
         suffix_route: Route,
         outlet_addr: MultiAddr,
         alias: String,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
         wait_connection: bool,
@@ -558,7 +558,7 @@ impl InMemoryNode {
         suffix_route: Route,
         outlet_addr: MultiAddr,
         alias: String,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
         wait_connection: bool,
@@ -590,7 +590,7 @@ struct InletSessionReplacer {
     authorized: Option<Identifier>,
     wait_for_outlet_duration: Duration,
     resource: Resource,
-    policy_expression: Option<Expr>,
+    policy_expression: Option<PolicyExpression>,
 
     // current status
     connection: Option<Connection>,
@@ -735,7 +735,7 @@ pub trait Inlets {
         outlet_addr: &MultiAddr,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
-        policy_expression: &Option<Expr>,
+        policy_expression: &Option<PolicyExpression>,
         wait_for_outlet_timeout: Duration,
         validate: bool,
     ) -> miette::Result<Reply<InletStatus>>;
@@ -754,7 +754,7 @@ impl Inlets for BackgroundNodeClient {
         outlet_addr: &MultiAddr,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
-        policy_expression: &Option<Expr>,
+        policy_expression: &Option<PolicyExpression>,
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
     ) -> miette::Result<Reply<InletStatus>> {
@@ -808,7 +808,7 @@ pub trait Outlets {
         to: HostnamePort,
         tls: bool,
         from: Option<&Address>,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
     ) -> miette::Result<OutletStatus>;
 }
 
@@ -821,7 +821,7 @@ impl Outlets for BackgroundNodeClient {
         to: HostnamePort,
         tls: bool,
         from: Option<&Address>,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
     ) -> miette::Result<OutletStatus> {
         let mut payload = CreateOutlet::new(to, tls, from.cloned(), true);
         if let Some(policy_expression) = policy_expression {

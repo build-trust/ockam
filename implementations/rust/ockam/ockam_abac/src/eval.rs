@@ -295,29 +295,29 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::abac::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
-    use crate::{eval, Env, Expr};
+    use crate::{
+        eval, subject_has_credential_attribute, subject_has_credential_policy_expression, Env, Expr,
+    };
 
     #[test]
     fn test() {
         let mut environment = Env::new();
 
-        let check_credential_expression =
-            Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY));
+        let check_credential_expression = subject_has_credential_policy_expression();
 
         let res = eval(&check_credential_expression, &environment);
 
         assert!(res.is_err());
 
         environment.put(
-            format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+            subject_has_credential_attribute().to_string(),
             Expr::CONST_FALSE,
         );
         let res = eval(&check_credential_expression, &environment).unwrap();
         matches!(res, Expr::Bool(false));
 
         environment.put(
-            format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+            subject_has_credential_attribute().to_string(),
             Expr::CONST_TRUE,
         );
 

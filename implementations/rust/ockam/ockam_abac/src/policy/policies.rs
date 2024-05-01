@@ -1,10 +1,9 @@
-use crate::abac::{ABAC_HAS_CREDENTIAL_KEY, SUBJECT_KEY};
 use crate::policy::ResourceTypePolicy;
 use crate::{
-    Action, Env, Expr, PolicyAccessControl, Resource, ResourceName, ResourcePoliciesRepository,
-    ResourcePolicy, ResourceType, ResourceTypePoliciesRepository,
+    subject_has_credential_policy_expression, Action, Env, Expr, PolicyAccessControl, Resource,
+    ResourceName, ResourcePoliciesRepository, ResourcePolicy, ResourceType,
+    ResourceTypePoliciesRepository,
 };
-use ockam_core::compat::format;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
@@ -158,7 +157,7 @@ impl Policies {
         resource_type: &ResourceType,
         action: &Action,
     ) -> Result<()> {
-        let expression = Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY));
+        let expression = subject_has_credential_policy_expression();
         self.resource_types_policies_repository
             .store_policy(resource_type, action, &expression)
             .await

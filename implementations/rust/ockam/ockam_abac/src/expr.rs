@@ -354,6 +354,7 @@ cfg_if! {
 #[cfg(test)]
 mod tests {
     use super::Expr;
+    use crate::parser::OPERATORS;
     use crate::{eval, parser::parse, Env};
     use core::cmp::Ordering;
     use ockam_core::compat::string::ToString;
@@ -371,6 +372,10 @@ mod tests {
 
             fn go(n: u8, g: &mut Gen) -> Expr {
                 match n {
+                    0 => {
+                        let operator = *g.choose(&OPERATORS).unwrap();
+                        Expr::Ident(operator.to_string())
+                    }
                     1 => Expr::Str(gen_string()),
                     2 => Expr::Int(i64::arbitrary(g)),
                     3 => Expr::Float({
@@ -396,8 +401,13 @@ mod tests {
                 }
             }
 
-            let typ = *g.choose(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
-            go(typ, g)
+            // generate a random expression
+            let typ = *g.choose(&[0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
+            let expr = go(typ, g);
+
+            // make sure that the final expression starts with an operator
+            let operator = *g.choose(&OPERATORS).unwrap();
+            Expr::List(vec![Expr::Ident(operator.to_string()), expr])
         }
     }
 
@@ -559,7 +569,7 @@ mod tests {
 
     #[test]
     fn evil() {
-        let x = parse(EVIL).unwrap().unwrap();
+        let x = parse(&format!("(= {EVIL} {EVIL})")).unwrap().unwrap();
         eval(&x, &Env::new()).unwrap();
         let y = x.to_string();
         let z = parse(&y).unwrap().unwrap();
@@ -593,5 +603,18 @@ mod tests {
             .tests(1000)
             .min_tests_passed(1000)
             .quickcheck(property as fn(_))
+    }
+
+    #[test]
+    fn first_identifier_must_be_an_operation() {
+        test_failure("a or b", &format!("The first identifier of the expression: `a or b` must be an operation. The available operations are: {}", OPERATORS.join(", ")));
+    }
+
+    /// HELPERS
+    fn test_failure(s: &str, expected_message: &str) {
+        match parse(s) {
+            Err(e) => assert!(e.to_string().contains(expected_message)),
+            Ok(_) => panic!("this expression should fail"),
+        }
     }
 }

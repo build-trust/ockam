@@ -1,0 +1,71 @@
+# Policy expressions
+
+Policies can be specified using 2 formats:
+
+  - A simple boolean expression
+  - A complete policy expression
+
+# Boolean expressions
+
+A boolean expression contains names and boolean operators: `and`, `or`, `not`.
+Here are some examples of boolean expressions:
+```
+a
+a and b
+a or b
+(a and b) or (b or (not c))
+```
+
+The names must contain can contain letters, digits, and separators like,: `.`, `-`, or `_`.
+However a name cannot start with a digit or a `.`.
+For example:
+```
+web
+internal_web1
+external.db-production
+```
+
+A boolean expression is transformed as a full policy expression before being stored.
+Names are transformed to attributes on a `subject` and set to the value `true`. For example, the expression `a and b`
+becomes:
+```
+(and (= subject.a "true") (= subject.b "true"))
+```
+
+# Policy expressions
+
+A policy expression is an expression containing identifiers and operators, which can eventually be evaluated to
+a boolean value given an environment (a list of key/value pairs) assigning a value to each name.
+
+For example, the expression `(= subject.component "db")` will evaluate to `true` given an environment containing the
+name `subject.component` and the value `"db"`. The type of values associated to names are:
+
+  - `string`.
+  - `bool`.
+  - `float`.
+  - `int`.
+  - a list of values with one of the types above.
+
+The structure of a policy expression consists in an operator followed by one or several arguments:
+```
+(operator argument1 argument2)
+```
+
+## Operators
+
+Here is the list of available operators:
+
+  Operator   | Arity  | Example                       | Description
+  --------   | -----  | ----------------------------  | -------
+  `and`      | 2      | `(and (= a 1) (= b 2))`       | true if both expressions are true.
+  `or`       | 2      | `(or (= a 1) (= b 2))`        | true if one expression is true.
+  `not`      | 1      | `(not (= a 1))`               | true if the expression is false.
+  `if`       | 3      | `(if (= a 1) (= b 2) (= c 3)` | if the first expression is true return the value of the second expression. Otherwise return the value of the third expression.
+  `<`        | 2      | `(< a 1)`                     | true if a value  is strictly less than another value.
+  `>`        | 2      | `(> a 1)`                     | true if a value is strictly greater than another value.
+  `=`        | 2      | `(= a "value")`               | true if a value is equal to another value.
+  `!=`       | 2      | `(!= a "value")`              | true if a value is not equal to another value.
+  `member?`  | 2      | `(member? a ["db1", "db2"])`  | true if a value is contained in a list of other values.
+  `exists?`  | n >= 1 | `(exists? a b c)`             | true if one of the identifiers has an associated value in the environment.
+
+```

@@ -4,8 +4,8 @@ use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::KAFKA_OUTLET_INTERCEPTOR_ADDRESS;
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{Any, Context, Result, Routed, Worker};
-use ockam_abac::Expr;
 use ockam_abac::IncomingAbac;
+use ockam_abac::PolicyExpression;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, IncomingAccessControl};
 use ockam_node::WorkerBuilder;
@@ -27,7 +27,7 @@ impl OutletManagerService {
         secure_channels: Arc<SecureChannels>,
         authority_identifier: Identifier,
         default_secure_channel_listener_flow_control_id: FlowControlId,
-        policy_expression: Option<Expr>,
+        policy_expression: Option<PolicyExpression>,
     ) -> Result<()> {
         let flow_controls = context.flow_controls();
 

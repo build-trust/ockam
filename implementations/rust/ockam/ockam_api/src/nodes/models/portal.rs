@@ -8,7 +8,7 @@ use std::time::Duration;
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::route;
-use ockam_abac::Expr;
+use ockam_abac::PolicyExpression;
 use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::HostnamePort;
@@ -49,7 +49,7 @@ pub struct CreateInlet {
     /// The expression for the access control policy for this inlet.
     /// If not set, the policy set for the [TCP inlet resource type](ockam_abac::ResourceType::TcpInlet)
     /// will be used.
-    #[n(8)] pub(crate) policy_expression: Option<Expr>,
+    #[n(8)] pub(crate) policy_expression: Option<PolicyExpression>,
     /// Create the inlet and wait for the outlet to connect
     #[n(9)] pub(crate) wait_connection: bool,
 }
@@ -102,7 +102,7 @@ impl CreateInlet {
         self.wait_for_outlet_duration = Some(Duration::from_millis(ms))
     }
 
-    pub fn set_policy_expression(&mut self, expression: Expr) {
+    pub fn set_policy_expression(&mut self, expression: PolicyExpression) {
         self.policy_expression = Some(expression);
     }
 
@@ -152,7 +152,7 @@ pub struct CreateOutlet {
     /// The expression for the access control policy for this outlet.
     /// If not set, the policy set for the [TCP outlet resource type](ockam_abac::ResourceType::TcpOutlet)
     /// will be used.
-    #[n(5)] pub policy_expression: Option<Expr>,
+    #[n(5)] pub policy_expression: Option<PolicyExpression>,
 }
 
 impl CreateOutlet {
@@ -171,7 +171,7 @@ impl CreateOutlet {
         }
     }
 
-    pub fn set_policy_expression(&mut self, expression: Expr) {
+    pub fn set_policy_expression(&mut self, expression: PolicyExpression) {
         self.policy_expression = Some(expression);
     }
 }
@@ -307,5 +307,5 @@ pub enum OutletAccessControl {
             Arc<dyn OutgoingAccessControl>,
         ),
     ),
-    PolicyExpression(Option<Expr>),
+    WithPolicyExpression(Option<PolicyExpression>),
 }

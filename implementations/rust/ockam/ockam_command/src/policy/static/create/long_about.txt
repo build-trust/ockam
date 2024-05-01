@@ -1,0 +1,1 @@
+This command creates a new policy associated to a resource.

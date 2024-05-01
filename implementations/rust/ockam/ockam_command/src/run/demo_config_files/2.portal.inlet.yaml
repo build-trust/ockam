@@ -9,4 +9,4 @@ tcp-inlets:
   web-inlet:
     from: $OCKAM_PORT
     via: db
-    allow: '(= subject.component "db")'
+    allow: 'component.db'

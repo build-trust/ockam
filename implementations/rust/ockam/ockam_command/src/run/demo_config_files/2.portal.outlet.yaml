@@ -10,4 +10,4 @@ relays: db
 tcp-outlets:
   db-outlet:
     to: $PG_PORT
-    allow: '(= subject.component "web")'
+    allow: 'component.web'

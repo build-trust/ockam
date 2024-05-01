@@ -19,7 +19,7 @@ use ockam::identity::{
 };
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
-use ockam_abac::{Action, Env, Expr, Policies, Resource, Resources};
+use ockam_abac::{Action, Env, Policies, PolicyExpression, Resource, Resources};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     AllowAll, AsyncTryClone, CachedIncomingAccessControl, CachedOutgoingAccessControl,
@@ -369,7 +369,7 @@ impl NodeManager {
         authority: Option<Identifier>,
         resource: Resource,
         action: Action,
-        expression: Option<Expr>,
+        expression: Option<PolicyExpression>,
     ) -> ockam_core::Result<(
         Arc<dyn IncomingAccessControl>,
         Arc<dyn OutgoingAccessControl>,
@@ -387,7 +387,11 @@ impl NodeManager {
             let policies = self.policies();
             if let Some(expression) = expression {
                 policies
-                    .store_policy_for_resource_name(&resource.resource_name, &action, &expression)
+                    .store_policy_for_resource_name(
+                        &resource.resource_name,
+                        &action,
+                        &expression.to_expression(),
+                    )
                     .await?;
             }
             self.resources().store_resource(&resource).await?;

@@ -28,7 +28,7 @@ teardown() {
   setup_home_dir
   run_success $OCKAM project enroll $db_ticket
   run_success $OCKAM relay create $relay_name
-  run_success $OCKAM policy create --resource-type tcp-outlet --expression '(= subject.component "web")'
+  run_success $OCKAM policy create --resource-type tcp-outlet --expression 'component.web'
   run_success $OCKAM tcp-outlet create --to $PYTHON_SERVER_PORT
 
   # WebApp - Has the right attribute, so it should be able to connect
@@ -58,7 +58,7 @@ teardown() {
   run_success $OCKAM project enroll $db_ticket
   run_success $OCKAM relay create $relay_name
   ### Set wrong resource type policy
-  run_success $OCKAM policy create --resource-type tcp-outlet --expression '(= subject.component "NOT_web")'
+  run_success $OCKAM policy create --resource-type tcp-outlet --expression 'component.NOT_web'
   run_success $OCKAM tcp-outlet create --to $PYTHON_SERVER_PORT
 
   # WebApp
@@ -72,10 +72,10 @@ teardown() {
 
   # Update resource type policy and try again. Now the policy is satisfied
   export OCKAM_HOME=$DB_OCKAM_HOME
-  run_success $OCKAM policy create --resource-type tcp-outlet --expression '(= subject.component "web")'
+  run_success $OCKAM policy create --resource-type tcp-outlet --expression 'component.web'
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   # Update the policy for the outlet and try again. It will fail because the local policy is not satisfied
-  run_success $OCKAM policy create --resource outlet --expression '(= subject.component "NOT_web")'
+  run_success $OCKAM policy create --resource outlet --expression 'componen.NOT_web'
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 }

@@ -1,4 +1,4 @@
-use ockam_abac::{Action, Expr};
+use ockam_abac::{Action, PolicyExpression};
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::{async_trait, Result};
 use ockam_node::Context;
@@ -14,7 +14,7 @@ impl NodeManagerWorker {
         &self,
         action: &str,
         resource: ResourceTypeOrName,
-        expression: Expr,
+        expression: PolicyExpression,
     ) -> Result<Response<()>, Response<Error>> {
         self.node_manager
             .set_policy(resource, action, expression)
@@ -65,18 +65,26 @@ impl NodeManager {
         &self,
         resource: ResourceTypeOrName,
         action: &str,
-        expression: Expr,
+        expression: PolicyExpression,
     ) -> Result<()> {
         let action = Action::from_str(action)?;
         match resource {
             ResourceTypeOrName::Type(resource_type) => {
                 self.policies()
-                    .store_policy_for_resource_type(&resource_type, &action, &expression)
+                    .store_policy_for_resource_type(
+                        &resource_type,
+                        &action,
+                        &expression.to_expression(),
+                    )
                     .await
             }
             ResourceTypeOrName::Name(resource_name) => {
                 self.policies()
-                    .store_policy_for_resource_name(&resource_name, &action, &expression)
+                    .store_policy_for_resource_name(
+                        &resource_name,
+                        &action,
+                        &expression.to_expression(),
+                    )
                     .await
             }
         }
@@ -157,7 +165,7 @@ pub trait Policies {
         ctx: &Context,
         resource: &ResourceTypeOrName,
         action: &Action,
-        expression: &Expr,
+        expression: &PolicyExpression,
     ) -> miette::Result<()>;
 
     async fn show_policy(
@@ -188,7 +196,7 @@ impl Policies for BackgroundNodeClient {
         ctx: &Context,
         resource: &ResourceTypeOrName,
         action: &Action,
-        expression: &Expr,
+        expression: &PolicyExpression,
     ) -> miette::Result<()> {
         let payload = SetPolicyRequest::new(resource.clone(), expression.clone());
         let request = Request::post(policy_path(action)).body(payload);

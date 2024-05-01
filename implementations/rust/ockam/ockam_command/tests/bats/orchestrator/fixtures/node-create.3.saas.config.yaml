@@ -2,10 +2,10 @@ relays: to-$SAAS_RELAY_NAME
 
 tcp-outlets:
   to: "127.0.0.1:$SAAS_OUTLET_PORT"
-  allow: '(= subject.to-saas "inlet")'
+  allow: 'inlet'
 
 tcp-inlets:
   from: "127.0.0.1:$SAAS_INLET_PORT"
   to: $CUSTOMER_SERVICE_NAME
   via: to-$CUSTOMER
-  allow: '(= subject.from-saas "outlet")'
+  allow: 'outlet'
