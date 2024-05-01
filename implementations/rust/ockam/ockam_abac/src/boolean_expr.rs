@@ -1,11 +1,25 @@
-use core::fmt::{Display, Formatter};
-use ockam_core::compat::str::FromStr;
-use winnow::error::{ContextError, ErrMode, StrContext};
-use winnow::Parser;
-
 use crate::Expr;
-use crate::ParseError;
+#[cfg(feature = "std")]
+use core::str::FromStr;
+use minicbor::{Decode, Encode};
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::fmt::*;
+use ockam_core::compat::format;
+use ockam_core::compat::string::*;
+use ockam_core::compat::vec::*;
+#[cfg(feature = "std")]
+use ockam_core::Result;
+#[cfg(feature = "std")]
+use std::ops::Not;
+#[cfg(feature = "std")]
+use winnow::error::{ContextError, ErrMode, StrContext};
+#[cfg(feature = "std")]
+use winnow::Parser;
 use Expr::*;
+
+#[cfg(feature = "std")]
+const NAME_FORMAT: &str =
+    "an alphanumerical name, separated with '.', '-' or '_'. The first character cannot be a digit or a '.'";
 
 /// A BooleanExpr models a boolean expression made of:
 ///
@@ -20,12 +34,17 @@ use Expr::*;
 ///  - Printed as a string
 ///  - Transformed into a policy expression where names become boolean attributes set to the value 'true'.
 ///
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Decode, Encode)]
 pub enum BooleanExpr {
-    Name(String),
-    Or(Box<BooleanExpr>, Box<BooleanExpr>),
-    And(Box<BooleanExpr>, Box<BooleanExpr>),
-    Not(Box<BooleanExpr>),
+    #[n(0)]
+    Name(#[n(0)] String),
+    #[n(1)]
+    Or(#[n(0)] Box<BooleanExpr>, #[n(1)] Box<BooleanExpr>),
+    #[n(2)]
+    And(#[n(0)] Box<BooleanExpr>, #[n(1)] Box<BooleanExpr>),
+    #[n(3)]
+    Not(#[n(0)] Box<BooleanExpr>),
+    #[n(4)]
     Empty,
 }
 
@@ -43,6 +62,7 @@ impl PartialEq for BooleanExpr {
 
 impl Eq for BooleanExpr {}
 
+#[cfg(feature = "std")]
 impl Display for BooleanExpr {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         fn to_nested_string(b: &BooleanExpr) -> String {
@@ -56,7 +76,7 @@ impl Display for BooleanExpr {
         }
 
         match self {
-            BooleanExpr::Name(s) => f.write_str(&s),
+            BooleanExpr::Name(s) => f.write_str(s),
             BooleanExpr::Or(e1, e2) => f.write_str(&format!(
                 "{} or {}",
                 to_nested_string(e1),
@@ -73,8 +93,9 @@ impl Display for BooleanExpr {
     }
 }
 
+#[cfg(feature = "std")]
 impl TryFrom<&str> for BooleanExpr {
-    type Error = ParseError;
+    type Error = crate::ParseError;
 
     fn try_from(input: &str) -> Result<Self, Self::Error> {
         let input = input.to_string();
@@ -83,16 +104,18 @@ impl TryFrom<&str> for BooleanExpr {
     }
 }
 
+#[cfg(feature = "std")]
 impl FromStr for BooleanExpr {
-    type Err = ParseError;
+    type Err = crate::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::try_from(s)
     }
 }
 
+#[cfg(feature = "std")]
 impl TryFrom<String> for BooleanExpr {
-    type Error = ParseError;
+    type Error = crate::ParseError;
 
     fn try_from(input: String) -> Result<Self, Self::Error> {
         Self::try_from(input.as_str())
@@ -115,7 +138,8 @@ impl BooleanExpr {
         BooleanExpr::And(Box::new(e1), Box::new(e2))
     }
 
-    /// Create the negation of 2 boolean expressions.
+    /// Create the negation of a boolean expression.
+    #[allow(clippy::should_implement_trait)]
     pub fn not(e: BooleanExpr) -> BooleanExpr {
         BooleanExpr::Not(Box::new(e))
     }
@@ -153,7 +177,8 @@ impl BooleanExpr {
     }
 
     /// Parse a string as a boolean expression
-    pub fn parse(input: &mut &str) -> Result<BooleanExpr, ParseError> {
+    #[cfg(feature = "std")]
+    pub fn parse(input: &mut &str) -> Result<BooleanExpr, crate::ParseError> {
         parsers::expr
             .parse_next(input)
             .map_err(|e| {
@@ -163,23 +188,33 @@ impl BooleanExpr {
                         context
                             .context()
                             .map(|c| format!("{c}"))
+                            // just display the deepest context message
                             .take(1)
                             .collect::<Vec<_>>()
                             .join("\n")
                     }
                     e => format!("{e:?}"),
                 };
-                ParseError::message(messages)
+                crate::ParseError::message(messages)
             })
             .and_then(|expr| {
                 if input.is_empty() {
                     Ok(expr)
                 } else {
-                    Err(ParseError::message(format!(
+                    Err(crate::ParseError::message(format!(
                         "successfully parsed: `{expr}`, but `{input}` cannot be parsed"
                     )))
                 }
             })
+    }
+}
+
+#[cfg(feature = "std")]
+impl Not for BooleanExpr {
+    type Output = BooleanExpr;
+
+    fn not(self) -> Self::Output {
+        BooleanExpr::not(self)
     }
 }
 
@@ -191,9 +226,10 @@ impl BooleanExpr {
 ///    and_expr : not_expr (or not_expr)*
 ///    not_expr : not not_expr | parenthesized | name
 ///    parenthesized : '(' expr ')'
-///    name : (alphanum | '_' | '-')+
+///    name : (alphanum | '.' | '_' | '-')+
+#[cfg(feature = "std")]
 mod parsers {
-    use crate::boolean_expr::BooleanExpr;
+    use crate::boolean_expr::{BooleanExpr, NAME_FORMAT};
     use winnow::ascii::multispace0;
     use winnow::combinator::{alt, delimited, separated};
     use winnow::error::StrContext;
@@ -211,7 +247,7 @@ mod parsers {
             .context(StrContext::Expected("expression (or expression)*".into()))
             .parse_next(i)?
             .into_iter()
-            .reduce(|e, acc| BooleanExpr::or(e, acc))
+            .reduce(BooleanExpr::or)
             .unwrap_or(BooleanExpr::empty()))
     }
 
@@ -225,7 +261,7 @@ mod parsers {
             .context(StrContext::Expected("expression (and expression)*".into()))
             .parse_next(i)?
             .into_iter()
-            .reduce(|e, acc| BooleanExpr::and(e, acc))
+            .reduce(BooleanExpr::and)
             .unwrap_or(BooleanExpr::empty()))
     }
 
@@ -251,10 +287,20 @@ mod parsers {
 
     /// Parse a name
     pub fn name(input: &mut &str) -> PResult<BooleanExpr> {
-        take_while(1.., |c| AsChar::is_alphanum(c) || c == '_' || c == '-')
-            .context(StrContext::Expected(
-                "an alphanumerical name separated with '-' or '_'".into(),
-            ))
+        fn parse_identifier(input: &mut &str) -> PResult<String> {
+            (
+                // we forbid the first character to be a number or a dot
+                take_while(1..2, |c| AsChar::is_alpha(c) || c == '_' || c == '-'),
+                take_while(0.., |c| {
+                    AsChar::is_alphanum(c) || c == '.' || c == '_' || c == '-'
+                }),
+            )
+                .map(|(c, cs): (&str, &str)| format!("{c}{cs}"))
+                .parse_next(input)
+        }
+
+        parse_identifier
+            .context(StrContext::Expected(NAME_FORMAT.into()))
             .parse_next(input)
             .map(|vs| BooleanExpr::Name(vs.to_string()))
     }
@@ -295,6 +341,10 @@ mod tests {
 
     #[test]
     fn boolean_expr_to_expr() {
+        let boolean_expr = BooleanExpr::name("a");
+        let expr = parse("(= subject.a \"true\")").unwrap().unwrap();
+        assert_eq!(boolean_expr.to_expression(), expr);
+
         let boolean_expr = BooleanExpr::and(
             BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b")),
             BooleanExpr::not(BooleanExpr::name("c")),
@@ -317,6 +367,10 @@ mod tests {
         let expr = "a and b".to_string();
         assert_eq!(boolean_expr.to_string(), expr);
 
+        let boolean_expr = BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b"));
+        let expr = "a or b".to_string();
+        assert_eq!(boolean_expr.to_string(), expr);
+
         let boolean_expr = BooleanExpr::and(
             BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b")),
             BooleanExpr::not(BooleanExpr::name("c")),
@@ -328,12 +382,16 @@ mod tests {
     #[test]
     fn parse_name() {
         test_parse_name("name");
-        test_parse_name("name");
+        test_parse_name("name.1");
         test_parse_name("a-b");
         test_parse_name("a-b-c");
+        test_parse_name("a.b.c");
         test_parse_name("a_b-c");
-        test_parse_name("0a1_2b-3c4");
+        test_parse_name("a1_2b-3c4");
         test_parse_name("___reserved");
+
+        test_fail_parse_name("*");
+        test_fail_parse_name("1");
     }
 
     #[test]
@@ -409,10 +467,7 @@ mod tests {
             &mut "na*me",
             "successfully parsed: `na`, but `*me` cannot be parsed",
         );
-        test_parse_error(
-            &mut "()",
-            "expected `an alphanumerical name separated with '-' or '_'`",
-        );
+        test_parse_error(&mut "()", &format!("expected `{NAME_FORMAT}`"));
         test_parse_error(
             &mut "a and",
             "successfully parsed: `a`, but ` and` cannot be parsed",
@@ -439,6 +494,17 @@ mod tests {
         )
     }
 
+    /// Test a name parsing failure
+    fn test_fail_parse_name(input: &str) {
+        let i = input.to_string();
+        let input_copy = input.to_string();
+        let expected = NAME_FORMAT;
+        match name.parse_next(&mut i.as_str()) {
+            Ok(actual) => panic!("there should be an error '{expected}', when parsing {input_copy}. This expression was parsed instead {actual:?}"),
+            Err(e) => assert!(e.to_string().contains(expected), "actual error message:\n{e}\nexpected message:\n{expected}"),
+        }
+    }
+
     /// Test the parsing of a boolean expression
     fn test_parse_expr(input: &mut &str, expected: BooleanExpr) {
         let i = input.to_string();
@@ -451,9 +517,10 @@ mod tests {
         input: &mut &'a str,
         expected: O,
     ) {
+        let input_copy = input.to_string();
         match parser.parse_next(input) {
             Ok(actual) => assert_eq!(actual, expected),
-            Err(e) => assert!(false, "error {e:?}"),
+            Err(e) => panic!("error {e:?}. The input is {input_copy}"),
         }
     }
 
@@ -461,9 +528,9 @@ mod tests {
     fn test_parse_error(input: &mut &str, expected: &str) {
         let input_copy = input.to_string();
         match BooleanExpr::parse(input) {
-            Ok(actual) => assert!(false, "there should be an error '{expected}', when parsing {input_copy}. This expression was parsed instead {actual:?}"),
-            Err(ParseError::Message(e)) => assert!(e.contains(expected), "actual error message:\n{e}\nexpected message:\n{expected}"),
-            Err(e) => assert!(false, "expected a Message ParseError, got: {e}"),
+            Ok(actual) => panic!("there should be an error '{expected}', when parsing {input_copy}. This expression was parsed instead {actual:?}"),
+            Err(crate::ParseError::Message(e)) => assert!(e.contains(expected), "actual error message:\n{e}\nexpected message:\n{expected}"),
+            Err(e) => panic!("expected a Message ParseError, got: {e}"),
         }
     }
 }

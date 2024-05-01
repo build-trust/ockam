@@ -33,6 +33,7 @@ impl OutgoingAccessControl for OutgoingPolicyAccessControl {
             )
             .await?
         {
+            debug!("found the policy {expr:?} to be used for outgoing access control");
             expr
         } else {
             // If no expression exists for this resource and action, access is denied:

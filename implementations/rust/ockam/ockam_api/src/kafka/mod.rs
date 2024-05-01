@@ -13,9 +13,8 @@ mod secure_channel_map;
 
 pub(crate) use inlet_controller::KafkaInletController;
 use ockam::identity::Identifier;
-use ockam_abac::expr::{eq, ident, or, str};
-use ockam_abac::Expr;
-use ockam_abac::{ABAC_HAS_CREDENTIAL_KEY, ABAC_IDENTIFIER_KEY, SUBJECT_KEY};
+use ockam_abac::expr::{eq, or, str};
+use ockam_abac::{subject_has_credential_policy_expression, subject_identifier_attribute, Expr};
 use ockam_core::Address;
 pub(crate) use outlet_service::prefix_relay::PrefixRelayService;
 pub(crate) use outlet_service::OutletManagerService;
@@ -31,13 +30,13 @@ pub fn kafka_outlet_address(broker_id: i32) -> Address {
     format!("kafka_outlet_{}", broker_id).into()
 }
 pub fn kafka_default_policy_expression() -> Expr {
-    Expr::Ident(format!("{SUBJECT_KEY}.{ABAC_HAS_CREDENTIAL_KEY}"))
+    subject_has_credential_policy_expression()
 }
 
 pub fn kafka_policy_expression(project_identifier: &Identifier) -> Expr {
     or([
         eq([
-            ident(format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY)),
+            subject_identifier_attribute(),
             str(project_identifier.to_string()),
         ]),
         kafka_default_policy_expression(),

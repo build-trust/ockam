@@ -24,6 +24,7 @@ impl IncomingAccessControl for IncomingPolicyAccessControl {
             )
             .await?
         {
+            debug!("found the policy {expr:?} to be used for incoming access control");
             expr
         } else {
             // If no expression exists for this resource and action, access is denied:

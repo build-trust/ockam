@@ -6,18 +6,26 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::Context;
-use ockam_abac::{Action, Expr, ResourceName, ResourceType};
+use ockam_abac::{Action, PolicyExpression, ResourceName, ResourceType};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::policies::ResourceTypeOrName;
 use ockam_api::nodes::{BackgroundNodeClient, Policies};
 use ockam_api::{fmt_ok, fmt_warn};
 
+use crate::docs;
 use crate::node::util::initialize_default_node;
 use crate::{Command, CommandGlobalOpts};
 
 use super::resource_type_parser;
 
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
 #[derive(Clone, Debug, Args)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "NODE_NAME")]
     pub at: Option<String>,
@@ -33,7 +41,7 @@ pub struct CreateCommand {
     pub resource: Option<ResourceName>,
 
     #[arg(long)]
-    pub expression: Expr,
+    pub expression: PolicyExpression,
 }
 
 #[async_trait]

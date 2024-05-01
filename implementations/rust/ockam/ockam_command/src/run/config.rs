@@ -434,7 +434,7 @@ mod tests {
                         args: vec![
                             ("from".to_string(), "4000".into()),
                             ("via".to_string(), "db".into()),
-                            ("allow".to_string(), "(= subject.component \"db\")".into()),
+                            ("allow".to_string(), "component.db".into()),
                         ]
                         .into_iter()
                         .collect(),
@@ -471,7 +471,7 @@ mod tests {
                     Args {
                         args: vec![
                             ("to".to_string(), "5432".into()),
-                            ("allow".to_string(), "(= subject.component \"web\")".into()),
+                            ("allow".to_string(), "component.web".into()),
                         ]
                         .into_iter()
                         .collect(),

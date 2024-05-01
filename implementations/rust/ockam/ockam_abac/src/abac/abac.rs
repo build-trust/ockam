@@ -4,6 +4,7 @@ use ockam_core::compat::fmt::Debug;
 use ockam_core::compat::fmt::Formatter;
 use ockam_core::compat::str;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::vec::vec;
 use ockam_core::Result;
 use ockam_core::{Error, RelayMessage};
 
@@ -147,7 +148,7 @@ impl Abac {
         // add the identifier itself as a subject parameter
         // it's important to do it before we put other attributes, so it can't be overwritten
         environment.put(
-            format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY),
+            subject_identifier_attribute().to_string(),
             str(identifier.to_string()),
         );
 
@@ -158,7 +159,7 @@ impl Abac {
         {
             Some(attrs) => {
                 environment.put(
-                    format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+                    subject_has_credential_attribute().to_string(),
                     Expr::CONST_TRUE,
                 );
 
@@ -209,7 +210,7 @@ impl Abac {
             }
             None => {
                 environment.put(
-                    format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY),
+                    subject_has_credential_attribute().to_string(),
                     Expr::CONST_FALSE,
                 );
             }
@@ -246,4 +247,23 @@ impl Abac {
             }
         }
     }
+}
+
+/// Return a policy expression checking if the subject has a valid credential
+pub fn subject_has_credential_policy_expression() -> Expr {
+    Expr::List(vec![
+        Expr::Ident("=".to_string()),
+        subject_has_credential_attribute(),
+        Expr::Bool(true),
+    ])
+}
+
+/// Identifier for the subject 'has_credential' attribute
+pub fn subject_has_credential_attribute() -> Expr {
+    Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_HAS_CREDENTIAL_KEY))
+}
+
+/// Identifier for the subject 'identifier' attribute
+pub fn subject_identifier_attribute() -> Expr {
+    Expr::Ident(format!("{}.{}", SUBJECT_KEY, ABAC_IDENTIFIER_KEY))
 }
