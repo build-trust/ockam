@@ -1,0 +1,75 @@
+version: "3.8"
+networks:
+  application_team:
+    driver: bridge
+services:
+
+  # Start a consumer and producer node with ockam.
+  #
+  # Read kafka_ockam.dockerfile and run_ockam.sh to understand
+  # how the node is set up.
+  consumer:
+    build:
+      context: .
+      dockerfile: ../kafka_ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
+      KAFKA_CLUSTER_API_KEY: ${KAFKA_CLUSTER_API_KEY:-}
+      KAFKA_CLUSTER_API_SECRET: ${KAFKA_CLUSTER_API_SECRET:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - (
+          sleep 10;
+          echo "";
+          echo "Messages sent from producers will appear shortly.";
+          echo "It may take a couple of minutes for the first message to appear.";
+          echo "=======================================================================";
+          echo "Press Ctrl+C to stop the container at any time, then execute "\
+          "'./run.sh cleanup' to remove all containers.";
+          echo "";
+          kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --consumer.config kafka.config --max-messages 8;
+          if [ "$?" == "0" ]; then
+            echo "The example run was successful 🥳";
+          fi;
+          echo "Messages received successfully, please Ctrl+C to exit";
+          tail -f /dev/null;
+        )
+
+  producer:
+    build:
+      context: .
+      dockerfile: ../kafka_ockam.dockerfile
+    environment:
+      ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
+      KAFKA_CLUSTER_API_KEY: ${KAFKA_CLUSTER_API_KEY:-}
+      KAFKA_CLUSTER_API_SECRET: ${KAFKA_CLUSTER_API_SECRET:-}
+    networks:
+      - application_team
+    command:
+      - -c
+      - (
+          MESSAGES=(
+            "Message - 🔥"
+            "Message - 🌟"
+            "Message - 🚀"
+            "Message - 🐷"
+            "Message - 🦁"
+            "Message - 🦊"
+            "Message - 🐰"
+            "Message - 🐮"
+          );
+
+          kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --command-config kafka.config --create --topic demo;
+          sleep 10;
+          for n in {0..7}; do
+            sleep 2;
+            echo -n $${MESSAGES[n]} | kafka-console-producer.sh
+              --topic demo
+              --producer.config kafka.config
+              --bootstrap-server 127.0.0.1:9092
+              --producer-property request.timeout.ms=30000;
+          done;
+          tail -f /dev/null
+        )
