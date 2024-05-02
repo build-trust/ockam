@@ -1,7 +1,7 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Address, AllowAll, Result, Routed, Worker};
-use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
-use ockam_transport_udp::{UdpTransport, UDP};
+use ockam_core::{route, Result, Routed, Worker};
+use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransport, UDP};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tracing::{debug, error, trace};
@@ -14,29 +14,32 @@ const TIMEOUT: Duration = Duration::from_secs(5);
 /// UDP port that we sent to.
 #[ockam_macros::test]
 async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
-    // Find an available port
-    let bind_addr = *utils::available_local_ports(1).await?.first().unwrap();
-    debug!("bind_addr = {:?}", bind_addr);
-
     // Transport
     let transport = UdpTransport::create(ctx).await?;
 
     // Listener
-    {
-        ctx.start_worker("echoer", Echoer::new()).await?;
-        transport.listen(bind_addr.to_string()).await?;
-    };
+    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    let bind = transport
+        .bind(UdpBindArguments::new(), UdpBindOptions::new())
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("echoer", bind.flow_control_id());
 
     // Sender
     {
-        let route = route![(UDP, bind_addr.to_string()), "echoer"];
-        let mut child_ctx = ctx
-            .new_detached(Address::random_tagged("App.detached"), AllowAll, AllowAll)
-            .await?;
+        let route = route![
+            bind.sender_address().clone(),
+            (UDP, bind.bind_address().to_string()),
+            "echoer"
+        ];
 
-        child_ctx.send(route, String::from("Hola")).await?;
-        let res = child_ctx
-            .receive_extended::<String>(MessageReceiveOptions::new().with_timeout(TIMEOUT))
+        let res: Routed<String> = ctx
+            .send_and_receive_extended(
+                route,
+                String::from("Hola"),
+                MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+            )
             .await?;
 
         trace!(return_route = %res.return_route());
@@ -48,8 +51,9 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
             .map(|x| x.address().parse::<SocketAddr>().unwrap())
             .unwrap();
 
-        assert!(
-            src_addr.port() == bind_addr.port(),
+        assert_eq!(
+            src_addr.port(),
+            bind.bind_address().port(),
             "Reply message does not come from port we sent to"
         );
     };
@@ -78,11 +82,18 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     let transport = UdpTransport::create(ctx).await?;
 
     // Listener
-    ctx.start_worker("echoer", Echoer::new()).await?;
-    transport.listen(addr_ok.clone()).await?;
+    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    let bind = transport
+        .bind(
+            UdpBindArguments::new().with_bind_address(addr_ok.clone())?,
+            UdpBindOptions::new(),
+        )
+        .await?;
+    ctx.flow_controls()
+        .add_consumer("echoer", bind.flow_control_id());
 
     // Send message to try and cause a socket send error
-    let r = route![(UDP, addr_nok), "echoer"];
+    let r = route![bind.sender_address().clone(), (UDP, addr_nok), "echoer"];
     let res: Result<Routed<String>> = ctx
         .send_and_receive_extended(
             r,
@@ -93,7 +104,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     assert!(res.is_err(), "Expected an error sending");
 
     // Send message to working peer
-    let r = route![(UDP, addr_ok), "echoer"];
+    let r = route![bind.sender_address().clone(), (UDP, addr_ok), "echoer"];
     let res: Result<Routed<String>> = ctx
         .send_and_receive_extended(
             r,
@@ -109,7 +120,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
 /// The transport should send messages to peers, with different
 /// destination addresses, from the same UDP port.
 ///
-/// This is important for NAT hole punching.
+/// This is important for NAT puncture.
 #[ockam_macros::test]
 async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
     // Find available ports
@@ -121,15 +132,30 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
 
     // Listeners
     // Note: it is the Echoer which is checking the UDP ports for this test
-    ctx.start_worker("echoer", Echoer::new()).await?;
+    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    let mut binds = vec![];
     for addr in &bind_addrs {
-        transport.listen(addr.to_string()).await?;
+        let bind = transport
+            .bind(
+                UdpBindArguments::new().with_bind_address(addr.to_string())?,
+                UdpBindOptions::new(),
+            )
+            .await?;
+
+        ctx.flow_controls()
+            .add_consumer("echoer", bind.flow_control_id());
+
+        binds.push(bind);
     }
 
     // Send messages
     for addr in &bind_addrs {
         let msg = String::from("Ockam. Testing. 1, 2, 3...");
-        let r = route![(UDP, addr.to_string()), "echoer"];
+        let r = route![
+            binds[0].sender_address().clone(),
+            (UDP, addr.to_string()),
+            "echoer"
+        ];
         let reply = ctx
             .send_and_receive_extended::<String>(
                 r,
@@ -145,23 +171,25 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
-async fn send_receive(ctx: &mut Context) -> Result<()> {
-    // Find an available port
-    let bind_addr = utils::available_local_ports(1)
-        .await?
-        .first()
-        .unwrap()
-        .to_string();
-    debug!("bind_addr = {:?}", bind_addr);
-
+async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
     // Transport
     let transport = UdpTransport::create(ctx).await?;
 
-    // Listener
-    {
-        ctx.start_worker("echoer", Echoer::new()).await?;
-        transport.listen(bind_addr.clone()).await?;
-    };
+    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    let bind1 = transport
+        .bind(UdpBindArguments::new(), UdpBindOptions::new())
+        .await?;
+    let bind2 = transport
+        .bind(UdpBindArguments::new(), UdpBindOptions::new())
+        .await?;
+    let bind3 = transport
+        .bind(UdpBindArguments::new(), UdpBindOptions::new())
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("echoer", bind2.flow_control_id());
+    ctx.flow_controls()
+        .add_consumer("echoer", bind3.flow_control_id());
 
     // Sender
     {
@@ -171,7 +199,159 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
                 .take(256)
                 .map(char::from)
                 .collect();
-            let r = route![(UDP, bind_addr.clone()), "echoer"];
+
+            let r = route![
+                bind1.sender_address().clone(),
+                (UDP, bind2.bind_address().to_string()),
+                "echoer"
+            ];
+            let reply = ctx
+                .send_and_receive_extended::<String>(
+                    r,
+                    msg.clone(),
+                    MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+                )
+                .await?
+                .into_body()?;
+
+            assert_eq!(reply, msg, "Should receive the same message");
+
+            let r = route![
+                bind1.sender_address().clone(),
+                (UDP, bind3.bind_address().to_string()),
+                "echoer"
+            ];
+            let reply = ctx
+                .send_and_receive_extended::<String>(
+                    r,
+                    msg.clone(),
+                    MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+                )
+                .await?
+                .into_body()?;
+
+            assert_eq!(reply, msg, "Should receive the same message");
+        }
+    };
+    Ok(())
+}
+
+#[ockam_macros::test]
+async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
+    // Transport
+    let transport = UdpTransport::create(ctx).await?;
+
+    ctx.start_worker("echoer", Echoer::new(false)).await?;
+    let bind1 = transport
+        .bind(UdpBindArguments::new(), UdpBindOptions::new())
+        .await?;
+    let bind2 = transport
+        .bind(
+            UdpBindArguments::new().with_peer_address(bind1.bind_address().to_string())?,
+            UdpBindOptions::new(),
+        )
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("echoer", bind1.flow_control_id());
+    ctx.flow_controls()
+        .add_consumer("echoer", bind2.flow_control_id());
+
+    // Sender
+    {
+        for _ in 0..3 {
+            let msg: String = rand::thread_rng()
+                .sample_iter(&rand::distributions::Alphanumeric)
+                .take(256)
+                .map(char::from)
+                .collect();
+
+            let r = route![bind2.sender_address().clone(), "echoer"];
+            let reply = ctx
+                .send_and_receive_extended::<String>(
+                    r,
+                    msg.clone(),
+                    MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+                )
+                .await?
+                .into_body()?;
+
+            assert_eq!(reply, msg, "Should receive the same message");
+
+            let r = route![
+                bind1.sender_address().clone(),
+                (UDP, bind2.bind_address().to_string()),
+                "echoer"
+            ];
+            let reply = ctx
+                .send_and_receive_extended::<String>(
+                    r,
+                    msg.clone(),
+                    MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+                )
+                .await?
+                .into_body()?;
+
+            assert_eq!(reply, msg, "Should receive the same message");
+        }
+    };
+    Ok(())
+}
+
+#[ockam_macros::test]
+async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
+    // Find available ports
+    let bind_addrs = utils::available_local_ports(2).await?;
+    debug!("bind_addrs = {:?}", bind_addrs);
+
+    // Transport
+    let transport = UdpTransport::create(ctx).await?;
+
+    ctx.start_worker("echoer", Echoer::new(false)).await?;
+    let bind1 = transport
+        .bind(
+            UdpBindArguments::new()
+                .with_bind_address(bind_addrs[0].to_string())?
+                .with_peer_address(bind_addrs[1].to_string())?,
+            UdpBindOptions::new(),
+        )
+        .await?;
+    let bind2 = transport
+        .bind(
+            UdpBindArguments::new()
+                .with_bind_address(bind_addrs[1].to_string())?
+                .with_peer_address(bind_addrs[0].to_string())?,
+            UdpBindOptions::new(),
+        )
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("echoer", bind1.flow_control_id());
+    ctx.flow_controls()
+        .add_consumer("echoer", bind2.flow_control_id());
+
+    // Sender
+    {
+        for _ in 0..3 {
+            let msg: String = rand::thread_rng()
+                .sample_iter(&rand::distributions::Alphanumeric)
+                .take(256)
+                .map(char::from)
+                .collect();
+
+            let r = route![bind2.sender_address().clone(), "echoer"];
+            let reply = ctx
+                .send_and_receive_extended::<String>(
+                    r,
+                    msg.clone(),
+                    MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+                )
+                .await?
+                .into_body()?;
+
+            assert_eq!(reply, msg, "Should receive the same message");
+
+            let r = route![bind1.sender_address().clone(), "echoer"];
             let reply = ctx
                 .send_and_receive_extended::<String>(
                     r,
@@ -188,12 +368,14 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
 }
 
 pub struct Echoer {
+    check_sender_is_the_same: bool,
     prev_src_addr: Option<String>,
 }
 
 impl Echoer {
-    fn new() -> Self {
+    fn new(check_sender_is_the_same: bool) -> Self {
         Self {
+            check_sender_is_the_same,
             prev_src_addr: None,
         }
     }
@@ -205,35 +387,37 @@ impl Worker for Echoer {
     type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        // Get source UDP address
-        let src_addr = match msg
-            .return_route()
-            .iter()
-            .find(|x| x.transport_type() == UDP)
-        {
-            Some(addr) => String::from(addr.address()),
-            None => {
-                error!(
-                    "TEST FAIL: Failed to find UDP source address: {:?}",
-                    &msg.return_route()
-                );
-                panic!("TEST FAIL: Failed to find UDP source address");
-            }
-        };
-
-        // Check source address matches previous received messages
-        // This is part of the testing
-        match &self.prev_src_addr {
-            Some(addr) => {
-                if addr != &src_addr {
+        if self.check_sender_is_the_same {
+            // Get source UDP address
+            let src_addr = match msg
+                .return_route()
+                .iter()
+                .find(|x| x.transport_type() == UDP)
+            {
+                Some(addr) => String::from(addr.address()),
+                None => {
                     error!(
+                        "TEST FAIL: Failed to find UDP source address: {:?}",
+                        &msg.return_route()
+                    );
+                    panic!("TEST FAIL: Failed to find UDP source address");
+                }
+            };
+
+            // Check source address matches previous received messages
+            // This is part of the testing
+            match &self.prev_src_addr {
+                Some(addr) => {
+                    if addr != &src_addr {
+                        error!(
                         "TEST FAIL: Source UDP address does not match previous messages: prev {}, now {}",
                         addr, src_addr
                     );
-                    panic!("TEST FAIL: Source UDP address does not match previous messages");
+                        panic!("TEST FAIL: Source UDP address does not match previous messages");
+                    }
                 }
+                None => self.prev_src_addr = Some(src_addr),
             }
-            None => self.prev_src_addr = Some(src_addr),
         }
 
         debug!("Replying back to {}", &msg.return_route());

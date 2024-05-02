@@ -10,7 +10,6 @@ and trustfully with cloud services and other devices.
 
 This crate provides a UDP Transport for Ockam's Routing Protocol.
 
-### Examples
 
 ## Usage
 
