@@ -20,7 +20,10 @@ pub fn add_command_event(
         .in_span(command_name.clone(), |_| {
             Executor::execute_future(async move {
                 let mut attributes = HashMap::new();
-                attributes.insert(APPLICATION_EVENT_COMMAND, command_arguments);
+                attributes.insert(
+                    APPLICATION_EVENT_COMMAND,
+                    sanitize_command_arguments(command_arguments),
+                );
                 cli_state
                     .add_journey_event(JourneyEvent::ok(command_name), attributes)
                     .await
@@ -49,7 +52,10 @@ pub fn add_command_error_event(
 
             Executor::execute_future(async move {
                 let mut attributes = HashMap::new();
-                attributes.insert(APPLICATION_EVENT_COMMAND, command_arguments);
+                attributes.insert(
+                    APPLICATION_EVENT_COMMAND,
+                    sanitize_command_arguments(command_arguments),
+                );
                 cli_state
                     .add_journey_error(&command, message, attributes)
                     .await
@@ -57,4 +63,31 @@ pub fn add_command_error_event(
         })
         .into_diagnostic()??;
     Ok(())
+}
+
+/// The ockam project enroll command arguments contain the enrollment ticket which is sensitive
+/// information (because it could be potentially reused), so it should be removed from the user event.
+pub fn sanitize_command_arguments(command_args: String) -> String {
+    if command_args.starts_with("ockam project enroll") {
+        "ockam project enroll".to_string()
+    } else {
+        command_args
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_project_enroll() {
+        assert_eq!(
+            sanitize_command_arguments("ockam project enroll abcdxyz".to_string()),
+            "ockam project enroll".to_string()
+        );
+        assert_eq!(
+            sanitize_command_arguments("ockam node create n1".to_string()),
+            "ockam node create n1".to_string()
+        );
+    }
 }
