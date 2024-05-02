@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::fmt::{Debug, Formatter, Write};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -30,7 +30,7 @@ const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
 
 /// Use an enrollment ticket, or Okta, to enroll an identity with a project
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
@@ -53,6 +53,18 @@ pub struct EnrollCommand {
 
     #[command(flatten)]
     pub retry_opts: RetryOpts,
+}
+
+/// This custom Debug instance hides the enrollment ticket
+impl Debug for EnrollCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EnrollCommand")
+            .field("identity_opts", &self.identity_opts)
+            .field("trust_opts", &self.trust_opts)
+            .field("okta", &self.okta)
+            .field("retry_opts", &self.retry_opts)
+            .finish()
+    }
 }
 
 #[async_trait]
