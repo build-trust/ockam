@@ -72,17 +72,3 @@ where
         Ok(self.clone().async_run_with_retry(ctx, opts.clone()).await?)
     }
 }
-
-/// This type is only used to properly type an empty list of ParsedCommands
-struct EmptyParsedCommand;
-
-#[async_trait]
-impl ParsedCommand for EmptyParsedCommand {
-    async fn run(&self, _ctx: &Context, _opts: &CommandGlobalOpts) -> Result<()> {
-        Ok(())
-    }
-
-    async fn is_valid(&self, _ctx: &Context, _opts: &CommandGlobalOpts) -> Result<bool> {
-        Ok(false)
-    }
-}

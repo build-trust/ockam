@@ -102,7 +102,7 @@ impl NodeBuilder {
             #[cfg(feature = "std")]
             {
                 Arc::new(
-                    crate::tokio::runtime::Builder::new_multi_thread()
+                    tokio::runtime::Builder::new_multi_thread()
                         // Using a lower stack size than the default (2MB),
                         // this helps improve the cache hit ratio and reduces
                         // the memory footprint.

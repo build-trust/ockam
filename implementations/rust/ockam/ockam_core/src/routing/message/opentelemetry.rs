@@ -96,7 +96,7 @@ impl OpenTelemetryContext {
         });
         // If, for some reason, we cannot retrieve the proper tracing context, we use the latest known
         // OpenTelemetry context
-        result.unwrap_or_else(|| OpenTelemetryContext::inject(&opentelemetry::Context::current()))
+        result.unwrap_or_else(|| OpenTelemetryContext::inject(&Context::current()))
     }
 
     /// Set this OpenTelemetry context as the new parent context

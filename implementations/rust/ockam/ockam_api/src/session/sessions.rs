@@ -95,24 +95,6 @@ pub enum ConnectionStatus {
     Up,
 }
 
-pub struct SessionStatus {
-    pub worker: Option<Address>,
-    pub connection: ConnectionStatus,
-    pub route: Option<Route>,
-    pub ping_route: Option<Route>,
-}
-
-impl Default for SessionStatus {
-    fn default() -> Self {
-        Self {
-            worker: None,
-            connection: ConnectionStatus::Down,
-            route: None,
-            ping_route: None,
-        }
-    }
-}
-
 impl fmt::Display for ConnectionStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {

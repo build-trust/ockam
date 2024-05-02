@@ -1,5 +1,7 @@
 use core::time::Duration;
 
+#[cfg(not(feature = "std"))]
+use crate::tokio;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::time::now;
 use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
@@ -13,9 +15,10 @@ use ockam_core::{
 };
 use ockam_transport_core::Transport;
 
+use tokio::runtime::Handle;
+
 use crate::async_drop::AsyncDrop;
 use crate::channel_types::{message_channel, small_channel, SmallReceiver, SmallSender};
-use crate::tokio::{self, runtime::Handle};
 use crate::{debugger, Context};
 use crate::{error::*, relay::CtrlSignal, router::SenderPair, NodeMessage};
 
@@ -24,7 +27,7 @@ use crate::{error::*, relay::CtrlSignal, router::SenderPair, NodeMessage};
 pub type DetachedContext = Context;
 
 /// A special sender type that connects a type to an AsyncDrop handler
-pub type AsyncDropSender = crate::tokio::sync::oneshot::Sender<Address>;
+pub type AsyncDropSender = tokio::sync::oneshot::Sender<Address>;
 
 impl Drop for Context {
     fn drop(&mut self) {

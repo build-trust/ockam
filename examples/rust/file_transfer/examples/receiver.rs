@@ -31,6 +31,7 @@ impl Worker for FileReception {
                 self.file = Some(
                     OpenOptions::new()
                         .create(true)
+                        .truncate(true)
                         .write(true)
                         .open(&self.name)
                         .await

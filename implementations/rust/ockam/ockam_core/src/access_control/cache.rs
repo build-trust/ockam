@@ -262,7 +262,7 @@ pub mod test {
         let relay_msg = relay_message();
 
         // self matches
-        let entry = crate::access_control::cache::CacheEntry::from(&relay_msg);
+        let entry = CacheEntry::from(&relay_msg);
         assert!(entry.matches(&relay_msg));
 
         // payload is ignored

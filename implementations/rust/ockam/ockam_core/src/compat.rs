@@ -167,7 +167,7 @@ pub mod rand {
         /// production use.
         pub fn random<T>() -> T
         where
-            rand::distributions::Standard: rand::prelude::Distribution<T>,
+            distributions::Standard: prelude::Distribution<T>,
         {
             let mut rng = thread_rng();
             rng.gen()

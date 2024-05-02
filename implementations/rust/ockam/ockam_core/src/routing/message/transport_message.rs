@@ -223,7 +223,7 @@ impl Encodable for TransportMessage {
 impl Decodable for TransportMessage {
     fn decode(slice: &[u8]) -> Result<Self> {
         Self::internal_decode(slice).ok_or_else(|| {
-            crate::Error::new(
+            Error::new(
                 Origin::Transport,
                 Kind::Protocol,
                 "Failed to decode TransportMessage",
@@ -322,7 +322,7 @@ impl Encodable for TransportMessageV1 {
 impl Decodable for TransportMessageV1 {
     fn decode(slice: &[u8]) -> Result<Self> {
         Self::internal_decode(slice).ok_or_else(|| {
-            crate::Error::new(
+            Error::new(
                 Origin::Transport,
                 Kind::Protocol,
                 "Failed to decode TransportMessage",

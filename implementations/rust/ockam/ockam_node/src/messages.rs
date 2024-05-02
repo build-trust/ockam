@@ -67,7 +67,7 @@ pub enum NodeMessage {
 }
 
 impl fmt::Display for NodeMessage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NodeMessage::StartWorker { .. } => write!(f, "StartWorker"),
             NodeMessage::ListWorkers(_) => write!(f, "ListWorkers"),
