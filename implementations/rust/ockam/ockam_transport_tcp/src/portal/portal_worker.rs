@@ -13,6 +13,7 @@ use ockam_core::{
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
+use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
@@ -310,6 +311,11 @@ impl TcpPortalWorker {
             DisconnectionReason::FailedTx => {
                 self.notify_remote_about_disconnection(ctx).await?;
                 self.stop_receiver(ctx).await?;
+                // Sleep, so that if connection is dropped on both sides at the same time, the other
+                // side had time to notify us about the closure. Otherwise, the message won't be
+                // delivered which can lead to a warning message from a secure channel (or whatever
+                // is used to deliver the message). Can be removed though
+                ctx.sleep(Duration::from_secs(2)).await;
                 self.stop_sender(ctx).await?;
             }
             // Packets were dropped while traveling to us, let's notify the other end about dropped
@@ -322,6 +328,11 @@ impl TcpPortalWorker {
             // We couldn't read data from the tcp connection
             // Receiver should have already notified the other end and should shut down itself
             DisconnectionReason::FailedRx => {
+                // Sleep, so that if connection is dropped on both sides at the same time, the other
+                // side had time to notify us about the closure. Otherwise, the message won't be
+                // delivered which can lead to a warning message from a secure channel (or whatever
+                // is used to deliver the message). Can be removed though
+                ctx.sleep(Duration::from_secs(2)).await;
                 self.stop_sender(ctx).await?;
             }
             // Other end notifies us that the tcp connection is dropped

@@ -1,12 +1,7 @@
 use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
-use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
-
-pub(crate) struct TcpConnectionAccessControl {
-    pub sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
-    pub receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-}
+use ockam_core::{Address, OutgoingAccessControl};
 
 /// Trust Options for a TCP connection
 #[derive(Debug)]
@@ -52,18 +47,15 @@ impl TcpConnectionOptions {
         }
     }
 
-    pub(crate) fn create_access_control(
+    pub(crate) fn create_receiver_outgoing_access_control(
         self,
         flow_controls: &FlowControls,
-    ) -> TcpConnectionAccessControl {
-        TcpConnectionAccessControl {
-            sender_incoming_access_control: Arc::new(AllowAll),
-            receiver_outgoing_access_control: Arc::new(FlowControlOutgoingAccessControl::new(
-                flow_controls,
-                self.flow_control_id,
-                None,
-            )),
-        }
+    ) -> Arc<dyn OutgoingAccessControl> {
+        Arc::new(FlowControlOutgoingAccessControl::new(
+            flow_controls,
+            self.flow_control_id,
+            None,
+        ))
     }
 }
 
@@ -116,18 +108,15 @@ impl TcpListenerOptions {
         flow_control_id
     }
 
-    pub(crate) fn create_access_control(
+    pub(crate) fn create_receiver_outgoing_access_control(
         &self,
         flow_controls: &FlowControls,
         flow_control_id: FlowControlId,
-    ) -> TcpConnectionAccessControl {
-        TcpConnectionAccessControl {
-            sender_incoming_access_control: Arc::new(AllowAll),
-            receiver_outgoing_access_control: Arc::new(FlowControlOutgoingAccessControl::new(
-                flow_controls,
-                flow_control_id,
-                Some(self.flow_control_id.clone()),
-            )),
-        }
+    ) -> Arc<dyn OutgoingAccessControl> {
+        Arc::new(FlowControlOutgoingAccessControl::new(
+            flow_controls,
+            flow_control_id,
+            Some(self.flow_control_id.clone()),
+        ))
     }
 }

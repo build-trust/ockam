@@ -670,13 +670,15 @@ impl SessionReplacer for InletSessionReplacer {
                 .with_incoming_access_control(incoming_ac)
                 .with_outgoing_access_control(outgoing_ac);
 
+            // TODO: Instead just update the route in the existing inlet
             // Finally, attempt to create a new inlet using the new route:
             let inlet_address = self
                 .node_manager
                 .tcp_transport
                 .create_inlet(self.listen_addr.clone(), normalized_route.clone(), options)
                 .await?
-                .1;
+                .processor_address()
+                .clone();
             self.inlet_address = Some(inlet_address.clone());
 
             Ok(ReplacerOutcome {

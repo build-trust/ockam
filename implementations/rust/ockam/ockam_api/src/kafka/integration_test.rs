@@ -95,7 +95,7 @@ mod test {
             None,
         );
 
-        let (socket_address, _) = handler
+        let inlet = handler
             .tcp
             .create_inlet(
                 "127.0.0.1:0",
@@ -112,7 +112,7 @@ mod test {
         )
         .await?;
 
-        Ok(socket_address.port())
+        Ok(inlet.socket_address().port())
     }
 
     #[allow(non_snake_case)]

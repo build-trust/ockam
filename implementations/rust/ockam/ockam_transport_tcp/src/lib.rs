@@ -23,17 +23,16 @@ mod portal;
 mod registry;
 mod transport;
 
-use ockam_core::TransportType;
+mod workers;
+pub(crate) use workers::*;
+
 pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{PortalInternalMessage, PortalMessage, MAX_PAYLOAD_SIZE};
 pub use registry::*;
 pub use transport::common::*;
 pub use transport::*;
 
-mod workers;
-pub(crate) use workers::*;
-
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
 
 /// Transport type for TCP addresses
-pub const TCP: TransportType = TransportType::new(1);
+pub const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
