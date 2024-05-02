@@ -23,11 +23,11 @@ async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
         listener
     };
 
-    let (inlet_saddr, _) = tcp
+    let inlet = tcp
         .create_inlet("127.0.0.1:0", route!["outlet"], TcpInletOptions::new())
         .await?;
 
-    Ok((inlet_saddr.to_string(), listener))
+    Ok((inlet.socket_address().to_string(), listener))
 }
 
 fn generate_binary() -> [u8; LENGTH] {
@@ -141,7 +141,7 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
     )
     .await?;
 
-    let (inlet_socket_addr, _) = tcp
+    let inlet = tcp
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection.clone(), "outlet"],
@@ -159,7 +159,7 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
     // Wait till listener is up
     tokio::time::sleep(Duration::from_millis(250)).await;
 
-    let mut stream = TcpStream::connect(inlet_socket_addr).await.unwrap();
+    let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     read_assert_binary(&mut stream, payload2).await;
     write_binary(&mut stream, payload1).await;
 
@@ -192,7 +192,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     tcp.create_outlet("outlet_invalid", bind_address, TcpOutletOptions::new())
         .await?;
 
-    let (inlet_socket_addr, _) = tcp
+    let inlet = tcp
         .create_inlet(
             "127.0.0.1:0",
             route![tcp_connection, "outlet_invalid"],
@@ -213,7 +213,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     // Wait till listener is up
     tokio::time::sleep(Duration::from_millis(250)).await;
 
-    let mut stream = TcpStream::connect(inlet_socket_addr).await.unwrap();
+    let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     read_should_timeout(&mut stream).await;
 
     handle.abort();
@@ -221,6 +221,85 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
     if let Err(e) = ctx.stop().await {
         println!("Unclean stop: {}", e)
     }
+
+    Ok(())
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test(timeout = 5000)]
+async fn portal__update_route__should_succeed(ctx: &mut Context) -> Result<()> {
+    let payload1 = generate_binary();
+    let payload2 = generate_binary();
+
+    let tcp = TcpTransport::create(ctx).await?;
+
+    let listener_outlet = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let listener_node = tcp
+        .listen("127.0.0.1:0", TcpListenerOptions::new())
+        .await
+        .unwrap();
+
+    tcp.create_outlet(
+        "outlet",
+        listener_outlet.local_addr().unwrap().to_string(),
+        TcpOutletOptions::new().as_consumer(listener_node.flow_control_id()),
+    )
+    .await?;
+
+    let node_connection1 = tcp
+        .connect(
+            listener_node.socket_address().to_string(),
+            TcpConnectionOptions::new(),
+        )
+        .await
+        .unwrap();
+    let node_connection2 = tcp
+        .connect(
+            listener_node.socket_address().to_string(),
+            TcpConnectionOptions::new(),
+        )
+        .await
+        .unwrap();
+
+    let inlet = tcp
+        .create_inlet(
+            "127.0.0.1:0",
+            route![node_connection1.clone(), "outlet"],
+            TcpInletOptions::new(),
+        )
+        .await?;
+
+    let handle = tokio::spawn(async move {
+        let (mut stream, _) = listener_outlet.accept().await.unwrap();
+
+        read_assert_binary(&mut stream, payload1).await;
+        write_binary(&mut stream, payload2).await;
+
+        let (mut stream, _) = listener_outlet.accept().await.unwrap();
+
+        read_assert_binary(&mut stream, payload1).await;
+        write_binary(&mut stream, payload2).await;
+
+        stream
+    });
+
+    // Wait till the listener is up
+    tokio::time::sleep(Duration::from_millis(250)).await;
+
+    let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
+    write_binary(&mut stream, payload1).await;
+    read_assert_binary(&mut stream, payload2).await;
+
+    node_connection1.stop(ctx).await?;
+
+    inlet.update_outlet_node_route(route![node_connection2])?;
+
+    let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
+    write_binary(&mut stream, payload1).await;
+    read_assert_binary(&mut stream, payload2).await;
+
+    let res = handle.await;
+    assert!(res.is_ok());
 
     Ok(())
 }

@@ -33,7 +33,8 @@ impl TcpTransport {
 
         options.setup_flow_control(self.ctx.flow_controls(), &addresses);
         let flow_control_id = options.flow_control_id.clone();
-        let access_control = options.create_access_control(self.ctx.flow_controls());
+        let receiver_outgoing_access_control =
+            options.create_receiver_outgoing_access_control(self.ctx.flow_controls());
 
         TcpSendWorker::start(
             &self.ctx,
@@ -42,7 +43,6 @@ impl TcpTransport {
             &addresses,
             socket,
             mode,
-            access_control.sender_incoming_access_control,
             &flow_control_id,
         )
         .await?;
@@ -55,7 +55,7 @@ impl TcpTransport {
             socket,
             mode,
             &flow_control_id,
-            access_control.receiver_outgoing_access_control,
+            receiver_outgoing_access_control,
         )
         .await?;
 

@@ -4,7 +4,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowSourceAddress, DenyAll, IncomingAccessControl,
+    AllowAll, AllowSourceAddress, DenyAll,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
@@ -72,7 +72,6 @@ impl TcpSendWorker {
         addresses: &Addresses,
         socket_address: SocketAddr,
         mode: TcpConnectionMode,
-        sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
         receiver_flow_control_id: &FlowControlId,
     ) -> Result<()> {
         trace!("Creating new TCP worker pair");
@@ -87,7 +86,7 @@ impl TcpSendWorker {
 
         let main_mailbox = Mailbox::new(
             addresses.sender_address().clone(),
-            sender_incoming_access_control,
+            Arc::new(AllowAll),
             Arc::new(DenyAll),
         );
 

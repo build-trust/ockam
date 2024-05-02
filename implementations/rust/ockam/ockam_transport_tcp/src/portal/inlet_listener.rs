@@ -1,6 +1,7 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalWorker, HostnamePort, TcpInletOptions, TcpRegistry};
+use crate::{portal::TcpPortalWorker, HostnamePort, TcpInlet, TcpInletOptions, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
+use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;
@@ -16,7 +17,7 @@ use tracing::{debug, error, instrument};
 pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
-    outlet_listener_route: Route,
+    outlet_listener_route: Arc<RwLock<Route>>,
     options: TcpInletOptions,
 }
 
@@ -24,7 +25,7 @@ impl TcpInletListenProcessor {
     pub fn new(
         registry: TcpRegistry,
         inner: TcpListener,
-        outlet_listener_route: Route,
+        outlet_listener_route: Arc<RwLock<Route>>,
         options: TcpInletOptions,
     ) -> Self {
         Self {
@@ -43,7 +44,7 @@ impl TcpInletListenProcessor {
         outlet_listener_route: Route,
         addr: SocketAddr,
         options: TcpInletOptions,
-    ) -> Result<(SocketAddr, Address)> {
+    ) -> Result<TcpInlet> {
         let processor_address = Address::random_tagged("TcpInletListenProcessor");
 
         debug!("Binding TcpPortalListenerWorker to {}", addr);
@@ -55,12 +56,17 @@ impl TcpInletListenProcessor {
             }
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
-        let processor = Self::new(registry, inner, outlet_listener_route, options);
+        let outlet_listener_route = Arc::new(RwLock::new(outlet_listener_route));
+        let processor = Self::new(registry, inner, outlet_listener_route.clone(), options);
 
         ctx.start_processor(processor_address.clone(), processor)
             .await?;
 
-        Ok((socket_addr, processor_address))
+        Ok(TcpInlet::new(
+            socket_addr,
+            processor_address,
+            outlet_listener_route,
+        ))
     }
 }
 
@@ -85,16 +91,17 @@ impl Processor for TcpInletListenProcessor {
 
     #[instrument(skip_all, name = "TcpInletListenProcessor::process")]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
-        let addresses = Addresses::generate(PortalType::Inlet);
-        let outlet_listener_route = self.outlet_listener_route.clone();
+        let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
 
+        let addresses = Addresses::generate(PortalType::Inlet);
+
+        let outlet_listener_route = self.outlet_listener_route.read().unwrap().clone();
         self.options.setup_flow_control(
             ctx.flow_controls(),
             &addresses,
             outlet_listener_route.next()?,
         );
 
-        let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
         TcpPortalWorker::start_new_inlet(
             ctx,
             self.registry.clone(),

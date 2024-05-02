@@ -87,9 +87,11 @@ impl Processor for TcpListenProcessor {
         let receiver_flow_control_id = self
             .options
             .setup_flow_control_for_connection(ctx.flow_controls(), &addresses);
-        let access_control = self
-            .options
-            .create_access_control(ctx.flow_controls(), receiver_flow_control_id.clone());
+        let receiver_outgoing_access_control =
+            self.options.create_receiver_outgoing_access_control(
+                ctx.flow_controls(),
+                receiver_flow_control_id.clone(),
+            );
 
         let (read_half, write_half) = stream.into_split();
 
@@ -101,7 +103,6 @@ impl Processor for TcpListenProcessor {
             &addresses,
             peer,
             mode,
-            access_control.sender_incoming_access_control,
             &receiver_flow_control_id,
         )
         .await?;
@@ -115,7 +116,7 @@ impl Processor for TcpListenProcessor {
             peer,
             mode,
             &receiver_flow_control_id,
-            access_control.receiver_outgoing_access_control,
+            receiver_outgoing_access_control,
         )
         .await?;
 

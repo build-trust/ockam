@@ -9,6 +9,7 @@ pub use common::*;
 pub use hostname_port::*;
 
 pub use crate::portal::options::*;
+pub use portals::*;
 
 use crate::TcpRegistry;
 use ockam_core::compat::sync::Arc;
