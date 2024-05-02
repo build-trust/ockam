@@ -4,7 +4,7 @@
 create_cluster() {
   local response
   local create_cluster_url="https://api.instaclustr.com/cluster-management/v2/resources/applications/kafka/clusters/v2"
-  response=$(curl -s -w "%{http_code}" -X POST -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" "${create_cluster_url}" \
+  response=$(curl --fail --show-error -s -w "%{http_code}" -X POST -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" "${create_cluster_url}" \
     -H 'Content-Type: application/json' \
     -d '{
       "allowDeleteTopics": true,
@@ -40,7 +40,7 @@ wait_for_cluster() {
 
   while true; do
     local url="https://api.instaclustr.com/cluster-management/v2/resources/applications/kafka/clusters/v2/${cluster_id}"
-    response=$(curl -s -X GET -H "Content-Type: application/json" -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" "${url}")
+    response=$(curl --fail --show-error -s -X GET -H "Content-Type: application/json" -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" "${url}")
     status=$(echo "${response}" | jq -r '.status')
 
     case "${status}" in
@@ -70,7 +70,7 @@ wait_for_cluster() {
 get_cluster_details() {
   local cluster_id=$1
   local response
-  response=$(curl -s -X GET -H "Content-Type: application/json" -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
+  response=$(curl --fail --show-error -s -X GET -H "Content-Type: application/json" -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
     "https://api.instaclustr.com/cluster-management/v2/resources/applications/kafka/clusters/v2/${cluster_id}")
   echo "${response}"
 }
@@ -78,14 +78,13 @@ get_cluster_details() {
 # Function to add a firewall rule
 add_firewall_rule() {
     local cluster_id=$1
-    local my_ip=$(curl -s https://checkip.amazonaws.com)
     local response
 
-    response=$(curl -s -X POST -H "Content-Type: application/json" -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
+    response=$(curl -s --fail --show-error -X POST -H "Content-Type: application/json" -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
       "https://api.instaclustr.com/cluster-management/v2/resources/network-firewall-rules/v2" \
       -d '{
           "clusterId": "'"${cluster_id}"'",
-          "network": "'"${my_ip}/32"'",
+          "network": "'"0.0.0.0/0"'",
           "type":"KAFKA"
         }')
     #echo "${response}"
@@ -101,7 +100,7 @@ add_firewall_rule() {
 create_user() {
   local cluster_id=$1
   local response
-  response=$(curl -s -X POST -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
+  response=$(curl --fail --show-error -s -X POST -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
     "https://api.instaclustr.com/cluster-management/v2/resources/applications/kafka/users/v2" \
     -H 'Content-Type: application/json' \
     -d '{
@@ -127,7 +126,7 @@ delete_cluster() {
   local cluster_id=$1
   local response
   echo "Deleting Kafka cluster"
-  response=$(curl -s -X DELETE -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
+  response=$(curl --fail --show-error -s -X DELETE -u "${INSTACLUSTR_USER_NAME}:${INSTACLUSTR_API_KEY}" \
     "https://api.instaclustr.com/cluster-management/v2/resources/applications/kafka/clusters/v2/${cluster_id}")
   echo "${response}"
 }
