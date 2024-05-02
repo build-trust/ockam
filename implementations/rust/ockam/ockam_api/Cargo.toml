@@ -32,7 +32,7 @@ rust-crypto = ["ockam_vault/rust-crypto", "ockam_transport_tcp/ring"]
 
 [dependencies]
 aws-config = { version = "1.2.1", default-features = false, features = ["rustls"] }
-base64-url = "2.0.2"
+base64-url = "3.0.0"
 bytes = { version = "1.6.0", default-features = false, features = ["serde"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4" }
