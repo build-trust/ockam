@@ -1030,11 +1030,11 @@ dependencies = [
 
 [[package]]
 name = "base64-url"
-version = "2.0.2"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb9fb9fb058cc3063b5fc88d9a21eefa2735871498a04e1650da76ed511c8569"
+checksum = "38e2b6c78c06f7288d5e3c3d683bde35a79531127c83b087e5d0d77c974b4b28"
 dependencies = [
- "base64 0.21.7",
+ "base64 0.22.1",
 ]
 
 [[package]]
