@@ -41,6 +41,7 @@ impl Context {
         // check the number of transport hops, there can be only one
         // we do this first pass over the list of addresses to avoid creating connections
         // and then having to close them if we find several hops
+        // TODO: This is now possible with UDP
         let number_of_transport_hops = route.iter().filter(|a| !a.is_local()).count();
         if number_of_transport_hops > 1 {
             return Err(Error::new(
