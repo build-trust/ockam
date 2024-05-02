@@ -1,10 +1,10 @@
-use super::TransportMessageCodec;
+use super::{Addresses, TransportMessageCodec};
 use crate::UDP;
 use futures_util::{stream::SplitSink, SinkExt};
 use ockam_core::{async_trait, Any, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
-use ockam_transport_core::TransportError;
-use std::net::{SocketAddr, ToSocketAddrs};
+use ockam_transport_core::{resolve_peer, TransportError};
+use std::net::SocketAddr;
 use tokio_util::udp::UdpFramed;
 use tracing::{error, trace, warn};
 
@@ -12,24 +12,41 @@ use tracing::{error, trace, warn};
 ///
 /// This worker handles the sending of messages on a
 /// local socket. See [`UdpRouter`](crate::router::UdpRouter) for more details.
-pub(crate) struct UdpSendWorker {
-    /// The read half of the udnerlying UDP socket.
+pub(crate) struct UdpSenderWorker {
+    addresses: Addresses,
+    /// The read half of the underlying UDP socket.
     sink: SplitSink<UdpFramed<TransportMessageCodec>, (TransportMessage, SocketAddr)>,
+    /// Will be Some if we communicate with one specific peer.
+    peer: Option<SocketAddr>,
 }
 
-impl UdpSendWorker {
+impl UdpSenderWorker {
     /// Create a new `UdpSendWorker`
     pub(crate) fn new(
+        addresses: Addresses,
         sink: SplitSink<UdpFramed<TransportMessageCodec>, (TransportMessage, SocketAddr)>,
+        peer: Option<SocketAddr>,
     ) -> Self {
-        Self { sink }
+        Self {
+            addresses,
+            sink,
+            peer,
+        }
     }
 }
 
 #[async_trait]
-impl Worker for UdpSendWorker {
+impl Worker for UdpSenderWorker {
     type Message = Any;
     type Context = Context;
+
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        let _ = ctx
+            .stop_processor(self.addresses.receiver_address().clone())
+            .await;
+
+        Ok(())
+    }
 
     async fn handle_message(
         &mut self,
@@ -41,46 +58,37 @@ impl Worker for UdpSendWorker {
         msg = msg.pop_front_onward_route()?;
         trace!("Sending message to {:?}", msg.onward_route_ref());
 
-        // Resolve peer address to IPv4 SocketAddr(s).
-        let peer_addr = msg.next_on_onward_route()?;
-        msg = msg.pop_front_onward_route()?;
+        let peer = if let Some(peer) = &self.peer {
+            *peer
+        } else {
+            // Resolve peer address to IPv4 SocketAddr(s).
+            let peer_addr = msg.next_on_onward_route()?;
+            msg = msg.pop_front_onward_route()?;
 
-        if peer_addr.transport_type() != UDP {
-            error!(addr = %peer_addr,
+            if peer_addr.transport_type() != UDP {
+                error!(addr = %peer_addr,
                 "Destination address is not UDP");
-            return Err(TransportError::UnknownRoute)?;
-        }
-
-        let peer_addr = peer_addr.address();
-        let peer_addrs = peer_addr
-            .to_socket_addrs()
-            .map_err(|_| TransportError::InvalidAddress)?;
-        let peer_addrs: Vec<_> = peer_addrs.filter(SocketAddr::is_ipv4).collect();
-
-        // Try to send to first SocketAddr
-        let addr = match peer_addrs.first() {
-            Some(a) => *a,
-            None => {
-                warn!("No IPv4 address resolved for peer {:?}", peer_addr);
                 return Err(TransportError::UnknownRoute)?;
             }
+
+            resolve_peer(peer_addr.address().to_string())?
         };
 
         // Error on conditions that _might_ put the sink
         // into an error state
-        if addr.port() == 0 {
-            warn!(peer_addr = %peer_addr, "Will not send to address");
+        if peer.port() == 0 {
+            warn!(peer_addr = %peer, "Will not send to address");
             return Err(TransportError::InvalidAddress)?;
         }
 
         // Send
-        match self.sink.send((msg.into_transport_message(), addr)).await {
+        match self.sink.send((msg.into_transport_message(), peer)).await {
             Ok(()) => {
-                trace!("Successful send to {}", addr);
+                trace!("Successful send to {}", peer);
                 Ok(())
             }
             Err(e) => {
-                error!("Failed send to {}: {:?}", addr, e);
+                error!("Failed send to {}: {:?}", peer, e);
                 Err(e)?
             }
         }

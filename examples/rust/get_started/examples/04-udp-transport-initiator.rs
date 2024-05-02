@@ -1,7 +1,7 @@
 // This node routes a message, to a worker on a different node, over the udp transport.
 
 use ockam::{node, route, Context, Result};
-use ockam_transport_udp::{UdpTransportExtension, UDP};
+use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransportExtension, UDP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -9,15 +9,16 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Initialize the UDP Transport
-    let _udp = node.create_udp_transport().await?;
+    let udp = node.create_udp_transport().await?;
 
-    // Send a message to the "echoer" worker, on a different node, over an udp transport.
-    let r = route![(UDP, "localhost:4000"), "echoer"];
-    node.send(r, "Hello Ockam!".to_string()).await?;
+    let bind = udp.bind(UdpBindArguments::new(), UdpBindOptions::new()).await?;
 
+    // Send a message to the "echoer" worker on a different node, over a udp transport.
     // Wait to receive a reply and print it.
-    let reply = node.receive::<String>().await?;
-    println!("App Received: {}", reply.into_body()?); // sohuld print "Hello Ockam!"
+    let r = route![bind, (UDP, "localhost:4000"), "echoer"];
+    let reply = node.send_and_receive::<String>(r, "Hello Ockam!".to_string()).await?;
+
+    println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
     node.stop().await

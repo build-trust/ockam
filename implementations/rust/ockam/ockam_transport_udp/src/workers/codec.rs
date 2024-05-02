@@ -26,6 +26,7 @@ impl Decoder for TransportMessageCodec {
         }
 
         let len = src.get_u16() as usize;
+        // FIXME: CAN PANIC
         let msg = TransportMessage::decode(&src.split_to(len)[..])
             .map_err(|_| TransportError::RecvBadMessage)?;
 

@@ -31,11 +31,11 @@ alloc = []
 [dependencies]
 bytes = "1.6.0"
 futures-util = "0.3"
+minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.111.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.119.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.84.0" }
 rand = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1.38.0", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tokio-util = { version = "0.7.11", features = ["net", "codec"] }
 tracing = { version = "0.1", default-features = false }
@@ -52,6 +52,3 @@ name = "echo_server"
 
 [[example]]
 name = "rendezvous_server"
-
-[[example]]
-name = "puncher"

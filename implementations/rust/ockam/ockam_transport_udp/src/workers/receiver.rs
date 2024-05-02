@@ -1,49 +1,45 @@
-use super::TransportMessageCodec;
+use super::{Addresses, TransportMessageCodec};
 use crate::UDP;
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::{async_trait, route, Address, AllowAll, LocalMessage, Processor, Result};
+use ockam_core::{async_trait, Address, LocalMessage, Processor, Result, RouteBuilder};
 use ockam_node::Context;
+use std::net::SocketAddr;
 use tokio_util::udp::UdpFramed;
 use tracing::{debug, warn};
 
 /// A listener for the UDP transport
 ///
 /// This processor handles the reception of messages on a
-/// local socket. See [`UdpRouter`](crate::router::UdpRouter) for more details.
+/// local socket.
 ///
 /// When a message is received, the address of the paired sender
-/// ([`UdpSendWorker`](crate::workers::UdpSendWorker)) is injected into the message's
+/// ([`UdpSendWorker`](crate::workers::UdpSenderWorker)) is injected into the message's
 /// return route so that replies are sent to the sender.
-pub(crate) struct UdpListenProcessor {
-    /// The read half of the udnerlying UDP socket.
+pub(crate) struct UdpReceiverProcessor {
+    addresses: Addresses,
+    /// The read half of the underlying UDP socket.
     stream: SplitStream<UdpFramed<TransportMessageCodec>>,
-    /// Address of our sender counterpart
-    sender_addr: Address,
+    /// Will be Some if we communicate with one specific peer.
+    peer: Option<SocketAddr>,
 }
 
-impl UdpListenProcessor {
-    pub(crate) async fn start(
-        ctx: &Context,
+impl UdpReceiverProcessor {
+    pub fn new(
+        addresses: Addresses,
         stream: SplitStream<UdpFramed<TransportMessageCodec>>,
-        sender_addr: Address,
-    ) -> Result<()> {
-        let processor = Self {
+        peer: Option<SocketAddr>,
+    ) -> Self {
+        Self {
+            addresses,
             stream,
-            sender_addr,
-        };
-        let addr = Address::random_tagged("UdpListenProcessor");
-
-        // FIXME: @ac
-        ctx.start_processor_with_access_control(addr.clone(), processor, AllowAll, AllowAll)
-            .await?;
-
-        Ok(())
+            peer,
+        }
     }
 }
 
 #[async_trait]
-impl Processor for UdpListenProcessor {
+impl Processor for UdpReceiverProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
@@ -69,17 +65,36 @@ impl Processor for UdpListenProcessor {
             }
         };
 
-        // Set return route to go directly to paired sender, skipping the UDP router
-        let new_route = route![
-            self.sender_addr.clone(),
-            Address::new(UDP, addr.to_string()),
-            msg.return_route(),
-        ];
-        msg = msg.set_return_route(new_route);
+        if msg.onward_route_ref().is_empty() {
+            return Ok(true);
+        }
+
+        let return_route = RouteBuilder::default().append(self.addresses.sender_address().clone());
+
+        let return_route = match &self.peer {
+            Some(peer) => {
+                if peer != &addr {
+                    warn!(
+                        "Dropping a packet from: {}, because expected address was: {}",
+                        addr, peer
+                    );
+                    // Drop the packet, we don't expect data from that peer
+                    return Ok(true);
+                }
+
+                return_route
+            }
+            None => return_route.append(Address::new(UDP, addr.to_string())),
+        };
+
+        let return_route = return_route.append_route(msg.return_route());
+
+        msg = msg.set_return_route(return_route.into());
 
         debug!(onward_route = %msg.onward_route_ref(),
             return_route = %msg.return_route_ref(),
             "Forwarding UDP message");
+
         ctx.forward(msg).await?;
 
         Ok(true)

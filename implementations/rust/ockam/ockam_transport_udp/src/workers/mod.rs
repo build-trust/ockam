@@ -1,9 +1,9 @@
-// TODO: Would it be logical to move this `workers` directory into the `router` directory?
-
-pub(crate) use codec::*;
-pub(crate) use listener::*;
-pub(crate) use sender::*;
-
+mod addresses;
 mod codec;
-mod listener;
+mod receiver;
 mod sender;
+
+pub(crate) use addresses::*;
+pub(crate) use codec::*;
+pub(crate) use receiver::*;
+pub(crate) use sender::*;
