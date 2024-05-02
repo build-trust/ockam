@@ -38,9 +38,7 @@ impl AuthorityAttributes {
     pub(crate) async fn migrate_authority_attributes_to_members(
         connection: &mut SqliteConnection,
     ) -> Result<bool> {
-        let mut transaction = sqlx::Connection::begin(&mut *connection)
-            .await
-            .into_core()?;
+        let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         let query_node_names = query_as("SELECT name, is_authority FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names

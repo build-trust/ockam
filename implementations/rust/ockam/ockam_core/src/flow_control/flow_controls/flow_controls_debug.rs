@@ -13,7 +13,7 @@ impl IdsCollection {
 }
 
 impl fmt::Display for IdsCollection {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if self.is_empty() {
             write!(f, "[]")?;
         }

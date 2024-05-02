@@ -40,9 +40,7 @@ impl PolicyTrustContextId {
     /// This migration updates policies to not rely on trust_context_id,
     /// also introduces `node_name` and  replicates policy for each existing node
     pub(crate) async fn migrate_update_policies(connection: &mut SqliteConnection) -> Result<bool> {
-        let mut transaction = sqlx::Connection::begin(&mut *connection)
-            .await
-            .into_core()?;
+        let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names

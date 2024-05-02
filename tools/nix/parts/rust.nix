@@ -64,7 +64,6 @@ in {
           [
             # used in DEVELOP.md
             cargo-deny
-            cargo-deps
             cargo-license
             cargo-modules
             cargo-nextest

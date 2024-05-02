@@ -21,11 +21,7 @@ impl<T> CallbackReceiver<T> {
         match result {
             Ok(Ok(data)) => Ok(data),
             Ok(Err(_)) => Err(channel_closed()),
-            Err(_) => Err(ockam_core::Error::new(
-                Origin::Node,
-                Kind::Timeout,
-                "timeout",
-            )),
+            Err(_) => Err(Error::new(Origin::Node, Kind::Timeout, "timeout")),
         }
     }
 }

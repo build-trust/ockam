@@ -13,6 +13,7 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
+#[allow(dead_code)]
 const TARGET: &str = "ockam_api::cloud::enroll";
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
@@ -27,6 +28,7 @@ impl Token {
     }
 }
 
+#[allow(dead_code)]
 #[async_trait]
 trait Enroll {
     async fn generate_enrollment_token(

@@ -34,9 +34,7 @@ impl RemoveOrphanResources {
     }
 
     pub(crate) async fn migrate(connection: &mut SqliteConnection) -> Result<bool> {
-        let mut transaction = sqlx::Connection::begin(&mut *connection)
-            .await
-            .into_core()?;
+        let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         // Get existing node names
         let node_names: Vec<NodeNameRow> = query_as("SELECT name FROM node")

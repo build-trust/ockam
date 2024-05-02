@@ -35,9 +35,7 @@ impl SplitPolicies {
     }
 
     pub(crate) async fn migrate_policies(connection: &mut SqliteConnection) -> Result<bool> {
-        let mut transaction = sqlx::Connection::begin(&mut *connection)
-            .await
-            .into_core()?;
+        let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         let query_policies =
             query_as("SELECT resource_name, action, expression, node_name FROM resource_policy");

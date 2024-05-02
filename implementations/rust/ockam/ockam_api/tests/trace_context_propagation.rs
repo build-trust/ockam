@@ -31,7 +31,7 @@ fn test_context_propagation_across_instrumented_methods() {
         "{}",
         spans.iter().map(|s| s.name.to_string()).join(", ")
     );
-    let span1 = spans.get(0).unwrap();
+    let span1 = spans.first().unwrap();
     let span2 = spans.get(1).unwrap();
     let span3 = spans.get(2).unwrap();
 
