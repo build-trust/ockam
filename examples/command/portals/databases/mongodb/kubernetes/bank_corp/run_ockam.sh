@@ -29,7 +29,7 @@ ockam project enroll /etc/ockam/enrollment/ticket
 # Create a TCP Portal Outlet to mongodb at - localhost:27017.
 ockam node create
 ockam relay create mongodb
-ockam policy create --resource-type tcp-outlet --expression '(= subject.mongodb-inlet "true")'
+ockam policy create --resource-type tcp-outlet --allow 'mongodb-inlet'
 ockam tcp-outlet create --to 127.0.0.1:27017
 
 # Run the container forever.
