@@ -1,7 +1,7 @@
 build: typescript_build rust_build elixir_build
 build_release: typescript_build_release rust_build_release elixir_build_release
 test: typescript_test rust_test elixir_test
-lint: typescript_lint rust_lint elixir_lint
+lint: typescript_lint rust_lint elixir_lint notice_file_lint
 clean: typescript_clean rust_clean elixir_clean
 very_clean: typescript_very_clean rust_very_clean elixir_very_clean
 
@@ -18,6 +18,9 @@ rust_%:
 # run a rust command in a nix environment, so that all tools are installed
 nix_rust_%:
 	nix develop ./tools/nix#rust --command make rust_$*
+
+notice_file_update:
+	cargo deny --all-features  list --config=tools/cargo-deny/deny.toml --layout crate --format json | ./tools/scripts/release/parseCrates.sh
 
 swift_%:
 	$(MAKE) -C implementations/swift $(@:swift_%=%)
