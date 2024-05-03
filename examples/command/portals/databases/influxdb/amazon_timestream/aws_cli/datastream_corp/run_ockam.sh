@@ -36,7 +36,7 @@ cat << EOF > inlet.yaml
 tcp-inlet:
   from: 0.0.0.0:8086
   via: influxdb
-  allow: '(= subject.influxdb-outlet "true")'
+  allow: 'influxdb-outlet'
 EOF
 ockam node create inlet.yaml
 rm inlet.yaml

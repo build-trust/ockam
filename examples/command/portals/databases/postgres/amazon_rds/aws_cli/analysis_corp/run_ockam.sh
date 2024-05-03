@@ -36,7 +36,7 @@ cat << EOF > inlet.yaml
 tcp-inlet:
   from: 0.0.0.0:15432
   via: postgres
-  allow: '(= subject.postgres-outlet "true")'
+  allow: 'postgres-outlet'
 EOF
 
 ockam node create inlet.yaml

@@ -37,7 +37,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 cat << EOF > outlet.yaml
 tcp-outlet:
   to: "$POSTGRES_ADDRESS:5432"
-  allow: '(= subject.postgres-inlet "true")'
+  allow: 'postgres-inlet'
 
 relay: postgres
 EOF

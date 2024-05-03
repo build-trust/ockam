@@ -60,8 +60,13 @@ pub struct CreateCommand {
     /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
     ///
     /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
-    #[arg(hide = true, long = "allow", display_order = 904, id = "EXPRESSION")]
-    pub policy_expression: Option<PolicyExpression>,
+    #[arg(
+        hide = true,
+        visible_alias = "policy_expression",
+        display_order = 904,
+        id = "POLICY_EXPRESSION"
+    )]
+    pub allow: Option<PolicyExpression>,
 }
 
 #[async_trait]
@@ -77,13 +82,7 @@ impl Command for CreateCommand {
         let send_req = async {
             let from = self.from.map(Address::from);
             let res = node
-                .create_outlet(
-                    ctx,
-                    self.to.clone(),
-                    self.tls,
-                    from.as_ref(),
-                    self.policy_expression,
-                )
+                .create_outlet(ctx, self.to.clone(), self.tls, from.as_ref(), self.allow)
                 .await?;
             *is_finished.lock().await = true;
             Ok(res)

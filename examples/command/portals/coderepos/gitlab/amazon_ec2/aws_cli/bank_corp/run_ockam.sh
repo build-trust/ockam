@@ -37,7 +37,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 cat << EOF > outlet.yaml
 tcp-outlet:
   to: "localhost:222"
-  allow: '(= subject.gitlab-inlet "true")'
+  allow: 'gitlab-inlet'
 
 relay: gitlab
 EOF

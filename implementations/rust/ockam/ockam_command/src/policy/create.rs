@@ -40,8 +40,8 @@ pub struct CreateCommand {
     #[arg(long)]
     pub resource: Option<ResourceName>,
 
-    #[arg(long)]
-    pub expression: PolicyExpression,
+    #[arg(long, visible_alias = "expression", id = "POLICY_EXPRESSION")]
+    pub allow: PolicyExpression,
 }
 
 #[async_trait]
@@ -68,7 +68,7 @@ impl Command for CreateCommand {
             .into_diagnostic()?;
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
-        node.add_policy(ctx, &resource, &Action::HandleMessage, &self.expression)
+        node.add_policy(ctx, &resource, &Action::HandleMessage, &self.allow)
             .await?;
         opts.terminal
             .stdout()

@@ -36,7 +36,7 @@ cat << EOF > inlet.yaml
 tcp-inlet:
   from: 0.0.0.0:1222
   via: gitlab
-  allow: '(= subject.gitlab-outlet "true")'
+  allow: 'gitlab-outlet'
 EOF
 
 ockam node create inlet.yaml

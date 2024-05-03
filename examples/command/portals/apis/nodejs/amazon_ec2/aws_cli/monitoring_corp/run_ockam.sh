@@ -36,7 +36,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # Create a TCP Portal Outlet to postgres at - localhost:3000.
 ockam node create
 ockam relay create monitoring-api
-ockam policy create --resource-type tcp-outlet --expression '(= subject.monitoring-api-inlet "true")'
+ockam policy create --resource-type tcp-outlet --allow 'monitoring-api-inlet'
 ockam tcp-outlet create --to localhost:3000
 
 EOS
