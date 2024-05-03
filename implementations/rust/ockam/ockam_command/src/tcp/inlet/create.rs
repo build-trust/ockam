@@ -83,8 +83,13 @@ pub struct CreateCommand {
     /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
     ///
     /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
-    #[arg(hide = true, long = "allow", display_order = 900, id = "EXPRESSION")]
-    pub policy_expression: Option<PolicyExpression>,
+    #[arg(
+        hide = true,
+        visible_alias = "policy_expression",
+        display_order = 900,
+        id = "POLICY_EXPRESSION"
+    )]
+    pub allow: Option<PolicyExpression>,
 
     /// Time to wait for the outlet to be available.
     #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]
@@ -147,7 +152,7 @@ impl Command for CreateCommand {
                         &cmd.to(),
                         &cmd.alias,
                         &cmd.authorized,
-                        &cmd.policy_expression,
+                        &cmd.allow,
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
                     )

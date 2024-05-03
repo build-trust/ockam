@@ -52,10 +52,7 @@ mod tests {
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
         assert_eq!(cmds[0].resource.as_ref().unwrap().as_str(), "r1");
-        assert_eq!(
-            &cmds[0].expression.to_string(),
-            "(= subject.component \"c1\")"
-        );
+        assert_eq!(&cmds[0].allow.to_string(), "(= subject.component \"c1\")");
     }
 
     #[test]
@@ -78,29 +75,20 @@ mod tests {
 
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
         assert_eq!(cmds[0].resource.as_ref().unwrap().as_str(), "r1");
-        assert_eq!(
-            &cmds[0].expression.to_string(),
-            "(= subject.component \"c1\")"
-        );
+        assert_eq!(&cmds[0].allow.to_string(), "(= subject.component \"c1\")");
 
         assert_eq!(cmds[1].at.as_ref().unwrap(), "n2");
         assert_eq!(
             &cmds[1].resource.as_ref().unwrap().to_string(),
             "tcp-outlet"
         );
-        assert_eq!(
-            &cmds[1].expression.to_string(),
-            "(= subject.component \"c2\")"
-        );
+        assert_eq!(&cmds[1].allow.to_string(), "(= subject.component \"c2\")");
 
         assert_eq!(cmds[2].at.as_ref().unwrap(), "n3");
         assert_eq!(
             &cmds[2].resource_type.as_ref().unwrap().to_string(),
             "tcp-inlet"
         );
-        assert_eq!(
-            &cmds[2].expression.to_string(),
-            "(= subject.component \"c3\")"
-        );
+        assert_eq!(&cmds[2].allow.to_string(), "(= subject.component \"c3\")");
     }
 }

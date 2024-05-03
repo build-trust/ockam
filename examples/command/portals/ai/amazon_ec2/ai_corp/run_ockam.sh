@@ -37,7 +37,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 cat << EOF > outlet.yaml
 tcp-outlet:
   to: "localhost:3000"
-  allow: '(= subject.ai-inlet "true")'
+  allow: 'ai-inlet'
 
 relay: ai
 EOF
