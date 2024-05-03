@@ -71,3 +71,29 @@ jobs:
         run: |
           mv tools/semgrep/.semgrepignore . & \
           semgrep --verbose --config="r2c" --config="tools/semgrep/rules/example.yaml"
+
+  # Check notice file for update
+  notice_update:
+    name: All - notice_update
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
+
+      - name: Checkout
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
+
+      - name: Update Notice File
+        shell: nix shell nixpkgs#jq nixpkgs#cargo-deny --command bash {0}
+        run: make notice_file_update
+
+      - name: Fail if notice update needed
+        shell: bash
+        run: |
+          set -ex
+          git diff --exit-code NOTICE.md &> /dev/null || \
+          { \
+            echo "NOTICE file outdated"; \
+            git diff;
+            exit 1; \
+          }
