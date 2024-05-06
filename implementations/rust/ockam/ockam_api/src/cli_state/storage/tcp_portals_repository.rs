@@ -21,14 +21,14 @@ pub trait TcpPortalsRepository: Send + Sync + 'static {
         tcp_outlet_status: &OutletStatus,
     ) -> Result<()>;
 
-    /// Return the configuration of a TcpInlet for a given node name and worker address
+    /// Return the configuration of a TcpOutlet for a given node name and worker address
     async fn get_tcp_outlet(
         &self,
         node_name: &str,
         worker_addr: &Address,
     ) -> Result<Option<OutletStatus>>;
 
-    /// Delete the configuration of a TcpInlet for a given node name and worker address
+    /// Delete the configuration of a TcpOutlet for a given node name and worker address
     async fn delete_tcp_outlet(&self, node_name: &str, worker_addr: &Address) -> Result<()>;
 }
 

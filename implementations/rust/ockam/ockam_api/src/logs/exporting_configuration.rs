@@ -11,10 +11,10 @@ use ockam_node::Executor;
 use std::env::current_exe;
 use std::fmt::{Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::ops::Add;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::time::Duration;
+use tokio::time::Instant;
 use tokio_retry::strategy::FibonacciBackoff;
 use url::Url;
 
@@ -260,7 +260,7 @@ fn exporting_enabled(
     } else {
         let endpoint_kind = match endpoint {
             OpenTelemetryEndpoint::HttpsEndpoint(_) => "OpenTelemetry collector endpoint",
-            OpenTelemetryEndpoint::PortalEndpoint(_) => "opentelemetry inlet",
+            OpenTelemetryEndpoint::PortalEndpoint(_) => "OpenTelemetry inlet",
         };
         print_debug(format!("Exporting OpenTelemetry events is disabled because the {} at {} cannot be reached after {}ms", endpoint_kind, endpoint.url(), connection_check_timeout.as_millis()));
         print_debug("You can disable the export of OpenTelemetry events with: `export OCKAM_OPENTELEMETRY_EXPORT=false` to avoid this connection check.");
@@ -275,7 +275,7 @@ fn is_endpoint_accessible(url: &Url, connection_check_timeout: Duration) -> bool
     match to_socket_addr(url) {
         Some(address) => {
             let retries = FibonacciBackoff::from_millis(100);
-            let mut total_time = Duration::from_secs(0);
+            let now = Instant::now();
 
             for timeout_duration in retries {
                 print_debug(format!(
@@ -284,13 +284,10 @@ fn is_endpoint_accessible(url: &Url, connection_check_timeout: Duration) -> bool
                 if std::net::TcpStream::connect_timeout(&address, timeout_duration).is_ok() {
                     return true;
                 } else {
-                    if total_time >= connection_check_timeout {
+                    if now.elapsed() >= connection_check_timeout {
                         return false;
                     };
-                    let _ = Executor::execute_future(async move {
-                        tokio::time::sleep(timeout_duration).await
-                    });
-                    total_time = total_time.add(timeout_duration)
+                    std::thread::sleep(timeout_duration);
                 }
             }
             false
