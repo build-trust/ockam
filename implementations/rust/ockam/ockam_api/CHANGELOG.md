@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.67.0 - 2024-05-06
+
+### Added
+
+- Improve output of `project enroll` command
+- Improve output of `node show` and `status` commands
+- Create a project member for exporting traces when the authority node starts
+- Create and store a default project when starting an authority node
+- Add more log messages
+- Updated dependencies
+
+### Changed
+
+- Upgrade the rust version to 1.77
+
 ## 0.66.0 - 2024-04-30
 
 ### Added
