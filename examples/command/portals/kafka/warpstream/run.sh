@@ -29,6 +29,8 @@ run() {
     ockam enroll
 
     # Create a Cluster in Warpstream
+    if [[ -z $WARPSTREAM_API_KEY ]]; then echo "ERROR: Please provide your Warpstream API key as an environment variable 'WARPSTREAM_API_KEY'" && exit 1; fi;
+
     cluster_detail=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/create_virtual_cluster \
         -H "warpstream-api-key: $WARPSTREAM_API_KEY" \
         -H 'Content-Type: application/json' \
@@ -68,6 +70,7 @@ run() {
 # Cleanup after the example - `./run.sh cleanup`
 # Remove all containers and images pulled or created by docker compose.
 cleanup() {
+    if [[ -z $WARPSTREAM_API_KEY ]]; then echo "ERROR: Please provide your Warpstream API key as an environment variable 'WARPSTREAM_API_KEY'" && exit 1; fi;
     pushd application_team; docker compose down --rmi all --remove-orphans; popd
 
     clusters=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/list_virtual_clusters \
@@ -93,11 +96,6 @@ cleanup() {
     done
 }
 
-# Check to ensure that users have provided their Warpstream API key as an environment variable
-if [[ -z $WARPSTREAM_API_KEY ]]; then
-    echo "ERROR: Please provide your Warpstream API key as an environment variable 'WARPSTREAM_API_KEY'" && exit 1;
-fi
-
 # Check if Ockam Command is already installed and available in path.
 # If it's not, then install it.
 if ! type ockam &>/dev/null; then
@@ -112,4 +110,10 @@ done
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.
-if [ "$1" = "cleanup" ]; then cleanup; else run; fi
+if [ "$1" = "cleanup" ]; then
+    export WARPSTREAM_API_KEY="$2"
+    cleanup;
+else
+    export WARPSTREAM_API_KEY="$1"
+    run;
+fi
