@@ -1,7 +1,9 @@
 use crate::models::{ChangeHistory, CredentialAndPurposeKey};
-use minicbor::{Decode, Encode};
+use minicbor::encode::{Error, Write};
+use minicbor::{Decode, Decoder, Encode, Encoder};
 use ockam_core::compat::vec::Vec;
 use ockam_core::Route;
+use uuid::{Bytes, Uuid};
 
 /// Secure Channel Message format.
 #[derive(Debug, Encode, Decode, Clone)]
@@ -13,6 +15,55 @@ pub enum SecureChannelMessage<'a> {
     #[n(1)] RefreshCredentials(#[n(0)] RefreshCredentialsMessage),
     /// Close the channel.
     #[n(2)] Close,
+    /// Encrypted payload message part
+    #[n(3)] PayloadPart {
+        /// Current message part
+        #[b(0)] part: PlaintextPayloadMessage<'a>,
+        /// Message UUID, used to identify which parts belong to which message
+        #[n(1)] payload_uuid: UuidCbor,
+        /// Number for this part
+        #[n(2)] current_part_number: u32,
+        /// Total number of expected parts
+        #[n(3)] total_number_of_parts: u32,
+    },
+}
+
+/// Wrapper around the Uuid data type to provide CBOR instances for that type
+#[derive(Debug, Clone)]
+pub struct UuidCbor(Uuid);
+
+impl UuidCbor {
+    /// Wrap a Uuid as UuidCbor for serialization
+    pub fn new(uuid: Uuid) -> UuidCbor {
+        UuidCbor(uuid)
+    }
+}
+
+impl From<UuidCbor> for Uuid {
+    fn from(value: UuidCbor) -> Self {
+        value.0
+    }
+}
+
+impl<C> Encode<C> for UuidCbor {
+    fn encode<W: Write>(&self, e: &mut Encoder<W>, ctx: &mut C) -> Result<(), Error<W::Error>> {
+        self.0.as_bytes().encode(e, ctx)
+    }
+
+    fn is_nil(&self) -> bool {
+        false
+    }
+}
+
+impl<'b, C> Decode<'b, C> for UuidCbor {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
+        let bs = Bytes::decode(d, ctx)?;
+        Ok(UuidCbor(Uuid::from_bytes(bs)))
+    }
+
+    fn nil() -> Option<Self> {
+        None
+    }
 }
 
 /// Secure Channel Message format.

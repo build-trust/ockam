@@ -18,10 +18,12 @@ use crate::{
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
+use crate::secure_channel::payload_collector::PayloadCollector;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, trace, warn};
 use tracing_attributes::instrument;
+use uuid::Uuid;
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
@@ -33,6 +35,7 @@ pub(crate) struct DecryptorHandler {
     identities: Arc<Identities>,
     authority: Option<Identifier>,
     shared_state: SecureChannelSharedState,
+    payload_collector: PayloadCollector,
 }
 
 impl DecryptorHandler {
@@ -55,6 +58,7 @@ impl DecryptorHandler {
             identities,
             authority,
             shared_state,
+            payload_collector: PayloadCollector::new(),
         }
     }
 
@@ -138,6 +142,45 @@ impl DecryptorHandler {
         }
     }
 
+    /// This handler receives a payload part and
+    /// updates the payload collector.
+    /// If all the parts of a given payload (as determined by the payload uuid) have been received
+    /// then the full payload is returned by the collector and the payload is handled
+    /// via the handle_payload method.
+    async fn handle_payload_part<'a>(
+        &mut self,
+        ctx: &mut Context,
+        nonce: Nonce,
+        encrypted_msg_return_route: Route,
+        part: PlaintextPayloadMessage<'a>,
+        payload_uuid: Uuid,
+        current_part_number: u32,
+        total_number_of_parts: u32,
+    ) -> Result<()> {
+        if let Some(payload) = self
+            .payload_collector
+            .update(
+                payload_uuid,
+                &part.onward_route,
+                &part.return_route,
+                part.payload.to_vec(),
+                current_part_number,
+                total_number_of_parts,
+            )
+            .await?
+        {
+            let message = PlaintextPayloadMessage {
+                onward_route: part.onward_route.clone(),
+                return_route: part.return_route.clone(),
+                payload: payload.as_slice(),
+            };
+            self.handle_payload(ctx, message, nonce, encrypted_msg_return_route)
+                .await
+        } else {
+            Ok(())
+        }
+    }
+
     async fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
         // Prevent sending another Close message
         self.shared_state
@@ -205,8 +248,25 @@ impl DecryptorHandler {
                 self.handle_payload(ctx, decrypted_msg, nonce, encrypted_msg_return_route)
                     .await?
             }
-            SecureChannelMessage::RefreshCredentials(decrypted_msg) => {
-                self.handle_refresh_credentials(ctx, decrypted_msg).await?
+            SecureChannelMessage::PayloadPart {
+                part,
+                payload_uuid,
+                current_part_number,
+                total_number_of_parts,
+            } => {
+                self.handle_payload_part(
+                    ctx,
+                    nonce,
+                    encrypted_msg_return_route,
+                    part.clone(),
+                    payload_uuid.into(),
+                    current_part_number,
+                    total_number_of_parts,
+                )
+                .await?
+            }
+            SecureChannelMessage::RefreshCredentials(msg) => {
+                self.handle_refresh_credentials(ctx, msg).await?
             }
             SecureChannelMessage::Close => self.handle_close(ctx).await?,
         };

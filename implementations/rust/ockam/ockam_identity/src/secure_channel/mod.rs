@@ -16,6 +16,7 @@ mod options;
 mod registry;
 mod role;
 
+mod payload_collector;
 /// List of trust policies to setup ABAC controls
 pub mod trust_policy;
 

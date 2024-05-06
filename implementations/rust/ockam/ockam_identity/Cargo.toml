@@ -92,6 +92,7 @@ sqlx = { version = "0.7.4", optional = true }
 tokio-retry = { version = "0.3.0", default-features = false, optional = true }
 tracing = { version = "0.1", default_features = false }
 tracing-attributes = { version = "0.1", default_features = false }
+uuid = { version = "1.8.0", features = ["v4"] }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }

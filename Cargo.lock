@@ -4623,6 +4623,7 @@ dependencies = [
  "tokio-retry",
  "tracing",
  "tracing-attributes",
+ "uuid",
  "zeroize",
 ]
 

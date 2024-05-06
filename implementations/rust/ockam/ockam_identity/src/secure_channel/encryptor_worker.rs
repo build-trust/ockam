@@ -2,6 +2,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use tracing::{debug, error, info, warn};
 use tracing_attributes::instrument;
+use uuid::Uuid;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
@@ -17,8 +18,12 @@ use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError, Nonce,
-    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
+    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage, UuidCbor,
 };
+
+/// Maximum size for a secure channel payload.
+/// For now, it is the same size as max payload size for TCP portal messages.
+const MAX_SECURE_CHANNEL_PAYLOAD_SIZE: usize = 48 * 1024;
 
 /// Wrap last received (during successful decryption) nonce and current route to the remote in a
 /// struct to allow shared access to it. That allows updating it either by calling
@@ -183,13 +188,49 @@ impl EncryptorWorker {
         let _ = onward_route.step();
 
         let payload = msg.into_payload();
-        let msg = PlaintextPayloadMessage {
-            onward_route,
-            return_route,
-            payload: &payload,
-        };
-        let msg = SecureChannelMessage::Payload(msg);
+        if payload.len() > MAX_SECURE_CHANNEL_PAYLOAD_SIZE {
+            let uuid = Uuid::new_v4();
+            let parts = payload.chunks(MAX_SECURE_CHANNEL_PAYLOAD_SIZE);
+            let (total_number_of_parts, _) = parts.size_hint();
+            debug!("The message payload is larger than {MAX_SECURE_CHANNEL_PAYLOAD_SIZE} bytes. Splitting it in {total_number_of_parts} (payload UUID: {uuid})");
+            for (part_number, part) in parts.enumerate() {
+                let part_number = part_number + 1;
+                let part = PlaintextPayloadMessage {
+                    onward_route: onward_route.clone(),
+                    return_route: return_route.clone(),
+                    payload: part,
+                };
 
+                let msg = SecureChannelMessage::PayloadPart {
+                    part,
+                    payload_uuid: UuidCbor::new(uuid),
+                    current_part_number: part_number as u32,
+                    total_number_of_parts: total_number_of_parts as u32,
+                };
+                let encoded_payload = minicbor::to_vec(&msg)?;
+                self.handle_encrypt_message(ctx, encoded_payload).await?;
+                debug!("Sent part {part_number} for payload {uuid}");
+            }
+        } else {
+            let msg = PlaintextPayloadMessage {
+                onward_route,
+                return_route,
+                payload: &payload,
+            };
+
+            let msg = SecureChannelMessage::Payload(msg);
+            let encoded_payload = minicbor::to_vec(&msg)?;
+            self.handle_encrypt_message(ctx, encoded_payload).await?;
+        }
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    async fn handle_encrypt_message(
+        &mut self,
+        ctx: &mut <Self as Worker>::Context,
+        encoded_payload: Vec<u8>,
+    ) -> Result<()> {
         let payload = {
             // This is a workaround to keep backcompatibility with an extra
             // bare encoding of the raw message (Vec<u8>).
@@ -201,7 +242,6 @@ impl EncryptorWorker {
             // before it's actually written, so we can write the whole encrypted
             // payload without any extra copies.
 
-            let encoded_payload = minicbor::to_vec(&msg)?;
             // we assume this calculation is exact
             let encrypted_payload_size = SIZE_OF_ENCRYPT_OVERHEAD + encoded_payload.len();
             let variable_length_integer =
