@@ -17,6 +17,7 @@ contents:
     - ncurses-dev
     - ncurses-terminfo-base
     - libstdc++
+    - clang-17-dev
     - glibc
     - glibc-dev
     - gcc
@@ -28,6 +29,7 @@ contents:
     - erlang-24-dev
     - openssl
     - make
+    - cmake
 
 archs:
   - x86_64

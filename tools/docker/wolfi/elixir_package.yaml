@@ -29,7 +29,9 @@ environment:
       - busybox
       - gcc
       - llvm-libcxx-16
+      - clang-17-dev
       - make
+      - cmake
       - sed
 
 pipeline:
