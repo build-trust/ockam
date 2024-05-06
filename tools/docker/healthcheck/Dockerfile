@@ -1,5 +1,5 @@
 # Stage 1 - Build elixir release of ockam_healthcheck elixir app
-FROM ghcr.io/build-trust/ockam-elixir-builder@sha256:65bf57734875c150e7dd94cd3b4df256abfab1c1509c9d6ede15b791c2b76cd9 AS elixir-app-release-build
+FROM ghcr.io/build-trust/ockam-elixir-builder@sha256:134fc5b1163e34d66628dc8e0b4e8ce80213d0b82303c71c2a50b916df213aaf AS elixir-app-release-build
 
 COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
 COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
@@ -21,7 +21,7 @@ RUN set -ex; \
 
 
 # Stage 2 - Create container and copy executables in above step
-FROM ghcr.io/build-trust/ockam-elixir-base@sha256:50da5804c0aef8f98b8500f4fcbe877b95826d587d8ef0f474a8895effe6140b AS app
+FROM ghcr.io/build-trust/ockam-elixir-base@sha256:6e741652317065de0234e12d4a95563d1f6dbdd6bb95cce63e53780361f64a62 AS app
 
 COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
 COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
