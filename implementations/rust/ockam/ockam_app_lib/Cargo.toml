@@ -1,6 +1,6 @@
 [package]
 name = "ockam_app_lib"
-version = "0.123.0"
+version = "0.124.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -39,11 +39,11 @@ futures = { version = "0.3.30", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.24.0", features = ["alloc", "derive"] }
-ockam = { path = "../ockam", version = "^0.123.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.66.0", default-features = false, features = ["std"] }
-ockam_core = { path = "../ockam_core", version = "^0.108.0" }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.52.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.113.0", default-features = false, features = ["std"] }
+ockam = { path = "../ockam", version = "^0.124.0", features = ["software_vault"] }
+ockam_api = { path = "../ockam_api", version = "0.67.0", default-features = false, features = ["std"] }
+ockam_core = { path = "../ockam_core", version = "^0.109.0" }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.53.0", features = ["cbor", "serde"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.114.0", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite", "migrate"] }
