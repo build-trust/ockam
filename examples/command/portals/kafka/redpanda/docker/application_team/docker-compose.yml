@@ -14,7 +14,7 @@ services:
       dockerfile: kafka_client.dockerfile
     environment:
       ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
-      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
       - application_team
     command:

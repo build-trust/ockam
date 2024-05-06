@@ -16,7 +16,7 @@ services:
       dockerfile: ../ockam.dockerfile
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
-      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
       - analysis_corp
 
