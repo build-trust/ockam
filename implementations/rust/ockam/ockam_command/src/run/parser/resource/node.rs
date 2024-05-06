@@ -22,6 +22,10 @@ pub struct Node {
     pub exit_on_eof: Option<ArgValue>,
     #[serde(alias = "tcp-listener-address")]
     pub tcp_listener_address: Option<ArgValue>,
+    #[serde(alias = "enable-http-server")]
+    pub enable_http_server: Option<ArgValue>,
+    #[serde(alias = "http-server-port")]
+    pub http_server_port: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
 }
@@ -74,6 +78,12 @@ impl Node {
         }
         if let Some(tcp_listener_address) = self.tcp_listener_address {
             args.insert("tcp-listener-address".to_string(), tcp_listener_address);
+        }
+        if let Some(enable_http_server) = self.enable_http_server {
+            args.insert("tcp-listener-address".to_string(), enable_http_server);
+        }
+        if let Some(http_server_port) = self.http_server_port {
+            args.insert("http-server-port".to_string(), http_server_port);
         }
         if let Some(identity) = self.identity {
             args.insert("identity".to_string(), identity);

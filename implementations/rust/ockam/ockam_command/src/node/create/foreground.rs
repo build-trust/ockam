@@ -101,12 +101,25 @@ impl CreateCommand {
             .await?;
         debug!("node info persisted {node_info:?}");
 
+        let http_server_port = if let Some(port) = self.http_server_port {
+            Some(port)
+        } else if self.enable_http_server {
+            if let Some(addr) = node_info.http_server_address() {
+                Some(addr.port())
+            } else {
+                Some(0)
+            }
+        } else {
+            None
+        };
+
         let node_man = InMemoryNode::new(
             ctx,
             NodeManagerGeneralOptions::new(
                 state,
                 node_name.clone(),
                 self.launch_config.is_none(),
+                http_server_port,
                 true,
             ),
             NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),

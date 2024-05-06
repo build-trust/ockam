@@ -7,11 +7,13 @@ use crate::nodes::connection::{
 use crate::nodes::models::portal::OutletStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::registry::Registry;
+use crate::nodes::service::http::HttpServer;
 use crate::nodes::service::{
     CredentialRetrieverCreators, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
 };
+
 use crate::session::MedicHandle;
-use crate::{CliState, DefaultAddress};
+use crate::{ApiError, CliState, DefaultAddress};
 use miette::IntoDiagnostic;
 use ockam::identity::{
     CachedCredentialRetrieverCreator, CredentialRetrieverCreator, Identifier,
@@ -58,11 +60,12 @@ impl NodeManager {
         general_options: NodeManagerGeneralOptions,
         transport_options: NodeManagerTransportOptions,
         trust_options: NodeManagerTrustOptions,
-    ) -> ockam_core::Result<Self> {
+    ) -> ockam_core::Result<Arc<Self>> {
         let cli_state = general_options.cli_state;
         let node_name = general_options.node_name.clone();
 
         let registry = Arc::new(Registry::default());
+
         debug!("start the medic");
         let medic_handle = MedicHandle::start_medic(ctx, registry.clone()).await?;
 
@@ -149,6 +152,16 @@ impl NodeManager {
         debug!("initializing services");
         s.initialize_services(ctx, general_options.start_default_services)
             .await?;
+
+        let s = Arc::new(s);
+
+        if let Some(http_server_port) = general_options.http_server_port {
+            debug!("start the http server");
+            HttpServer::start(s.clone(), http_server_port)
+                .await
+                .map_err(|e| ApiError::core(e.to_string()))?;
+        }
+
         info!("created a node manager for the node: {}", s.node_name);
 
         Ok(s)
@@ -443,6 +456,7 @@ pub struct NodeManagerGeneralOptions {
     pub(super) cli_state: CliState,
     pub(super) node_name: String,
     pub(super) start_default_services: bool,
+    pub(super) http_server_port: Option<u16>,
     pub(super) persistent: bool,
 }
 
@@ -451,12 +465,14 @@ impl NodeManagerGeneralOptions {
         cli_state: CliState,
         node_name: String,
         start_default_services: bool,
+        http_server_port: Option<u16>,
         persistent: bool,
     ) -> Self {
         Self {
             cli_state,
             node_name,
             start_default_services,
+            http_server_port,
             persistent,
         }
     }

@@ -13,6 +13,7 @@ use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
 
+use crate::config::lookup::InternetAddress;
 use std::fmt::{Display, Formatter};
 
 /// Response body for a node status request
@@ -55,13 +56,15 @@ pub struct NodeResources {
     #[serde(flatten)]
     #[n(4)] pub status: NodeProcessStatus,
     #[n(5)] pub route: RouteToNode,
-    #[n(6)] pub transports: Vec<TransportStatus>,
-    #[n(7)] pub secure_channel_listeners: Vec<SecureChannelListener>,
-    #[n(8)] pub inlets: Vec<InletStatus>,
-    #[n(9)] pub outlets: Vec<OutletStatus>,
-    #[n(10)] pub services: Vec<ServiceStatus>,
+    #[n(6)] pub http_server_address: Option<InternetAddress>,
+    #[n(7)] pub transports: Vec<TransportStatus>,
+    #[n(8)] pub secure_channel_listeners: Vec<SecureChannelListener>,
+    #[n(9)] pub inlets: Vec<InletStatus>,
+    #[n(10)] pub outlets: Vec<OutletStatus>,
+    #[n(11)] pub services: Vec<ServiceStatus>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl NodeResources {
     pub fn from_parts(
         node: NodeInfo,
@@ -81,6 +84,7 @@ impl NodeResources {
                 short: node.route()?,
                 verbose: node.verbose_route()?,
             },
+            http_server_address: node.http_server_address(),
             transports,
             secure_channel_listeners: listeners,
             inlets,
@@ -99,6 +103,7 @@ impl NodeResources {
                 short: node.route()?,
                 verbose: node.verbose_route()?,
             },
+            http_server_address: None,
             transports: vec![],
             secure_channel_listeners: vec![],
             inlets: vec![],
@@ -118,6 +123,15 @@ impl Display for NodeResources {
 
         writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION, self.status)?;
         writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION, self.route)?;
+        if let Some(http_server) = self.http_server_address.as_ref() {
+            writeln!(
+                f,
+                "{}{}HTTP server listening at {}",
+                fmt::PADDING,
+                fmt::INDENTATION,
+                color_primary(http_server.to_string())
+            )?;
+        }
 
         writeln!(
             f,

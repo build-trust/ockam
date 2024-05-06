@@ -76,6 +76,8 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         name,
         identity: identity_name,
         tcp_listener_address: address,
+        enable_http_server,
+        http_server_port,
         launch_config,
         trust_opts,
         opentelemetry_context,
@@ -142,6 +144,15 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
     if let Some(opentelemetry_context) = opentelemetry_context {
         args.push("--opentelemetry-context".to_string());
         args.push(opentelemetry_context.to_string());
+    }
+
+    if enable_http_server {
+        args.push("--enable-http-server".to_string());
+    }
+
+    if let Some(http_server_port) = http_server_port {
+        args.push("--http-server-port".to_string());
+        args.push(http_server_port.to_string());
     }
 
     args.push(name.to_owned());

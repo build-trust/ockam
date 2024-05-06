@@ -711,7 +711,13 @@ pub(crate) async fn make_node_manager(
     let node_manager = Arc::new(
         InMemoryNode::new(
             &ctx,
-            NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), true, true),
+            NodeManagerGeneralOptions::new(
+                cli_state.clone(),
+                NODE_NAME.to_string(),
+                true,
+                None,
+                true,
+            ),
             NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
             trust_options,
         )

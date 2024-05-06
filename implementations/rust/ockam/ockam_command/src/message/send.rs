@@ -99,6 +99,7 @@ impl SendCommand {
                 ctx,
                 &opts.state,
                 &identity_name,
+                None,
                 self.trust_opts.project_name.clone(),
                 self.trust_opts.authority_identity.clone(),
                 self.trust_opts.authority_route.clone(),
