@@ -267,6 +267,18 @@ impl CliState {
         Ok(())
     }
 
+    #[instrument(skip_all, fields(node_name = node_name, address = %address))]
+    pub async fn set_node_http_server_addr(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()> {
+        Ok(self
+            .nodes_repository()
+            .set_http_server_address(node_name, address)
+            .await?)
+    }
+
     /// Specify that a node is an authority node
     /// This is used to display the node status since if the node TCP listener is not accessible
     /// without a secure channel
@@ -386,6 +398,7 @@ impl CliState {
             || repository.get_nodes().await?.is_empty();
 
         let tcp_listener_address = repository.get_tcp_listener_address(node_name).await?;
+        let http_server_address = repository.get_http_server_address(node_name).await?;
 
         let node_info = NodeInfo::new(
             node_name.to_string(),
@@ -395,6 +408,7 @@ impl CliState {
             false,
             tcp_listener_address,
             Some(process::id()),
+            http_server_address,
         );
         repository.store_node(&node_info).await?;
         Ok(node_info)
@@ -490,9 +504,11 @@ pub struct NodeInfo {
     is_authority: bool,
     tcp_listener_address: Option<InternetAddress>,
     pid: Option<u32>,
+    http_server_address: Option<InternetAddress>,
 }
 
 impl NodeInfo {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
         identifier: Identifier,
@@ -501,6 +517,7 @@ impl NodeInfo {
         is_authority: bool,
         tcp_listener_address: Option<InternetAddress>,
         pid: Option<u32>,
+        http_server_address: Option<InternetAddress>,
     ) -> Self {
         Self {
             name,
@@ -510,6 +527,7 @@ impl NodeInfo {
             is_authority,
             tcp_listener_address,
             pid,
+            http_server_address,
         }
     }
     pub fn name(&self) -> String {
@@ -557,6 +575,10 @@ impl NodeInfo {
                 "no transport has been set on the node".to_string(),
             ))
             .and_then(|t| t.multi_addr())?)
+    }
+
+    pub fn http_server_address(&self) -> Option<InternetAddress> {
+        self.http_server_address.clone()
     }
 
     pub fn pid(&self) -> Option<u32> {

@@ -86,6 +86,7 @@ impl InMemoryNode {
             ctx,
             cli_state,
             &default_identity_name,
+            None,
             project_name,
             None,
             None,
@@ -101,7 +102,7 @@ impl InMemoryNode {
         project_name: Option<String>,
     ) -> miette::Result<Self> {
         let identity = cli_state.get_identity_name_or_default(&identity).await?;
-        Self::start_node(ctx, cli_state, &identity, project_name, None, None).await
+        Self::start_node(ctx, cli_state, &identity, None, project_name, None, None).await
     }
 
     /// Start an in memory node with a specific identity
@@ -110,7 +111,7 @@ impl InMemoryNode {
         cli_state: &CliState,
         identity_name: &str,
     ) -> miette::Result<InMemoryNode> {
-        Self::start_node(ctx, cli_state, identity_name, None, None, None).await
+        Self::start_node(ctx, cli_state, identity_name, None, None, None, None).await
     }
 
     /// Start an in memory node
@@ -119,6 +120,7 @@ impl InMemoryNode {
         ctx: &Context,
         cli_state: &CliState,
         identity_name: &str,
+        http_server_port: Option<u16>,
         project_name: Option<String>,
         authority_identity: Option<String>,
         authority_route: Option<MultiAddr>,
@@ -151,7 +153,13 @@ impl InMemoryNode {
 
         let node_manager = Self::new(
             ctx,
-            NodeManagerGeneralOptions::new(cli_state.clone(), node.name(), false, false),
+            NodeManagerGeneralOptions::new(
+                cli_state.clone(),
+                node.name(),
+                false,
+                http_server_port,
+                false,
+            ),
             NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),
             trust_options,
         )
@@ -208,7 +216,7 @@ impl InMemoryNode {
         let node_manager =
             NodeManager::create(ctx, general_options, transport_options, trust_options).await?;
         Ok(Self {
-            node_manager: Arc::new(node_manager),
+            node_manager,
             persistent,
             timeout: None,
         })

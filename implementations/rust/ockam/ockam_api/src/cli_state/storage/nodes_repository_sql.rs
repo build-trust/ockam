@@ -6,7 +6,7 @@ use sqlx::*;
 use ockam::identity::Identifier;
 use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_core::async_trait;
-use ockam_core::errcode::{Kind, Origin};
+
 use ockam_core::Result;
 
 use crate::cli_state::{NodeInfo, NodesRepository};
@@ -32,7 +32,7 @@ impl NodesSqlxDatabase {
 #[async_trait]
 impl NodesRepository for NodesSqlxDatabase {
     async fn store_node(&self, node_info: &NodeInfo) -> Result<()> {
-        let query = query("INSERT OR REPLACE INTO node VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
+        let query = query("INSERT OR REPLACE INTO node VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")
             .bind(node_info.name().to_sql())
             .bind(node_info.identifier().to_sql())
             .bind(node_info.verbosity().to_sql())
@@ -44,18 +44,24 @@ impl NodesRepository for NodesSqlxDatabase {
                     .as_ref()
                     .map(|a| a.to_string().to_sql()),
             )
-            .bind(node_info.pid().map(|p| p.to_sql()));
+            .bind(node_info.pid().map(|p| p.to_sql()))
+            .bind(
+                node_info
+                    .http_server_address()
+                    .as_ref()
+                    .map(|a| a.to_string().to_sql()),
+            );
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
     async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
-        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node");
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node");
         let rows: Vec<NodeRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.node_info()).collect()
     }
 
     async fn get_node(&self, node_name: &str) -> Result<Option<NodeInfo>> {
-        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE name = ?").bind(node_name.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE name = ?").bind(node_name.to_sql());
         let row: Option<NodeRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -64,13 +70,13 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn get_nodes_by_identifier(&self, identifier: &Identifier) -> Result<Vec<NodeInfo>> {
-        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE identifier = ?").bind(identifier.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE identifier = ?").bind(identifier.to_sql());
         let rows: Vec<NodeRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.node_info()).collect()
     }
 
     async fn get_default_node(&self) -> Result<Option<NodeInfo>> {
-        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid FROM node WHERE is_default = ?").bind(true.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE is_default = ?").bind(true.to_sql());
         let row: Option<NodeRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -146,6 +152,17 @@ impl NodesRepository for NodesSqlxDatabase {
         query.execute(&*self.database.pool).await.void()
     }
 
+    async fn set_http_server_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()> {
+        let query = query("UPDATE node SET http_server_address = ? WHERE name = ?")
+            .bind(address.to_string().to_sql())
+            .bind(node_name.to_sql());
+        query.execute(&*self.database.pool).await.void()
+    }
+
     async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         let query = query("UPDATE node SET is_authority = ? WHERE name = ?")
             .bind(true.to_sql())
@@ -158,6 +175,13 @@ impl NodesRepository for NodesSqlxDatabase {
             .get_node(node_name)
             .await?
             .and_then(|n| n.tcp_listener_address()))
+    }
+
+    async fn get_http_server_address(&self, node_name: &str) -> Result<Option<InternetAddress>> {
+        Ok(self
+            .get_node(node_name)
+            .await?
+            .and_then(|n| n.http_server_address()))
     }
 
     async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
@@ -202,20 +226,19 @@ pub(crate) struct NodeRow {
     is_authority: bool,
     tcp_listener_address: Option<String>,
     pid: Option<u32>,
+    http_server_address: Option<String>,
 }
 
 impl NodeRow {
     pub(crate) fn node_info(&self) -> Result<NodeInfo> {
-        let tcp_listener_address = match self.tcp_listener_address.clone() {
-            None => None,
-            Some(a) => Some(InternetAddress::new(a.as_str()).ok_or_else(|| {
-                ockam_core::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
-                    format!("cannot deserialize the tcp listener address {}", a),
-                )
-            })?),
-        };
+        let tcp_listener_address = self
+            .tcp_listener_address
+            .as_ref()
+            .and_then(|a| InternetAddress::new(a));
+        let http_server_address = self
+            .http_server_address
+            .as_ref()
+            .and_then(|a| InternetAddress::new(a));
 
         Ok(NodeInfo::new(
             self.name.clone(),
@@ -225,6 +248,7 @@ impl NodeRow {
             self.is_authority,
             tcp_listener_address,
             self.pid,
+            http_server_address,
         ))
     }
 }
@@ -251,6 +275,7 @@ mod test {
             false,
             InternetAddress::new("127.0.0.1:51591"),
             Some(1234),
+            InternetAddress::new("127.0.0.1:51592"),
         );
 
         repository.store_node(&node_info1).await?;
@@ -272,6 +297,7 @@ mod test {
             false,
             None,
             Some(5678),
+            None,
         );
 
         repository.store_node(&node_info2).await?;
@@ -349,6 +375,7 @@ mod test {
             false,
             InternetAddress::new("127.0.0.1:51591"),
             Some(1234),
+            InternetAddress::new("127.0.0.1:51592"),
         )
     }
 }

@@ -305,6 +305,7 @@ impl MedicHandle {
     }
 
     pub async fn stop_medic(&self, ctx: &Context) -> Result<(), Error> {
+        debug!("Shutting down medic");
         Medic::stop(ctx).await?;
         self.handle.abort();
         Ok(())

@@ -20,6 +20,7 @@ mod secure_channel;
 mod transport;
 pub mod workers;
 
+mod http;
 mod manager;
 mod trust;
 mod worker;

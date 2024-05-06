@@ -30,7 +30,7 @@ pub enum ApiError {
     Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
+    Http(#[from] HttpError),
 
     #[error(transparent)]
     Fmt(#[from] fmt::Error),
@@ -92,4 +92,13 @@ impl From<ParseError> for ockam_core::Error {
 pub enum UiError {
     #[error(transparent)]
     Dialoguer(#[from] dialoguer::Error),
+}
+
+#[derive(Debug, thiserror::Error, Diagnostic)]
+pub enum HttpError {
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+
+    #[error(transparent)]
+    Hyper(#[from] hyper::http::Error),
 }

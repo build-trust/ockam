@@ -246,7 +246,9 @@ impl Worker for NodeManagerWorker {
     type Context = Context;
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> ockam_core::Result<()> {
-        self.node_manager.medic_handle.stop_medic(ctx).await
+        debug!(target: TARGET, "Shutting down NodeManagerWorker");
+        self.node_manager.medic_handle.stop_medic(ctx).await?;
+        Ok(())
     }
 
     async fn handle_message(

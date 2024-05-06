@@ -48,11 +48,21 @@ pub trait NodesRepository: Send + Sync + 'static {
         address: &InternetAddress,
     ) -> Result<()>;
 
+    /// Set the HTTP server address of a node
+    async fn set_http_server_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()>;
+
     /// Set that node as an authority node
     async fn set_as_authority_node(&self, node_name: &str) -> Result<()>;
 
     /// Get the TCP listener of a node
     async fn get_tcp_listener_address(&self, node_name: &str) -> Result<Option<InternetAddress>>;
+
+    /// Get the address of the HTTP server of a node
+    async fn get_http_server_address(&self, node_name: &str) -> Result<Option<InternetAddress>>;
 
     /// Set the process id of a node
     async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()>;
