@@ -1,4 +1,3 @@
-use crate::alloc::borrow::ToOwned;
 use crate::env::FromString;
 use crate::errcode::{Kind, Origin};
 use crate::{Error, Result};
@@ -22,14 +21,19 @@ pub fn get_env_with_default<T: FromString>(var_name: &str, default_value: T) -> 
 
 fn get_env_impl<T: FromString>(var_name: &str, default_value: T) -> Result<T> {
     match env::var(var_name) {
-        Ok(val) => Ok(T::from_string(&val)?),
+        Ok(val) => {
+            match T::from_string(&val) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(error(format!("The environment variable `{var_name}` cannot be decoded. The value `{val}` is invalid: {e:?}"))),
+            }
+        },
         Err(e) => match e {
             VarError::NotPresent => Ok(default_value),
-            VarError::NotUnicode(_) => Err(error("get_env error: not unicode".to_owned())),
+            VarError::NotUnicode(_) => Err(error(format!("The environment variable `{var_name}` cannot be decoded because it is not some valid Unicode"))),
         },
     }
 }
 
 pub(crate) fn error(msg: String) -> Error {
-    Error::new(Origin::Core, Kind::Internal, msg)
+    Error::new(Origin::Core, Kind::Invalid, msg)
 }
