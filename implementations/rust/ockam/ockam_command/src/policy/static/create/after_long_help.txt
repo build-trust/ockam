@@ -1,14 +1,13 @@
-# Policy expressions
-
 Policies can be specified using 2 formats:
 
   - A simple boolean expression
   - A complete policy expression
 
-# Boolean expressions
+#### Boolean expressions
 
 A boolean expression contains names and boolean operators: `and`, `or`, `not`.
 Here are some examples of boolean expressions:
+
 ```
 a
 a and b
@@ -19,6 +18,7 @@ a or b
 The names must contain can contain letters, digits, and separators like,: `.`, `-`, or `_`.
 However a name cannot start with a digit or a `.`.
 For example:
+
 ```
 web
 internal_web1
@@ -28,11 +28,12 @@ external.db-production
 A boolean expression is transformed as a full policy expression before being stored.
 Names are transformed to attributes on a `subject` and set to the value `true`. For example, the expression `a and b`
 becomes:
+
 ```
 (and (= subject.a "true") (= subject.b "true"))
 ```
 
-# Policy expressions
+#### Policy expressions
 
 A policy expression is an expression containing identifiers and operators, which can eventually be evaluated to
 a boolean value given an environment (a list of key/value pairs) assigning a value to each name.
@@ -47,11 +48,12 @@ name `subject.component` and the value `"db"`. The type of values associated to 
   - a list of values with one of the types above.
 
 The structure of a policy expression consists in an operator followed by one or several arguments:
+
 ```
 (operator argument1 argument2)
 ```
 
-## Operators
+#### Operators
 
 Here is the list of available operators:
 
