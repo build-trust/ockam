@@ -28,7 +28,8 @@ discord channel https://discord.ockam.io
 ";
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
-static HEADER_RE: Lazy<Regex> = Lazy::new(|| Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into()));
+static HEADER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new("^(Examples|Learn More|Feedback):$".into()));
 static THEME: Lazy<SyntectTheme> = Lazy::new(|| {
     let mut theme_set = ThemeSet::load_defaults();
     let default_theme = theme_set.themes.remove("base16-ocean.dark").unwrap_or(
@@ -107,13 +108,17 @@ fn process_terminal_docs(input: String) -> String {
         }
         // The line is not part of a fenced block, so process normally.
         else {
-            // Replace headers with bold and underline text
+            // Bold and underline known headers
             if HEADER_RE.is_match(line) {
                 output.push(line.to_string().bold().underlined().to_string());
             }
-            // Replace subheaders with underlined text
+            // Underline H4 headers
             else if line.starts_with("#### ") {
                 output.push(line.replace("#### ", "").underlined().to_string());
+            }
+            // Remove H5 headers prefix
+            else if line.starts_with("##### ") {
+                output.push(line.replace("##### ", "").to_string());
             }
             // No processing
             else {
@@ -141,10 +146,8 @@ impl FencedCodeBlockHighlighter<'_> {
     }
 
     fn in_fenced_block(&mut self, line: &str) -> bool {
-        if line.contains("```sh") {
-            self.in_fenced_block = true;
-        } else if line.contains("```\n") {
-            self.in_fenced_block = false;
+        if line.contains("```") {
+            self.in_fenced_block = !self.in_fenced_block;
         }
         self.in_fenced_block
     }
