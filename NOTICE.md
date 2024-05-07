@@ -678,6 +678,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | windows_x86_64_gnullvm | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_gnullvm |
 | windows_x86_64_msvc | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_msvc |
 | windows_x86_64_msvc | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_msvc |
+| winnow | MIT | https://crates.io/crates/winnow |
 | winreg | MIT | https://crates.io/crates/winreg |
 | winsafe | MIT | https://crates.io/crates/winsafe |
 | x11-clipboard | MIT | https://crates.io/crates/x11-clipboard |
