@@ -110,4 +110,21 @@ impl FlowControls {
         let producers = self.producers.read().unwrap();
         producers.get(&producer_address).cloned()
     }
+
+    /// Get all [`FlowControlId`]s for which given Address is a consumer
+    /// TODO: Optimize
+    pub fn get_flow_control_ids_for_consumer(&self, address: &Address) -> Vec<FlowControlId> {
+        let consumers = self.consumers.read().unwrap();
+
+        consumers
+            .iter()
+            .filter_map(|(id, info)| {
+                if info.0.contains(address) {
+                    Some(id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }

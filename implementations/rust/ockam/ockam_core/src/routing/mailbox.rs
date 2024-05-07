@@ -139,6 +139,11 @@ impl Mailboxes {
         self.main_mailbox.address.clone()
     }
 
+    /// Return the main [`Address`] of this [`Mailboxes`]
+    pub fn main_address_ref(&self) -> &Address {
+        &self.main_mailbox.address
+    }
+
     /// Return `true` if the given [`Address`] is included in this [`Mailboxes`]
     pub fn contains(&self, msg_addr: &Address) -> bool {
         if &self.main_mailbox.address == msg_addr {

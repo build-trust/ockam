@@ -78,6 +78,11 @@ impl Context {
         self.mailboxes.main_address()
     }
 
+    /// Return the primary address of the current worker
+    pub fn address_ref(&self) -> &Address {
+        self.mailboxes.main_address_ref()
+    }
+
     /// Return all addresses of the current worker
     pub fn addresses(&self) -> Vec<Address> {
         self.mailboxes.addresses()
