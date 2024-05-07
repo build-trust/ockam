@@ -19,6 +19,12 @@ pub enum PolicyExpression {
     BooleanExpression(#[n(0)] BooleanExpr),
 }
 
+impl From<PolicyExpression> for Expr {
+    fn from(value: PolicyExpression) -> Self {
+        value.to_expression()
+    }
+}
+
 impl PolicyExpression {
     /// Return the policy expression corresponding to either a fully expanded policy expression
     /// or a boolean expression

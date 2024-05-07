@@ -390,7 +390,7 @@ impl NodeManager {
                     .store_policy_for_resource_name(
                         &resource.resource_name,
                         &action,
-                        &expression.to_expression(),
+                        &expression.into(),
                     )
                     .await?;
             }

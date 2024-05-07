@@ -5,6 +5,7 @@ use std::time::Duration;
 use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
 use ockam::abac::PolicyExpression::FullExpression;
+use ockam::abac::SUBJECT_KEY;
 use tracing::{debug, error, info, warn};
 
 use ockam_api::address::get_free_address;
@@ -207,7 +208,7 @@ impl AppState {
         // is the enroller of its project and not any enrolled
         // identity.
         let expr = eq([
-            ident(format!("subject.{}", OCKAM_ROLE_ATTRIBUTE_KEY)),
+            ident(format!("{}.{}", SUBJECT_KEY, OCKAM_ROLE_ATTRIBUTE_KEY)),
             str(OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE),
         ]);
 

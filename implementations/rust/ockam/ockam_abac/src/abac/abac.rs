@@ -193,7 +193,8 @@ impl Abac {
                                     "attribute already present"
                                 }
                             } else {
-                                environment.put(format!("subject.{key}"), str(s.to_string()));
+                                environment
+                                    .put(format!("{}.{key}", SUBJECT_KEY), str(s.to_string()));
                             }
                         }
                         Err(e) => {

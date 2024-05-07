@@ -1,4 +1,4 @@
-use crate::Expr;
+use crate::{Expr, SUBJECT_KEY};
 #[cfg(feature = "std")]
 use core::str::FromStr;
 use minicbor::{Decode, Encode};
@@ -122,6 +122,12 @@ impl TryFrom<String> for BooleanExpr {
     }
 }
 
+impl From<BooleanExpr> for Expr {
+    fn from(value: BooleanExpr) -> Self {
+        value.to_expression()
+    }
+}
+
 impl BooleanExpr {
     /// Create a name to be used in a boolean expression.
     pub fn name(s: &str) -> BooleanExpr {
@@ -158,7 +164,7 @@ impl BooleanExpr {
         match self {
             BooleanExpr::Name(s) => List(vec![
                 Ident("=".to_string()),
-                Ident(format!("subject.{}", s)),
+                Ident(format!("{}.{}", SUBJECT_KEY, s)),
                 Str("true".to_string()),
             ]),
             BooleanExpr::Or(e1, e2) => List(vec![
