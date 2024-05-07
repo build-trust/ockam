@@ -71,20 +71,12 @@ impl NodeManager {
         match resource {
             ResourceTypeOrName::Type(resource_type) => {
                 self.policies()
-                    .store_policy_for_resource_type(
-                        &resource_type,
-                        &action,
-                        &expression.to_expression(),
-                    )
+                    .store_policy_for_resource_type(&resource_type, &action, &expression.into())
                     .await
             }
             ResourceTypeOrName::Name(resource_name) => {
                 self.policies()
-                    .store_policy_for_resource_name(
-                        &resource_name,
-                        &action,
-                        &expression.to_expression(),
-                    )
+                    .store_policy_for_resource_name(&resource_name, &action, &expression.into())
                     .await
             }
         }
