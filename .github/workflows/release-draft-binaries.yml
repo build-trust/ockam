@@ -178,6 +178,7 @@ jobs:
       NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
     permissions:
       contents: write
+      id-token: write # This is required for requesting the JWT
 
     strategy:
       fail-fast: false
@@ -305,46 +306,46 @@ jobs:
         fi
 
     - name: Upload CLI release archive
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ./.github/actions/aws_upload
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET_OCKAM_CLI }}
-        asset_name: ${{ env.ASSET_OCKAM_CLI }}
-        asset_content_type: application/octet-stream
+        aws_role: arn:aws:iam::422184013103:role/GitHub-Release
+        aws_role_session_name: aws_upload
+        aws_region: us-east-1
+        bucket_name: ockam-release
+        file_name: ${{ env.ASSET_OCKAM_CLI }}
+        release_version: v1
+
 
     - name: Upload CLI Signature
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ./.github/actions/aws_upload
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET_OCKAM_CLI }}.sig
-        asset_name: ${{ env.ASSET_OCKAM_CLI }}.sig
-        asset_content_type: application/octet-stream
+        aws_role: arn:aws:iam::422184013103:role/GitHub-Release
+        aws_role_session_name: aws_upload
+        aws_region: us-east-1
+        bucket_name: ockam-release
+        file_name: ${{ env.ASSET_OCKAM_CLI }}.sig
+        release_version: v1
 
     - name: Upload MacOS App release
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-      if: ${{ env.ASSET_OCKAM_APP_DMG }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ./.github/actions/aws_upload
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET_OCKAM_APP_DMG }}
-        asset_name: ${{ env.ASSET_OCKAM_APP_DMG }}
-        asset_content_type: application/octet-stream
+        aws_role: arn:aws:iam::422184013103:role/GitHub-Release
+        aws_role_session_name: aws_upload
+        aws_region: us-east-1
+        bucket_name: ockam-release
+        file_name: ${{ env.ASSET_OCKAM_APP_DMG }}
+        release_version: v1
+
 
     - name: Upload MacOS App release Signature
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-      if: ${{ env.ASSET_OCKAM_APP_DMG }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ./.github/actions/aws_upload
       with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
-        asset_name: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
-        asset_content_type: application/octet-stream
+        aws_role: arn:aws:iam::422184013103:role/GitHub-Release
+        aws_role_session_name: aws_upload
+        aws_region: us-east-1
+        bucket_name: ockam-release
+        file_name: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
+        release_version: v1
 
 
   build_elixir_nifs:
@@ -353,6 +354,7 @@ jobs:
     environment: release
     permissions:
       contents: write
+      id-token: write # This is required for requesting the JWT
 
     strategy:
       fail-fast: false
@@ -461,6 +463,7 @@ jobs:
     environment: release
     permissions:
       contents: write
+      id-token: write # This is required for requesting the JWT
 
     steps:
       - name: Fetch All Assets
