@@ -36,7 +36,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # Create a TCP Portal Outlet to the python flask api at - localhost:5000.
 ockam node create
 ockam relay create monitoring-api
-ockam policy create --resource-type tcp-outlet --allow 'monitoring-api-inlet'
+ockam policy create --resource-type tcp-outlet --allow '(= subject.monitoring-api-inlet "true")'
 ockam tcp-outlet create --to localhost:5000
 
 EOS

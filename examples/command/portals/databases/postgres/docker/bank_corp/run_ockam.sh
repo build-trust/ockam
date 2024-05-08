@@ -29,7 +29,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # Create a TCP Portal Outlet to postgres at - postgres:5432.
 ockam node create
 ockam relay create postgres
-ockam policy create --resource-type tcp-outlet --allow 'postgres-inlet'
+ockam policy create --resource-type tcp-outlet --allow '(= subject.postgres-inlet "true")'
 ockam tcp-outlet create --to postgres:5432
 
 # Run the container forever.
