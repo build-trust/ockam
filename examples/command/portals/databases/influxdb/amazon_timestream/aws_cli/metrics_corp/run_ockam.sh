@@ -52,7 +52,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 cat << EOF > outlet.yaml
 tcp-outlet:
   to: "$INFLUXDB_ADDRESS:8086"
-  allow: 'influxdb-inlet'
+  allow: '(= subject.influxdb-inlet "true")'
 relay: influxdb
 EOF
 ockam node create outlet.yaml

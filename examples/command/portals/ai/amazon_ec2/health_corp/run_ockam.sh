@@ -36,7 +36,7 @@ cat << EOF > inlet.yaml
 tcp-inlet:
   from: 0.0.0.0:3000
   via: ai
-  allow: 'ai-outlet'
+  allow: '(= subject.ai-outlet "true")'
 EOF
 
 ockam node create inlet.yaml

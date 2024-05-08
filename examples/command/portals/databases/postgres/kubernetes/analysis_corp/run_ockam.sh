@@ -26,7 +26,7 @@ ockam project enroll /etc/ockam/enrollment/ticket
 # Create a TCP Portal Inlet to postgres.
 # This makes the remote postgres available on localhost:15432
 ockam node create
-ockam policy create --resource-type tcp-inlet --allow 'postgres-outlet'
+ockam policy create --resource-type tcp-inlet --allow '(= subject.postgres-outlet "true")'
 ockam tcp-inlet create --from 0.0.0.0:15432 --via postgres
 
 # Run the container forever.
