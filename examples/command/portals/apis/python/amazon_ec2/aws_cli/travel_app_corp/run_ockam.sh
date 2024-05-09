@@ -33,7 +33,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # Create a TCP Portal Inlet to the Python API.
 # This makes the remote API available on all localhost IPs at - 0.0.0.0:5000
 ockam node create
-ockam policy create --resource-type tcp-inlet --allow '(= subject.monitoring-api-outlet "true")'
+ockam policy create --resource-type tcp-inlet --expression '(= subject.monitoring-api-outlet "true")'
 ockam tcp-inlet create --from 0.0.0.0:5000 --via monitoring-api
 
 EOS
