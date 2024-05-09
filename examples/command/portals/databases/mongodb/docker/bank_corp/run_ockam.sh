@@ -33,7 +33,7 @@ echo "Enrolled!"
 # Create a TCP Portal Outlet to MongoDB at - mongodb:27017.
 ockam node create
 ockam relay create mongodb
-ockam policy create --resource-type tcp-outlet --allow '(= subject.mongodb-inlet "true")'
+ockam policy create --resource-type tcp-outlet --expression '(= subject.mongodb-inlet "true")'
 ockam tcp-outlet create --to mongodb:27017
 
 # Run the container forever.

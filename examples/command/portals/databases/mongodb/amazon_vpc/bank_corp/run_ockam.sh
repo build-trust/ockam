@@ -48,7 +48,7 @@ ockam project enroll "$ENROLLMENT_TICKET"
 # This makes the remote mongodb available on all localhost IPs at - 0.0.0.0:17017
 ockam node create
 ockam relay create mongodb
-ockam policy create --resource-type tcp-outlet --allow '(= subject.mongodb-inlet "true")'
+ockam policy create --resource-type tcp-outlet --expression '(= subject.mongodb-inlet "true")'
 ockam tcp-outlet create --to "127.0.0.1:27017"
 
 EOS
