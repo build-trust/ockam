@@ -12,9 +12,9 @@ use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
 use ockam_core::AsyncTryClone;
 
+use crate::shared_args::IdentityOpts;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use core::fmt::Write;
 use std::net::SocketAddr;
 
@@ -15,12 +16,11 @@ use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
 use crate::tcp::util::alias_parser;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 use ockam_api::output::Output;
 
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -42,24 +42,17 @@ pub struct ShowCommand {
     pub at: Option<String>,
 }
 
-impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "tcp-outlet show";
 
-    pub fn name(&self) -> String {
-        "tcp-outlet show".into()
-    }
-
-    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ShowTui::run(
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(ShowTui::run(
             ctx.async_try_clone().await.into_diagnostic()?,
             opts,
             self.clone(),
         )
-        .await
+        .await?)
     }
 }
 

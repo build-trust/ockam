@@ -6,7 +6,7 @@ use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, output::ProjectConfigCompact, CommandGlobalOpts};
 
@@ -40,7 +40,7 @@ impl InfoCommand {
         opts.terminal
             .stdout()
             .plain(info.item()?)
-            .json(serde_json::to_string_pretty(&info).into_diagnostic()?)
+            .json(serde_json::to_string(&info).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }

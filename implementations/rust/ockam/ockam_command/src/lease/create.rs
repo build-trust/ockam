@@ -11,7 +11,7 @@ use ockam_api::colors::OckamColor;
 use ockam_api::{fmt_log, fmt_ok, InfluxDbTokenLease};
 
 use crate::lease::create_project_client;
-use crate::util::api::{IdentityOpts, TrustOpts};
+use crate::shared_args::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -59,16 +59,14 @@ impl CreateCommand {
 
         let output_messages = vec!["Creating influxdb token...".to_string()];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (resp_token, _) = try_join!(send_req, progress_output)?;
 
         opts.terminal
             .stdout()
             .machine(resp_token.token.to_string())
-            .json(serde_json::to_string_pretty(&resp_token).into_diagnostic()?)
+            .json(serde_json::to_string(&resp_token).into_diagnostic()?)
             .plain(
                 fmt_ok!("Created influxdb token\n")
                     + &fmt_log!(
@@ -86,7 +84,7 @@ impl CreateCommand {
                             .color(OckamColor::PrimaryResource.color())
                     )
                     + &fmt_log!(
-                        "Expires at {}\n",
+                        "Expires at {}",
                         PrimitiveDateTime::parse(&resp_token.expires, &Iso8601::DEFAULT)
                             .into_diagnostic()?
                             .to_string()

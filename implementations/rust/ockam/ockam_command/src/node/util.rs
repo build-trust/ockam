@@ -6,14 +6,12 @@ use miette::{miette, Context as _};
 use rand::random;
 use tracing::info;
 
-use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 
-use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
-use crate::util::api::TrustOpts;
-use crate::CommandGlobalOpts;
+use crate::shared_args::TrustOpts;
+use crate::{Command as CommandTrait, CommandGlobalOpts};
 
 pub struct NodeManagerDefaults {
     pub node_name: String,
@@ -54,10 +52,8 @@ pub async fn initialize_default_node(
 ) -> miette::Result<()> {
     if opts.state.get_default_node().await.is_err() {
         let cmd = CreateCommand::default();
-        let node_name = cmd.name.clone();
-        cmd.spawn_background_node(opts).await?;
-        let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name).await?;
-        is_node_up(ctx, &mut node, true).await?;
+        cmd.async_run(ctx, opts.clone()).await?;
+        opts.terminal.write_line("")?;
     }
     Ok(())
 }

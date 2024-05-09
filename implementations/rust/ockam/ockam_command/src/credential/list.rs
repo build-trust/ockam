@@ -54,7 +54,6 @@ impl ListCommand {
 
         let list = opts.terminal.build_list(
             &credentials,
-            "Credentials",
             &format!(
                 "No Credentials found for vault: {}",
                 node_name.color(OckamColor::PrimaryResource.color())

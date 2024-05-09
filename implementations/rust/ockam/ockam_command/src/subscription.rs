@@ -9,7 +9,7 @@ use ockam_api::cloud::ControllerClient;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 

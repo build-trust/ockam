@@ -415,7 +415,7 @@ async fn get_user_space(
     };
 
     let message = vec!["Checking for any existing Spaces...".to_string()];
-    let progress_output = opts.terminal.progress_output(&message, &is_finished);
+    let progress_output = opts.terminal.loop_messages(&message, &is_finished);
 
     let (spaces, _) = try_join!(get_spaces, progress_output)?;
 
@@ -444,7 +444,7 @@ async fn get_user_space(
                 "Creating a new Space {}...",
                 color_primary(space_name.clone())
             )];
-            let progress_output = opts.terminal.progress_output(&message, &is_finished);
+            let progress_output = opts.terminal.loop_messages(&message, &is_finished);
             let (space, _) = try_join!(create_space, progress_output)?;
             opts.terminal.write_line(&fmt_ok!(
                 "Created a new Space named {}.",
@@ -494,7 +494,7 @@ async fn get_user_project(
     };
 
     let message = vec!["Checking for existing Projects...".to_string()];
-    let progress_output = opts.terminal.progress_output(&message, &is_finished);
+    let progress_output = opts.terminal.loop_messages(&message, &is_finished);
 
     let (projects, _) = try_join!(get_projects, progress_output)?;
 
@@ -528,7 +528,7 @@ async fn get_user_project(
                 "Creating a new Project {}...",
                 color_primary(&project_name)
             )];
-            let progress_output = opts.terminal.progress_output(&message, &is_finished);
+            let progress_output = opts.terminal.loop_messages(&message, &is_finished);
             let (project, _) = try_join!(get_project, progress_output)?;
 
             opts.terminal.write_line(&fmt_ok!(

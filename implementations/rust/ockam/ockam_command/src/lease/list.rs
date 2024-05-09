@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use crate::lease::create_project_client;
-use crate::util::api::{IdentityOpts, TrustOpts};
+use crate::shared_args::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -52,18 +52,14 @@ impl ListCommand {
 
         let output_messages = vec![format!("Listing Tokens...\n")];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (tokens, _) = try_join!(send_req, progress_output)?;
 
-        let plain = opts.terminal.build_list(
-            &tokens,
-            "Tokens",
-            "No active tokens found within service.",
-        )?;
-        let json = serde_json::to_string_pretty(&tokens).into_diagnostic()?;
+        let plain = opts
+            .terminal
+            .build_list(&tokens, "No active tokens found within service.")?;
+        let json = serde_json::to_string(&tokens).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)

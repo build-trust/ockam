@@ -94,26 +94,26 @@ async fn delete_orchestrator_resources_impl(
     if spaces.is_empty() {
         return Ok(());
     }
-    let spinner = opts.terminal.progress_spinner();
-    if let Some(s) = spinner.as_ref() {
+    let pb = opts.terminal.progress_bar();
+    if let Some(s) = pb.as_ref() {
         s.set_message("Deleting spaces from the Orchestrator..")
     };
     for space in spaces {
-        if let Some(s) = spinner.as_ref() {
+        if let Some(s) = pb.as_ref() {
             s.set_message(format!(
                 "Deleting space {}...",
                 color!(space.name, OckamColor::PrimaryResource)
             ))
         };
         node.delete_space(ctx, &space.id).await?;
-        if let Some(s) = spinner.as_ref() {
+        if let Some(s) = pb.as_ref() {
             s.set_message(format!(
                 "Space {} deleted from the Orchestrator",
                 color!(space.name, OckamColor::PrimaryResource)
             ))
         };
     }
-    if let Some(s) = spinner {
+    if let Some(s) = pb {
         s.finish_with_message("Orchestrator spaces deleted")
     }
     Ok(())

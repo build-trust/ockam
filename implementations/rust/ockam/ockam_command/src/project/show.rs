@@ -11,9 +11,9 @@ use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 
 use crate::output::ProjectConfigCompact;
+use crate::shared_args::{IdentityOpts, RetryOpts};
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::api::{IdentityOpts, RetryOpts};
 use crate::{docs, Command, CommandGlobalOpts, Error};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -129,7 +129,7 @@ impl ShowCommandTui for ShowTui {
         self.terminal()
             .stdout()
             .plain(project_output.item()?)
-            .json(serde_json::to_string_pretty(&project_output).into_diagnostic()?)
+            .json(serde_json::to_string(&project_output).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }

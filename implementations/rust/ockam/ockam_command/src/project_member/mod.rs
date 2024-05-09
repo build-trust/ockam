@@ -17,7 +17,7 @@ use ockam_api::nodes::NodeManager;
 use ockam_api::CliState;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
 
 mod add;

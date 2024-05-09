@@ -7,7 +7,7 @@ use ockam::Context;
 use ockam_api::cloud::share::{InvitationListKind, Invitations};
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -50,18 +50,14 @@ impl ListCommand {
 
         let output_messages = vec![format!("Listing shares...\n",)];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (shares, _) = try_join!(get_invitations, progress_output)?;
 
         if let Some(sent) = shares.sent.as_ref() {
             let opts = opts.clone();
-            let plain = opts
-                .terminal
-                .build_list(sent, "Sent Shares", "No sent shares found.")?;
-            let json = serde_json::to_string_pretty(sent).into_diagnostic()?;
+            let plain = opts.terminal.build_list(sent, "No sent shares found.")?;
+            let json = serde_json::to_string(sent).into_diagnostic()?;
             opts.terminal
                 .stdout()
                 .plain(plain)
@@ -71,12 +67,10 @@ impl ListCommand {
 
         if let Some(received) = shares.received.as_ref() {
             let opts = opts.clone();
-            let plain = opts.terminal.build_list(
-                received,
-                "Received Shares",
-                "No received shares found.",
-            )?;
-            let json = serde_json::to_string_pretty(received).into_diagnostic()?;
+            let plain = opts
+                .terminal
+                .build_list(received, "No received shares found.")?;
+            let json = serde_json::to_string(received).into_diagnostic()?;
             opts.terminal
                 .stdout()
                 .plain(plain)

@@ -7,7 +7,7 @@ use ockam_api::authenticator::direct::Members;
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use ockam_api::output::Output;
 
@@ -68,11 +68,9 @@ impl Output for MemberOutput {
 }
 
 fn print_members(opts: &CommandGlobalOpts, member_ids: Vec<MemberOutput>) -> miette::Result<()> {
-    let plain = opts.terminal.build_list(
-        &member_ids,
-        "Members",
-        "No members found on that Authority node.",
-    )?;
+    let plain = opts
+        .terminal
+        .build_list(&member_ids, "No members found on that Authority node.")?;
 
     opts.terminal.clone().stdout().plain(plain).write_line()?;
 

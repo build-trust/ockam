@@ -11,7 +11,7 @@ use ockam_api::{fmt_err, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
 use super::{create_authority_client, get_project};
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 

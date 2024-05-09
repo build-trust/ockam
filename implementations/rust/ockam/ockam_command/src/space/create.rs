@@ -7,8 +7,9 @@ use ockam_api::cli_state::random_name;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::{self, IdentityOpts};
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
+use crate::util::validators::cloud_resource_name_validator;
 use crate::{docs, CommandGlobalOpts};
 use ockam_api::output::Output;
 
@@ -85,7 +86,7 @@ impl CreateCommand {
 }
 
 fn validate_space_name(s: &str) -> Result<String, String> {
-    match api::validate_cloud_resource_name(s) {
+    match cloud_resource_name_validator(s) {
         Ok(_) => Ok(s.to_string()),
         Err(_e) => Err(String::from(
             "space name can contain only alphanumeric characters and the '-', '_' and '.' separators. \

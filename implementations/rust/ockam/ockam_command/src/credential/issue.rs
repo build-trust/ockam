@@ -9,7 +9,7 @@ use ockam_core::compat::collections::HashMap;
 
 use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::async_cmd;
-use crate::util::duration::duration_parser;
+use crate::util::parsers::duration_parser;
 use crate::{util::parsers::identity_identifier_parser, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -18,6 +18,7 @@ pub struct IssueCommand {
     #[arg(long = "as", value_name = "IDENTITY_NAME")]
     pub as_identity: Option<String>,
 
+    /// Identifier of the Identity that the credential is issued for
     #[arg(long = "for", value_name = "IDENTIFIER", value_parser = identity_identifier_parser)]
     pub identity_identifier: Identifier,
 
@@ -25,7 +26,7 @@ pub struct IssueCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     pub attributes: Vec<String>,
 
-    /// Name of the Vault that will be used to issue the credential.
+    /// The name of the Vault that will be used to issue the credential.
     #[arg(value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 
@@ -33,6 +34,7 @@ pub struct IssueCommand {
     #[arg(long = "encoding", value_enum, default_value = "plain")]
     encode_format: EncodeFormat,
 
+    /// Time to live for the credential
     #[arg(long, value_name = "TTL", default_value = "30m", value_parser = duration_parser)]
     ttl: std::time::Duration,
 }

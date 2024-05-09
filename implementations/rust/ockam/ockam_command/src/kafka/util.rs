@@ -94,7 +94,7 @@ pub async fn async_run(
                 .color(OckamColor::PrimaryResource.color())
         ),
     ];
-    let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
+    let progress_output = opts.terminal.loop_messages(&msgs, &is_finished);
     let (_, _) = try_join!(send_req, progress_output)?;
 
     let script_to_run = if kafka_entity == "KafkaProducer" {
@@ -122,7 +122,7 @@ pub async fn async_run(
                 "Kafka clients v3.7.0 and earlier are supported."
                     .color(OckamColor::FmtWARNBackground.color())
             ) + &fmt_log!(
-                "{}: '{}'.\n",
+                "{}: '{}'.",
                 "You can find the version you have with"
                     .color(OckamColor::FmtWARNBackground.color()),
                 script_to_run.color(OckamColor::Success.color())

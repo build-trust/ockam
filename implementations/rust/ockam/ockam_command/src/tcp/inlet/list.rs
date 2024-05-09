@@ -54,15 +54,12 @@ impl ListCommand {
             node.node_name().color(OckamColor::PrimaryResource.color())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (inlets, _) = try_join!(get_inlets, progress_output)?;
 
         let plain = opts.terminal.build_list(
             &inlets,
-            "Inlets",
             &format!("No TCP Inlets found on {}", node.node_name()),
         )?;
         let json = serde_json::to_string(&inlets).into_diagnostic()?;

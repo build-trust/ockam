@@ -11,7 +11,7 @@ use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -69,9 +69,7 @@ impl CreateCommand {
 
         let output_messages = vec![format!("Creating invitation...\n",)];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
 
@@ -85,7 +83,7 @@ impl CreateCommand {
             sent.expires_at,
             sent.recipient_email
         );
-        let json = serde_json::to_string_pretty(&sent).into_diagnostic()?;
+        let json = serde_json::to_string(&sent).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)

@@ -7,7 +7,7 @@ use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 

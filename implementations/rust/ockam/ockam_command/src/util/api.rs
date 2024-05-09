@@ -1,28 +1,14 @@
-//! API shim to make it nicer to interact with the ockam messaging API
-use std::time::Duration;
-
-use clap::Args;
-use miette::miette;
-// TODO: maybe we can remove this cross-dependency inside the CLI?
-use minicbor::Decoder;
-use regex::Regex;
-
 use ockam::identity::Identifier;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::StartHopServiceRequest;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::*;
 use ockam_core::api::Request;
-use ockam_core::api::ResponseHeader;
-use ockam_core::env::get_env;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::duration::duration_parser;
 use crate::Result;
-
-////////////// !== generators
 
 /// Construct a request to query node status
 pub(crate) fn query_status() -> Request<()> {
@@ -120,145 +106,4 @@ pub(crate) fn add_consumer(id: FlowControlId, address: MultiAddr) -> Request<Add
 /// Return the path of a service given its name
 fn node_service(service_name: &str) -> String {
     format!("/node/services/{service_name}")
-}
-
-////////////// !== parsers
-
-pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<ResponseHeader> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<ResponseHeader>()?;
-    Ok(response)
-}
-
-////////////// !== share CLI args
-
-#[derive(Clone, Debug, Args)]
-pub struct IdentityOpts {
-    /// Run the command as the given Identity name
-    #[arg(global = true, value_name = "IDENTITY_NAME", long)]
-    pub identity: Option<String>,
-}
-
-#[derive(Clone, Debug, Args, Default, PartialEq)]
-pub struct TrustOpts {
-    /// Project name to use for the command
-    #[arg(long = "project", value_name = "PROJECT_NAME")]
-    pub project_name: Option<String>,
-
-    /// Hex encoded Identity
-    #[arg(long, value_name = "IDENTITY")]
-    pub authority_identity: Option<String>,
-
-    /// Address to the Authority node
-    #[arg(long)]
-    pub authority_route: Option<MultiAddr>,
-
-    /// Expect credential manually saved to the storage
-    #[arg(long)]
-    pub credential_scope: Option<String>,
-}
-
-#[derive(Clone, Debug, Args, Default, PartialEq)]
-pub struct RetryOpts {
-    /// Number of times to retry the command
-    #[arg(hide = true, long)]
-    retry_count: Option<u32>,
-
-    /// Delay between retries
-    #[arg(hide = true, long, value_parser = duration_parser)]
-    pub retry_delay: Option<Duration>,
-}
-
-impl RetryOpts {
-    /// Get the number of times to retry the command
-    ///
-    /// If the value is not set, it will try to get the value from
-    /// the `OCKAM_COMMAND_RETRY_COUNT` environment variable
-    pub fn retry_count(&self) -> Option<u32> {
-        match self.retry_count {
-            Some(count) => Some(count),
-            None => get_env::<String>("OCKAM_COMMAND_RETRY_COUNT")
-                .ok()
-                .flatten()
-                .and_then(|v| v.parse().ok()),
-        }
-    }
-
-    /// Get the delay between retries
-    ///
-    /// If the value is not set, it will try to get the value from
-    /// the `OCKAM_COMMAND_RETRY_DELAY` environment variable
-    pub fn retry_delay(&self) -> Option<Duration> {
-        match self.retry_delay {
-            Some(delay) => Some(delay),
-            None => get_env::<String>("OCKAM_COMMAND_RETRY_DELAY")
-                .ok()
-                .flatten()
-                .and_then(|v| duration_parser(&v).ok()),
-        }
-    }
-}
-
-////////////// !== validators
-
-pub(crate) fn validate_cloud_resource_name(s: &str) -> miette::Result<()> {
-    let project_name_regex = Regex::new(r"^[a-zA-Z0-9]+([a-zA-Z0-9-_\.]?[a-zA-Z0-9])*$").unwrap();
-    let is_project_name_valid = project_name_regex.is_match(s);
-    if !is_project_name_valid {
-        Err(miette!("Invalid name"))
-    } else {
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::util::api::validate_cloud_resource_name;
-
-    #[test]
-    fn test_validate_cloud_resource_name() {
-        let valid_names: Vec<&str> = vec![
-            "name",
-            "0001",
-            "321_11-11-22",
-            "0_0",
-            "6.9",
-            "0-9",
-            "name_with_underscores",
-            "name-with-dashes",
-            "name.with.dots",
-            "name1with2numbers3",
-            "11name22with33numbers00",
-            "76123long.name_with-underscores.and-dashes_and3dots00and.numbers",
-        ];
-        for name in valid_names {
-            assert!(validate_cloud_resource_name(name).is_ok());
-        }
-
-        let invalid_names: Vec<&str> = vec![
-            "name with spaces in between",
-            " name-with-leading-space",
-            "name.with.trailing.space ",
-            " name-with-leading-and-trailing-space ",
-            "     name_with_multiple_leading_space",
-            "name__with_consecutive_underscore",
-            "_name_with_leading_underscore",
-            "name-with-trailing-underscore_",
-            "name_with_consecutive---dashes",
-            "name_with_trailing_dashes--",
-            "---name_with_leading_dashes",
-            "name-with-consecutive...dots",
-            "name.with.trailing.dots....",
-            ".name_with-leading.dot",
-            "name_.with._consecutive-_-dots.-.dashes-._underscores",
-            "1 2 3 4",
-            "  1234",
-            "_",
-            "__",
-            ". _ .",
-        ];
-        for name in invalid_names {
-            assert!(validate_cloud_resource_name(name).is_err());
-        }
-    }
 }

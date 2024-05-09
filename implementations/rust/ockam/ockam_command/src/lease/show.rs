@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::InfluxDbTokenLease;
 
 use crate::lease::create_project_client;
-use crate::util::api::{IdentityOpts, TrustOpts};
+use crate::shared_args::{IdentityOpts, TrustOpts};
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use ockam_api::output::Output;

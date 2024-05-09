@@ -7,7 +7,7 @@ use ockam_api::cloud::{CredentialsEnabled, ProjectNodeClient};
 use ockam_api::nodes::InMemoryNode;
 pub use show::ShowCommand;
 
-use crate::util::api::{IdentityOpts, TrustOpts};
+use crate::shared_args::{IdentityOpts, TrustOpts};
 use crate::CommandGlobalOpts;
 
 use self::revoke::RevokeCommand;

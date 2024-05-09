@@ -20,7 +20,7 @@ use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::node::util::initialize_default_node;
-use crate::util::api::RetryOpts;
+use crate::shared_args::RetryOpts;
 use crate::util::process_nodes_multiaddr;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
@@ -119,41 +119,32 @@ impl Command for CreateCommand {
                 &node.node_name().color(OckamColor::PrimaryResource.color())
             ),
         ];
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (relay, _) = try_join!(get_relay_info, progress_output)?;
 
+        let invalid_relay_error_msg =
+            "The Orchestrator returned an invalid relay address. Try creating a new one.";
+        let remote_address = relay
+            .remote_address_ma()
+            .into_diagnostic()?
+            .ok_or(miette!(invalid_relay_error_msg))?;
+        let worker_address = relay
+            .worker_address_ma()
+            .into_diagnostic()?
+            .ok_or(miette!(invalid_relay_error_msg))?;
+
         let plain = {
             // `remote_address` in the project is relaying to worker at address `worker_address` on that node.
-            let remote_address = relay
-                .remote_address_ma()
-                .into_diagnostic()?
-                .map(|x| x.to_string())
-                .unwrap_or("N/A".into());
-            let worker_address = relay
-                .worker_address_ma()
-                .into_diagnostic()?
-                .map(|x| x.to_string())
-                .unwrap_or("N/A".into());
             let from = color_primary(format!("{}{}", &at, remote_address));
             let to = color_primary(format!("/node/{}{}", &node.node_name(), worker_address));
             fmt_ok!("Now relaying messages from {from} → {to}")
         };
-
-        let machine = relay
-            .remote_address_ma()
-            .into_diagnostic()?
-            .map(|x| x.to_string())
-            .unwrap_or("N/A".into());
-
-        let json = serde_json::to_string_pretty(&relay).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)
-            .machine(machine)
-            .json(json)
+            .machine(remote_address.to_string())
+            .json(serde_json::to_string(&relay).into_diagnostic()?)
             .write_line()?;
 
         Ok(())

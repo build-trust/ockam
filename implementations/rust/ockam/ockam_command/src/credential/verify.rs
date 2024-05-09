@@ -115,9 +115,7 @@ pub async fn verify_credential(
 
     let output_messages = vec!["Verifying credential...".to_string()];
 
-    let progress_output = opts
-        .terminal
-        .progress_output(&output_messages, &is_finished);
+    let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
     let (credential_and_purpose_key, _) = try_join!(send_req, progress_output)?;
 

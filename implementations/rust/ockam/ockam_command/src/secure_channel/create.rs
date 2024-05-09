@@ -22,7 +22,7 @@ use crate::node::util::initialize_default_node;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::{async_cmd, clean_nodes_multiaddr, exitcode};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -142,9 +142,7 @@ impl CreateCommand {
 
         let output_messages = vec!["Creating Secure Channel...".to_string()];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
 

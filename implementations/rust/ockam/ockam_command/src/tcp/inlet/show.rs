@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use indoc::formatdoc;
@@ -11,8 +12,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -32,18 +32,11 @@ pub struct ShowCommand {
     node_opts: NodeOpts,
 }
 
-impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "tcp-inlet show";
 
-    pub fn name(&self) -> String {
-        "tcp-inlet show".into()
-    }
-
-    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
         let inlet_status = node
             .show_inlet(ctx, &self.alias)

@@ -150,7 +150,7 @@ impl Command for CreateCommand {
                     .color(OckamColor::PrimaryResource.color())
             ),
         ];
-        let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&msgs, &is_finished);
         if let Some(direct_future) = direct_future {
             let (_, _) = try_join!(direct_future, progress_output)?;
         } else {
@@ -176,7 +176,7 @@ impl Command for CreateCommand {
                     "Kafka clients v3.7.0 and earlier are supported."
                         .color(OckamColor::FmtWARNBackground.color())
                 ) + &fmt_log!(
-                    "{}: '{}'.\n",
+                    "{}: '{}'.",
                     "You can find the version you have with"
                         .color(OckamColor::FmtWARNBackground.color()),
                     "kafka-topics.sh --version".color(OckamColor::Success.color())

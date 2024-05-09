@@ -56,15 +56,12 @@ impl ListCommand {
             node.node_name().color(OckamColor::PrimaryResource.color())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (workers, _) = try_join!(get_workers, progress_output)?;
 
         let list = opts.terminal.build_list(
             &workers.list,
-            &format!("Workers on {}", node.node_name()),
             &format!("No workers found on {}.", node.node_name()),
         )?;
         opts.terminal.stdout().plain(list).write_line()?;

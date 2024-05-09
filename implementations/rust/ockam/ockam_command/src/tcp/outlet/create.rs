@@ -5,9 +5,6 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
-use opentelemetry::trace::FutureExt;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::util::initialize_default_node;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -18,9 +15,10 @@ use ockam_api::cli_state::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
 };
 use ockam_api::colors::color_primary;
+use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::portals::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_info, fmt_log, fmt_ok};
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::Address;
 use ockam_transport_tcp::HostnamePort;
 
@@ -38,7 +36,7 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "HOSTNAME_PORT", value_parser = HostnamePort::from_str)]
     pub to: HostnamePort,
 
-    /// If tls is set then the outlet will establish a TLS connection over TCP
+    /// If set, the outlet will establish a TLS connection over TCP
     #[arg(long, display_order = 900, id = "BOOLEAN")]
     pub tls: bool,
 
@@ -63,7 +61,7 @@ pub struct CreateCommand {
     #[arg(
         hide = true,
         long,
-        visible_alias = "policy_expression",
+        visible_alias = "expression",
         display_order = 904,
         id = "POLICY_EXPRESSION"
     )]
@@ -76,71 +74,74 @@ impl Command for CreateCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
+
+        if let Some(pb) = opts.terminal.progress_bar() {
+            pb.set_message(format!(
+                "Creating a new TCP Outlet to {}...\n",
+                color_primary(self.to.to_string())
+            ));
+        }
+
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let node_name = node.node_name();
-        let is_finished: Mutex<bool> = Mutex::new(false);
-
-        let send_req = async {
-            let from = self.from.map(Address::from);
-            let res = node
-                .create_outlet(ctx, self.to.clone(), self.tls, from.as_ref(), self.allow)
-                .await?;
-            *is_finished.lock().await = true;
-            Ok(res)
-        }
-        .with_current_context();
-
-        let output_messages = vec![
-            format!(
-                "Attempting to create TCP Outlet to {}...",
-                color_primary(self.to.to_string())
-            ),
-            format!(
-                "Creating outlet service on node {}...",
-                color_primary(&node_name)
-            ),
-            "Setting up TCP outlet worker...".to_string(),
-        ];
-
-        // Display progress spinner.
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
-
-        let (outlet_status, _) = try_join!(send_req, progress_output)?;
-        let worker_addr = outlet_status.worker_address().into_diagnostic()?;
-        let json = serde_json::to_string_pretty(&outlet_status).into_diagnostic()?;
-
-        let mut attributes = HashMap::new();
-        attributes.insert(TCP_OUTLET_AT, node_name.clone());
-        attributes.insert(TCP_OUTLET_FROM, worker_addr.to_string().clone());
-        attributes.insert(TCP_OUTLET_TO, self.to.to_string());
-        attributes.insert(NODE_NAME, node_name.clone());
-        opts.state
-            .add_journey_event(JourneyEvent::TcpOutletCreated, attributes)
+        let outlet_status = node
+            .create_outlet(
+                ctx,
+                self.to.clone(),
+                self.tls,
+                self.from.clone().map(Address::from).as_ref(),
+                self.allow.clone(),
+            )
             .await?;
+        self.add_outlet_created_journey_event(&opts, &node_name, &outlet_status)
+            .await?;
+
+        let worker_addr = outlet_status.worker_address().into_diagnostic()?;
 
         opts.terminal
             .stdout()
             .plain(
-                fmt_ok!("Created a new TCP Outlet\n")
-                    + &fmt_log!("  Node: {}\n", color_primary(&node_name))
-                    + &fmt_log!(
-                        "  Outlet Address: {}\n",
-                        color_primary(outlet_status.worker_addr.address())
-                    )
-                    + &fmt_log!("  Socket Address: {}\n", color_primary(self.to.to_string()))
-                    + &fmt_info!(
-                        "You may want to take a look at the {}, {}, {} commands next",
-                        color_primary("ockam relay"),
-                        color_primary("ockam tcp-inlet"),
-                        color_primary("ockam policy")
-                    ),
+                fmt_ok!(
+                    "Created a new TCP Outlet in the Node {} at {} bound to {}\n\n",
+                    color_primary(&node_name),
+                    color_primary(worker_addr.to_string()),
+                    color_primary(self.to.to_string())
+                ) + &fmt_log!(
+                    "You may want to take a look at the {}, {}, {} commands next",
+                    color_primary("ockam relay"),
+                    color_primary("ockam tcp-inlet"),
+                    color_primary("ockam policy")
+                ),
             )
             .machine(worker_addr)
-            .json(json)
+            .json(serde_json::to_string(&outlet_status).into_diagnostic()?)
             .write_line()?;
 
+        Ok(())
+    }
+}
+
+impl CreateCommand {
+    async fn add_outlet_created_journey_event(
+        &self,
+        opts: &CommandGlobalOpts,
+        node_name: &str,
+        outlet_status: &OutletStatus,
+    ) -> miette::Result<()> {
+        let mut attributes = HashMap::new();
+        attributes.insert(TCP_OUTLET_AT, node_name.to_string());
+        attributes.insert(
+            TCP_OUTLET_FROM,
+            outlet_status
+                .worker_address()
+                .into_diagnostic()?
+                .to_string(),
+        );
+        attributes.insert(TCP_OUTLET_TO, self.to.to_string());
+        attributes.insert(NODE_NAME, node_name.to_string());
+        opts.state
+            .add_journey_event(JourneyEvent::TcpOutletCreated, attributes)
+            .await?;
         Ok(())
     }
 }

@@ -135,15 +135,15 @@ impl OidcServiceExt for OidcService {
         token: &OidcToken,
         terminal: Option<&Terminal<TerminalStream<Term>>>,
     ) -> Result<UserInfo> {
-        let spinner_option = terminal.and_then(|t| t.progress_spinner());
-        if let Some(spinner) = spinner_option.as_ref() {
+        let pb = terminal.and_then(|t| t.progress_bar());
+        if let Some(spinner) = pb.as_ref() {
             spinner.set_message("Verifying email...");
             sleep(Duration::from_millis(500)).await;
         }
         loop {
             let user_info = self.get_user_info(token).await?;
             if user_info.email_verified {
-                if let Some(spinner) = spinner_option.as_ref() {
+                if let Some(spinner) = pb.as_ref() {
                     spinner.finish_and_clear();
                 }
                 terminal.map(|terminal| {
@@ -154,7 +154,7 @@ impl OidcServiceExt for OidcService {
                 });
                 return Ok(user_info);
             } else {
-                if let Some(spinner) = spinner_option.as_ref() {
+                if let Some(spinner) = pb.as_ref() {
                     spinner.set_message(format!(
                         "Email <{}> pending verification. Please check your inbox...",
                         color_email(user_info.email.to_string())
@@ -191,8 +191,8 @@ impl OidcServiceExt for OidcService {
         let provider = self.provider();
         let client = provider.build_http_client()?;
         let token;
-        let spinner_option = opts.terminal.progress_spinner();
-        if let Some(spinner) = spinner_option.as_ref() {
+        let pb = opts.terminal.progress_bar();
+        if let Some(spinner) = pb.as_ref() {
             let msg = format!(
                 "{} {} {}",
                 "Waiting for you to complete activating",
@@ -220,7 +220,7 @@ impl OidcServiceExt for OidcService {
                 StatusCode::OK => {
                     token = res.json::<OidcToken>().await.into_diagnostic()?;
                     debug!(?token, "token response received");
-                    if let Some(spinner) = spinner_option.as_ref() {
+                    if let Some(spinner) = pb.as_ref() {
                         spinner.finish_and_clear();
                     }
                     return Ok(token);

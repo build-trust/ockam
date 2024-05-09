@@ -15,7 +15,8 @@ const REPORTING_CHANNEL_POLL_DELAY: Duration = Duration::from_millis(100);
 pub enum Notification {
     Message(String),
     Progress(String),
-    ProgressFinish(Option<String>),
+    ProgressFinishWithMessage(String),
+    ProgressFinishAndClear(),
 }
 
 impl Notification {
@@ -23,7 +24,8 @@ impl Notification {
         match self {
             Notification::Message(contents) => Some(contents),
             Notification::Progress(contents) => Some(contents),
-            Notification::ProgressFinish(contents) => contents.as_deref(),
+            Notification::ProgressFinishWithMessage(contents) => Some(contents),
+            Notification::ProgressFinishAndClear() => None,
         }
     }
 
@@ -36,7 +38,10 @@ impl Notification {
     }
 
     pub fn progress_finish(contents: impl Into<Option<String>>) -> Self {
-        Self::ProgressFinish(contents.into())
+        match contents.into() {
+            Some(contents) => Self::ProgressFinishWithMessage(contents),
+            None => Self::ProgressFinishAndClear(),
+        }
     }
 }
 
@@ -109,9 +114,9 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                 let _ = self.terminal.write_line(contents);
             }
             Notification::Progress(contents) => {
-                if self.terminal.can_use_progress_spinner() {
+                if self.terminal.can_use_progress_bar() {
                     if self.progress_bar.is_none() {
-                        self.progress_bar = self.terminal.progress_spinner();
+                        self.progress_bar = self.terminal.progress_bar();
                     }
                     if let Some(pb) = self.progress_bar.as_ref() {
                         pb.set_message(contents);
@@ -123,13 +128,14 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                     let _ = self.terminal.write_line(fmt_log!("{}", contents));
                 }
             }
-            Notification::ProgressFinish(contents) => {
+            Notification::ProgressFinishWithMessage(contents) => {
                 if let Some(pb) = self.progress_bar.take() {
-                    if let Some(contents) = contents {
-                        pb.finish_with_message(contents);
-                    } else {
-                        pb.finish_and_clear();
-                    }
+                    pb.finish_with_message(contents);
+                }
+            }
+            Notification::ProgressFinishAndClear() => {
+                if let Some(pb) = self.progress_bar.take() {
+                    pb.finish_and_clear();
                 }
             }
         }

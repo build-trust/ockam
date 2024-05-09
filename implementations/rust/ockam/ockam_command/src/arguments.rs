@@ -14,7 +14,7 @@ pub fn has_version_flag(input: &[String]) -> bool {
 /// For example:
 ///
 /// ockam secure-channel create --from me --to /node/node-1/service/api |
-//     ockam message send hello --from me --to -/service/uppercase
+///     ockam message send hello --from me --to -/service/uppercase
 ///
 pub fn replace_hyphen_with_stdin(s: String) -> String {
     let input_stream = std::io::stdin();

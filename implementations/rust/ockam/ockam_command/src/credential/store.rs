@@ -120,9 +120,7 @@ impl StoreCommand {
 
         let output_messages = vec![format!("Storing credential...")];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (credential, _) = try_join!(send_req, progress_output)?;
 

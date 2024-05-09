@@ -94,7 +94,7 @@ pub async fn async_run(
                 .color(OckamColor::PrimaryResource.color())
         ),
     ];
-    let progress_output = opts.terminal.progress_output(&msgs, &is_finished);
+    let progress_output = opts.terminal.loop_messages(&msgs, &is_finished);
     let (_, _) = try_join!(send_req, progress_output)?;
 
     opts.terminal

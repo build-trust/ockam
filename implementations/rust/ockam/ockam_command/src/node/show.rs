@@ -39,7 +39,8 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
-    /// Name of the node to retrieve the details from
+    /// The name of the node from which to fetch the details.
+    /// If not provided, the default node is used.
     node_name: Option<String>,
 }
 

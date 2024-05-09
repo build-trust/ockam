@@ -9,9 +9,9 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 
+use crate::shared_args::IdentityOpts;
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use ockam_api::output::Output;
 

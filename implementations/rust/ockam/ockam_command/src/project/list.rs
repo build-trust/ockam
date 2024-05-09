@@ -8,7 +8,7 @@ use ockam::Context;
 use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -50,16 +50,12 @@ impl ListCommand {
         .with_current_context();
 
         let output_messages = vec![format!("Listing projects...\n",)];
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (projects, _) = try_join!(get_projects, progress_output)?;
 
-        let plain = &opts
-            .terminal
-            .build_list(&projects, "Projects", "No projects found")?;
-        let json = serde_json::to_string_pretty(&projects).into_diagnostic()?;
+        let plain = &opts.terminal.build_list(&projects, "No projects found")?;
+        let json = serde_json::to_string(&projects).into_diagnostic()?;
 
         opts.terminal
             .stdout()

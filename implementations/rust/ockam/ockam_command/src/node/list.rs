@@ -77,9 +77,7 @@ pub async fn get_nodes_info(
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
         )];
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (node, _) = try_join!(get_node_status, progress_output)?;
 
@@ -95,9 +93,9 @@ pub fn print_nodes_info(
 ) -> miette::Result<()> {
     let plain = opts
         .terminal
-        .build_list(&nodes, "Nodes", "No nodes found on this system.")?;
+        .build_list(&nodes, "No nodes found on this system.")?;
 
-    let json = serde_json::to_string_pretty(&nodes).into_diagnostic()?;
+    let json = serde_json::to_string(&nodes).into_diagnostic()?;
 
     opts.terminal
         .clone()

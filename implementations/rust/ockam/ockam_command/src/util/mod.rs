@@ -25,9 +25,9 @@ use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
-pub mod duration;
 pub mod exitcode;
 pub mod parsers;
+pub mod validators;
 
 pub fn local_cmd(res: miette::Result<()>) -> miette::Result<()> {
     if let Err(error) = &res {

@@ -28,7 +28,7 @@ pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = random_name())]
     pub name: String,
 
-    /// Vault name to store the identity key
+    /// The name of the Vault where the Identity key will be stored
     #[arg(long, value_name = "VAULT_NAME")]
     pub vault: Option<String>,
 

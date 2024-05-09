@@ -9,8 +9,8 @@ use ockam_api::cloud::subscription::Subscriptions;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 
+use crate::shared_args::IdentityOpts;
 use crate::subscription::get_subscription_by_id_or_space_id;
-use crate::util::api::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -168,11 +168,9 @@ impl SubscriptionCommand {
                     .into_diagnostic()?
                     .success()
                     .into_diagnostic()?;
-                let output = opts.terminal.build_list(
-                    &response,
-                    "Subscriptions",
-                    "No Subscriptions found",
-                )?;
+                let output = opts
+                    .terminal
+                    .build_list(&response, "No Subscriptions found")?;
                 opts.terminal.write_line(output)?
             }
             SubscriptionSubcommand::Unsubscribe {
