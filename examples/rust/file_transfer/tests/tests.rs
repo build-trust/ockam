@@ -1,6 +1,7 @@
 use example_test_helper::{CmdBuilder, Error};
 use file_diff::diff;
-use rand::Rng;
+use ockam::compat::rand;
+use ockam::compat::rand::Rng;
 use std::fmt::Write as _;
 use std::fs::{remove_file, OpenOptions};
 use std::io::{BufWriter, Write};

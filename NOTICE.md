@@ -185,7 +185,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | downcast-rs | MIT, Apache-2.0 | https://crates.io/crates/downcast-rs |
 | duct | MIT | https://crates.io/crates/duct |
 | dunce | CC0-1.0, MIT-0, Apache-2.0 | https://crates.io/crates/dunce |
-| dyn-clone | MIT, Apache-2.0 | https://crates.io/crates/dyn-clone |
 | ecdsa | Apache-2.0, MIT | https://crates.io/crates/ecdsa |
 | ed25519 | Apache-2.0, MIT | https://crates.io/crates/ed25519 |
 | ed25519-dalek | BSD-3-Clause | https://crates.io/crates/ed25519-dalek |
@@ -208,8 +207,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | event-listener | Apache-2.0, MIT | https://crates.io/crates/event-listener |
 | event-listener-strategy | Apache-2.0, MIT | https://crates.io/crates/event-listener-strategy |
 | event-listener-strategy | Apache-2.0, MIT | https://crates.io/crates/event-listener-strategy |
-| fallible-iterator | MIT, Apache-2.0 | https://crates.io/crates/fallible-iterator |
-| fallible-streaming-iterator | MIT, Apache-2.0 | https://crates.io/crates/fallible-streaming-iterator |
 | fastrand | Apache-2.0, MIT | https://crates.io/crates/fastrand |
 | fastrand | Apache-2.0, MIT | https://crates.io/crates/fastrand |
 | fd-lock | MIT, Apache-2.0 | https://crates.io/crates/fd-lock |
@@ -462,7 +459,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | ring |  | https://crates.io/crates/ring |
 | riscv | ISC | https://crates.io/crates/riscv |
 | roff | MIT, Apache-2.0 | https://crates.io/crates/roff |
-| rusqlite | MIT | https://crates.io/crates/rusqlite |
 | rustc-demangle | MIT, Apache-2.0 | https://crates.io/crates/rustc-demangle |
 | rustc-hash | Apache-2.0, MIT | https://crates.io/crates/rustc-hash |
 | rustc_version | MIT, Apache-2.0 | https://crates.io/crates/rustc_version |

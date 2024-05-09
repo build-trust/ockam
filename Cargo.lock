@@ -2237,12 +2237,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56ce8c6da7551ec6c462cbaf3bfbc75131ebbfa1c944aeaa9dab51ca1c5f0c3b"
 
 [[package]]
-name = "dyn-clone"
-version = "1.0.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
-
-[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2532,18 +2526,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fallible-iterator"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
-
-[[package]]
-name = "fallible-streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
-
-[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2619,8 +2601,6 @@ dependencies = [
  "example_test_helper",
  "file_diff",
  "ockam",
- "ockam_transport_tcp",
- "rand",
  "serde",
  "tokio",
 ]
@@ -3140,19 +3120,14 @@ dependencies = [
  "anyhow",
  "example_test_helper",
  "hex",
- "minicbor",
  "ockam",
  "ockam_api",
  "ockam_core",
  "ockam_multiaddr",
- "ockam_node",
  "ockam_transport_tcp",
  "ockam_transport_udp",
  "ockam_transport_uds",
- "ockam_vault",
  "rand",
- "serde",
- "serde_bare",
  "serde_json",
  "serial_test",
 ]
@@ -4355,10 +4330,7 @@ dependencies = [
 name = "ockam"
 version = "0.124.0"
 dependencies = [
- "arrayref",
- "dyn-clone",
  "hex",
- "minicbor",
  "ockam_abac",
  "ockam_core",
  "ockam_identity",
@@ -4371,7 +4343,6 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde_json",
- "sha2",
  "tracing",
  "trybuild",
 ]
@@ -4392,7 +4363,6 @@ dependencies = [
  "quickcheck",
  "rand",
  "regex",
- "rusqlite",
  "rustyline",
  "rustyline-derive",
  "serde",
@@ -4410,7 +4380,6 @@ dependencies = [
 name = "ockam_api"
 version = "0.67.0"
 dependencies = [
- "aws-config",
  "base64-url",
  "bytes 1.6.0",
  "cddl-cat",
@@ -4422,7 +4391,6 @@ dependencies = [
  "dialoguer",
  "either",
  "fake",
- "fs2",
  "futures 0.3.30",
  "gethostname 0.4.3",
  "hex",
@@ -4458,7 +4426,6 @@ dependencies = [
  "proptest",
  "quickcheck",
  "quickcheck_macros",
- "r3bl_ansi_color",
  "r3bl_rs_utils_core",
  "r3bl_tui",
  "r3bl_tuify",
@@ -4496,8 +4463,6 @@ version = "0.124.0"
 dependencies = [
  "cbindgen",
  "duct",
- "futures 0.3.30",
- "hex",
  "miette",
  "minicbor",
  "ockam",
@@ -4511,7 +4476,6 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
- "tokio-retry",
  "tracing",
  "tracing-core",
 ]
@@ -4527,18 +4491,14 @@ dependencies = [
  "clap_complete",
  "clap_mangen",
  "colorful",
- "colors-transform",
  "console",
  "ctrlc",
- "dialoguer",
- "duct",
  "flate2",
  "hex",
  "indicatif",
  "indoc",
  "miette",
  "minicbor",
- "nix 0.28.0",
  "ockam",
  "ockam_abac",
  "ockam_api",
@@ -4548,17 +4508,13 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
- "ockam_vault_aws",
  "once_cell",
  "open",
  "opentelemetry",
- "opentelemetry-otlp",
  "pem-rfc7468",
  "proptest",
- "r3bl_ansi_color",
  "r3bl_rs_utils_core",
  "r3bl_tui",
- "r3bl_tuify",
  "rand",
  "regex",
  "reqwest",
@@ -4571,18 +4527,15 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "shellexpand",
- "strip-ansi-escapes",
  "syntect",
  "tempfile",
  "termbg",
  "thiserror",
  "time",
- "tiny_http",
  "tokio",
  "tokio-retry",
  "tracing",
  "tracing-core",
- "tracing-opentelemetry",
  "url",
  "which 6.0.1",
 ]
@@ -4633,7 +4586,6 @@ dependencies = [
  "heapless 0.8.0",
  "ockam_core",
  "pin-project-lite",
- "pin-utils",
  "tracing",
 ]
 
@@ -4645,7 +4597,6 @@ dependencies = [
  "cfg-if",
  "chrono",
  "delegate",
- "group",
  "hex",
  "minicbor",
  "ockam_core",
@@ -4663,7 +4614,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlx",
- "subtle",
  "tempfile",
  "tokio",
  "tokio-retry",
@@ -4718,7 +4668,6 @@ dependencies = [
  "opentelemetry",
  "regex",
  "serde",
- "serde_bare",
  "serde_json",
  "sqlx",
  "tempfile",
@@ -4757,7 +4706,6 @@ dependencies = [
  "cortex-m 0.7.7",
  "embedded-hal 1.0.0-rc.2",
  "futures 0.3.30",
- "futures-util",
  "heapless 0.8.0",
  "nb 1.1.0",
  "ockam_core",
@@ -4780,7 +4728,6 @@ name = "ockam_transport_core"
 version = "0.82.0"
 dependencies = [
  "ockam_core",
- "tracing",
 ]
 
 [[package]]
@@ -4788,7 +4735,6 @@ name = "ockam_transport_tcp"
 version = "0.114.0"
 dependencies = [
  "cfg-if",
- "hashbrown 0.14.5",
  "minicbor",
  "ockam_core",
  "ockam_macros",
@@ -4811,7 +4757,6 @@ version = "0.58.0"
 dependencies = [
  "bytes 1.6.0",
  "futures-util",
- "hashbrown 0.14.5",
  "ockam",
  "ockam_core",
  "ockam_macros",
@@ -4878,7 +4823,6 @@ dependencies = [
  "sqlx",
  "static_assertions",
  "tempfile",
- "thiserror",
  "tokio",
  "tracing",
  "trybuild",
@@ -5983,20 +5927,6 @@ dependencies = [
  "spki",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "rusqlite"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a78046161564f5e7cd9008aff3b2990b3850dc8e0349119b98e8f251e099f24d"
-dependencies = [
- "bitflags 2.5.0",
- "fallible-iterator",
- "fallible-streaming-iterator",
- "hashlink",
- "libsqlite3-sys",
- "smallvec",
 ]
 
 [[package]]
@@ -7211,7 +7141,6 @@ version = "0.1.0"
 dependencies = [
  "example_test_helper",
  "ockam",
- "ockam_transport_tcp",
 ]
 
 [[package]]

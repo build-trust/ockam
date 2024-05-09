@@ -35,8 +35,6 @@ rust-crypto = ["ockam_api/rust-crypto", "ockam_transport_tcp/ring"]
 
 [dependencies]
 duct = "0.13.7"
-futures = { version = "0.3.30", default-features = false }
-hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.24.0", features = ["alloc", "derive"] }
 ockam = { path = "../ockam", version = "^0.124.0", features = ["software_vault"] }
@@ -49,7 +47,6 @@ serde_json = "1.0"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite", "migrate"] }
 thiserror = "1.0"
 tokio = { version = "1.37.0", features = ["full"] }
-tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 tracing-core = { version = "0.1.32", default-features = false }
 

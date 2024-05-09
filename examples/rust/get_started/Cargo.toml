@@ -32,18 +32,13 @@ storage = ["ockam_api/storage"]
 [dependencies]
 anyhow = "1"
 hex = "0.4"
-minicbor = { version = "0.24.0", features = ["alloc", "derive"] }
 ockam = { path = "../../../implementations/rust/ockam/ockam", default_features = false, features = ["software_vault"] }
 ockam_api = { path = "../../../implementations/rust/ockam/ockam_api" }
 ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
 ockam_multiaddr = { path = "../../../implementations/rust/ockam/ockam_multiaddr" }
-ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
 ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
 ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transport_udp" }
 ockam_transport_uds = { path = "../../../implementations/rust/ockam/ockam_transport_uds" }
-ockam_vault = { path = "../../../implementations/rust/ockam/ockam_vault" }
-serde = { version = "1", default_features = false, features = ["derive"] }
-serde_bare = "0.5.0"
 serde_json = { version = "1.0", default_features = false }
 
 [dev-dependencies]
