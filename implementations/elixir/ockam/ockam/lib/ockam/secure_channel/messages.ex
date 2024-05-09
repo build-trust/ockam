@@ -85,6 +85,7 @@ defmodule Ockam.SecureChannel.Messages do
           payload
         ) do
       Logger.debug("updating current_part_number #{current_part_number}")
+
       if is_valid_part(
            self,
            current_part_number,
@@ -111,11 +112,13 @@ defmodule Ockam.SecureChannel.Messages do
         sorted_keys = Enum.sort(keys)
         values = Enum.map(sorted_keys, &Map.get(parts, &1))
         payload = Enum.reduce(values, <<>>, fn binary, acc -> <<acc::binary, binary::binary>> end)
+
         result = %Payload{
-            onward_route: onward_route,
-            return_route: return_route,
-            payload: payload,
-          }
+          onward_route: onward_route,
+          return_route: return_route,
+          payload: payload
+        }
+
         {:ok, result}
       else
         :error

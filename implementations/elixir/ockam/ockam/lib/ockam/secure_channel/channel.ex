@@ -97,7 +97,8 @@ defmodule Ockam.SecureChannel.Channel do
 
   @handshake_timeout 30_000
 
-  @max_payload_size 48 * 1024
+  # 48 * 1024
+  @max_payload_size 49_152
 
   @type listener_opt ::
           {:responder_authorization, authorization()}
@@ -418,6 +419,8 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp complete_inner_setup(%Channel{role: :initiator} = state, options, xx, tref) do
+    Logger.debug("complete_inner_setup - initiator")
+
     with {:ok, waiter} <- Keyword.fetch(options, :waiter),
          {:ok, init_route} <- Keyword.fetch(options, :route) do
       continue_handshake({:continue, xx}, %Channel{
@@ -429,6 +432,8 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp complete_inner_setup(%Channel{role: :responder} = state, options, xx, tref) do
+    Logger.debug("complete_inner_setup - responder")
+
     with {:ok, init_message} <- Keyword.fetch(options, :init_message) do
       handle_inner_message_impl(init_message, %Channel{
         state
@@ -519,10 +524,13 @@ defmodule Ockam.SecureChannel.Channel do
   # Check result of the handshake step, send handshake data to the peer if there is a message to exchange,
   # and possible move to another state
   defp continue_handshake({:complete, _key_agreements} = r, state) do
+    Logger.debug("continue_handshake - complete")
     next_handshake_state(r, state)
   end
 
   defp continue_handshake({:continue, key_exchange_state}, state) do
+    Logger.debug("continue_handshake - continue")
+
     with {:ok, data, next} <- XX.out_payload(key_exchange_state) do
       msg = %{
         payload: :bare.encode(data, :data),
@@ -536,6 +544,8 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: %Handshaking{xx: xx}} = state) do
+    Logger.debug("handle_inner_message_impl - handshaking")
+
     with {:ok, data} <- bare_decode_strict(message.payload, :data),
          {:ok, next} <- XX.in_payload(xx, data) do
       continue_handshake(next, %Channel{state | peer_route: message.return_route})
@@ -543,27 +553,42 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: channel_state} = state) do
+    Logger.debug("handle_inner_message_impl - normal state")
+
     with {:ok, ciphertext} <- bare_decode_strict(message.payload, :data),
          {:ok, plaintext, decrypt_st} <-
            Decryptor.decrypt("", ciphertext, channel_state.decrypt_st) do
       case Messages.decode(plaintext) do
         {:ok, %Messages.Payload{} = payload} ->
           message = struct(Ockam.Message, Map.from_struct(payload))
+          Logger.debug("Received regular message")
 
           handle_decrypted_message(message, %Channel{
             state
             | channel_state: %{channel_state | decrypt_st: decrypt_st}
           })
 
-        {:ok, %Messages.PayloadPart{payload_uuid: payload_uuid, current_part_number: current_part_number, total_number_of_parts: total_number_of_parts, onward_route: onward_route, return_route: return_route, payload: payload} = part} ->
+        {:ok,
+         %Messages.PayloadPart{
+           payload_uuid: payload_uuid,
+           current_part_number: current_part_number,
+           total_number_of_parts: total_number_of_parts,
+           onward_route: onward_route,
+           return_route: return_route,
+           payload: payload
+         }} ->
           # Get the parts for the current payload UUID
           Logger.debug(
             "Received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid}"
           )
+
           parts =
-            case Map.fetch(state.payload_parts, part.payload_uuid) do
+            case Map.fetch(state.payload_parts, payload_uuid) do
               {:ok, parts} ->
-                Logger.debug("Store received part #{current_part_number}/#{total_number_of_parts} for message #{part.payload_uuid} until all parts have been received")
+                Logger.debug(
+                  "Store received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid} until all parts have been received"
+                )
+
                 case PayloadParts.update(
                        parts,
                        current_part_number,
@@ -576,7 +601,10 @@ defmodule Ockam.SecureChannel.Channel do
                     parts
 
                   {:error, message} ->
-                    Logger.debug("got no new parts, updating current_part_number #{current_part_number}")
+                    Logger.debug(
+                      "got no new parts, updating current_part_number #{current_part_number}"
+                    )
+
                     Logger.error(message)
                     parts
                 end
@@ -601,7 +629,10 @@ defmodule Ockam.SecureChannel.Channel do
 
           case PayloadParts.complete(parts) do
             {:ok, payload} ->
-              Logger.debug("The message #{payload_uuid} is now complete with part #{current_part_number}/#{total_number_of_parts}")
+              Logger.debug(
+                "The message #{payload_uuid} is now complete with part #{current_part_number}/#{total_number_of_parts}"
+              )
+
               message = struct(Ockam.Message, Map.from_struct(payload))
 
               handle_decrypted_message(message, %Channel{
@@ -611,9 +642,15 @@ defmodule Ockam.SecureChannel.Channel do
               })
 
             :error ->
-              Logger.debug("The message #{payload_uuid} is not complete with part #{current_part_number}/#{total_number_of_parts}")
-              {:ok, %Channel{
-                state | payload_parts: Map.put(state.payload_parts, payload_uuid, parts) } }
+              Logger.debug(
+                "The message #{payload_uuid} is not complete with part #{current_part_number}/#{total_number_of_parts}"
+              )
+
+              {:ok,
+               %Channel{
+                 state
+                 | payload_parts: Map.put(state.payload_parts, payload_uuid, parts)
+               }}
           end
 
         {:ok, :close} ->
@@ -669,6 +706,7 @@ defmodule Ockam.SecureChannel.Channel do
 
   defp handle_outer_message_impl(message, %Channel{channel_state: %Established{} = e} = state) do
     message = Message.forward(message)
+    Logger.debug("handle_outer_message_impl")
 
     with {:ok, encrypt_st} <-
            send_over_encrypted_channel(
@@ -686,22 +724,47 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route) do
+    Logger.debug("check the size of the payload")
+    Logger.debug("check the size of the payload, max size: #{@max_payload_size}")
+
     if byte_size(message.payload) > @max_payload_size do
       Logger.debug("message size #{byte_size(message.payload)}, max size: #{@max_payload_size}")
       payload_parts = Bits.chunks(message.payload, @max_payload_size)
       payload_uuid = UUID.uuid4()
       total_number_of_parts = length(payload_parts)
       base_part = struct(Messages.PayloadPart, Map.from_struct(message))
-      Enum.with_index(payload_parts, fn(part, index) ->
-        Logger.debug("sending part #{index + 1}/#{total_number_of_parts} for message #{payload_uuid}")
-        base_part = %{ base_part | payload_uuid: payload_uuid, current_part_number: index + 1, total_number_of_parts: total_number_of_parts, payload: part }
-        send_payload_over_encrypted_channel(base_part, encrypt_st, peer_route)
-      end)
+      with_index = Enum.with_index(payload_parts)
 
+      List.foldl(with_index, {:ok, encrypt_st}, fn part_index, current_state ->
+        {part, index} = part_index
+        part_number = index + 1
+
+        Logger.debug(
+          "sending part #{part_number}/#{total_number_of_parts} for message #{payload_uuid}"
+        )
+
+        payload_part = %{
+          base_part
+          | payload_uuid: payload_uuid,
+            current_part_number: part_number,
+            total_number_of_parts: total_number_of_parts,
+            payload: part
+        }
+
+        send_payload_part_over_encrypted_channel(payload_part, current_state, peer_route)
+      end)
     else
       payload = struct(Messages.Payload, Map.from_struct(message))
       send_payload_over_encrypted_channel(payload, encrypt_st, peer_route)
     end
+  end
+
+  defp send_payload_part_over_encrypted_channel(payload_part, {:ok, encrypt_st}, peer_route) do
+    send_payload_over_encrypted_channel(payload_part, encrypt_st, peer_route)
+  end
+
+  defp send_payload_part_over_encrypted_channel(_part, other, _peer_route) do
+    other
   end
 
   defp send_payload_over_encrypted_channel(payload, encrypt_st, peer_route) do

@@ -1,7 +1,7 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{route, Any, Result, Route, Routed};
+use ockam_core::{route, Any, Error, Result, Route, Routed};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
@@ -14,7 +14,7 @@ use crate::secure_channel::{Addresses, Role};
 use crate::{
     DecryptionRequest, DecryptionResponse, Identities, IdentityError,
     IdentitySecureChannelLocalInfo, Nonce, PlaintextPayloadMessage, RefreshCredentialsMessage,
-    SecureChannelMessage,
+    SecureChannelMessageV1, SecureChannelMessageV2,
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
@@ -242,13 +242,20 @@ impl DecryptorHandler {
 
         // Decrypt the binary
         let (decrypted_payload, nonce) = self.decryptor.decrypt(payload).await?;
-        let decrypted_msg: SecureChannelMessage = minicbor::decode(&decrypted_payload)?;
+        let decrypted_msg: SecureChannelMessageV2 =
+            match minicbor::decode::<SecureChannelMessageV2>(&decrypted_payload) {
+                Ok(v) => v,
+                Err(e1) => match minicbor::decode::<SecureChannelMessageV1>(&decrypted_payload) {
+                    Ok(v) => v.to_v2(),
+                    Err(e2) => return Err(Error::new(Origin::Api, Kind::Serialization, format!("cannot decode a secure channel message, either as V1: {e1:?}, or V2: {e2:?}"))),
+                }
+            };
         match decrypted_msg {
-            SecureChannelMessage::Payload(decrypted_msg) => {
+            SecureChannelMessageV2::Payload(decrypted_msg) => {
                 self.handle_payload(ctx, decrypted_msg, nonce, encrypted_msg_return_route)
                     .await?
             }
-            SecureChannelMessage::PayloadPart {
+            SecureChannelMessageV2::PayloadPart {
                 part,
                 payload_uuid,
                 current_part_number,
@@ -265,10 +272,10 @@ impl DecryptorHandler {
                 )
                 .await?
             }
-            SecureChannelMessage::RefreshCredentials(msg) => {
+            SecureChannelMessageV2::RefreshCredentials(msg) => {
                 self.handle_refresh_credentials(ctx, msg).await?
             }
-            SecureChannelMessage::Close => self.handle_close(ctx).await?,
+            SecureChannelMessageV2::Close => self.handle_close(ctx).await?,
         };
 
         Ok(())

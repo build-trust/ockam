@@ -18,7 +18,8 @@ use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError, Nonce,
-    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage, UuidCbor,
+    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessageV1,
+    SecureChannelMessageV2, UuidCbor,
 };
 
 /// Maximum size for a secure channel payload.
@@ -92,7 +93,7 @@ impl EncryptorWorker {
     }
 
     /// Encrypt the message
-    async fn encrypt(&mut self, ctx: &Context, msg: SecureChannelMessage<'_>) -> Result<Vec<u8>> {
+    async fn encrypt(&mut self, ctx: &Context, msg: SecureChannelMessageV1<'_>) -> Result<Vec<u8>> {
         let payload = minicbor::to_vec(&msg)?;
         let mut buffer = Vec::new();
         self.encrypt_to(ctx, &mut buffer, &payload).await?;
@@ -201,7 +202,7 @@ impl EncryptorWorker {
                     payload: part,
                 };
 
-                let msg = SecureChannelMessage::PayloadPart {
+                let msg = SecureChannelMessageV2::PayloadPart {
                     part,
                     payload_uuid: UuidCbor::new(uuid),
                     current_part_number: part_number as u32,
@@ -218,7 +219,7 @@ impl EncryptorWorker {
                 payload: &payload,
             };
 
-            let msg = SecureChannelMessage::Payload(msg);
+            let msg = SecureChannelMessageV1::Payload(msg);
             let encoded_payload = minicbor::to_vec(&msg)?;
             self.handle_encrypt_message(ctx, encoded_payload).await?;
         }
@@ -328,7 +329,7 @@ impl EncryptorWorker {
             change_history,
             credentials: vec![credential.clone()],
         };
-        let msg = SecureChannelMessage::RefreshCredentials(msg);
+        let msg = SecureChannelMessageV1::RefreshCredentials(msg);
 
         let msg = self.encrypt(ctx, msg).await?;
 
@@ -348,7 +349,7 @@ impl EncryptorWorker {
     }
 
     async fn send_close_channel(&mut self, ctx: &Context) -> Result<()> {
-        let msg = SecureChannelMessage::Close;
+        let msg = SecureChannelMessageV1::Close;
 
         // Encrypt the message
         let msg = self.encrypt(ctx, msg).await?;

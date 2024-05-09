@@ -629,7 +629,9 @@ defmodule Ockam.SecureChannel.Tests do
       local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
     }
 
-    actual_message = :binary.bin_to_list(actual_message) |> :unicode.characters_to_list(:utf8) |> to_string()
+    actual_message =
+      :binary.bin_to_list(actual_message) |> :unicode.characters_to_list(:utf8) |> to_string()
+
     assert actual_message == message
     assert id == Identity.get_identifier(bob)
   end

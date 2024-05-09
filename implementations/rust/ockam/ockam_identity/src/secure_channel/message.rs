@@ -8,7 +8,32 @@ use uuid::{Bytes, Uuid};
 /// Secure Channel Message format.
 #[derive(Debug, Encode, Decode, Clone)]
 #[rustfmt::skip]
-pub enum SecureChannelMessage<'a> {
+pub enum SecureChannelMessageV1<'a> {
+    /// Encrypted payload message.
+    #[n(0)] Payload(#[b(0)] PlaintextPayloadMessage<'a>),
+    /// Present credentials one more time.
+    #[n(1)] RefreshCredentials(#[n(0)] RefreshCredentialsMessage),
+    /// Close the channel.
+    #[n(2)] Close,
+}
+
+impl<'a> SecureChannelMessageV1<'a> {
+    pub(crate) fn to_v2(self) -> SecureChannelMessageV2<'a> {
+        match self {
+            SecureChannelMessageV1::Payload(p) => SecureChannelMessageV2::Payload(p),
+            SecureChannelMessageV1::RefreshCredentials(c) => {
+                SecureChannelMessageV2::RefreshCredentials(c)
+            }
+            SecureChannelMessageV1::Close => SecureChannelMessageV2::Close,
+        }
+    }
+}
+
+/// Secure Channel Message format.
+/// This new version supports multipart payloads
+#[derive(Debug, Encode, Decode, Clone)]
+#[rustfmt::skip]
+pub enum SecureChannelMessageV2<'a> {
     /// Encrypted payload message.
     #[n(0)] Payload(#[b(0)] PlaintextPayloadMessage<'a>),
     /// Present credentials one more time.
