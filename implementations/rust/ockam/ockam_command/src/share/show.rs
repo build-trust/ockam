@@ -9,7 +9,7 @@ use ockam_api::cloud::share::Invitations;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -51,15 +51,13 @@ impl ShowCommand {
 
         let output_messages = vec![format!("Showing invitation...\n",)];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (response, _) = try_join!(get_invitation_with_access, progress_output)?;
 
         // TODO: Emit connection details
         let plain = fmt_ok!("Invite {}", response.invitation.id);
-        let json = serde_json::to_string_pretty(&response).into_diagnostic()?;
+        let json = serde_json::to_string(&response).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)

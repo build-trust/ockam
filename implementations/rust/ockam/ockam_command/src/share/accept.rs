@@ -7,7 +7,7 @@ use ockam::Context;
 use ockam_api::cloud::share::Invitations;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -47,9 +47,7 @@ impl AcceptCommand {
 
         let output_messages = vec![format!("Accepting share invitation...\n",)];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (accepted, _) = try_join!(get_accepted_invitation, progress_output)?;
 
@@ -57,7 +55,7 @@ impl AcceptCommand {
             "Accepted invite {} for {} {}",
             accepted.id, accepted.scope, accepted.target_id
         );
-        let json = serde_json::to_string_pretty(&accepted).into_diagnostic()?;
+        let json = serde_json::to_string(&accepted).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)

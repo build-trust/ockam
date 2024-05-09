@@ -19,9 +19,8 @@ use ockam_api::output::OutputFormat;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::api::RetryOpts;
-use crate::util::api::{IdentityOpts, TrustOpts};
-use crate::util::duration::duration_parser;
+use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
+use crate::util::parsers::duration_parser;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");

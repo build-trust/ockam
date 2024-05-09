@@ -94,9 +94,7 @@ impl ListCommand {
         };
 
         let output_messages = vec!["Retrieving secure channel identifiers...\n".to_string()];
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (channel_identifiers, _) = try_join!(get_secure_channel_identifiers, progress_output)?;
 
@@ -117,9 +115,7 @@ impl ListCommand {
                     .to_string()
                     .color(OckamColor::PrimaryResource.color())
             )];
-            let progress_output = opts
-                .terminal
-                .progress_output(&output_messages, &is_finished);
+            let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
             let (secure_channel_output, _) = try_join!(get_secure_channel_output, progress_output)?;
 
@@ -128,7 +124,6 @@ impl ListCommand {
 
         let list = opts.terminal.build_list(
             &responses,
-            &format!("Secure Channels on {}", node.node_name()),
             &format!("No secure channels found on {}", node.node_name()),
         )?;
         opts.terminal.stdout().plain(list).write_line()?;

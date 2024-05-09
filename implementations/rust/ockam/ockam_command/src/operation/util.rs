@@ -16,8 +16,8 @@ pub async fn check_for_project_completion(
     node: &InMemoryNode,
     project: Project,
 ) -> miette::Result<Project> {
-    let spinner_option = opts.terminal.progress_spinner();
-    if let Some(spinner) = spinner_option.as_ref() {
+    let pb = opts.terminal.progress_bar();
+    if let Some(spinner) = pb.as_ref() {
         let message = format!(
             "Configuring project...\n{}\n{}",
             fmt_log!("This usually takes 15 seconds, but may sometimes take up to 4 minutes."),
@@ -34,7 +34,7 @@ pub async fn check_for_project_completion(
         .wait_until_project_creation_operation_is_complete(ctx, project)
         .await?;
 
-    if let Some(spinner) = spinner_option.as_ref() {
+    if let Some(spinner) = pb.as_ref() {
         spinner.finish_and_clear();
     }
 
@@ -48,8 +48,8 @@ pub async fn check_for_operation_completion(
     operation_id: &str,
     operation_name: &str,
 ) -> miette::Result<()> {
-    let spinner_option = opts.terminal.progress_spinner();
-    if let Some(spinner) = spinner_option.as_ref() {
+    let pb = opts.terminal.progress_bar();
+    if let Some(spinner) = pb.as_ref() {
         let message = format!(
             "Waiting for {operation_name} to finish ...\n{}",
             fmt_para!(
@@ -65,7 +65,7 @@ pub async fn check_for_operation_completion(
         .wait_until_operation_is_complete(ctx, operation_id)
         .await;
 
-    if let Some(spinner) = spinner_option.as_ref() {
+    if let Some(spinner) = pb.as_ref() {
         spinner.finish_and_clear();
     }
 

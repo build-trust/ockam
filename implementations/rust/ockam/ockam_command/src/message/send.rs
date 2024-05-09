@@ -1,5 +1,3 @@
-use core::time::Duration;
-
 use clap::Args;
 use miette::{Context as _, IntoDiagnostic};
 use tracing::info;
@@ -14,8 +12,8 @@ use ockam_multiaddr::MultiAddr;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
-use crate::util::api::{IdentityOpts, TrustOpts};
-use crate::util::duration::duration_parser;
+use crate::shared_args::TimeoutArg;
+use crate::shared_args::{IdentityOpts, TrustOpts};
 use crate::util::{async_cmd, clean_nodes_multiaddr};
 use crate::{docs, CommandGlobalOpts};
 
@@ -42,9 +40,8 @@ pub struct SendCommand {
     #[arg(long)]
     pub hex: bool,
 
-    /// Override default timeout
-    #[arg(long, value_name = "TIMEOUT", default_value = "10s", value_parser = duration_parser)]
-    pub timeout: Duration,
+    #[command(flatten)]
+    pub timeout: TimeoutArg,
 
     pub message: String,
 
@@ -85,7 +82,7 @@ impl SendCommand {
         let response: Vec<u8> = if let Some(node) = &self.from {
             BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
                 .await?
-                .send_message(ctx, &to, msg_bytes, Some(self.timeout))
+                .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
                 .await?
         } else {
             let identity_name = opts
@@ -114,13 +111,13 @@ impl SendCommand {
                 &node_manager,
                 &meta,
                 Some(identity_name),
-                Some(self.timeout),
+                Some(self.timeout.timeout),
             )
             .await?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
             info!("sending to {to}");
             node_manager
-                .send_message(ctx, &to, msg_bytes, Some(self.timeout))
+                .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
                 .await?
         };
 

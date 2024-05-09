@@ -59,19 +59,16 @@ impl ListCommand {
             node.node_name().color(OckamColor::PrimaryResource.color())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (relays, _) = try_join!(get_relays, progress_output)?;
         trace!(?relays, "Relays retrieved");
 
         let plain = opts.terminal.build_list(
             &relays,
-            &format!("Relays on Node {}", node.node_name()),
             &format!("No Relays found on node {}.", node.node_name()),
         )?;
-        let json = serde_json::to_string_pretty(&relays).into_diagnostic()?;
+        let json = serde_json::to_string(&relays).into_diagnostic()?;
 
         opts.terminal
             .stdout()

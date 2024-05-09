@@ -52,7 +52,7 @@ impl ShowCommand {
         opts.terminal
             .stdout()
             .plain(response.item()?)
-            .json(serde_json::to_string_pretty(&response).into_diagnostic()?)
+            .json(serde_json::to_string(&response).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }

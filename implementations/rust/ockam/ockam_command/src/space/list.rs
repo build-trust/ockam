@@ -8,7 +8,7 @@ use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
@@ -52,18 +52,15 @@ impl ListCommand {
 
         let output_messages = vec![format!("Listing Spaces...\n",)];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (spaces, _) = try_join!(get_spaces, progress_output)?;
 
         let plain = opts.terminal.build_list(
             &spaces,
-            "Spaces",
             "No spaces found. Run 'ockam enroll' to get a space and a project",
         )?;
-        let json = serde_json::to_string_pretty(&spaces).into_diagnostic()?;
+        let json = serde_json::to_string(&spaces).into_diagnostic()?;
 
         opts.terminal
             .stdout()

@@ -7,8 +7,6 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use tokio::sync::Mutex;
-use tokio::try_join;
 use tracing::trace;
 
 use ockam::identity::Identifier;
@@ -20,7 +18,7 @@ use ockam_api::cli_state::journeys::{
     TCP_INLET_FROM, TCP_INLET_TO,
 };
 use ockam_api::cli_state::{random_name, CliState};
-use ockam_api::colors::OckamColor;
+use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -30,10 +28,11 @@ use ockam_multiaddr::proto;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 
 use crate::node::util::initialize_default_node;
+use crate::shared_args::OptionalTimeoutArg;
 use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts, Error};
 
-use crate::util::duration::duration_parser;
+use crate::util::parsers::duration_parser;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{find_available_port, port_is_free_guard, process_nodes_multiaddr};
 
@@ -86,7 +85,7 @@ pub struct CreateCommand {
     #[arg(
         hide = true,
         long,
-        visible_alias = "policy_expression",
+        visible_alias = "expression",
         display_order = 900,
         id = "POLICY_EXPRESSION"
     )]
@@ -100,9 +99,8 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser)]
     pub retry_wait: Duration,
 
-    /// Override default timeout
-    #[arg(long, value_parser = duration_parser)]
-    pub timeout: Option<Duration>,
+    #[command(flatten)]
+    pub timeout: OptionalTimeoutArg,
 
     /// Create the TCP Inlet without waiting for the TCP Outlet to connect
     #[arg(long, default_value = "false")]
@@ -124,28 +122,22 @@ impl Command for CreateCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
+
         let cmd = self.parse_args(&opts).await?;
-        opts.terminal.write_line(&fmt_log!(
-            "Creating TCP Inlet at {}...\n",
-            cmd.from
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        ))?;
 
         let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
-        cmd.timeout.map(|t| node.set_timeout_mut(t));
+        cmd.timeout.timeout.map(|t| node.set_timeout_mut(t));
 
-        let is_finished: Mutex<bool> = Mutex::new(false);
-        let progress_bar = opts.terminal.progress_spinner();
-        let create_inlet = async {
-            port_is_free_guard(&cmd.from)?;
-            if cmd.to().matches(0, &[proto::Project::CODE.into()]) && cmd.authorized.is_some() {
-                return Err(miette!(
-                    "--authorized can not be used with project addresses"
-                ))?;
+        let inlet_status = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message(format!(
+                    "Creating TCP Inlet at {}...\n",
+                    color_primary(cmd.from.to_string())
+                ));
             }
 
-            let inlet = loop {
+            loop {
                 let result: Reply<InletStatus> = node
                     .create_inlet(
                         ctx,
@@ -161,7 +153,6 @@ impl Command for CreateCommand {
 
                 match result {
                     Reply::Successful(inlet_status) => {
-                        *is_finished.lock().await = true;
                         break inlet_status;
                     }
                     Reply::Failed(_, s) => {
@@ -176,91 +167,52 @@ impl Command for CreateCommand {
                             return Err(miette!("Failed to create TCP inlet"))?;
                         }
 
-                        if let Some(spinner) = progress_bar.as_ref() {
-                            spinner.set_message(format!(
-                                "Waiting for inlet {} to be available... Retrying momentarily",
-                                &cmd.to
-                                    .to_string()
-                                    .color(OckamColor::PrimaryResource.color())
+                        if let Some(pb) = pb.as_ref() {
+                            pb.set_message(format!(
+                                "Waiting for TCP Inlet {} to be available... Retrying momentarily\n",
+                                color_primary(&cmd.to)
                             ));
                         }
                         tokio::time::sleep(cmd.retry_wait).await
                     }
                 }
-            };
-
-            Ok(inlet)
+            }
         };
 
-        let progress_messages = vec![
-            format!(
-                "Creating TCP Inlet on {}...",
-                &node.node_name().color(OckamColor::PrimaryResource.color())
-            ),
-            format!(
-                "Hosting TCP Socket at {}...",
-                &cmd.from
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ),
-            format!(
-                "Establishing connection to outlet {}...",
-                &cmd.to
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ),
-        ];
-        let progress_output = opts.terminal.progress_output_with_progress_bar(
-            &progress_messages,
-            &is_finished,
-            progress_bar.as_ref(),
-        );
-        let (inlet, _) = try_join!(create_inlet, progress_output)?;
-
         let node_name = node.node_name();
-        cmd.add_inlet_created_event(&opts, &node_name, &inlet)
+        cmd.add_inlet_created_event(&opts, &node_name, &inlet_status)
             .await?;
+
+        let created_message = fmt_ok!(
+            "Created a new TCP Inlet in the Node {} bound to {}\n",
+            color_primary(&node_name),
+            color_primary(cmd.from.to_string())
+        );
+
+        let plain = if cmd.no_connection_wait {
+            created_message + &fmt_log!("It will automatically connect to the TCP Outlet at {} as soon as it is available",
+                color_primary(&cmd.to)
+            )
+        } else if inlet_status.status == ConnectionStatus::Up {
+            created_message
+                + &fmt_log!(
+                    "sending traffic to the TCP Outlet at {}",
+                    color_primary(&cmd.to)
+                )
+        } else {
+            fmt_warn!(
+                "A TCP Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
+                color_primary(&node_name),
+                 color_primary(cmd.from.to_string()),
+                color_primary(&cmd.to)
+            ) + &fmt_info!("It will retry to connect automatically")
+        };
 
         opts.terminal
             .stdout()
-            .plain(if cmd.no_connection_wait {
-                fmt_ok!(
-                    "The inlet {} on node {} will automatically connect when the outlet at {} is available\n",
-                    &cmd.from
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color()),
-                    &node.node_name().color(OckamColor::PrimaryResource.color()),
-                    &cmd.to
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                )
-            } else if inlet.status == ConnectionStatus::Up {
-                fmt_ok!(
-                    "TCP inlet {} on node {} is now sending traffic\n",
-                    &cmd.from
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color()),
-                    &node.node_name().color(OckamColor::PrimaryResource.color())
-                ) + &fmt_log!(
-                    "to the outlet at {}",
-                    &cmd.to
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                )
-            } else {
-                fmt_warn!(
-                    "TCP inlet {} on node {} failed to connect to the outlet at {}\n",
-                    &cmd.from
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color()),
-                    &node.node_name().color(OckamColor::PrimaryResource.color()),
-                    &cmd.to
-                        .to_string()
-                        .color(OckamColor::PrimaryResource.color())
-                ) + &fmt_info!("TCP inlet will retry to connect automatically")
-            })
-            .machine(inlet.bind_addr.to_string())
-            .json(serde_json::json!(&inlet))
+            .plain(plain)
+            .machine(inlet_status.bind_addr.to_string())
+            .json(serde_json::json!(&inlet_status))
             .write_line()?;
 
         Ok(())
@@ -292,7 +244,13 @@ impl CreateCommand {
     }
 
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
+        port_is_free_guard(&self.from)?;
         self.to = Self::parse_arg_to(&opts.state, self.to, self.via.as_ref()).await?;
+        if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
+            return Err(miette!(
+                "--authorized can not be used with project addresses"
+            ))?;
+        }
         Ok(self)
     }
 

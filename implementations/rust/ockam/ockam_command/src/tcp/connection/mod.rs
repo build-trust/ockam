@@ -5,7 +5,7 @@ pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 
 use crate::tcp::connection::show::ShowCommand;
-use crate::CommandGlobalOpts;
+use crate::{Command, CommandGlobalOpts};
 
 mod create;
 mod delete;

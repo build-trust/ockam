@@ -21,7 +21,8 @@ teardown() {
 
   # Create tcp-connection and check output
   run_success "$OCKAM" tcp-connection create --from n1 --to "$addr" --output json
-  assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/worker/[[:graph:]]+"}]'
+  assert_output --partial "n1"
+  assert_output --partial $addr
 
   # Check that the connection is listed
   run_success "$OCKAM" tcp-connection list --at n1

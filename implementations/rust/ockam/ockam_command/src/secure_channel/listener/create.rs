@@ -1,6 +1,7 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
+use minicbor::Decoder;
 
 use crate::{docs, CommandGlobalOpts};
 use ockam::identity::Identifier;
@@ -9,7 +10,7 @@ use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use ockam_api::nodes::{BackgroundNodeClient, NODEMANAGER_ADDR};
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_core::api::{Request, Status};
+use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::{Address, Route};
 
 use crate::node::util::initialize_default_node;
@@ -110,7 +111,8 @@ pub async fn create_listener(
         .await
         .into_diagnostic()?;
 
-    let response = api::parse_create_secure_channel_listener_response(&resp)?;
+    let mut dec = Decoder::new(&resp);
+    let response = dec.decode::<ResponseHeader>().into_diagnostic()?;
 
     match response.status() {
         Some(Status::Ok) => {

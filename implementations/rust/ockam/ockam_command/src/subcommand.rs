@@ -43,6 +43,7 @@ use crate::secure_channel::SecureChannelCommand;
 use crate::service::ServiceCommand;
 #[cfg(feature = "orchestrator")]
 use crate::share::ShareCommand;
+use crate::shared_args::RetryOpts;
 use crate::sidecar::SidecarCommand;
 use crate::space::SpaceCommand;
 use crate::status::StatusCommand;
@@ -51,7 +52,6 @@ use crate::tcp::connection::TcpConnectionCommand;
 use crate::tcp::inlet::TcpInletCommand;
 use crate::tcp::listener::TcpListenerCommand;
 use crate::tcp::outlet::TcpOutletCommand;
-use crate::util::api::RetryOpts;
 use crate::util::async_cmd;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;

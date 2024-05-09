@@ -50,7 +50,11 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
             return;
         }
         let msg = strip_ansi_escapes::strip_str(msg.as_ref());
-        let msg = msg.trim().trim_start_matches(['✔', '✗', '>', '!']).trim();
+        let msg = msg
+            .trim()
+            .trim_start_matches(['✔', '✗', '>', '!'])
+            .trim_end_matches(['\n', '\r'])
+            .trim();
         if !msg.is_empty() {
             info!("{msg}");
         }
@@ -255,48 +259,25 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
     pub fn build_list(
         &self,
         items: &[impl crate::output::Output],
-        header: &str,
         empty_message: &str,
     ) -> Result<String> {
-        let mut output = String::new();
-
-        // Early return, if the items are empty.
+        // Early return if there are no items to show.
         if items.is_empty() {
-            let empty_message = fmt_info!("{}", empty_message);
-            write!(output, "{}", empty_message)?;
-            return Ok(output);
+            return Ok(fmt_info!("{empty_message}"));
         }
 
-        // Display header
-        let header_display_width = {
-            // Strip ANSI escape codes from header to correctly calculate its display width
-            let header_stripped = strip_ansi_escapes::strip(header);
-            header_stripped.len()
-        };
-        let padding = 7;
-        writeln!(
-            output,
-            "{}",
-            &fmt_log!("┌{}┐", "─".repeat(header_display_width + (padding * 2)))
-        )?;
-        writeln!(
-            output,
-            "{}",
-            &fmt_log!("│{}{header}{}│", " ".repeat(padding), " ".repeat(padding))
-        )?;
-        writeln!(
-            output,
-            "{}",
-            &fmt_log!("└{}┘\n", "─".repeat(header_display_width + (padding * 2)))
-        )?;
+        let mut output = String::new();
 
-        // Display items with alternating colors
-        for item in items {
+        for (idx, item) in items.iter().enumerate() {
+            // Add a newline before each item except the first one
+            if idx > 0 {
+                writeln!(output)?;
+            }
+
             let item = item.as_list_item()?;
-            item.split('\n').for_each(|line| {
-                let _ = writeln!(output, "{}", &fmt_list!("{line}"));
-            });
-            writeln!(output)?;
+            for line in item.lines() {
+                writeln!(output, "{}", &fmt_list!("{line}"))?;
+            }
         }
 
         Ok(output)
@@ -383,6 +364,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
                 }
             },
         };
+
         if self.logging_enabled {
             self.log_msg(msg);
         } else {
@@ -394,18 +376,20 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
 
 // Extensions
 impl<W: TerminalWriter + Debug> Terminal<W> {
-    pub fn can_use_progress_spinner(&self) -> bool {
+    pub fn can_use_progress_bar(&self) -> bool {
         !self.logging_enabled && !self.quiet && self.stderr.is_tty()
     }
 
-    pub fn progress_spinner(&self) -> Option<ProgressBar> {
-        if !self.can_use_progress_spinner() {
+    pub fn progress_bar(&self) -> Option<ProgressBar> {
+        if !self.can_use_progress_bar() {
             return None;
         }
-        let ticker = [
-            "     ⠋", "     ⠙", "     ⠹", "     ⠸", "     ⠼", "     ⠴", "     ⠦", "     ⠧",
-            "     ⠇", "     ⠏",
-        ];
+
+        let ticker = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            .into_iter()
+            .map(|t| format!("{}{t}", ICON_PADDING))
+            .collect::<Vec<String>>();
+        let ticker_ref = &ticker.iter().map(|t| t.as_str()).collect::<Vec<&str>>();
 
         let pb = ProgressBar::new_spinner();
         pb.set_draw_target(ProgressDrawTarget::stderr());
@@ -413,12 +397,12 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         pb.set_style(
             ProgressStyle::with_template("{spinner:.yellow} {msg}")
                 .expect("Failed to set progress bar template")
-                .tick_strings(&ticker),
+                .tick_strings(ticker_ref),
         );
         Some(pb)
     }
 
-    pub async fn progress_output(
+    pub async fn loop_messages(
         &self,
         output_messages: &[String],
         is_finished: &Mutex<bool>,
@@ -426,38 +410,26 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         if output_messages.is_empty() {
             return Ok(());
         }
-        let spinner = self.progress_spinner();
-        self.progress_output_with_progress_bar(output_messages, is_finished, spinner.as_ref())
-            .await
-    }
-
-    pub async fn progress_output_with_progress_bar(
-        &self,
-        output_messages: &[String],
-        is_finished: &Mutex<bool>,
-        progress_bar: Option<&ProgressBar>,
-    ) -> miette::Result<()> {
-        let progress_bar = match progress_bar {
+        let pb = match self.progress_bar() {
             Some(pb) => pb,
             None => return Ok(()),
         };
 
         loop {
             if *is_finished.lock().await {
-                progress_bar.finish_and_clear();
+                pb.finish_and_clear();
                 break;
             }
 
             for message in output_messages {
-                progress_bar.set_message(message.clone());
+                pb.set_message(message.clone());
                 sleep(Duration::from_millis(500)).await;
                 if *is_finished.lock().await {
-                    progress_bar.finish_and_clear();
+                    pb.finish_and_clear();
                     break;
                 }
             }
         }
-
         Ok(())
     }
 }

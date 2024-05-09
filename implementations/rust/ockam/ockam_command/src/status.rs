@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use std::fmt::Display;
-use std::time::Duration;
 
 use clap::Args;
 use colorful::Colorful;
@@ -17,16 +16,15 @@ use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
 
 use crate::node::show::get_node_resources;
-use crate::util::duration::duration_parser;
+use crate::shared_args::TimeoutArg;
 use crate::Result;
 use crate::{Command, CommandGlobalOpts};
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
 pub struct StatusCommand {
-    /// Override the default timeout
-    #[arg(long, default_value = "5", value_parser = duration_parser)]
-    timeout: Duration,
+    #[command(flatten)]
+    timeout: TimeoutArg,
 }
 
 #[async_trait]
@@ -39,7 +37,7 @@ impl Command for StatusCommand {
         let orchestrator_version = {
             let node = InMemoryNode::start(ctx, &opts.state)
                 .await?
-                .with_timeout(self.timeout);
+                .with_timeout(self.timeout.timeout);
             let controller = node.create_controller().await?;
             controller
                 .get_orchestrator_version_info(ctx)
@@ -74,7 +72,7 @@ impl StatusCommand {
         opts: &CommandGlobalOpts,
     ) -> Result<Vec<NodeResources>> {
         let mut nodes_resources = vec![];
-        let pb = opts.terminal.progress_spinner();
+        let pb = opts.terminal.progress_bar();
         let nodes = opts.state.get_nodes().await?;
         for node in nodes {
             if let Some(ref pb) = pb {

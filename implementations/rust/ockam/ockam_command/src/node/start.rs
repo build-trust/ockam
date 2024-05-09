@@ -203,8 +203,8 @@ fn append_info_if_errors(node_starts_output: &mut Vec<String>) {
         "\n\n".to_string()
             + &fmt_err!("You can check the status of failed nodes using the command\n")
             + &fmt_log!(
-                "{}",
-                "ockam node show\n".color(OckamColor::PrimaryResource.color())
+                "{}\n",
+                "ockam node show".color(OckamColor::PrimaryResource.color())
             )
             + &fmt_log!("or check the logs with the command\n")
             + &fmt_log!(

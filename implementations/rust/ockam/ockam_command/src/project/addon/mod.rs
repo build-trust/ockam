@@ -15,7 +15,7 @@ use crate::project::addon::configure_okta::AddonConfigureOktaSubcommand;
 use crate::project::addon::disable::AddonDisableSubcommand;
 use crate::project::addon::list::AddonListSubcommand;
 use crate::project::util::check_project_readiness;
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::{CommandGlobalOpts, Result};
 
 mod configure_influxdb;

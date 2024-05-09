@@ -54,16 +54,13 @@ impl ListCommand {
             Ok(policies)
         };
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (policies, _) = try_join!(get_policies, progress_output)?;
 
         if policies.resource_type_policies().is_empty() && policies.resource_policies().is_empty() {
             let list = opts.terminal.build_list(
                 policies.resource_type_policies(),
-                "",
                 &format!("No policies on Node {}", &node.node_name()),
             )?;
             opts.terminal.stdout().plain(list).write_line()?;
@@ -76,14 +73,12 @@ impl ListCommand {
             if !policies.resource_type_policies().is_empty() {
                 plain = opts.terminal.build_list(
                     policies.resource_type_policies(),
-                    &format!("Resource type policies on Node {}", &node.node_name()),
                     &format!("No resource type policies on Node {}", &node.node_name()),
                 )?;
             }
             if !policies.resource_policies().is_empty() {
                 plain.push_str(&opts.terminal.build_list(
                     policies.resource_policies(),
-                    &format!("Resource policies on Node {}", &node.node_name()),
                     &format!("No resource policies on Node {}", &node.node_name()),
                 )?);
             }

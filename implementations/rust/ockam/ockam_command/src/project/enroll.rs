@@ -22,7 +22,7 @@ use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
 
 use crate::enroll::OidcServiceExt;
-use crate::util::api::{IdentityOpts, RetryOpts, TrustOpts};
+use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::value_parsers::parse_enrollment_ticket;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 

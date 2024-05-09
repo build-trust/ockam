@@ -88,10 +88,12 @@ impl CliState {
         self.notify(Notification::progress(message));
     }
 
-    pub fn notify_progress_finish<'a>(&self, message: impl Into<Option<&'a str>>) {
-        self.notify(Notification::progress_finish(
-            message.into().map(|s| s.to_string()),
-        ));
+    pub fn notify_progress_finish(&self, message: impl Into<String>) {
+        self.notify(Notification::progress_finish(Some(message.into())));
+    }
+
+    pub fn notify_progress_finish_and_clear(&self) {
+        self.notify(Notification::progress_finish(None));
     }
 
     fn notify(&self, notification: Notification) {

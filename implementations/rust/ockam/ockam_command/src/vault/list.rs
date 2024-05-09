@@ -37,9 +37,7 @@ impl ListCommand {
             .into_iter()
             .map(|v| VaultOutput::new(&v))
             .collect::<Vec<_>>();
-        let plain = opts
-            .terminal
-            .build_list(&vaults, "Vaults", "No Vaults found")?;
+        let plain = opts.terminal.build_list(&vaults, "No Vaults found")?;
         let json = serde_json::to_string(&vaults).into_diagnostic()?;
         opts.terminal
             .stdout()

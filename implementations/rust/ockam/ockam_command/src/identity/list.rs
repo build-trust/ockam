@@ -47,11 +47,9 @@ impl ListCommand {
             identities_list.push(identity_output);
         }
 
-        let list = opts.terminal.build_list(
-            &identities_list,
-            "Identities",
-            "No identities found on this system.",
-        )?;
+        let list = opts
+            .terminal
+            .build_list(&identities_list, "No identities found on this system.")?;
 
         opts.terminal
             .stdout()

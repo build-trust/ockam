@@ -90,12 +90,11 @@ impl CreateCommand {
             .json(serde_json::to_string(&node_resources).into_diagnostic()?)
             .write_line()?;
 
-        opts.terminal
-            .write_line(fmt_log!("To see more details on this Node, run:"))?
-            .write_line(fmt_log!(
-                "{}",
-                color_primary(format!("ockam node show {}", node_name))
-            ))?;
+        opts.terminal.write_line(fmt_log!(
+            "To see more details on this Node, run: {}",
+            color_primary(format!("ockam node show {}", node_name))
+        ))?;
+
         Ok(())
     }
 

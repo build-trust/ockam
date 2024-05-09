@@ -7,9 +7,9 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
-use crate::util::parsers::validate_project_name;
+use crate::util::parsers::project_name_parser;
 use crate::{docs, CommandGlobalOpts};
 use ockam_api::output::Output;
 
@@ -28,7 +28,7 @@ pub struct CreateCommand {
     pub space_name: String,
 
     /// Name of the project - must be unique within parent Space
-    #[arg(display_order = 1002, default_value_t = random_name(), hide_default_value = true, value_parser = validate_project_name)]
+    #[arg(display_order = 1002, default_value_t = random_name(), hide_default_value = true, value_parser = project_name_parser)]
     pub project_name: String,
 
     #[command(flatten)]

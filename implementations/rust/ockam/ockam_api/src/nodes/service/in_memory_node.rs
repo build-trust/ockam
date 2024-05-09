@@ -38,6 +38,7 @@ use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
 pub struct InMemoryNode {
     pub(crate) node_manager: Arc<NodeManager>,
     persistent: bool,
+    /// Optional timeout duration for establishing secure channels and awaiting responses
     timeout: Option<Duration>,
 }
 

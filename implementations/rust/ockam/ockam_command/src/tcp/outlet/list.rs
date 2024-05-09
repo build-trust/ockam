@@ -57,9 +57,7 @@ impl ListCommand {
             color_primary(node.node_name())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (outlets, _) = try_join!(send_req, progress_output)?;
 
@@ -70,11 +68,7 @@ impl ListCommand {
             );
             match outlets.is_empty() {
                 true => empty_message,
-                false => opts.terminal.build_list(
-                    &outlets,
-                    &format!("TCP Outlets on node {}", color_primary(node.node_name())),
-                    &empty_message,
-                )?,
+                false => opts.terminal.build_list(&outlets, &empty_message)?,
             }
         };
 

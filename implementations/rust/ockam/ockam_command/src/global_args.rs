@@ -34,15 +34,20 @@ pub struct GlobalArgs {
     )]
     pub verbose: u8,
 
-    /// Output without any colors
+    /// Disable colors in output
     #[arg(global = true, long, default_value_t = no_color_default_value())]
     pub no_color: bool,
 
-    /// Disable tty functionality
+    /// Disable tty functionality, like interactive prompts.
     #[arg(global = true, long, default_value_t = no_input_default_value())]
     pub no_input: bool,
 
-    /// Output format
+    /// Specifies the output format of the command. Defaults to 'plain' if not explicitly set.
+    /// The 'plain' format is a piece of plain text, the content of which may change based on whether
+    /// the stdout is a tty or not. For instance, if stdout is redirected to a file, the output
+    /// is usually an identifier that can be used as input for other commands. If stdout is a tty,
+    /// the output will contain human-readable information about the command execution.
+    /// The 'json' format is a one-line JSON object, which can be made more readable using a tool like jq.
     #[arg(global = true, long = "output", value_enum, default_value = "plain")]
     pub output_format: OutputFormat,
 

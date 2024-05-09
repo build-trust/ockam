@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use crate::util::api::IdentityOpts;
+use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
 mod subscription;

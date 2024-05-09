@@ -52,15 +52,12 @@ impl ListCommand {
             node.node_name().color(OckamColor::PrimaryResource.color())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (transports, _) = try_join!(get_transports, progress_output)?;
 
         let list = opts.terminal.build_list(
             &transports,
-            &format!("TCP Listeners on {}", node.node_name()),
             &format!(
                 "No TCP Listeners found on {}",
                 node.node_name().color(OckamColor::PrimaryResource.color())

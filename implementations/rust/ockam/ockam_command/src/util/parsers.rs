@@ -1,13 +1,16 @@
+use clap::error::{Error, ErrorKind};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::time::Duration;
 
 use miette::miette;
 
 use ockam::identity::Identifier;
 use ockam_api::config::lookup::InternetAddress;
+use ockam_core::env::parse_duration;
 use ockam_transport_tcp::resolve_peer;
 
-use crate::util::api;
+use crate::util::validators::cloud_resource_name_validator;
 use crate::Result;
 
 /// Helper function for parsing a socket from user input
@@ -38,8 +41,8 @@ pub(crate) fn internet_address_parser(input: &str) -> Result<InternetAddress> {
     Ok(InternetAddress::new(input).ok_or_else(|| miette!("Invalid address: {input}"))?)
 }
 
-pub(crate) fn validate_project_name(s: &str) -> Result<String> {
-    match api::validate_cloud_resource_name(s) {
+pub(crate) fn project_name_parser(s: &str) -> Result<String> {
+    match cloud_resource_name_validator(s) {
         Ok(_) => Ok(s.to_string()),
         Err(_e)=> Err(miette!(
             "project name can contain only alphanumeric characters and the '-', '_' and '.' separators. \
@@ -47,6 +50,10 @@ pub(crate) fn validate_project_name(s: &str) -> Result<String> {
             occur at the start or end of the name, nor they can occur in sequence.",
         ))?,
     }
+}
+
+pub(crate) fn duration_parser(arg: &str) -> std::result::Result<Duration, clap::Error> {
+    parse_duration(arg).map_err(|_| Error::raw(ErrorKind::InvalidValue, "Invalid duration."))
 }
 
 #[cfg(test)]

@@ -39,8 +39,8 @@ teardown() {
   run_success $OCKAM relay create red --at /node/n1 --to /node/n2
 
   run_success $OCKAM relay list --to /node/n2 --output json
-  assert_output --partial "\"remote_address\": \"forward_to_blue\""
-  assert_output --partial "\"remote_address\": \"forward_to_red\""
+  assert_output --partial "\"remote_address\":\"forward_to_blue\""
+  assert_output --partial "\"remote_address\":\"forward_to_red\""
 
   # Test listing node with no relays
   run_success $OCKAM relay list --to /node/n1
@@ -65,14 +65,14 @@ teardown() {
   # Create another one and list both
   run_success "$OCKAM" relay create red --at /node/n1 --to /node/n2
   run_success "$OCKAM" relay list --to /node/n2 --output json
-  assert_output --partial "\"remote_address\": \"forward_to_blue\""
-  assert_output --partial "\"remote_address\": \"forward_to_red\""
+  assert_output --partial "\"remote_address\":\"forward_to_blue\""
+  assert_output --partial "\"remote_address\":\"forward_to_red\""
 
   # Delete the first
   run_success "$OCKAM" relay delete -y forward_to_blue --at /node/n2
   run_success "$OCKAM" relay list --to /node/n2 --output json
-  refute_output --partial "\"remote_address\": \"forward_to_blue\""
-  assert_output --partial "\"remote_address\": \"forward_to_red\""
+  refute_output --partial "\"remote_address\":\"forward_to_blue\""
+  assert_output --partial "\"remote_address\":\"forward_to_red\""
 
   ## Try to delete twice
   run_failure "$OCKAM" relay delete -y forward_to_blue --at /node/n2

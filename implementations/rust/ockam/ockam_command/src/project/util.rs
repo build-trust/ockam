@@ -107,28 +107,16 @@ pub async fn check_project_readiness(
     let retry_strategy = FixedInterval::from_millis(5000)
         .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
-    let spinner_option = opts.terminal.progress_spinner();
-    let project = check_project_ready(
-        ctx,
-        node,
-        project,
-        retry_strategy.clone(),
-        spinner_option.clone(),
-    )
-    .await?;
-    let project = check_project_node_accessible(
-        ctx,
-        node,
-        project,
-        retry_strategy.clone(),
-        spinner_option.clone(),
-    )
-    .await?;
+    let pb = opts.terminal.progress_bar();
     let project =
-        check_authority_node_accessible(ctx, node, project, retry_strategy, spinner_option.clone())
+        check_project_ready(ctx, node, project, retry_strategy.clone(), pb.clone()).await?;
+    let project =
+        check_project_node_accessible(ctx, node, project, retry_strategy.clone(), pb.clone())
             .await?;
+    let project =
+        check_authority_node_accessible(ctx, node, project, retry_strategy, pb.clone()).await?;
 
-    if let Some(spinner) = spinner_option.as_ref() {
+    if let Some(spinner) = pb.as_ref() {
         spinner.finish_and_clear();
     }
     Ok(project)

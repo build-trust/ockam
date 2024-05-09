@@ -46,18 +46,15 @@ impl ListCommand {
             node.node_name().color(OckamColor::PrimaryResource.color())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (services, _) = try_join!(get_services, progress_output)?;
 
         let plain = opts.terminal.build_list(
             &services,
-            &format!("Services on {}", node.node_name()),
             &format!("No services found on {}", node.node_name()),
         )?;
-        let json = serde_json::to_string_pretty(&services).into_diagnostic()?;
+        let json = serde_json::to_string(&services).into_diagnostic()?;
         opts.terminal
             .stdout()
             .plain(plain)

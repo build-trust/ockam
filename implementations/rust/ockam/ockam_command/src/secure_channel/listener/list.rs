@@ -57,15 +57,12 @@ impl ListCommand {
             node.node_name().color(OckamColor::PrimaryResource.color())
         )];
 
-        let progress_output = opts
-            .terminal
-            .progress_output(&output_messages, &is_finished);
+        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (secure_channel_listeners, _) = try_join!(get_listeners, progress_output)?;
 
         let list = opts.terminal.build_list(
             &secure_channel_listeners,
-            &format!("Secure Channel Listeners at Node {}", node.node_name()),
             &format!(
                 "No secure channel listeners found at node {}.",
                 node.node_name()

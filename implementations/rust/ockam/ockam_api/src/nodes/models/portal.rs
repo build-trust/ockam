@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
-use ockam::route;
 use ockam_abac::PolicyExpression;
 use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
@@ -265,8 +264,8 @@ impl OutletStatus {
     }
 
     pub fn worker_address(&self) -> Result<MultiAddr, ockam_core::Error> {
-        route_to_multiaddr(&route![self.worker_addr.to_string()])
-            .ok_or_else(|| ApiError::core("Invalid Worker Address"))
+        try_address_to_multiaddr(&self.worker_addr)
+            .map_err(|_| ApiError::core("Invalid Worker Address"))
     }
 
     pub fn worker_name(&self) -> Result<String, ockam_core::Error> {
@@ -282,9 +281,9 @@ impl Display for OutletStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Outlet {} at {}",
+            "Outlet at {} is connected to {}",
             color_primary(
-                try_address_to_multiaddr(&self.worker_addr)
+                self.worker_address()
                     .map_err(|_| std::fmt::Error)?
                     .to_string()
             ),

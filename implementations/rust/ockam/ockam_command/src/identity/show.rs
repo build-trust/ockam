@@ -157,11 +157,9 @@ impl ShowCommand {
             identities.push(identity_list_output);
         }
 
-        let list = opts.terminal.build_list(
-            &identities,
-            "Identities",
-            "No identities found on this system.",
-        )?;
+        let list = opts
+            .terminal
+            .build_list(&identities, "No identities found on this system.")?;
 
         opts.terminal
             .clone()
